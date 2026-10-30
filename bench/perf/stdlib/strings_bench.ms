@@ -1,4 +1,4 @@
-import {keep, measure} from "@std/bench.ms"
+import keep, measure from "@std/bench.ms"
 import words from "./src/harness.ms"
 import StringBuilder from "@std/string.ms"
 

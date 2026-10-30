@@ -1,8 +1,8 @@
-import {keep, measure} from "@std/bench.ms"
+import keep, measure from "@std/bench.ms"
 import words from "./src/harness.ms"
-import {base64_encode, base64_decode, hex_encode} from "@std/encoding.ms"
+import base64_encode, base64_decode, hex_encode from "@std/encoding.ms"
 import sha256 from "@std/crypto.ms"
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
 
 fn build_packed() Bytes:
     var bb = BytesBuilder()

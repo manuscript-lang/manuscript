@@ -1,1 +1,1 @@
-import {make as build} from "./lib.ms"
+import make as build from "./lib.ms"

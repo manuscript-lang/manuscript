@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,interpolation,lists,maps,match,modules,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/text-interpolation-and-map-lookup-keep-semantics.ms
-import {expect_true, fail} from "@std/test.ms"
+import expect_true, fail from "@std/test.ms"
 
 type Point:
     x: Int

@@ -1,6 +1,6 @@
 import stdin from "@std/io.ms"
 import stdout from "@std/io.ms"
-import {read_lines} from "@std/streams.ms"
+import read_lines from "@std/streams.ms"
 
 type Entry:
     timestamp: String

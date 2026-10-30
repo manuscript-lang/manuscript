@@ -687,11 +687,11 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
             continue;
         }
         match token.kind {
-            EditorKind::Char(b'{') => {
+            EditorKind::Char(b'(') => {
                 braces += 1;
                 grouped = true;
             }
-            EditorKind::Char(b'}') => braces -= 1,
+            EditorKind::Char(b')') => braces -= 1,
             EditorKind::Char(b'\n') if braces <= 0 => start = None,
             _ => {}
         }
@@ -699,11 +699,13 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
     let start = start?;
     let line = &d.text[start..c.offset];
     let mut imported: HashSet<String> = HashSet::new();
-    if grouped {
-        let end = d.text[start..].find('}').unwrap_or(d.text.len() - start);
+    {
+        let stop = if grouped { ')' } else { '\n' };
+        let end = d.text[start..].find(stop).unwrap_or(d.text.len() - start);
         for token in text::editor_tokens(&d.text[start..start + end]) {
             if token.kind == EditorKind::Name
                 && token.text != "import"
+                && token.text != "from"
                 && (start + token.end <= c.start || start + token.start >= c.end)
             {
                 imported.insert(token.text.to_string());
@@ -803,8 +805,8 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
             break; // Do not borrow a module path from a later declaration.
         }
         match token.kind {
-            EditorKind::Char(b'{') => braces += 1,
-            EditorKind::Char(b'}') => braces -= 1,
+            EditorKind::Char(b'(') => braces += 1,
+            EditorKind::Char(b')') => braces -= 1,
             _ => {}
         }
         if braces == 0

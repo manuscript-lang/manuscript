@@ -1,6 +1,6 @@
 import parse from "@std/json.ms"
 import base64_encode from "@std/encoding.ms"
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"

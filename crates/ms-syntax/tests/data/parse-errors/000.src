@@ -1,6 +1,6 @@
 import range from "@std/collections.ms"
-import {bench} from "./harness.ms"
-import {parse, stringify} from "@std/csv.ms"
+import bench from "./harness.ms"
+import parse, stringify from "@std/csv.ms"
 
 export fn bench_csv() Unit:
     let rows: List[List[String]] = []

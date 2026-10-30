@@ -1,7 +1,7 @@
-import {expect_equal, expect_ok} from "@std/test.ms"
+import expect_equal, expect_ok from "@std/test.ms"
 import Closeable from "@std/core.ms"
 import filesystem from "@std/fs.ms"
-import {Shared, share} from "@std/shared.ms"
+import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 
 # Close appends the id to a log file, so the log is the order in which the closes ran.

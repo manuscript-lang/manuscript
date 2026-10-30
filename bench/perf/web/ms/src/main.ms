@@ -1,8 +1,8 @@
 # Benchmark server: main <port> <data-dir> [threads]. With threads above 1 the main thread accepts and hands each connection, round robin, to one of that many serving workers. The Go server in ../go answers the same requests.
 import Bytes from "@std/bytes.ms"
 import filesystem from "@std/fs.ms"
-import {headers, HttpError, HttpExchange, HttpRequest, HttpResponse, buffered} from "@std/http.ms"
-import {network, serve_core, serve_cores} from "@std/net.ms"
+import headers, HttpError, HttpExchange, HttpRequest, HttpResponse, buffered from "@std/http.ms"
+import network, serve_core, serve_cores from "@std/net.ms"
 import arguments from "@std/process.ms"
 
 fn score(id: Int) Int:

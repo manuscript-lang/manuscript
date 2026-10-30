@@ -1,4 +1,4 @@
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
 # kind 0 is an unchanged line, 1 a deletion from A, 2 an insertion from B

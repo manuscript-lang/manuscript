@@ -1,4 +1,4 @@
-import {Closeable, TextError} from "@std/core.ms"
+import Closeable, TextError from "@std/core.ms"
 
 type Journal:
     lines: Int

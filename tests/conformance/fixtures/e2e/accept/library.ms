@@ -1,7 +1,7 @@
 # conform: tags=control-flow,interpolation,match,modules,stdlib-archive,stdlib-binary,stdlib-bytes,stdlib-compress,stdlib-crypto,stdlib-encoding,stdlib-json,stdlib-math,stdlib-string,stdlib-testing,stdlib-url,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/library.ms
-import {expect_equal, expect_false, fail} from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
 import Bytes from "@std/bytes.ms"
 import parse from "@std/json.ms"
 import stringify from "@std/json.ms"

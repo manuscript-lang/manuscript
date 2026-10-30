@@ -2,10 +2,10 @@
 # conform: phase=run
 import Channel from "@std/channels.ms"
 import stdout from "@std/io.ms"
-import {Shared, share} from "@std/shared.ms"
+import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 import TaskGroup from "@std/tasks.ms"
-import {nanoseconds, sleep} from "@std/time.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
 fn holder(box: Shared[Int], chan: Channel[Unit, Unit]) Int:
     var ch = chan.clone()

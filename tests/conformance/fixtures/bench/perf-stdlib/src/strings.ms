@@ -1,4 +1,4 @@
-import {bench, words} from "./harness.ms"
+import bench, words from "./harness.ms"
 import StringBuilder from "@std/string.ms"
 
 export fn bench_string() Unit:

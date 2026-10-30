@@ -1,8 +1,8 @@
 # conform: tags=diagnostics,modules,optional,stdlib-bytes,stdlib-io,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/stdlib/io.ms
-import {expect_equal, expect_false} from "@std/test.ms"
-import {ReadStream, WriteStream, IoError, read_all, read_line, copy} from "@std/io.ms"
+import expect_equal, expect_false from "@std/test.ms"
+import ReadStream, WriteStream, IoError, read_all, read_line, copy from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import MemoryStream from "./support/streams.ms"
 

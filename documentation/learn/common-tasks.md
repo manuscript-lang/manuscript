@@ -61,7 +61,7 @@ Save as `tool.ms`. `@std/cli.ms` resolves nested commands, typed flags and posit
 
 <!-- manuscript-example: {"mode":"run","args":["hello","Ada","-n","2"],"stdout":"Hello, Ada!\nHello, Ada!\n"} -->
 ```manuscript
-import {Arg, Command, Flag, FlagKind, command} from "@std/cli.ms"
+import Arg, Command, Flag, FlagKind, command from "@std/cli.ms"
 import stdout from "@std/io.ms"
 import arguments from "@std/process.ms"
 
@@ -98,7 +98,7 @@ Save as `read.ms`. `decode_utf8()` returns `none` for invalid UTF-8.
 <!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/process.ms"
-import {filesystem, FileSystemError} from "@std/fs.ms"
+import filesystem, FileSystemError from "@std/fs.ms"
 import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
@@ -129,7 +129,7 @@ Save as `write.ms`. `replace: false` fails if the file exists.
 <!-- manuscript-example: {"mode":"run","args":["saved.txt"],"want_files":{"saved.txt":"saved notes\n"},"cases":[{"args":["saved.txt"],"files":{"saved.txt":"keep me"},"want_files":{"saved.txt":"keep me"},"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/process.ms"
-import {filesystem, FileSystemError} from "@std/fs.ms"
+import filesystem, FileSystemError from "@std/fs.ms"
 
 fn run() Result[Unit, Error]:
     let path = try arguments().first().ok_or(FileSystemError.InvalidInput)
@@ -154,7 +154,7 @@ Save as `lines.ms`. `lines` returns an iterator over the lines; declare it `var`
 
 <!-- manuscript-example: {"mode":"run","stdin":"line one\n\nlast line","stdout":"line one\n\nlast line\n","cases":[{"stdout":""}]} -->
 ```manuscript
-import {stdin, stdout, lines} from "@std/io.ms"
+import stdin, stdout, lines from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
     var reader = lines(stdin(), max_bytes: 4096)
@@ -237,7 +237,7 @@ Save as `config.ms`. Parse a record directly and serialize it back. Use strict e
 <!-- manuscript-example: {"mode":"run","args":["{\"name\":\"Sam\"}"],"stdout":"{\"name\":\"Sam\",\"enabled\":true}\n","cases":[{"args":["{\"name\":\"Ada\",\"enabled\":false,\"extra\":1}"],"stdout":"{\"name\":\"Ada\",\"enabled\":false}\n"},{"args":["{}"],"exit_code":1},{"args":["{\"name\":42}"],"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/process.ms"
-import {parse, stringify} from "@std/json.ms"
+import parse, stringify from "@std/json.ms"
 import stdout from "@std/io.ms"
 
 type Config:
@@ -273,7 +273,7 @@ Save as `get.ms`. `fetch` buffers the body, `check_status()` rejects statuses ou
 <!-- manuscript-example: {"mode":"run","args":["$HTTP_URL"],"http":{"status":200,"body":"hello from HTTP\n"},"stdout":"hello from HTTP\n","cases":[{"args":["$HTTP_URL"],"http":{"status":404,"body":"missing"},"exit_code":1},{"args":["invalid URL"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/process.ms"
-import {fetch, FetchOptions} from "@std/fetch.ms"
+import fetch, FetchOptions from "@std/fetch.ms"
 import HttpError from "@std/http.ms"
 import stdout from "@std/io.ms"
 

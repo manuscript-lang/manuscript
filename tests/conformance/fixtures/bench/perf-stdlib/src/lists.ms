@@ -1,4 +1,4 @@
-import {bench, ints, Point} from "./harness.ms"
+import bench, ints, Point from "./harness.ms"
 
 export fn bench_list() Unit:
     let data = ints(100000)

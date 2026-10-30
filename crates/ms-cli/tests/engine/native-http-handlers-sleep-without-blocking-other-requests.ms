@@ -1,7 +1,7 @@
-import {buffered, headers, HttpRequest, HttpResponse} from "@std/http.ms"
+import buffered, headers, HttpRequest, HttpResponse from "@std/http.ms"
 import network from "@std/net.ms"
 import stdout from "@std/io.ms"
-import {sleep, nanoseconds} from "@std/time.ms"
+import sleep, nanoseconds from "@std/time.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":

@@ -1,4 +1,4 @@
-import {expect_equal, expect_true} from "@std/test.ms"
+import expect_equal, expect_true from "@std/test.ms"
 
 # Each lending function here hands back a part reached through a match, a loop or a `let`.
 # Lowering must read those parts in place: a copy would be freed before the caller reads it.

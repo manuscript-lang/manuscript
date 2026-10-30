@@ -1,7 +1,7 @@
 # conform: tags=optional,stdlib-sorted,stdlib-testing,testing,tier-stdlib
 # conform: phase=test
-import {expect_equal, expect_true, expect_false} from "@std/test.ms"
-import {SortedMap, SortedSet} from "@std/sorted.ms"
+import expect_equal, expect_true, expect_false from "@std/test.ms"
+import SortedMap, SortedSet from "@std/sorted.ms"
 
 test "add get replace remove":
     var map = SortedMap[Int, String]()

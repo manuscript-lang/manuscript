@@ -1,6 +1,6 @@
-import {expect_equal, expect_false} from "@std/test.ms"
-import {from_scalars, StringError, StringBuilder} from "@std/string.ms"
-import {Bytes, BytesBuilder, values} from "@std/bytes.ms"
+import expect_equal, expect_false from "@std/test.ms"
+import from_scalars, StringError, StringBuilder from "@std/string.ms"
+import Bytes, BytesBuilder, values from "@std/bytes.ms"
 
 test "Unicode scalar indexing differs from byte length":
     let text = "aé🙂"

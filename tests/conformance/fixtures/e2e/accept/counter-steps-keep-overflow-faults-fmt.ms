@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,formatter,modules,mutation,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/counter-steps-keep-overflow-faults.ms
-import {expect_contains, expect_equal, expect_fault} from "@std/test.ms"
+import expect_contains, expect_equal, expect_fault from "@std/test.ms"
 
 fn count_up(limit: Int) Int:
     var i = limit - 3

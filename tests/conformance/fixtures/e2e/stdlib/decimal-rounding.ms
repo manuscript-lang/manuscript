@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/decimal-rounding.ms
 import expect_equal from "@std/test.ms"
-import {Decimal, RoundingMode} from "@std/decimal.ms"
+import Decimal, RoundingMode from "@std/decimal.ms"
 import NumberError from "@std/math.ms"
 
 test "decimal cents stay exact and fixed places retain zeros":

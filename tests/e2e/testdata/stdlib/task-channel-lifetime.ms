@@ -1,8 +1,8 @@
-import {Channel, ChannelError} from "@std/channels.ms"
+import Channel, ChannelError from "@std/channels.ms"
 import control from "@std/process.ms"
-import {TaskError, TaskGroup} from "@std/tasks.ms"
-import {expect_equal, expect_error, expect_ok, expect_true} from "@std/test.ms"
-import {nanoseconds, sleep} from "@std/time.ms"
+import TaskError, TaskGroup from "@std/tasks.ms"
+import expect_equal, expect_error, expect_ok, expect_true from "@std/test.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
 fn send_one(ch: Channel[Int, Unit]) Result[Unit, ChannelError]:
     try ch.send(7)

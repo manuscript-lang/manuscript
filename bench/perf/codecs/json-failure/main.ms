@@ -1,4 +1,4 @@
-import {parse, JsonError} from "@std/json.ms"
+import parse, JsonError from "@std/json.ms"
 import StringBuilder from "@std/string.ms"
 import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"

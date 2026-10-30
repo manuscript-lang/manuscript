@@ -1,5 +1,5 @@
-import {expect_equal, expect_false, expect_true, fail} from "@std/test.ms"
-import {headers, HttpMethod, buffered} from "@std/http.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
+import headers, HttpMethod, buffered from "@std/http.ms"
 import network from "@std/net.ms"
 import HttpError from "@std/http.ms"
 import WebSocketError from "@std/net.ms"

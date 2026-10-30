@@ -318,7 +318,7 @@ Use an interface when callers should depend on behavior rather than on the type.
 ## Files and cleanup
 
 ```manuscript
-import {filesystem, FileSystemError} from "@std/fs.ms"
+import filesystem, FileSystemError from "@std/fs.ms"
 
 fn copy_notes() Result[Unit, FileSystemError]:
     var source = try filesystem().open("notes.txt", flags: "r", mode: 0)

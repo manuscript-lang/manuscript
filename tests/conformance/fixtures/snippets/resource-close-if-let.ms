@@ -2,7 +2,7 @@
 # conform: phase=run
 # conform: origin=an if let payload resource closes when its branch ends
 import stdout from "@std/io.ms"
-import {Closeable, TextError} from "@std/core.ms"
+import Closeable, TextError from "@std/core.ms"
 
 fn say(s: String) Unit:
     stdout().write(s + "\n").get()

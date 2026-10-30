@@ -1,5 +1,5 @@
-import {read_line, stdin, stdout} from "@std/io.ms"
-import {BigInt, parse} from "@std/bigint.ms"
+import read_line, stdin, stdout from "@std/io.ms"
+import BigInt, parse from "@std/bigint.ms"
 import StringBuilder from "@std/string.ms"
 
 type Entry:

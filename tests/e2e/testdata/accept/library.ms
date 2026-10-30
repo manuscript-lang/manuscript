@@ -1,4 +1,4 @@
-import {expect_equal, expect_false, fail} from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
 import Bytes from "@std/bytes.ms"
 import parse from "@std/json.ms"
 import stringify from "@std/json.ms"

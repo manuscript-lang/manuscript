@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/call-depth.ms
-import {expect_contains, expect_equal, expect_fault} from "@std/test.ms"
+import expect_contains, expect_equal, expect_fault from "@std/test.ms"
 
 type Walker:
     step: Int

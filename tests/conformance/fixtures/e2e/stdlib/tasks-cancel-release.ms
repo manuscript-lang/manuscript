@@ -1,8 +1,8 @@
 # conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
 import stdout from "@std/io.ms"
-import {TaskError, TaskGroup} from "@std/tasks.ms"
-import {nanoseconds, sleep} from "@std/time.ms"
+import TaskError, TaskGroup from "@std/tasks.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
 # A cancelled task leaves its frames by a jump, so the runtime must drop what they own.
 # `make leak-check` runs this program against a counting runtime: any live block at exit fails.

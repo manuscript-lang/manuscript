@@ -1,7 +1,7 @@
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 import range from "@std/collections.ms"
-import {max, min} from "@std/math.ms"
+import max, min from "@std/math.ms"
 
 # Sentinel for any malformed number; every valid number in the spec is at least 0.
 fn bad() Int:

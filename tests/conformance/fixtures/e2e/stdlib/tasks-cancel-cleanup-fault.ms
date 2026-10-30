@@ -3,7 +3,7 @@
 import Closeable from "@std/core.ms"
 import stdout from "@std/io.ms"
 import TaskGroup from "@std/tasks.ms"
-import {nanoseconds, sleep} from "@std/time.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
 type Bad:
     tag: Int

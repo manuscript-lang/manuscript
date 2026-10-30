@@ -1,7 +1,7 @@
 # conform: tags=scope-cleanup,tier-core
 # conform: phase=run
 # conform: origin=a resource unwrapped or passed through a call closes at scope end
-import {Closeable, TextError} from "@std/core.ms"
+import Closeable, TextError from "@std/core.ms"
 import stdout from "@std/io.ms"
 
 type Res:

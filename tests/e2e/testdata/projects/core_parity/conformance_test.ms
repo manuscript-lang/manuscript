@@ -1,14 +1,28 @@
-import {expect_equal, expect_false, expect_true} from "@std/test.ms"
-import {
-    first_mapped, first_bound_map, first_generic_map, first_lookup, first_failure,
-    first_queries, first_converted, first_folded, first_key_transform, first_bound_keys,
+import expect_equal, expect_false, expect_true from "@std/test.ms"
+import (
+    first_mapped,
+    first_bound_map,
+    first_generic_map,
+    first_lookup,
+    first_failure,
+    first_queries,
+    first_converted,
+    first_folded,
+    first_key_transform,
+    first_bound_keys,
     first_value_transform
-} from "./first.ms"
-import {
-    second_mapped, second_failure, second_queries, second_converted, second_folded,
-    second_key_transform, second_bound_keys, second_value_transform
-} from "./second.ms"
-import {Key, Cause} from "./domain.ms"
+) from "./first.ms"
+import (
+    second_mapped,
+    second_failure,
+    second_queries,
+    second_converted,
+    second_folded,
+    second_key_transform,
+    second_bound_keys,
+    second_value_transform
+) from "./second.ms"
+import Key, Cause from "./domain.ms"
 
 test "mapped output keeps lexical Hashable and Equal evidence":
     let by_id = first_mapped()

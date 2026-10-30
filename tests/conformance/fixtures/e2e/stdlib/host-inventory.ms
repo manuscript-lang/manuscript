@@ -1,6 +1,6 @@
 # conform: tags=control-flow,stdlib-system,stdlib-testing,testing,tier-io,try-result
 # conform: phase=test
-import {expect_equal, expect_false, expect_true} from "@std/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test.ms"
 import system from "@std/process.ms"
 import IpFamily from "@std/net.ms"
 

@@ -1,4 +1,4 @@
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
 # Runs are searched over this many days after START, inclusive of START's own day.

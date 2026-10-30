@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import {ListBuilder, MapBuilder, SetBuilder, filled, map_from_entries} from \"@std/collections.ms\"\nimport {ErrorCategory, TextError, category} from \"@std/core.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\nfn bytes() Bytes: Bytes([1])\n\nfn build() List[Int]: ListBuilder[Int]().build()\n\nfn text_error(message: String) TextError: TextError(message)\n"
+    "fmt": "import ListBuilder, MapBuilder, SetBuilder, filled, map_from_entries from \"@std/collections.ms\"\nimport ErrorCategory, TextError, category from \"@std/core.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\nfn bytes() Bytes: Bytes([1])\n\nfn build() List[Int]: ListBuilder[Int]().build()\n\nfn text_error(message: String) TextError: TextError(message)\n"
   }
 }

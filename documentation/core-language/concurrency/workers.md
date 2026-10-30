@@ -9,9 +9,9 @@ A `WorkerGroup[In, Out]` starts workers: functions that run on their own OS thre
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import {Channel, ChannelError} from "@std/channels.ms"
-import {expect_equal, expect_ok} from "@std/test.ms"
-import {WorkerGroup, worker_channel} from "@std/workers.ms"
+import Channel, ChannelError from "@std/channels.ms"
+import expect_equal, expect_ok from "@std/test.ms"
+import WorkerGroup, worker_channel from "@std/workers.ms"
 
 fn serve(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     while true:

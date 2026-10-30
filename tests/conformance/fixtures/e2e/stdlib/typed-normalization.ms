@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/typed-normalization.ms
 import expect_equal from "@std/test.ms"
-import {NormalizationForm, StringError} from "@std/string.ms"
+import NormalizationForm, StringError from "@std/string.ms"
 
 fn normalize(form: NormalizationForm, text: String) Result[String, StringError]:
     return form.normalize(text)

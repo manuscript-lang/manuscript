@@ -1,5 +1,5 @@
-import {Closeable, Data} from "@std/core.ms"
-import {Bytes, join} from "@std/bytes.ms"
+import Closeable, Data from "@std/core.ms"
+import Bytes, join from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 import IoError from "@std/io.ms"
 import stringify from "@std/json.ms"

@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/expression-conveniences.ms
 import TextError from "@std/core.ms"
-import {expect_equal, expect_false, expect_true} from "@std/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test.ms"
 import Closeable from "@std/core.ms"
 
 type Counter:

@@ -1,5 +1,5 @@
 import stdout from "@std/io.ms"
-import {clock, Instant} from "@std/time.ms"
+import clock, Instant from "@std/time.ms"
 import StringBuilder from "@std/string.ms"
 import BytesBuilder from "@std/bytes.ms"
 import PriorityQueue from "@std/queue.ms"

@@ -1,8 +1,17 @@
-import {expect_equal, expect_false, expect_true, fail} from "@std/test.ms"
-import {
-    timestamp, parse_timestamp, from_calendar, local_zone, Timestamp, TimeError, clock,
-    wall_clock, sleep, microseconds, milliseconds
-} from "@std/time.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
+import (
+    timestamp,
+    parse_timestamp,
+    from_calendar,
+    local_zone,
+    Timestamp,
+    TimeError,
+    clock,
+    wall_clock,
+    sleep,
+    microseconds,
+    milliseconds
+) from "@std/time.ms"
 
 test "timestamps preserve nanoseconds and shift across epoch":
     let epoch = try timestamp(0, 123)

@@ -1,6 +1,6 @@
 import expect_equal from "@std/test.ms"
-import {headers, HttpClientOptions, HttpMethod, HttpRequest, HttpResponse, buffered} from "@std/http.ms"
-import {IoError, ReadStream, read_all} from "@std/io.ms"
+import headers, HttpClientOptions, HttpMethod, HttpRequest, HttpResponse, buffered from "@std/http.ms"
+import IoError, ReadStream, read_all from "@std/io.ms"
 import body_stream from "@std/sse.ms"
 import network from "@std/net.ms"
 import Bytes from "@std/bytes.ms"

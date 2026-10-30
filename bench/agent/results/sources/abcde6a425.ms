@@ -1,5 +1,5 @@
 import Bytes from "@std/bytes.ms"
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
 # Parses 1 to 6 unsigned decimal digits; anything else is malformed.

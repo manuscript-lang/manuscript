@@ -1,7 +1,7 @@
 # conform: tags=closures,formatter,modules,parser,stdlib-bytes,stdlib-fs,strings,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=documentation/core-language/functions/function-values-and-closures.md:83
-import {filesystem, FileSystemError} from "@std/fs.ms"
+import filesystem, FileSystemError from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 fn notes_reader(path: String) fn() Result[Bytes, FileSystemError]:

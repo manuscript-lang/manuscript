@@ -1,8 +1,18 @@
 import expect_equal from "@std/test.ms"
-import {
-    buffered, headers, read_body, reply, text, HttpClientOptions, HttpError,
-    HttpExchange, HttpMethod, HttpRequest, HttpResponse, HttpServerOptions
-} from "@std/http.ms"
+import (
+    buffered,
+    headers,
+    read_body,
+    reply,
+    text,
+    HttpClientOptions,
+    HttpError,
+    HttpExchange,
+    HttpMethod,
+    HttpRequest,
+    HttpResponse,
+    HttpServerOptions
+) from "@std/http.ms"
 import read_all from "@std/io.ms"
 import body_stream from "@std/sse.ms"
 import network from "@std/net.ms"

@@ -1,4 +1,4 @@
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 
 test "List count calls the predicate once per element":
     let values = [1, 2, 3, 4]

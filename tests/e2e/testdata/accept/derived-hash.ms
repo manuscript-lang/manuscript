@@ -1,4 +1,4 @@
-import {expect_equal, expect_false, expect_not_equal} from "@std/test.ms"
+import expect_equal, expect_false, expect_not_equal from "@std/test.ms"
 import Decimal from "@std/decimal.ms"
 
 type P:

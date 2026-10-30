@@ -1,5 +1,5 @@
-import {stdout, stdin, read_all} from "@std/io.ms"
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
+import stdout, stdin, read_all from "@std/io.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
 import range from "@std/collections.ms"
 
 # A parsed pattern node. Children are referenced by index into Regex.nodes.

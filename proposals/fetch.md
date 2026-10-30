@@ -23,7 +23,7 @@
 Reuse the server's types. `HttpMethod`, `HttpHeaders`, `HttpError`, `Bytes` and `Duration` are exactly the ones `HttpRequest` and `HttpResponse` use, so a handler and a client share vocabulary.
 
 ```manuscript
-import {fetch, FetchOptions, json_body} from "@std/fetch.ms"
+import fetch, FetchOptions, json_body from "@std/fetch.ms"
 
 type User:
     name: String

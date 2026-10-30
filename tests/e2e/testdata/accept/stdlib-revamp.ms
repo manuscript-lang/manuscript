@@ -1,5 +1,5 @@
-import {expect_equal, expect_false, fail} from "@std/test.ms"
-import {ReadStream, IoError, read_line} from "@std/io.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
+import ReadStream, IoError, read_line from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import PriorityQueue from "@std/queue.ms"
 

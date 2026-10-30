@@ -15,10 +15,10 @@
 #         let _ = ch.send(received.get() * 2)
 # ```
 import Bytes from "@std/bytes.ms"
-import {Channel, ChannelError, Transport} from "@std/channels.ms"
-import {Closeable, Data} from "@std/core.ms"
-import {parse, stringify} from "@std/json.ms"
-import {Shared, share} from "@std/shared.ms"
+import Channel, ChannelError, Transport from "@std/channels.ms"
+import Closeable, Data from "@std/core.ms"
+import parse, stringify from "@std/json.ms"
+import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 
 extern fn msrt_pipe_new() Int

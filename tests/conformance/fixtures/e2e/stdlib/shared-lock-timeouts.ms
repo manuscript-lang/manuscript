@@ -2,10 +2,10 @@
 # conform: phase=run
 # conform: timeout=20
 import stdout from "@std/io.ms"
-import {Shared, share} from "@std/shared.ms"
+import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 import TaskGroup from "@std/tasks.ms"
-import {nanoseconds, milliseconds, sleep} from "@std/time.ms"
+import nanoseconds, milliseconds, sleep from "@std/time.ms"
 
 fn holder(box: Shared[Int], nap: Int) Int:
     var _g = lock(box)

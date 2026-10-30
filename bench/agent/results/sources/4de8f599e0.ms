@@ -1,5 +1,5 @@
 import Bytes from "@std/bytes.ms"
-import {read_all, stdin, stdout} from "@std/io.ms"
+import read_all, stdin, stdout from "@std/io.ms"
 import range from "@std/collections.ms"
 
 fn is_cell(ch: String) Bool: ch == "#" or ch == "." or ch == "S" or ch == "E"

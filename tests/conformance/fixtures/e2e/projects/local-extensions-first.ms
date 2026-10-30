@@ -1,9 +1,9 @@
 # conform: tags=closures,control-flow,diagnostics,faults,generics,interfaces,match,modules,stdlib-cleanup,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/local_extensions/first.ms
-import {expect_equal, expect_false} from "@std/test.ms"
-import {Item, Box, Holder, Choice} from "./domain.ms"
-import {Read, invoke, relay, as_view} from "./contracts.ms"
+import expect_equal, expect_false from "@std/test.ms"
+import Item, Box, Holder, Choice from "./domain.ms"
+import Read, invoke, relay, as_view from "./contracts.ms"
 import Closeable from "@std/core.ms"
 import ListBuilder from "@std/collections.ms"
 

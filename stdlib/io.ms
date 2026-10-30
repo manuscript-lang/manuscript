@@ -1,4 +1,4 @@
-import {Closeable, Iterator} from "@std/core.ms"
+import Closeable, Iterator from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 

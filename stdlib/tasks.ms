@@ -1,6 +1,6 @@
-import {Channel, ChannelError, Transport} from "@std/channels.ms"
-import {Closeable, panic} from "@std/core.ms"
-import {Shared, share} from "@std/shared.ms"
+import Channel, ChannelError, Transport from "@std/channels.ms"
+import Closeable, panic from "@std/core.ms"
+import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 import Duration from "@std/time.ms"
 

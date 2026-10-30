@@ -1,4 +1,4 @@
-import {expect_contains, expect_equal, expect_fault} from "@std/test.ms"
+import expect_contains, expect_equal, expect_fault from "@std/test.ms"
 
 fn identity[T](value: T) T: return value
 

@@ -1,6 +1,6 @@
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
 
 # Regex AST. Every single-byte matcher is a 256-entry membership table.
 type Node:

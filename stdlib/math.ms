@@ -1,4 +1,4 @@
-import {Data, panic} from "@std/core.ms"
+import Data, panic from "@std/core.ms"
 
 extern fn msstd_math_acos(value: Float) Float
 

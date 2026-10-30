@@ -1,9 +1,9 @@
 # conform: tags=control-flow,formatter,interpolation,lists,modules,mutation,parser,stdlib-bytes,stdlib-collections,stdlib-json,stdlib-jsonstream,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/jsonstream.ms
-import {expect_equal, expect_false, expect_not_equal, fail} from "@std/test.ms"
+import expect_equal, expect_false, expect_not_equal, fail from "@std/test.ms"
 import decoder from "@std/jsonstream.ms"
-import {stringify, JsonValue, JsonLimits, JsonError} from "@std/json.ms"
+import stringify, JsonValue, JsonLimits, JsonError from "@std/json.ms"
 import Bytes from "@std/bytes.ms"
 
 fn texts(values: List[JsonValue]) Result[List[String], Error]:

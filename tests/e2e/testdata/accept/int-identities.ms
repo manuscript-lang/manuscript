@@ -1,4 +1,4 @@
-import {expect_equal, expect_true} from "@std/test.ms"
+import expect_equal, expect_true from "@std/test.ms"
 
 fn touch(var log: List[Int], value: Int) Int:
     log.append(value)

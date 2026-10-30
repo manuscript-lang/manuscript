@@ -35,7 +35,7 @@ export fn main() Int:
 - Be terse: infer closure types, one-line bodies (`fn f(x: Int) Int: x * 2`), `map`/`filter`/`fold`/`join`/`get(d)` over loops.
 - `main() Int` returns the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test.ms`), `bench "name":` under `ms bench`.
 - Stdlib (`@std/<m>.ms`): `io` `fs` `streams` (`read_lines(stdin())`) `string` (regex `compile`) `collections` `bytes` `decimal` `json` `csv` `toml` `yaml` `time` `math` `random` `crypto` `process` `http` `net` `tasks` `channels` `workers` `sync` `shared`.
-- Imports: `import {a, b} from "@std/x.ms"`, `import a from "./local.ms"`; `export` shares. `List Map Set Optional Result Error` need none.
+- Imports: `import a, b from "@std/x.ms"`, `import a from "./local.ms"`; `export` shares. `List Map Set Optional Result Error` need none.
 - Lines: a `:` ending a line needs an indented body; `else if` chains; lines starting `|` or `.` continue. Module constants: `let LIMIT = 3`.
 - Bindings: `let` once, `var` reassigns, `n += 1`; destructure `let [a, b] = xs`, `let {name} = rec`. Operators `and or not`.
 - Types: `Int Float Bool String Unit`, no implicit casts. `"{expr}"` interpolates (`\{` is a literal brace). `true`/`false`, `unit`.

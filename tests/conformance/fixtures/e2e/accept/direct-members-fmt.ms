@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,generics,interfaces,lists,maps,match,modules,optional,parser,records,sets,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/direct-members.ms
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 
 type Point:
     x: Int

@@ -1,6 +1,6 @@
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
-import {max, min} from "@std/math.ms"
+import max, min from "@std/math.ms"
 
 let BAD = "error: bad command"
 

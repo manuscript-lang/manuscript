@@ -3,7 +3,7 @@ import stdin from "@std/io.ms"
 import read_all from "@std/io.ms"
 import range from "@std/collections.ms"
 import parse_float from "@std/numbers.ms"
-import {abs, ceil, floor, infinity, pow, sqrt} from "@std/math.ms"
+import abs, ceil, floor, infinity, pow, sqrt from "@std/math.ms"
 import from_int from "@std/bigint.ms"
 
 let UPPER_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"

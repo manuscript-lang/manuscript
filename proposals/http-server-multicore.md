@@ -54,7 +54,7 @@ The acceptor's isolate also serves (worker 0 is itself); with `cores: 1` nothing
 ### API
 
 ```manuscript
-import {HttpServer, HttpServerOptions, serve_cores} from "@std/http.ms"
+import HttpServer, HttpServerOptions, serve_cores from "@std/http.ms"
 
 # Named top-level, capture-free: runs once in each serving isolate and returns that isolate's handler.
 fn init(config: AppConfig) fn(HttpExchange) Result[Unit, HttpError]:

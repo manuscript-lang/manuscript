@@ -1,7 +1,7 @@
-import {stdout, stdin} from "@std/io.ms"
+import stdout, stdin from "@std/io.ms"
 import read_lines from "@std/streams.ms"
-import {bit_and, bit_or, bit_xor, shift_left, shift_right, shift_right_unsigned} from "@std/math.ms"
-import {StringBuilder, from_scalars} from "@std/string.ms"
+import bit_and, bit_or, bit_xor, shift_left, shift_right, shift_right_unsigned from "@std/math.ms"
+import StringBuilder, from_scalars from "@std/string.ms"
 
 # ---- constants ----------------------------------------------------------
 

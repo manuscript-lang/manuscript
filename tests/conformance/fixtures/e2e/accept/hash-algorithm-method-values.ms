@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=perf thread: HashAlgorithm operations stored as function values
 import expect_equal from "@std/test.ms"
-import {HashAlgorithm, sha256, sha512} from "@std/crypto.ms"
+import HashAlgorithm, sha256, sha512 from "@std/crypto.ms"
 
 test "stored HashAlgorithm operations match direct calls":
     let data = "abc".to_bytes()

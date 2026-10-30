@@ -2,7 +2,7 @@
 # conform: phase=run
 # conform: timeout=20
 import stdout from "@std/io.ms"
-import {Shared, share} from "@std/shared.ms"
+import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 import TaskGroup from "@std/tasks.ms"
 

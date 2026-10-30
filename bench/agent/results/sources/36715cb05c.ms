@@ -1,7 +1,7 @@
-import {read_all, stdin, stdout} from "@std/io.ms"
+import read_all, stdin, stdout from "@std/io.ms"
 import range from "@std/collections.ms"
 import BytesBuilder from "@std/bytes.ms"
-import {bit_and, bit_or, bit_xor, bit_not, shift_left, shift_right} from "@std/bits.ms"
+import bit_and, bit_or, bit_xor, bit_not, shift_left, shift_right from "@std/bits.ms"
 
 let WORD = 4294967296
 let HALF = 2147483648

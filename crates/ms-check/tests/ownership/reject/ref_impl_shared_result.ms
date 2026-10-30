@@ -1,4 +1,4 @@
-import {share, Shared} from "@std/shared.ms"
+import share, Shared from "@std/shared.ms"
 
 interface Cell:
     fn get() ref Shared[List[String]]

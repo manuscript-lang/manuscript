@@ -1,7 +1,7 @@
-import {keep, measure} from "@std/bench.ms"
-import {basename, join, normalize} from "@std/fs.ms"
-import {parse, encode_component} from "@std/net.ms"
-import {sqrt, sin} from "@std/math.ms"
+import keep, measure from "@std/bench.ms"
+import basename, join, normalize from "@std/fs.ms"
+import parse, encode_component from "@std/net.ms"
+import sqrt, sin from "@std/math.ms"
 
 bench "path.join_normalize":
     fn work() Result[Unit, Error]:

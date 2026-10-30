@@ -1,8 +1,8 @@
 # conform: tags=diagnostics,maps,modules,strings,tier-core
 # conform: phase=check
 # conform: origin=pkg/compiler/collection_prelude_imports_test.go:131 TestPreludeImportPolicyUsesResolvedIdentity
-import {List, Set, ListEntry} from "@types"
-import {Map, MapEntry, CollectionError} from "@domain/types.ms"
+import List, Set, ListEntry from "@types"
+import Map, MapEntry, CollectionError from "@domain/types.ms"
 
 fn get() Int: (
     List(1).value

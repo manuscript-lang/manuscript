@@ -1,4 +1,4 @@
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 
 fn subtract(amount: Int, deduction: Int) Int: amount - deduction
 

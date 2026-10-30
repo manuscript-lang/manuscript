@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,formatter,interfaces,match,modules,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/prelude.ms
-import {expect_equal, expect_false, fail} from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
 
 type Failure:
     message_text: String

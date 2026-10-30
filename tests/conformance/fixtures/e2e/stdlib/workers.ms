@@ -1,15 +1,15 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import {Channel, ChannelError} from "@std/channels.ms"
+import Channel, ChannelError from "@std/channels.ms"
 import panic from "@std/core.ms"
 import fetch from "@std/fetch.ms"
-import {buffered, headers, HttpRequest, HttpResponse, HttpServerOptions} from "@std/http.ms"
+import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/http.ms"
 import stdin from "@std/io.ms"
 import network from "@std/net.ms"
 import TaskGroup from "@std/tasks.ms"
-import {expect_equal, expect_error, expect_ok, expect_true} from "@std/test.ms"
-import {nanoseconds, sleep} from "@std/time.ms"
-import {Worker, WorkerError, WorkerGroup, worker_bytes, worker_channel} from "@std/workers.ms"
+import expect_equal, expect_error, expect_ok, expect_true from "@std/test.ms"
+import nanoseconds, sleep from "@std/time.ms"
+import Worker, WorkerError, WorkerGroup, worker_bytes, worker_channel from "@std/workers.ms"
 
 type Job:
     id: Int

@@ -1,13 +1,47 @@
 # conform: tags=control-flow,faults,interfaces,lists,match,modules,numbers,records,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/math-functions.ms
-import {expect_equal, expect_false, expect_true} from "@std/test.ms"
-import {
-    acos, asin, atan, atan2, cosh, exp, log10, sinh, tan, tanh, pi, e, remainder, max,
-    min, acosh, asinh, atanh, cbrt, expm1, log1p, is_integer, is_safe_integer, infinity,
-    nan, epsilon, max_float, min_float, max_int, min_int, max_safe_integer,
-    min_safe_integer, ln2, ln10, log2e, log10e, sqrt2, sqrt_half
-} from "@std/math.ms"
+import expect_equal, expect_false, expect_true from "@std/test.ms"
+import (
+    acos,
+    asin,
+    atan,
+    atan2,
+    cosh,
+    exp,
+    log10,
+    sinh,
+    tan,
+    tanh,
+    pi,
+    e,
+    remainder,
+    max,
+    min,
+    acosh,
+    asinh,
+    atanh,
+    cbrt,
+    expm1,
+    log1p,
+    is_integer,
+    is_safe_integer,
+    infinity,
+    nan,
+    epsilon,
+    max_float,
+    min_float,
+    max_int,
+    min_int,
+    max_safe_integer,
+    min_safe_integer,
+    ln2,
+    ln10,
+    log2e,
+    log10e,
+    sqrt2,
+    sqrt_half
+) from "@std/math.ms"
 
 fn near(actual: Float, expected: Float) Bool:
     return (actual - expected).abs() < 0.000000001

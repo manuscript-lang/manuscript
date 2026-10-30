@@ -1,6 +1,6 @@
-import {expect_equal, expect_false} from "@std/test.ms"
-import {Item, Box, Holder, Choice} from "./domain.ms"
-import {Read, invoke, relay, as_view} from "./contracts.ms"
+import expect_equal, expect_false from "@std/test.ms"
+import Item, Box, Holder, Choice from "./domain.ms"
+import Read, invoke, relay, as_view from "./contracts.ms"
 import Closeable from "@std/core.ms"
 import ListBuilder from "@std/collections.ms"
 

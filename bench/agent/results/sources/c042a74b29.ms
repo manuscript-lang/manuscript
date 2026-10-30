@@ -1,5 +1,5 @@
-import {stdin, stdout, read_all} from "@std/io.ms"
-import {wrapping_add, wrapping_multiply} from "@std/math.ms"
+import stdin, stdout, read_all from "@std/io.ms"
+import wrapping_add, wrapping_multiply from "@std/math.ms"
 
 let MAXI = 9223372036854775807
 let MINI = -9223372036854775807 - 1

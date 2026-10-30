@@ -1,4 +1,4 @@
-import {terminal, TerminalEvent, EraseRegion} from "@std/io.ms"
+import terminal, TerminalEvent, EraseRegion from "@std/io.ms"
 import stdout from "@std/io.ms"
 import nanoseconds from "@std/time.ms"
 

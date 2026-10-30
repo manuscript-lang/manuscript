@@ -1,4 +1,4 @@
-import {share, Shared} from "@std/shared.ms"
+import share, Shared from "@std/shared.ms"
 
 fn f() Int:
     let items = share([1, 2])

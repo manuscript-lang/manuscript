@@ -1,5 +1,5 @@
-import {expect_equal, expect_true, expect_false} from "@std/test.ms"
-import {parse, JsonValue} from "@std/json.ms"
+import expect_equal, expect_true, expect_false from "@std/test.ms"
+import parse, JsonValue from "@std/json.ms"
 
 fn doc() JsonValue:
     let text = "\{\"user\":\{\"name\":\"ada\",\"age\":36,\"score\":1.5,\"big\":1e3,\"admin\":true,\"tags\":[\"a\",\"b\",\"c\"]\},\"none\":null\}"

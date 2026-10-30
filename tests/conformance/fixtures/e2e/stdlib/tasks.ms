@@ -1,10 +1,10 @@
 # conform: tags=closures,scope-cleanup,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import {share, Shared} from "@std/shared.ms"
+import share, Shared from "@std/shared.ms"
 import lock from "@std/sync.ms"
-import {TaskError, TaskGroup} from "@std/tasks.ms"
-import {expect_equal, expect_error, expect_ok} from "@std/test.ms"
-import {nanoseconds, sleep} from "@std/time.ms"
+import TaskError, TaskGroup from "@std/tasks.ms"
+import expect_equal, expect_error, expect_ok from "@std/test.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
 fn pause(milliseconds: Int) Unit:
     sleep(nanoseconds(milliseconds * 1000000))

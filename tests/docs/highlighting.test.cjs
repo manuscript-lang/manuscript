@@ -80,7 +80,7 @@ test('highlighting preserves Unicode, HTML-like strings, decimals, and scientifi
 
 test('from is a keyword only on import lines', () => {
   const keywords = source => tokenize(source).filter(token => token.kind === 'k').map(token => token.text);
-  assert.deepEqual(keywords('import {a, b} from "x.ms"\n'), ['import', 'from']);
+  assert.deepEqual(keywords('import a, b from "x.ms"\n'), ['import', 'from']);
   assert.deepEqual(keywords('let from = 2\n'), ['let']);
 });
 
@@ -96,7 +96,7 @@ test('all compiler keywords have scopes; contextual and retired words stay ident
     ['from', ''], ['as', ''], ['async', ''], ['await', ''], ['null', ''],
     ['def', ''], ['lambda', ''], ['elif', ''],
   ]);
-  assertScopes('let from = 1\nlet as = 2\nimport {Name, value,} from "x.ms"\n', [
+  assertScopes('let from = 1\nlet as = 2\nimport Name, value from "x.ms"\n', [
     ['let', 'k'], ['"x.ms"', 's'], ['import', 'k'], ['Name', 'nc'],
   ]);
 });

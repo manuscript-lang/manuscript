@@ -51,8 +51,8 @@ ms test ms.toml --json
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import {parse, JsonError} from "@std/json.ms"
-import {expect_equal, expect_ok, expect_error, expect_some} from "@std/test.ms"
+import parse, JsonError from "@std/json.ms"
+import expect_equal, expect_ok, expect_error, expect_some from "@std/test.ms"
 
 test "typed JSON and Optional payloads":
     let number = try expect_ok(parse[Int]("3"))
@@ -84,7 +84,7 @@ A property test checks a rule on many generated inputs instead of a few hand-pic
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import {check, ints, lists} from "@std/test/property.ms"
+import check, ints, lists from "@std/test/property.ms"
 import expect_equal from "@std/test.ms"
 
 test "reversing twice restores a list":
@@ -170,7 +170,7 @@ Without `make_fixture`, no hooks run. Define `fn make_fixture() T` where `T` imp
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import {TestHooks, expect_equal} from "@std/test.ms"
+import TestHooks, expect_equal from "@std/test.ms"
 
 type Counter:
     count: Int
@@ -215,7 +215,7 @@ test "unix permission bits":
 To skip every test in a file, call `skip` from a fixture hook. `before_all` and `before_each` both work; `after_all` and `after_each` still run, and each test is reported as `SKIP` with your reason:
 
 ```manuscript
-import {TestHooks, skip} from "@std/test.ms"
+import TestHooks, skip from "@std/test.ms"
 import os_type from "@std/process.ms"
 
 type WindowsOnly:

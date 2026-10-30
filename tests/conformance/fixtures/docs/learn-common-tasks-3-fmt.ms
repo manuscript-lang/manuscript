@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=documentation/learn/common-tasks.md:63
 import arguments from "@std/process.ms"
-import {filesystem, FileSystemError} from "@std/fs.ms"
+import filesystem, FileSystemError from "@std/fs.ms"
 import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:

@@ -1,6 +1,6 @@
 # conform: tags=optional,stdlib-deque,stdlib-testing,testing,tier-stdlib
 # conform: phase=test
-import {expect_equal, expect_true} from "@std/test.ms"
+import expect_equal, expect_true from "@std/test.ms"
 import Deque from "@std/deque.ms"
 
 test "both ends push and pop":

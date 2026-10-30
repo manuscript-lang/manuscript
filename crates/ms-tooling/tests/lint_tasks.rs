@@ -20,7 +20,7 @@ fn codes(source: &str) -> Vec<String> {
 }
 
 const HEAD: &str =
-    "import TaskGroup from \"@std/tasks.ms\"\nimport {nanoseconds, sleep} from \"@std/time.ms\"\n";
+    "import TaskGroup from \"@std/tasks.ms\"\nimport nanoseconds, sleep from \"@std/time.ms\"\n";
 
 #[test]
 fn spinning_loop_is_reported() {

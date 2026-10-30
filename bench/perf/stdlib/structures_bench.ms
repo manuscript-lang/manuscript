@@ -1,5 +1,5 @@
-import {keep, measure} from "@std/bench.ms"
-import {Queue, PriorityQueue} from "@std/queue.ms"
+import keep, measure from "@std/bench.ms"
+import Queue, PriorityQueue from "@std/queue.ms"
 import Deque from "@std/deque.ms"
 import BitSet from "@std/bitset.ms"
 import SortedMap from "@std/sorted.ms"

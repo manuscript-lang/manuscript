@@ -1,4 +1,4 @@
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 import Bytes from "@std/bytes.ms"
 import range from "@std/collections.ms"

@@ -1,1 +1,1 @@
-error parse 3:10:83 "expected 'from', found ':'; imports read: import name from \x22path.ms\x22"
+error parse 3:10:81 "expected 'from', found ':'; imports read: import name from \x22path.ms\x22"

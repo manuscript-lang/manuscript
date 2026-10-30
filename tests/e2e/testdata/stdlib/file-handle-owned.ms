@@ -1,6 +1,6 @@
-import {FileHandle, filesystem} from "@std/fs.ms"
+import FileHandle, filesystem from "@std/fs.ms"
 import ReadStream from "@std/io.ms"
-import {expect_true, expect_ok} from "@std/test.ms"
+import expect_true, expect_ok from "@std/test.ms"
 
 # `FileHandle` is a nominal type with `impl Closeable`, so a binding of one owns the file.
 fn view_of(path: String) Result[ReadStream, Error]:

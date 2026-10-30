@@ -1,4 +1,4 @@
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
 # Marks a two-space hard break inside paragraph text; always directly followed by "\n".

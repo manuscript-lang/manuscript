@@ -1,7 +1,7 @@
-import {expect_equal, expect_false, fail} from "@std/test.ms"
-import {decoder, reader, next_event, SseError, SseEvent, SseLimits} from "@std/sse.ms"
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import {IoError, ReadStream} from "@std/io.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
+import decoder, reader, next_event, SseError, SseEvent, SseLimits from "@std/sse.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
+import IoError, ReadStream from "@std/io.ms"
 
 type Chunks:
     parts: List[Bytes]

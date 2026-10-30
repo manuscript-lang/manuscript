@@ -1,8 +1,9 @@
 # conform: tags=diagnostics,scope-cleanup,mutation,tier-core
 # conform: phase=check
 # conform: origin=ms-check/tests/messages.rs
-import {Shared, share} from "@std/shared.ms"
+import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
+
 export fn main() Int:
     let box = share(1)
     var outer = lock(box)

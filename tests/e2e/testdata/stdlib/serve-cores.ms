@@ -1,7 +1,7 @@
-import {HttpRequest, HttpResponse, buffered, headers} from "@std/http.ms"
-import {Listener, NetworkError, serve_cores, network, serve_core} from "@std/net.ms"
-import {TaskGroup} from "@std/tasks.ms"
-import {expect_true} from "@std/test.ms"
+import HttpRequest, HttpResponse, buffered, headers from "@std/http.ms"
+import Listener, NetworkError, serve_cores, network, serve_core from "@std/net.ms"
+import TaskGroup from "@std/tasks.ms"
+import expect_true from "@std/test.ms"
 
 fn core() Unit:
     let tag = "hello"

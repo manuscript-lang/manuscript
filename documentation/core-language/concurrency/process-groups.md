@@ -9,9 +9,9 @@ A `ProcessGroup[T, In, Out]` runs functions of your program in child processes a
 
 <!-- manuscript-example: test -->
 ```manuscript
-import {Channel, ChannelError} from "@std/channels.ms"
+import Channel, ChannelError from "@std/channels.ms"
 import ProcessGroup from "@std/processes.ms"
-import {expect_equal, expect_ok} from "@std/test.ms"
+import expect_equal, expect_ok from "@std/test.ms"
 
 fn square_all(ch: Channel[Int, Int]) Result[Int, ChannelError]:
     var c = ch

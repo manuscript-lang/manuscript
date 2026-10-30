@@ -1,5 +1,5 @@
 import expect_equal from "@std/test.ms"
-import {Entropy, RandomError, secure_int, uuid_v4, entropy, float, shuffle, choice} from "@std/random.ms"
+import Entropy, RandomError, secure_int, uuid_v4, entropy, float, shuffle, choice from "@std/random.ms"
 import Bytes from "@std/bytes.ms"
 import filled from "@std/collections.ms"
 

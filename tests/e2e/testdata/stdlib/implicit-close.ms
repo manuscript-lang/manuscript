@@ -1,5 +1,5 @@
-import {expect_equal, expect_false, expect_ok, expect_true} from "@std/test.ms"
-import {Closeable, TextError} from "@std/core.ms"
+import expect_equal, expect_false, expect_ok, expect_true from "@std/test.ms"
+import Closeable, TextError from "@std/core.ms"
 import filesystem from "@std/fs.ms"
 
 type Resource:

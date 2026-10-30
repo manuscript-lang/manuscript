@@ -1,6 +1,6 @@
-import {expect_contains, expect_fault, expect_true} from "@std/test.ms"
+import expect_contains, expect_fault, expect_true from "@std/test.ms"
 import StringBuilder from "@std/string.ms"
-import {MapBuilder, SetBuilder} from "@std/collections.ms"
+import MapBuilder, SetBuilder from "@std/collections.ms"
 
 type Folded:
     name: String

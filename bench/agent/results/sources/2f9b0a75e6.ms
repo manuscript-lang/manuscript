@@ -1,5 +1,5 @@
-import {read_all, stdin, stdout} from "@std/io.ms"
-import {Bytes} from "@std/bytes.ms"
+import read_all, stdin, stdout from "@std/io.ms"
+import Bytes from "@std/bytes.ms"
 
 # Value kinds. A value is a copyable (kind, n) pair; heap objects live in
 # the Heap arenas and `n` is an index into the matching arena.

@@ -10,7 +10,7 @@ A `TaskGroup[T]` starts tasks that each return a `T`, and owns them until its sc
 <!-- manuscript-example: test -->
 ```manuscript
 import TaskGroup from "@std/tasks.ms"
-import {expect_equal, expect_ok} from "@std/test.ms"
+import expect_equal, expect_ok from "@std/test.ms"
 
 fn square(n: Int) Int:
     return n * n
@@ -42,9 +42,9 @@ A task has no time limit unless you give one. `spawn(entry, timeout: nanoseconds
 <!-- manuscript-example: test -->
 ```manuscript
 import Channel from "@std/channels.ms"
-import {TaskError, TaskGroup} from "@std/tasks.ms"
-import {expect_equal, expect_error} from "@std/test.ms"
-import {nanoseconds, sleep} from "@std/time.ms"
+import TaskError, TaskGroup from "@std/tasks.ms"
+import expect_equal, expect_error from "@std/test.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
 fn wait_a_minute(ch: Channel[Unit, Unit]) Int:
     sleep(nanoseconds(60000000000))
@@ -70,9 +70,9 @@ Values reach a task by being captured or sent on its channel, and come back as m
 
 <!-- manuscript-example: test -->
 ```manuscript
-import {Channel, ChannelError} from "@std/channels.ms"
+import Channel, ChannelError from "@std/channels.ms"
 import TaskGroup from "@std/tasks.ms"
-import {expect_equal, expect_ok} from "@std/test.ms"
+import expect_equal, expect_ok from "@std/test.ms"
 
 fn square_all(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     var c = ch

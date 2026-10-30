@@ -1,7 +1,7 @@
 # conform: tags=stdlib-time,stdlib-math,testing
 # conform: phase=test
 import expect_equal from "@std/test.ms"
-import {seconds, parse_timestamp} from "@std/time.ms"
+import seconds, parse_timestamp from "@std/time.ms"
 import from_int from "@std/math.ms"
 import Decimal from "@std/decimal.ms"
 

@@ -1,4 +1,4 @@
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 import Bytes from "@std/bytes.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"

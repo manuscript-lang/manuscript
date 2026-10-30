@@ -1,4 +1,4 @@
-import {stdout, stdin, read_all} from "@std/io.ms"
+import stdout, stdin, read_all from "@std/io.ms"
 import from_scalars from "@std/string.ms"
 
 # ---------- values and errors ----------
