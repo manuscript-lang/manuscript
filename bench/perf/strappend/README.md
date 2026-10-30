@@ -4,16 +4,17 @@
 
 ## 2026-10-30 (Linux): owned builders
 
-Same machine as 2026-10-27, release build of this branch against `main` (b7ee9710), `run.sh 7` twice, back to back. `StringBuilder` is an owned byte buffer with a consuming `build()` instead of a shared handle, so an append no longer loads a sealed flag or goes through the shared cell. Microseconds, Manuscript only; Rust is unchanged at 25-77 us for these sizes.
+Same machine as 2026-10-27, release build of this branch against `main` (b7ee9710), `run.sh 9`, three runs back to back. `StringBuilder` is an owned byte buffer with a consuming `build()` instead of a shared handle, so an append no longer loads a sealed flag or goes through the shared cell. Microseconds, Manuscript only (Rust is unchanged at 22-77 us for these sizes).
 
 | piece | main | owned builder |
 |---|---|---|
-| 4 B | 759-766 | 721-730 |
-| 16 B | 147-152 | 142-149 |
-| 64 B | 63-64 | 58-60 |
-| 256 B | 31-32 | 30 |
+| 4 B | 730-743 | 757-819 |
+| 16 B | 147 | 162 |
+| 64 B | 58-63 | 53-58 |
+| 256 B | 30-31 | 26-28 |
+| 1 KiB, 8 KiB | 22 | 22 |
 
-Parity or better at every size; differences under about 10% are noise. The first run of the branch showed 16 B at 189 us because `build()` copied the buffer; it now moves it.
+Faster from 64 B up, parity at 1 KiB and above, and 5-10% slower at 4 B and 16 B. The loop keeps the buffer in a loop-carried value, so each append moves its three words into a stack slot and back (`put`/`take`, about 0.2 ns), where the shared cell was updated in place after `slotfuse`. A pass that keeps a loop-carried buffer in one slot would remove it.
 
 ## 2026-10-27 (Linux)
 
