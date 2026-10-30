@@ -1,6 +1,5 @@
 import expect_contains, expect_fault, expect_true from "@std/test.ms"
 import StringBuilder from "@std/string.ms"
-import MapBuilder, SetBuilder from "@std/collections.ms"
 
 type Folded:
     name: String
@@ -50,26 +49,6 @@ test "sealed builder":
 
     let message = try expect_fault(fn: sb.append(""))
     message | try expect_contains("builder is sealed")
-
-test "sealed map and set builders fault on every add":
-    var map_builder = MapBuilder[String, Int]()
-    let _map_sealed = map_builder.build()
-    (try expect_fault(fn: map_builder.add("a", 1))) | try expect_contains(
-        "builder is sealed"
-    )
-
-    var set_builder = SetBuilder[Int]()
-    let _set_sealed = set_builder.build()
-    (try expect_fault(fn: set_builder.add(1))) | try expect_contains(
-        "builder is sealed"
-    )
-
-test "unsealed set builder continues":
-    var builder = SetBuilder[Int]()
-    builder.add(1)
-
-    let frozen = builder.build()
-    (frozen.length() == 1) | try expect_true
 
 test "abs of the minimum overflows":
     let smallest = 0 - 9223372036854775807 - 1

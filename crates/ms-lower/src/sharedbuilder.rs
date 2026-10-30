@@ -1,5 +1,4 @@
-//! The collection and text builders (`ListBuilder`, `MapBuilder`, `SetBuilder`, `StringBuilder`,
-//! `BytesBuilder`): shared handles that accumulate a value.
+//! The text builders (`StringBuilder`, `BytesBuilder`): shared handles that accumulate a value.
 //!
 //! A builder is a `Shared` cell holding `{items, sealed}`. Copies of the handle see every
 //! append or add, and `build` seals the cell so later changes fault with "builder is sealed".
@@ -13,18 +12,12 @@ use ms_mir::types::{RecId, Ty as MTy, TyKind};
 
 /// The std builder type `t` is, if any.
 pub(crate) fn builder_kind(t: &ct::Ty) -> Option<&'static str> {
-    [
-        "ListBuilder",
-        "MapBuilder",
-        "SetBuilder",
-        "StringBuilder",
-        "BytesBuilder",
-    ]
-    .into_iter()
-    .find(|n| t.is_std(n))
+    ["StringBuilder", "BytesBuilder"]
+        .into_iter()
+        .find(|n| t.is_std(n))
 }
 
-/// The handle type of a builder over the collection type `items`.
+/// The handle type of a builder over the payload type `items`.
 pub(crate) fn handle_ty(m: &mut Module, name: &str, items: MTy) -> MTy {
     let rec_name = format!("{name}#{}", items.0);
     let rec = match m.records.iter().position(|r| r.name == rec_name) {
@@ -54,16 +47,12 @@ impl<'a> FnLower<'a> {
         Err(Error::new("not a builder handle"))
     }
 
-    /// `ListBuilder[T]()`, `MapBuilder[K, V]()` and `SetBuilder[T]()`.
+    /// `StringBuilder()` and `BytesBuilder()`.
     pub(crate) fn construct_builder(&mut self, handle: MTy) -> Result<Val, Error> {
         let rec = self.builder_rec(handle)?;
         let items_ty = self.b.m.records[rec.index()].fields[0].1;
-        let items = match self.b.m.types.kind(items_ty).clone() {
-            TyKind::List(elem) => self.b.list_lit(elem, &[]),
-            // A text or byte builder accumulates an empty byte buffer.
-            TyKind::Bytes => self.call_runtime("msrt_list_new", &[], items_ty)?,
-            _ => self.map_new(items_ty)?,
-        };
+        // A text or byte builder accumulates an empty byte buffer.
+        let items = self.call_runtime("msrt_list_new", &[], items_ty)?;
         let sealed = self.b.bconst(false);
         let state = self.b.rec_new(rec, &[items, sealed]);
         let v = self

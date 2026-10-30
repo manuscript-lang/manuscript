@@ -205,7 +205,6 @@ MapVal { slots, index, len @16, used, cap, mask, desc }     Map[K,V], Set[T]; 56
   `.copy()` is `msrt_list_copy` / `msrt_map_copy` (deep, through `desc.copy`).
 - `Bytes` is a `VecVal` of `u8`; `BytesBuilder` is the same value, `build` is a move.
   `StringBuilder` is a `VecVal` of bytes; `msrt_strbuilder_freeze` copies into a String.
-  `ListBuilder`, `MapBuilder`, `SetBuilder` are the collection values; `build` is a move.
 - Negative indices count from the end where the Go runtime allows it (`get`, `set`,
   `remove`, `insert`, `slice`); `splice`, `fill`, `copy_within` take exact bounds.
 - Iteration: `for x in xs` captures `n = len` at entry, reloads `ptr`/`len` each step
