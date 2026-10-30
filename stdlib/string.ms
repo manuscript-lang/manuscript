@@ -35,7 +35,7 @@ impl Error for StringError:
     # Returns original Failed text, or a string-prefixed diagnostic for other cases.
     fn message() String: ...
 
-# Owned builder for constructing a string without repeated intermediate copies; appending needs a `var` binding.
+# Mutable builder for constructing a string without repeated intermediate copies.
 export type StringBuilder: ...
 
 impl StringBuilder:
