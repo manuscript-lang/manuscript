@@ -345,45 +345,6 @@ test "bytes cross a worker pipe without JSON":
     worker.channel.close()
     try expect_ok(worker.wait())
 
-fn serves_shared() Unit:
-    var ch = worker_channel[String, String]()
-
-    if let address = ch.receive().get(none):
-        let options = HttpServerOptions(shared: true)
-
-        if let acquired = network().serve(
-            address: address, handler: buffered(page), options: options
-        ):
-            var server = acquired
-            let _ = ch.send(server.address())
-            let _stopped = ch.receive()
-            server.close()
-
-test "workers serve one port with a shared listener":
-    let group = WorkerGroup[String, String]()
-    var workers: List[Worker[String, String]] = []
-    var first = ""
-
-    for i in 0..3:
-        var worker = group.spawn(serves_shared).get(none)
-        try expect_ok(worker.channel.send("127.0.0.1:0"))
-
-        let address = worker.channel.receive().get(none).get("")
-        if i == 0:
-            first = address.clone()
-        try expect_equal(address, first)
-        workers.append(worker)
-
-    var total = 0
-    for i in 0..12:
-        if let response = fetch("http://{first}/page"):
-            total += response.body.length()
-    try expect_equal(total, 12 * 65536)
-
-    for i in 0..3:
-        try expect_ok(workers[i].channel.send("stop"))
-        try expect_ok(workers[i].wait())
-
 fn joined_ok(w: Worker[Int, Int]) Int:
     var held = w
     if held.wait().is_ok():

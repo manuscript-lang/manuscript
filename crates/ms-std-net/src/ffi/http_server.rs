@@ -24,14 +24,13 @@ abi_record! {
         pub timeout: OptInt,
         pub grace: OptInt,
         pub tls_present: u8,
-        // `tls` inline, then `shared` right behind it (see `tls_options`).
+        // `tls` inline (see `tls_options`).
         pub tls_server_name: Str,
         pub tls_roots_pem: Str,
         pub tls_certificate_pem: Str,
         pub tls_private_key_pem: Str,
         pub tls_alpn: StringList,
         pub tls_require_client_certificate: u8,
-        pub shared: u8,
     }
 }
 
@@ -116,7 +115,6 @@ native! {
                 Options {
                     limits,
                     tls,
-                    shared: opts.shared != 0,
                 },
             )
             .map_err(HttpErr::from)
@@ -225,18 +223,14 @@ mod tests {
     use super::*;
     use core::mem::offset_of;
 
-    /// The compiler packs a record's leaves in declaration order, a nested record's included and
-    /// with no tail padding: after six `Optional[Int]` (16 bytes each), the `tls` presence byte,
-    /// four strings, the ALPN list (24 bytes) and one byte for `require_client_certificate`,
-    /// `shared` is the next byte.
+    /// The compiler packs a record's leaves in declaration order, a nested record's included.
     #[test]
-    fn shared_follows_the_inline_tls_options_byte() {
+    fn tls_options_are_packed_inline() {
         assert_eq!(offset_of!(HttpServerOptionsWire, tls_present), 96);
         assert_eq!(offset_of!(HttpServerOptionsWire, tls_server_name), 104);
         assert_eq!(
             offset_of!(HttpServerOptionsWire, tls_require_client_certificate),
             192
         );
-        assert_eq!(offset_of!(HttpServerOptionsWire, shared), 193);
     }
 }

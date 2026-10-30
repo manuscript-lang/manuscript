@@ -53,21 +53,6 @@ Use workers for CPU-bound work. A worker may use the network: HTTP `fetch` and c
 
 Send plain serializable data. Messages reconstruct values through JSON; acceptance by the checker does not establish transfer suitability or preserve shared identity. Do not use worker messages to transfer live resources.
 
-## Serving on several cores
-
-Each worker can run its own HTTP server. Pass `HttpServerOptions(shared: true)` and every server of the process that serves the same address text accepts from one listening socket, so connections spread over the workers' threads. The first server binds the port and it closes with the last. This works the same on Linux, macOS and Windows.
-
-```manuscript
-fn serve_loop() Unit:
-    var ch = worker_channel[Int, Int]()
-    let options = HttpServerOptions(shared: true)
-    if let acquired = network().serve(address: "127.0.0.1:8080", handler: buffered(app), options: options):
-        let server = acquired
-        let _stopped = server.wait()
-```
-
-Start one worker per core with `group.spawn(serve_loop)`. Measured with a CPU-bound handler on two server cores: one thread 23k requests per second, two workers 45k. A handler runs on the worker that accepted the connection and shares no memory with the other workers.
-
 ## Cost
 
 Worker throughput depends on available cores, job size and messaging costs. A message costs a JSON encode, a queue operation and a decode, so send work in chunks that take longer than the message does to move.

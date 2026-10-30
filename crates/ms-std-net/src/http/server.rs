@@ -95,72 +95,6 @@ pub trait Dispatch {
 pub struct Options {
     pub limits: Limits,
     pub tls: Option<Arc<rustls::ServerConfig>>,
-    /// Share the listening socket with every other server of this process that serves the same
-    /// address text with `shared` set, so isolates on several threads accept from one port.
-    pub shared: bool,
-}
-
-/// Listening sockets shared between the servers (and so the threads) of the process, by address text:
-/// the first server binds, later ones duplicate the descriptor. Duplicating works the same on
-/// Linux, macOS and Windows, where `SO_REUSEPORT` is not available.
-static SHARED_LISTENERS: std::sync::Mutex<Vec<SharedListener>> = std::sync::Mutex::new(Vec::new());
-
-struct SharedListener {
-    address: String,
-    /// Keeps the port bound while any server uses it.
-    socket: socket2::Socket,
-    users: usize,
-}
-
-fn shared_listeners() -> std::sync::MutexGuard<'static, Vec<SharedListener>> {
-    SHARED_LISTENERS.lock().unwrap_or_else(|e| e.into_inner())
-}
-
-/// A duplicate of `socket` that accepts without blocking. Windows gives a duplicated socket the
-/// default blocking mode, so it is set again.
-fn duplicate_listener(socket: &socket2::Socket) -> Result<socket2::Socket, NetErr> {
-    let copy = socket
-        .try_clone()
-        .map_err(|e| NetErr::failed(e.to_string()))?;
-    copy.set_nonblocking(true)
-        .map_err(|e| NetErr::failed(e.to_string()))?;
-    Ok(copy)
-}
-
-/// A duplicate of the shared listener for `address`, bound by `bind` when no server holds it.
-fn shared_listener(
-    address: &str,
-    bind: impl FnOnce() -> Result<socket2::Socket, NetErr>,
-) -> Result<socket2::Socket, NetErr> {
-    let mut all = shared_listeners();
-    if let Some(entry) = all.iter_mut().find(|e| e.address == address) {
-        let copy = duplicate_listener(&entry.socket)?;
-        entry.users += 1;
-        return Ok(copy);
-    }
-    let socket = bind()?;
-    let copy = duplicate_listener(&socket)?;
-    all.push(SharedListener {
-        address: address.to_string(),
-        socket,
-        users: 1,
-    });
-    Ok(copy)
-}
-
-/// Drops one user of the shared listener for `address`; true when it was the last, which
-/// owns shutting the port down.
-fn release_shared_listener(address: &str) -> bool {
-    let mut all = shared_listeners();
-    let Some(at) = all.iter().position(|e| e.address == address) else {
-        return true;
-    };
-    all[at].users -= 1;
-    if all[at].users == 0 {
-        all.remove(at);
-        return true;
-    }
-    false
 }
 
 // ---------------------------------------------------------------- connections
@@ -654,8 +588,6 @@ pub struct Server {
     /// Dropped on close: macOS keeps queueing connections on a shut-down listener until the
     /// descriptor itself closes.
     listener: RefCell<Option<socket2::Socket>>,
-    /// The address text under which the listener is shared with other servers, if it is.
-    shared_address: Option<String>,
     address: String,
     pub(super) limits: Limits,
     tls: Option<Arc<rustls::ServerConfig>>,
@@ -708,11 +640,7 @@ impl Server {
         if !owner.listen_allowed(address) {
             return Err(NetErr::PermissionDenied);
         }
-        let listener = if options.shared {
-            shared_listener(address, || owner.listen_tcp(address))?
-        } else {
-            owner.listen_tcp(address)?
-        };
+        let listener = owner.listen_tcp(address)?;
         let local = listener
             .local_addr()
             .map(|a| crate::conn::socket_addr_text(&a))
@@ -730,7 +658,6 @@ impl Server {
             me: me.clone(),
             owner: owner.clone(),
             listener: RefCell::new(Some(listener)),
-            shared_address: options.shared.then(|| address.to_string()),
             address: local,
             limits: options.limits,
             tls: options.tls,
@@ -829,14 +756,7 @@ impl Server {
         }
         if let Some(listener) = self.listener.borrow_mut().take() {
             reactor.delete(listener.as_sock());
-            // Other servers still accept on a shared port: shut it down with the last one.
-            let last = self
-                .shared_address
-                .as_deref()
-                .is_none_or(release_shared_listener);
-            if last {
-                let _ = listener.shutdown(std::net::Shutdown::Both);
-            }
+            let _ = listener.shutdown(std::net::Shutdown::Both);
         }
         reactor.targets.borrow_mut().remove(&self.token);
         // Idle connections close now; the others after their current response.
@@ -1798,11 +1718,7 @@ pub(crate) mod tests {
     }
 
     pub fn opts(limits: Limits) -> Options {
-        Options {
-            limits,
-            tls: None,
-            shared: false,
-        }
+        Options { limits, tls: None }
     }
 
     fn get(path: &str) -> Vec<u8> {
