@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Int, found Optional[Int] (in argument 'value' of f); Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match",
+        "message": "expected Int, found Int? (in argument 'value' of f); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match",
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-8.ms",
           "line": 6,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-8.ms:6:19: type: expected Int, found Optional[Int] (in argument 'value' of f); Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match\n   |\n 6 | fn call() Unit: f(some(value: 4))\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-8.ms:6:19: type: expected Int, found Int? (in argument 'value' of f); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match\n   |\n 6 | fn call() Unit: f(some(value: 4))\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

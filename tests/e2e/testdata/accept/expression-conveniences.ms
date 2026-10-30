@@ -29,14 +29,14 @@ fn amount(text: String, marker: String) Result[Int, TextError]:
 
     return ok(value: cents + 1)
 
-fn early(value: Optional[Int]) Int:
+fn early(value: Int?) Int:
     let number = match value:
         some(number): number
         none: return 9
 
     return number + 1
 
-fn all_return(value: Optional[Int]) Int:
+fn all_return(value: Int?) Int:
     let _unreachable = match value:
         some(number): return number
         none: return 9
@@ -93,8 +93,8 @@ test "string concatenation and scalar ordering":
     sorted | try expect_equal(["a", "b", "z"])
 
 test "match expressions preserve returns and cleanup":
-    let present: Optional[Int] = some(value: 4)
-    let absent: Optional[Int] = none
+    let present: Int? = some(value: 4)
+    let absent: Int? = none
     (early(present) != 5 or early(absent) != 9 or all_return(present) != 4) | try expect_false
 
     let fs = filesystem()
@@ -132,7 +132,7 @@ test "match expressions preserve returns and cleanup":
     )
     result | try expect_equal(4)
 
-    let callback = fn(value: Optional[Int]) Int:
+    let callback = fn(value: Int?) Int:
         let number = match value:
             some(number): number
             none: return 42
@@ -150,7 +150,7 @@ test "indexes read elements and get supplies defaults":
     List[Int]().get(0, default: 7) | try expect_equal(7)
 
 test "match blocks produce their final value":
-    let present: Optional[Int] = some(value: 5)
+    let present: Int? = some(value: 5)
 
     let result = match present:
         some(value):
@@ -175,7 +175,7 @@ test "match blocks produce their final value":
     count | try expect_equal(5)
 
 test "contextual values infer from later arms":
-    let present: Optional[Int] = some(value: 5)
+    let present: Int? = some(value: 5)
 
     let optional = match present:
         none: none
@@ -190,7 +190,7 @@ test "contextual values infer from later arms":
     list[0] | try expect_equal(5)
 
 fn returned_argument(var counter: Counter) Result[Int, Error]:
-    let absent: Optional[Int] = none
+    let absent: Int? = none
     return ok(
         combine(
             first: match absent:
@@ -212,7 +212,7 @@ fn propagated(text: String) Result[Int, TextError]:
 
     return ok(value: result)
 
-fn returned_loop(value: Optional[Int]) Int:
+fn returned_loop(value: Int?) Int:
     var index = 0
 
     while true:
@@ -234,8 +234,8 @@ test "expression exits preserve caller boundaries and evaluation order":
         Result[Int, TextError].error(cause: TextError("missing"))
     )
 
-    let present: Optional[Int] = some(value: 1)
-    let absent: Optional[Int] = none
+    let present: Int? = some(value: 1)
+    let absent: Int? = none
     (returned_loop(present) != 23 or returned_loop(absent) != 24) | try expect_false
 
     var iterations = 0
@@ -254,7 +254,7 @@ test "expression exits preserve caller boundaries and evaluation order":
 
     iterations | try expect_equal(3)
 
-fn condition_exit(value: Optional[Int]) Int:
+fn condition_exit(value: Int?) Int:
     while true:
         while (
             match value:
@@ -266,17 +266,17 @@ fn condition_exit(value: Optional[Int]) Int:
     return 2
 
 test "match in a loop header exits its lexical enclosing loop":
-    let absent: Optional[Int] = none
+    let absent: Int? = none
     condition_exit(absent) | try expect_equal(2)
 
 test "indexing preserves zero and nested optionals":
     let numbers = [0]
     (numbers[0] != 0 or numbers.get(0, default: 99) != 0) | try expect_false
 
-    let nested: List[Optional[Int]] = [none, some(value: 0)]
+    let nested: List[Int?] = [none, some(value: 0)]
     (nested[0].is_some() or nested[1].get() != 0) | try expect_false
 
-fn observed_optional(var counter: Counter) Optional[Int]:
+fn observed_optional(var counter: Counter) Int?:
     counter.count = counter.count + 1
     return some(value: 5)
 
@@ -293,12 +293,12 @@ test "match evaluates its input once and only the selected arm":
 
     (result != 6 or counter.count != 11) | try expect_false
 
-fn inline_match(value: Optional[Int]) Int: match value:
+fn inline_match(value: Int?) Int: match value:
     some(number): number
     none: 0
 
 test "match composes with inferred callbacks and map literals":
-    let values: List[Optional[Int]] = [some(3), none]
+    let values: List[Int?] = [some(3), none]
     let mapped = values.map(
         fn value: match value:
             some(number): number + 1

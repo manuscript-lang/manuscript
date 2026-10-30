@@ -64,7 +64,7 @@ fn holds_nested(log: String) Int:
     return n.all.length()
 
 fn holds_optional(log: String, present: Bool) Int:
-    var _held: Optional[Tracked] = none
+    var _held: Tracked? = none
     if present:
         _held = some(track(log, 1))
     return 0

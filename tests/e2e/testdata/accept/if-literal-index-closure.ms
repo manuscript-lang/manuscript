@@ -12,10 +12,10 @@ fn describe(n: Int) String:
 fn pick(flag: Bool) Int:
     return (if flag: 1 else: 2)
 
-fn maybe(n: Int) Optional[Int]:
+fn maybe(n: Int) Int?:
     return n
 
-fn first_or(m: Optional[Int]) Int:
+fn first_or(m: Int?) Int:
     if let v = m:
         return v
 
@@ -37,7 +37,7 @@ test "indexed assignment":
     try expect_equal(xs, [1, 9, 4])
 
 test "optional wrap":
-    let m: Optional[Int] = 5
+    let m: Int? = 5
     try expect_equal(first_or(m), 5)
     try expect_equal(first_or(maybe(3)), 3)
 

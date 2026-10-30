@@ -9,7 +9,7 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export range; @std/collections.ms exports: CollectionError, List, ListBuilder, ListEntry, Map, MapBuilder, MapEntry, Pair, Partition, Set, SetBuilder, filled, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections.ms\"'",
+        "message": "module does not export range; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections.ms\"'",
         "position": {
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-6.ms",
           "line": 5,
@@ -59,7 +59,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-6.ms:5:5: resolution: module does not export range; @std/collections.ms exports: CollectionError, List, ListBuilder, ListEntry, Map, MapBuilder, MapEntry, Pair, Partition, Set, SetBuilder, filled, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections.ms\"'\n   |\n 5 |     range,  # factory\n   |     ^^^^^\n<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-6.ms:6:5: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 6 |     List  # collection\n   |     ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-6.ms:5:5: resolution: module does not export range; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections.ms\"'\n   |\n 5 |     range,  # factory\n   |     ^^^^^\n<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-6.ms:6:5: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 6 |     List  # collection\n   |     ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

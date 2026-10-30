@@ -5,7 +5,7 @@ fn optional(value: Int = 1) Int: return value
 
 fn required(value: Int) Int: return value
 
-fn call(x: Optional[Int]) Int:
+fn call(x: Int?) Int:
     let chosen = match x:
         some(n): optional
         none: required

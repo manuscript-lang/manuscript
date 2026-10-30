@@ -2,7 +2,8 @@ import expect_equal, expect_false from "@std/test.ms"
 import Item, Box, Holder, Choice from "./domain.ms"
 import Read, invoke, relay, as_view from "./contracts.ms"
 import Closeable from "@std/core.ms"
-import ListBuilder from "@std/collections.ms"
+import share from "@std/shared.ms"
+import lock from "@std/sync.ms"
 
 impl Read[Int] for Item:
     fn get() Int:
@@ -54,7 +55,8 @@ import Resource from "./domain.ms"
 
 impl Closeable for Resource:
     var fn close() Unit:
-        self.events.append(value: 10)
+        var guard = lock(self.events)
+        guard.value.append(value: 10)
 
 fn leave(resource: Resource) Unit:
     let _local = resource
@@ -64,9 +66,9 @@ export fn first_resource(resource: Resource) Closeable:
     return resource
 
 test "first local cleanup":
-    var events = ListBuilder[Int]()
+    let events = share(List[Int]())
     leave(Resource(events))
-    events.build().get(index: 0) | try expect_equal(10)
+    events.get().get(index: 0) | try expect_equal(10)
 
 export fn mixed[T: Read[Int]](value: T, concrete: Item) Int:
     return value.get() + concrete.get()

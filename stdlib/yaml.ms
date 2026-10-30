@@ -60,11 +60,11 @@ export type YamlError:
 # Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 values; pass a `YamlLimits` to change that.
 export type YamlLimits:
     # Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
-    max_bytes: Optional[Int] = none
+    max_bytes: Int? = none
     # Maximum value depth, including scalar leaves, with the root at one.
-    max_depth: Optional[Int] = none
+    max_depth: Int? = none
     # Maximum containers and leaves, excluding keys; aliases count at each checked occurrence.
-    max_values: Optional[Int] = none
+    max_values: Int? = none
 
 impl Error for YamlError:
     # Formats parser positions and reason text; match the typed fields for programmatic handling.
@@ -105,7 +105,7 @@ type Flow:
 fn default_limits() YamlLimits:
     return YamlLimits(max_depth: 10000, max_values: 1000000)
 
-fn within(value: Int, limit: Optional[Int]) Bool:
+fn within(value: Int, limit: Int?) Bool:
     if let maximum = limit:
         return value <= maximum
 
@@ -1550,10 +1550,7 @@ fn validate(var context: Context, value: YamlValue, depth: Int) Result[Unit, Yam
     return ok(unit)
 
 # Parses a YAML document. Unsupported YAML features and invalid input include source locations.
-export fn parse(
-    text: String,
-    limits: Optional[YamlLimits] = none
-) Result[YamlValue, YamlError]:
+export fn parse(text: String, limits: YamlLimits? = none) Result[YamlValue, YamlError]:
     var options = default_limits()
     if let value = limits:
         options = value
@@ -1794,10 +1791,7 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
         _: return ok(unit)
 
 # Serializes a YAML value in block style with double-quoted strings.
-export fn stringify(
-    value: YamlValue,
-    max_bytes: Optional[Int] = none
-) Result[String, YamlError]:
+export fn stringify(value: YamlValue, max_bytes: Int? = none) Result[String, YamlError]:
     if let limit = max_bytes:
         if limit < 0: return error(YamlError.InvalidInput)
 

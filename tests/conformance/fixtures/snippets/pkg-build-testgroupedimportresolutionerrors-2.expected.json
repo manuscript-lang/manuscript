@@ -7,21 +7,85 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2001",
+        "code": "MS2003",
         "phase": "resolution",
-        "message": "duplicate or intrinsic name ListBuilder; this name is already declared, imported, or built in, so rename one of them",
+        "message": "redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly",
+        "position": {
+          "file": "pkg-build-testgroupedimportresolutionerrors-2.ms",
+          "line": 4,
+          "column": 8,
+          "offset": 180
+        },
+        "end": {
+          "file": "pkg-build-testgroupedimportresolutionerrors-2.ms",
+          "line": 4,
+          "column": 17,
+          "offset": 189
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-build-testgroupedimportresolutionerrors-2.ms",
+            "line": 4,
+            "column": 1,
+            "offset": 173
+          },
+          "end": {
+            "file": "pkg-build-testgroupedimportresolutionerrors-2.ms",
+            "line": 5,
+            "column": 1,
+            "offset": 217
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS2003",
+        "phase": "resolution",
+        "message": "redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly",
         "position": {
           "file": "pkg-build-testgroupedimportresolutionerrors-2.ms",
           "line": 5,
           "column": 8,
-          "offset": 226
+          "offset": 224
+        },
+        "end": {
+          "file": "pkg-build-testgroupedimportresolutionerrors-2.ms",
+          "line": 5,
+          "column": 17,
+          "offset": 233
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-build-testgroupedimportresolutionerrors-2.ms",
+            "line": 5,
+            "column": 1,
+            "offset": 217
+          },
+          "end": {
+            "file": "pkg-build-testgroupedimportresolutionerrors-2.ms",
+            "line": 6,
+            "column": 1,
+            "offset": 261
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "duplicate or intrinsic name ListEntry; this name is already declared, imported, or built in, so rename one of them",
+        "position": {
+          "file": "pkg-build-testgroupedimportresolutionerrors-2.ms",
+          "line": 5,
+          "column": 8,
+          "offset": 224
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testgroupedimportresolutionerrors-2.ms:5:8: resolution: duplicate or intrinsic name ListBuilder; this name is already declared, imported, or built in, so rename one of them\n   |\n 5 | import ListBuilder from \"@std/collections.ms\"\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testgroupedimportresolutionerrors-2.ms:4:8: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry from \"@std/collections.ms\"\n   |        ^^^^^^^^^\n<DIR>/pkg-build-testgroupedimportresolutionerrors-2.ms:5:8: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 5 | import ListEntry from \"@std/collections.ms\"\n   |        ^^^^^^^^^\n<DIR>/pkg-build-testgroupedimportresolutionerrors-2.ms:5:8: resolution: duplicate or intrinsic name ListEntry; this name is already declared, imported, or built in, so rename one of them\n   |\n 5 | import ListEntry from \"@std/collections.ms\"\n   |        ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

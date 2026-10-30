@@ -1,4 +1,4 @@
-import ListBuilder from "@std/collections.ms"
+import Shared from "@std/shared.ms"
 import Read from "./contracts.ms"
 
 export interface Original:
@@ -26,4 +26,4 @@ export type Choice:
     case Empty
 
 export type Resource:
-    events: ListBuilder[Int]
+    events: Shared[List[Int]]

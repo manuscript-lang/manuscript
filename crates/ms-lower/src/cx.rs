@@ -293,9 +293,10 @@ impl Cx {
                 | ms_mir::types::TyKind::Alt(_)
                 | ms_mir::types::TyKind::Opt(_)
                 | ms_mir::types::TyKind::List(_)
+                | ms_mir::types::TyKind::Obj(..)
         ) {
             // The checker type behind a MIR type, so cleanup can ask for its class: an
-            // `Optional` or `List` of a resource is one too.
+            // `Optional`, `List` or `Map` of a resource is one too.
             self.source_tys.entry(out).or_insert_with(|| t.clone());
         }
         self.tycache.insert(key, out);
@@ -440,21 +441,9 @@ impl Cx {
             let payload = self.lower_ty(m, &t.args[0])?;
             return Ok(crate::sharedbuilder::handle_ty(m, "Shared", payload));
         }
-        // A collection builder is a shared handle over its accumulating collection.
+        // A text builder is a shared handle over its accumulating bytes.
         if let Some(kind) = crate::sharedbuilder::builder_kind(t) {
-            let items = if kind == "ListBuilder" {
-                let e = self.lower_ty(m, &t.args[0])?;
-                m.types.list(e)
-            } else if kind == "StringBuilder" || kind == "BytesBuilder" {
-                MTy::BYTES
-            } else {
-                let mut args = Vec::new();
-                for a in &t.args {
-                    args.push(self.lower_ty(m, a)?);
-                }
-                m.types.obj(kind.trim_end_matches("Builder"), args)
-            };
-            return Ok(crate::sharedbuilder::handle_ty(m, kind, items));
+            return Ok(crate::sharedbuilder::handle_ty(m, kind, MTy::BYTES));
         }
         let name = ["Map", "Set"].into_iter().find(|n| t.is_std(n));
         if let Some(name) = name {
@@ -468,23 +457,6 @@ impl Cx {
         if t.is_std("Bytes") {
             return Ok(MTy::BYTES);
         }
-        // Clock values are two-word C structs in the runtime (`Timestamp`, `Instant`), so a
-        // record of two `Int`s shares their memory layout.
-        if t.is_std("Timestamp") || t.is_std("Instant") {
-            let name = if t.is_std("Timestamp") {
-                "Timestamp"
-            } else {
-                "Instant"
-            };
-            let words = if name == "Timestamp" {
-                ["seconds", "nanoseconds"]
-            } else {
-                ["domain", "tick"]
-            };
-            let fields = words.iter().map(|w| (w.to_string(), MTy::INT)).collect();
-            let (_, ty) = m.add_record(name, fields);
-            return Ok(ty);
-        }
         // Plain-data natives share the runtime's `repr(C)` layout.
         let pod: &[(&str, &[&str])] = &[("Decimal", &["lo", "hi", "exp"])];
         for (name, fields) in pod {
@@ -494,10 +466,6 @@ impl Cx {
                     fields.iter().map(|f| (f.to_string(), MTy::INT)).collect();
                 return Ok(ty);
             }
-        }
-        // A duration is its nanosecond count.
-        if t.is_std("Duration") {
-            return Ok(MTy::INT);
         }
         // Arbitrary-precision integers have no runtime yet; the type exists so interfaces
         // that mention one (`FileInfo.exact`) can be declared.

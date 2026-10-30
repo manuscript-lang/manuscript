@@ -9,31 +9,63 @@
       {
         "code": "MS2003",
         "phase": "resolution",
-        "message": "redundant prelude import List; remove List from this import and use its prelude declaration directly",
+        "message": "redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly",
         "position": {
           "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-3.ms",
           "line": 4,
-          "column": 21,
-          "offset": 213
+          "column": 8,
+          "offset": 200
         },
         "end": {
           "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-3.ms",
           "line": 4,
-          "column": 25,
-          "offset": 217
+          "column": 17,
+          "offset": 209
         },
         "fix": {
           "position": {
             "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-3.ms",
             "line": 4,
-            "column": 19,
-            "offset": 211
+            "column": 8,
+            "offset": 200
           },
           "end": {
             "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-3.ms",
             "line": 4,
-            "column": 26,
-            "offset": 218
+            "column": 19,
+            "offset": 211
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS2003",
+        "phase": "resolution",
+        "message": "redundant prelude import List; remove List from this import and use its prelude declaration directly",
+        "position": {
+          "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-3.ms",
+          "line": 4,
+          "column": 19,
+          "offset": 211
+        },
+        "end": {
+          "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-3.ms",
+          "line": 4,
+          "column": 23,
+          "offset": 215
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-3.ms",
+            "line": 4,
+            "column": 17,
+            "offset": 209
+          },
+          "end": {
+            "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-3.ms",
+            "line": 4,
+            "column": 24,
+            "offset": 216
           },
           "replacement": ""
         }
@@ -42,7 +74,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-lsp-testredundantpreludeimporteditorfix-3.ms:4:21: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 4 | import ListBuilder, List from \"@std/collections.ms\"\n   |                     ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-lsp-testredundantpreludeimporteditorfix-3.ms:4:8: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry, List from \"@std/collections.ms\"\n   |        ^^^^^^^^^\n<DIR>/pkg-tooling-lsp-testredundantpreludeimporteditorfix-3.ms:4:19: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry, List from \"@std/collections.ms\"\n   |                   ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

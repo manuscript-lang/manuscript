@@ -110,7 +110,7 @@ fn record_fields_bundled_and_source_standard_records_have_indices() {
     assert_eq!(field_of(&deque, n("size")).unwrap().ty.id, "Int");
     assert_eq!(
         field_of(&deque, n("slots")).unwrap().ty.to_string(),
-        "List[Optional[Int]]"
+        "List[Int?]"
     );
 }
 

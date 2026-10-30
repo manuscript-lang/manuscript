@@ -7,7 +7,7 @@ fn subtract(amount: Int, deduction: Int) Int: amount - deduction
 
 fn first[T](left: T, right: T) T: left
 
-fn pick[T](items: List[T], keep: fn(T) Bool) Optional[T]:
+fn pick[T](items: List[T], keep: fn(T) Bool) T?:
     for item in items:
         if keep(item): return some(item)
     return none
@@ -44,7 +44,7 @@ impl Subtract for Offset:
 
 fn apply(callback: fn(Int, Int) Int, input: Int) Int: callback(input, 2)
 
-fn optional(value: Optional[Int], fallback: Int = 0) Int: value.get(fallback)
+fn optional(value: Int?, fallback: Int = 0) Int: value.get(fallback)
 
 fn default_before_required(first: Int = 9, second: Int) Int: first - second
 

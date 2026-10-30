@@ -275,11 +275,11 @@ export fn record[T: Data](
 # closes on every exit) closes it for all.
 export fn create(
     transport: Transport,
-    level: Optional[LogLevel] = none,
-    timestamp: Optional[Bool] = none,
-    max_bytes: Optional[Int] = none
+    level: LogLevel? = none,
+    timestamp: Bool? = none,
+    max_bytes: Int? = none
 ) Result[Logger, LogError]:
-    var index: Optional[Int] = none
+    var index: Int? = none
     if let chosen = level:
         index = level_index(chosen)
 

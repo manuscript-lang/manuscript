@@ -18,9 +18,7 @@ test "an unterminated carriage return remains line content":
 
 test "native and source line readers agree on endings and byte limits":
     let fs = filesystem()
-    let limits: List[Optional[Int]] = [
-        none, some(0), some(1), some(2), some(3), some(8)
-    ]
+    let limits: List[Int?] = [none, some(0), some(1), some(2), some(3), some(8)]
     let temporary = try fs.temporary("manuscript-line-parity-")
     let path = "{temporary.path()}/lines.txt"
 

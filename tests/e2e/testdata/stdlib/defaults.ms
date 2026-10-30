@@ -14,8 +14,8 @@ impl Commands for Capture:
         program: String,
         arguments: List[String],
         input: Bytes,
-        max_output_bytes: Optional[Int],
-        timeout: Optional[Duration]
+        max_output_bytes: Int?,
+        timeout: Duration?
     ) Result[CommandOutput, CommandError]:
         return ok(CommandOutput(0, input, "".to_bytes()))
 
@@ -41,8 +41,8 @@ impl Commands for Override:
         program: String,
         arguments: List[String],
         input: Bytes = self.input,
-        max_output_bytes: Optional[Int] = none,
-        timeout: Optional[Duration]
+        max_output_bytes: Int? = none,
+        timeout: Duration?
     ) Result[CommandOutput, CommandError]:
         return ok(CommandOutput(0, input, "".to_bytes()))
 

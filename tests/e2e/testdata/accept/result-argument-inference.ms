@@ -16,7 +16,7 @@ fn erase[T](r: Result[T, Error]) Result[T, Error]: r
 
 fn forward[T, E: Error](r: Result[T, E]) Result[T, Error]: erase(r)
 
-fn optional[T](r: Optional[Result[T, Error]]) Result[T, Error]: r.get().clone()
+fn optional[T](r: Result[T, Error]?) Result[T, Error]: r.get().clone()
 
 fn same[T, E: Error](r: Result[T, E]) Result[T, E]: r
 

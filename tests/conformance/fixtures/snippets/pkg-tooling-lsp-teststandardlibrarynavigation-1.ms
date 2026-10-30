@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,lists,modules,stdlib-collections,stdlib-system,strings,tier-io
 # conform: phase=check
 # conform: origin=pkg/tooling/lsp/navigation_test.go:53 TestStandardLibraryNavigation
-import ListBuilder from "@std/collections.ms"
+import ListEntry from "@std/collections.ms"
 import system from "@std/process.ms"
 
 fn length(values: List[Int]) Int:

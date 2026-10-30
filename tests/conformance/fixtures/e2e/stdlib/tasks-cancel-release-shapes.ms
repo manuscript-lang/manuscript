@@ -56,7 +56,7 @@ fn t_consume_in_loop() Int:
     return total
 
 fn t_optional() Int:
-    let o: Optional[List[String]] = some(["a", "b"])
+    let o: List[String]? = some(["a", "b"])
     nap()
     return o.get([]).length()
 
@@ -67,7 +67,7 @@ fn t_closure() Int:
     return f()
 
 fn t_match() Int:
-    let r: Optional[List[Int]] = some([1, 2, 3])
+    let r: List[Int]? = some([1, 2, 3])
 
     match r:
         some(v):

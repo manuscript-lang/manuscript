@@ -193,31 +193,6 @@ impl<'a> FnLower<'a> {
                 self.at(e.pos);
                 return self.bit_operation(name, &args);
             }
-            // Time values are plain words: reading one is not a runtime call.
-            if let Some(field) = match symbol {
-                "msstd_time_duration_to_nanoseconds" => Some(None),
-                "msstd_time_timestamp_unix_seconds" => Some(Some(0)),
-                "msstd_time_timestamp_nanoseconds" => Some(Some(1)),
-                _ => None,
-            } {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let value = self.borrow(args[0].val);
-                self.at(e.pos);
-                let v = match field {
-                    None => value,
-                    Some(index) => {
-                        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(value)).clone()
-                        else {
-                            return Err(Error::new("Timestamp is not a record"));
-                        };
-                        self.b.rec_get(rid, index, value)
-                    }
-                };
-                return Ok(Val { v, own: false });
-            }
             // Codec streams are built by the compiler: the format name, the input, and the limit.
             if matches!(
                 symbol,
@@ -363,20 +338,6 @@ impl<'a> FnLower<'a> {
                 self.time_clock(it, native == "time/wall_clock")
             }
             "io/read_line" => self.read_line_native(e, view, params),
-            "time/duration" => {
-                // A `Duration` is its count of nanoseconds.
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::INT));
-                }
-                let n = args
-                    .first()
-                    .ok_or_else(|| Error::new("duration without nanoseconds"))?;
-                Ok(Val {
-                    v: self.borrow(n.val),
-                    own: false,
-                })
-            }
             "sleep" => {
                 let args = self.native_args(view)?;
                 if self.dead {
@@ -1113,16 +1074,6 @@ impl<'a> FnLower<'a> {
                 .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
             return self.finish_rt_call(sym, &sig, true, vec![text, kind, has, max], result);
         }
-        if native == "time/duration_nanoseconds" {
-            // A `Duration` is its count of nanoseconds.
-            return Ok(Val {
-                v: self.borrow(recv),
-                own: false,
-            });
-        }
-        if let Some(v) = self.time_field(m, recv)? {
-            return Ok(v);
-        }
         let pos = e.pos;
         let result = self.emty(e)?;
         self.native_method_tail(m, Some(recv_expr), pos, result, recv, args)
@@ -1360,15 +1311,6 @@ impl<'a> FnLower<'a> {
                     .expect("i2f");
                 Ok(Val { v, own: false })
             }
-            (TyKind::Rec(rid), "unix_seconds" | "nanoseconds")
-                if self.b.m.records[rid.index()].name == "Timestamp" =>
-            {
-                // A timestamp is its two words; these read them.
-                let x = self.borrow(recv);
-                let field = u32::from(name == "nanoseconds");
-                let v = self.b.rec_get(rid, field, x);
-                Ok(Val { v, own: false })
-            }
             (TyKind::Float, "is_nan" | "is_finite") => {
                 let x = self.borrow(recv);
                 if name == "is_nan" {
@@ -1443,7 +1385,7 @@ impl<'a> FnLower<'a> {
                 let out = self.call_runtime("msrt_int_to_string_radix", &[v, r], MTy::STR)?;
                 Ok(Val { v: out, own: true })
             }
-            (_, "to_string") if m.receiver.is_std("Duration") => self.duration_text(recv),
+            (_, "to_string") if m.receiver.is_time("Duration") => self.duration_text(recv),
             (_, "to_string") => self.format_value(recv),
             (_, "clone") => {
                 let v = self.owned(Val {
@@ -1520,10 +1462,12 @@ impl<'a> FnLower<'a> {
             .iter()
             .position(|c| c.name == want)
             .ok_or_else(|| Error::new("Result without ok/error cases"))?;
-        let r = self.borrow(recv);
-        let tag = self.b.alt_tag(r);
+        let tag = self.b.alt_tag(recv.v);
         let k = self.b.iconst(case as i64);
         let v = self.b.icmp(ms_mir::ir::Cc::Eq, tag, k);
+        // Only read: an owned result holding a resource (`open().is_ok()`) closes it.
+        self.close_owned_temp(recv);
+        self.finish(recv);
         Ok(Val { v, own: false })
     }
 
@@ -1561,9 +1505,6 @@ impl<'a> FnLower<'a> {
         args: &[NArg],
         result: MTy,
     ) -> Result<Val, Error> {
-        if let Some(v) = self.time_field(m, recv)? {
-            return Ok(v);
-        }
         let rty = self.ty_of(recv.v);
         let name = m.name().map(|n| n.to_string()).unwrap_or_default();
         if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS
@@ -1707,31 +1648,6 @@ impl<'a> FnLower<'a> {
             .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
         let has_out = sig.params.last().is_some_and(|p| p.name == "out");
         self.finish_rt_call(sym, &sig, has_out, vals, result)
-    }
-
-    /// `Timestamp` and `Duration` accessors that read the representation directly.
-    fn time_field(&mut self, m: &ct::MethodRef, recv: Val) -> Result<Option<Val>, Error> {
-        let name = m.name().map(|n| n.to_string()).unwrap_or_default();
-        if m.receiver.is_std("Duration") && name == "to_nanoseconds" {
-            return Ok(Some(Val {
-                v: self.borrow(recv),
-                own: false,
-            }));
-        }
-        let field = match name.as_str() {
-            "unix_seconds" => 0,
-            "nanoseconds" => 1,
-            _ => return Ok(None),
-        };
-        if !m.receiver.is_std("Timestamp") {
-            return Ok(None);
-        }
-        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(recv.v)).clone() else {
-            return Err(Error::new("Timestamp is not a record"));
-        };
-        let r = self.borrow(recv);
-        let v = self.b.rec_get(rid, field, r);
-        Ok(Some(Val { v, own: false }))
     }
 
     /// A variable that always holds the receiver list, for use across loop headers.
@@ -2328,7 +2244,8 @@ impl<'a> FnLower<'a> {
         self.b.unreachable();
         self.b.switch_to(good);
         let k = self.b.iconst(scale);
-        let out = self.b.binop(Op::IMul, v, k);
+        let nanos = self.b.binop(Op::IMul, v, k);
+        let out = self.duration_of(nanos)?;
         Ok(Val { v: out, own: false })
     }
 
@@ -2464,6 +2381,8 @@ impl<'a> FnLower<'a> {
                         let fv = f.val.v;
                         let y = s.b.call_ind(fv, &[p]);
                         let v = if by_map { s.b.opt_some(y) } else { y };
+                        // The callback only borrowed the payload: an owned temporary closes it.
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
@@ -2636,6 +2555,7 @@ impl<'a> FnLower<'a> {
                     &mut |s| {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let v = s.b.call_ind(f.val.v, &[p]);
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
@@ -2669,6 +2589,7 @@ impl<'a> FnLower<'a> {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let y = s.b.call_ind(f.val.v, &[p]);
                         let v = s.b.alt_new(oa, out_err, &[y]);
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
@@ -2690,6 +2611,7 @@ impl<'a> FnLower<'a> {
                     &mut |s| {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let v = s.b.call_ind(f.val.v, &[p]);
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
@@ -2723,6 +2645,7 @@ impl<'a> FnLower<'a> {
                         } else {
                             y
                         };
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))

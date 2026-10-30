@@ -13,7 +13,7 @@ export type CollectionError:
 # `List[T]()` creates an empty list; `List[T](reserve: n)` also preallocates room for `n` items without changing the length. A negative `n` reserves nothing.
 export type List[T]:
     # Constructor-only capacity hint in items: room for this many elements is allocated up front. The list starts empty; none or a negative value reserves nothing.
-    reserve: Optional[Int] = none
+    reserve: Int? = none
 
 impl List[T]:
     # Returns a deep copy with independent list and nested value storage.
@@ -21,13 +21,13 @@ impl List[T]:
 
     # Returns an element; negative indexes are relative to the end. An out-of-range index returns `default`; pass one for indexes that may miss, or use `first()` and `last()`.
     # Without a default, an out-of-range index raises a fault, as `xs[i]` does.
-    fn get(index: Int, default: Optional[T] = none) ref T: ...
+    fn get(index: Int, default: T? = none) ref T: ...
 
     # Returns the first element, or none when the list is empty.
-    fn first() ref Optional[T]: ...
+    fn first() ref T?: ...
 
     # Returns the last element, or none when the list is empty.
-    fn last() ref Optional[T]: ...
+    fn last() ref T?: ...
 
     # Reports whether the list has no elements.
     fn is_empty() Bool: ...
@@ -40,7 +40,7 @@ impl List[T]:
     var fn insert(index: Int, value: T) Unit: ...
 
     # Removes and returns the last element in place, or none for an empty list.
-    var fn pop() Optional[T]: ...
+    var fn pop() T?: ...
 
     # Replaces an element in place; negative indexes count from the end.
     # Invalid indexes fault.
@@ -104,16 +104,16 @@ impl List[T]:
     fn filter(predicate: fn(T) Bool) List[T]: ...
 
     # Returns the first element for which `predicate` is True, or none; later elements are not tested after a match.
-    fn find(predicate: fn(T) Bool) Optional[T]: ...
+    fn find(predicate: fn(T) Bool) T?: ...
 
     # Searches from the end and returns the last element for which `predicate` is True, or none.
-    fn find_last(predicate: fn(T) Bool) Optional[T]: ...
+    fn find_last(predicate: fn(T) Bool) T?: ...
 
     # Returns the zero-based index of the first element for which `predicate` is True, or none.
-    fn find_index(predicate: fn(T) Bool) Optional[Int]: ...
+    fn find_index(predicate: fn(T) Bool) Int?: ...
 
     # Searches from the end and returns the last matching zero-based index, or none.
-    fn find_last_index(predicate: fn(T) Bool) Optional[Int]: ...
+    fn find_last_index(predicate: fn(T) Bool) Int?: ...
 
     # Counts values satisfying the predicate, calling it once per element in order.
     fn count(predicate: fn(T) Bool) Int: ...
@@ -203,11 +203,11 @@ impl Map[T, U]:
     fn fold_right[A](initial: A, step: fn(A, T, U) A) A: ...
 
     # Returns the first matching entry as an owned record containing copies of the key and value.
-    fn find(predicate: fn(T, U) Bool) Optional[MapEntry[T, U]]: ...
+    fn find(predicate: fn(T, U) Bool) MapEntry[T, U]?: ...
 
     # Searches from the end, stopping at the last matching entry.
     # Returns a fresh entry record containing copies of its key and value.
-    fn find_last(predicate: fn(T, U) Bool) Optional[MapEntry[T, U]]: ...
+    fn find_last(predicate: fn(T, U) Bool) MapEntry[T, U]?: ...
 
     # Stops at the first matching entry; empty maps return False.
     fn any(predicate: fn(T, U) Bool) Bool: ...
@@ -246,7 +246,7 @@ impl Map[T, U]:
     fn contains(key: T) Bool: ...
 
     # Returns the value stored for an equal key, or none when the key is absent.
-    fn get(key: T) ref Optional[U]: ...
+    fn get(key: T) ref U?: ...
 
     # Returns the number of entries.
     fn length() Int: ...
@@ -289,10 +289,10 @@ impl Set[T]:
     fn fold_right[A](initial: A, step: fn(A, T) A) A: ...
 
     # Returns the original first matching element, or none.
-    fn find(predicate: fn(T) Bool) Optional[T]: ...
+    fn find(predicate: fn(T) Bool) T?: ...
 
     # Searches from the end, returning the original last matching element.
-    fn find_last(predicate: fn(T) Bool) Optional[T]: ...
+    fn find_last(predicate: fn(T) Bool) T?: ...
 
     # Stops at the first matching element; empty sets return False.
     fn any(predicate: fn(T) Bool) Bool: ...
@@ -367,7 +367,7 @@ export type ListEntry[T]:
 export fn filled[T](
     value: T,
     count: Int,
-    max_items: Optional[Int] = none
+    max_items: Int? = none
 ) Result[List[T], CollectionError]: ...
 
 # Creates the integers from `start` up to but excluding `end`, counting by one. Written `start..end`; the name `range` is not importable. The list is empty when `end <= start`. `for index in 0..count:` runs as a counter loop without allocating the list. As a stored list, more than about 268 million items is a fault; use `range_by` to bound the size with an error value.
@@ -378,7 +378,7 @@ export fn range_by(
     start: Int,
     end: Int,
     step: Int,
-    max_items: Optional[Int] = none
+    max_items: Int? = none
 ) Result[List[Int], CollectionError]: ...
 
 # Builds a map from entries. Later entries replace earlier values for duplicate keys.
@@ -387,42 +387,6 @@ export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) Map[K,
 impl Error for CollectionError:
     # Returns the fixed diagnostic `collection: <reason>`, such as `collection: limit exceeded`, without echoing values.
     fn message() String: ...
-
-# Appends values efficiently before freezing them into a list.
-export type ListBuilder[T]: ...
-
-impl ListBuilder[T]:
-    # Adds `value` to the end of the mutable builder and returns Unit.
-    # A frozen builder faults.
-    fn append(value: T) Unit: ...
-
-    # Seals the builder and returns the accumulated list without copying it.
-    # Later `append` calls fault.
-    fn build() List[T]: ...
-
-# Adds entries efficiently before freezing them into a map.
-export type MapBuilder[T: Hashable, U]: ...
-
-impl MapBuilder[T, U]:
-    # Seals the builder and returns the accumulated map without copying it.
-    # Later `add` calls fault.
-    fn build() Map[T, U]: ...
-
-    # Inserts or replaces an entry in the mutable builder; returns Unit like all builder mutations.
-    # Replacement retains the original key and insertion position; a sealed builder faults.
-    fn add(key: T, value: U) Unit: ...
-
-# Adds unique values efficiently before freezing them into a set.
-export type SetBuilder[T: Hashable]: ...
-
-impl SetBuilder[T]:
-    # Seals the builder and returns the accumulated set without copying it.
-    # Later `add` calls fault.
-    fn build() Set[T]: ...
-
-    # Adds a value to the mutable builder; returns Unit like all builder mutations.
-    # Equal values retain the first payload and position; a sealed builder faults.
-    fn add(value: T) Unit: ...
 
 # Concatenates the inner lists in order into one new list (JavaScript `Array.prototype.flat`).
 export fn flatten[T](lists: List[List[T]]) List[T]: ...
@@ -532,8 +496,8 @@ impl ListFloat32Sum for List[Float32]:
 
 interface ListSearch[T: Equal]:
     fn contains(value: T) Bool
-    fn index_of(value: T) Optional[Int]
-    fn last_index_of(value: T) Optional[Int]
+    fn index_of(value: T) Int?
+    fn last_index_of(value: T) Int?
 
 impl ListSearch[T] for List[T]:
     # Reports whether any element equals `value`, using the element type's Equal implementation; an empty list returns False.
@@ -544,14 +508,14 @@ impl ListSearch[T] for List[T]:
         return false
 
     # Returns the first equal element's zero-based index, or none; elements require Equal.
-    fn index_of(value: T) Optional[Int]:
+    fn index_of(value: T) Int?:
         for i in 0..self.length():
             if self[i].equals(value):
                 return some(i)
         return none
 
     # Returns the last equal element's zero-based index, or none; elements require Equal.
-    fn last_index_of(value: T) Optional[Int]:
+    fn last_index_of(value: T) Int?:
         var i = self.length() - 1
 
         while i >= 0:
@@ -618,13 +582,13 @@ impl ListOrder[T] for List[T]:
         self.sort(fn a, b: a.compare(b))
 
 interface ListExtremes[T: Comparable & Clonable]:
-    fn min() Optional[T]
-    fn max() Optional[T]
+    fn min() T?
+    fn max() T?
 
 impl ListExtremes[T] for List[T]:
     # Returns a copy of the least element, or none for an empty list; the first of equal elements wins.
     # Example: `[3, 1, 2].min()` is `some(1)`; `List[Int]().min()` is `none`.
-    fn min() Optional[T]:
+    fn min() T?:
         if self.length() == 0:
             return none
 
@@ -636,7 +600,7 @@ impl ListExtremes[T] for List[T]:
 
     # Returns a copy of the greatest element, or none for an empty list; the first of equal elements wins.
     # Example: `[3, 1, 2].max()` is `some(3)`.
-    fn max() Optional[T]:
+    fn max() T?:
         if self.length() == 0:
             return none
 
@@ -647,14 +611,14 @@ impl ListExtremes[T] for List[T]:
         return self[at].clone()
 
 interface ListKeyedExtremes[T: Clonable]:
-    fn max_by[K: Comparable](key: fn(T) K) Optional[T]
-    fn min_by[K: Comparable](key: fn(T) K) Optional[T]
+    fn max_by[K: Comparable](key: fn(T) K) T?
+    fn min_by[K: Comparable](key: fn(T) K) T?
 
 impl ListKeyedExtremes[T] for List[T]:
     # Returns the first element whose `key` is greatest, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
     # Returns a copy of the element, like `find`.
     # Example: `["bb", "a", "ccc"].max_by(fn w: w.length())` is `some("ccc")`.
-    fn max_by[K: Comparable](key: fn(T) K) Optional[T]:
+    fn max_by[K: Comparable](key: fn(T) K) T?:
         if self.length() == 0:
             return none
 
@@ -673,7 +637,7 @@ impl ListKeyedExtremes[T] for List[T]:
     # Returns the first element whose `key` is least, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
     # Returns a copy of the element, like `find`.
     # Example: `["bb", "a", "ccc"].min_by(fn w: w.length())` is `some("a")`.
-    fn min_by[K: Comparable](key: fn(T) K) Optional[T]:
+    fn min_by[K: Comparable](key: fn(T) K) T?:
         if self.length() == 0:
             return none
 

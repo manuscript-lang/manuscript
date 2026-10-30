@@ -6,7 +6,7 @@ type Request:
 type Payload:
     count: Int
     ok: Bool
-    nested: List[Optional[Bool]]
+    nested: List[Bool?]
     service: String
     level: Int
     msg: String

@@ -4,7 +4,7 @@
 import TextError from "@std/core.ms"
 
 type Input:
-    names: List[Optional[String]]
+    names: List[String?]
 
 let input = Input([none, some("Ada")])
 let nested: List[List[Int]] = [[], [1]]

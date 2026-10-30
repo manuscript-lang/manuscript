@@ -60,7 +60,7 @@ test "a copy is independent and clear empties":
     try expect_equal(e.to_list(), [7])
 
 test "optional elements keep none distinct from absent":
-    var d = Deque[Optional[Int]]()
+    var d = Deque[Int?]()
     d.push_back(none)
     try expect_equal(d.length(), 1)
     try expect_equal(d.pop_front(), some(none))

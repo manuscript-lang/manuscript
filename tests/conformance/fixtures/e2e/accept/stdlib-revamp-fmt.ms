@@ -66,7 +66,7 @@ type EchoReader:
     unused: Int
 
 impl ReadStream for EchoReader:
-    var fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Int?) Result[Bytes?, IoError]:
         let requested = max_bytes.get(0)
         if requested == 1: return error(IoError.InvalidInput)
 
@@ -76,10 +76,10 @@ impl ReadStream for EchoReader:
 
 test "native compositions preserve Optional arguments for source implementations":
     var stream: ReadStream = EchoReader(0)
-    let omitted: Result[Optional[Bytes], IoError] = stream.read()
+    let omitted: Result[Bytes?, IoError] = stream.read()
     try expect_equal(omitted, ok(some(Bytes([0]))))
 
-    let supplied: Result[Optional[Bytes], IoError] = stream.read(8)
+    let supplied: Result[Bytes?, IoError] = stream.read(8)
     try expect_equal(supplied, ok(some(Bytes([8]))))
 
     let line = read_line(stream)

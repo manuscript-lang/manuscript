@@ -183,9 +183,6 @@ impl Checker {
             if [
                 "BigInt",
                 "Regex",
-                "Timestamp",
-                "Instant",
-                "Duration",
                 "Decimal",
                 "HttpHeaders",
                 "IpAddress",
@@ -242,6 +239,13 @@ impl Checker {
                 if alt.kind == Kind::Contract {
                     let msg = self.interface_type_member(alt);
                     self.res_error(e.pos, msg);
+                    return i;
+                }
+                if alt.is_std("Optional") {
+                    self.res_error(
+                        e.pos,
+                        "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. let x: Int? = none",
+                    );
                     return i;
                 }
                 cs = case_of(alt, *name);

@@ -172,7 +172,7 @@ extern fn msstd_bigint_shift_right(
 
 extern fn msstd_bigint_to_float(value: BigInt) Float
 
-extern fn msstd_bigint_to_int(value: BigInt) Optional[Int]
+extern fn msstd_bigint_to_int(value: BigInt) Int?
 
 extern fn msstd_bigint_to_string_radix(value: BigInt, radix: Int) String
 
@@ -181,7 +181,7 @@ extern fn msstd_bigint_from_int(value: Int) BigInt
 extern fn msstd_bigint_parse(
     text: String,
     radix: Int,
-    max_digits: Optional[Int]
+    max_digits: Int?
 ) Result[BigInt, BigIntError]
 
 # Returns the inverse cosine in radians.
@@ -580,7 +580,7 @@ impl BigInt:
         return msstd_bigint_shift_right(self, count)
 
     # Converts to the nearest Float, or returns none when the magnitude exceeds the Float range.
-    fn to_float() Optional[Float]:
+    fn to_float() Float?:
         let value = msstd_bigint_to_float(self)
         if value.is_finite():
             return some(value)
@@ -588,7 +588,7 @@ impl BigInt:
         return none
 
     # Returns the value as an Int when it fits in the platform's Int, or none when it is outside that range.
-    fn to_int() Optional[Int]:
+    fn to_int() Int?:
         return msstd_bigint_to_int(self)
 
     # Formats the value in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
@@ -604,7 +604,7 @@ export fn from_int(value: Int) BigInt:
 export fn parse(
     text: String,
     radix: Int,
-    max_digits: Optional[Int] = none
+    max_digits: Int? = none
 ) Result[BigInt, BigIntError]:
     return msstd_bigint_parse(text, radix, max_digits)
 

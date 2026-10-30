@@ -9,7 +9,7 @@ Habits that keep the next change easy to understand.
 
 ## Make outcomes explicit
 
-Use `Optional[T]` when a value may be missing and `Result[T, E]` when a failure
+Use `T?` when a value may be missing and `Result[T, E]` when a failure
 needs an explanation. Propagate errors with `try`. Use `if let` when you only
 need a present value or successful result; a Result's error is discarded in
 this form. Use `is_error()` with `err()` when you need to inspect the

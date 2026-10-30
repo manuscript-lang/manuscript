@@ -20,13 +20,13 @@ fn counted(var counter: Counter) Counter:
     counter.calls = counter.calls + 1
     return counter
 
-fn require_value[T, E: Error](value: Optional[T], cause: E) Result[T, E]:
+fn require_value[T, E: Error](value: T?, cause: E) Result[T, E]:
     return value.ok_or(cause)
 
-fn require_lazy[T, E: Error](value: Optional[T], create: fn() E) Result[T, E]:
+fn require_lazy[T, E: Error](value: T?, create: fn() E) Result[T, E]:
     return value.ok_or_else[E](create)
 
-fn success_only[T, E: Error](value: Result[T, E]) Optional[T]:
+fn success_only[T, E: Error](value: Result[T, E]) T?:
     if let item = value:
         return some(item)
 
@@ -41,12 +41,12 @@ fn reduce_set[T: Hashable, A](values: Set[T], initial: A, step: fn(A, T) A) A:
 fn locate[K: Hashable, V](
     values: Map[K, V],
     predicate: fn(K, V) Bool
-) Optional[MapEntry[K, V]]:
+) MapEntry[K, V]?:
     return values.find(predicate)
 
 test "conversions and collection queries are callable":
-    let present: Optional[Int] = some(2)
-    let missing: Optional[Int] = none
+    let present: Int? = some(2)
+    let missing: Int? = none
     present.ok_or(TextError("absent")).get() | try expect_equal(2)
     try expect_equal(
         missing.ok_or_else(fn: TextError("absent")).err().message(), "absent"
@@ -69,8 +69,8 @@ test "conversions and collection queries are callable":
 
 test "conversions retain unconstrained payloads nesting and lazy counts":
     var counter = Counter(0)
-    let present: Optional[Int] = some(0)
-    let missing: Optional[Int] = none
+    let present: Int? = some(0)
+    let missing: Int? = none
     (require_value(present, counted(var counter)).get() != 0 or counter.calls != 1) | try expect_false
 
     var cause = require_value(missing, counter.clone()).err().clone()
@@ -104,17 +104,17 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     extracted.calls = 7
     counter.calls | try expect_equal(1)
 
-    let nested: Optional[Optional[Int]] = some(none)
+    let nested: Int?? = some(none)
     let converted = nested.ok_or(TextError("absent"))
     (not (converted.is_ok()) or not (converted.to_optional().get().is_none())) | try expect_false
 
-    let false_value: Optional[Bool] = some(false)
+    let false_value: Bool? = some(false)
     false_value.ok_or(TextError("absent")).to_optional().get() | try expect_false
 
-    let unit_value: Optional[Unit] = some(unit)
+    let unit_value: Unit? = some(unit)
     (unit_value.ok_or(TextError("absent")).to_optional().is_some()) | try expect_true
 
-    let nested_result: Optional[Result[Int, TextError]] = some(
+    let nested_result: Result[Int, TextError]? = some(
         error(TextError("nested"))
     )
     nested_result.ok_or(
@@ -520,12 +520,12 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         )
     )
 
-fn find_port(port: Optional[Int]) Result[Int, Error]:
+fn find_port(port: Int?) Result[Int, Error]:
     let value = try port.ok_or()
     return ok(value)
 
 test "ok_or without a cause records the calling file and line":
-    let absent: Optional[Int] = none
+    let absent: Int? = none
     let direct: Result[Int, MissingValue] = absent.ok_or()
     (direct.err().message().contains("conversions-queries.ms:")) | try expect_true
 

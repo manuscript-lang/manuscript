@@ -127,7 +127,7 @@ fn int_literal_fits(text: &str, negated: bool, t: &Ty) -> bool {
 fn is_time_operand(types: &[&Ty]) -> bool {
     types
         .iter()
-        .any(|t| t.is_std("Duration") || t.is_std("Instant"))
+        .any(|t| t.is_time("Duration") || t.is_time("Instant"))
 }
 
 const TIME_ARITHMETIC: [(BinaryOp, &str, &str, &str); 5] = [
@@ -577,6 +577,14 @@ impl Checker {
                 self.res_error(e.pos, msg);
                 return i;
             }
+            if typ.is_std("Optional") {
+                self.res_error(
+                    e.pos,
+                    "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. let x: Int? = none",
+                );
+                i.ty = Some(invalid());
+                return i;
+            }
             if let Some(cs) = case_of(&typ, name).filter(|c| c.fields.is_empty()) {
                 self.opaque_denied(e.pos, &typ, &format!("case {name} cannot be built here"));
                 let constructor = self.instantiate(&typ, &[], &[], expected, e.pos);
@@ -615,7 +623,7 @@ impl Checker {
             return i;
         }
         if rt.id == "Int" && matches!(name.as_str(), "seconds" | "milliseconds" | "minutes") {
-            i.ty = Some(standard("Duration", vec![]));
+            i.ty = Some(time_type("Duration"));
             i.native = Some(name);
             return i;
         }
@@ -1144,8 +1152,8 @@ impl Checker {
                 i.ty = Some(bool_());
                 if !numeric(&common)
                     && common.id != "String"
-                    && !common.is_std("Duration")
-                    && !common.is_std("Instant")
+                    && !common.is_time("Duration")
+                    && !common.is_time("Instant")
                 {
                     self.type_error(
                         e.pos,
@@ -1158,7 +1166,7 @@ impl Checker {
                 if common.id != "<invalid>"
                     && !numeric(&common)
                     && !(common.id == "String" && op == BinaryOp::Add)
-                    && !(common.is_std("Duration") && matches!(op, BinaryOp::Add | BinaryOp::Sub))
+                    && !(common.is_time("Duration") && matches!(op, BinaryOp::Add | BinaryOp::Sub))
                 {
                     self.type_error(e.pos, "arithmetic requires numeric operands");
                 }
@@ -1185,10 +1193,10 @@ impl Checker {
         let mut matches = 0;
         for (row_op, l, r, result) in TIME_ARITHMETIC {
             if row_op == op
-                && compatible(&Some(left.clone()), &standard(l, vec![]))
-                && compatible(&Some(right.clone()), &standard(r, vec![]))
+                && compatible(&Some(left.clone()), &time_type(l))
+                && compatible(&Some(right.clone()), &time_type(r))
             {
-                i.ty = Some(standard(result, vec![]));
+                i.ty = Some(time_type(result));
                 matches += 1;
             }
         }

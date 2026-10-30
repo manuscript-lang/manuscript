@@ -30,7 +30,7 @@ fn through_local(n: Int) Result[Int, TextError]:
     let r = checked(n)
     return r
 
-fn halve(n: Int) Optional[Int]:
+fn halve(n: Int) Int?:
     if n % 2 != 0:
         return none
 
@@ -51,7 +51,7 @@ fn nothing(flag: Bool) Result[Unit, TextError]:
 
     return error(TextError("no"))
 
-fn nested(n: Int) Optional[Optional[Int]]:
+fn nested(n: Int) Int??:
     if n == 0:
         return none
 

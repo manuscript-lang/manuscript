@@ -9,7 +9,7 @@ fn bump(factor: Int) Int:
     return scale(value: 2)
 
 fn lookup(limit: Int) Int:
-    let find = fn(key: Int) Optional[Int]:
+    let find = fn(key: Int) Int?:
         if key < limit:
             return some(key * 2)
 

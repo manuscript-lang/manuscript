@@ -14,7 +14,7 @@ fn call_digest[T](operation: fn(Bytes) T, data: Bytes) T:
     return operation(data)
 
 fn bounded_compression(
-    operation: fn(Bytes, Int, Optional[Int]) Result[Bytes, CompressionError],
+    operation: fn(Bytes, Int, Int?) Result[Bytes, CompressionError],
     data: Bytes
 ) Result[Bytes, CompressionError]:
     return operation(data, 6, 1024)

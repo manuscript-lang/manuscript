@@ -4,14 +4,14 @@ import parse_float from "@std/math.ms"
 # The compiler lowers these two calls from the type argument; see `json_parse` and `json_stringify` in ms-lower.
 extern fn msrt_json_parse[T](
     text: String,
-    limits: Optional[JsonLimits],
+    limits: JsonLimits?,
     ignore_unknown_fields: Bool
 ) Result[T, JsonError]
 
 extern fn msrt_json_stringify[T](
     value: T,
-    max_bytes: Optional[Int],
-    indent: Optional[Int],
+    max_bytes: Int?,
+    indent: Int?,
     strict: Bool
 ) Result[String, JsonError]
 
@@ -27,11 +27,11 @@ export type JsonError:
 # Optional bounds for JSON input bytes, nesting depth, and parsed values.
 export type JsonLimits:
     # Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
-    max_bytes: Optional[Int] = none
+    max_bytes: Int? = none
     # Maximum container nesting; a root scalar has depth zero, and a root container depth one.
-    max_depth: Optional[Int] = none
+    max_depth: Int? = none
     # Maximum parsed containers and scalar values, excluding object keys; none adds no count budget.
-    max_values: Optional[Int] = none
+    max_values: Int? = none
 
 # A JSON value. Number text is retained to avoid losing precision during parsing.
 #
@@ -82,7 +82,7 @@ impl Data for JsonValue:
 
 impl JsonValue:
     # Returns the object member for `key`, or `none` for an absent key or a value that is not an object. The result borrows from the receiver.
-    fn get(key: String) ref Optional[JsonValue]:
+    fn get(key: String) ref JsonValue?:
         match self:
             ObjectValue(values): return values.get(key)
             _: return none
@@ -90,12 +90,12 @@ impl JsonValue:
     # Returns the value reached by reading each object member of `keys` in turn, or `none` when a
     # member is absent, a value on the way is not an object, or `keys` is empty. The result borrows
     # from the receiver.
-    fn get_in(keys: List[String]) ref Optional[JsonValue]:
+    fn get_in(keys: List[String]) ref JsonValue?:
         return member_path(self, keys, 0)
 
     # Returns the array element at `index`, counting a negative index from the end. An index out of
     # range, or a value that is not an array, returns `none`. The result borrows from the receiver.
-    fn at(index: Int) ref Optional[JsonValue]:
+    fn at(index: Int) ref JsonValue?:
         match self:
             ArrayValue(values):
                 if index >= values.length() or index < 0 - values.length(): return none
@@ -104,38 +104,38 @@ impl JsonValue:
             _: return none
 
     # Returns the text of a string value, or `none` for any other value. The result borrows from the receiver.
-    fn as_string() ref Optional[String]:
+    fn as_string() ref String?:
         match self:
             StringValue(value): return value
             _: return none
 
     # Returns a number value as an Int, or `none` when the value is not a number or its text has a
     # fraction, an exponent, or digits that do not fit in Int.
-    fn as_int() Optional[Int]:
+    fn as_int() Int?:
         match self:
             NumberValue(text): return text.parse_int()
             _: return none
 
     # Returns a number value as a Float, or `none` when the value is not a number or its text is not finite.
-    fn as_float() Optional[Float]:
+    fn as_float() Float?:
         match self:
             NumberValue(text): return parse_float(text).to_optional()
             _: return none
 
     # Returns a boolean value, or `none` for any other value.
-    fn as_bool() Optional[Bool]:
+    fn as_bool() Bool?:
         match self:
             BoolValue(value): return value
             _: return none
 
     # Returns the elements of an array value, or `none` for any other value. The result borrows from the receiver.
-    fn as_list() ref Optional[List[JsonValue]]:
+    fn as_list() ref List[JsonValue]?:
         match self:
             ArrayValue(values): return values
             _: return none
 
     # Returns the members of an object value, or `none` for any other value. The result borrows from the receiver.
-    fn as_map() ref Optional[Map[String, JsonValue]]:
+    fn as_map() ref Map[String, JsonValue]?:
         match self:
             ObjectValue(values): return values
             _: return none
@@ -161,7 +161,7 @@ impl JsonValue:
 # - An alternative case without payload is its name as a string; one with payload is externally tagged,
 #   `{"Circle":{"radius":2}}`, with the same member rules for the labeled fields. Standard alternatives such
 #   as `Result` and the error types follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
-# - `Optional[T]` reads `null` as `none`, so `some(none)`, written as `null`, reads back as `none`. `List` reads an array.
+# - `T?` reads `null` as `none`, so `some(none)`, written as `null`, reads back as `none`. `List` reads an array.
 # - A sized integer accepts integer digits within its own range, and `Float32` any finite number that fits it.
 # - `Int` accepts integer digits that fit in the platform's Int, `Float` any finite number, `BigInt` and `Decimal`
 #   the exact number text. A `null` Float, which `stringify` writes for `NaN` and infinities, returns
@@ -174,7 +174,7 @@ impl JsonValue:
 # record and `parse[JsonValue]` keeps it as a document.
 export fn parse[T: Data = JsonValue](
     text: String,
-    limits: Optional[JsonLimits] = none,
+    limits: JsonLimits? = none,
     ignore_unknown_fields: Bool = true
 ) Result[T, JsonError]:
     return msrt_json_parse[T](text, limits, ignore_unknown_fields)
@@ -217,7 +217,7 @@ export interface JsonEncode:
 # - Record fields appear in declaration order. A field holding `none` is omitted; so is a field
 #   holding a value with no JSON form (`Unit`).
 # - `none` elsewhere (a list element, the root) is `null`, as is a no-form list element.
-#   `Optional[Optional[T]]` is allowed: `some(none)` is `null` and `none` is omitted.
+#   `T??` is allowed: `some(none)` is `null` and `none` is omitted.
 # - A root value with no JSON form returns `InvalidData`.
 # - An alternative case without payload is its name as a string, `"Dot"`. A case with payload is
 #   externally tagged: `{"Circle":{"radius":2}}`, an object keyed by the case name whose value holds
@@ -249,14 +249,14 @@ export interface JsonEncode:
 # type Request:
 #     model: String
 #     stream: Bool
-#     user: Optional[String]
+#     user: String?
 #
 # stringify(value: Request(model: "example", stream: true, user: none))
 # ```
 export fn stringify[T: Data](
     value: T,
-    max_bytes: Optional[Int] = none,
-    indent: Optional[Int] = none,
+    max_bytes: Int? = none,
+    indent: Int? = none,
     strict: Bool = false
 ) Result[String, JsonError]:
     return msrt_json_stringify(value, max_bytes, indent, strict)
@@ -270,7 +270,7 @@ impl Error for JsonError:
             LimitExceeded: return "JSON: limit exceeded"
 
 # The member of `value` at `keys[from:]`, read one object level at a time.
-fn member_path(value: JsonValue, keys: List[String], from: Int) ref Optional[JsonValue]:
+fn member_path(value: JsonValue, keys: List[String], from: Int) ref JsonValue?:
     if from >= keys.length(): return none
     if from == keys.length() - 1: return value.get(keys[from])
     if let next = value.get(keys[from]):

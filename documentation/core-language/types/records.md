@@ -10,7 +10,7 @@ A record groups named fields into one value. Fields can change through a `var` r
 ```manuscript
 type Customer:
     name: String
-    email: Optional[String]
+    email: String?
 ```
 
 Field types are explicit and names unique. An empty record is `type Marker:`. A field may have a default expression checked against its type.
@@ -67,6 +67,31 @@ Field writes keep the declared type; the receiver evaluates once, before the new
 
 Records, alternatives, `List`, `Map`, `Set`, and `Bytes` have `.clone()`. Files, sockets, queues, synchronization objects, guards, and other service handles do not; a cloned record keeps the same handle.
 
+## Moving a field out
+
+A field of an owned record or parameter moves out at the field's last use, so extracting a large field needs no `.clone()`:
+
+```manuscript
+type Report:
+    title: String
+    rows: List[Int]
+
+fn rows_of(r: Report) List[Int]:
+    return r.rows
+
+fn count_both(r: Report) Int:
+    let n = rows_of_copy(r.rows)
+    return n + r.title.length()
+
+fn rows_of_copy(rows: List[Int]) Int:
+    return rows.length()
+```
+
+- Each function above consumes the record; `r.title` stays usable after `r.rows` moved because fields are tracked separately. Using `r.rows` again, or the whole `r`, after the move is `is moved here but used again`; `r.rows = value` makes the field usable again.
+- It applies to owned `Move`-class fields (strings, lists, records). Elements (`xs[i]`), `ref` fields, borrowed values, `var` parameters, closure captures, and records that hold a resource or declare `close` still need `.clone()` or a whole-value move.
+- `let x = r.rows` stays a borrow of the field; pass `r.rows` directly to the consuming call or `return` instead.
+- A parameter with a field moved out is consumed: the caller gives the record up (`.clone()` at the call keeps it).
+
 ## Domain identity
 
 Wrap identifiers in their own records so they cannot be mixed up.
@@ -122,7 +147,7 @@ import panic from "@std/core.ms"
 
 type Node:
     value: Int
-    next: Optional[Node]
+    next: Node?
 
 test "recursive links":
     var node = Node(value: 1, next: none)

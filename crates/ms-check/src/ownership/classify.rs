@@ -41,7 +41,7 @@ impl Classifier {
         self.class_in(t, &mut Vec::new())
     }
 
-    fn class_in(&self, t: &Ty, visiting: &mut Vec<Name>) -> Class {
+    fn class_in(&self, t: &Ty, visiting: &mut Vec<String>) -> Class {
         match t.kind {
             Kind::Primitive if t.id.as_str() == "String" => Class::Move,
             Kind::Primitive => Class::Copy,
@@ -52,13 +52,16 @@ impl Classifier {
                     Class::Move
                 }
             }
+            // A `Closeable` value owns what it was made from and closes it. Other interfaces
+            // with a `close` (a channel's transport) are handles their holders close explicitly.
+            Kind::Contract if t.is_std("Closeable") => Class::Resource,
             Kind::Function | Kind::Contract => Class::Move,
             Kind::Native => self.native(t, visiting),
             Kind::Record | Kind::Alternative => self.nominal(t, visiting),
         }
     }
 
-    fn native(&self, t: &Ty, visiting: &mut Vec<Name>) -> Class {
+    fn native(&self, t: &Ty, visiting: &mut Vec<String>) -> Class {
         if self.closeable.contains(&t.id) {
             Class::Resource
         } else if t.is_std("Shared") {
@@ -70,12 +73,9 @@ impl Classifier {
             self.holds(t.args.first(), visiting)
         } else if t.is_std("Map") {
             self.holds(t.args.get(1), visiting)
-        } else if t.is_std("Bytes") {
+        } else if t.is_std("Bytes") || t.is_std("HttpHeaders") {
             Class::Move
         } else if [
-            "Duration",
-            "Instant",
-            "Timestamp",
             "Decimal",
             "ListBuilder",
             "MapBuilder",
@@ -86,8 +86,7 @@ impl Classifier {
         .iter()
         .any(|n| t.is_std(n))
         {
-            // Plain words in the runtime, so a copy is a bit copy: `Decimal` is `repr(C)` data and
-            // the time types stay `Copy` until they become records. The builders are shared
+            // Plain words in the runtime, so a copy is a bit copy: `Decimal` is `repr(C)` data. The builders are shared
             // handles until they become owned values.
             Class::Copy
         } else {
@@ -98,22 +97,25 @@ impl Classifier {
 
     /// The class of a collection holding `element`: `Resource` when its elements are, else
     /// `Move`, so a collection of plain values stays as cheap as before.
-    fn holds(&self, element: Option<&Ty>, visiting: &mut Vec<Name>) -> Class {
+    fn holds(&self, element: Option<&Ty>, visiting: &mut Vec<String>) -> Class {
         match element.map(|e| self.class_in(e, visiting)) {
             Some(Class::Resource) => Class::Resource,
             _ => Class::Move,
         }
     }
 
-    fn nominal(&self, t: &Ty, visiting: &mut Vec<Name>) -> Class {
+    fn nominal(&self, t: &Ty, visiting: &mut Vec<String>) -> Class {
         if self.closeable.contains(&t.id) {
             return Class::Resource;
         }
-        if visiting.contains(&t.id) {
+        // Keyed by the instance, so `Door??` looks inside its payload; a
+        // generic type that grows without bound is cut off as boxed.
+        let key = t.to_string();
+        if visiting.contains(&key) || visiting.len() > 64 {
             // A type containing itself is boxed: it cannot be copied implicitly.
             return Class::Move;
         }
-        visiting.push(t.id);
+        visiting.push(key);
         let mut class = Class::Copy;
         for f in fields(t) {
             class = class.max(self.class_in(&f.ty, visiting));
@@ -135,4 +137,14 @@ impl Classifier {
         // returned Move, which max propagates.
         class
     }
+}
+
+/// Whether the interface `t` declares a `close` operation.
+pub(crate) fn declares_close(t: &Ty) -> bool {
+    t.def.as_ref().is_some_and(|d| {
+        d.operations
+            .borrow()
+            .iter()
+            .any(|o| o.name.as_str() == "close")
+    })
 }

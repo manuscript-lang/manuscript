@@ -3,412 +3,102 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "report": {
+      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [],
+      "tests": [
+        {
+          "index": 0,
+          "name": "bound-native-members.ms::string members",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "bound-native-members.ms::list members",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "bound-native-members.ms::custom equality is kept for bound members",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "bound-native-members.ms::builder",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "bound-native-members.ms::sealed builder",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "bound-native-members.ms::abs of the minimum overflows",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "bound-native-members.ms::negative split cap faults",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "bound-native-members.ms::size and shape methods as values",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "bound-native-members.ms::sorted as a value",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "bound-native-members.ms::equals on built-in data",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "bound-native-members.ms::built-in data passes as Equal",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "bound-native-members.ms::list and map literals pass as Equal",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "bound-native-members.ms::numeric and optional members as values",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "bound-native-members.ms::native calls pass as Equal",
+          "status": "passed"
+        }
+      ],
       "summary": {
-        "available": 0,
-        "selected": 0,
-        "passed": 0,
+        "available": 14,
+        "selected": 14,
+        "passed": 14,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": false,
-      "exit_code": 1,
-      "reason": "compile_error",
-      "stdout": "",
-      "diagnostics": [
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "cannot move `xs` out of the function: the caller keeps ownership of a var parameter; return `xs.clone()` or change the value in place",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 21,
-            "column": 12,
-            "offset": 749
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 21,
-              "column": 14,
-              "offset": 751
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 21,
-              "column": 14,
-              "offset": 751
-            },
-            "replacement": ".clone()"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `sb`: `sb` is declared with let, which is immutable including its contents; declare it `var sb` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 47,
-            "column": 20,
-            "offset": 1582
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 44,
-              "column": 5,
-              "offset": 1489
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 44,
-              "column": 8,
-              "offset": 1492
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "cannot change `sb` while `append` borrows it (method value, at 55:21); finish using `append` before this, or give `append` its own value by ending its initializer with `.clone()`",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 56,
-            "column": 5,
-            "offset": 1793
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `map_builder`: `map_builder` is declared with let, which is immutable including its contents; declare it `var map_builder` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 63,
-            "column": 31,
-            "offset": 2055
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 62,
-              "column": 5,
-              "offset": 1981
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 62,
-              "column": 8,
-              "offset": 1984
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `map_builder`: `map_builder` is declared with let, which is immutable including its contents; declare it `var map_builder` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 64,
-            "column": 22,
-            "offset": 2080
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 62,
-              "column": 5,
-              "offset": 1981
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 62,
-              "column": 8,
-              "offset": 1984
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "cannot change `map_builder` while `map_add` borrows it (method value, at 63:31); finish using `map_add` before this, or give `map_add` its own value by ending its initializer with `.clone()`",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 64,
-            "column": 22,
-            "offset": 2080
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `map_builder`: `map_builder` is declared with let, which is immutable including its contents; declare it `var map_builder` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 66,
-            "column": 23,
-            "offset": 2209
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 62,
-              "column": 5,
-              "offset": 1981
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 62,
-              "column": 8,
-              "offset": 1984
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `map_builder`: `map_builder` is declared with let, which is immutable including its contents; declare it `var map_builder` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 66,
-            "column": 27,
-            "offset": 2213
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 62,
-              "column": 5,
-              "offset": 1981
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 62,
-              "column": 8,
-              "offset": 1984
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `set_builder`: `set_builder` is declared with let, which is immutable including its contents; declare it `var set_builder` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 72,
-            "column": 22,
-            "offset": 2386
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 70,
-              "column": 5,
-              "offset": 2301
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 70,
-              "column": 8,
-              "offset": 2304
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `alias`: `alias` is declared with let, which is immutable including its contents; declare it `var alias` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 73,
-            "column": 23,
-            "offset": 2428
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 71,
-              "column": 5,
-              "offset": 2341
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 71,
-              "column": 8,
-              "offset": 2344
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `alias`: `alias` is declared with let, which is immutable including its contents; declare it `var alias` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 73,
-            "column": 27,
-            "offset": 2432
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 71,
-              "column": 5,
-              "offset": 2341
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 71,
-              "column": 8,
-              "offset": 2344
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `set_builder`: `set_builder` is declared with let, which is immutable including its contents; declare it `var set_builder` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 74,
-            "column": 23,
-            "offset": 2512
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 70,
-              "column": 5,
-              "offset": 2301
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 70,
-              "column": 8,
-              "offset": 2304
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `set_builder`: `set_builder` is declared with let, which is immutable including its contents; declare it `var set_builder` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 74,
-            "column": 27,
-            "offset": 2516
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 70,
-              "column": 5,
-              "offset": 2301
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 70,
-              "column": 8,
-              "offset": 2304
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `builder`: `builder` is declared with let, which is immutable including its contents; declare it `var builder` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 80,
-            "column": 5,
-            "offset": 2674
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 79,
-              "column": 5,
-              "offset": 2638
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 79,
-              "column": 8,
-              "offset": 2641
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `builder`: `builder` is declared with let, which is immutable including its contents; declare it `var builder` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 82,
-            "column": 18,
-            "offset": 2707
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 79,
-              "column": 5,
-              "offset": 2638
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 79,
-              "column": 8,
-              "offset": 2641
-            },
-            "replacement": "var"
-          }
-        }
-      ]
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN bound-native-members.ms::string members\nPASS bound-native-members.ms::string members\nRUN bound-native-members.ms::list members\nPASS bound-native-members.ms::list members\nRUN bound-native-members.ms::custom equality is kept for bound members\nPASS bound-native-members.ms::custom equality is kept for bound members\nRUN bound-native-members.ms::builder\nPASS bound-native-members.ms::builder\nRUN bound-native-members.ms::sealed builder\nPASS bound-native-members.ms::sealed builder\nRUN bound-native-members.ms::abs of the minimum overflows\nPASS bound-native-members.ms::abs of the minimum overflows\nRUN bound-native-members.ms::negative split cap faults\nPASS bound-native-members.ms::negative split cap faults\nRUN bound-native-members.ms::size and shape methods as values\nPASS bound-native-members.ms::size and shape methods as values\nRUN bound-native-members.ms::sorted as a value\nPASS bound-native-members.ms::sorted as a value\nRUN bound-native-members.ms::equals on built-in data\nPASS bound-native-members.ms::equals on built-in data\nRUN bound-native-members.ms::built-in data passes as Equal\nPASS bound-native-members.ms::built-in data passes as Equal\nRUN bound-native-members.ms::list and map literals pass as Equal\nPASS bound-native-members.ms::list and map literals pass as Equal\nRUN bound-native-members.ms::numeric and optional members as values\nPASS bound-native-members.ms::numeric and optional members as values\nRUN bound-native-members.ms::native calls pass as Equal\nPASS bound-native-members.ms::native calls pass as Equal\n14 tests, 0 failed\n",
+      "diagnostics": []
     },
     "shape": [
       "completed",
       "diagnostics",
-      "diagnostics[].code",
-      "diagnostics[].fix",
-      "diagnostics[].fix.end",
-      "diagnostics[].fix.end.column",
-      "diagnostics[].fix.end.file",
-      "diagnostics[].fix.end.line",
-      "diagnostics[].fix.end.offset",
-      "diagnostics[].fix.position",
-      "diagnostics[].fix.position.column",
-      "diagnostics[].fix.position.file",
-      "diagnostics[].fix.position.line",
-      "diagnostics[].fix.position.offset",
-      "diagnostics[].fix.replacement",
-      "diagnostics[].message",
-      "diagnostics[].phase",
-      "diagnostics[].position",
-      "diagnostics[].position.column",
-      "diagnostics[].position.file",
-      "diagnostics[].position.line",
-      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "reason",
+      "repeat",
       "source_root",
       "stdout",
       "summary",
@@ -419,7 +109,11 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests"
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
     ],
     "stderr": ""
   }

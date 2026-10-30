@@ -274,7 +274,7 @@ pub fn result_use_hint(actual: &Ty, expected: &Ty) -> String {
 pub fn number_conversion_hint(actual: &Ty, expected: &Ty) -> String {
     match (actual.id.as_str(), expected.id.as_str()) {
         ("Int", "Float") => "Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value".to_string(),
-        ("Float", "Int") => "Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().get(0)".to_string(),
+        ("Float", "Int") => "Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get(0)".to_string(),
         ("Int" | "Float" | "Bool", "String") => format!(
             "{actual} does not convert to String implicitly; interpolate it into text, e.g. \"{{value}}\""
         ),
@@ -456,7 +456,7 @@ impl Checker {
             }
             "int" | "parseInt" | "atoi" | "Number" | "parse_int" => {
                 return format!(
-                    "{message}; parse text with text.parse_int(), which returns Optional[Int]; Float has truncate_to_int()"
+                    "{message}; parse text with text.parse_int(), which returns Int?; Float has truncate_to_int()"
                 );
             }
             "float" | "parseFloat" | "parse_float" => {
@@ -787,7 +787,7 @@ impl Checker {
     pub(crate) fn assignment_mismatch(&mut self, actual: &Ty, expected: &Ty) -> String {
         if actual.is_std("Optional") && actual.args.len() == 1 && actual.args[0].id == "<invalid>" {
             return format!(
-                "expected {expected}, found none; none is absent, so it fits only an Optional position: declare the target Optional[{expected}] or give a value"
+                "expected {expected}, found none; none is absent, so it fits only an Optional position: declare the target {expected}? or give a value"
             );
         }
         let message = format_mismatch(actual, expected);
@@ -845,7 +845,7 @@ pub fn int_float_mix_hint(a: &Ty, b: &Ty) -> String {
     let (i, f) = (a.to_string(), b.to_string());
     let mixed = (i == "Int" && f == "Float") || (i == "Float" && f == "Int");
     if mixed {
-        "convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Optional[Int])".to_string()
+        "convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)".to_string()
     } else {
         String::new()
     }
@@ -855,7 +855,7 @@ pub fn int_float_mix_hint(a: &Ty, b: &Ty) -> String {
 pub fn builtin_constructor_hint(typ: &Ty) -> String {
     match typ.to_string().as_str() {
         "String" => "; make text with interpolation \"{value}\" or value.to_string()".to_string(),
-        "Int" => "; parse text with text.parse_int() (Optional[Int]); Float has truncate_to_int()".to_string(),
+        "Int" => "; parse text with text.parse_int() (Int?); Float has truncate_to_int()".to_string(),
         "Float" => "; convert an Int with value.to_float(); parse text with parse_float (import parse_float from \"@std/math.ms\")".to_string(),
         _ => String::new(),
     }

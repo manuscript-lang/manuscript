@@ -64,14 +64,14 @@ test "map add retains clones and insertion order":
     try expect_equal(payload, [1, 2])
 
 test "map add retains optional wrapping and generic bound calls":
-    var values = Map[Optional[Int], Optional[Int]]()
+    var values = Map[Int?, Int?]()
     values.add(1, 2)
     values.add(value: 3, key: 1)
     values.add(4, 5)
     try expect_equal(values.get(1).get().get(), 3)
     try expect_equal(values.get(4).get().get(), 5)
 
-    var generic = update[Optional[Int], Optional[Int]](var values, some(6), some(7))
+    var generic = update[Int?, Int?](var values, some(6), some(7))
     generic.add(8, 9)
     try expect_false(generic.get(6).get().get() != 7 or generic.get(8).get().get() != 9)
 

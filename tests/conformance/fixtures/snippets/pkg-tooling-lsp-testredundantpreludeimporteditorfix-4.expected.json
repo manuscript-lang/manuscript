@@ -37,12 +37,44 @@
           },
           "replacement": ""
         }
+      },
+      {
+        "code": "MS2003",
+        "phase": "resolution",
+        "message": "redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly",
+        "position": {
+          "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-4.ms",
+          "line": 6,
+          "column": 5,
+          "offset": 224
+        },
+        "end": {
+          "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-4.ms",
+          "line": 6,
+          "column": 14,
+          "offset": 233
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-4.ms",
+            "line": 6,
+            "column": 5,
+            "offset": 224
+          },
+          "end": {
+            "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-4.ms",
+            "line": 6,
+            "column": 15,
+            "offset": 234
+          },
+          "replacement": ""
+        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-lsp-testredundantpreludeimporteditorfix-4.ms:5:5: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 5 |     List,  # keep\n   |     ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-lsp-testredundantpreludeimporteditorfix-4.ms:5:5: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 5 |     List,  # keep\n   |     ^^^^\n<DIR>/pkg-tooling-lsp-testredundantpreludeimporteditorfix-4.ms:6:5: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 6 |     ListEntry,\n   |     ^^^^^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

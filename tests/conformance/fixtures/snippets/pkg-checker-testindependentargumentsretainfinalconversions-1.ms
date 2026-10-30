@@ -9,6 +9,6 @@ impl Error for Cause[T]:
 
 fn identity[T](value: T) T: value
 
-fn consume[T](value: T, cause: Error, optional: Optional[T]) Unit: return
+fn consume[T](value: T, cause: Error, optional: T?) Unit: return
 
 fn first() Unit: consume(value: 1, cause: identity(Cause(2)), optional: identity(3))

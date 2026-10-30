@@ -51,8 +51,8 @@ fn prepare_function(var state: Counter) Result[fn(Int) Int, Error]:
     next(var state) | try expect_equal(4)
     return ok(increment)
 
-fn absent(value: Optional[Int]) Bool:
-    let missing: Optional[Int] = none
+fn absent(value: Int?) Bool:
+    let missing: Int? = none
     return value == missing
 
 test "optional labels on single-parameter functions":

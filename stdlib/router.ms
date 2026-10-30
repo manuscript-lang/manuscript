@@ -50,7 +50,7 @@ export type RouteParams:
 
 impl RouteParams:
     # Returns the text captured for `name`, or none when the pattern has no such parameter.
-    fn get(name: String) Optional[String]:
+    fn get(name: String) String?:
         if let index = self.names.index_of(name):
             return self.values[index].clone()
 
@@ -279,7 +279,7 @@ fn segment_of(part: String) Segment:
 
     return Segment.Literal(part.clone())
 
-fn segment_name(segment: Segment) Optional[String]:
+fn segment_name(segment: Segment) String?:
     match segment:
         Literal(_): return none
         Param(name): return name.clone()
@@ -304,14 +304,14 @@ fn shape_text(segment: Segment) String:
 # What the routes say about one request path.
 type Lookup:
     # The matching route for the method, if any.
-    found: Optional[Int]
+    found: Int?
     # Captures of that route.
     params: RouteParams
     # Methods that have a route for the path, for `Allow`.
     allow: List[String]
 
 fn lookup(routes: List[Route], method: String, parts: List[String]) Lookup:
-    var found: Optional[Int] = none
+    var found: Int? = none
     var fallback = false
     var params = RouteParams(names: [], values: [])
     var allow: List[String] = []
@@ -351,7 +351,7 @@ fn name_list(segment: Segment) List[String]:
     return []
 
 # The captured values when `parts` match `segments`.
-fn capture(segments: List[Segment], parts: List[String]) Optional[List[String]]:
+fn capture(segments: List[Segment], parts: List[String]) List[String]?:
     var values: List[String] = []
 
     for entry in segments.entries():
@@ -456,7 +456,7 @@ fn finish(
 
     if found.allow.is_empty(): return reply(exchange, text(404, "not found\n"))
 
-    let response = text(if method != "OPTIONS": 405 else: 204, "")
+    var response = text(if method != "OPTIONS": 405 else: 204, "")
     try response.headers.append("Allow", allow_text(found.allow))
     return reply(exchange, response)
 
@@ -490,7 +490,7 @@ type TestState:
     closed: Bool
     head: HttpHeaders
     body: BytesBuilder
-    unread: Optional[Bytes]
+    unread: Bytes?
 
 type TestExchange:
     request: HttpRequest
@@ -508,16 +508,13 @@ fn finished(state: Shared[TestState]) Result[HttpResponse, HttpError]:
         )
     )
 
-# The exchange documents its headers as one shared object, so the handle is shared rather than copied.
-extern fn msrt_obj_share[T](value: T) T
-
 impl HttpExchange for TestExchange:
     fn close() Unit:
         var guard = lock(self.state)
         guard.value.closed = true
 
     fn headers() HttpHeaders:
-        return msrt_obj_share(self.request.headers)
+        return self.request.headers.clone()
 
     fn method() HttpMethod:
         return self.request.method.clone()
@@ -531,7 +528,7 @@ impl HttpExchange for TestExchange:
     fn query() String:
         return self.request.query.clone()
 
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
         let requested = max_bytes.get(65536)
         if requested <= 0: return error(IoError.InvalidInput)
 
@@ -582,7 +579,7 @@ impl HttpExchange for TestExchange:
     fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
-        max_message_bytes: Optional[Int] = none
+        max_message_bytes: Int? = none
     ) Result[WebSocket, WebSocketError]:
         return error(WebSocketError.Failed("router: WebSocket upgrades need a server"))
 
@@ -614,10 +611,22 @@ type TapState:
 type Tap:
     inner: HttpExchange
     extra: HttpHeaders
+    request: HttpHeaders
     state: Shared[TapState]
 
-fn new_tap(inner: HttpExchange, extra: HttpHeaders) Tap:
-    return Tap(inner: inner, extra: extra, state: share(TapState(status: 0, bytes: 0)))
+fn new_tap(inner: HttpExchange, extra: HttpHeaders, request: HttpHeaders) Tap:
+    return Tap(
+        inner: inner, extra: extra, request: request,
+        state: share(TapState(status: 0, bytes: 0))
+    )
+
+# Wraps `exchange` so that `headers()` reports `request` and everything else passes through.
+# Middleware uses it to hand later layers changed request headers, since a received header set is a copy.
+export fn with_request_headers(
+    exchange: HttpExchange,
+    request: HttpHeaders
+) HttpExchange:
+    return new_tap(exchange, headers(), request)
 
 fn counted(state: Shared[TapState], status: Int, bytes: Int) Unit:
     var guard = lock(state)
@@ -630,7 +639,7 @@ fn snapshot(state: Shared[TapState]) TapState:
 
 # `sent` plus the `extra` headers it does not already have.
 fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
-    let all = sent.clone()
+    var all = sent.clone()
     for name in extra.names():
         if not all.contains(name):
             for value in extra.values(name):
@@ -642,7 +651,7 @@ impl HttpExchange for Tap:
         self.inner.close()
 
     fn headers() HttpHeaders:
-        return self.inner.headers()
+        return self.request.clone()
 
     fn method() HttpMethod:
         return self.inner.method()
@@ -656,7 +665,7 @@ impl HttpExchange for Tap:
     fn query() String:
         return self.inner.query()
 
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
         return self.inner.read(max_bytes)
 
     fn send_headers(status: Int, headers: HttpHeaders) Result[Unit, HttpError]:
@@ -672,7 +681,7 @@ impl HttpExchange for Tap:
     fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
-        max_message_bytes: Optional[Int] = none
+        max_message_bytes: Int? = none
     ) Result[WebSocket, WebSocketError]:
         return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
 
@@ -687,7 +696,7 @@ impl HttpExchange for Tap:
         return ok(unit)
 
 # Middleware that gives every request an id: the request's own `X-Request-Id` when it is 1 to 128
-# printable ASCII characters, otherwise a new UUID. The id is set on the request headers, where
+# printable ASCII characters, otherwise a new UUID. The id is set on the request headers the wrapped exchange reports, where
 # handlers and later middleware read it, and added to the response as `X-Request-Id`.
 export fn request_id() fn(
     HttpExchange,
@@ -699,7 +708,7 @@ fn with_request_id(
     exchange: HttpExchange,
     next: fn(HttpExchange) Result[Unit, HttpError]
 ) Result[Unit, HttpError]:
-    let request = exchange.headers()
+    var request = exchange.headers()
     var id = request.values("X-Request-Id").first().get("")
 
     if not usable_id(id):
@@ -707,9 +716,9 @@ fn with_request_id(
         request.remove("X-Request-Id")
         try request.append("X-Request-Id", id)
 
-    let extra = headers()
+    var extra = headers()
     try extra.append("X-Request-Id", id)
-    return next(new_tap(exchange, extra))
+    return next(new_tap(exchange, extra, request))
 
 fn usable_id(id: String) Bool:
     return (
@@ -751,7 +760,8 @@ fn with_access_log(
     let method = exchange.method().text()
     let path = exchange.path()
     let protocol = exchange.protocol()
-    let tap = new_tap(exchange, headers())
+    let request = exchange.headers()
+    let tap = new_tap(exchange, headers(), request)
     let state = tap.state
     let result = next(tap)
     let sent = snapshot(state)

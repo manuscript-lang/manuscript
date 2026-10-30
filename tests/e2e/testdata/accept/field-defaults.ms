@@ -31,7 +31,7 @@ fn unit_default(var calls: List[Int]) Unit:
 type Explicit:
     calls: List[Int]
     nothing: Unit = unit_default(calls)
-    option: Optional[Int] = some(9)
+    option: Int? = some(9)
 
 test "record defaults and explicit overrides":
     let data = Data()
@@ -76,13 +76,13 @@ test "mutable defaults have fresh storage":
     (first.values.length() != 2 or second.values.length() != 1) | try expect_false
 
 interface ReadWithDefault:
-    fn get(fallback: Optional[Int] = none) Int
+    fn get(fallback: Int? = none) Int
 
 type Reader:
     number: Int = 5
 
 impl ReadWithDefault for Reader:
-    fn get(fallback: Optional[Int]) Int:
+    fn get(fallback: Int?) Int:
         return fallback.get(self.number)
 
 type Marker: ...

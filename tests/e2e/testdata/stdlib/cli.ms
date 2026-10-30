@@ -36,7 +36,7 @@ fn serve_command() Command:
 
 type AddOptions:
     name: String
-    url: Optional[String]
+    url: String?
     extra: List[String]
     dry_run: Bool
 

@@ -3,7 +3,13 @@ import first_view, first_method, first_generic, first_resource from "./first.ms"
 import second_view, second_method, second_generic, second_resource from "./second.ms"
 import Item, Resource from "./domain.ms"
 import Read, read_view from "./contracts.ms"
-import ListBuilder from "@std/collections.ms"
+import share from "@std/shared.ms"
+
+fn close_first(resource: Resource) Unit:
+    let _held = first_resource(resource)
+
+fn close_second(resource: Resource) Unit:
+    let _held = second_resource(resource)
 
 test "views and functions retain local implementations across modules":
     let item = Item(2)
@@ -22,15 +28,12 @@ test "views and functions retain local implementations across modules":
     let second_fn = second_generic()
     (first_fn(item) != 12 or second_fn(item) != 22) | try expect_false
 
-    var events = ListBuilder[Int]()
+    let events = share(List[Int]())
     let resource = Resource(events)
-    var _first_close = first_resource(Resource(events))
-    let _active = true
-    _first_close.close()
 
-    var _second_close = second_resource(resource)
-    let _second_active = true
-    _second_close.close()
+    # Each `Closeable` closes through its own module's implementation when its scope ends.
+    close_first(Resource(events))
+    close_second(resource)
 
-    let values = events.build()
+    let values = events.get()
     (values.get(index: 0) != 10 or values.get(index: 1) != 20) | try expect_false

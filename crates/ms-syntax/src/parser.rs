@@ -678,6 +678,13 @@ impl<'a> Parser<'a> {
             let t = self.peek();
             return self.fail(t, format!("there is no {full}[...] type; a function type is written fn(Int) Int: parameter types in parentheses, then the result type"));
         }
+        if self.kind() == Tok::LBracket && self.speculative == 0 && full.as_str() == "Optional" {
+            let t = self.peek();
+            return self.fail(
+                t,
+                "there is no Optional[T] spelling; write T? instead, e.g. Int? or (fn(Int) Int)?",
+            );
+        }
         if self.take(Tok::LBracket) {
             args = self.type_args()?;
         }
@@ -736,6 +743,25 @@ impl<'a> Parser<'a> {
         Ok((by_ref, self.typ()?))
     }
 
+    /// Wraps `t` once per trailing `?`: `T?` is `Optional[T]`. A function type
+    /// needs parentheses first, since its result type takes the `?`.
+    fn optional_suffix(&mut self, mut t: TypeRef) -> TypeRef {
+        while self.kind() == Tok::Question {
+            self.at += 1;
+            let id = self.id();
+            let pos = t.pos;
+            t = TypeRef {
+                id,
+                pos,
+                kind: TypeKind::Named {
+                    name: Symbol::intern("Optional"),
+                    args: vec![t],
+                },
+            };
+        }
+        t
+    }
+
     fn typ(&mut self) -> PResult<TypeRef> {
         self.enter()?;
         let r = self.typ_inner();
@@ -779,12 +805,14 @@ impl<'a> Parser<'a> {
                 kind: TypeKind::Fn { params, result },
             });
         }
-        if self.take(Tok::LParen) {
+        let t = if self.take(Tok::LParen) {
             let t = self.typ()?;
             self.need(Tok::RParen)?;
-            return Ok(t);
-        }
-        self.named_type()
+            t
+        } else {
+            self.named_type()?
+        };
+        Ok(self.optional_suffix(t))
     }
 
     // ---- declarations ----
@@ -1057,8 +1085,10 @@ impl<'a> Parser<'a> {
                 // `impl Contract for Type:` implements a contract; `impl Type:`
                 // declares the type's own methods.
                 let first = self.named_type()?;
+                let first = self.optional_suffix(first);
                 let (contract, receiver) = if self.take(Tok::For) {
-                    (Some(first), self.named_type()?)
+                    let receiver = self.named_type()?;
+                    (Some(first), self.optional_suffix(receiver))
                 } else {
                     (None, first)
                 };

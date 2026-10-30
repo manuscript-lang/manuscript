@@ -19,7 +19,7 @@ impl Doc:
 
 fn load(path: String) Result[Doc, Error]:
     let f = try filesystem().open(path, flags: "r", mode: 0)
-    let lines = try f.read_lines(max_lines: 1000) # Int passes as Optional[Int]
+    let lines = try f.read_lines(max_lines: 1000) # Int passes as Int?
     return ok(Doc(lines)) # moves lines
 
 export fn main() Int:

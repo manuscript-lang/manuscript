@@ -496,19 +496,24 @@ impl FnLower<'_> {
                         let v = self.borrow(x);
                         let v = match self.b.m.types.kind(self.ty_of(v)).clone() {
                             // A budget that may be absent crosses as `i64::MAX` when it is.
-                            TyKind::Opt(t) if p.ty == "i64" && t == MTy::INT => {
+                            TyKind::Opt(t)
+                                if p.ty == "i64" && (t == MTy::INT || self.is_duration(t)) =>
+                            {
                                 let has = self.b.opt_is_some(v);
                                 let unlimited = self.b.iconst(i64::MAX);
                                 let given = self.two_ways(
                                     has,
                                     MTy::INT,
-                                    &mut |s| Ok(Some(s.b.opt_get(v))),
+                                    &mut |s| {
+                                        let n = s.b.opt_get(v);
+                                        Ok(Some(s.unduration(n)))
+                                    },
                                     &mut |_| Ok(Some(unlimited)),
                                 )?;
                                 given.v
                             }
                             // A present optional string arrives as the plain string.
-                            _ => v,
+                            _ => self.unduration(v),
                         };
                         vals.push(v);
                     }
@@ -610,7 +615,8 @@ impl FnLower<'_> {
                         unreachable!("fields come from a record");
                     };
                     let f = self.b.rec_get(rid, k as u32, rec);
-                    (self.b.opt_is_some(f), self.b.opt_get(f))
+                    let some = self.b.opt_get(f);
+                    (self.b.opt_is_some(f), self.unduration(some))
                 }
                 _ => (self.b.bconst(false), zero(self)),
             };
@@ -661,12 +667,12 @@ impl FnLower<'_> {
                 return Ok((has, tag.v));
             }
             let value = self.b.opt_get(v);
-            return Ok((has, value));
+            return Ok((has, self.unduration(value)));
         }
         let value = if matches!(self.b.m.types.kind(ty), TyKind::Alt(_)) {
             self.b.alt_tag(v)
         } else {
-            v
+            self.unduration(v)
         };
         Ok((self.b.bconst(true), value))
     }
@@ -682,8 +688,20 @@ impl FnLower<'_> {
         let r = self.finish_rt_call_inner(sym, sig, has_out, vals, result);
         self.err_slot = None;
         let mut r = r?;
+        // A duration crosses as its nanosecond count.
+        if self.is_duration(result) && self.ty_of(r.v) == MTy::INT {
+            r.v = self.duration_of(r.v)?;
+        }
         r.v = self.stamped(r.v)?;
         Ok(r)
+    }
+
+    /// The nanosecond count of a `Duration` operand, else the operand itself.
+    pub(crate) fn unduration(&mut self, v: Value) -> Value {
+        if self.is_duration(self.ty_of(v)) {
+            return self.duration_nanos(v).expect("duration is a record");
+        }
+        v
     }
 
     /// Passes the slot a trailing `err` parameter writes the `Failed` text to.
@@ -749,7 +767,7 @@ impl FnLower<'_> {
                 self.push_err_slot(sig, &mut vals);
                 let code = self.status_code(sym, &vals)?;
                 if self.ok_payload_is_optional_unit(result) {
-                    // `Result[Optional[Unit], E]`: `STATUS_NONE` is none, a zero status is some.
+                    // `Result[Unit?, E]`: `STATUS_NONE` is none, a zero status is some.
                     let take = &mut |s: &mut Self| Ok(s.b.unit());
                     return self.status_optional_result(sym, code, take, result);
                 }
@@ -824,7 +842,7 @@ impl FnLower<'_> {
             TyKind::Opt(t) => t,
             _ => return Err(Error::new(format!("{sym}: unexpected result type"))),
         };
-        // `Result[Optional[T], E]`: the runtime writes a `T` and answers `STATUS_NONE` for none.
+        // `Result[T?, E]`: the runtime writes a `T` and answers `STATUS_NONE` for none.
         let eof = match (self.b.m.types.kind(result), self.b.m.types.kind(payload)) {
             (TyKind::Alt(_), TyKind::Opt(inner)) => Some(*inner),
             _ => None,
@@ -1055,7 +1073,7 @@ impl FnLower<'_> {
         Ok(self.b.alt_new(a, err as u32, &[e]))
     }
 
-    /// Whether the `ok` payload of `result` is `Optional[Unit]`.
+    /// Whether the `ok` payload of `result` is `Unit?`.
     fn ok_payload_is_optional_unit(&self, result: MTy) -> bool {
         let TyKind::Alt(a) = self.b.m.types.kind(result) else {
             return false;

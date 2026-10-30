@@ -9,13 +9,13 @@ import Bytes from "@std/bytes.ms"
 type Chunks:
     parts: List[String]
     next: Int = 0
-    failure: Optional[String] = none
+    failure: String? = none
 
 impl ReadStream for Chunks:
     fn close() Unit:
         return unit
 
-    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
         if self.next == self.parts.length():
             match self.failure:
                 some(message): return error(IoError.Failed(message.clone()))

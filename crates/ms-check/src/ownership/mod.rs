@@ -145,6 +145,10 @@ pub struct CallableOwnership {
     /// Assignments that store over a binding: the old value is dropped unless
     /// an earlier `Access::Move` of it cleared the binding's drop flag.
     pub drops_old: HashSet<NodeId>,
+    /// Field paths that move out of an owned binding at their last use (`return b.items`), by the
+    /// member expression. The value is still copied where it is consumed; the rest of the binding
+    /// is cleaned up as before.
+    pub partial_moves: HashMap<NodeId, Place>,
     /// Resource bindings that nothing takes: lowering closes them when their scope ends.
     pub implicit_closes: HashSet<usize>,
     /// For a closed resource binding that is also moved on some paths: the name expressions
@@ -378,6 +382,7 @@ impl Hir<'_> {
                     c,
                     classes: &classes,
                     summaries: &summaries,
+                    methods: &self.program().methods,
                     live: l,
                     escaped: &known,
                 });

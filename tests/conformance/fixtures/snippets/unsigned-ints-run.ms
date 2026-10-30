@@ -25,7 +25,7 @@ export fn main() Int:
     let l: List[UInt8] = [200, 1, 255, 3]
     let _ = stdout().write("{l.sorted()} {total([100, 20, 7])}\n")
     let _ = stdout().write("{high / 2} {high % 10} {low < high} {wide > 3000000000}\n")
-    let opt: Optional[UInt8] = 255
+    let opt: UInt8? = 255
     let big: Int = 300
     let _ = stdout().write(
         "{opt.get(0)} {big.to_uint8()} {big.to_uint16()} {wide.to_int32()} {wide.to_int64()}\n"

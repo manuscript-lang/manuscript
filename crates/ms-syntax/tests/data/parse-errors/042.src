@@ -18,7 +18,7 @@ impl Result[T, E]:
     fn is_error() Bool:
 
     # Returns the successful payload, or `default` when this is an error. Without a default, an error raises a fault.
-    fn get(default: Optional[T] = none) T:
+    fn get(default: T? = none) T:
 
     # Returns the error payload; faults when this is successful.
     fn err() E:
@@ -33,4 +33,4 @@ impl Result[T, E]:
     fn and_then[U](transform: fn(value: T) Result[U, E]) Result[U, E]:
 
     # Returns some with the original success payload, or none for an error.
-    fn to_optional() Optional[T]:
+    fn to_optional() T?:

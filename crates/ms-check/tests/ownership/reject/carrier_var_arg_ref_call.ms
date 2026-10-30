@@ -5,12 +5,12 @@ type Cursor[T]:
     position: Int
 
 impl Cursor[T]:
-    var fn next() ref Optional[T]:
+    var fn next() ref T?:
         let item = self.source.at(self.position)
         self.position += 1
         return item
 
-fn advance(var it: Cursor[String]) ref Optional[String]:
+fn advance(var it: Cursor[String]) ref String?:
     return it.next()
 
 fn f(var d: Deque[String]) Int:

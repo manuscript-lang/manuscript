@@ -2,6 +2,6 @@
 # conform: phase=check
 # conform: origin=pkg/parser/parser_test.go:155 TestNamedImports
 import (
-    ListBuilder,  # first
-    MapBuilder,
+    ListEntry,  # first
+    MapEntry,
 ) from "@std/collections.ms"

@@ -25,9 +25,9 @@ extern fn msrt_logcore_line_json(
 ) Result[String, LogCoreError]
 
 extern fn msrt_logcore_new_state(
-    level: Optional[Int],
-    timestamp: Optional[Bool],
-    max_bytes: Optional[Int]
+    level: Int?,
+    timestamp: Bool?,
+    max_bytes: Int?
 ) Result[LogState, LogCoreError]
 
 extern fn msrt_logcore_shut(value: LogGate) Unit
@@ -83,9 +83,9 @@ impl LogState:
 
 # Creates state from optional level index, timestamp setting, and record byte limit.
 export fn new_state(
-    level: Optional[Int],
-    timestamp: Optional[Bool],
-    max_bytes: Optional[Int]
+    level: Int?,
+    timestamp: Bool?,
+    max_bytes: Int?
 ) Result[LogState, LogCoreError]:
     return msrt_logcore_new_state(level, timestamp, max_bytes)
 
