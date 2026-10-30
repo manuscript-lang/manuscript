@@ -469,23 +469,6 @@ impl Cx {
         if t.is_std("Bytes") {
             return Ok(MTy::BYTES);
         }
-        // Clock values are two-word C structs in the runtime (`Timestamp`, `Instant`), so a
-        // record of two `Int`s shares their memory layout.
-        if t.is_std("Timestamp") || t.is_std("Instant") {
-            let name = if t.is_std("Timestamp") {
-                "Timestamp"
-            } else {
-                "Instant"
-            };
-            let words = if name == "Timestamp" {
-                ["seconds", "nanoseconds"]
-            } else {
-                ["domain", "tick"]
-            };
-            let fields = words.iter().map(|w| (w.to_string(), MTy::INT)).collect();
-            let (_, ty) = m.add_record(name, fields);
-            return Ok(ty);
-        }
         // Plain-data natives share the runtime's `repr(C)` layout.
         let pod: &[(&str, &[&str])] = &[("Decimal", &["lo", "hi", "exp"])];
         for (name, fields) in pod {
@@ -495,10 +478,6 @@ impl Cx {
                     fields.iter().map(|f| (f.to_string(), MTy::INT)).collect();
                 return Ok(ty);
             }
-        }
-        // A duration is its nanosecond count.
-        if t.is_std("Duration") {
-            return Ok(MTy::INT);
         }
         // Arbitrary-precision integers have no runtime yet; the type exists so interfaces
         // that mention one (`FileInfo.exact`) can be declared.

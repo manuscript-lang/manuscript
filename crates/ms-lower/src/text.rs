@@ -574,23 +574,53 @@ impl<'a> FnLower<'a> {
 
     /// The text of a `Duration`: `Duration.to_string` from `@std/time.ms`.
     pub(crate) fn duration_text(&mut self, x: Val) -> Result<Val, Error> {
+        let n = self.borrow(x);
+        let v = self.time_call("Duration", "to_string", &[n])?;
+        Ok(Val { v, own: true })
+    }
+
+    /// Calls the method `name` of a record of `@std/time.ms` (`Duration`, `Instant`,
+    /// `Timestamp`) with the receiver first.
+    pub(crate) fn time_call(
+        &mut self,
+        record: &str,
+        name: &str,
+        args: &[Value],
+    ) -> Result<Value, Error> {
         let method = self
             .cx
             .methods
             .iter()
             .find(|m| {
-                m.receiver.is_std("Duration")
-                    && m.decl.as_ref().is_some_and(|d| d.name() == "to_string")
+                m.receiver.is_time(record) && m.decl.as_ref().is_some_and(|d| d.name() == name)
             })
-            .ok_or_else(|| Error::new("Duration.to_string not found"))?;
+            .ok_or_else(|| Error::new(format!("{record}.{name} not found")))?;
         let callable =
             self.callable_of_decl(method.module, method.decl.as_ref().map(|d| d.id()))?;
         let f = self
             .cx
             .function_for(self.b.m, &callable, &ms_check::types::Subst::new())?;
-        let n = self.borrow(x);
-        let v = self.b.call(f, &[n]);
-        Ok(Val { v, own: true })
+        Ok(self.b.call(f, args))
+    }
+
+    /// The nanosecond count of a `Duration`.
+    pub(crate) fn duration_nanos(&mut self, d: Value) -> Result<Value, Error> {
+        let t = self.ty_of(d);
+        let TyKind::Rec(rid) = self.b.m.types.kind(t).clone() else {
+            return Err(Error::new("Duration is not a record"));
+        };
+        Ok(self.b.rec_get(rid, 0, d))
+    }
+
+    /// The `Duration` holding `nanos`.
+    pub(crate) fn duration_of(&mut self, nanos: Value) -> Result<Value, Error> {
+        let t = self
+            .cx
+            .lower_ty(self.b.m, &ms_check::types::time_type("Duration"))?;
+        let TyKind::Rec(rid) = self.b.m.types.kind(t).clone() else {
+            return Err(Error::new("Duration is not a record"));
+        };
+        Ok(self.b.rec_new(rid, &[nanos]))
     }
 
     /// A text literal with interpolations.
@@ -608,7 +638,7 @@ impl<'a> FnLower<'a> {
                         return Ok(x);
                     }
                     let _ = Kind::Record;
-                    if self.ety(e).is_std("Duration") {
+                    if self.ety(e).is_time("Duration") {
                         self.duration_text(x)?
                     } else {
                         self.format_value(x)?

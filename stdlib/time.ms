@@ -1,38 +1,32 @@
 import Data, panic from "@std/core.ms"
 
-extern fn msstd_time_duration_to_nanoseconds(value: Duration) Int
+extern fn msstd_time_duration_add(value: Int, other: Int) Int
 
-extern fn msstd_time_timestamp_unix_seconds(value: Timestamp) Int
+extern fn msstd_time_duration_subtract(value: Int, other: Int) Int
 
-extern fn msstd_time_timestamp_nanoseconds(value: Timestamp) Int
+extern fn msstd_time_duration_multiply(value: Int, factor: Int) Int
 
-extern fn msstd_time_duration_add(value: Duration, other: Duration) Duration
+extern fn msstd_time_duration_divide(value: Int, divisor: Int) Int
 
-extern fn msstd_time_duration_subtract(value: Duration, other: Duration) Duration
+extern fn msstd_time_duration_negate(value: Int) Int
 
-extern fn msstd_time_duration_multiply(value: Duration, factor: Int) Duration
+extern fn msstd_time_duration_abs(value: Int) Int
 
-extern fn msstd_time_duration_divide(value: Duration, divisor: Int) Duration
+extern fn msstd_time_duration_to_microseconds(value: Int) Int
 
-extern fn msstd_time_duration_negate(value: Duration) Duration
+extern fn msstd_time_duration_to_milliseconds(value: Int) Int
 
-extern fn msstd_time_duration_abs(value: Duration) Duration
+extern fn msstd_time_duration_to_seconds(value: Int) Float
 
-extern fn msstd_time_duration_compare(value: Duration, other: Duration) Int
+extern fn msstd_time_duration_to_minutes(value: Int) Float
 
-extern fn msstd_time_duration_to_microseconds(value: Duration) Int
+extern fn msstd_time_duration_to_hours(value: Int) Float
 
-extern fn msstd_time_duration_to_milliseconds(value: Duration) Int
+extern fn msstd_time_instant_shift(value: Instant, duration: Int) Instant
 
-extern fn msstd_time_duration_to_seconds(value: Duration) Float
+extern fn msstd_time_instant_unshift(value: Instant, duration: Int) Instant
 
-extern fn msstd_time_duration_to_minutes(value: Duration) Float
-
-extern fn msstd_time_duration_to_hours(value: Duration) Float
-
-extern fn msstd_time_instant_shift(value: Instant, duration: Duration) Instant
-
-extern fn msstd_time_instant_difference(value: Instant, other: Instant) Duration
+extern fn msstd_time_instant_difference(value: Instant, other: Instant) Int
 
 extern fn msstd_time_instant_compare(value: Instant, other: Instant) Int
 
@@ -40,13 +34,13 @@ extern fn msstd_time_timestamp_to_string(value: Timestamp) String
 
 extern fn msstd_time_timestamp_shift(
     value: Timestamp,
-    duration: Duration
+    duration: Int
 ) Result[Timestamp, TimeError]
 
 extern fn msstd_time_timestamp_difference(
     value: Timestamp,
     other: Timestamp
-) Result[Duration, TimeError]
+) Result[Int, TimeError]
 
 extern fn msstd_time_timestamp_compare(value: Timestamp, other: Timestamp) Int
 
@@ -60,8 +54,6 @@ extern fn msstd_time_timestamp_format(
     pattern: String,
     zone: String
 ) Result[String, TimeError]
-
-extern fn msstd_time_duration(nanoseconds: Int) Duration
 
 extern fn msstd_time_parse_timestamp(text: String) Result[Timestamp, TimeError]
 
@@ -78,7 +70,7 @@ extern fn msstd_time_from_calendar(
 
 extern fn msstd_time_local_zone() String
 
-extern fn msstd_time_sleep(duration: Duration) Unit
+extern fn msstd_time_sleep(duration: Int) Unit
 
 extern fn msstd_time_timestamp(
     seconds: Int,
@@ -106,39 +98,44 @@ export interface Clock:
     # Readings are only comparable with others from the same clock and do not correspond to a calendar date.
     fn now() Instant
 
-# A span of elapsed time.
-export extern type Duration
-
-impl Data for Duration:
+# A span of elapsed time, counted in signed nanoseconds.
+export type Duration:
+    # The signed count of nanoseconds; `nanoseconds(n)` and the unit constructors build one.
+    nanos: Int
 
 impl Duration:
     # Adds signed nanoseconds; a result outside Duration's representable range faults.
     fn add(other: Duration) Duration:
-        return msstd_time_duration_add(self, other)
+        return Duration(nanos: msstd_time_duration_add(self.nanos, other.nanos))
 
     # Subtracts signed nanoseconds; a result outside Duration's representable range faults.
     fn subtract(other: Duration) Duration:
-        return msstd_time_duration_subtract(self, other)
+        return Duration(nanos: msstd_time_duration_subtract(self.nanos, other.nanos))
 
     # Multiplies by an integer factor; overflow faults.
     fn multiply(factor: Int) Duration:
-        return msstd_time_duration_multiply(self, factor)
+        return Duration(nanos: msstd_time_duration_multiply(self.nanos, factor))
 
     # Divides by a nonzero integer, truncating toward zero; zero faults.
     fn divide(divisor: Int) Duration:
-        return msstd_time_duration_divide(self, divisor)
+        return Duration(nanos: msstd_time_duration_divide(self.nanos, divisor))
 
     # Negates this duration; the minimum Duration faults.
     fn negate() Duration:
-        return msstd_time_duration_negate(self)
+        return Duration(nanos: msstd_time_duration_negate(self.nanos))
 
     # Returns the absolute value; the minimum Duration faults.
     fn abs() Duration:
-        return msstd_time_duration_abs(self)
+        return Duration(nanos: msstd_time_duration_abs(self.nanos))
 
     # Returns -1, 0, or 1.
     fn compare(other: Duration) Int:
-        return msstd_time_duration_compare(self, other)
+        if self.nanos < other.nanos:
+            return -1
+        if self.nanos > other.nanos:
+            return 1
+
+        return 0
 
     # Returns the lesser of this value and `other`, or this value when they compare equal.
     fn min(other: Duration) Duration:
@@ -167,15 +164,15 @@ impl Duration:
 
     # Converts this duration to an integer number of nanoseconds.
     fn to_nanoseconds() Int:
-        return msstd_time_duration_to_nanoseconds(self)
+        return self.nanos
 
     # Converts this duration to an integer number of microseconds.
     fn to_microseconds() Int:
-        return msstd_time_duration_to_microseconds(self)
+        return msstd_time_duration_to_microseconds(self.nanos)
 
     # Converts this duration to an integer number of milliseconds.
     fn to_milliseconds() Int:
-        return msstd_time_duration_to_milliseconds(self)
+        return msstd_time_duration_to_milliseconds(self.nanos)
 
     # Returns human text such as `1m30.5s`, `250ms`, `1.5µs`, `-2h`, or `0s`; string interpolation uses it too.
     fn to_string() String:
@@ -209,27 +206,35 @@ impl Duration:
 
     # Converts this duration to floating-point seconds.
     fn to_seconds() Float:
-        return msstd_time_duration_to_seconds(self)
+        return msstd_time_duration_to_seconds(self.nanos)
 
     # Converts this duration to floating-point minutes.
     fn to_minutes() Float:
-        return msstd_time_duration_to_minutes(self)
+        return msstd_time_duration_to_minutes(self.nanos)
 
     # Converts this duration to floating-point hours.
     fn to_hours() Float:
-        return msstd_time_duration_to_hours(self)
+        return msstd_time_duration_to_hours(self.nanos)
 
 # An instant on a monotonic clock; it is not a calendar timestamp.
-export extern type Instant
+export type Instant:
+    # The clock the reading belongs to; instants from different domains do not compare.
+    domain: Int
+    # Nanoseconds on that clock.
+    tick: Int
 
 impl Instant:
     # Shifts this monotonic instant by a duration.
     fn shift(duration: Duration) Instant:
-        return msstd_time_instant_shift(self, duration)
+        return msstd_time_instant_shift(self, duration.nanos)
+
+    # Shifts this monotonic instant back by a duration.
+    fn unshift(duration: Duration) Instant:
+        return msstd_time_instant_unshift(self, duration.nanos)
 
     # Returns the elapsed duration from `right` to this instant.
     fn difference(other: Instant) Duration:
-        return msstd_time_instant_difference(self, other)
+        return Duration(nanos: msstd_time_instant_difference(self, other))
 
     # Returns -1, 0, or 1; instants from different clock domains fault.
     fn compare(other: Instant) Int:
@@ -261,9 +266,11 @@ impl Instant:
         return self
 
 # A wall-clock time with Unix seconds and nanoseconds.
-export extern type Timestamp
-
-impl Data for Timestamp:
+export type Timestamp:
+    # Whole seconds since the Unix epoch.
+    seconds: Int
+    # The nanosecond within the second, 0 through 999999999.
+    nanos: Int
 
 impl Timestamp:
     # Formats this timestamp in RFC 3339 form.
@@ -272,19 +279,20 @@ impl Timestamp:
 
     # Returns the whole Unix seconds represented by this timestamp.
     fn unix_seconds() Int:
-        return msstd_time_timestamp_unix_seconds(self)
+        return self.seconds
 
     # Returns this timestamp's nanosecond component.
     fn nanoseconds() Int:
-        return msstd_time_timestamp_nanoseconds(self)
+        return self.nanos
 
     # Adds a duration to this wall-clock timestamp.
     fn shift(duration: Duration) Result[Timestamp, TimeError]:
-        return msstd_time_timestamp_shift(self, duration)
+        return msstd_time_timestamp_shift(self, duration.nanos)
 
     # Returns `self - right` as a duration.
     fn difference(other: Timestamp) Result[Duration, TimeError]:
-        return msstd_time_timestamp_difference(self, other)
+        let nanos = try msstd_time_timestamp_difference(self, other)
+        return ok(Duration(nanos: nanos))
 
     # Returns -1, 0, or 1 across the full calendar range.
     fn compare(other: Timestamp) Int:
@@ -380,7 +388,7 @@ fn duration_decimal(whole: Int, frac: Int, width: Int) String:
 
 # Constructs a duration of `n` nanoseconds, the unit `Duration` counts in; `n` may be negative.
 export fn nanoseconds(n: Int) Duration:
-    return msstd_time_duration(n)
+    return Duration(nanos: n)
 
 # Constructs a duration of `n` microseconds; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
 export fn microseconds(n: Int) Duration:
@@ -429,7 +437,7 @@ export fn local_zone() String:
 
 # Suspends the current task for at least the requested duration.
 export fn sleep(duration: Duration) Unit:
-    msstd_time_sleep(duration)
+    msstd_time_sleep(duration.nanos)
 
 # Constructs a timestamp from Unix seconds and a nanosecond adjustment.
 export fn timestamp(seconds: Int, nanoseconds: Int) Result[Timestamp, TimeError]:

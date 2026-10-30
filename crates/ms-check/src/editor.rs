@@ -91,7 +91,7 @@ pub fn members(program: &crate::Program, receiver: &Ty, module: Option<Name>) ->
             result.push(Member {
                 name: n(unit),
                 kind: MemberKind::Field,
-                ty: standard("Duration", Vec::new()),
+                ty: time_type("Duration"),
                 declaration: None,
             });
         }
