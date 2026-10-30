@@ -152,6 +152,13 @@ const METHODS: &[MethodRow] = &[
     ),
     ("net", "Network", "serve", "msrt_net_network_serve", &[]),
     (
+        "net",
+        "Network",
+        "serve_connections",
+        "msrt_net_network_serve_connections",
+        &[],
+    ),
+    (
         "http",
         "HttpExchange",
         "close",

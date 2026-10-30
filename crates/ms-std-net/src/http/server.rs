@@ -641,8 +641,31 @@ impl Server {
             return Err(NetErr::PermissionDenied);
         }
         let listener = owner.listen_tcp(address)?;
+        Self::create(owner, Some(listener), dispatch, options)
+    }
+
+    /// Starts a server without a listener: it serves the connections [`Server::adopt`] hands it,
+    /// accepted elsewhere (another thread's accept loop).
+    pub fn start_adopting(
+        owner: &Rc<Network>,
+        dispatch: Box<dyn Dispatch>,
+        options: Options,
+    ) -> Result<Rc<Server>, NetErr> {
+        if owner.is_closed() {
+            return Err(NetErr::Closed);
+        }
+        Self::create(owner, None, dispatch, options)
+    }
+
+    fn create(
+        owner: &Rc<Network>,
+        listener: Option<socket2::Socket>,
+        dispatch: Box<dyn Dispatch>,
+        options: Options,
+    ) -> Result<Rc<Server>, NetErr> {
         let local = listener
-            .local_addr()
+            .as_ref()
+            .and_then(|l| l.local_addr().ok())
             .map(|a| crate::conn::socket_addr_text(&a))
             .unwrap_or_default();
         let reactor = Reactor::get();
@@ -657,7 +680,7 @@ impl Server {
             id,
             me: me.clone(),
             owner: owner.clone(),
-            listener: RefCell::new(Some(listener)),
+            listener: RefCell::new(listener),
             address: local,
             limits: options.limits,
             tls: options.tls,
@@ -682,7 +705,7 @@ impl Server {
             .listener
             .borrow()
             .as_ref()
-            .is_some_and(|l| reactor.add(l.as_sock(), token, Ev::IN));
+            .is_none_or(|l| reactor.add(l.as_sock(), token, Ev::IN));
         if !watched {
             reactor.targets.borrow_mut().remove(&token);
             return Err(NetErr::failed("cannot watch listener"));
@@ -694,6 +717,20 @@ impl Server {
             return Err(NetErr::Closed);
         }
         Ok(server)
+    }
+
+    /// Serves a connection accepted elsewhere. `raw` comes from `Listener::accept_raw` and is
+    /// consumed here; a closing server drops (closes) it, and a number that is not an outstanding
+    /// handle is ignored. Call it on the thread that owns the server.
+    pub fn adopt(&self, raw: i64) {
+        let Some(sock) = crate::conn::take_raw_handle(raw) else {
+            return;
+        };
+        if self.st.borrow().closing || sock.set_nonblocking(true).is_err() {
+            return;
+        }
+        let _ = sock.set_tcp_nodelay(true);
+        self.add_conn(sock, &Reactor::get());
     }
 
     pub fn id(&self) -> usize {
@@ -1736,6 +1773,45 @@ pub(crate) mod tests {
         assert!(text.contains("Connection: close\r\n"));
         assert!(text.contains("Date: "));
         assert!(text.ends_with("\r\n\r\nGET|/hello|x=1|HTTP/1.1"), "{text}");
+    }
+
+    #[test]
+    fn serves_connections_accepted_elsewhere() {
+        let net = Network::new_root();
+        let server =
+            Server::start_adopting(&net, Box::new(Buffered(App)), opts(Limits::default())).unwrap();
+        assert_eq!(server.address(), "");
+        let listener = crate::conn::Listener::new(
+            net.clone(),
+            net.listen_tcp("127.0.0.1:0").unwrap(),
+            None,
+            None,
+            None,
+        );
+        let addr = listener.address().to_string();
+        let client = std::thread::spawn(move || exchange(&addr, &get("/handed")));
+        let raw = listener.accept_raw(Some(5_000_000_000)).unwrap();
+        // A plain listener hands the socket over; the server answers on it from here.
+        server.adopt(raw);
+        while !client.is_finished() {
+            crate::wait::sleep(Duration::from_millis(2));
+        }
+        let text = client.join().unwrap();
+        assert!(text.starts_with("HTTP/1.1 200 OK\r\n"), "{text}");
+        assert!(text.ends_with("GET|/handed||HTTP/1.1"), "{text}");
+        // An invented or reused number is ignored, not closed as a descriptor.
+        server.adopt(-1);
+        server.adopt(raw);
+        // A closed adopting server closes what it is handed.
+        server.close().unwrap();
+        let addr = listener.address().to_string();
+        let client = std::thread::spawn(move || exchange(&addr, &get("/late")));
+        let raw = listener.accept_raw(Some(5_000_000_000)).unwrap();
+        server.adopt(raw);
+        while !client.is_finished() {
+            crate::wait::sleep(Duration::from_millis(2));
+        }
+        assert_eq!(client.join().unwrap(), "");
     }
 
     #[test]

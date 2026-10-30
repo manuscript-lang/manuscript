@@ -334,6 +334,11 @@ extern fn msrt_net_listener_accept(
     timeout: Optional[Duration]
 ) Result[Connection, NetworkError]
 
+extern fn msrt_net_listener_accept_raw(
+    handle: NativeListener,
+    timeout: Optional[Duration]
+) Result[Int, NetworkError]
+
 extern fn msrt_net_listener_address(handle: NativeListener) String
 
 extern fn msrt_net_listener_close(handle: NativeListener) Unit
@@ -355,6 +360,11 @@ impl Listener:
     # On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and returns Failed.
     fn accept(timeout: Optional[Duration] = none) Result[Connection, NetworkError]:
         return msrt_net_listener_accept(self.native, timeout)
+
+    # Waits for the next incoming connection and returns its socket handle without wrapping it, to give to `HttpServer.adopt` (on this or another thread). The caller owns the handle until then; one that is never adopted leaks its socket.
+    # A timeout returns Timeout and a closed listener returns Closed. A TLS listener returns InvalidInput: the adopting server performs the handshake.
+    fn accept_raw(timeout: Optional[Duration] = none) Result[Int, NetworkError]:
+        return msrt_net_listener_accept_raw(self.native, timeout)
 
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
     fn address() String:
@@ -494,6 +504,12 @@ export interface Network:
         subprotocols: List[String],
         options: WebSocketOptions
     ) Result[WebSocket, WebSocketError]
+    # Starts an HTTP server that has no listener: it serves the connections handed to `HttpServer.adopt`, with the handler, limits, timeouts, and TLS of `serve`. Close the server to stop it.
+    # Returns InvalidInput for invalid options.
+    fn serve_connections(
+        handler: fn(HttpExchange) Result[Unit, HttpError],
+        options: HttpServerOptions = HttpServerOptions()
+    ) Result[HttpServer, HttpError]
     # Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
     # The address must be allowed by this network's restrictions, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
     fn with_resolver(address: String) Result[Network, NetworkError]

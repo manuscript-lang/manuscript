@@ -53,6 +53,25 @@ Use workers for CPU-bound work. A worker may use the network: HTTP `fetch` and c
 
 Send plain serializable data. Messages reconstruct values through JSON; acceptance by the checker does not establish transfer suitability or preserve shared identity. Do not use worker messages to transfer live resources.
 
+## Serving on several cores
+
+One thread accepts and deals each connection, round robin, to serving workers. `Listener.accept_raw` returns the accepted socket's handle (an `Int`) without wrapping it; the handle crosses a worker channel; `HttpServer.adopt` in the worker serves it. `Network.serve_connections` starts the listener-less server that takes the handles, with the options and handler of `serve`. The worker builds its own handler, so handler state is per worker. A connection stays on its worker for life.
+
+```manuscript
+fn serving_worker() Unit:
+    var ch = worker_channel[Int, Int]()
+    if let acquired = network().serve_connections(handler: buffered(app)):
+        var server = acquired
+        while true:
+            if let handle = ch.receive().get(none):
+                server.adopt(handle)
+                continue
+            break
+        server.close()
+```
+
+The starter loops `accept_raw`, sends each handle to `workers[i % n]`. A handle that is never adopted leaks its socket; `accept_raw` refuses a TLS listener, because the adopting server runs the handshake.
+
 ## Cost
 
 Worker throughput depends on available cores, job size and messaging costs. A message costs a JSON encode, a queue operation and a decode, so send work in chunks that take longer than the message does to move.

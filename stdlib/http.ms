@@ -335,6 +335,8 @@ export extern type NativeHttpServer
 
 extern fn msrt_http_server_address(handle: NativeHttpServer) String
 
+extern fn msrt_http_server_adopt(handle: NativeHttpServer, connection: Int) Unit
+
 extern fn msrt_http_server_close(handle: NativeHttpServer) Unit
 
 extern fn msrt_http_server_wait(handle: NativeHttpServer) Result[Unit, IoError]
@@ -355,6 +357,10 @@ impl HttpServer:
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
     fn address() String:
         return msrt_http_server_address(self.native)
+
+    # Serves the socket handle `Listener.accept_raw` returned, on the thread that started this server. The server owns the socket from here, also when it is closing and drops the connection. Use each handle once.
+    fn adopt(connection: Int) Unit:
+        msrt_http_server_adopt(self.native, connection)
 
     # Blocks until the server stops. Returns Ok after a normal `close`, or IoError.Failed with the host's text if serving ended with an error.
     # Cancelling the waiting task stops the wait.

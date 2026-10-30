@@ -65,6 +65,36 @@ fn server_limits(
     })
 }
 
+/// The server's limits and TLS settings from the wire options.
+fn server_options(opts: &HttpServerOptionsWire) -> Result<Options, HttpErr> {
+    let limits = server_limits(
+        opts.max_requests.get(),
+        opts.max_body_bytes.get(),
+        opts.max_response_bytes.get(),
+        opts.max_header_bytes.get(),
+        opts.timeout.get(),
+        opts.grace.get(),
+    )
+    .map_err(|()| HttpErr::InvalidInput)?;
+    let tls = if opts.tls_present != 0 {
+        let mut options = tls_options(
+            &opts.tls_server_name,
+            &opts.tls_roots_pem,
+            &opts.tls_certificate_pem,
+            &opts.tls_private_key_pem,
+            &opts.tls_alpn,
+            opts.tls_require_client_certificate,
+        );
+        if options.alpn.is_empty() {
+            options.alpn = vec!["http/1.1".to_string()];
+        }
+        Some(tls::server_config(&options).map_err(|_| HttpErr::InvalidInput)?)
+    } else {
+        None
+    };
+    Ok(Options { limits, tls })
+}
+
 native! {
     // -------------------------------------------------------------------- server
 
@@ -79,48 +109,37 @@ native! {
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         let program = Program::streaming(&env);
-        let limits = server_limits(
-            opts.max_requests.get(),
-            opts.max_body_bytes.get(),
-            opts.max_response_bytes.get(),
-            opts.max_header_bytes.get(),
-            opts.timeout.get(),
-            opts.grace.get(),
-        );
         let result = (|| {
-            let limits = limits.map_err(|()| HttpErr::InvalidInput)?;
+            let options = server_options(opts)?;
             if !net.listen_allowed(address) {
                 return Err(HttpErr::PermissionDenied);
             }
-            let tls = if opts.tls_present != 0 {
-                let mut options = tls_options(
-                    &opts.tls_server_name,
-                    &opts.tls_roots_pem,
-                    &opts.tls_certificate_pem,
-                    &opts.tls_private_key_pem,
-                    &opts.tls_alpn,
-                    opts.tls_require_client_certificate,
-                );
-                if options.alpn.is_empty() {
-                    options.alpn = vec!["http/1.1".to_string()];
-                }
-                Some(tls::server_config(&options).map_err(|_| HttpErr::InvalidInput)?)
-            } else {
-                None
-            };
-            Server::start(
-                &net,
-                address,
-                program,
-                Options {
-                    limits,
-                    tls,
-                },
-            )
-            .map_err(HttpErr::from)
+            Server::start(&net, address, program, options).map_err(HttpErr::from)
         })();
         out.write(Object(ServerH(report(result, &err)?)));
         Ok(())
+    }
+
+    /// `Network.serve_connections(handler, options) -> Result[HttpServer, HttpError]`: a server
+    /// without a listener that serves what `HttpServer.adopt` hands it.
+    fn msrt_net_network_serve_connections(
+        net: ObjRef<NetH>,
+        env: Handler,
+        opts: &HttpServerOptionsWire,
+        out: Out<Object<ServerH>>,
+        err: ErrOut,
+    ) -> Result<(), StatusCode> {
+        let program = Program::streaming(&env);
+        let result = server_options(opts).and_then(|options| {
+            Server::start_adopting(&net, program, options).map_err(HttpErr::from)
+        });
+        out.write(Object(ServerH(report(result, &err)?)));
+        Ok(())
+    }
+
+    /// `HttpServer.adopt(connection)`: serves a handle from `Listener.accept_raw`.
+    fn msrt_http_server_adopt(s: ObjRef<ServerH>, connection: i64) -> () {
+        s.adopt(connection);
     }
 
     /// `HttpServer.address()`.
