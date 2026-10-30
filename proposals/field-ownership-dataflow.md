@@ -51,6 +51,10 @@ A field path appears only in `Place` for overlap checks (`places.rs`), never as 
 - Moving out of a type that has its own `Closeable.close`, or out of a borrow, `ref` field, carrier, closure capture or `var` borrow: still rejected.
 - Mutation-overlap, cleanup-timing and clone contracts (stage 5) and allocation elimination (stage 6).
 
+## Revision after step 3 (2026-10-30): lowering keeps copying
+
+Implementing the checker showed that cleanup needs no new per-field flags to be sound. A consumed projection already lowers as a borrowed leaf plus `Copy` (`FnLower::owned`), and the rest of the record is dropped whole at scope exit, so accepting the move in the checker cannot double free. Per-place liveness (`Liveness.places`, `live.rs`) replaces the forward moved/maybe state: a move is legal at its last use, which already covers branches, loops, early exits and re-initialization, and a later use of an overlapping place is reported as `moved here but used again`. What the earlier design called per-field drop flags becomes an optimizer job: the copies thread's `rec.release` and the `copyelim` rewrite turn `rec.get; copy; drop` into a move plus a release of the other leaves, and `make count-check` shows when the copy disappears. The `PathFacts` table, `exit_state` and `flags` below are therefore not built unless the optimizer cannot cover a shape. `Facts.partial_moves` records the accepted moves. Receivers (`self`) are excluded from the first cut, and `let x = b.items` stays a borrow.
+
 ## Design
 
 **Rule:** a *tracked place* is a binding plus a path of `Field` steps (`b`, `b.items`, `b.a.c`). `Element` steps are never tracked; a move through one is rejected as today. Every tracked place is in one of three states at each program point: **init**, **moved**, or **maybe** (moved on some paths). One analysis computes the state; everything else reads it.

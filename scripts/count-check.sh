@@ -45,6 +45,12 @@ for file in "$@"; do
     for build in debug release; do
         (cd "$scratch" && "$ms" run "$repository/$file" --build-type "$build" >"$scratch/out" 2>"$scratch/err") || true
         counts=$(sed -n 's/^ms-rt counts: //p' "$scratch/err")
+        live=$(sed -n 's/^ms-rt live blocks at exit: //p' "$scratch/err")
+        checked=$((checked + 1))
+        if [ "$live" != 0 ]; then
+            failures=$((failures + 1))
+            echo "leak: $file ($build) left ${live:-an unreported number of} live blocks"
+        fi
         want=$(sed -n "s/^# expect-$build: //p" "$file")
         for pair in $want; do
             checked=$((checked + 1))

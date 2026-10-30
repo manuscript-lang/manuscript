@@ -2527,6 +2527,15 @@ impl Walker<'_> {
             return;
         };
         let class = self.class_of(e);
+        // In a function that is not `ref`, a part of an owned value moves instead of lending.
+        let declared_ref = self.cx.c.func.func().is_some_and(|f| f.result_ref);
+        if d == Demand::Consume
+            && class == Class::Move
+            && !declared_ref
+            && self.partial_move(e, &info, class)
+        {
+            return;
+        }
         let lent = d == Demand::Consume && class != Class::Copy && {
             let direct = match (self.field_path(e), info.resolved.as_slice()) {
                 (Some(f), [only]) if only.root == info.root.uid => Some(f),
@@ -2534,6 +2543,13 @@ impl Walker<'_> {
             };
             self.lend(e, &info.resolved, direct)
         };
+        if d == Demand::Consume
+            && class != Class::Copy
+            && !lent
+            && self.partial_move(e, &info, class)
+        {
+            return;
+        }
         if d == Demand::Consume && class != Class::Copy && !lent {
             let message = format!(
                 "cannot move `{0}` out of `{1}`: only a whole variable can move; take an owned copy with `{0}.{COPY}()`",
@@ -2550,6 +2566,77 @@ impl Walker<'_> {
             }
         }
         self.read_place(e.pos, &info);
+    }
+
+    /// A field of an owned local or parameter moves out at its last use (`return b.items`,
+    /// `f(b.items)`): the place is dead until it is stored again, and the rest of the value is
+    /// still the binding's. Returns whether the move is accepted; if not, the caller reports
+    /// that only a whole variable can move.
+    fn partial_move(&mut self, e: &Expr, info: &PlaceInfo, class: Class) -> bool {
+        let root = info.root.clone();
+        let Some(meta) = self.meta.get(&root.uid) else {
+            return false;
+        };
+        let owner = matches!(meta.perm, Perm::Immutable | Perm::Mutable)
+            && !meta.is_receiver
+            && !matches!(meta.role, Role::Fixture)
+            && !(meta.parameter.is_some() && meta.perm == Perm::Mutable)
+            && meta.lambda.is_none();
+        let own_place = matches!(info.resolved.as_slice(), [only] if only.root == root.uid);
+        if !owner
+            || !own_place
+            || class != Class::Move
+            || info.through_ref.is_some()
+            || borrows(&root.ty)
+            || borrows(&self.cx.m.ty(e))
+            || self.captured.iter().any(|c| c.contains(&root.uid))
+        {
+            return false;
+        }
+        // Only fields: an element of a collection stays where it is.
+        if self.field_path(e).is_none() {
+            return false;
+        }
+        // A type that closes itself would close a record with a hole in it.
+        let mut at = e;
+        while let ExprKind::Member { left, .. } = &at.kind {
+            let holder = self.cx.m.ty(left);
+            if declares_close(&holder) || self.cx.classes.class(&holder) == Class::Resource {
+                return false;
+            }
+            at = left;
+        }
+        let last = self
+            .cx
+            .live
+            .places
+            .get(&(e.id, root.uid))
+            .is_none_or(|u| u.last);
+        if !last {
+            let later = self
+                .cx
+                .live
+                .places
+                .get(&(e.id, root.uid))
+                .and_then(|u| u.next)
+                .map(|n| format!(" at {}", self.at(n)))
+                .unwrap_or_default();
+            self.error(
+                e.pos,
+                format!("`{0}` is moved here but used again{later}; a value has one owner, so use `{0}.{COPY}()` to keep the original, or move it only at its last use", info.text),
+            );
+            return true;
+        }
+        self.check_change(e.pos, &info.resolved, "move", &info.text, Some(root.uid));
+        self.mark_mutated(root.uid);
+        self.record(info.root_node, &root, Access::Borrow);
+        if meta_is_parameter(self, root.uid) {
+            self.consumed.insert(root.uid);
+        }
+        self.facts
+            .partial_moves
+            .insert(e.id, info.resolved[0].clone());
+        true
     }
 
     // ---------------------------------------------------------- calls
@@ -3249,4 +3336,9 @@ fn declares_close(t: &Ty) -> bool {
             .iter()
             .any(|o| o.name.as_str() == "close")
     })
+}
+
+/// Whether the binding is a parameter, whose caller loses it when a part of it moves.
+fn meta_is_parameter(w: &Walker, uid: usize) -> bool {
+    w.meta.get(&uid).is_some_and(|m| m.parameter.is_some())
 }
