@@ -4,7 +4,8 @@
 use super::classify::{Class, Classifier};
 use super::live::Liveness;
 use super::modes::{
-    CallModes, ParamMode, ResultOrigin, Slot, Summaries, Summary, call_modes, receiver_mode,
+    CallModes, ParamMode, ResultOrigin, Slot, Summaries, Summary, call_modes, callee_summary,
+    receiver_mode,
 };
 use super::places::{Place, Step};
 use super::*;
@@ -136,6 +137,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         pending: Vec::new(),
         declared: Vec::new(),
         consumed: HashSet::new(),
+        copies: std::collections::BTreeSet::new(),
         escaped: cx.escaped.clone(),
         positions: HashMap::new(),
         mutated: Vec::new(),
@@ -196,6 +198,7 @@ pub fn analyze(cx: &Context) -> Outcome {
             })
             .collect(),
         result,
+        copies: w.copies.iter().copied().collect(),
     };
     w.facts.parameters = summary.params.iter().map(|(_, m)| *m).collect();
     w.facts.receiver = cx.c.self_binding.as_ref().map(|_| summary.receiver);
@@ -220,6 +223,8 @@ struct Walker<'a> {
     declared: Vec<usize>,
     /// Parameters and the receiver that were moved from.
     consumed: HashSet<usize>,
+    /// Type parameters of this callable whose values the body may copy.
+    copies: std::collections::BTreeSet<Name>,
     escaped: HashSet<NodeId>,
     /// Source positions of the callable's statements and expressions.
     positions: HashMap<NodeId, Pos>,
@@ -369,7 +374,22 @@ impl Walker<'_> {
     /// is a record, alternative or collection that closes the resources it holds.
     fn closable(&self, s: &Stmt, ty: &Ty) -> bool {
         self.cx.m.stmt(s).cleanup.is_some()
-            || matches!(ty.kind, Kind::Record | Kind::Alternative | Kind::Native)
+            || matches!(
+                ty.kind,
+                Kind::Record | Kind::Alternative | Kind::Native | Kind::Variable
+            )
+    }
+
+    /// Whether an owned binding of `ty` may hold a resource the scope must close: a resource,
+    /// or a value whose type mentions a type parameter, which an instance may bind to one.
+    /// Lowering closes the instance only when its type has a closer, so a plain instance
+    /// costs nothing.
+    fn may_close(&self, ty: &Ty) -> bool {
+        match self.cx.classes.class(ty) {
+            Class::Resource => true,
+            Class::Move => holds_variable(ty),
+            Class::Copy => false,
+        }
     }
 
     /// Closes at scope end an owned resource nothing takes (a binding never moved: returned,
@@ -1280,7 +1300,7 @@ impl Walker<'_> {
         let Some(b) = self.cx.m.pattern_binding(p) else {
             return;
         };
-        if self.cx.classes.class(&b.ty) == Class::Resource && !self.derived_from_resource(value) {
+        if self.may_close(&b.ty) && !self.derived_from_resource(value) {
             let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, p.pos, closable));
         }
@@ -1460,7 +1480,7 @@ impl Walker<'_> {
             None,
             false,
         );
-        if class == Class::Resource && !self.derived_from_resource(value) {
+        if self.may_close(&b.ty) && !self.derived_from_resource(value) {
             let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, pattern.pos, closable));
         }
@@ -2476,8 +2496,70 @@ impl Walker<'_> {
 
     // ---------------------------------------------------------- calls
 
+    /// Records the type parameters in `t`, a type whose values this callable copies.
+    fn note_copied(&mut self, t: &Ty) {
+        if t.kind == Kind::Variable {
+            self.copies.insert(t.id);
+        }
+        for a in &t.args {
+            self.note_copied(a);
+        }
+    }
+
+    /// A call of a generic callee that copies values of a type parameter: binding it to a
+    /// resource would make a second owner of each value, so the call is rejected; binding it to
+    /// a type built from this callable's own parameters passes the duty on to this callable.
+    fn generic_copies(&mut self, e: &Expr, callee: &Expr, args: &[Argument]) {
+        let cx = self.cx;
+        let Some((summary, fty, vars, receiver)) = callee_summary(cx.m, e, cx.summaries) else {
+            return;
+        };
+        if summary.copies.is_empty() {
+            return;
+        }
+        let copies = summary.copies.clone();
+        let mut var_types = vars;
+        if let Some(r) = &receiver {
+            var_types.extend(r.args.iter().filter(|a| a.kind == Kind::Variable).cloned());
+        }
+        let vars = variable_set(&var_types);
+        let mut bound = Subst::new();
+        if let (Some(r), ExprKind::Member { left, .. }) = (&receiver, &callee.kind) {
+            unify(r, &cx.m.ty(left), &vars, &mut bound);
+        }
+        let slots = cx.m.info(e).arguments.unwrap_or_default();
+        for (i, a) in args.iter().enumerate() {
+            let Some(label) = slots.get(i).map(|s| s.name) else {
+                continue;
+            };
+            if let Some(p) = fty.params.iter().find(|p| p.name == label) {
+                unify(&p.ty, &cx.m.ty(&a.value), &vars, &mut bound);
+            }
+        }
+        let name = self.call_name(callee);
+        for v in copies {
+            let Some(t) = bound.get(&v).cloned() else {
+                continue;
+            };
+            if cx.classes.class(&t) == Class::Resource {
+                let v = var_types
+                    .iter()
+                    .find(|x| x.id == v)
+                    .map(|x| x.to_string())
+                    .unwrap_or_else(|| v.to_string());
+                self.error(
+                    e.pos,
+                    format!("`{name}` copies values of its type parameter `{v}`, so `{v}` cannot be the resource `{}`: each copy would be closed; pass values that are not resources, or move the resources out first", t),
+                );
+            } else {
+                self.note_copied(&t);
+            }
+        }
+    }
+
     fn call(&mut self, e: &Expr, callee: &Expr, args: &[Argument], d: Demand) {
         let cx = self.cx;
+        self.generic_copies(e, callee, args);
         let modes = call_modes(cx.m, e, args, cx.summaries);
         self.facts.calls.insert(e.id, modes.clone());
         let name = self.call_name(callee);
@@ -2552,6 +2634,14 @@ impl Walker<'_> {
             };
             if matches!(copies.as_str(), "fill" | "copy_within" | "merge")
                 && (rty.is_std("List") || rty.is_std("Map"))
+            {
+                // In generic code the elements may be resources in some instance.
+                for a in &rty.args {
+                    self.note_copied(a);
+                }
+            }
+            if matches!(copies.as_str(), "fill" | "copy_within" | "merge")
+                && (rty.is_std("List") || rty.is_std("Map"))
                 && self.class_of(r) == Class::Resource
             {
                 let text = self.expr_text(r);
@@ -2563,6 +2653,18 @@ impl Walker<'_> {
             // A collection method that reads the receiver and returns an owned value holding the
             // very resources it holds (`xs.take(1)`, `xs.concat(xs)`, `xs.find(..)`) makes a second
             // owner of each one, and every owner closes it.
+            if modes.receiver != Some(ParamMode::Mutate)
+                && !modes.accessor
+                && (rty.is_std("List") || rty.is_std("Map") || rty.is_std("Set"))
+                && self.cx.m.info(e).native_str() != "clone"
+            {
+                let ety = self.cx.m.ty(e);
+                for a in &rty.args {
+                    if crate::types::same(a, &ety) || ty_contains(&ety, a) {
+                        self.note_copied(a);
+                    }
+                }
+            }
             if modes.receiver != Some(ParamMode::Mutate)
                 && !modes.accessor
                 && (rty.is_std("List") || rty.is_std("Map") || rty.is_std("Set"))
@@ -2931,20 +3033,10 @@ impl Walker<'_> {
                         format!("this closure changes captured `{0}`, so it cannot be returned, stored or passed to a consuming parameter; keep the closure local, or have it return a new value instead of changing `{0}`", b.name),
                     );
                 }
-                // A value the closure cannot take over, because it only borrows it or uses it
-                // again later, is copied into the closure, as a snapshot.
-                let shared = matches!(
-                    self.meta.get(&b.uid).map(|m| m.perm),
-                    Some(Perm::Borrowed | Perm::MutBorrowed | Perm::Captured)
-                ) || !self.is_last(e.id, b);
-                // A value holding a borrow is never copied in: the copy would outlive its
-                // origin, so it reaches `capture_move`, which rejects it.
-                if class == Class::Copy
-                    || class == Class::Move
-                        && b.ty.kind != Kind::Function
-                        && shared
-                        && !borrows(&b.ty)
-                {
+                // Only a plain value is copied in. Anything else moves at its last use; when the
+                // closure cannot take it over (it is borrowed or used again), `capture_move` asks
+                // for an explicit `.clone()` rather than copying it silently.
+                if class == Class::Copy {
                     self.record(e.id, b, Access::Copy);
                     facts.push((b.uid, CaptureMode::Copy));
                 } else {
@@ -3084,4 +3176,9 @@ fn wraps_part(src: &Ty, result: &Ty) -> bool {
 /// Whether `src` is `part` or has it among its type arguments, at any depth.
 fn ty_holds(src: &Ty, part: &Ty) -> bool {
     src.id == part.id || src.args.iter().any(|a| ty_holds(a, part))
+}
+
+/// Whether `t` mentions a type parameter.
+fn holds_variable(t: &Ty) -> bool {
+    t.kind == Kind::Variable || t.args.iter().any(holds_variable)
 }
