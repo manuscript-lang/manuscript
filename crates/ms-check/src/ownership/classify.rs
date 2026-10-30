@@ -86,8 +86,8 @@ impl Classifier {
         .iter()
         .any(|n| t.is_std(n))
         {
-            // Plain words in the runtime, so a copy is a bit copy: `Decimal` is `repr(C)` data. The builders are shared
-            // handles until they become owned values.
+            // Plain words in the runtime, so a copy is a bit copy: `Decimal` is `repr(C)` data.
+            // The builders are shared handles until they become owned values.
             Class::Copy
         } else {
             // A native owns its storage; `.clone()` is its explicit duplicate.
