@@ -12,6 +12,7 @@ import HttpServer from "@std/http.ms"
 import HttpServerOptions from "@std/http.ms"
 import IoError from "@std/io.ms"
 import Timestamp from "@std/time.ms"
+import {Worker, worker_channel} from "@std/workers.ms"
 
 extern fn msrt_net_ip_address_text(value: IpAddress) String
 
@@ -789,3 +790,48 @@ impl Error for WebSocketError:
             Closed: return "WebSocket: resource is closed"
             Timeout: return "WebSocket: operation timed out"
             Failed(message): return message.clone()
+
+# Deals the connections `listener` accepts to `workers` in turn, so a multi-core server spreads
+# connections evenly; a connection, and every request on it, stays on its worker. Start each worker
+# with `WorkerGroup[Int, Int].spawn` on an entry fn that calls `serve_core`, and send it any
+# configuration before calling this.
+# Runs until accepting fails, returning that error (`Closed` after the listener was closed), or a worker's channel closes (returns `Failed`).
+# Returns InvalidInput without workers.
+export fn deal_connections(
+    listener: Listener,
+    workers: List[Worker[Int, Int]]
+) Result[Unit, NetworkError]:
+    if workers.length() == 0:
+        return error(NetworkError.InvalidInput)
+
+    var next = 0
+
+    while true:
+        let accepted = listener.accept_raw(none)
+        if accepted.is_error():
+            return error(accepted.err().clone())
+        if workers[next % workers.length()].channel.send(accepted.get()).is_error():
+            return error(NetworkError.Failed("a serving worker ended"))
+
+        next += 1
+
+    return ok(unit)
+
+# Worker side of `deal_connections`: serves the connections dealt to this worker with
+# `handler` and `options`, until the acceptor ends. Returns InvalidInput for invalid options.
+export fn serve_core(
+    handler: fn(HttpExchange) Result[Unit, HttpError],
+    options: HttpServerOptions = HttpServerOptions()
+) Result[Unit, HttpError]:
+    var ch = worker_channel[Int, Int]()
+    var server = try network().serve_connections(handler: handler, options: options)
+
+    while true:
+        if let connection = ch.receive().get(none):
+            server.adopt(connection)
+            continue
+
+        break
+
+    server.close()
+    return ok(unit)

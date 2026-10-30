@@ -10,7 +10,7 @@
 
 ## Status
 
-Proposal, revised 2026-10-30 after a skeptic review (verdict: revise; its corrections are folded in), checked against `f6755dfd`. Direction (Chinmay, 2026-10-30): "i see that's wrong ... we need to design it ground up" (about the `shared` listener); earlier: "does that mean server requests will fan out on all cores?" Direction (Chinmay, 2026-10-30): "let's do round robin"; "okay build the threads first" (processes later). Stage 1 and 2 built: `Listener.accept_raw`, `Network.serve_connections`, `HttpServer.adopt` (below), measured in `bench/perf/web/results.md` (2026-10-30). Stage 3 (`serve_cores`, worker function value) is next.
+Proposal, revised 2026-10-30 after a skeptic review (verdict: revise; its corrections are folded in), checked against `f6755dfd`. Direction (Chinmay, 2026-10-30): "i see that's wrong ... we need to design it ground up" (about the `shared` listener); earlier: "does that mean server requests will fan out on all cores?" Direction (Chinmay, 2026-10-30): "let's do round robin"; "okay build the threads first" (processes later). Stage 1 and 2 built: `Listener.accept_raw`, `Network.serve_connections`, `HttpServer.adopt` (below), measured in `bench/perf/web/results.md` (2026-10-30). Stage 3 built as library helpers, not a `serve_cores` call: a function value has one owner, so a stdlib function cannot spawn N workers from one `entry`; the caller spawns the workers and `deal_connections(listener, workers)` and `serve_core(handler, options)` (`@std/net.ms`) are the two halves. No checker or runtime change was needed.
 
 ## Problem
 

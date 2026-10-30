@@ -57,20 +57,23 @@ Send plain serializable data. Messages reconstruct values through JSON; acceptan
 
 One thread accepts and deals each connection, round robin, to serving workers. `Listener.accept_raw` returns the accepted socket's handle (an `Int`) without wrapping it; the handle crosses a worker channel; `HttpServer.adopt` in the worker serves it. `Network.serve_connections` starts the listener-less server that takes the handles, with the options and handler of `serve`. The worker builds its own handler, so handler state is per worker. A connection stays on its worker for life.
 
+`serve_core(handler, options)` is the worker side of that loop, and `deal_connections(listener, workers)` is the starter side. Start each worker with `WorkerGroup[Int, Int].spawn`; send it configuration, if any, before dealing.
+
 ```manuscript
 fn serving_worker() Unit:
-    var ch = worker_channel[Int, Int]()
-    if let acquired = network().serve_connections(handler: buffered(app)):
-        var server = acquired
-        while true:
-            if let handle = ch.receive().get(none):
-                server.adopt(handle)
-                continue
-            break
-        server.close()
+    let _ = serve_core(buffered(app))
+
+fn main() Int:
+    let group = WorkerGroup[Int, Int]()
+    var workers: List[Worker[Int, Int]] = []
+    for i in 0..4:
+        workers.append(group.spawn(serving_worker).get(none))
+    let listener = network().listen("0.0.0.0:8080").get(none)
+    let _ = deal_connections(listener, workers)
+    return 0
 ```
 
-The starter loops `accept_raw`, sends each handle to `workers[i % n]`. A handle that is never adopted leaks its socket; `accept_raw` refuses a TLS listener, because the adopting server runs the handshake.
+`deal_connections` deals round robin and returns the accept error, or `Failed` when a worker's channel is closed. A handle that is never adopted leaks its socket; `accept_raw` refuses a TLS listener, because the adopting server runs the handshake. Dropping the group cancels the workers.
 
 ## Cost
 
