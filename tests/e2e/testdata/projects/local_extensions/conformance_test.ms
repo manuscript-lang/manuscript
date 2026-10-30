@@ -30,6 +30,7 @@ test "views and functions retain local implementations across modules":
 
     var events = ListBuilder[Int]()
     let resource = Resource(events)
+
     # Each `Closeable` closes through its own module's implementation when its scope ends.
     close_first(Resource(events))
     close_second(resource)
