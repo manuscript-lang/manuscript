@@ -1144,6 +1144,22 @@ impl Walker<'_> {
         }
     }
 
+    /// The step for `left[index]`: a list element at a non-negative literal index is told apart
+    /// from the others; every other element access may alias any element.
+    fn element_step(&self, left: &Expr, index: &Expr) -> Step {
+        let ExprKind::Number(t) = &index.kind else {
+            return Step::Element;
+        };
+        let literal = || ms_syntax::number::canonical(t.as_str()).parse::<u64>().ok();
+        if self.cx.m.ty(left).is_std("List")
+            && !t.as_str().contains(['.', 'e', 'E'])
+            && !t.ends_with('d')
+        {
+            return literal().map_or(Step::Element, Step::Index);
+        }
+        Step::Element
+    }
+
     /// Evaluates the index expressions of a place chain and returns the place.
     fn place(&mut self, e: &Expr) -> Option<(PlaceInfo, Place)> {
         match &e.kind {
@@ -1176,7 +1192,7 @@ impl Walker<'_> {
             ExprKind::Index { left, index } => {
                 let (mut info, p) = self.place(left)?;
                 self.expr(index, Demand::Read);
-                let p = p.then(Step::Element);
+                let p = p.then(self.element_step(left, index));
                 info.resolved = self.resolve(&p);
                 info.projection = true;
                 info.text = format!("{}[..]", info.text);
@@ -1189,7 +1205,7 @@ impl Walker<'_> {
             } => {
                 let (mut info, p) = self.place(left)?;
                 self.expr(v, Demand::Read);
-                let p = p.then(Step::Element);
+                let p = p.then(self.element_step(left, v));
                 info.resolved = self.resolve(&p);
                 info.projection = true;
                 info.text = format!("{}[..]", info.text);
@@ -2223,17 +2239,28 @@ impl Walker<'_> {
                 }
                 Some(out)
             }
-            ExprKind::Index { left, .. }
-            | ExprKind::Apply {
+            ExprKind::Index { left, index } => {
+                let step = self.element_step(left, index);
+                Some(
+                    self.pure_places(left)?
+                        .iter()
+                        .map(|p| p.then(step))
+                        .collect(),
+                )
+            }
+            ExprKind::Apply {
                 left,
-                value: Some(_),
+                value: Some(v),
                 ..
-            } => Some(
-                self.pure_places(left)?
-                    .iter()
-                    .map(|p| p.then(Step::Element))
-                    .collect(),
-            ),
+            } => {
+                let step = self.element_step(left, v);
+                Some(
+                    self.pure_places(left)?
+                        .iter()
+                        .map(|p| p.then(step))
+                        .collect(),
+                )
+            }
             _ => None,
         }
     }
