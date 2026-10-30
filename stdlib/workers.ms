@@ -219,6 +219,21 @@ impl WorkerGroup[In, Out]:
     # `channel` is this side of the worker's two-way channel; the worker takes the other from
     # `worker_channel`.
     fn spawn(entry: fn() Unit) Result[Worker[In, Out], WorkerError]:
+        return self.start(entry)
+
+    # Starts `count` workers on `entry`, a named top-level `def`, and returns their handles in start
+    # order. If one cannot start, the ones already started stay in the group and the error is returned.
+    fn spawn_many(
+        entry: fn() Unit,
+        count: Int
+    ) Result[List[Worker[In, Out]], WorkerError]:
+        var started: List[Worker[In, Out]] = []
+        for i in 0..count:
+            started.append(try self.start(entry))
+        return ok(started)
+
+    # Starts one worker on `entry`; `spawn` and `spawn_many` share it.
+    fn start(entry: fn() Unit) Result[Worker[In, Out], WorkerError]:
         let near = msrt_pipe_new()
         if near == 0:
             return error(WorkerError.NotStarted)
