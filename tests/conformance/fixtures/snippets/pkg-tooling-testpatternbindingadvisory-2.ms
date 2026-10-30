@@ -4,7 +4,7 @@
 type Item:
     value: Int
 
-fn use(value: Optional[Item]) Int:
+fn use(value: Item?) Int:
     match value:
         some(Item): return Item.value
         none: return 0

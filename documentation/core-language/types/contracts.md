@@ -125,10 +125,10 @@ An interface operation, an implementation method and an inherent method may decl
 
 ```manuscript
 interface Ranked[T]:
-    fn best_by[K: Comparable](key: fn(T) K) Optional[T]
+    fn best_by[K: Comparable](key: fn(T) K) T?
 
 impl Ranked[Int] for Scores:
-    fn best_by[K: Comparable](key: fn(Int) K) Optional[Int]:
+    fn best_by[K: Comparable](key: fn(Int) K) Int?:
         ...
 ```
 

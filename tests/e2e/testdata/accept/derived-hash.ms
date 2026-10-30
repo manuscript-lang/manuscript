@@ -7,7 +7,7 @@ type P:
 
 type Shape:
     case Dot(x: Int)
-    case Line(a: Int, b: Optional[Int])
+    case Line(a: Int, b: Int?)
 
 fn code[T: Hashable](value: T) Int:
     return value.hash()

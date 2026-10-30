@@ -5,7 +5,7 @@ type Row[A, B]:
     first: A
     middle: List[B]
     last: fn(A) B
-    nested: Box[Optional[B]]
+    nested: Box[B?]
     to_string: Int
 
 impl Row[A, B]:
@@ -21,7 +21,7 @@ fn middle(row: Row[Int, String]) List[String]:
 fn last(row: Row[Int, String]) String:
     return row.last(1)
 
-fn nested(row: Row[Int, String]) Optional[String]:
+fn nested(row: Row[Int, String]) String?:
     return row.nested.value
 
 fn method(row: Row[Int, String]) Int:

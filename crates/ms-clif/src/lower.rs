@@ -189,7 +189,7 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     fn zeros(&mut self, ty: Ty) -> Vs {
         if self.g.lay.is_str_like(ty) && !matches!(self.g.m.types.kind(ty), TyKind::Str) {
-            // An absent `Optional[String]`: static, so dropping and copying it do nothing.
+            // An absent `String?`: static, so dropping and copying it do nothing.
             return vec![self.iconst(0), self.iconst(STR_STATIC as i64)];
         }
         self.g
@@ -2023,6 +2023,20 @@ impl<'a, 'm> Lower<'a, 'm> {
                     }
                     _ => idx.iter().map(|k| v[*k]).collect(),
                 }
+            }
+            Op::RecRelease => {
+                let Imm::RecMask(_, mask) = inst.imm else {
+                    unreachable!()
+                };
+                let ty = f.ty(inst.args[0]);
+                let v = self.a(inst, 0);
+                // Drop the fields that were not moved out; a record owns no block of its own.
+                for (k, (fty, at, w)) in self.fields_of(ty).into_iter().enumerate() {
+                    if mask >> k & 1 == 0 {
+                        self.drop_value(fty, &v[at..at + w]);
+                    }
+                }
+                vec![]
             }
             Op::AltRelease => {
                 let Imm::AltMask(a, c, mask) = inst.imm else {

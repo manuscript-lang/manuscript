@@ -13,7 +13,7 @@ type MemoryStream:
     closed: Bool
 
 impl ReadStream for MemoryStream:
-    var fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Int?) Result[Bytes?, IoError]:
         if self.closed: return error(IoError.Closed)
         if self.offset == self.data.length(): return ok(none)
 
@@ -29,7 +29,7 @@ impl ReadStream for MemoryStream:
 
     var fn close() Unit: self.closed = true
 
-fn present(input: ReadStream, max: Optional[Int] = none) Bool:
+fn present(input: ReadStream, max: Int? = none) Bool:
     if let line = read_line(input, max):
         return line.is_some()
 

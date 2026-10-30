@@ -64,13 +64,13 @@ test "required bound native methods decode supplied payloads":
     try expect_equal(callback("needle".clone()), true)
 
 interface Reader:
-    fn read(value: Optional[Int] = none) Int
+    fn read(value: Int? = none) Int
 
 type ReaderOffset:
     base: Int
 
 impl Reader for ReaderOffset:
-    fn read(value: Optional[Int]) Int: self.base + value.get(5)
+    fn read(value: Int?) Int: self.base + value.get(5)
 
 test "inherited defaults remain available on immutable bound callables":
     let offset = ReaderOffset(2)

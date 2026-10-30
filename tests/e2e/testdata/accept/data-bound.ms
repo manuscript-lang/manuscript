@@ -5,7 +5,7 @@ import JsonEncode, JsonValue, stringify from "@std/json.ms"
 type Plain:
     name: String
     tags: List[String]
-    note: Optional[String]
+    note: String?
 
 type Money:
     cents: Int

@@ -11,11 +11,13 @@ use ms_rt::ffi::{
     ErrOut, Handler, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record, fault,
     native,
 };
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::time::Duration;
 
 abi_record! {
     /// `HttpServerOptions` as the compiler lays it out for natives; `tls` is meaningful only when
-    /// `tls_present` (the `Optional[TlsOptions]` flag) is nonzero.
+    /// `tls_present` (the `TlsOptions?` flag) is nonzero.
     pub struct HttpServerOptionsWire {
         pub max_requests: OptInt,
         pub max_body_bytes: OptInt,
@@ -169,7 +171,7 @@ native! {
 
     /// `HttpExchange.headers()`.
     fn msrt_http_exchange_headers(x: ObjRef<ExchH>) -> Object<HeadersH> {
-        Object(HeadersH(x.headers()))
+        Object(HeadersH(Rc::new(RefCell::new(x.headers().borrow().clone()))))
     }
 
     /// `HttpExchange.method()`.

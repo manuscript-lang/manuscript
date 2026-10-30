@@ -749,7 +749,7 @@ impl FnLower<'_> {
                 self.push_err_slot(sig, &mut vals);
                 let code = self.status_code(sym, &vals)?;
                 if self.ok_payload_is_optional_unit(result) {
-                    // `Result[Optional[Unit], E]`: `STATUS_NONE` is none, a zero status is some.
+                    // `Result[Unit?, E]`: `STATUS_NONE` is none, a zero status is some.
                     let take = &mut |s: &mut Self| Ok(s.b.unit());
                     return self.status_optional_result(sym, code, take, result);
                 }
@@ -824,7 +824,7 @@ impl FnLower<'_> {
             TyKind::Opt(t) => t,
             _ => return Err(Error::new(format!("{sym}: unexpected result type"))),
         };
-        // `Result[Optional[T], E]`: the runtime writes a `T` and answers `STATUS_NONE` for none.
+        // `Result[T?, E]`: the runtime writes a `T` and answers `STATUS_NONE` for none.
         let eof = match (self.b.m.types.kind(result), self.b.m.types.kind(payload)) {
             (TyKind::Alt(_), TyKind::Opt(inner)) => Some(*inner),
             _ => None,
@@ -1055,7 +1055,7 @@ impl FnLower<'_> {
         Ok(self.b.alt_new(a, err as u32, &[e]))
     }
 
-    /// Whether the `ok` payload of `result` is `Optional[Unit]`.
+    /// Whether the `ok` payload of `result` is `Unit?`.
     fn ok_payload_is_optional_unit(&self, result: MTy) -> bool {
         let TyKind::Alt(a) = self.b.m.types.kind(result) else {
             return false;

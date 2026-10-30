@@ -11,7 +11,7 @@ fn all_digits(s: String) Bool:
     return true
 
 # Parses digits with an optional one- or two-digit fraction into cents.
-fn parse_amount(s: String) Optional[Int]:
+fn parse_amount(s: String) Int?:
     let parts = s.split(".")
     if parts.length() > 2:
         return none
@@ -40,7 +40,7 @@ type Record:
     category: String
     cents: Int
 
-fn parse_line(line: String) Optional[Record]:
+fn parse_line(line: String) Record?:
     var category = ""
     var amount = ""
 

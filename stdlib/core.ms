@@ -52,7 +52,7 @@ export type ErrorCategory:
 # Recognized standard cases use their same-name category.
 # Custom errors and domain-specific cases (including Failed, Full, OutputLimit, OutOfRange,
 # AuthenticationFailed and wrapped LogError causes) return none. Messages are never parsed.
-export fn category(cause: Error) Optional[ErrorCategory]: ...
+export fn category(cause: Error) ErrorCategory?: ...
 
 # Raises a programming fault with the supplied message and stops the current operation.
 export fn panic(message: String) Never: ...
@@ -71,7 +71,7 @@ export interface Closeable:
 export interface Iterator[T]:
     # Returns the next item, or none when no items remain. The item borrows from the iterator
     # (an iterator over a container borrows from the container instead).
-    var fn next() ref Optional[T]
+    var fn next() ref T?
 
 # Represents a value that may be absent: `some(value)` or `none`.
 export type Optional[T]:
@@ -83,7 +83,7 @@ export type Optional[T]:
     # An absent value with no payload; no T needs to be constructed.
     case none
 
-impl Optional[T]:
+impl T?:
     # Returns True for some(value), and False for none.
     fn is_some() Bool: ...
 
@@ -92,23 +92,23 @@ impl Optional[T]:
 
     # Returns the payload, or `default` when this is `none`; pass a default or unwrap with `if let value = optional:` unless absence is a bug.
     # Without a default, `none` raises a fault.
-    fn get(default: Optional[T] = none) ref T: ...
+    fn get(default: T? = none) ref T: ...
 
     # Transforms a present payload; none remains absent.
-    fn map[U](transform: fn(T) U) Optional[U]: ...
+    fn map[U](transform: fn(T) U) U?: ...
 
     # Calls transform only when present, returning its Optional unchanged.
-    fn and_then[U](transform: fn(T) Optional[U]) Optional[U]: ...
+    fn and_then[U](transform: fn(T) U?) U?: ...
 
     # Returns the payload, or calls create once and returns its value only when absent.
     fn get_or_else(create: fn() T) T: ...
 
     # Calls create once only when absent, returning its Optional unchanged.
-    fn or_else(create: fn() Optional[T]) Optional[T]: ...
+    fn or_else(create: fn() T?) T?: ...
 
     # Returns ok with the original payload, or error with the eager cause.
     # Without a cause, E is MissingValue and the error names the calling source file and line.
-    fn ok_or[E: Error = MissingValue](cause: Optional[E] = none) Result[T, E]: ...
+    fn ok_or[E: Error = MissingValue](cause: E? = none) Result[T, E]: ...
 
     # Constructs an error once only for none; present payloads remain unchanged.
     fn ok_or_else[E: Error](create: fn() E) Result[T, E]: ...
@@ -135,7 +135,7 @@ impl Result[T, E]:
 
     # Returns the successful payload, or `default` when this is an error; pass a default or propagate with `try` unless failure is a bug.
     # Without a default, an error raises a fault.
-    fn get(default: Optional[T] = none) ref T: ...
+    fn get(default: T? = none) ref T: ...
 
     # Returns the error payload; check `is_error()` first, because a successful result raises a fault.
     fn err() ref E: ...
@@ -156,7 +156,7 @@ impl Result[T, E]:
     fn and_then[U](transform: fn(T) Result[U, E]) Result[U, E]: ...
 
     # Returns some with the original success payload, or none for an error.
-    fn to_optional() Optional[T]: ...
+    fn to_optional() T?: ...
 
 # Equality and hashing are ordinary operation interfaces. Built-in data retains
 # its value semantics; an explicit implementation selects domain identity.

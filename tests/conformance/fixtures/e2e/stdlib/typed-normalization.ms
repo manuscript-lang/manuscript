@@ -7,7 +7,7 @@ import NormalizationForm, StringError from "@std/string.ms"
 fn normalize(form: NormalizationForm, text: String) Result[String, StringError]:
     return form.normalize(text)
 
-fn call[T](operation: fn(String, Optional[Int]) T, text: String) T:
+fn call[T](operation: fn(String, Int?) T, text: String) T:
     return operation(text, none)
 
 test "typed Unicode forms retain normalization and bound dispatch":

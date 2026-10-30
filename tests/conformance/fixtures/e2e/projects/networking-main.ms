@@ -58,7 +58,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
         socket.close()
         return ok(unit)
 
-    let fields = headers()
+    var fields = headers()
     let _appended = try fields.append("X-Test", "stream")
     let _started = try exchange.send_headers(status: 200, headers: fields)
 

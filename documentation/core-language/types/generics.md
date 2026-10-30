@@ -10,7 +10,7 @@ Generic types take type arguments in brackets.
 ```manuscript
 List[String]
 Map[String, Int]
-Optional[String]
+String?
 Result[Decimal, DiscountError]
 ```
 
@@ -78,7 +78,7 @@ type Pair[A, B = A]:
     first: A
     second: B
 
-fn parse[T = String](text: String) Optional[T]:
+fn parse[T = String](text: String) T?:
     return none
 
 let same: Pair[Int] = Pair[Int](1, 2)    # Pair[Int, Int]
@@ -112,7 +112,7 @@ let failed: Result[Int, TextError] = fail("empty")
 
 Matching adds no numeric conversions, interface conversions, or `Optional` wrapping. A domain error implementing `Error` still widens to `Error`, so a `Result[T, Error]` parameter infers `T` from `Result[Int, Failure]`. Success types and other Optional or collection applications must match exactly. Inferred function types lose default-argument omission.
 
-Empty lists, `none`, and similar expressions give no evidence of their own; once other evidence fixes the parameters, the substituted types give them context. For a standard `Optional[T]` parameter, inference first matches an existing optional, then a plain payload ([optional arguments](optionals.md#passing-optional-arguments)). Evaluation order is unchanged.
+Empty lists, `none`, and similar expressions give no evidence of their own; once other evidence fixes the parameters, the substituted types give them context. For a standard `T?` parameter, inference first matches an existing optional, then a plain payload ([optional arguments](optionals.md#passing-optional-arguments)). Evaluation order is unchanged.
 
 ```manuscript
 fn count[T](values: List[T]) Int:

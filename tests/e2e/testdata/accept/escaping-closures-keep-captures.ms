@@ -92,8 +92,8 @@ fn maker(text: String) fn() fn() Int:
 fn c8(text: String) Int:
     return maker(text)()()
 
-fn c9(text: String) Optional[fn() Int]:
-    var r: Optional[fn() Int] = none
+fn c9(text: String)(fn() Int)?:
+    var r: (fn() Int)? = none
     for p in text.split(","):
         r = some(fn() Int: return p.length())
     return r

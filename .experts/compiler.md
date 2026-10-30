@@ -32,7 +32,7 @@ Verify: run those three projects through `ms test`; alternate same-type views fr
 
 ### Lowering must honor checker conversions and avoid probing with side effects
 
-Verified: checking can attach an implicit conversion (for example Optional wrapping of a plain argument) while the expression keeps its payload type. A lowering fast path that reads the raw expression instead of the converted argument stores the wrong representation, as a direct list call once did (`List[Optional[Int]]` held a bare Int and crashed). Error and Result widening composes with the Optional wrapper and stays in general expression lowering.
+Verified: checking can attach an implicit conversion (for example Optional wrapping of a plain argument) while the expression keeps its payload type. A lowering fast path that reads the raw expression instead of the converted argument stores the wrong representation, as a direct list call once did (`List[Int?]` held a bare Int and crashed). Error and Result widening composes with the Optional wrapper and stays in general expression lowering.
 
 Verified: choose a lowering path before lowering its operands. Lowering mutates generator state (source markers, temporaries) even when its result is discarded, so an eligibility probe that lowers operands and then abandons them breaks exact-once invariants. Eligibility checks must return without lowering on an ineligible path. Keep the invariant assertion and an independent baseline rather than dropping unprinted markers.
 
@@ -120,7 +120,7 @@ Verify: an omitted entry checks unimported modules and executes their tests; an 
 
 Decision: a container read the ownership checker holds as a lexical borrow (`let x = m.get(k)`, `if let x = xs.first()`, `m.get(k).get()`, `m.get_or(k, d)`) must not copy the entry. Lowering reads the entry in place (`msrt_map_get_ptr`, `list.get.u`) and builds `opt.view`, an optional that borrows its payload and is never dropped (`crates/ms-lower/src/lend.rs`).
 
-Verified: before this, `let found = orders.get(id)` deep-copied the record (two allocations and frees per hit) while the same read written as one chain lent; `if let` copied the payload for every type but `String`. Lending is gated on `ownership::is_vetted`, an immutable name no closure slot shares, and a payload whose optional is not boxed (a recursive `Optional[Node]` has no owner for the box; the verifier rejects `opt.view` of it). `lastuse` keeps `drop map` after the lent load because the pointer and everything loaded through it join the map's family.
+Verified: before this, `let found = orders.get(id)` deep-copied the record (two allocations and frees per hit) while the same read written as one chain lent; `if let` copied the payload for every type but `String`. Lending is gated on `ownership::is_vetted`, an immutable name no closure slot shares, and a payload whose optional is not boxed (a recursive `Node?` has no owner for the box; the verifier rejects `opt.view` of it). `lastuse` keeps `drop map` after the lent load because the pointer and everything loaded through it join the map's family.
 
 Apply when: adding a lowering path for an accessor result, a payload binding or a join of two borrows (`two_ways_mode`), or a MIR op that produces a borrow.
 Evidence: [lent reads](../crates/ms-lower/src/lend.rs), [fixture](../tests/e2e/testdata/accept/borrowed-container-reads.ms), [lastuse and simplify tests](../crates/ms-mir/tests/opt_lastuse.rs), [proposal](../proposals/borrowed-results.md).

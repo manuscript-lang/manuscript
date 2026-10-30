@@ -1181,6 +1181,27 @@ fn parse_line(
             }
             Imm::AltMask(aid, ci as u32, mask)
         }
+        ImmKind::RecMask => {
+            let n = c.ident()?;
+            let parts: Vec<&str> = n.split('.').collect();
+            let rid = m.record_by_name(parts[0]).ok_or_else(|| ParseError {
+                line: c.line,
+                message: format!("unknown record {}", parts[0]),
+            })?;
+            let mut mask = 0u32;
+            for name in &parts[1..] {
+                let fi = m.records[rid.index()]
+                    .fields
+                    .iter()
+                    .position(|x| x.0 == *name)
+                    .ok_or_else(|| ParseError {
+                        line: c.line,
+                        message: format!("unknown field {n}"),
+                    })?;
+                mask |= 1 << fi;
+            }
+            Imm::RecMask(rid, mask)
+        }
         ImmKind::Method => {
             let n = c.ident()?;
             let (i, mt) = n.split_once('.').ok_or_else(|| ParseError {

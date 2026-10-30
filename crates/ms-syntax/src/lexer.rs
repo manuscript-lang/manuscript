@@ -522,6 +522,7 @@ impl Scanner<'_> {
                     b':' => Tok::Colon,
                     b',' => Tok::Comma,
                     b'.' => Tok::Dot,
+                    b'?' => Tok::Question,
                     b'+' => Tok::Plus,
                     b'-' => Tok::Minus,
                     b'*' => Tok::Star,
@@ -1071,9 +1072,6 @@ fn character_hint(b: u8) -> &'static str {
         b';' => "; Manuscript ends a statement at the end of the line, so remove the semicolon",
         b'\'' => "; text uses double quotes, e.g. \"text\"",
         b'!' => "; write 'not x' for negation and '!=' for inequality",
-        b'?' => {
-            "; Manuscript has no ? operator, so use 'if let' for Optional values, or 'try' for Result"
-        }
         b'`' => "; text uses double quotes with {expression} interpolation",
         b'$' | b'@' | b'\\' | b'^' | b'~' => {
             "; this character is not part of Manuscript's syntax outside text"

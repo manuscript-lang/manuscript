@@ -27,7 +27,7 @@ fn transform(text: String, keys: List[Int], sign: Int) String:
 
     return from_scalars(out).get()
 
-fn parse_caesar_key(key: String) Optional[Int]:
+fn parse_caesar_key(key: String) Int?:
     let codes = key.scalar_values()
     var start = 0
     var negative = false

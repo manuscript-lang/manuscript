@@ -10,7 +10,7 @@ type Box[T, U = T]:
 fn pick[T = Int](values: List[T]) Int:
     return values.length()
 
-fn make[T = String]() Optional[T]:
+fn make[T = String]() T?:
     return none
 
 fn pair[A, B = A](first: A, second: B) Box[A, B]:
@@ -30,7 +30,7 @@ test "calls infer first and only then use the default":
     let inferred = make()
     try expect_false(not (inferred.is_none()))
 
-    let explicit: Optional[Int] = make()
+    let explicit: Int? = make()
     try expect_false(not (explicit.is_none()))
     try expect_equal(pick([1, 2, 3]), 3)
     try expect_equal(pair(1, "a").second, "a")

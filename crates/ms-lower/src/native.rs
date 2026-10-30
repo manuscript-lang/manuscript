@@ -1520,10 +1520,12 @@ impl<'a> FnLower<'a> {
             .iter()
             .position(|c| c.name == want)
             .ok_or_else(|| Error::new("Result without ok/error cases"))?;
-        let r = self.borrow(recv);
-        let tag = self.b.alt_tag(r);
+        let tag = self.b.alt_tag(recv.v);
         let k = self.b.iconst(case as i64);
         let v = self.b.icmp(ms_mir::ir::Cc::Eq, tag, k);
+        // Only read: an owned result holding a resource (`open().is_ok()`) closes it.
+        self.close_owned_temp(recv);
+        self.finish(recv);
         Ok(Val { v, own: false })
     }
 
@@ -2464,6 +2466,8 @@ impl<'a> FnLower<'a> {
                         let fv = f.val.v;
                         let y = s.b.call_ind(fv, &[p]);
                         let v = if by_map { s.b.opt_some(y) } else { y };
+                        // The callback only borrowed the payload: an owned temporary closes it.
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
@@ -2636,6 +2640,7 @@ impl<'a> FnLower<'a> {
                     &mut |s| {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let v = s.b.call_ind(f.val.v, &[p]);
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
@@ -2669,6 +2674,7 @@ impl<'a> FnLower<'a> {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let y = s.b.call_ind(f.val.v, &[p]);
                         let v = s.b.alt_new(oa, out_err, &[y]);
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
@@ -2690,6 +2696,7 @@ impl<'a> FnLower<'a> {
                     &mut |s| {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let v = s.b.call_ind(f.val.v, &[p]);
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
@@ -2723,6 +2730,7 @@ impl<'a> FnLower<'a> {
                         } else {
                             y
                         };
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))

@@ -174,11 +174,11 @@ export fn main() Int:
 printf 'line one\n\nlast line' | ms run lines.ms
 ```
 
-An empty line is `""`, and the loop ends at end of input. Line endings are stripped, and the limit applies per line. A read failure or a line over the limit also ends the loop; `error()` is `none` after a clean end. For one line at a time on demand, `read_line` returns `Result[Optional[String], IoError]`.
+An empty line is `""`, and the loop ends at end of input. Line endings are stripped, and the limit applies per line. A read failure or a line over the limit also ends the loop; `error()` is `none` after a clean end. For one line at a time on demand, `read_line` returns `Result[String?, IoError]`.
 
 ## Parse an integer
 
-Save as `number.ms`. `parse_int()` returns an `Optional[Int]`.
+Save as `number.ms`. `parse_int()` returns an `Int?`.
 
 <!-- manuscript-example: {"mode":"run","args":["42"],"stdout":"42\n","cases":[{"args":["oops"],"exit_code":1}]} -->
 ```manuscript

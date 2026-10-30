@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn first() Unit:\n    let callback: fn() Optional[Int] = fn: absent()\n"
+    "fmt": "fn first() Unit:\n    let callback: fn() Int? = fn: absent()\n"
   }
 }

@@ -62,11 +62,11 @@ export type TomlError:
 # Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 values; pass a `TomlLimits` to change that.
 export type TomlLimits:
     # Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
-    max_bytes: Optional[Int] = none
+    max_bytes: Int? = none
     # Maximum value depth, including scalar leaves and implicit tables, with the root at one.
-    max_depth: Optional[Int] = none
+    max_depth: Int? = none
     # Maximum containers and leaves, excluding keys; checked during parsing and materialization.
-    max_values: Optional[Int] = none
+    max_values: Int? = none
 
 impl Error for TomlError:
     # Formats the source line, scalar column and parser reason for a malformed document.
@@ -111,7 +111,7 @@ fn flags(reader: Reader, id: Int) Table:
 fn store_flags(var reader: Reader, id: Int, flags: Table) Unit:
     reader.tables.set(id, flags)
 
-fn lookup(reader: Reader, id: Int, key: String) Optional[Node]:
+fn lookup(reader: Reader, id: Int, key: String) Node?:
     return reader.entries.get(id).get(key)
 
 fn contains_key(reader: Reader, id: Int, key: String) Bool:
@@ -217,7 +217,7 @@ fn space(var reader: Reader, multiline: Bool) Unit:
 fn default_limits() TomlLimits:
     return TomlLimits(max_depth: 10000, max_values: 1000000)
 
-fn within(value: Int, limit: Optional[Int]) Bool:
+fn within(value: Int, limit: Int?) Bool:
     if let maximum = limit:
         return value <= maximum
 
@@ -492,7 +492,7 @@ fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
     return ok(unit)
 
 # Reads `key =` when the key is one plain bare word; otherwise leaves the cursor where it was.
-fn simple_key(var reader: Reader) Optional[String]:
+fn simple_key(var reader: Reader) String?:
     space(var reader, multiline: false)
 
     let start = cursor(reader)
@@ -923,10 +923,7 @@ fn control_pattern() Regex:
     return compile("[\\x00-\\x08\\x0b-\\x1f\\x7f]").get()
 
 # Parses a TOML document into a table value and reports source line and column on invalid input.
-export fn parse(
-    text: String,
-    limits: Optional[TomlLimits] = none
-) Result[TomlValue, TomlError]:
+export fn parse(text: String, limits: TomlLimits? = none) Result[TomlValue, TomlError]:
     var options = default_limits()
     if let value = limits:
         options = value
@@ -1197,10 +1194,7 @@ fn datetimes_valid(value: TomlValue) Bool:
         _: return true
 
 # Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
-export fn stringify(
-    value: TomlValue,
-    max_bytes: Optional[Int] = none
-) Result[String, TomlError]:
+export fn stringify(value: TomlValue, max_bytes: Int? = none) Result[String, TomlError]:
     if let limit = max_bytes:
         if limit < 0: return error(TomlError.InvalidInput)
 

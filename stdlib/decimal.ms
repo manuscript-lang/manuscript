@@ -23,18 +23,18 @@ extern fn msstd_decimal_compare(left: Decimal, right: Decimal) Int
 
 extern fn msstd_decimal_to_float(value: Decimal) Float
 
-extern fn msstd_decimal_truncate_to_int(value: Decimal) Optional[Int]
+extern fn msstd_decimal_truncate_to_int(value: Decimal) Int?
 
 extern fn msstd_decimal_round(
     value: Decimal,
     places: Int,
-    mode: Optional[RoundingMode]
+    mode: RoundingMode?
 ) Result[Decimal, NumberError]
 
 extern fn msstd_decimal_to_fixed(
     value: Decimal,
     digits: Int,
-    mode: Optional[RoundingMode]
+    mode: RoundingMode?
 ) Result[String, NumberError]
 
 impl Decimal:
@@ -69,7 +69,7 @@ impl Decimal:
 
     # Converts to the nearest Float, which can lose precision because binary floats cannot represent most decimal fractions exactly.
     # Returns none when the value is beyond the Float range.
-    fn to_float() Optional[Float]:
+    fn to_float() Float?:
         let value = msstd_decimal_to_float(self)
         if value.is_finite():
             return some(value)
@@ -78,24 +78,18 @@ impl Decimal:
 
     # Discards the fractional part toward zero and returns the integer, so -2.9 gives -2.
     # Returns none when the integer part does not fit in the platform's Int.
-    fn truncate_to_int() Optional[Int]:
+    fn truncate_to_int() Int?:
         return msstd_decimal_truncate_to_int(self)
 
     # Rounds exactly to a multiple of `10^-places`, without converting to Float.
     # Places range from -6144 through 6176; negative places round tens, hundreds, etc.
     # Invalid places return InvalidInput; an unrepresentable result returns OutOfRange.
     # Omitted or `none` mode selects HalfEven. This does not preserve trailing zeros or change arithmetic.
-    fn round(
-        places: Int,
-        mode: Optional[RoundingMode] = none
-    ) Result[Decimal, NumberError]:
+    fn round(places: Int, mode: RoundingMode? = none) Result[Decimal, NumberError]:
         return msstd_decimal_round(self, places, mode)
 
     # Rounds exactly and prints plain decimal notation with exactly `digits` fractional digits.
     # Digits range from 0 through 6176; invalid digits return InvalidInput.
     # HalfEven is the default; rounded zero has no minus sign. Trailing zeros are retained.
-    fn to_fixed(
-        digits: Int,
-        mode: Optional[RoundingMode] = none
-    ) Result[String, NumberError]:
+    fn to_fixed(digits: Int, mode: RoundingMode? = none) Result[String, NumberError]:
         return msstd_decimal_to_fixed(self, digits, mode)

@@ -17,5 +17,5 @@ fn dup[T: Clonable](x: T) T:
 fn f() Int:
     let a = Holder.Has(Res(1))
     let _b = dup(a)  # error: Holder does not satisfy Clonable
-    let _c = dup(some(Res(2)))  # error: Optional[Res] does not satisfy Clonable
+    let _c = dup(some(Res(2)))  # error: Res? does not satisfy Clonable
     return 0

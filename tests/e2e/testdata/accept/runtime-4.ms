@@ -7,7 +7,7 @@ type ClosedFile:
     marker: Unit
 
 impl File for ClosedFile:
-    fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Int?) Result[Bytes?, IoError]:
         return error(IoError.Closed)
 
     fn close() Unit:

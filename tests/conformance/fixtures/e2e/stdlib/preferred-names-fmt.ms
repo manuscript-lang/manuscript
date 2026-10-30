@@ -53,7 +53,7 @@ interface RegexReplacement:
     fn replace_all(
         text: String,
         replacement: String,
-        max_bytes: Optional[Int]
+        max_bytes: Int?
     ) Result[String, RegexError]
 
 type RegexAdapter:
@@ -63,7 +63,7 @@ impl RegexReplacement for RegexAdapter:
     fn replace_all(
         text: String,
         replacement: String,
-        max_bytes: Optional[Int]
+        max_bytes: Int?
     ) Result[String, RegexError]:
         return self.pattern.replace_all(text, replacement, max_bytes)
 
@@ -85,7 +85,7 @@ test "list names mutate in place and retain shallow copies":
     items.append(9)
     try expect_equal(items, [9])
 
-    var optional: List[Optional[Int]] = [some(1)]
+    var optional: List[Int?] = [some(1)]
     optional.set(0, 7)
     try expect_equal(optional.get(0), some(7))
 
@@ -110,7 +110,7 @@ test "set names mutate in place keep order and no-op membership":
     items.add(5)
     try expect_equal(items.values(), [4, 5])
 
-    var optional = Set[Optional[Int]]()
+    var optional = Set[Int?]()
     optional.add(7)
     optional.add(9)
     optional.remove(7)

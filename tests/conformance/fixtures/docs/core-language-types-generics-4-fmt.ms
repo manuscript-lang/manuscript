@@ -5,7 +5,7 @@ type Pair[A, B = A]:
     first: A
     second: B
 
-fn parse[T = String](text: String) Optional[T]:
+fn parse[T = String](text: String) T?:
     return none
 
 let same: Pair[Int] = Pair[Int](1, 2)  # Pair[Int, Int]

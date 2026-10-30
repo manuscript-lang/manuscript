@@ -7,7 +7,7 @@ type First:
 type Second:
     case Ready
 
-fn use(value: Optional[Int]) Int:
+fn use(value: Int?) Int:
     match value:
         some(Ready): return Ready
         none: return 0

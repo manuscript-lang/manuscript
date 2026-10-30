@@ -20,7 +20,7 @@ import create, LogError, Transport from "@std/log.ms"
 import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 import Bytes from "@std/bytes.ms"
-import access_log, request_id, RouteParams, Router, RouterError from "@std/router.ms"
+import access_log, request_id, RouteParams, Router, RouterError, with_request_headers from "@std/router.ms"
 import body_stream from "@std/sse.ms"
 
 fn get(path: String) HttpRequest:
@@ -129,9 +129,9 @@ fn tagged(
     exchange: HttpExchange,
     next: fn(HttpExchange) Result[Unit, HttpError]
 ) Result[Unit, HttpError]:
-    let seen = exchange.headers()
+    var seen = exchange.headers()
     try seen.append("X-Trail", label)
-    return next(exchange)
+    return next(with_request_headers(exchange, seen))
 
 fn trail(exchange: HttpExchange, params: RouteParams) Result[Unit, HttpError]:
     let values = exchange.headers().values("X-Trail")
@@ -355,14 +355,14 @@ test "request_id keeps a usable id and makes one otherwise":
     try expect_equal(id_of(fresh).length(), 36)
     try expect_equal(body_of(fresh), id_of(fresh))
 
-    let incoming = get("/i")
+    var incoming = get("/i")
     incoming.headers.append("X-Request-Id", "abc-123").get()
 
     let kept = try r.call(incoming)
     try expect_equal(id_of(kept), "abc-123")
     try expect_equal(body_of(kept), "abc-123")
 
-    let bad = get("/i")
+    var bad = get("/i")
     bad.headers.append("X-Request-Id", "has space").get()
     try expect_equal(id_of(try r.call(bad)).length(), 36)
     try expect_equal(id_of(try r.call(get("/missing"))).length(), 36)

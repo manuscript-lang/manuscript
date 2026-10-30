@@ -671,6 +671,28 @@ impl<'a> FnLower<'a> {
             _ => crate::rtcall::method_symbol(self.b.m, mt, name)
                 .ok_or_else(|| Error::new(format!("unsupported mutator {name}")))?,
         };
+        // An owned element moves into the list: copying it would leave the caller a second
+        // value to drop, and a resource would close twice.
+        if let ("msrt_list_insert_copy", TyKind::List(elem)) =
+            (sym.as_str(), self.b.m.types.kind(mt).clone())
+            && let Some(value) = args.iter().find(|a| a.name.as_str() == "value")
+            && let Some(index) = args.iter().find(|a| a.name.as_str() == "index")
+            && value.val.own
+            && !value.wrapped
+            && value.val.v != old
+        {
+            let d = self.type_desc(elem);
+            let i = self.borrow(index.val);
+            let element = self.put_slot(value.val.v);
+            let slot = self.put_slot(old);
+            self.call_runtime("msrt_list_insert", &[slot, d, i, element], MTy::UNIT)?;
+            let new = self.take_slot(slot, mt);
+            let result = copy_result.then(|| {
+                let v = self.owned(Val { v: new, own: false });
+                Val { v, own: true }
+            });
+            return Ok((new, result));
+        }
         // An argument that is the receiver itself is copied before the receiver moves out.
         let args: Vec<NArg> = args
             .iter()

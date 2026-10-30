@@ -17,10 +17,10 @@ fn items(value: YamlValue) Result[List[YamlValue], Error]:
         _: return error(TextError("expected YAML sequence"))
 
 fn limits(
-    bytes: Optional[Int],
-    depth: Optional[Int],
-    values: Optional[Int]
-) Optional[YamlLimits]:
+    bytes: Int?,
+    depth: Int?,
+    values: Int?
+) YamlLimits?:
     return some(YamlLimits(max_bytes: bytes, max_depth: depth, max_values: values))
 
 type ScalarCase:

@@ -378,6 +378,7 @@ impl Hir<'_> {
                     c,
                     classes: &classes,
                     summaries: &summaries,
+                    methods: &self.program().methods,
                     live: l,
                     escaped: &known,
                 });

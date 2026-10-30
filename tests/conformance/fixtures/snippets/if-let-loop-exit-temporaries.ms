@@ -3,7 +3,7 @@
 # conform: origin=break and continue in if let bodies and else branches with condition temporaries
 import stdout from "@std/io.ms"
 
-fn maybe(name: String, present: Bool) Optional[List[String]]:
+fn maybe(name: String, present: Bool) List[String]?:
     return if present: some([name]) else: none
 
 fn stop_in_body() Unit:

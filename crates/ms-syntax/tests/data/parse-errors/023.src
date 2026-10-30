@@ -33,8 +33,8 @@ fn command_bind() fn(
     program: String,
     arguments: List[String],
     input: Bytes,
-    max_output_bytes: Optional[Int],
-    timeout: Optional[Duration]
+    max_output_bytes: Int?,
+    timeout: Duration?
 ) Result[CommandOutput, CommandError]:
     return commands().run
 
