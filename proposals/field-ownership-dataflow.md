@@ -12,7 +12,7 @@
 
 ## Status
 
-Proposal, 2026-10-30, against `origin/main` at `083edc8e`. Stage 4 of [solid-value-semantics](solid-value-semantics.md). Direction (Chinmay): "Track ownership per field, through every control-flow path ... Use one shared dataflow analysis for those facts. It should drive both diagnostics and cleanup generation." Order: "fix the known holes → unify field-level ownership dataflow → define mutation and cleanup contracts → use those facts for copy/allocation elimination."
+Steps 1 to 3 implemented, 2026-10-30 (#1991 harness, #1997 per-place liveness and partial moves). Later steps are dropped or deferred per the revision below: no per-field drop flags, `PathFacts` or verifier table are built unless the optimizer cannot cover a shape; tooling consumers did not need to change. Proposal, 2026-10-30, against `origin/main` at `083edc8e`. Stage 4 of [solid-value-semantics](solid-value-semantics.md). Direction (Chinmay): "Track ownership per field, through every control-flow path ... Use one shared dataflow analysis for those facts. It should drive both diagnostics and cleanup generation." Order: "fix the known holes → unify field-level ownership dataflow → define mutation and cleanup contracts → use those facts for copy/allocation elimination."
 
 ## Problem
 
