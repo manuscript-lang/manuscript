@@ -1,5 +1,5 @@
 import Closeable from "@std/core.ms"
-import {Shared, share} from "@std/shared.ms"
+import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 import expect_equal from "@std/test.ms"
 

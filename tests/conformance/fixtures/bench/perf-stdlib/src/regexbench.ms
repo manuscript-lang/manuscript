@@ -1,5 +1,5 @@
-import {bench, words} from "./harness.ms"
-import {compile, Regex} from "@std/string.ms"
+import bench, words from "./harness.ms"
+import compile, Regex from "@std/string.ms"
 
 fn run(re: Regex) Unit:
     let text = words(2000).join(" ")

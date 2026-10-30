@@ -1,6 +1,6 @@
 # Incremental JSON decoder implemented in Manuscript.
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import {parse, JsonValue, JsonLimits, JsonError} from "@std/json.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
+import parse, JsonValue, JsonLimits, JsonError from "@std/json.ms"
 
 # Decodes a sequence of JSON values from byte chunks of any size.
 #

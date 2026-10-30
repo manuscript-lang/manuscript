@@ -1,5 +1,5 @@
-import {expect_equal, expect_false} from "@std/test.ms"
-import {posix, win32, PathError, dirname, basename_without} from "@std/fs.ms"
+import expect_equal, expect_false from "@std/test.ms"
+import posix, win32, PathError, dirname, basename_without from "@std/fs.ms"
 
 test "POSIX paths normalize resolve parse and match without host access":
     let paths = posix()

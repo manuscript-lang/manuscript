@@ -1,4 +1,4 @@
-import {expect_equal} from "@std/test.ms"
+import expect_equal from "@std/test.ms"
 
 interface Compare[T]:
     fn compare(other: T) Int

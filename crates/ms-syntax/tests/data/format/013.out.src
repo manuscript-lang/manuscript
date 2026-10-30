@@ -1,7 +1,7 @@
 import range from "@std/collections.ms"
 import bench from "./harness.ms"
 import StringBuilder from "@std/string.ms"
-import {parse, stringify, JsonValue} from "@std/json.ms"
+import parse, stringify, JsonValue from "@std/json.ms"
 
 fn json_doc(count: Int) String:
     let sb = StringBuilder()

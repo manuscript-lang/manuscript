@@ -1,5 +1,5 @@
 import filesystem from "@std/fs.ms"
-import {ReadStream, read_line} from "@std/io.ms"
+import ReadStream, read_line from "@std/io.ms"
 import expect_equal from "@std/test.ms"
 import MemoryStream from "./support/streams.ms"
 

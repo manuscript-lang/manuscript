@@ -1,10 +1,10 @@
-import {expect_equal, expect_false, expect_ok, expect_true} from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true from "@std/test.ms"
 import TextError from "@std/core.ms"
-import {control, ControlError} from "@std/process.ms"
-import {filesystem, FileSystemError, FileEvent, FileWatcher, join} from "@std/fs.ms"
-import {milliseconds, sleep} from "@std/time.ms"
+import control, ControlError from "@std/process.ms"
+import filesystem, FileSystemError, FileEvent, FileWatcher, join from "@std/fs.ms"
+import milliseconds, sleep from "@std/time.ms"
 import TaskGroup from "@std/tasks.ms"
-import {Shared, share} from "@std/shared.ms"
+import Shared, share from "@std/shared.ms"
 
 fn expect_process_error[T](
     outcome: Result[T, ControlError],

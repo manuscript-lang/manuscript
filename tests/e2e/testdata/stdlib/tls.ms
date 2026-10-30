@@ -1,15 +1,15 @@
-import {expect_equal, expect_error, expect_false, expect_ok} from "@std/test.ms"
+import expect_equal, expect_error, expect_false, expect_ok from "@std/test.ms"
 import http_result from "./support/http.ms"
-import {headers, HttpMethod, buffered} from "@std/http.ms"
-import {text_headers, list_headers} from "./support/http.ms"
-import {parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions} from "@std/net.ms"
-import {HttpExchange, HttpError, HttpServerOptions, HttpClientOptions} from "@std/http.ms"
+import headers, HttpMethod, buffered from "@std/http.ms"
+import text_headers, list_headers from "./support/http.ms"
+import parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions from "@std/net.ms"
+import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/http.ms"
 import network from "@std/net.ms"
 import timestamp from "@std/time.ms"
-import {Shared, share} from "@std/shared.ms"
+import Shared, share from "@std/shared.ms"
 import TaskGroup from "@std/tasks.ms"
-import {Listener, Connection} from "@std/net.ms"
-import {certificate, private_key} from "./support/certificates.ms"
+import Listener, Connection from "@std/net.ms"
+import certificate, private_key from "./support/certificates.ms"
 
 fn hello(exchange: HttpExchange) Result[Unit, HttpError]:
     let _started = try exchange.send_headers(

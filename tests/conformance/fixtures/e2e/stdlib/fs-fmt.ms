@@ -1,10 +1,10 @@
 # conform: tags=closures,control-flow,faults,formatter,generics,interpolation,match,modules,mutation,optional,parser,stdlib-bytes,stdlib-errors,stdlib-fs,stdlib-io,stdlib-testing,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/fs.ms
-import {expect_equal, expect_false, expect_ok, fail} from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, fail from "@std/test.ms"
 import TextError from "@std/core.ms"
-import {filesystem, FileSystemError, FileHandle, GlobOptions, PathEntry} from "@std/fs.ms"
-import {files, read_all, IoError} from "@std/io.ms"
+import filesystem, FileSystemError, FileHandle, GlobOptions, PathEntry from "@std/fs.ms"
+import files, read_all, IoError from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 
 fn expect_fs_error[T](

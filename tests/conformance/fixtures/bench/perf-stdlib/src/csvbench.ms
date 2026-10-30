@@ -1,5 +1,5 @@
 import bench from "./harness.ms"
-import {parse, stringify} from "@std/csv.ms"
+import parse, stringify from "@std/csv.ms"
 
 export fn bench_csv() Unit:
     var rows: List[List[String]] = []

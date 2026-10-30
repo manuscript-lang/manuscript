@@ -1,4 +1,4 @@
-import {bench, words} from "./harness.ms"
+import bench, words from "./harness.ms"
 
 export fn bench_map_set() Unit:
     bench(

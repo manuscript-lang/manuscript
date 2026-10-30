@@ -1,4 +1,4 @@
-import {TestHooks, expect_equal} from "@std/test.ms"
+import TestHooks, expect_equal from "@std/test.ms"
 
 type Counter:
     value: Int

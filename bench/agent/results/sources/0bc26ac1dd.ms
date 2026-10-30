@@ -1,5 +1,5 @@
-import {stdin, stdout} from "@std/io.ms"
-import {read_lines} from "@std/streams.ms"
+import stdin, stdout from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 let DIGITS = "0123456789"
 let OPERATORS = "+-*/()"

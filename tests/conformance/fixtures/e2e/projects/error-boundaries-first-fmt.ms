@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,generics,interfaces,interpolation,modules,parser,strings,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/error_boundaries/first.ms
-import {DomainFailure, BoxFailure} from "./domain.ms"
+import DomainFailure, BoxFailure from "./domain.ms"
 
 impl Error for DomainFailure:
     fn message() String:

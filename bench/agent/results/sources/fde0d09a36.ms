@@ -1,4 +1,4 @@
-import {stdout, stdin, read_all} from "@std/io.ms"
+import stdout, stdin, read_all from "@std/io.ms"
 import BytesBuilder from "@std/bytes.ms"
 
 let MAX_INT = 9223372036854775807

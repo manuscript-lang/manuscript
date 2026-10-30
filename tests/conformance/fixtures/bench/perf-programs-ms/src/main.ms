@@ -1,6 +1,6 @@
 import TextError from "@std/core.ms"
-import {stdout, stdin, read_line, ReadStream} from "@std/io.ms"
-import {clock, Instant} from "@std/time.ms"
+import stdout, stdin, read_line, ReadStream from "@std/io.ms"
+import clock, Instant from "@std/time.ms"
 import StringBuilder from "@std/string.ms"
 
 interface Counter:

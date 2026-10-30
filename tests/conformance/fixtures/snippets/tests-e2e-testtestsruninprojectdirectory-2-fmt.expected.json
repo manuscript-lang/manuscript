@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import filesystem from \"@std/fs.ms\"\nimport {expect_true, fail} from \"@std/test.ms\"\n\ntest \"fixture next to the manifest\":\n    match filesystem().read_file(path: \"golden/input.txt\", max_bytes: 1024):\n        ok(data):\n            if data.length() != 7:\n                return fail(\"wrong fixture size\")\n        error(_):\n            return fail(\"fixture not found\")\n"
+    "fmt": "import filesystem from \"@std/fs.ms\"\nimport expect_true, fail from \"@std/test.ms\"\n\ntest \"fixture next to the manifest\":\n    match filesystem().read_file(path: \"golden/input.txt\", max_bytes: 1024):\n        ok(data):\n            if data.length() != 7:\n                return fail(\"wrong fixture size\")\n        error(_):\n            return fail(\"fixture not found\")\n"
   }
 }

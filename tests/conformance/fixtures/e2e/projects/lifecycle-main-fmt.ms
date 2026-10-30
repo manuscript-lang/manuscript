@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/lifecycle/main.ms
 import TextError from "@std/core.ms"
-import {expect_equal, fail} from "@std/test.ms"
+import expect_equal, fail from "@std/test.ms"
 import stderr from "@std/io.ms"
 import stdout from "@std/io.ms"
 import WriteStream from "@std/io.ms"

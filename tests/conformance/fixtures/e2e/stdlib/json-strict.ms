@@ -1,7 +1,7 @@
 # conform: tags=optional,records,stdlib-json,testing,try-result
 # conform: phase=test
 import expect_equal from "@std/test.ms"
-import {stringify, JsonError} from "@std/json.ms"
+import stringify, JsonError from "@std/json.ms"
 
 type Handler:
     name: String

@@ -1,1 +1,1 @@
-error parse 20:9:834 "expected a binding name, list pattern, or record pattern, found '>'; write a name, [a, b], or {x, y}"
+error parse 20:9:832 "expected a binding name, list pattern, or record pattern, found '>'; write a name, [a, b], or {x, y}"

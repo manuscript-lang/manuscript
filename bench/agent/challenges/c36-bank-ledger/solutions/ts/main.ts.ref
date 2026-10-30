@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import readFileSync from "node:fs";
 
 type Account = { bal: number; lim: number; ops: number; rej: number; frozen: boolean };
 const FEE = 5;

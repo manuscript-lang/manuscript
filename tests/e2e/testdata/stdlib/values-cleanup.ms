@@ -1,4 +1,4 @@
-import {expect_equal, expect_false, expect_not_equal, expect_ok, fail} from "@std/test.ms"
+import expect_equal, expect_false, expect_not_equal, expect_ok, fail from "@std/test.ms"
 import Closeable from "@std/core.ms"
 import JsonError from "@std/json.ms"
 import filesystem from "@std/fs.ms"

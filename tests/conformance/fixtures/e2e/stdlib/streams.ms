@@ -1,10 +1,10 @@
 # conform: tags=control-flow,diagnostics,faults,modules,optional,stdlib-bytes,stdlib-compress,stdlib-crypto,stdlib-faults,stdlib-io,stdlib-streams,testing,tier-stdlib,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/stdlib/streams.ms
-import {from_bytes, map, take, concat, tee, map_writer, digest} from "@std/streams.ms"
-import {read_all, copy} from "@std/io.ms"
+import from_bytes, map, take, concat, tee, map_writer, digest from "@std/streams.ms"
+import read_all, copy from "@std/io.ms"
 import CompressionFormat from "@std/archive.ms"
-import {HashAlgorithm, sha256} from "@std/crypto.ms"
+import HashAlgorithm, sha256 from "@std/crypto.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
 import filesystem from "@std/fs.ms"

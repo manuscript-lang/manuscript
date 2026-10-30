@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/comparable.ms
 import expect_true from "@std/test.ms"
-import {max, min} from "@std/math.ms"
+import max, min from "@std/math.ms"
 import Decimal from "@std/decimal.ms"
 
 type Version:

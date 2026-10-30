@@ -1,4 +1,4 @@
-import {expect_equal, expect_false, fail} from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
 
 fn append_value[T](var values: List[T], value: T) List[T]:
     values.append(value)

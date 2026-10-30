@@ -1,7 +1,7 @@
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
-import {bit_and, bit_not, bit_or, bit_xor, shift_left, shift_right} from "@std/math.ms"
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
+import bit_and, bit_not, bit_or, bit_xor, shift_left, shift_right from "@std/math.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
 
 # Values are signed 32-bit words held in Int; every result is wrapped back into range.
 let WORD = 4294967296

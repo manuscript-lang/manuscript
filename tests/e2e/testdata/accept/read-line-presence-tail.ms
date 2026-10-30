@@ -1,5 +1,5 @@
-import {expect_equal, expect_false, expect_ok, expect_true} from "@std/test.ms"
-import {ReadStream, IoError, read_line} from "@std/io.ms"
+import expect_equal, expect_false, expect_ok, expect_true from "@std/test.ms"
+import ReadStream, IoError, read_line from "@std/io.ms"
 import filesystem from "@std/fs.ms"
 import Closeable from "@std/core.ms"
 import Bytes from "@std/bytes.ms"

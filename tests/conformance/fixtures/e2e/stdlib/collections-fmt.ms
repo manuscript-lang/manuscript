@@ -1,10 +1,16 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,lists,maps,modules,mutation,optional,parser,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/collections.ms
-import {expect_equal, expect_false} from "@std/test.ms"
-import {
-    ListBuilder, MapBuilder, SetBuilder, range_by, filled, map_from_entries, flatten
-} from "@std/collections.ms"
+import expect_equal, expect_false from "@std/test.ms"
+import (
+    ListBuilder,
+    MapBuilder,
+    SetBuilder,
+    range_by,
+    filled,
+    map_from_entries,
+    flatten
+) from "@std/collections.ms"
 
 fn positive(value: Int) Bool: value > 0
 

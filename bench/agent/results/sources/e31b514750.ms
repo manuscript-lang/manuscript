@@ -1,4 +1,4 @@
-import {read_all, stdin, stdout} from "@std/io.ms"
+import read_all, stdin, stdout from "@std/io.ms"
 
 let MAX_INT = 9223372036854775807
 let MIN_INT = -9223372036854775807 - 1

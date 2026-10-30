@@ -1,5 +1,5 @@
-import {expect_equal, expect_false} from "@std/test.ms"
-import {TextError, panic} from "@std/core.ms"
+import expect_equal, expect_false from "@std/test.ms"
+import TextError, panic from "@std/core.ms"
 
 type Counter:
     calls: Int

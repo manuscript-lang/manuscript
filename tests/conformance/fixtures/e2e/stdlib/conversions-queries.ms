@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/conversions-queries.ms
 import TextError from "@std/core.ms"
-import {expect_equal, expect_false, expect_true, fail} from "@std/test.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
 
 type Counter:
     calls: Int

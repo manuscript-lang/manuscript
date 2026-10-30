@@ -1,4 +1,4 @@
-import {Closeable, Data} from "@std/core.ms"
+import Closeable, Data from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import ClientResponse from "@std/http.ms"
 import Duration from "@std/time.ms"
@@ -12,7 +12,7 @@ import HttpServer from "@std/http.ms"
 import HttpServerOptions from "@std/http.ms"
 import IoError from "@std/io.ms"
 import Timestamp from "@std/time.ms"
-import {WorkerGroup, worker_channel} from "@std/workers.ms"
+import WorkerGroup, worker_channel from "@std/workers.ms"
 
 extern fn msrt_net_ip_address_text(value: IpAddress) String
 

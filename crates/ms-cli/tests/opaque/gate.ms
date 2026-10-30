@@ -1,4 +1,4 @@
-import {JsonValue} from "@std/json.ms"
+import JsonValue from "@std/json.ms"
 
 export opaque type Approved:
     entity: String

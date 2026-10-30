@@ -1,6 +1,6 @@
-import {stdout, stdin, read_line} from "@std/io.ms"
+import stdout, stdin, read_line from "@std/io.ms"
 import range from "@std/collections.ms"
-import {bit_xor, bit_and, wrapping_multiply, shift_right_unsigned} from "@std/bits.ms"
+import bit_xor, bit_and, wrapping_multiply, shift_right_unsigned from "@std/bits.ms"
 
 let DIGITS = "0123456789"
 let HEX = "0123456789abcdef"

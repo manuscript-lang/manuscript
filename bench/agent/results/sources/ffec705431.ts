@@ -1,5 +1,5 @@
 // Read stdin, write stdout. See TASK.md.
-import { readFileSync } from 'node:fs';
+import readFileSync from 'node:fs';
 
 const CAESAR_KEY = /^-?[0-9]{1,7}$/;
 const VIGENERE_KEY = /^[A-Za-z]+$/;

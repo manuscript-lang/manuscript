@@ -1,7 +1,7 @@
 # conform: tags=control-flow,generics,interfaces,lists,modules,records,stdlib-cleanup,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cleanup-dispatch.ms
-import {expect_equal, expect_fault} from "@std/test.ms"
+import expect_equal, expect_fault from "@std/test.ms"
 import panic from "@std/core.ms"
 import Closeable from "@std/core.ms"
 

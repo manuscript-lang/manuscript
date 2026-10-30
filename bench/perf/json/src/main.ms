@@ -1,6 +1,6 @@
 import filesystem from "@std/fs.ms"
 import stdout from "@std/io.ms"
-import {parse, stringify, JsonValue} from "@std/json.ms"
+import parse, stringify, JsonValue from "@std/json.ms"
 import arguments from "@std/process.ms"
 import clock from "@std/time.ms"
 

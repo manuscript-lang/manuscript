@@ -1,5 +1,5 @@
-import {expect_equal, expect_true, expect_false} from "@std/test.ms"
-import {Approved, Counter, Mode, approve, entity, nonce_of, counter, safe, wild, level} from "./gate.ms"
+import expect_equal, expect_true, expect_false from "@std/test.ms"
+import Approved, Counter, Mode, approve, entity, nonce_of, counter, safe, wild, level from "./gate.ms"
 
 fn show[T](value: T) String:
     return "{value}"

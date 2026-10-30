@@ -1,5 +1,5 @@
 import TextError from "@std/core.ms"
-import {expect_true, fail} from "@std/test.ms"
+import expect_true, fail from "@std/test.ms"
 
 fn describe(name: Optional[String]) String:
     if let value = name:

@@ -1,5 +1,5 @@
 import Key from "./domain.ms"
-import {insert, insert_bound} from "./helper.ms"
+import insert, insert_bound from "./helper.ms"
 import expect_equal from "@std/test.ms"
 
 impl Equal for Key:

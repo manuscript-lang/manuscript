@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/preferred_names/second.ms
 import Key from "./domain.ms"
-import {add_generic, remove_generic} from "./helpers.ms"
+import add_generic, remove_generic from "./helpers.ms"
 
 impl Equal for Key:
     fn equals(other: Key) Bool:

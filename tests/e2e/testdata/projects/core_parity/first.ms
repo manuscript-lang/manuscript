@@ -1,7 +1,13 @@
-import {Key, Cause} from "./domain.ms"
-import {
-    transform_set, lookup, locate_map, locate_set, convert, remap_keys, remap_values
-} from "./helpers.ms"
+import Key, Cause from "./domain.ms"
+import (
+    transform_set,
+    lookup,
+    locate_map,
+    locate_set,
+    convert,
+    remap_keys,
+    remap_values
+) from "./helpers.ms"
 
 impl Equal for Key:
     fn equals(other: Key) Bool:

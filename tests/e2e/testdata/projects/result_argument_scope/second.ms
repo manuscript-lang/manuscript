@@ -1,5 +1,5 @@
-import {Cause, make} from "./domain.ms"
-import {erase, forward} from "./helper.ms"
+import Cause, make from "./domain.ms"
+import erase, forward from "./helper.ms"
 
 impl Error for Cause[T]:
     fn message() String: "second {self.value}"

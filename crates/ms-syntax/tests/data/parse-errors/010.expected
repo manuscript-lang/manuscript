@@ -1,1 +1,1 @@
-error parse 4:24:100 "every fn declares its result type after the parameter list, e.g. fn f() Unit:"
+error parse 4:24:98 "every fn declares its result type after the parameter list, e.g. fn f() Unit:"

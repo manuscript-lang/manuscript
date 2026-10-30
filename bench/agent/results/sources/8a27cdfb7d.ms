@@ -1,7 +1,7 @@
-import {stdin, stdout} from "@std/io.ms"
-import {read_lines} from "@std/streams.ms"
-import {from_scalars} from "@std/string.ms"
-import {bit_and, bit_not, bit_or, bit_xor, shift_left, shift_right} from "@std/math.ms"
+import stdin, stdout from "@std/io.ms"
+import read_lines from "@std/streams.ms"
+import from_scalars from "@std/string.ms"
+import bit_and, bit_not, bit_or, bit_xor, shift_left, shift_right from "@std/math.ms"
 
 let MEM_SIZE = 4096
 let SP = 8

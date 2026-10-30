@@ -1,4 +1,4 @@
-import {expect_equal, expect_ok} from "@std/test.ms"
+import expect_equal, expect_ok from "@std/test.ms"
 import Closeable from "@std/core.ms"
 import filesystem from "@std/fs.ms"
 

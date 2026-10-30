@@ -1,14 +1,21 @@
 # conform: tags=aliasing,control-flow,diagnostics,interfaces,interpolation,lists,modules,optional,records,stdlib-bytes,stdlib-fs,stdlib-io,stdlib-json,stdlib-log,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/stdlib/log.ms
-import {expect_equal, expect_error, expect_false} from "@std/test.ms"
-import {
-    Transport, LogLevel, LogError, create, record, bind, stream_transport,
-    stdout_transport, file_transport
-} from "@std/log.ms"
-import {WriteStream, IoError} from "@std/io.ms"
+import expect_equal, expect_error, expect_false from "@std/test.ms"
+import (
+    Transport,
+    LogLevel,
+    LogError,
+    create,
+    record,
+    bind,
+    stream_transport,
+    stdout_transport,
+    file_transport
+) from "@std/log.ms"
+import WriteStream, IoError from "@std/io.ms"
 import JsonValue from "@std/json.ms"
-import {filesystem, FileSystemError} from "@std/fs.ms"
+import filesystem, FileSystemError from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
 import MemoryStream from "./support/streams.ms"
 

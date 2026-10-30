@@ -54,7 +54,7 @@ To change the value, lock it with `lock(box)` from `@std/sync.ms` into a `var` b
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import {share, Shared} from "@std/shared.ms"
+import share, Shared from "@std/shared.ms"
 import lock from "@std/sync.ms"
 import expect_equal from "@std/test.ms"
 

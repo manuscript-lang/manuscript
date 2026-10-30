@@ -1,10 +1,10 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-tasks,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import {Channel, ChannelError} from "@std/channels.ms"
-import {Task, TaskGroup} from "@std/tasks.ms"
-import {expect_equal, expect_true} from "@std/test.ms"
-import {nanoseconds, sleep} from "@std/time.ms"
-import {Worker, WorkerGroup, worker_channel} from "@std/workers.ms"
+import Channel, ChannelError from "@std/channels.ms"
+import Task, TaskGroup from "@std/tasks.ms"
+import expect_equal, expect_true from "@std/test.ms"
+import nanoseconds, sleep from "@std/time.ms"
+import Worker, WorkerGroup, worker_channel from "@std/workers.ms"
 
 # Edge behaviour found by probing the concurrency runtime: misuse and limits answer with errors, never a
 # fault or a hang, and every wait here ends on its own.

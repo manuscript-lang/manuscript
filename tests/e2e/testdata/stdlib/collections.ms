@@ -1,7 +1,13 @@
-import {expect_equal, expect_false} from "@std/test.ms"
-import {
-    ListBuilder, MapBuilder, SetBuilder, range_by, filled, map_from_entries, flatten
-} from "@std/collections.ms"
+import expect_equal, expect_false from "@std/test.ms"
+import (
+    ListBuilder,
+    MapBuilder,
+    SetBuilder,
+    range_by,
+    filled,
+    map_from_entries,
+    flatten
+) from "@std/collections.ms"
 
 fn positive(value: Int) Bool: value > 0
 

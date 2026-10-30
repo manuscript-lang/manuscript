@@ -1,6 +1,6 @@
-import {expect_equal, expect_false, expect_true} from "@std/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test.ms"
 import Key from "./domain.ms"
-import {first_run, first_add, first_remove, first_empty} from "./first.ms"
+import first_run, first_add, first_remove, first_empty from "./first.ms"
 import second_run from "./second.ms"
 
 test "bound and forwarded calls keep the equality of the collection creator":

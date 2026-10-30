@@ -1,4 +1,4 @@
-import {IoError, read_line, stdin, stdout} from "@std/io.ms"
+import IoError, read_line, stdin, stdout from "@std/io.ms"
 import range from "@std/collections.ms"
 
 type Span:

@@ -4,12 +4,17 @@
 import expect_ok from "@std/test.ms"
 import http_result from "./support/http.ms"
 import TextError from "@std/core.ms"
-import {headers, HttpMethod, buffered} from "@std/http.ms"
-import {text_headers, list_headers} from "./support/http.ms"
-import {
-    HttpRequest, HttpResponse, HttpExchange, HttpError, HttpServerOptions,
-    HttpClientOptions, HttpHeaders
-} from "@std/http.ms"
+import headers, HttpMethod, buffered from "@std/http.ms"
+import text_headers, list_headers from "./support/http.ms"
+import (
+    HttpRequest,
+    HttpResponse,
+    HttpExchange,
+    HttpError,
+    HttpServerOptions,
+    HttpClientOptions,
+    HttpHeaders
+) from "@std/http.ms"
 import network from "@std/net.ms"
 import TlsOptions from "@std/net.ms"
 import Bytes from "@std/bytes.ms"

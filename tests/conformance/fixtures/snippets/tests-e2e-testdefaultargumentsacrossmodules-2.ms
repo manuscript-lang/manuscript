@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=tests/e2e/e2e_test.go:510 TestDefaultArgumentsAcrossModules
 import defaulted from "./library.ms"
-import {expect_true, fail} from "@std/test.ms"
+import expect_true, fail from "@std/test.ms"
 
 fn private_value() Int:
     return 99

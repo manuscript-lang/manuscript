@@ -1,4 +1,4 @@
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 
 interface Read[V]:
     fn get() ref V

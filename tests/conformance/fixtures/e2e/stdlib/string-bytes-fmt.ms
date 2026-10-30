@@ -1,9 +1,9 @@
 # conform: tags=alternatives,closures,control-flow,faults,formatter,interpolation,lists,modules,mutation,optional,parser,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/string-bytes.ms
-import {expect_equal, expect_false} from "@std/test.ms"
-import {from_scalars, StringError, StringBuilder} from "@std/string.ms"
-import {Bytes, BytesBuilder, values} from "@std/bytes.ms"
+import expect_equal, expect_false from "@std/test.ms"
+import from_scalars, StringError, StringBuilder from "@std/string.ms"
+import Bytes, BytesBuilder, values from "@std/bytes.ms"
 
 test "Unicode scalar indexing differs from byte length":
     let text = "aé🙂"

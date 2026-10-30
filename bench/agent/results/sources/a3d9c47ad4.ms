@@ -1,5 +1,5 @@
-import {stdin, stdout} from "@std/io.ms"
-import {BigInt, from_int} from "@std/math.ms"
+import stdin, stdout from "@std/io.ms"
+import BigInt, from_int from "@std/math.ms"
 import read_lines from "@std/streams.ms"
 
 type Entry:

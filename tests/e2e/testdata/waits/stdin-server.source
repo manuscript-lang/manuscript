@@ -1,7 +1,7 @@
 # Serves /line, whose handler reads one line of standard input, and /health. A handler waiting
 # for input must not stop the server answering other requests.
-import {headers, HttpRequest, HttpResponse, buffered} from "@std/http.ms"
-import {read_line, stdin, stdout} from "@std/io.ms"
+import headers, HttpRequest, HttpResponse, buffered from "@std/http.ms"
+import read_line, stdin, stdout from "@std/io.ms"
 import network from "@std/net.ms"
 
 fn handle(request: HttpRequest) HttpResponse:

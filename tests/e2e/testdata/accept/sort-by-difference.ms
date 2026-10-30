@@ -1,4 +1,4 @@
-import {expect_contains, expect_equal, expect_fault} from "@std/test.ms"
+import expect_contains, expect_equal, expect_fault from "@std/test.ms"
 
 fn ascending(xs: List[Int]) List[Int]:
     return xs.sorted(compare: fn(left: Int, right: Int) Int: return left - right)

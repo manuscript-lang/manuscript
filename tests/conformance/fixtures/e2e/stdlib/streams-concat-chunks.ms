@@ -1,7 +1,7 @@
 # conform: tags=interfaces,optional,stdlib-io,stdlib-streams,tier-stdlib,try-result
 # conform: phase=run
-import {from_bytes, concat, digest} from "@std/streams.ms"
-import {read_all, stdout} from "@std/io.ms"
+import from_bytes, concat, digest from "@std/streams.ms"
+import read_all, stdout from "@std/io.ms"
 import HashAlgorithm from "@std/crypto.ms"
 
 fn say(text: String) Unit:

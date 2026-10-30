@@ -1,8 +1,8 @@
 # conform: tags=control-flow,formatter,generics,interpolation,match,modules,optional,parser,stdlib-http,stdlib-io,stdlib-net,stdlib-testing,stdlib-tls,stdlib-websocket,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/networking/main.ms
-import {expect_equal, expect_false, expect_true, fail} from "@std/test.ms"
-import {headers, HttpMethod, buffered} from "@std/http.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
+import headers, HttpMethod, buffered from "@std/http.ms"
 import network from "@std/net.ms"
 import HttpError from "@std/http.ms"
 import WebSocketError from "@std/net.ms"

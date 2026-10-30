@@ -1,5 +1,5 @@
 import expect_equal from "@std/test.ms"
-import {min_int, max_int} from "@std/math.ms"
+import min_int, max_int from "@std/math.ms"
 
 # Integer interpolations are written straight into the joined text (the `strfuse` pass passes the
 # integer to `msrt_string_fmtN`), so every integer shape and length must still read back the same.

@@ -1,4 +1,4 @@
-import {headers, HttpHeaders, HttpError} from "@std/http.ms"
+import headers, HttpHeaders, HttpError from "@std/http.ms"
 
 # Explicit fixture migration from the old text maps; no runtime coercion.
 export fn text_headers(fields: Map[String, String]) Result[HttpHeaders, HttpError]:

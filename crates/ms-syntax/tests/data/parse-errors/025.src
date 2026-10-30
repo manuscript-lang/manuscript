@@ -1,4 +1,4 @@
-import {expect_equal} from "@std/test.ms"
+import expect_equal from "@std/test.ms"
 import parse from "@std/net.ms"
 import fo:rmat from "@std/net.ms"
 import encode_component from "@std/net.ms"

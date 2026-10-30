@@ -1,7 +1,7 @@
-import {HttpExchange, HttpError, HttpRequest, HttpResponse, buffered, headers} from "@std/http.ms"
-import {network, Connection} from "@std/net.ms"
-import {expect_equal, expect_ok, expect_true} from "@std/test.ms"
-import {Worker, WorkerGroup, worker_channel} from "@std/workers.ms"
+import HttpExchange, HttpError, HttpRequest, HttpResponse, buffered, headers from "@std/http.ms"
+import network, Connection from "@std/net.ms"
+import expect_equal, expect_ok, expect_true from "@std/test.ms"
+import Worker, WorkerGroup, worker_channel from "@std/workers.ms"
 
 fn answer(id: Int) fn(HttpExchange) Result[Unit, HttpError]:
     let handler = fn(request: HttpRequest) HttpResponse:

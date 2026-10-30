@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,interpolation,modules,parser,stdlib-io,tier-core,try-result
 # conform: phase=parse
 # conform: origin=documentation/learn/common-tasks.md:120
-import {stdin, stdout, read_line} from "@std/io.ms"
+import stdin, stdout, read_line from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
     let input = stdin()

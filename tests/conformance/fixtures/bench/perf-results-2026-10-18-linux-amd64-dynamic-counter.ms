@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,interpolation,modules,mutation,stdlib-io,stdlib-time,tier-io
 # conform: phase=check
 # conform: origin=bench/perf/results/2026-10-18-linux-amd64/dynamic-counter.ms
-import {clock, Instant} from "@std/time.ms"
+import clock, Instant from "@std/time.ms"
 import stdout from "@std/io.ms"
 
 fn measure(start: Int) Int:

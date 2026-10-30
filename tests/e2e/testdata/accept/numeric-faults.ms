@@ -1,4 +1,4 @@
-import {expect_contains, expect_equal, expect_fault, expect_true} from "@std/test.ms"
+import expect_contains, expect_equal, expect_fault, expect_true from "@std/test.ms"
 import StringBuilder from "@std/string.ms"
 
 fn add(a: Int, b: Int) Int: return a + b

@@ -1,6 +1,6 @@
 import Bytes from "@std/bytes.ms"
 import HashAlgorithm from "@std/crypto.ms"
-import {ReadStream, WriteStream, IoError, read_line} from "@std/io.ms"
+import ReadStream, WriteStream, IoError, read_line from "@std/io.ms"
 
 # Transform and composition helpers for byte streams. Each helper takes its input first, so
 # flows read left to right: `source | map(upper) | take(1024) | copy(sink)`.

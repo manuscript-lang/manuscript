@@ -1,5 +1,5 @@
 import stdout from "@std/io.ms"
-import {WorkerGroup, worker_channel} from "@std/workers.ms"
+import WorkerGroup, worker_channel from "@std/workers.ms"
 
 export fn waits() Unit:
     var ch = worker_channel[Int, Int]()

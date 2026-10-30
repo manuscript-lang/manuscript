@@ -1,4 +1,4 @@
-import {Read, Reader} from "./domain.ms"
+import Read, Reader from "./domain.ms"
 
 impl Read for Reader:
     fn read() Int: self.operation() + 10

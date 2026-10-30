@@ -1,4 +1,4 @@
-import {read_all, stdin, stdout} from "@std/io.ms"
+import read_all, stdin, stdout from "@std/io.ms"
 import from_scalars from "@std/string.ms"
 
 # Backtracking regular-expression engine and the line-oriented command driver from TASK.md.

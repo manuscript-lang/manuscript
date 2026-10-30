@@ -1,5 +1,5 @@
 import BitSet from "@std/bitset.ms"
-import {expect_equal, expect_true, expect_false} from "@std/test.ms"
+import expect_equal, expect_true, expect_false from "@std/test.ms"
 
 test "bitset predicates agree with algebra for unequal and trailing zero words":
     let cases: List[List[Int]] = [

@@ -778,7 +778,7 @@ impl Checker {
             );
         }
         format!(
-            "{message}; {path} exports: {}; namespace imports are unsupported, so import individual exports with 'import {{Name, OtherName}} from \"{path}\"'",
+            "{message}; {path} exports: {}; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"{path}\"'",
             list(&exports, 12)
         )
     }

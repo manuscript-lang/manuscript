@@ -1,6 +1,6 @@
-import {stdin, stdout} from "@std/io.ms"
-import {read_lines} from "@std/streams.ms"
-import {StringBuilder} from "@std/string.ms"
+import stdin, stdout from "@std/io.ms"
+import read_lines from "@std/streams.ms"
+import StringBuilder from "@std/string.ms"
 
 let SAME = 0
 let DELETE = 1

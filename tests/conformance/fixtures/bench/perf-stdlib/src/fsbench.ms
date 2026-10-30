@@ -1,6 +1,6 @@
 import bench from "./harness.ms"
-import {filesystem, FileSystem} from "@std/fs.ms"
-import {create, file_transport, Transport, Logger} from "@std/log.ms"
+import filesystem, FileSystem from "@std/fs.ms"
+import create, file_transport, Transport, Logger from "@std/log.ms"
 
 fn run(fs: FileSystem, root: String) Unit:
     let data = "0123456789abcdef".repeat(4096).get("").to_bytes()

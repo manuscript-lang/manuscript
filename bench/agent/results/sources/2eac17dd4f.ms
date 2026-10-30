@@ -1,5 +1,5 @@
-import {stdout, stdin} from "@std/io.ms"
-import {read_lines} from "@std/streams.ms"
+import stdout, stdin from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 let K_TERM = 0
 let K_AND = 1

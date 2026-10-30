@@ -1,4 +1,4 @@
-import {stdout, stdin} from "@std/io.ms"
+import stdout, stdin from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
 # Simulator state for one run of the program. Persistent across requests:

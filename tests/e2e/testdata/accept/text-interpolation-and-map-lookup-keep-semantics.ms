@@ -1,4 +1,4 @@
-import {expect_true, fail} from "@std/test.ms"
+import expect_true, fail from "@std/test.ms"
 
 type Point:
     x: Int

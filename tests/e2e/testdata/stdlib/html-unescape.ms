@@ -1,5 +1,5 @@
-import {expect_equal, expect_false, fail} from "@std/test.ms"
-import {escape, unescape} from "@std/html.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
+import escape, unescape from "@std/html.ms"
 
 test "HTML unescape has an explicit text counterpart":
     try expect_equal(unescape("&lt;é&gt;&amp;"), "<é>&")

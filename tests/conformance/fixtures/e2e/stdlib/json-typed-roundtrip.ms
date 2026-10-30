@@ -1,8 +1,8 @@
 # conform: tags=alternatives,optional,records,stdlib-json,stdlib-net,testing,tier-io,try-result
 # conform: phase=test
 import expect_equal from "@std/test.ms"
-import {parse, stringify, JsonError} from "@std/json.ms"
-import {IpAddress, Cidr, parse_ip, parse_cidr} from "@std/net.ms"
+import parse, stringify, JsonError from "@std/json.ms"
+import IpAddress, Cidr, parse_ip, parse_cidr from "@std/net.ms"
 
 type Color:
     case Red

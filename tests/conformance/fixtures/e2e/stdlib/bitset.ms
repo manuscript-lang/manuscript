@@ -1,6 +1,6 @@
 # conform: tags=stdlib-bitset,stdlib-testing,testing,tier-stdlib
 # conform: phase=test
-import {expect_equal, expect_true, expect_false} from "@std/test.ms"
+import expect_equal, expect_true, expect_false from "@std/test.ms"
 import BitSet from "@std/bitset.ms"
 
 fn of(members: List[Int]) BitSet:

@@ -1,6 +1,6 @@
-import {keep, measure} from "@std/bench.ms"
+import keep, measure from "@std/bench.ms"
 import Channel from "@std/channels.ms"
-import {TaskGroup, Task} from "@std/tasks.ms"
+import TaskGroup, Task from "@std/tasks.ms"
 import share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 

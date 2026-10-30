@@ -1,6 +1,6 @@
-import {stdout, stdin} from "@std/io.ms"
-import {read_lines} from "@std/streams.ms"
-import {parse_int} from "@std/math.ms"
+import stdout, stdin from "@std/io.ms"
+import read_lines from "@std/streams.ms"
+import parse_int from "@std/math.ms"
 
 # One recipe line: the physical line number of its logical line and its text.
 type Rl:

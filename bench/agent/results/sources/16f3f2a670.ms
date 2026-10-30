@@ -1,5 +1,5 @@
-import {stdin, stdout} from "@std/io.ms"
-import {BigInt, parse} from "@std/math.ms"
+import stdin, stdout from "@std/io.ms"
+import BigInt, parse from "@std/math.ms"
 import read_lines from "@std/streams.ms"
 
 # True when `text` is one or more ASCII digits.

@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/scalar-standard-calls-match-dynamic-calls.ms
 import expect_true from "@std/test.ms"
-import {atan2, ceil, floor, max, min, pow, remainder, round, sqrt, truncate} from "@std/math.ms"
+import atan2, ceil, floor, max, min, pow, remainder, round, sqrt, truncate from "@std/math.ms"
 
 fn viaValue(f: fn(Float) Float, x: Float) Float: f(x)
 

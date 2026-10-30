@@ -1,4 +1,4 @@
-import {expect_equal} from "@std/test.ms"
+import expect_equal from "@std/test.ms"
 import Deque from "@std/deque.ms"
 
 # A `ref` field holds a borrow of its source: nothing is copied, and the source stays unchanged

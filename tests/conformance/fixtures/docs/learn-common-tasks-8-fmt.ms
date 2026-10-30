@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=documentation/learn/common-tasks.md:204
 import arguments from "@std/process.ms"
-import {parse, stringify} from "@std/json.ms"
+import parse, stringify from "@std/json.ms"
 import stdout from "@std/io.ms"
 
 type Config:

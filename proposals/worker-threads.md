@@ -43,7 +43,7 @@
 ### Syntax and API (as built)
 
 ```manuscript
-import {WorkerGroup, worker_channel} from "@std/workers.ms"
+import WorkerGroup, worker_channel from "@std/workers.ms"
 
 fn hash_worker() Unit:
     var ch = worker_channel[String, Bytes]()

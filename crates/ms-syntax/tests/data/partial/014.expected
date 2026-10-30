@@ -1,4 +1,4 @@
-diag parse 2:38:79 end=- fix=- "unterminated delimiter '{' opened at line 2:8; add the matching '}' before the end of the file"
-import 1:1:0 1:9:8 "expect_equal" "@std/test.ms"
+diag parse 2:38:77 end=- fix=- "unterminated delimiter '{' opened at line 2:8; add the matching '}' before the end of the file"
+import 1:1:0 1:8:7 "expect_equal" "@std/test.ms"
 omitted []
 recovered []

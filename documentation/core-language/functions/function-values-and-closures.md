@@ -80,7 +80,7 @@ A closure that is returned or stored owns what it captures instead, so it cannot
 Open a resource inside the callback that uses it:
 
 ```manuscript
-import {filesystem, FileSystemError} from "@std/fs.ms"
+import filesystem, FileSystemError from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 fn notes_reader(path: String) fn() Result[Bytes, FileSystemError]:

@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/if-let.ms
 import TextError from "@std/core.ms"
-import {expect_true, fail} from "@std/test.ms"
+import expect_true, fail from "@std/test.ms"
 
 fn describe(name: Optional[String]) String:
     if let value = name:

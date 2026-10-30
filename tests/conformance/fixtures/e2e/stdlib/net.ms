@@ -1,8 +1,8 @@
 # conform: tags=aliasing,faults,modules,stdlib-net,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/net.ms
-import {expect_equal, expect_error, expect_false} from "@std/test.ms"
-import {network, parse_ip, parse_cidr, contains_ip, NetworkError, IpFamily} from "@std/net.ms"
+import expect_equal, expect_error, expect_false from "@std/test.ms"
+import network, parse_ip, parse_cidr, contains_ip, NetworkError, IpFamily from "@std/net.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")

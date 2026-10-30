@@ -1,4 +1,4 @@
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 import Bytes from "@std/bytes.ms"
 
 test "Bytes split is binary safe":

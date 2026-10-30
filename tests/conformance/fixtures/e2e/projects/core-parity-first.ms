@@ -1,10 +1,16 @@
 # conform: tags=aliasing,closures,control-flow,diagnostics,faults,generics,interfaces,interpolation,maps,match,modules,optional,sets,strings,tier-core,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/core_parity/first.ms
-import {Key, Cause} from "./domain.ms"
-import {
-    transform_set, lookup, locate_map, locate_set, convert, remap_keys, remap_values
-} from "./helpers.ms"
+import Key, Cause from "./domain.ms"
+import (
+    transform_set,
+    lookup,
+    locate_map,
+    locate_set,
+    convert,
+    remap_keys,
+    remap_values
+) from "./helpers.ms"
 
 impl Equal for Key:
     fn equals(other: Key) Bool:

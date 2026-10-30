@@ -1,5 +1,5 @@
-import {stdin, stdout, read_all} from "@std/io.ms"
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
+import stdin, stdout, read_all from "@std/io.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
 
 let KEYWORDS = [
     "SELECT", "FROM", "WHERE", "GROUP", "BY", "HAVING", "ORDER", "LIMIT", "OFFSET",

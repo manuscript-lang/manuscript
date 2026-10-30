@@ -1,6 +1,6 @@
 # Manuscript agent bench, 2026-10-28 (distinct surface syntax): Haiku rerun, ms only
 
-claude-code + claude-haiku-5-5, all 20 challenges, Manuscript only, one trial each, built-in runner (`run.py run --jobs 4`, 4-core machine, so wall time reflects contention). The `ms` binary is a release build of PR #1897 (main at `23129640b` plus the distinct surface: `fn`, `true`/`false`, `unit`, `else if`, `if c: a else: b`, plain interpolating strings, `import {A} from "p"`, arm patterns without `case`) with the converted `ms guide`. The comparison point is `summary-2026-10-28-guide.md` (Python-aligned surface, same model and harness). Raw runs: `trials-2026-10-28-distinct-syntax.jsonl`, sources in `sources/`.
+claude-code + claude-haiku-5-5, all 20 challenges, Manuscript only, one trial each, built-in runner (`run.py run --jobs 4`, 4-core machine, so wall time reflects contention). The `ms` binary is a release build of PR #1897 (main at `23129640b` plus the distinct surface: `fn`, `true`/`false`, `unit`, `else if`, `if c: a else: b`, plain interpolating strings, `import A from "p"`, arm patterns without `case`) with the converted `ms guide`. The comparison point is `summary-2026-10-28-guide.md` (Python-aligned surface, same model and harness). Raw runs: `trials-2026-10-28-distinct-syntax.jsonl`, sources in `sources/`.
 
 The run was interrupted by a session restart after 16 trials; c56, c57, c59 and c60 were launched again with the same command and tag, so those four ran with less contention than the rest.
 

@@ -4,11 +4,11 @@
 # A handler whose client went away is cancelled: its wait ends and its cleanup runs with
 # tasks.cancelled() true.
 import Closeable from "@std/core.ms"
-import {buffered, headers, HttpRequest, HttpResponse} from "@std/http.ms"
+import buffered, headers, HttpRequest, HttpResponse from "@std/http.ms"
 import stdout from "@std/io.ms"
 import network from "@std/net.ms"
 import cancelled from "@std/tasks.ms"
-import {nanoseconds, sleep} from "@std/time.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
 type Reporter:
     name: String

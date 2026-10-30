@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,match,modules,parser,stdlib-io,stdlib-time,tier-io
 # conform: phase=parse
 # conform: origin=tests/e2e/e2e_test.go:444 TestHostAccessorsAcrossImportedHelpers
-import {now, close_output} from "./helper.ms"
+import now, close_output from "./helper.ms"
 import stdout from "@std/io.ms"
 import clock from "@std/time.ms"
 

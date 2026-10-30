@@ -1,4 +1,4 @@
-import {approve, Approved} from "./gate.ms"
+import approve, Approved from "./gate.ms"
 
 interface Named:
     fn name() String

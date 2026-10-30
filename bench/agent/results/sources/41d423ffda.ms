@@ -1,9 +1,9 @@
 # In-memory SQL engine. Reads a script on stdin, runs each statement in order against one
 # database, and prints each statement's result, or `error: MESSAGE`, on stdout.
 
-import {stdin, stdout} from "@std/io.ms"
-import {read_lines} from "@std/streams.ms"
-import {from_scalars} from "@std/string.ms"
+import stdin, stdout from "@std/io.ms"
+import read_lines from "@std/streams.ms"
+import from_scalars from "@std/string.ms"
 
 # ---------------------------------------------------------------- constants
 

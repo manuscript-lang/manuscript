@@ -1,4 +1,4 @@
-import {keep, measure} from "@std/bench.ms"
+import keep, measure from "@std/bench.ms"
 import words from "./src/harness.ms"
 import compile from "@std/string.ms"
 import expect_equal from "@std/test.ms"

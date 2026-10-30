@@ -1,4 +1,4 @@
-import {Logger, LogLevel, create, record, stdout_transport, file_transport} from "@std/log.ms"
+import Logger, LogLevel, create, record, stdout_transport, file_transport from "@std/log.ms"
 import JsonValue from "@std/json.ms"
 import arguments from "@std/process.ms"
 import stderr from "@std/io.ms"

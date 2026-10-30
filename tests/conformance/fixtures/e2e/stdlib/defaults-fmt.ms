@@ -1,10 +1,10 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interfaces,lists,match,modules,mutation,optional,parser,records,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-process,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/defaults.ms
-import {expect_equal, expect_false} from "@std/test.ms"
-import {parse, stringify, CsvOptions, CsvError} from "@std/csv.ms"
-import {base64_encode, base64_decode, EncodingError} from "@std/encoding.ms"
-import {Commands, Subprocess, CommandOutput, CommandError, commands, Stdio} from "@std/process.ms"
+import expect_equal, expect_false from "@std/test.ms"
+import parse, stringify, CsvOptions, CsvError from "@std/csv.ms"
+import base64_encode, base64_decode, EncodingError from "@std/encoding.ms"
+import Commands, Subprocess, CommandOutput, CommandError, commands, Stdio from "@std/process.ms"
 import Bytes from "@std/bytes.ms"
 
 fn forward[T](item: T) T: item

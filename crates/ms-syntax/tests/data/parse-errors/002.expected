@@ -1,1 +1,1 @@
-error parse 16:28:334 "a pipe has the lowest precedence; parenthesize it to use its result in an operator, e.g. (x | f) == y"
+error parse 16:28:332 "a pipe has the lowest precedence; parenthesize it to use its result in an operator, e.g. (x | f) == y"

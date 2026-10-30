@@ -68,7 +68,7 @@ pub struct Module {
     pub node_count: u32,
 }
 
-/// One imported symbol binding: `import { A, B } from "path"` yields two.
+/// One imported symbol binding: `import A, B from "path"` yields two.
 #[derive(Debug, Clone)]
 pub struct Import {
     /// Node id.

@@ -1,11 +1,19 @@
 # conform: tags=aliasing,control-flow,faults,interpolation,match,modules,optional,records,stdlib-bytes,stdlib-http,stdlib-net,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/http-headers.ms
-import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/test.ms"
-import {
-    buffered, headers, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, HttpExchange,
-    HttpError, HttpClientOptions, HttpServerOptions
-} from "@std/http.ms"
+import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test.ms"
+import (
+    buffered,
+    headers,
+    HttpHeaders,
+    HttpMethod,
+    HttpRequest,
+    HttpResponse,
+    HttpExchange,
+    HttpError,
+    HttpClientOptions,
+    HttpServerOptions
+) from "@std/http.ms"
 import network from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 

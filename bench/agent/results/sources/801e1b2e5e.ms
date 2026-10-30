@@ -1,4 +1,4 @@
-import {read_all, stdin, stdout} from "@std/io.ms"
+import read_all, stdin, stdout from "@std/io.ms"
 
 type Token:
     case Num(value: Int)

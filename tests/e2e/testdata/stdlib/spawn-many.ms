@@ -1,5 +1,5 @@
-import {Worker, WorkerGroup, worker_channel} from "@std/workers.ms"
-import {expect_equal} from "@std/test.ms"
+import Worker, WorkerGroup, worker_channel from "@std/workers.ms"
+import expect_equal from "@std/test.ms"
 
 fn echo() Unit:
     var ch = worker_channel[Int, Int]()

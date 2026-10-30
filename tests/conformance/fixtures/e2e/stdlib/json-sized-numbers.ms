@@ -1,7 +1,7 @@
 # conform: tags=records,stdlib-json,testing
 # conform: phase=test
 import expect_equal from "@std/test.ms"
-import {parse, stringify, JsonError} from "@std/json.ms"
+import parse, stringify, JsonError from "@std/json.ms"
 
 type Sized:
     small: UInt8

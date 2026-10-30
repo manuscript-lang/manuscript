@@ -1,4 +1,4 @@
-import {buffered, headers, HttpRequest, HttpResponse} from "@std/http.ms"
+import buffered, headers, HttpRequest, HttpResponse from "@std/http.ms"
 import network from "@std/net.ms"
 
 fn handle(request: HttpRequest) HttpResponse:

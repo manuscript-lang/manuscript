@@ -1,4 +1,4 @@
-import {stdin, stdout, read_line} from "@std/io.ms"
+import stdin, stdout, read_line from "@std/io.ms"
 
 # True when s is a non-empty run of ASCII digits.
 fn all_digits(s: String) Bool:

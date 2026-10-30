@@ -1,6 +1,6 @@
-import {keep, measure} from "@std/bench.ms"
+import keep, measure from "@std/bench.ms"
 import StringBuilder from "@std/string.ms"
-import {parse, stringify, JsonValue} from "@std/json.ms"
+import parse, stringify, JsonValue from "@std/json.ms"
 
 fn json_doc(count: Int) String:
     var sb = StringBuilder()

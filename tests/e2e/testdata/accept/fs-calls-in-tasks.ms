@@ -1,7 +1,7 @@
 import Bytes from "@std/bytes.ms"
 import filesystem from "@std/fs.ms"
 import TaskGroup from "@std/tasks.ms"
-import {expect_equal, expect_ok} from "@std/test.ms"
+import expect_equal, expect_ok from "@std/test.ms"
 
 # With several tasks alive, file-system calls run on the blocking pool; the results must match
 # the single-task behaviour.
