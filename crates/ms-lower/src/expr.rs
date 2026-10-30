@@ -69,6 +69,23 @@ impl<'a> FnLower<'a> {
         match self.hir.info(e).error_source {
             Some(src) if !self.dead => {
                 let want = self.emty(e)?;
+                // An owned resource converted to an interface without `close` is only read (the
+                // checker rejects owning positions), so it stays a temporary of the statement,
+                // which closes it; the interface value reads a copy and never closes. An
+                // interface with `close` takes the duty over with the value.
+                let target = self.hir.ty(e);
+                let hands_on = target.def.as_ref().is_some_and(|d| {
+                    d.operations
+                        .borrow()
+                        .iter()
+                        .any(|o| o.name.as_str() == "close")
+                });
+                let x = if x.own && !hands_on && self.is_resource(self.ty_of(x.v)) {
+                    self.temps.push(x.v);
+                    Val { v: x.v, own: false }
+                } else {
+                    x
+                };
                 let saved = self.scope_override;
                 self.scope_override = self.evidence_of(std::slice::from_ref(&src));
                 let out = self.fit_ty(x, &ct::sub(&src, &self.subst), want);
@@ -363,6 +380,12 @@ impl<'a> FnLower<'a> {
         if matches!(self.b.m.types.kind(self.ty_of(f)), TyKind::Ref(_)) {
             f = self.b.ref_get(f);
         }
+        if obj.own && self.is_resource(self.ty_of(obj.v)) {
+            // A resource is read in place and closed whole with the statement's temporaries:
+            // copying the part out would make a second owner of it.
+            self.temps.push(obj.v);
+            return Ok(Val { v: f, own: false });
+        }
         if obj.own {
             // Take a copy out of the temporary, then release the temporary.
             let o = self.owned(Val { v: f, own: false });
@@ -402,6 +425,12 @@ impl<'a> FnLower<'a> {
         match self.b.m.types.kind(lt).clone() {
             TyKind::List(_) => {
                 let got = self.b.list_get(l.v, i.v);
+                if l.own && self.is_resource(lt) {
+                    // A list of resources is read in place and closed whole with the statement's
+                    // temporaries: copying the element out would make a second owner of it.
+                    self.temps.push(l.v);
+                    return Ok(Val { v: got, own: false });
+                }
                 if l.own {
                     let o = self.owned(Val { v: got, own: false });
                     self.drop_value(l.v);

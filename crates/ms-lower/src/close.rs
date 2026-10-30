@@ -167,10 +167,12 @@ impl FnLower<'_> {
         let Some(ty) = self.cx.source_tys.get(&mt).cloned() else {
             return;
         };
-        // Only a value that is itself a resource: a wrapper (`Result`, `Optional`) may have had
-        // its payload moved out already.
+        // A resource, or a record or list holding one (only read in place: the checker rejects
+        // moving a resource part out of a computed value). A wrapper (`Result`, `Optional`) may
+        // have had its payload moved out already, so it closes only when it is itself one.
         if self.cx.classes.class(&ty) != ms_check::ownership::Class::Resource
-            || self.closeable_impl(&ty).is_none()
+            || (self.closeable_impl(&ty).is_none()
+                && (ty.is_std("Optional") || ty.is_std("Result")))
         {
             return;
         }
