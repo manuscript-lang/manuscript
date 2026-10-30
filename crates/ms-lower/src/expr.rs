@@ -352,12 +352,7 @@ impl<'a> FnLower<'a> {
             if self.dead {
                 return Ok(n);
             }
-            let arg = self.borrow(n);
-            let sym = format!("msstd_time_int_{name}");
-            return Ok(Val {
-                v: self.call_runtime(&sym, &[arg], MTy::INT)?,
-                own: false,
-            });
+            return self.duration_unit(name, n);
         }
         if lt.kind != Kind::Record {
             return Err(Error::new(format!("unsupported member access .{name}")));
@@ -628,12 +623,29 @@ impl<'a> FnLower<'a> {
         if self.is_instant(t) && matches!(op, BinaryOp::Add | BinaryOp::Sub) {
             let (a, b) = (self.borrow(l), self.borrow(r));
             // `instant - instant` is the elapsed duration; a duration moves the instant.
-            let (sym, out) = match (op, self.ty_of(b) == t) {
-                (BinaryOp::Sub, true) => ("msstd_time_instant_difference", MTy::INT),
-                (BinaryOp::Sub, false) => ("msstd_time_instant_unshift", t),
-                _ => ("msstd_time_instant_shift", t),
+            if op == BinaryOp::Sub && self.ty_of(b) == t {
+                let nanos =
+                    self.call_runtime("msstd_time_instant_difference", &[a, b], MTy::INT)?;
+                return self.duration_of(nanos);
+            }
+            let b = self.duration_nanos(b)?;
+            let sym = if op == BinaryOp::Sub {
+                "msstd_time_instant_unshift"
+            } else {
+                "msstd_time_instant_shift"
             };
-            return self.call_runtime(sym, &[a, b], out);
+            return self.call_runtime(sym, &[a, b], t);
+        }
+        if self.is_duration(t) && matches!(op, BinaryOp::Add | BinaryOp::Sub) {
+            let (a, b) = (self.borrow(l), self.borrow(r));
+            let (a, b) = (self.duration_nanos(a)?, self.duration_nanos(b)?);
+            let sym = if op == BinaryOp::Add {
+                "msstd_time_duration_add"
+            } else {
+                "msstd_time_duration_subtract"
+            };
+            let nanos = self.call_runtime(sym, &[a, b], MTy::INT)?;
+            return self.duration_of(nanos);
         }
         Err(Error::new(format!(
             "arithmetic on {} is not supported yet",
@@ -654,6 +666,11 @@ impl<'a> FnLower<'a> {
             let c = self.call_runtime("msrt_string_compare", &[a, b], MTy::INT)?;
             let zero = self.b.iconst(0);
             return Ok(self.b.icmp(cc, c, zero));
+        }
+        if self.is_duration(t) {
+            let (a, b) = (self.borrow(l), self.borrow(r));
+            let (a, b) = (self.duration_nanos(a)?, self.duration_nanos(b)?);
+            return Ok(self.b.icmp(cc, a, b));
         }
         let sym = if self.is_bigint(t) {
             Some("msstd_bigint_compare")
@@ -681,6 +698,11 @@ impl<'a> FnLower<'a> {
             "Decimal" => Some("msstd_decimal_compare"),
             _ => None,
         }
+    }
+
+    /// Whether `t` is the `Duration` record.
+    pub(crate) fn is_duration(&self, t: MTy) -> bool {
+        matches!(self.b.m.types.kind(t), TyKind::Rec(rid) if self.b.m.records[rid.index()].name == "Duration")
     }
 
     /// Whether `t` is the `Instant` record.

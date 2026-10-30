@@ -183,9 +183,6 @@ impl Checker {
             if [
                 "BigInt",
                 "Regex",
-                "Timestamp",
-                "Instant",
-                "Duration",
                 "Decimal",
                 "HttpHeaders",
                 "IpAddress",

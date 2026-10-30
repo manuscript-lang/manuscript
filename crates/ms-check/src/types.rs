@@ -215,6 +215,11 @@ impl Type {
         id.len() == 5 + name.len() && id.starts_with("@std/") && &id[5..] == name
     }
 
+    /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/time.ms`.
+    pub fn is_time(&self, name: &str) -> bool {
+        self.is_source_type("@std/time.ms", name)
+    }
+
     /// Whether this is the type `name` declared by the bundled source module `module`.
     pub fn is_source_type(&self, module: &str, name: &str) -> bool {
         self.name.as_str() == name && self.symbol().is_some_and(|s| s.module.as_str() == module)
@@ -655,6 +660,15 @@ pub fn standard(name: &str, args: Vec<Ty>) -> Ty {
     let sym =
         crate::stdlib::standard_symbol(name).unwrap_or_else(|| panic!("standard type {name}"));
     with_args(&sym.ty(), args)
+}
+
+/// `Duration`, `Instant` or `Timestamp`, the records of `@std/time.ms`.
+pub fn time_type(name: &str) -> Ty {
+    // The module is checked on first use; its records have no fields before that.
+    crate::stdlib::standard_exports("@std/time.ms");
+    let sym = crate::stdlib::source_type(n("@std/time.ms"), n(name))
+        .unwrap_or_else(|| panic!("standard time type {name}"));
+    sym.ty()
 }
 
 /// `TestOutcome`: the implicit `Result[Unit, Error]` of a test block.

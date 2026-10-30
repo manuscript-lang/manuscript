@@ -245,10 +245,9 @@ fn builtin_comparable(t: &Ty) -> bool {
             | "String"
             | "@std/Decimal"
             | "@std/BigInt"
-            | "@std/Duration"
-            | "@std/Instant"
-            | "@std/Timestamp"
-    )
+    ) || ["Duration", "Instant", "Timestamp"]
+        .iter()
+        .any(|name| t.is_time(name))
 }
 
 fn operation_names(ops: &[Operation]) -> Vec<String> {
@@ -731,12 +730,7 @@ impl Checker {
             return false;
         }
         if t.kind == Kind::Native {
-            return t.is_std("Bytes")
-                || t.is_std("Decimal")
-                || t.is_std("BigInt")
-                || t.is_std("Duration")
-                || t.is_std("Instant")
-                || t.is_std("Timestamp");
+            return t.is_std("Bytes") || t.is_std("Decimal") || t.is_std("BigInt");
         }
         if t.def.is_some() {
             // A resource has one owner: a copy would be closed a second time.
@@ -1039,7 +1033,8 @@ impl Checker {
             Kind::Primitive => return float_bits(t).is_none() || property != "Hashable",
             _ => {}
         }
-        if t.is_std("Decimal") || t.is_std("Bytes") || t.is_std("Duration") || t.is_std("Instant") {
+        if t.is_std("Decimal") || t.is_std("Bytes") || t.is_time("Duration") || t.is_time("Instant")
+        {
             return true;
         }
         if t.is_std("List") || t.is_std("Map") || t.is_std("Set") {
@@ -1048,7 +1043,7 @@ impl Checker {
             }
             return t.args.iter().all(|a| self.property_in(a, property, state));
         }
-        if t.is_std("BigInt") || t.is_std("Regex") || t.is_std("Timestamp") {
+        if t.is_std("BigInt") || t.is_std("Regex") || t.is_time("Timestamp") {
             return property == "Equal" && !t.is_std("Regex");
         }
         if t.kind == Kind::Native {
