@@ -51,7 +51,7 @@ This caller discards the cause. To use it, call `err()` after `is_error()`, or [
 | Method | Behavior |
 | --- | --- |
 | `is_ok()`, `is_error()` | Test the case, including successful zero, false, or Unit values |
-| `get(default: Optional[T] = none) T` | Return the successful payload, or `default` on an error; without a default, [fault](faults.md) on an error |
+| `get(default: T? = none) T` | Return the successful payload, or `default` on an error; without a default, [fault](faults.md) on an error |
 | `err() E` | Return the error payload; fault on success |
 | `get_or_else(create: fn(E) T) T` | Return the successful payload, or call `create` once with the original error on failure |
 | `or_else(create: fn(E) Result[T, E]) Result[T, E]` | Keep a success, or call `create` once with the original error and return its Result |
@@ -72,11 +72,11 @@ Callbacks run sequentially in the caller's context; faults and cancellation prop
 
 ## Converting success to an Optional
 
-`to_optional() Optional[T]` returns `some` with the original payload, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
+`to_optional() T?` returns `some` with the original payload, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
 
 ```manuscript
 import TextError from "@std/core.ms"
-fn successful_price(outcome: Result[Decimal, TextError]) Optional[Decimal]:
+fn successful_price(outcome: Result[Decimal, TextError]) Decimal?:
     return outcome.to_optional()
 ```
 

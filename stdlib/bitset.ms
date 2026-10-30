@@ -59,7 +59,7 @@ impl BitSet:
         self.words = []
 
     # Returns the smallest member that is at least `from`, or `none` when there is none.
-    fn next(from: Int = 0) Optional[Int]:
+    fn next(from: Int = 0) Int?:
         var start = from
         if start < 0:
             start = 0

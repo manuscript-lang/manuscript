@@ -8,7 +8,7 @@ type Sized:
     signed: Int8
     wide: UInt64
     single: Float32
-    maybe: Optional[UInt16]
+    maybe: UInt16?
     items: List[Int32]
 
 fn sample() Sized:

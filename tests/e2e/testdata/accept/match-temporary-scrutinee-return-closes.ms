@@ -12,7 +12,7 @@ impl Closeable for Door:
         var seen = lock(self.log)
         seen.value.append(self.id)
 
-fn open(id: Int, log: Shared[List[Int]]) Optional[Door]:
+fn open(id: Int, log: Shared[List[Int]]) Door?:
     return some(Door(id, log))
 
 fn early(log: Shared[List[Int]]) Int:
@@ -32,7 +32,7 @@ fn late(log: Shared[List[Int]]) Int:
 
     return n
 
-fn hand_on(log: Shared[List[Int]]) Optional[Door]:
+fn hand_on(log: Shared[List[Int]]) Door?:
     match open(3, log):
         some(d): return some(d)
         none: return none

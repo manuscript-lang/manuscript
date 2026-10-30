@@ -8,7 +8,7 @@ type Counter:
     label: String
 
 impl Iterator[Int] for Counter:
-    var fn next() Optional[Int]:
+    var fn next() Int?:
         if self.n == 0: return none
 
         self.n -= 1

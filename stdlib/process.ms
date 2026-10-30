@@ -66,8 +66,8 @@ export interface Commands:
         program: String,
         arguments: List[String],
         input: Bytes = "".to_bytes(),
-        max_output_bytes: Optional[Int] = none,
-        timeout: Optional[Duration] = none
+        max_output_bytes: Int? = none,
+        timeout: Duration? = none
     ) Result[CommandOutput, CommandError]
     # Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
     fn spawn(
@@ -90,7 +90,7 @@ extern fn msstd_process_subprocess_stream(
 
 extern fn msstd_process_subprocess_wait(
     handle: NativeSubprocess,
-    timeout: Optional[Duration]
+    timeout: Duration?
 ) Result[Int, CommandError]
 
 extern fn msstd_process_subprocess_terminate(handle: NativeSubprocess) Unit
@@ -125,7 +125,7 @@ impl Subprocess:
         return msstd_process_subprocess_stream(self.native, 2)
 
     # Waits for the child to exit and returns its exit status. Returns Timeout if `timeout` elapses first, leaving the child running.
-    fn wait(timeout: Optional[Duration] = none) Result[Int, CommandError]:
+    fn wait(timeout: Duration? = none) Result[Int, CommandError]:
         return msstd_process_subprocess_wait(self.native, timeout)
 
     # Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it kills the direct process. Does not wait.
@@ -150,7 +150,7 @@ export interface ProcessControl:
     # Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
     fn watch_signals(
         signals: List[Int],
-        capacity: Optional[Int] = none
+        capacity: Int? = none
     ) Result[SignalStream, ControlError]
     # Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0 when no limit applies or the platform has no such limit.
     fn constrained_memory() Result[Int, ControlError]
@@ -186,13 +186,10 @@ export interface ProcessControl:
     fn environment() Result[Map[String, String], ControlError]
     # Sets environment variable `name` for this process to `value`, or removes it when `value` is none.
     # An empty name, or a name or value with `=` or NUL, returns InvalidInput. The change is visible to child processes started afterwards.
-    fn set_environment(name: String, value: Optional[String]) Result[Unit, ControlError]
+    fn set_environment(name: String, value: String?) Result[Unit, ControlError]
     # Reads `KEY=value` lines from the file at `path` and sets each variable that is not already present in the environment. Existing variables keep their values.
     # Blank lines, `#` comments, an `export ` prefix, and single-, double-, or backtick-quoted values spanning lines are accepted. The whole file is validated first, so a malformed or non-UTF-8 file returns InvalidData and changes nothing. A file larger than `max_bytes` returns LimitExceeded.
-    fn load_environment(
-        path: String,
-        max_bytes: Optional[Int] = none
-    ) Result[Unit, ControlError]
+    fn load_environment(path: String, max_bytes: Int? = none) Result[Unit, ControlError]
     # Reads the live process directory, preserving OS failures as ControlError.
     fn working_directory() Result[String, ControlError]
     # Changes the working directory of the whole process, affecting relative paths everywhere.

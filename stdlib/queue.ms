@@ -5,9 +5,9 @@ import Iterable from "@std/iterable.ms"
 # Omitted or none capacity grows as needed and adds no fixed queue limit.
 export type Queue[T]:
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
-    capacity: Optional[Int] = none
+    capacity: Int? = none
     # Pending values from `head`; `none` marks consumed slots. Internal state: use the operations, not this field.
-    items: List[Optional[T]] = []
+    items: List[T?] = []
     # Index in `items` of the oldest value. Internal state.
     head: Int = 0
 
@@ -25,7 +25,7 @@ impl Queue[T]:
         let count = self.items.length()
 
         if self.head > 0 and self.head * 2 >= count:
-            var live: List[Optional[T]] = []
+            var live: List[T?] = []
             for index in self.head..count:
                 live.append(self.items.replace(index, none))
             self.items = live
@@ -35,7 +35,7 @@ impl Queue[T]:
         return true
 
     # Removes and returns the oldest value, or `none` when empty.
-    var fn dequeue() Optional[T]:
+    var fn dequeue() T?:
         if self.head >= self.items.length():
             return none
 
@@ -49,7 +49,7 @@ impl Queue[T]:
         return value
 
     # Returns the oldest value without removing it, or none when the queue is empty.
-    fn peek() ref Optional[T]:
+    fn peek() ref T?:
         if self.head >= self.items.length():
             return none
 
@@ -65,7 +65,7 @@ impl Queue[T]:
         return self.items.length() - self.head
 
     # Returns the value `index` places after the oldest, or none when out of range; negative indexes are out of range.
-    fn at(index: Int) ref Optional[T]:
+    fn at(index: Int) ref T?:
         if index < 0 or index >= self.length():
             return none
 
@@ -80,7 +80,7 @@ export type QueueIter[T]:
 
 impl Iterator[T] for QueueIter[T]:
     # Returns the value at the current position and moves past it, or none after the newest.
-    var fn next() ref Optional[T]:
+    var fn next() ref T?:
         let item = self.source.at(self.position)
         self.position += 1
         return item
@@ -98,7 +98,7 @@ fn order[T: Comparable](left: T, right: T) Int:
 # A priority queue is an owned value: a copy is an independent queue.
 export type PriorityQueue[T: Comparable]:
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
-    capacity: Optional[Int] = none
+    capacity: Int? = none
     # Binary heap of waiting values. Internal state: use the operations, not this field.
     heap: List[T] = []
     # Enqueue sequence number of each heap value, in step with `heap`; the smaller breaks ties between equal priorities. Internal state.
@@ -167,7 +167,7 @@ impl PriorityQueue[T]:
         return true
 
     # Removes and returns the next value by priority, or `none` when empty.
-    var fn dequeue() Optional[T]:
+    var fn dequeue() T?:
         let count = self.heap.length()
         if count == 0:
             return none
@@ -180,7 +180,7 @@ impl PriorityQueue[T]:
         return top
 
     # Returns the next value by priority without removing it, or none when empty.
-    fn peek() ref Optional[T]:
+    fn peek() ref T?:
         if self.heap.length() == 0:
             return none
 
@@ -197,7 +197,7 @@ impl PriorityQueue[T]:
 
     # Returns the value at `index` in heap order, or none when out of range; only index 0 is known to be the next to dequeue.
     # Negative indexes are out of range.
-    fn at(index: Int) ref Optional[T]:
+    fn at(index: Int) ref T?:
         if index < 0 or index >= self.heap.length():
             return none
 
@@ -212,7 +212,7 @@ export type PriorityQueueIter[T: Comparable]:
 
 impl Iterator[T] for PriorityQueueIter[T]:
     # Returns the value at the current heap position and moves past it, or none after the last.
-    var fn next() ref Optional[T]:
+    var fn next() ref T?:
         let item = self.source.at(self.position)
         self.position += 1
         return item

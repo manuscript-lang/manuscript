@@ -483,7 +483,7 @@ impl Walker<'_> {
         }
         let saved = (self.ret_expr, self.ret_hit);
         let mark = self.lends.len();
-        // `return some(part)` in a `ref Optional[T]` function lends the part itself.
+        // `return some(part)` in a `ref T?` function lends the part itself.
         let lent = self.lent_by_some(e);
         self.ret_expr = Some(lent.map_or(e.id, |a| a.id));
         self.ret_hit = false;
@@ -616,7 +616,7 @@ impl Walker<'_> {
     }
 
     /// The argument of `some(argument)` when `e` is that call returned from a function whose
-    /// result is `ref Optional[T]`: the optional wraps a borrow of the argument.
+    /// result is `ref T?`: the optional wraps a borrow of the argument.
     fn lent_by_some<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
         let ExprKind::Call { args, .. } = &e.kind else {
             return None;

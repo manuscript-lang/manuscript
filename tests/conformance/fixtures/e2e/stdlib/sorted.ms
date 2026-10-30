@@ -88,7 +88,7 @@ test "many random operations agree with Map":
     for key in 0..2000:
         try expect_equal(sorted.contains(key), plain.contains(key))
 
-        var expected: Optional[Int] = none
+        var expected: Int? = none
         for candidate in sorted.keys():
             if candidate <= key:
                 expected = some(candidate)

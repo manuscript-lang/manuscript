@@ -7,7 +7,7 @@ fn pad2(n: Int) String:
     return "{n}"
 
 # Parses s when it is lo to hi ASCII digits.
-fn digits(s: String, lo: Int, hi: Int) Optional[Int]:
+fn digits(s: String, lo: Int, hi: Int) Int?:
     let codes = s.scalar_values()
     if codes.length() < lo or codes.length() > hi:
         return none
@@ -54,7 +54,7 @@ fn civil_from_days(days: Int) List[Int]:
         y = y + 1
     return [y, m, d]
 
-fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
+fn parse_field(text: String, lo: Int, hi: Int) List[Bool]?:
     var set = List[Bool]()
     var i = 0
 

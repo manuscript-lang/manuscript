@@ -9,7 +9,7 @@ export fn main() Int:
     let negative = List[String](reserve: -5)
     if negative.length() != 0: return 3
 
-    let absent: Optional[Int] = none
+    let absent: Int? = none
     if List[Int](reserve: absent).length() != 0: return 4
 
     return 0

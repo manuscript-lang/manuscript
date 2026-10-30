@@ -5,18 +5,15 @@ import Duration from "@std/time.ms"
 extern fn msstd_io_copy(
     input: ReadStream,
     output: WriteStream,
-    max_bytes: Optional[Int]
+    max_bytes: Int?
 ) Result[Int, IoError]
 
-extern fn msstd_io_read_all(
-    input: ReadStream,
-    max_bytes: Optional[Int]
-) Result[Bytes, IoError]
+extern fn msstd_io_read_all(input: ReadStream, max_bytes: Int?) Result[Bytes, IoError]
 
 extern fn msstd_io_read_line(
     input: ReadStream,
-    max_bytes: Optional[Int]
-) Result[Optional[String], IoError]
+    max_bytes: Int?
+) Result[String?, IoError]
 
 extern fn msstd_io_redirect_null(which: Int) Result[Unit, IoError]
 
@@ -36,7 +33,7 @@ export interface File:
     fn close() Unit
     # Returns a byte chunk or none at EOF; max_bytes is a positive chunk size, not a total budget.
     # Omission/none uses the native 64 KiB chunk; source implementations define their own buffering.
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Int? = none) Result[Bytes?, IoError]
 
 # Opens read-only file resources using the current host's default filesystem.
 # Native open failures (including missing paths and permission denial) become IoError.Unavailable.
@@ -68,7 +65,7 @@ export interface ReadStream:
     var fn close() Unit
     # Returns a chunk or none at EOF; a final nonempty chunk can precede EOF.
     # A supplied positive max_bytes requests a chunk size; native omission/none uses 64 KiB.
-    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]
+    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]
 
 # A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
 # Buffering/flush depends on the implementation: native stderr is unbuffered and native stdout is buffered when not a terminal (flush drains it),
@@ -88,23 +85,17 @@ export interface WriteStream:
 export fn copy(
     input: ReadStream,
     output: WriteStream,
-    max_bytes: Optional[Int] = none
+    max_bytes: Int? = none
 ) Result[Int, IoError]:
     return msstd_io_copy(input, output, max_bytes)
 
 # Reads a stream completely into memory. Supply a limit for untrusted streams.
-export fn read_all(
-    input: ReadStream,
-    max_bytes: Optional[Int] = none
-) Result[Bytes, IoError]:
+export fn read_all(input: ReadStream, max_bytes: Int? = none) Result[Bytes, IoError]:
     return msstd_io_read_all(input, max_bytes)
 
 # Reads one line from a stream such as `stdin()`, omitting its line ending; returns `none` at end of stream.
 # `max_bytes` counts the terminator: a newline-ended line must be shorter than it, an unterminated last line may equal it. To read every line, iterate `lines(input)`.
-export fn read_line(
-    input: ReadStream,
-    max_bytes: Optional[Int] = none
-) Result[Optional[String], IoError]:
+export fn read_line(input: ReadStream, max_bytes: Int? = none) Result[String?, IoError]:
     return msstd_io_read_line(input, max_bytes)
 
 # Lines of a stream, read on demand. `for line in reader:` walks the lines without their
@@ -117,21 +108,21 @@ export type LineReader:
     # The stream being read.
     input: ReadStream
     # Per-line byte limit, or none for no limit.
-    max_bytes: Optional[Int]
+    max_bytes: Int?
     # The error that ended iteration, if any.
-    failure: Optional[IoError]
+    failure: IoError?
     # The line `next` returned last; the item it lends.
     current: String
 
 impl LineReader:
     # Returns the I/O error that ended iteration, or none after a clean end of input
     # (and while lines remain). A line over the limit reports `LimitExceeded`.
-    fn error() Optional[IoError]:
+    fn error() IoError?:
         return self.failure.clone()
 
 impl Iterator[String] for LineReader:
     # Returns the next line, or none at end of input or after an error (see `error()`).
-    var fn next() ref Optional[String]:
+    var fn next() ref String?:
         if self.failure.is_some():
             return none
 
@@ -150,7 +141,7 @@ impl Iterator[String] for LineReader:
 
 # Returns a reader over the lines of `input`, for `for line in reader:`. `max_bytes` bounds each
 # line, as in `read_line`.
-export fn lines(input: ReadStream, max_bytes: Optional[Int] = none) LineReader:
+export fn lines(input: ReadStream, max_bytes: Int? = none) LineReader:
     return LineReader(input, max_bytes, none, "")
 
 impl Error for IoError:
@@ -300,8 +291,8 @@ extern fn msstd_terminal_raw_terminal_close(handle: NativeRawTerminal) Unit
 
 extern fn msstd_terminal_raw_terminal_next_event(
     handle: NativeRawTerminal,
-    timeout: Optional[Duration]
-) Result[Optional[Unit], TerminalError]
+    timeout: Duration?
+) Result[Unit?, TerminalError]
 
 extern fn msstd_terminal_event_kind() Int
 
@@ -356,9 +347,7 @@ impl Closeable for RawTerminal:
 
 impl RawTerminal:
     # Waits for the next event; none means the timeout elapsed. Waits honor cancellation and concurrent callers are serialized.
-    fn next_event(
-        timeout: Optional[Duration] = none
-    ) Result[Optional[TerminalEvent], TerminalError]:
+    fn next_event(timeout: Duration? = none) Result[TerminalEvent?, TerminalError]:
         let ready = try msstd_terminal_raw_terminal_next_event(self.native, timeout)
         if ready.is_none(): return ok(none)
 

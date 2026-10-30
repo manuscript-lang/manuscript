@@ -16,10 +16,10 @@ fn items(value: TomlValue) Result[List[TomlValue], Error]:
         _: return error(TextError("expected TOML array"))
 
 fn limits(
-    bytes: Optional[Int],
-    depth: Optional[Int],
-    values: Optional[Int]
-) Optional[TomlLimits]:
+    bytes: Int?,
+    depth: Int?,
+    values: Int?
+) TomlLimits?:
     return some(TomlLimits(max_bytes: bytes, max_depth: depth, max_values: values))
 
 test "TOML scalars quoted keys comments exact integers and dates":

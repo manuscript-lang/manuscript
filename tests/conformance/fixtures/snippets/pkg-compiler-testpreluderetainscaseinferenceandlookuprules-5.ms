@@ -4,5 +4,5 @@
 type Other:
     case some(value: Int)
 
-fn f() Optional[Int]:
+fn f() Int?:
     return some(value: 1)

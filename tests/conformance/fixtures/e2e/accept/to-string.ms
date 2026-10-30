@@ -72,8 +72,8 @@ test "records alternatives and collections convert":
     )
     (try check(value: Outcome.Waiting.to_string(), expected: "Outcome.Waiting"))
 
-    let absent: Optional[Int] = none
-    let present: Optional[Int] = some(3)
+    let absent: Int? = none
+    let present: Int? = some(3)
     let result: Result[Int, TextError] = error(TextError("failed"))
     (try check(value: absent.to_string(), expected: "Optional.none"))
     (try check(value: present.to_string(), expected: "Optional.some(3)"))

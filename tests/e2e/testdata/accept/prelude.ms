@@ -7,7 +7,7 @@ impl Error for Failure:
     fn message() String:
         return self.message_text.clone()
 
-fn success() Result[Optional[Int], Error]:
+fn success() Result[Int?, Error]:
     return ok(some(7))
 
 fn failure() Result[Int, Failure]:
@@ -18,16 +18,14 @@ fn propagated() Result[Int, Error]:
 
 test "prelude cases and optional methods need no imports":
     let inferred = some(3)
-    let absent: Optional[Int] = none
-    let qualified = Optional[Int].some(5)
+    let absent: Int? = none
+    let qualified = Int?.some(5)
     try expect_false(not inferred.is_some() or not absent.is_none())
     try expect_false(inferred.get() != 3 or qualified.get() != 5)
     try expect_false(
         (
             absent.get(9) != 9
-            or absent.or_else(
-                fn() Optional[Int]: return some(11)
-            ).get() != 11
+            or absent.or_else(fn() Int?: return some(11)).get() != 11
         )
     )
 

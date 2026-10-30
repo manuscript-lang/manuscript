@@ -26,15 +26,15 @@ type MutualTree:
 
 type Node:
     value: Int
-    next: Optional[Node]
+    next: Node?
 
 type DefaultNode:
     value: Int
-    next: Optional[DefaultNode] = none
+    next: DefaultNode? = none
 
 type Link:
     value: Int
-    next: Optional[Link]
+    next: Link?
 
 impl Equal for Link:
     fn equals(other: Link) Bool:
@@ -124,13 +124,13 @@ test "recursive defaults construct independent complete objects":
 
 type Entry:
     name: String
-    nickname: Optional[String]
+    nickname: String?
 
 type Person:
-    primary: Optional[Entry]
+    primary: Entry?
 
 type NestedOptional:
-    case Value(value: Optional[Optional[Int]])
+    case Value(value: Int??)
 
 type NestedResult:
     value: Result[Result[Int, TextError], TextError]
@@ -166,7 +166,5 @@ test "finite nested generic composition constructs and extracts values":
     let box = Box(Box(6))
     box.value.value | try expect_equal(6)
 
-    let pair: Pair[Optional[Int], Optional[Optional[String]]] = Pair(
-        first: some(7), second: some(some("nested"))
-    )
+    let pair: Pair[Int?, String??] = Pair(first: some(7), second: some(some("nested")))
     (pair.first.get() != 7 or pair.second.get().get() != "nested") | try expect_false

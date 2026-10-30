@@ -85,7 +85,7 @@ func typedItems() rt.Function {
    total=rt.IntAdd(total,rt.SourceAt(&sourcePosition,"benchmark.ms:25:23",rt.IntValue(rt.OptionalUnwrap(ctx,
     rt.SourceAt(&sourcePosition,"benchmark.ms:25:42",rt.ListAt(ctx,
      rt.SourceAt(&sourcePosition,"benchmark.ms:25:25",values),index,
-     rt.SourceAt(&sourcePosition,"benchmark.ms:25:32","@std/Optional[Int]"),
+     rt.SourceAt(&sourcePosition,"benchmark.ms:25:32","@std/Int?"),
     )),
    ))))
    sourcePosition="benchmark.ms:26:9"

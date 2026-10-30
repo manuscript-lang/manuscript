@@ -2,4 +2,4 @@
 # conform: phase=parse
 # conform: origin=pkg/compiler/contextual_generics_test.go:45 TestExpectedResultGenericInference
 fn first() Unit:
-    let callback: fn() Optional[Int] = fn: absent()
+    let callback: fn() Int? = fn: absent()

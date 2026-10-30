@@ -4,7 +4,7 @@ fn pair(a: Int, b: Int) Int: a * 10 + b
 
 test "arguments":
     var value = 1
-    let option: Optional[Int] = some(2)
+    let option: Int? = some(2)
     let result = pair(
         a: value,
         b: match option:
@@ -15,7 +15,7 @@ test "arguments":
     )
     try expect_equal(result, 12)
 
-fn optional(value: Optional[Int]) Int: value.get()
+fn optional(value: Int?) Int: value.get()
 
 fn defaulted(value: Int = 3) Int: value
 

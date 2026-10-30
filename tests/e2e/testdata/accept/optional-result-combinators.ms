@@ -28,7 +28,7 @@ fn convert(ok_value: Bool) Result[Int, Wrapped]:
 
 fn unexpected_int() Int: panic("closure must not run")
 
-fn unexpected_optional() Optional[Int]: panic("closure must not run")
+fn unexpected_optional() Int?: panic("closure must not run")
 
 fn unexpected_recover(cause: TextError) Result[Int, TextError]:
     return panic("closure must not run")
@@ -38,22 +38,22 @@ fn unexpected_text(cause: TextError) Int: panic("closure must not run")
 fn unexpected_widen(cause: TextError) Wrapped: panic("closure must not run")
 
 test "Optional get_or_else returns the payload and is lazy":
-    let present: Optional[Int] = some(0)
-    let missing: Optional[Int] = none
+    let present: Int? = some(0)
+    let missing: Int? = none
     var counter = Counter(0)
     try expect_equal(present.get_or_else(unexpected_int), 0)
     try expect_equal(missing.get_or_else(fn: tick(var counter)), 7)
     try expect_equal(counter.calls, 1)
 
-    let flag: Optional[Bool] = some(false)
+    let flag: Bool? = some(false)
     try expect_false(flag.get_or_else(fn: true))
 
 test "Optional or_else keeps the wrapper and is lazy":
-    let present: Optional[Int] = some(0)
-    let missing: Optional[Int] = none
+    let present: Int? = some(0)
+    let missing: Int? = none
     try expect_equal(present.or_else(unexpected_optional), some(0))
     try expect_equal(missing.or_else(fn: some(4)), some(4))
-    try expect_equal(missing.or_else(fn: Optional[Int].none), none)
+    try expect_equal(missing.or_else(fn: Int?.none), none)
 
 test "Result get_or_else returns the payload and receives the error":
     let success: Result[Int, TextError] = ok(0)
@@ -81,7 +81,7 @@ test "Result map_error converts the error type and feeds try":
     try expect_equal(convert(false).err().message(), "wrapped bad")
 
 test "map and and_then on both types keep their meaning":
-    let present: Optional[Int] = some(2)
+    let present: Int? = some(2)
     let success: Result[Int, TextError] = ok(2)
     try expect_equal(present.map(fn n: n + 1).get(), 3)
     try expect_equal(present.and_then(fn n: some(n * 2)).get(), 4)

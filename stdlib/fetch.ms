@@ -81,18 +81,18 @@ export type FetchOptions:
     # The request method; defaults to Get. Extension tokens use the Custom case.
     method: HttpMethod = HttpMethod.Get
     # Extra request headers; none sends no extra fields. The caller's headers are never modified.
-    headers: Optional[HttpHeaders] = none
+    headers: HttpHeaders? = none
     # The request body; defaults to Empty. A Text, Raw, or JSON body adds a `Content-Type` only when `headers` lacks one.
     body: FetchBody = FetchBody.Empty
     # Whole-exchange deadline; none waits without limit.
-    timeout: Optional[Duration] = seconds(30)
+    timeout: Duration? = seconds(30)
     # Largest accepted response body in bytes; none sets no cap. Larger bodies return `Http(LimitExceeded)`.
-    max_response_bytes: Optional[Int] = 16777216
+    max_response_bytes: Int? = 16777216
 
 # Settings fixed when a `Fetcher` is created.
 export type FetcherOptions:
     # Most redirects followed per request; 0 returns the redirect itself and none sets no cap.
-    max_redirects: Optional[Int] = 20
+    max_redirects: Int? = 20
     # Decode gzip responses, bounded by `max_response_bytes`.
     decompress: Bool = true
     # Keep an in-memory cookie jar for the fetcher's lifetime.
@@ -205,13 +205,13 @@ type Outgoing:
     headers: HttpHeaders
     body: Bytes
 
-fn limit_exceeded(limit: Optional[Int], total: Int) Bool:
+fn limit_exceeded(limit: Int?, total: Int) Bool:
     if let max = limit:
         return total > max
 
     return false
 
-fn expired(timeout: Optional[Duration], started: Instant) Bool:
+fn expired(timeout: Duration?, started: Instant) Bool:
     if let limit = timeout:
         return clock().now().difference(started).compare(limit) >= 0
 

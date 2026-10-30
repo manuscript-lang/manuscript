@@ -9,7 +9,7 @@ type Mem:
     closed: Bool
 
 impl ReadStream for Mem:
-    var fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Int?) Result[Bytes?, IoError]:
         if self.offset == self.data.length(): return ok(none)
 
         let count = max_bytes.get(self.data.length() - self.offset)

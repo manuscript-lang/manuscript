@@ -1,5 +1,5 @@
-fn absent[T]() Optional[T]:
+fn absent[T]() T?:
     return none
 
 test "result context infers function arguments":
-    let _]value: Optional[Int] = absent()
+    let _]value: Int? = absent()

@@ -19,7 +19,7 @@ test "sealed builders":
     map.add("a", 1)
     map.add("a", 2)
 
-    let expected: Optional[Int] = some(2)
+    let expected: Int? = some(2)
     try expect_equal(map.build().get("a"), expected)
 
     var set = SetBuilder[Int]()
@@ -31,7 +31,7 @@ test "sealed builders":
     bytes.append(65)
     bytes.append_bytes("B".to_bytes())
 
-    let expected_text: Optional[String] = some("AB")
+    let expected_text: String? = some("AB")
     try expect_equal(bytes.build().decode_utf8(), expected_text)
 
     var text = StringBuilder()

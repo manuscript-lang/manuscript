@@ -8,7 +8,7 @@ fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 
 fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 
-fn absent[T]() Optional[T]: none
+fn absent[T]() T?: none
 
 fn identity[T](value: T) T: value
 
@@ -26,18 +26,18 @@ fn first() Result[List[Int], TextError]: fail("empty")
 
 fn failed() Result[Int, Error]: fail_cause(Failure("domain"))
 
-fn forward[T]() Optional[T]: absent()
+fn forward[T]() T?: absent()
 
-fn consume(value: Optional[Int]) Int: value.get(0)
+fn consume(value: Int?) Int: value.get(0)
 
 type Events:
     values: List[Int]
 
-fn record[T](var events: Events, value: Int) Optional[T]:
+fn record[T](var events: Events, value: Int) T?:
     events.values.append(value)
     return none
 
-fn combine[T](var events: Events, first: Optional[T], second: Optional[T]) Optional[T]:
+fn combine[T](var events: Events, first: T?, second: T?) T?:
     events.values.append(3)
     return first
 
@@ -50,10 +50,10 @@ test "expected generic results preserve behavior and call order":
     try expect_false(domain.is_ok())
     try expect_equal(domain.err().message(), "domain")
 
-    let empty: Optional[Int] = forward()
+    let empty: Int? = forward()
     try expect_false(not empty.is_none())
 
-    let values: List[Optional[Int]] = [1, 2].map(fn item: absent())
+    let values: List[Int?] = [1, 2].map(fn item: absent())
     try expect_equal(values.length(), 2)
     try expect_false(not values.get(0).is_none())
 
@@ -65,7 +65,7 @@ test "expected generic results preserve behavior and call order":
     try expect_equal(consume(identity(5)), 5)
 
     var events = Events([])
-    let combined: Optional[Int] = combine(
+    let combined: Int? = combine(
         var events, second: record(var events, 2), first: record(var events, 1)
     )
     try expect_false(not combined.is_none())

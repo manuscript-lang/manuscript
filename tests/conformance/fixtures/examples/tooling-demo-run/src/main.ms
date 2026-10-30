@@ -11,7 +11,7 @@ type Package:
 export fn main() Int:
     let package = Package("Manuscript", 42)
     let values = [10, 20, 30]
-    let optional = Optional[Int].some(5)
+    let optional = Int?.some(5)
 
     if let value = optional:
         if value != 5:

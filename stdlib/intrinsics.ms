@@ -30,10 +30,7 @@ interface StringOperations:
     fn lines() List[String]
     # Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes optionally bounds UTF-8 output.
     # Invalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded.
-    fn normalize(
-        form: String,
-        max_bytes: Optional[Int] = none
-    ) Result[String, StringError]
+    fn normalize(form: String, max_bytes: Int? = none) Result[String, StringError]
     # Concatenates text without changing either operand.
     fn concat(other: String) String
     # Tests whether the exact text occurs, without normalization.
@@ -43,7 +40,7 @@ interface StringOperations:
     # Returns locale-independent full Unicode lowercase mapping; the scalar length can change.
     fn lower() String
     # Repeats text count times; negative counts/budgets return InvalidInput, exceeded UTF-8 budgets return LimitExceeded.
-    fn repeat(count: Int, max_bytes: Optional[Int] = none) Result[String, StringError]
+    fn repeat(count: Int, max_bytes: Int? = none) Result[String, StringError]
     # Replaces the first occurrence of old; text without a match is unchanged.
     # An empty old matches at the first scalar boundary, so new is inserted at the start.
     fn replace_first(old: String, new: String) String
@@ -64,7 +61,7 @@ interface StringOperations:
     fn drop(count: Int) String
     # Splits exact separators, truncating parts to a supplied nonnegative cap; zero returns [], negatives fault.
     # Empty text with a nonempty separator yields [""]; an empty separator splits into scalars.
-    fn split(separator: String, max_parts: Optional[Int] = none) List[String]
+    fn split(separator: String, max_parts: Int? = none) List[String]
     # Tests whether the receiver begins with this exact prefix.
     fn starts_with(prefix: String) Bool
     # Removes Unicode whitespace at both ends; see the exact whitespace set in the text guide.
@@ -72,13 +69,13 @@ interface StringOperations:
     # Returns locale-independent full Unicode uppercase mapping; the scalar length can change.
     fn upper() String
     # Returns a one-scalar String; negative indexes are relative to the end. An invalid index returns `default`, and without one raises a fault.
-    fn get(index: Int, default: Optional[String] = none) String
+    fn get(index: Int, default: String? = none) String
     # Returns an integer scalar code point; negative indexes are relative to the end. An invalid index returns `default`, and without one raises a fault.
-    fn scalar_at(index: Int, default: Optional[Int] = none) Int
+    fn scalar_at(index: Int, default: Int? = none) Int
     # Returns the first matching Unicode scalar index or none; empty value matches at zero.
-    fn index_of(value: String) Optional[Int]
+    fn index_of(value: String) Int?
     # Returns the last matching Unicode scalar index or none; empty value matches at scalar_length().
-    fn last_index_of(value: String) Optional[Int]
+    fn last_index_of(value: String) Int?
     # Removes Unicode whitespace at the start.
     fn trim_start() ref String
     # Removes Unicode whitespace at the end.
@@ -97,9 +94,9 @@ interface StringOperations:
     # Encodes the string as UTF-8 bytes.
     fn to_bytes() Bytes
     # Parses signed ASCII decimal digits; invalid text or Int overflow returns none.
-    fn parse_int() Optional[Int]
+    fn parse_int() Int?
     # Parses a decimal floating-point number with the syntax of `math.parse_float`; invalid or out-of-range text returns none.
-    fn parse_float() Optional[Float]
+    fn parse_float() Float?
 
 # Conversion operations for machine-sized integers.
 interface IntOperations:
@@ -121,19 +118,19 @@ interface IntOperations:
     # Converts to Int; every value fits, so no check is needed.
     fn to_int() Int
     # Converts to Int8, or returns none when the value is outside Int8's range.
-    fn to_int8() Optional[Int8]
+    fn to_int8() Int8?
     # Converts to Int16, or returns none when the value is outside Int16's range.
-    fn to_int16() Optional[Int16]
+    fn to_int16() Int16?
     # Converts to Int32, or returns none when the value is outside Int32's range.
-    fn to_int32() Optional[Int32]
+    fn to_int32() Int32?
     # Converts to UInt8, or returns none when the value is outside UInt8's range.
-    fn to_uint8() Optional[UInt8]
+    fn to_uint8() UInt8?
     # Converts to UInt16, or returns none when the value is outside UInt16's range.
-    fn to_uint16() Optional[UInt16]
+    fn to_uint16() UInt16?
     # Converts to UInt32, or returns none when the value is outside UInt32's range.
-    fn to_uint32() Optional[UInt32]
+    fn to_uint32() UInt32?
     # Converts to UInt64, or returns none when the value is negative.
-    fn to_uint64() Optional[UInt64]
+    fn to_uint64() UInt64?
     # Converts to Float32, rounding to the nearest binary32 value.
     fn to_float32() Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -161,9 +158,9 @@ interface FloatOperations:
     # Returns -1.0 or 1.0 by sign; zeros and NaN are returned unchanged.
     fn sign() Float
     # Truncates toward zero, or returns none for nonfinite values or Int overflow.
-    fn truncate_to_int() Optional[Int]
+    fn truncate_to_int() Int?
     # Converts to Float32, rounding to the nearest binary32 value. A finite value too large for Float32 returns none instead of becoming infinity; NaN and infinities convert unchanged.
-    fn to_float32() Optional[Float32]
+    fn to_float32() Float32?
 
 # Conversion operations for Int8, a signed 8-bit integer.
 interface Int8Operations:
@@ -189,13 +186,13 @@ interface Int8Operations:
     # Converts to Int; every value fits, so no check is needed.
     fn to_int() Int
     # Converts to UInt8, or returns none when the value is outside UInt8's range.
-    fn to_uint8() Optional[UInt8]
+    fn to_uint8() UInt8?
     # Converts to UInt16, or returns none when the value is outside UInt16's range.
-    fn to_uint16() Optional[UInt16]
+    fn to_uint16() UInt16?
     # Converts to UInt32, or returns none when the value is outside UInt32's range.
-    fn to_uint32() Optional[UInt32]
+    fn to_uint32() UInt32?
     # Converts to UInt64, or returns none when the value is negative.
-    fn to_uint64() Optional[UInt64]
+    fn to_uint64() UInt64?
     # Converts to Float32, rounding to the nearest binary32 value.
     fn to_float32() Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -217,7 +214,7 @@ interface Int16Operations:
     # Returns -1, 0 or 1 as this value is negative, zero or positive.
     fn sign() Int
     # Converts to Int8, or returns none when the value is outside Int8's range.
-    fn to_int8() Optional[Int8]
+    fn to_int8() Int8?
     # Converts to Int32; every value fits, so no check is needed.
     fn to_int32() Int32
     # Converts to Int64; every value fits, so no check is needed.
@@ -225,13 +222,13 @@ interface Int16Operations:
     # Converts to Int; every value fits, so no check is needed.
     fn to_int() Int
     # Converts to UInt8, or returns none when the value is outside UInt8's range.
-    fn to_uint8() Optional[UInt8]
+    fn to_uint8() UInt8?
     # Converts to UInt16, or returns none when the value is outside UInt16's range.
-    fn to_uint16() Optional[UInt16]
+    fn to_uint16() UInt16?
     # Converts to UInt32, or returns none when the value is outside UInt32's range.
-    fn to_uint32() Optional[UInt32]
+    fn to_uint32() UInt32?
     # Converts to UInt64, or returns none when the value is negative.
-    fn to_uint64() Optional[UInt64]
+    fn to_uint64() UInt64?
     # Converts to Float32, rounding to the nearest binary32 value.
     fn to_float32() Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -253,21 +250,21 @@ interface Int32Operations:
     # Returns -1, 0 or 1 as this value is negative, zero or positive.
     fn sign() Int
     # Converts to Int8, or returns none when the value is outside Int8's range.
-    fn to_int8() Optional[Int8]
+    fn to_int8() Int8?
     # Converts to Int16, or returns none when the value is outside Int16's range.
-    fn to_int16() Optional[Int16]
+    fn to_int16() Int16?
     # Converts to Int64; every value fits, so no check is needed.
     fn to_int64() Int64
     # Converts to Int; every value fits, so no check is needed.
     fn to_int() Int
     # Converts to UInt8, or returns none when the value is outside UInt8's range.
-    fn to_uint8() Optional[UInt8]
+    fn to_uint8() UInt8?
     # Converts to UInt16, or returns none when the value is outside UInt16's range.
-    fn to_uint16() Optional[UInt16]
+    fn to_uint16() UInt16?
     # Converts to UInt32, or returns none when the value is outside UInt32's range.
-    fn to_uint32() Optional[UInt32]
+    fn to_uint32() UInt32?
     # Converts to UInt64, or returns none when the value is negative.
-    fn to_uint64() Optional[UInt64]
+    fn to_uint64() UInt64?
     # Converts to Float32, rounding to the nearest binary32 value.
     fn to_float32() Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -285,7 +282,7 @@ interface UInt8Operations:
     # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
     fn compare(other: UInt8) Int
     # Converts to Int8, or returns none when the value is outside Int8's range.
-    fn to_int8() Optional[Int8]
+    fn to_int8() Int8?
     # Converts to Int16; every value fits, so no check is needed.
     fn to_int16() Int16
     # Converts to Int32; every value fits, so no check is needed.
@@ -317,9 +314,9 @@ interface UInt16Operations:
     # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
     fn compare(other: UInt16) Int
     # Converts to Int8, or returns none when the value is outside Int8's range.
-    fn to_int8() Optional[Int8]
+    fn to_int8() Int8?
     # Converts to Int16, or returns none when the value is outside Int16's range.
-    fn to_int16() Optional[Int16]
+    fn to_int16() Int16?
     # Converts to Int32; every value fits, so no check is needed.
     fn to_int32() Int32
     # Converts to Int64; every value fits, so no check is needed.
@@ -327,7 +324,7 @@ interface UInt16Operations:
     # Converts to Int; every value fits, so no check is needed.
     fn to_int() Int
     # Converts to UInt8, or returns none when the value is outside UInt8's range.
-    fn to_uint8() Optional[UInt8]
+    fn to_uint8() UInt8?
     # Converts to UInt32; every value fits, so no check is needed.
     fn to_uint32() UInt32
     # Converts to UInt64; every value fits, so no check is needed.
@@ -349,19 +346,19 @@ interface UInt32Operations:
     # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
     fn compare(other: UInt32) Int
     # Converts to Int8, or returns none when the value is outside Int8's range.
-    fn to_int8() Optional[Int8]
+    fn to_int8() Int8?
     # Converts to Int16, or returns none when the value is outside Int16's range.
-    fn to_int16() Optional[Int16]
+    fn to_int16() Int16?
     # Converts to Int32, or returns none when the value is outside Int32's range.
-    fn to_int32() Optional[Int32]
+    fn to_int32() Int32?
     # Converts to Int64; every value fits, so no check is needed.
     fn to_int64() Int64
     # Converts to Int; every value fits, so no check is needed.
     fn to_int() Int
     # Converts to UInt8, or returns none when the value is outside UInt8's range.
-    fn to_uint8() Optional[UInt8]
+    fn to_uint8() UInt8?
     # Converts to UInt16, or returns none when the value is outside UInt16's range.
-    fn to_uint16() Optional[UInt16]
+    fn to_uint16() UInt16?
     # Converts to UInt64; every value fits, so no check is needed.
     fn to_uint64() UInt64
     # Converts to Float32, rounding to the nearest binary32 value.
@@ -381,21 +378,21 @@ interface UInt64Operations:
     # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
     fn compare(other: UInt64) Int
     # Converts to Int8, or returns none when the value is outside Int8's range.
-    fn to_int8() Optional[Int8]
+    fn to_int8() Int8?
     # Converts to Int16, or returns none when the value is outside Int16's range.
-    fn to_int16() Optional[Int16]
+    fn to_int16() Int16?
     # Converts to Int32, or returns none when the value is outside Int32's range.
-    fn to_int32() Optional[Int32]
+    fn to_int32() Int32?
     # Converts to Int64, or returns none when the value is above Int64's maximum.
-    fn to_int64() Optional[Int64]
+    fn to_int64() Int64?
     # Converts to Int, or returns none when the value is above Int's maximum.
-    fn to_int() Optional[Int]
+    fn to_int() Int?
     # Converts to UInt8, or returns none when the value is outside UInt8's range.
-    fn to_uint8() Optional[UInt8]
+    fn to_uint8() UInt8?
     # Converts to UInt16, or returns none when the value is outside UInt16's range.
-    fn to_uint16() Optional[UInt16]
+    fn to_uint16() UInt16?
     # Converts to UInt32, or returns none when the value is outside UInt32's range.
-    fn to_uint32() Optional[UInt32]
+    fn to_uint32() UInt32?
     # Converts to Float32, rounding to the nearest binary32 value.
     fn to_float32() Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -414,7 +411,7 @@ interface Float32Operations:
     # Returns -1.0 or 1.0 by sign; zeros and NaN are returned unchanged.
     fn sign() Float32
     # Truncates toward zero, or returns none for nonfinite values or Int overflow.
-    fn truncate_to_int() Optional[Int]
+    fn truncate_to_int() Int?
     # Converts to Float; every Float32 converts exactly.
     fn to_float() Float
     # Converts to Float64; every Float32 converts exactly.

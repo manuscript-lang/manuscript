@@ -7,7 +7,7 @@ type Point:
     x: Int
     y: Int
 
-fn halve(n: Int) Optional[Int]:
+fn halve(n: Int) Int?:
     if n % 2 != 0:
         return none
 

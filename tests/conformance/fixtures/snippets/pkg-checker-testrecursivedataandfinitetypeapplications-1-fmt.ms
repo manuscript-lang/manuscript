@@ -4,4 +4,4 @@
 type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
-    case Neg(inner: Optional[Expr])
+    case Neg(inner: Expr?)

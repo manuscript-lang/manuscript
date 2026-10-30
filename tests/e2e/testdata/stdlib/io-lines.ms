@@ -3,7 +3,7 @@ import IoError, LineReader, lines from "@std/io.ms"
 import Iterator from "@std/core.ms"
 import MemoryStream from "./support/streams.ms"
 
-fn collect(text: String, max_bytes: Optional[Int] = none) Result[List[String], IoError]:
+fn collect(text: String, max_bytes: Int? = none) Result[List[String], IoError]:
     var reader = lines(MemoryStream(text.to_bytes(), 0, closed: false), max_bytes)
     var seen: List[String] = []
     for line in reader:
@@ -58,7 +58,7 @@ type Countdown:
     left: Int
 
 impl Iterator[Int] for Countdown:
-    var fn next() Optional[Int]:
+    var fn next() Int?:
         if self.left == 0:
             return none
 

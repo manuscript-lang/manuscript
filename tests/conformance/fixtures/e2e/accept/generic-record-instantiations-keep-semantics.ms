@@ -42,5 +42,5 @@ test "generic records":
     try expect_true((Box[Int](v: 4, n: 2) == a))
     try expect_true((not (Box[Int](v: 5, n: 2) == a)))
 
-    let o = Box[Optional[Int]](v: some(3), n: 0)
+    let o = Box[Int?](v: some(3), n: 0)
     try expect_true((o.v == some(3)))

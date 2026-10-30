@@ -189,7 +189,7 @@ mod tests {
     use core::mem::offset_of;
 
     /// The compiler packs a record's leaves with no padding after a nested record: after two
-    /// `Optional[Int]` (16 bytes each), four strings, the ALPN list (24 bytes) and one byte for
+    /// `Int?` (16 bytes each), four strings, the ALPN list (24 bytes) and one byte for
     /// `require_client_certificate`, `compression` is the next byte.
     #[test]
     fn compression_follows_the_inline_tls_options_byte() {

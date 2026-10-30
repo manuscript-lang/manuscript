@@ -51,7 +51,7 @@ test "JSON parse bounds nesting even without a depth limit":
 type Request:
     model: String
     stream: Bool
-    user: Optional[String]
+    user: String?
     temperature: Float
     tags: List[String]
 
@@ -63,15 +63,15 @@ type Shape:
 type Scene:
     shape: Shape
     shapes: List[Shape]
-    note: Optional[String]
+    note: String?
 
 type Box[T]:
     first: T
-    second: Optional[T]
+    second: T?
 
 type Node:
     label: String
-    next: Optional[Node]
+    next: Node?
 
 fn encoded[T](item: T) Result[String, Error]:
     return stringify(item)
@@ -94,10 +94,10 @@ test "JSON stringify encodes alternatives and nested optionals":
     let expected = "\{\"shape\":\{\"Circle\":\{\"radius\":2\}\},\"shapes\":[\"Dot\",\{\"Rect\":\{\"width\":1,\"height\":2\}\}]\}"
     try expect_equal((try encoded(scene)), expected)
 
-    let sparse: List[Optional[Int]] = [some(1), none]
+    let sparse: List[Int?] = [some(1), none]
     try expect_equal((try encoded(sparse)), "[1,null]")
 
-    let missing: Optional[Int] = none
+    let missing: Int? = none
     try expect_equal((try encoded(missing)), "null")
 
 test "JSON stringify keeps map insertion order and encodes scalars exactly":
@@ -139,8 +139,8 @@ fn one() Int:
 type Handler:
     name: String
     callback: fn() Int
-    retries: Optional[Optional[Int]]
-    note: Optional[String]
+    retries: Int??
+    note: String?
 
 type Money:
     cents: Int
@@ -160,7 +160,7 @@ type Stamped:
     link: Url
 
 type Tagged:
-    case Named(name: String, alias: Optional[String])
+    case Named(name: String, alias: String?)
     case Plain
 
 test "JSON stringify omits values without a JSON form and writes null for list elements":
@@ -308,14 +308,14 @@ test "JSON stringify keeps cases with identical labels distinct by default":
 type Profile:
     name: String
     age: Int = 18
-    nickname: Optional[String]
+    nickname: String?
     scores: List[Float]
     labels: Map[String, Int]
     ids: Set[Int]
 
 type Wrapper[T]:
     first: T
-    second: Optional[T]
+    second: T?
     extra: Int = 7
 
 type Tree:
@@ -430,7 +430,7 @@ test "JSON parse decodes recursive types exact numbers and passthrough values":
     )
     try expect_equal(boxed.first, raw)
 
-    let list: List[Optional[Int]] = try parse[List[Optional[Int]]]("[1,null]")
+    let list: List[Int?] = try parse[List[Int?]]("[1,null]")
     try expect_false(list.get(1).is_some())
 
 test "JSON parse inverts stringify and works in generic code":
@@ -514,7 +514,7 @@ test "JSON parse reads standard alternatives and rejects keys that collide":
     try expect_equal(parse[Map[Int, String]]("\{\"1\":\"a\",\"01\":\"b\"\}"), collide)
 
 type Link:
-    next: Optional[Link]
+    next: Link?
     n: Int
 
 type Defaults:
@@ -533,7 +533,7 @@ type Pair[A, B]:
 
 type Op:
     case Add(left: Int, right: Int)
-    case Neg(v: Optional[Int])
+    case Neg(v: Int?)
     case Nop
 
 type Wrap:

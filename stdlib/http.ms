@@ -14,10 +14,7 @@ extern fn msrt_http_headers_append(
     value: Bytes
 ) Result[Unit, HttpError]
 
-extern fn msrt_http_headers_values(
-    value: HttpHeaders,
-    name: String
-) Optional[List[Bytes]]
+extern fn msrt_http_headers_values(value: HttpHeaders, name: String) List[Bytes]?
 
 extern fn msrt_http_headers_names(value: HttpHeaders) List[String]
 
@@ -73,7 +70,7 @@ impl HttpHeaders:
         return out
 
     # Returns the raw bytes of every value as an owned list, or none for an absent name.
-    fn values_bytes(name: String) Optional[List[Bytes]]:
+    fn values_bytes(name: String) List[Bytes]?:
         return msrt_http_headers_values(self, name)
 
     # Reports whether the name has any value, whatever its encoding.
@@ -170,8 +167,8 @@ extern fn msrt_http_client_request(
     url: String,
     headers: HttpHeaders,
     body: String,
-    max_response_bytes: Optional[Int],
-    timeout: Optional[Duration]
+    max_response_bytes: Int?,
+    timeout: Duration?
 ) Result[ResponseBody, HttpError]
 
 extern fn msrt_http_client_request_bytes(
@@ -180,8 +177,8 @@ extern fn msrt_http_client_request_bytes(
     url: String,
     headers: HttpHeaders,
     body: Bytes,
-    max_response_bytes: Optional[Int],
-    timeout: Optional[Duration]
+    max_response_bytes: Int?,
+    timeout: Duration?
 ) Result[ResponseBody, HttpError]
 
 extern fn msrt_http_client_request_stream(
@@ -190,8 +187,8 @@ extern fn msrt_http_client_request_stream(
     url: String,
     headers: HttpHeaders,
     body: ReadStream,
-    max_response_bytes: Optional[Int],
-    timeout: Optional[Duration]
+    max_response_bytes: Int?,
+    timeout: Duration?
 ) Result[ResponseBody, HttpError]
 
 # Reusable HTTP client with connection pooling and explicit response limits.
@@ -213,8 +210,8 @@ impl HttpClient:
         url: String,
         headers: HttpHeaders,
         body: String = "",
-        max_response_bytes: Optional[Int] = none,
-        timeout: Optional[Duration] = none
+        max_response_bytes: Int? = none,
+        timeout: Duration? = none
     ) Result[ResponseBody, HttpError]:
         return msrt_http_client_request(
             self.native, method, url, headers, body, max_response_bytes, timeout
@@ -226,8 +223,8 @@ impl HttpClient:
         url: String,
         headers: HttpHeaders,
         body: Bytes = "".to_bytes(),
-        max_response_bytes: Optional[Int] = none,
-        timeout: Optional[Duration] = none
+        max_response_bytes: Int? = none,
+        timeout: Duration? = none
     ) Result[ResponseBody, HttpError]:
         return msrt_http_client_request_bytes(
             self.native, method, url, headers, body, max_response_bytes, timeout
@@ -239,8 +236,8 @@ impl HttpClient:
         url: String,
         headers: HttpHeaders,
         body: ReadStream,
-        max_response_bytes: Optional[Int] = none,
-        timeout: Optional[Duration] = none
+        max_response_bytes: Int? = none,
+        timeout: Duration? = none
     ) Result[ResponseBody, HttpError]:
         return msrt_http_client_request_stream(
             self.native, method, url, headers, body, max_response_bytes, timeout
@@ -250,13 +247,13 @@ impl HttpClient:
 export type HttpClientOptions:
     # Most redirects followed per request. 0 returns the redirect response itself, none sets no cap, and a negative count is rejected.
     # Redirects that downgrade from HTTPS, leave the network's restrictions, or carry user info are refused.
-    max_redirects: Optional[Int] = none
+    max_redirects: Int? = none
     # Number of idle connections kept for reuse. Must be nonnegative; none sets no explicit cap.
-    max_idle_connections: Optional[Int] = none
+    max_idle_connections: Int? = none
     # Largest accepted size of a response header block, in bytes. Must be positive; none uses the default of 1 MiB.
-    max_header_bytes: Optional[Int] = none
+    max_header_bytes: Int? = none
     # How long an idle pooled connection is kept before it is closed. none never expires it, and a negative duration is rejected.
-    idle_timeout: Optional[Duration] = none
+    idle_timeout: Duration? = none
     # When True, gzip-encoded responses are decoded transparently, with `max_response_bytes` bounding the decoded size; when False (the default), bodies arrive exactly as sent.
     decompress: Bool = false
     # When True, the client keeps an in-memory cookie jar for its lifetime, respecting public-suffix boundaries; when False (the default), no cookies are stored or sent automatically.
@@ -286,7 +283,7 @@ export interface HttpExchange:
     fn query() String
     # Returns the next chunk of the request body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past `max_body_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Int? = none) Result[Bytes?, IoError]
     # Sends a whole response: the status line, `headers`, and `body` with its length known, so the response carries `Content-Length` rather than chunked framing. Requests with HEAD and statuses without a body get the head alone.
     # The rules of `send_headers` apply, `body` is bounded by `max_response_bytes`, and nothing else may be sent afterwards.
     fn send(status: Int, headers: HttpHeaders, body: Bytes) Result[Unit, HttpError]
@@ -298,7 +295,7 @@ export interface HttpExchange:
     fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
-        max_message_bytes: Optional[Int] = none
+        max_message_bytes: Int? = none
     ) Result[WebSocket, WebSocketError]
     # Writes one chunk of the response body and flushes it.
     # `send_headers` must come first, and writing beyond `max_response_bytes` returns IoError.Failed. Responses to HEAD requests and with status 204 or 304 cannot have a body.
@@ -370,19 +367,19 @@ impl HttpServer:
 # Request and response limits, deadlines, graceful shutdown, and TLS server settings.
 export type HttpServerOptions:
     # Most requests handled at once; further requests are answered with 503. Must be positive; none sets no cap.
-    max_requests: Optional[Int] = none
+    max_requests: Int? = none
     # Largest accepted request body, in bytes. Must be nonnegative; none sets no cap.
-    max_body_bytes: Optional[Int] = none
+    max_body_bytes: Int? = none
     # Most response body bytes a handler may write, in bytes. Must be nonnegative; none sets no cap.
-    max_response_bytes: Optional[Int] = none
+    max_response_bytes: Int? = none
     # Largest accepted request header block and largest response header block, in bytes. Must be positive; none uses the default of 1 MiB.
-    max_header_bytes: Optional[Int] = none
+    max_header_bytes: Int? = none
     # Per-request time budget covering reading the request, running the handler, and writing the response; an idle plain-HTTP connection waiting for its next request is also closed after it. A handler still running at the deadline is cancelled (`tasks.cancelled()` turns true and its waits end) and the request is answered 504; a WebSocket it opened is not limited. Must be positive; none sets no deadline.
-    timeout: Optional[Duration] = none
+    timeout: Duration? = none
     # How long `close` waits for in-flight requests to finish before cancelling them. none waits without limit and 0 cancels immediately.
-    grace: Optional[Duration] = none
+    grace: Duration? = none
     # Some(options) serves HTTPS and negotiates HTTP/2 or HTTP/1.1 through ALPN; none, the default, serves plain HTTP/1.1.
-    tls: Optional[TlsOptions] = none
+    tls: TlsOptions? = none
 
 # The runtime handle behind a `ResponseBody`.
 export extern type NativeResponseBody
@@ -393,8 +390,8 @@ extern fn msrt_http_body_metadata(handle: NativeResponseBody) HttpResponseMetada
 
 extern fn msrt_http_body_read(
     handle: NativeResponseBody,
-    max_bytes: Optional[Int]
-) Result[Optional[Bytes], IoError]
+    max_bytes: Int?
+) Result[Bytes?, IoError]
 
 extern fn msrt_http_body_read_all(handle: NativeResponseBody) Result[Bytes, IoError]
 
@@ -417,7 +414,7 @@ impl ResponseBody:
 
     # Returns the next chunk of the response body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past the request's `max_response_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
         return msrt_http_body_read(self.native, max_bytes)
 
     # Reads the rest of the body into one value, with `read`'s limit and error rules.
@@ -437,10 +434,7 @@ export fn from_io(error: IoError) HttpError:
 
 # Reads the rest of the request body into one value.
 # A body over `max_body_bytes` of the server's options returns LimitExceeded; `limit` also bounds it when given.
-export fn read_body(
-    exchange: HttpExchange,
-    limit: Optional[Int] = none
-) Result[Bytes, HttpError]:
+export fn read_body(exchange: HttpExchange, limit: Int? = none) Result[Bytes, HttpError]:
     let first = try exchange.read().map_error(from_io)
     if let head = first:
         return read_rest(exchange, head, limit)
@@ -448,11 +442,7 @@ export fn read_body(
     return ok("".to_bytes())
 
 # Joins `head` with the chunks after it. A body that fits one chunk is returned without copying.
-fn read_rest(
-    exchange: HttpExchange,
-    head: Bytes,
-    limit: Optional[Int]
-) Result[Bytes, HttpError]:
+fn read_rest(exchange: HttpExchange, head: Bytes, limit: Int?) Result[Bytes, HttpError]:
     var total = head.length()
     if over_limit(total, limit): return error(HttpError.LimitExceeded)
 
@@ -470,7 +460,7 @@ fn read_more(
     exchange: HttpExchange,
     chunks: List[Bytes],
     total: Int,
-    limit: Optional[Int]
+    limit: Int?
 ) Result[Bytes, HttpError]:
     var parts = chunks
     var size = total
@@ -486,7 +476,7 @@ fn read_more(
         else:
             return ok(join(parts))
 
-fn over_limit(total: Int, limit: Optional[Int]) Bool:
+fn over_limit(total: Int, limit: Int?) Bool:
     if let max = limit:
         return total > max
 

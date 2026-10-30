@@ -83,14 +83,14 @@ type WorkerTransport[In: Data, Out: Data]:
     end: Int
 
 # What a failed read means for the channel: the other end finishing is the normal end of input.
-fn stopped[Out](why: PipeEnd) Result[Optional[Out], ChannelError]:
+fn stopped[Out](why: PipeEnd) Result[Out?, ChannelError]:
     match why:
         Ended: return ok(none)
         Closed: return error(ChannelError.Closed)
 
 impl WorkerTransport[In, Out]:
     # Decodes a message, or says it could not be.
-    fn decode(text: String) Result[Optional[Out], ChannelError]:
+    fn decode(text: String) Result[Out?, ChannelError]:
         match parse[Out](text):
             ok(value): return ok(value)
             error(why): return error(
@@ -113,7 +113,7 @@ impl Transport[In, Out] for WorkerTransport[In, Out]:
 
                 return ok(unit)
 
-    fn receive() Result[Optional[Out], ChannelError]:
+    fn receive() Result[Out?, ChannelError]:
         match msrt_pipe_receive(self.end):
             ok(text): return self.decode(text)
             error(why): return stopped(why)
@@ -141,7 +141,7 @@ impl Transport[Bytes, Bytes] for WorkerBytesTransport:
 
         return ok(unit)
 
-    fn receive() Result[Optional[Bytes], ChannelError]:
+    fn receive() Result[Bytes?, ChannelError]:
         match msrt_pipe_receive_bytes(self.end):
             ok(data): return ok(data)
             error(why): return stopped(why)

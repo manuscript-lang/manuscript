@@ -1,9 +1,9 @@
 # conform: tags=aliasing,diagnostics,optional,records,strings,tier-core
 # conform: phase=check
 # conform: origin=documentation/core-language/types/optionals.md:17
-let inferred = some(1)  # Optional[Int]
-let explicit = Optional[String].none
+let inferred = some(1)  # Int?
+let explicit = String?.none
 # Rejected: no type determines the absent payload.
 let unknown = none
 # Rejected: bindings still require explicit wrapping.
-let wrong: Optional[String] = "Ada"
+let wrong: String? = "Ada"

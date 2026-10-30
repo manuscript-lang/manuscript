@@ -84,7 +84,7 @@ test "List parity operations support generic and bound use":
     let insert = values.insert
     insert(2, 3)
 
-    let pop: fn() Optional[Int] = values.pop
+    let pop: fn() Int? = values.pop
     let popped = pop()
     let count = values.count
     try expect_false(popped != some(3) or count(fn(value: Int) Bool: value > 0) != 2)

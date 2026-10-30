@@ -11,7 +11,7 @@ test "each paragraph develops one case":
     try expect_equal(copy.dequeue(), some(9))
 
     # An absent value stays absent.
-    let missing: Optional[Int] = none
+    let missing: Int? = none
     try expect_equal(queue.dequeue(), missing)
 
 fn prepare(value: Int) Int:
