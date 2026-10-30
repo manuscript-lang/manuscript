@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "closed optional\n--list\nclosed l2\nclosed l1\n--field\nclosed pb\nclosed pa\n--interface\nclosed converted\nend true l2 pa converted\n",
+    "stderr": ""
+  }
+}

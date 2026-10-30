@@ -2256,6 +2256,20 @@ impl Walker<'_> {
     }
 
     fn expr(&mut self, e: &Expr, d: Demand) {
+        if d == Demand::Consume
+            && let Some(src) = &self.cx.m.info(e).error_source
+            && self.cx.classes.class(src) == Class::Resource
+            && !declares_close(&self.cx.m.ty(e))
+        {
+            // An interface value is never closed for its owner, so owning a resource through one
+            // drops its close, unless the interface hands the duty on with a `close` operation.
+            let text = self.expr_text(e);
+            let target = self.cx.m.ty(e);
+            self.error(
+                e.pos,
+                format!("`{text}` is the resource `{src}`, and the `{target}` it would become never closes it; keep it as a `{src}` so its owner closes it, or pass it where `{target}` is only read"),
+            );
+        }
         match &e.kind {
             ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Unit => {}
             ExprKind::Text(parts) => {
@@ -2447,6 +2461,23 @@ impl Walker<'_> {
             let take = d == Demand::Consume
                 && self.class_of(e) != Class::Copy
                 && self.cx.m.ty(e).kind != Kind::Function;
+            if take
+                && self.class_of(e) == Class::Resource
+                && !matches!(
+                    self.cx.m.resolution(e),
+                    Resolution::Constructor { .. }
+                        | Resolution::Function(_)
+                        | Resolution::Constant(_)
+                )
+            {
+                // Only a whole value moves: the resource would be copied out of a value that
+                // still closes it.
+                let text = self.expr_text(e);
+                self.error(
+                    e.pos,
+                    format!("cannot move `{text}` out of a computed value: a resource has one owner, and the value it comes from still closes it; bind the whole value first, then use the part in place"),
+                );
+            }
             match &e.kind {
                 ExprKind::Member { left, .. } => {
                     self.expr(left, if take { Demand::Consume } else { Demand::Read })
@@ -3181,4 +3212,14 @@ fn ty_holds(src: &Ty, part: &Ty) -> bool {
 /// Whether `t` mentions a type parameter.
 fn holds_variable(t: &Ty) -> bool {
     t.kind == Kind::Variable || t.args.iter().any(holds_variable)
+}
+
+/// Whether the interface `t` declares a `close` operation, so its owner closes it explicitly.
+fn declares_close(t: &Ty) -> bool {
+    t.def.as_ref().is_some_and(|d| {
+        d.operations
+            .borrow()
+            .iter()
+            .any(|o| o.name.as_str() == "close")
+    })
 }
