@@ -2446,6 +2446,11 @@ impl Walker<'_> {
                     e.pos,
                     format!("this closure would move the function `{name}` out of the variable it captured, but a closure can run more than once; functions cannot be copied, so call `{name}` here or take it as a parameter of the closure"),
                 );
+            } else if self.cx.classes.class(&b.ty) == Class::Resource {
+                self.error(
+                    e.pos,
+                    format!("this closure would move `{name}` out of the variable it captured, but a closure can run more than once, and a resource cannot be cloned; use `{name}` in place inside the closure"),
+                );
             } else {
                 self.error_fix_opt(
                     e.pos,
@@ -2462,13 +2467,27 @@ impl Walker<'_> {
             if let Some(scrutinee) = self.meta[&b.uid].deferred {
                 self.escaped.insert(scrutinee);
             }
-            self.error_fix(
-                e.pos,
-                format!("cannot move `{name}` out: it only borrows its value ({}); use `{name}.{COPY}()` to get an owned copy", role_text(role, perm)),
-                insert_at(forward(e.pos, name.as_str().len()), &format!(".{COPY}()")),
-            );
+            if self.cx.classes.class(&b.ty) == Class::Resource {
+                self.error(
+                    e.pos,
+                    format!("cannot move `{name}` out: it only borrows its value ({}), and its owner closes it; a resource cannot be cloned, so use `{name}` in place", role_text(role, perm)),
+                );
+            } else {
+                self.error_fix(
+                    e.pos,
+                    format!("cannot move `{name}` out: it only borrows its value ({}); use `{name}.{COPY}()` to get an owned copy", role_text(role, perm)),
+                    insert_at(forward(e.pos, name.as_str().len()), &format!(".{COPY}()")),
+                );
+            }
             self.record(e.id, b, Access::Move);
             return;
+        } else if (var_param || (receiver && perm == Perm::Mutable))
+            && self.cx.classes.class(&b.ty) == Class::Resource
+        {
+            self.error(
+                e.pos,
+                format!("cannot move `{name}` out of the function: the caller keeps ownership of a var parameter and closes it; a resource cannot be cloned, so change it in place"),
+            );
         } else if var_param || (receiver && perm == Perm::Mutable) {
             self.error_fix_opt(
                 e.pos,
@@ -2585,7 +2604,15 @@ impl Walker<'_> {
         {
             return;
         }
-        if d == Demand::Consume && class != Class::Copy && !lent {
+        if d == Demand::Consume && class == Class::Resource && !lent {
+            self.error(
+                e.pos,
+                format!(
+                    "cannot move the resource `{0}` out of `{1}`: `{1}` still closes its parts, and a resource cannot be cloned; use `{0}` in place, or move the whole `{1}`",
+                    info.text, info.root.name
+                ),
+            );
+        } else if d == Demand::Consume && class != Class::Copy && !lent {
             let message = format!(
                 "cannot move `{0}` out of `{1}`: only a whole variable can move; take an owned copy with `{0}.{COPY}()`",
                 info.text, info.root.name
@@ -3386,6 +3413,11 @@ impl Walker<'_> {
                 self.error(
                     e.pos,
                     format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; a function value cannot be cloned, so declare a named `fn` instead"),
+                );
+            } else if self.cx.classes.class(&b.ty) == Class::Resource {
+                self.error(
+                    e.pos,
+                    format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; a resource cannot be cloned, so use `{name}` only inside the closure, or capture it at its last use"),
                 );
             } else {
                 self.error_fix_opt(
