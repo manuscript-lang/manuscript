@@ -247,7 +247,9 @@ fn one_shot(
     let (response, data) = report(result, err)?;
     out.write(ClientResponseWire {
         status: i64::from(response.status),
-        headers: ObjSlot::new(HeadersH(response.headers.clone())),
+        headers: ObjSlot::new(HeadersH(Rc::new(RefCell::new(
+            response.headers.borrow().clone(),
+        )))),
         protocol: Str::new(&response.protocol),
         body: Bytes::new(&data),
     });
@@ -403,7 +405,7 @@ native! {
     fn msrt_http_body_metadata(b: ObjRef<BodyH>) -> out MetadataWire {
         MetadataWire {
             status: i64::from(b.status),
-            headers: ObjSlot::new(HeadersH(b.headers.clone())),
+            headers: ObjSlot::new(HeadersH(Rc::new(RefCell::new(b.headers.borrow().clone())))),
             protocol: Str::new(&b.protocol),
         }
     }

@@ -73,7 +73,7 @@ impl Classifier {
             self.holds(t.args.first(), visiting)
         } else if t.is_std("Map") {
             self.holds(t.args.get(1), visiting)
-        } else if t.is_std("Bytes") {
+        } else if t.is_std("Bytes") || t.is_std("HttpHeaders") {
             Class::Move
         } else {
             // Immutable value natives and shared handles.
