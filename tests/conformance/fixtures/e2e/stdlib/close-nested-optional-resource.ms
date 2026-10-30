@@ -12,7 +12,7 @@ impl Closeable for Door:
     var fn close() Unit:
         stdout().write("closed {self.name}\n").get()
 
-fn nested(n: String) Optional[Optional[Door]]:
+fn nested(n: String) Door??:
     return some(some(Door(n)))
 
 export fn main() Int:
