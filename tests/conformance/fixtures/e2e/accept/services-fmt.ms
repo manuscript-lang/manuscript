@@ -10,7 +10,7 @@ test "builders":
     bytes.append(65)
     bytes.append_bytes("B".to_bytes())
 
-    let expected_text: Optional[String] = some("AB")
+    let expected_text: String? = some("AB")
     try expect_equal(bytes.build().decode_utf8(), expected_text)
 
     var text = StringBuilder()

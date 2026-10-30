@@ -25,7 +25,7 @@
           "file": "pkg-checker-testunknowntypekeepsindependentinferenceerror-1.ms",
           "line": 9,
           "column": 17,
-          "offset": 289
+          "offset": 280
         }
       }
     ],

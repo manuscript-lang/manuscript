@@ -12,7 +12,7 @@ impl Closeable for Door:
         var seen = lock(self.log)
         seen.value.append(self.id)
 
-fn keep_if(d: Door, keep: Bool) Optional[Door]:
+fn keep_if(d: Door, keep: Bool) Door?:
     if keep:
         return some(d)
 

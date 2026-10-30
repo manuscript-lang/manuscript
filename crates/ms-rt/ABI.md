@@ -73,9 +73,9 @@ recorded here before it is committed.)_
   `SYMBOLS.md` lists every exported symbol with its Rust signature. It is kept by hand; the `runtime_symbol_catalogue_matches_archive` test fails when it and the runtime archive disagree, and `stdlib/bindings.json` (`runtime_symbols`) names the symbol of each native function.
   - Strings: owned, immutable, uniquely owned buffers; empty and one-ASCII-byte results are static strings (tag `10`).
     The scalar count of the long string last measured is cached in a one-entry hint with a position for sequential indexing.
-  - Optional/fallible conventions as in section 1: `Optional[Int]` result = `u8` present + `out: *mut i64`; `Optional[String]` = `OptStr { value: StrVal }` (16 bytes; none is a static empty string with a null `ptr`) through `out`, or a `present: u8` result with `out: *mut StrVal`
+  - Optional/fallible conventions as in section 1: `Int?` result = `u8` present + `out: *mut i64`; `String?` = `OptStr { value: StrVal }` (16 bytes; none is a static empty string with a null `ptr`) through `out`, or a `present: u8` result with `out: *mut StrVal`
     (`bytes_decode_utf8`, `split_next`); `Result` = `status: u8` with `out` last; optional **parameters** flatten to `has_x: u8, x`
-    (borrowed `Optional[String]` parameters flatten the same way, `has: u8, value: *const StrVal`, e.g. `msrt_string_get(s, index, has_default, default, out)`).
+    (borrowed `String?` parameters flatten the same way, `has: u8, value: *const StrVal`, e.g. `msrt_string_get(s, index, has_default, default, out)`).
   - Lists: `msrt_list_*` take `(receiver*, desc*, ...)`. Language `drop(count)` is `msrt_list_drop_n` (`msrt_list_drop` releases the value);
     `append` is `msrt_list_push`; `prepend/insert/set` consume the element slot; `fill` borrows and copies its value; `splice` and `extend`
     consume the replacement list; `concat`, `slice`, `take`, `drop_n`, `reversed`, `sorted`, `distinct`, `flatten`, `to_set`, `filled`,
@@ -104,8 +104,8 @@ recorded here before it is committed.)_
   `*const MapVal` = borrowed read; `*mut` = `var` receiver, mutated in place).
   Constructed aggregates are returned through a trailing `out: *mut StrVal|VecVal|MapVal`
   (uninitialised memory in the caller; the callee initialises it; the caller owns it).
-- **Optional parameters.** `Optional[Int|Float|Bool]` is flattened into
-  `has: u8, value: i64|f64|u8`. `Optional[<refcounted object>]` is a nullable pointer.
+- **Optional parameters.** `Int|Float|Bool?` is flattened into
+  `has: u8, value: i64|f64|u8`. `<refcounted object>?` is a nullable pointer.
 - **Optional results.** Scalar payload: return `present: u8`, payload through a
   trailing `out` pointer only when present. `String`: `present: u8` with `out: *mut StrVal`. Generic
   elements: return `present: u8`, element moved/copied into `out: *mut u8`.
@@ -183,7 +183,7 @@ For every kind but inline, `ptr` points at the UTF-8 bytes, a NUL follows them (
 whole `ptr` word, then the low 7 bytes of `tagged`; bytes past the length are zero. Its data
 pointer is therefore the value's own address (`StrVal::data`). `msrt_str_copy` returns an inline
 string when the copy fits, so copying a short string never allocates. A string is owned exactly when
-`tagged < 1 << 62` (unsigned). `Optional[String]` uses the same two words, with None as `{0, STR_STATIC}`;
+`tagged < 1 << 62` (unsigned). `String?` uses the same two words, with None as `{0, STR_STATIC}`;
 presence is `(ptr | (tagged ^ STR_STATIC)) != 0`, because an inline string can have a zero `ptr`
 word. A view is only handed out where the source outlives it
 unchanged: `trim`, `split` lists that the block reads only in place over a read-only parameter
@@ -254,9 +254,9 @@ build record hashes. Generic helpers: `msrt_slot_drop`, `msrt_slot_copy`,
 
 ## 6. Optional, Result, closures, interfaces
 
-- `Optional[T]` of a refcounted pointer: the pointer, null = none. `Optional[Int]`:
-  `OptInt { present u8 @0, value i64 @8 }` (16 bytes), `Optional[Float]` likewise,
-  `Optional[Bool]` `{ present u8 @0, value u8 @1 }`. Optional of aggregates is compiler-defined.
+- `T?` of a refcounted pointer: the pointer, null = none. `Int?`:
+  `OptInt { present u8 @0, value i64 @8 }` (16 bytes), `Float?` likewise,
+  `Bool?` `{ present u8 @0, value u8 @1 }`. Optional of aggregates is compiler-defined.
 - `Result[T, E]`: compiler-defined; the runtime only uses the status/out protocol.
 - Closures: refcounted `Closure { hdr, code @16, captured @24.. }`; `code` is
   `fn(closure, args...)`. The runtime calls closures only via the sort thunk.

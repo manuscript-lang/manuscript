@@ -3,7 +3,7 @@
 # conform: origin=pkg/checker/layout_diagnostics_test.go:26 TestRecursiveDataAndFiniteTypeApplications
 type Entry:
     name: String
-    nickname: Optional[String]
+    nickname: String?
 
 type Person:
-    primary: Optional[Entry]
+    primary: Entry?

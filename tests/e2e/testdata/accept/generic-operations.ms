@@ -4,11 +4,11 @@ type Bag:
     items: List[Int]
 
 interface Picker[T]:
-    fn pick[K: Comparable](key: fn(T) K) Optional[T]
+    fn pick[K: Comparable](key: fn(T) K) T?
     fn mapped[U](transform: fn(T) U) List[U]
 
 impl Picker[Int] for Bag:
-    fn pick[K: Comparable](key: fn(Int) K) Optional[Int]:
+    fn pick[K: Comparable](key: fn(Int) K) Int?:
         if self.items.length() == 0:
             return none
 
@@ -37,7 +37,7 @@ impl Bag:
             out.append(other.clone())
         return out
 
-fn pick_with[B: Picker[Int]](bag: B) Optional[Int]:
+fn pick_with[B: Picker[Int]](bag: B) Int?:
     return bag.pick(fn(x: Int) Int: 0 - x)
 
 test "an interface operation takes type parameters of its own":

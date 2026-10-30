@@ -22,7 +22,7 @@ func (l *prototypeList) clone() *prototypeList {return &prototypeList{typ:l.typ,
 func (l *prototypeList) atValue(ctx *rt.Execution,i int64) rt.Value {
  rt.CheckCancelled(ctx)
  if i<0 {i+=int64(len(l.storage.ints))}
- value:=rt.Alternative{Type:"@std/Optional[Int]",Tag:"none"}
+ value:=rt.Alternative{Type:"@std/Int?",Tag:"none"}
  if i>=0&&i<int64(len(l.storage.ints)) {value.Tag="some";value.Fields=[]rt.Value{l.storage.ints[i]}}
  rt.CheckCancelled(ctx);return value
 }
@@ -44,7 +44,7 @@ func benchmarkPrototype(b *testing.B,ctx *rt.Execution,n int64) {
  b.Run("IndexPrototypeBoxed64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for i:=int64(0);i<n;i=rt.IntAdd(i,1) {rt.CheckCancelled(ctx);total=rt.IntAdd(total,rt.IntValue(rt.OptionalUnwrap(ctx,xs.atValue(ctx,i))))};listResult=total}})
  b.Run("IteratePrototypeTyped64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for _,x:=range xs.rangeItems(){rt.CheckCancelled(ctx);total=rt.IntAdd(total,x)};listResult=total}})
  boxed:=runtimeBoxedBuild(ctx,n)
- b.Run("IndexRuntimeBoxedTypedLocals64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for i:=int64(0);i<n;i=rt.IntAdd(i,1) {rt.CheckCancelled(ctx);total=rt.IntAdd(total,rt.IntValue(rt.OptionalUnwrap(ctx,rt.ListAt(ctx,boxed,i,"@std/Optional[Int]"))))};listResult=total}})
+ b.Run("IndexRuntimeBoxedTypedLocals64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for i:=int64(0);i<n;i=rt.IntAdd(i,1) {rt.CheckCancelled(ctx);total=rt.IntAdd(total,rt.IntValue(rt.OptionalUnwrap(ctx,rt.ListAt(ctx,boxed,i,"@std/Int?"))))};listResult=total}})
  b.Run("IterateRuntimeBoxedTypedLocals64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){var total int64;for _,x:=range rt.Iterate(boxed){rt.CheckCancelled(ctx);total=rt.IntAdd(total,x.(int64))};listResult=total}})
  compare:=@@compare@@
  b.Run("SortPrototypeBoxedCallback64K",func(b *testing.B){b.ReportAllocs();for b.Loop(){out:=xs.clone();sort.SliceStable(out.storage.ints,func(i,j int)bool{rt.CheckCancelled(ctx);return rt.Invoke(ctx,compare,[]rt.Argument{{Name:"left",Value:out.storage.ints[i]},{Name:"right",Value:out.storage.ints[j]}}).(int64)<0});listResult=out}})
@@ -67,6 +67,6 @@ func TestListPrototypeAliases(t *testing.T) {
  snap:=xs.rangeItems();copy:=typedAlias.clone()
  typedAlias.update(ctx,0,99);prototypeAppendValue(ctx,boxed,int64(1024))
  if xs.storage.ints[0]!=99||len(xs.storage.ints)!=1025||snap[0]!=99||len(snap)!=1024||copy.storage.ints[0]!=0||len(copy.storage.ints)!=1024 {t.Fatal("alias, clone or captured range diverged")}
- if !reflect.DeepEqual(xs.atValue(ctx,-1),rt.Alternative{Type:"@std/Optional[Int]",Tag:"some",Fields:[]rt.Value{int64(1024)}}) {t.Fatal("negative at")}
+ if !reflect.DeepEqual(xs.atValue(ctx,-1),rt.Alternative{Type:"@std/Int?",Tag:"some",Fields:[]rt.Value{int64(1024)}}) {t.Fatal("negative at")}
  if xs.atValue(ctx,-1026).(rt.Alternative).Tag!="none" {t.Fatal("optional bounds")}
 }

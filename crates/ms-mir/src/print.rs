@@ -376,6 +376,16 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
             }
             s
         }
+        Imm::RecMask(r, mask) => {
+            let mut s = m.records[r.index()].name.clone();
+            for (i, (name, _)) in m.records[r.index()].fields.iter().enumerate() {
+                if mask >> i & 1 == 1 {
+                    s.push('.');
+                    s.push_str(name);
+                }
+            }
+            s
+        }
         Imm::Vtable(v) => format!("@{}", m.vtables[v.index()].name),
         Imm::Global(g) => format!("@{}", m.globals[g.index()].name),
         Imm::Method(ifc, k) => format!(

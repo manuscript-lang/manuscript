@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,match,optional,tier-core
 # conform: phase=check
 # conform: origin=internal/cli/advisory_lint_test.go:16 TestSafetyAdvisoriesDoNotBecomeCheckErrors
-fn use(value: Optional[Int]) Unit:
+fn use(value: Int?) Unit:
     match value:
         some(_):
             match value:

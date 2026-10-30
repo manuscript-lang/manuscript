@@ -31,7 +31,7 @@ fn chain_result[T, E: Error, U](
 ) Result[U, E]:
     return value.and_then(transform)
 
-fn map_optional[T, U](value: Optional[T], transform: fn(T) U) Optional[U]:
+fn map_optional[T, U](value: T?, transform: fn(T) U) U?:
     return value.map(transform)
 
 fn map_set[T: Hashable, U: Hashable](values: Set[T], transform: fn(T) U) Set[U]:
@@ -49,8 +49,8 @@ test "core parity operations are callable":
     let chained: Result[String, TextError] = success.and_then(fn n: ok(n.to_string()))
     try expect_equal(chained.get(), "2")
 
-    let present: Optional[Int] = some(2)
-    let missing: Optional[Int] = none
+    let present: Int? = some(2)
+    let missing: Int? = none
     try expect_equal(present.map(fn n: n + 1).get(), 3)
     try expect_equal(present.and_then(fn n: some(n.to_string())).get(), "2")
     try expect_equal(missing.or_else(fn: some(4)).get(), 4)
@@ -152,8 +152,8 @@ test "Result fallbacks are eager or lazy and bound methods keep receivers":
 
 test "Optional composition keeps nesting identity and lazy callback counts":
     let counter = Counter(0)
-    let present: Optional[Counter] = some(counter.clone())
-    let missing: Optional[Counter] = none
+    let present: Counter? = some(counter.clone())
+    let missing: Counter? = none
     let transform = fn(value: Counter) Counter:
         return Counter(value.calls + 1)
     let unexpected = fn(value: Counter) Counter: panic("map must not run for none")
@@ -170,18 +170,18 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     let chained = present.clone().and_then(fn value: some(value))
     try expect_equal(chained.get().calls, 0)
 
-    let absent = present.clone().and_then(fn unused: Optional[Int].none)
+    let absent = present.clone().and_then(fn(unused: Counter) Int?: none)
     try expect_false(not (absent.is_none()))
 
-    let create = fn() Optional[Counter]: some(Counter(5))
-    let unexpected_create = fn() Optional[Counter]: panic("fallback must stay lazy")
+    let create = fn() Counter?: some(Counter(5))
+    let unexpected_create = fn() Counter?: panic("fallback must stay lazy")
     let bound = present.clone().or_else
     try expect_equal(bound(unexpected_create).get().calls, 0)
 
     let fallback = missing.clone().or_else(create)
     try expect_equal(fallback.get().calls, 5)
 
-    let nested = present.clone().map(fn unused: Optional[Int].none)
+    let nested = present.clone().map(fn(unused: Counter) Int?: none)
     try expect_false(not (nested.is_some()) or not (nested.get().is_none()))
 
     let bound_map = mapped.clone().map[String]

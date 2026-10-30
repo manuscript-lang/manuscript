@@ -4,7 +4,7 @@ type Node:
 
 # A recursive `ref` function lends from the arguments its other paths lend from: here only the
 # node, so the temporary list and the computed index need not outlive the call.
-fn find(node: Node, path: List[String], from: Int) ref Optional[Node]:
+fn find(node: Node, path: List[String], from: Int) ref Node?:
     if from >= path.length(): return none
 
     for child in node.children:
@@ -15,7 +15,7 @@ fn find(node: Node, path: List[String], from: Int) ref Optional[Node]:
 
     return none
 
-fn name_at(root: Node) ref Optional[String]:
+fn name_at(root: Node) ref String?:
     if let n = find(root, ["a", "b"], 0):
         return some(n.name)
 

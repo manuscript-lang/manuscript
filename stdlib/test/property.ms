@@ -202,10 +202,10 @@ fn zip_draw[A, B, C](
     return Drawn(combine(a, b), source)
 
 # Generates `some(value)` or `none`, shrinking toward `none`.
-export fn optionals[T](gen: Gen[T]) Gen[Optional[T]]:
-    return Gen[Optional[T]](fn s: optional_draw(gen, s))
+export fn optionals[T](gen: Gen[T]) Gen[T?]:
+    return Gen[T?](fn s: optional_draw(gen, s))
 
-fn optional_draw[T](gen: Gen[T], s: Source) Drawn[Optional[T]]:
+fn optional_draw[T](gen: Gen[T], s: Source) Drawn[T?]:
     let {value: flag, source: middle} = draw(s, 3)
     if flag == 0:
         return Drawn(none, middle)
@@ -260,7 +260,7 @@ export type Settings:
     # Cases to run when not fuzzing.
     runs: Int
     # First case seed, or none for a random one that failures report.
-    seed: Optional[Int]
+    seed: Int?
     # Time budget in milliseconds; above 0, cases run until it expires instead of stopping at `runs`.
     fuzz_milliseconds: Int
 
@@ -279,7 +279,7 @@ export fn settings(runs: Int = 100) Settings:
 # Result of running one case: the replayed source, and the failure when the property did not hold.
 type Outcome:
     source: Source
-    failure: Optional[String]
+    failure: String?
 
 fn run_case[T](gen: Gen[T], property: fn(T) Result[Unit, Error], s: Source) Outcome:
     let {value, source} = gen.make(s)
@@ -331,7 +331,7 @@ fn attempt[T](
     property: fn(T) Result[Unit, Error],
     candidate: List[Int],
     current: List[Int]
-) Optional[List[Int]]:
+) List[Int]?:
     let outcome = replay(gen, property, candidate)
     if outcome.failure.is_none():
         return none
@@ -396,7 +396,7 @@ export fn check[T](
     gen: Gen[T],
     property: fn(T) Result[Unit, Error],
     runs: Int = 100,
-    seed: Optional[Int] = none
+    seed: Int? = none
 ) Result[Unit, Error]:
     let config = settings(runs)
     var chosen = seed

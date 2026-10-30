@@ -15,7 +15,7 @@ type Order:
 
 type Node:
     name: String
-    next: Optional[Node]
+    next: Node?
 
 fn order(id: String, n: Int) Order:
     var items = List[Item]()
@@ -44,11 +44,11 @@ fn by_chain(orders: Map[String, Order], id: String) Int:
     let o = orders[id]
     return o.items.length() + o.status.length()
 
-fn returned(orders: Map[String, Order], id: String) Optional[Order]:
+fn returned(orders: Map[String, Order], id: String) Order?:
     let found = orders.get(id)
     return found.clone()
 
-fn take_optional(o: Optional[Order]) Int:
+fn take_optional(o: Order?) Int:
     if let v = o:
         return v.items.length()
 
@@ -150,7 +150,7 @@ test "if let over a borrowed optional lends its payload":
 
     try expect_equal(maybe.is_some(), true)
 
-    let text: Optional[String] = some("hello")
+    let text: String? = some("hello")
     if let t = text:
         try expect_equal(t.length(), 5)
     try expect_equal(text.get(), "hello")

@@ -5,5 +5,5 @@ type Optional[T]:
     case none
     case some(value: T)
 
-impl Optional[T]:
+impl T?:
     fn get() T: ...

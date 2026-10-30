@@ -20,7 +20,7 @@ import Bytes from "@std/bytes.ms"
 import MemoryStream from "./support/streams.ms"
 
 type Items:
-    items: List[Optional[Int]]
+    items: List[Int?]
 
 type Payload:
     count: Int

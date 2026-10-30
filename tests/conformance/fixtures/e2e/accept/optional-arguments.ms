@@ -5,20 +5,20 @@ import TextError from "@std/core.ms"
 import expect_equal, expect_false from "@std/test.ms"
 import Queue from "@std/queue.ms"
 
-fn number(value: Optional[Int] = none) Int: value.get(-1)
+fn number(value: Int? = none) Int: value.get(-1)
 
-fn present[T](value: Optional[T]) Optional[T]: value
+fn present[T](value: T?) T?: value
 
-fn nested(value: Optional[Optional[Int]]) Bool: value.get().is_none()
+fn nested(value: Int??) Bool: value.get().is_none()
 
-fn list_size(value: Optional[List[Int]]) Int: value.get().length()
+fn list_size(value: List[Int]?) Int: value.get().length()
 
-fn flag(value: Optional[Bool]) Bool: value.get()
+fn flag(value: Bool?) Bool: value.get()
 
-fn success(value: Optional[Result[Int, TextError]]) Int:
+fn success(value: Result[Int, TextError]?) Int:
     return value.get().get(-1)
 
-fn context[T](value: Optional[T], fallback: T) T:
+fn context[T](value: T?, fallback: T) T:
     if let inner = value:
         return inner
 
@@ -31,25 +31,25 @@ impl Error for Failure:
     fn message() String: self.detail.clone()
 
 type Notice:
-    failure: Optional[Error]
+    failure: Error?
 
 type Box[T]:
-    value: Optional[T]
+    value: T?
 
 type DefaultBox:
-    value: Optional[Int] = none
+    value: Int? = none
 
 type Choice[T]:
-    case chosen(value: Optional[T])
+    case chosen(value: T?)
 
 interface Read:
-    fn read(value: Optional[Int]) Int
+    fn read(value: Int?) Int
 
 type Reader:
     offset: Int
 
 impl Read for Reader:
-    fn read(value: Optional[Int]) Int: value.get(0) + self.offset
+    fn read(value: Int?) Int: value.get(0) + self.offset
 
 type Counter:
     calls: Int
@@ -58,36 +58,36 @@ fn next(var counter: Counter) Int:
     counter.calls += 1
     return counter.calls
 
-fn ordered(first: Optional[Int], second: Optional[Int]) Int:
+fn ordered(first: Int?, second: Int?) Int:
     return first.get() * 10 + second.get()
 
-fn invoke(value: Optional[fn(Int) Int]) Int: value.get()(4)
+fn invoke(value: (fn(Int) Int)?) Int: value.get()(4)
 
 fn increment(value: Int) Int: value + 1
 
-fn calls_of(value: Optional[Counter]) Int: value.get().calls
+fn calls_of(value: Counter?) Int: value.get().calls
 
 test "plain values and explicit optionals share the call contract":
     try expect_equal(number(4), 4)
     try expect_equal(number(value: 0), 0)
 
-    let supplied: Optional[Int] = some(4)
+    let supplied: Int? = some(4)
     try expect_equal(number(supplied), 4)
     try expect_equal(number(), -1)
     try expect_equal(number(), -1)
 
-    let stored: fn(Optional[Int]) Int = number
+    let stored: fn(Int?) Int = number
     try expect_equal(stored(5), 5)
     try expect_equal(present(6).get(), 6)
     try expect_equal(present[Int](7).get(), 7)
 
-    let generic_supplied: Optional[Int] = some(8)
+    let generic_supplied: Int? = some(8)
     try expect_equal(present(generic_supplied).get(), 8)
 
-    let missing: Optional[Int] = none
+    let missing: Int? = none
     try expect_false(not (nested(missing)))
 
-    let outer: Optional[Optional[Int]] = some(missing)
+    let outer: Int?? = some(missing)
     try expect_false(not (nested(outer)))
     try expect_equal(list_size([]), 0)
     try expect_equal(list_size([1, 2]), 2)
@@ -145,7 +145,7 @@ test "queue capacity accepts a plain value or omission":
 
     var unbounded = Queue[Int]()
     var absent = Queue[Int]()
-    let capacity: Optional[Int] = some(4)
+    let capacity: Int? = some(4)
     var explicit = Queue[Int](capacity)
 
     for value in [1, 2, 3, 4, 5]:

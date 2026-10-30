@@ -22,7 +22,7 @@ export interface Entropy:
 export fn secure_int(
     entropy: Entropy,
     min: Int,
-    max_exclusive: Optional[Int] = none
+    max_exclusive: Int? = none
 ) Result[Int, RandomError]: ...
 
 # Creates a version-4 UUID using the supplied cryptographic entropy source.
@@ -35,7 +35,7 @@ export fn float(entropy: Entropy) Result[Float, RandomError]: ...
 export fn shuffle[T](entropy: Entropy, values: List[T]) Result[List[T], RandomError]: ...
 
 # Returns a uniformly chosen item, or none for an empty list.
-export fn choice[T](entropy: Entropy, values: List[T]) Result[Optional[T], RandomError]: ...
+export fn choice[T](entropy: Entropy, values: List[T]) Result[T?, RandomError]: ...
 
 impl Error for RandomError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `random: <reason>`.

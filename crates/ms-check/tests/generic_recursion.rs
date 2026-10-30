@@ -96,7 +96,7 @@ fn type_chain(depth: usize, changing_tail: bool) -> String {
     }
     if changing_tail {
         source.push_str(&format!(
-            "type Grow[T]:\n    next: Optional[Grow[List[T]]]\n    last: W{}[T]\n",
+            "type Grow[T]:\n    next: Grow[List[T]]?\n    last: W{}[T]\n",
             depth - 1
         ));
     }

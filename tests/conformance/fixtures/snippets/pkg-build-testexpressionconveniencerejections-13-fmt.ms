@@ -4,7 +4,7 @@
 fn p() Result[Int, Error]:
     return ok(1)
 
-fn f(x: Optional[Int]) Result[Unit, Error]:
+fn f(x: Int?) Result[Unit, Error]:
     match x:
         some(n):
             try p()

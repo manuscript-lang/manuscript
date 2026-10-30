@@ -3,7 +3,7 @@ type Words:
     count: Int
 
 impl Words:
-    var fn next() ref Optional[String]:
+    var fn next() ref String?:
         self.count += 1
         if self.count > 3:
             return none

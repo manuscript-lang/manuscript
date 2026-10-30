@@ -16,7 +16,7 @@ fn total(values: List[Int]) Int:
 
     return sum
 
-fn nested(values: List[Optional[Int]], index: Int) Optional[Int]:
+fn nested(values: List[Int?], index: Int) Int?:
     if index >= 0 and index < values.length():
         return values[index]
 

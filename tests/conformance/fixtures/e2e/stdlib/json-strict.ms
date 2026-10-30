@@ -6,12 +6,12 @@ import stringify, JsonError from "@std/json.ms"
 type Handler:
     name: String
     done: Unit
-    note: Optional[String]
+    note: String?
 
 type Plain:
     name: String
-    note: Optional[String]
-    tags: List[Optional[Int]]
+    note: String?
+    tags: List[Int?]
 
 type Holder:
     items: List[Unit]

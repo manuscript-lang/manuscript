@@ -14,7 +14,7 @@
           "file": "pkg-tooling-testpatternbindingadvisory-8.ms",
           "line": 10,
           "column": 22,
-          "offset": 320
+          "offset": 311
         },
         "fix": {
           "position": {

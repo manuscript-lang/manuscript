@@ -4,7 +4,7 @@ fn scaled(base: Int, factor: Int = 2, label: String = "x") String: "{label}{base
 
 fn chained(base: Int, plus: Int = base + 1) Int: base + plus
 
-fn maybe(value: Int, extra: Optional[Int] = none) Int:
+fn maybe(value: Int, extra: Int? = none) Int:
     match extra:
         some(number):
             return value + number

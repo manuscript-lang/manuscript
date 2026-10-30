@@ -71,7 +71,7 @@ fn cheatsheet_claims_match_the_compiler() {
         "    let m = Map[String, Int]()\n    let s = Set[Int]()\n",
         "    var n = 1\n    n = 2\n",
         "    var n = 1\n    n += 2\n    n %= 2\n",
-        "    let o: Optional[Int] = none\n    let v = o.get(3)\n",
+        "    let o: Int? = none\n    let v = o.get(3)\n",
         "    let name = \"x\"\n    let text = \"hi {name}\"\n",
         "    var m = Map[String, Int]()\n    for e in m.entries():\n        let k = e.key\n    if var n = m.get(\"k\"):\n        n += 1\n",
     ] {

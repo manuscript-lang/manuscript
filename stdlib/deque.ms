@@ -6,7 +6,7 @@ import Iterable from "@std/iterable.ms"
 # Use Queue for plain FIFO work and Deque when either end is pushed or popped, such as a sliding window or work stealing.
 export type Deque[T]:
     # Ring-buffer storage; `none` marks unused slots. Internal state: use the operations, not this field.
-    slots: List[Optional[T]] = []
+    slots: List[T?] = []
     # Index in `slots` of the front value. Internal state.
     start: Int = 0
     # Number of values held. Internal state; read it with `length()`.
@@ -60,7 +60,7 @@ impl Deque[T]:
         self.size += 1
 
     # Removes and returns the first value, or `none` when empty.
-    var fn pop_front() Optional[T]:
+    var fn pop_front() T?:
         if self.size == 0:
             return none
 
@@ -72,7 +72,7 @@ impl Deque[T]:
         return value
 
     # Removes and returns the last value, or `none` when empty.
-    var fn pop_back() Optional[T]:
+    var fn pop_back() T?:
         if self.size == 0:
             return none
 
@@ -82,14 +82,14 @@ impl Deque[T]:
         return value
 
     # Returns the first value without removing it, or `none` when empty.
-    fn front() ref Optional[T]:
+    fn front() ref T?:
         if self.size == 0:
             return none
 
         return self.slots.get(self.start)
 
     # Returns the last value without removing it, or `none` when empty.
-    fn back() ref Optional[T]:
+    fn back() ref T?:
         if self.size == 0:
             return none
 
@@ -120,7 +120,7 @@ impl Deque[T]:
 
     # Returns the value at `index` counted from the front, or `none` when out of range.
     # Negative indexes are out of range.
-    fn at(index: Int) ref Optional[T]:
+    fn at(index: Int) ref T?:
         if index < 0 or index >= self.size:
             return none
 
@@ -135,7 +135,7 @@ export type DequeIter[T]:
 
 impl Iterator[T] for DequeIter[T]:
     # Returns the value at the current position and moves past it, or none after the last one.
-    var fn next() ref Optional[T]:
+    var fn next() ref T?:
         let item = self.source.at(self.position)
         self.position += 1
         return item

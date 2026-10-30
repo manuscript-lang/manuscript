@@ -56,7 +56,7 @@ fn prefix_overflow() Int:
         sum += value
     return sum
 
-fn optional_overflow(default: Optional[Int]) Int:
+fn optional_overflow(default: Int?) Int:
     let values = [9223372036854775807]
     var sum = 0
     for value in values:

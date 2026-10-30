@@ -38,12 +38,12 @@ fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
     let create = fn: some(42)
-    let present: Optional[Int] = some(0)
-    let missing: Optional[Int] = none
+    let present: Int? = some(0)
+    let missing: Int? = none
     try expect_equal(present.or_else(create).get(), 0)
     try expect_equal(missing.or_else(create).get(), 42)
 
-    let nested: Optional[Optional[Int]] = some(missing)
+    let nested: Int?? = some(missing)
     try expect_false(not nested.is_some() or not nested.get().is_none())
 
 test "Result propagation and Error views preserve concrete causes":

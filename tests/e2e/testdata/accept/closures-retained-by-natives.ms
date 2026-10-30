@@ -12,10 +12,10 @@ fn churn(n: Int) Int:
 
     return t
 
-fn dflt(o: Optional[fn() String], s: String) fn() String:
+fn dflt(o: (fn() String)?, s: String) fn() String:
     return o.get(fn: s + "d")
 
-fn mk(o: Optional[fn() String], s: String) Box:
+fn mk(o: (fn() String)?, s: String) Box:
     let h = o.get(fn: s + "x")
     return Box(f: h)
 
@@ -32,7 +32,7 @@ fn build(r: fn(Int) Int) List[fn(Int) Int]:
     return out
 
 test "closures kept by natives own their captures":
-    let n: Optional[fn() String] = none
+    let n: (fn() String)? = none
     try expect_equal(dflt(n, "a")(), "ad")
 
     let b = mk(n, "hello" + "world")

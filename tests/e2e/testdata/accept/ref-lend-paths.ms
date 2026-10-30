@@ -21,12 +21,12 @@ fn either(a: Shelf, b: Shelf, flag: Bool) ref List[String]:
 
     return b.names
 
-fn stocked(h: Holder) ref Optional[Shelf]:
+fn stocked(h: Holder) ref Shelf?:
     match h.item:
         Stocked(shelf): return some(shelf)
         Plain: return none
 
-fn first_stocked(h: Holder) ref Optional[Shelf]:
+fn first_stocked(h: Holder) ref Shelf?:
     match h.items[0]:
         Stocked(shelf): return some(shelf)
         Plain: return none
@@ -52,14 +52,14 @@ fn chosen_list(a: Shelf, b: Shelf) ref List[String]:
     let names = either(a, b, false)
     return names
 
-fn first_name(s: Shelf) ref Optional[String]:
+fn first_name(s: Shelf) ref String?:
     let name = s.names.first()
     return name
 
-fn last_of(s: Shelf) ref Optional[String]:
+fn last_of(s: Shelf) ref String?:
     return s.names.last()
 
-fn age(s: Shelf, key: String) ref Optional[String]:
+fn age(s: Shelf, key: String) ref String?:
     let found = s.ages.get(key)
     return found
 
@@ -104,7 +104,7 @@ test "let bindings of lending calls and accessors are lent":
     try expect_equal(age(a, "ada"), some("36"))
     try expect_true(age(a, "grace").is_none())
 
-fn find(items: List[Shelf], first: String) ref Optional[Shelf]:
+fn find(items: List[Shelf], first: String) ref Shelf?:
     for s in items:
         if s.names[0] == first:
             return some(s)

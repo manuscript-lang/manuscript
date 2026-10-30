@@ -723,7 +723,7 @@ macro_rules! plain_slot {
 }
 plain_slot!(i64, f64, u8, u32, u64, i32, OptInt);
 
-/// `Optional[Int]` stored inline in a record: a presence byte, then the value.
+/// `Int?` stored inline in a record: a presence byte, then the value.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct OptInt {
@@ -1190,7 +1190,7 @@ unsafe impl<'a> FromAbi<'a> for StrArray<'a> {
     }
 }
 
-/// `None` is an absent `Optional[String]`.
+/// `None` is an absent `String?`.
 impl IntoAbi for Option<String> {
     type Raw = OptStr;
     fn into_raw(self) -> OptStr {

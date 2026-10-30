@@ -189,7 +189,7 @@ impl FnLower<'_> {
         Ok(self.b.rec_new(ts, &[secs, nanos]))
     }
 
-    /// `Optional[Timestamp]`: present when the host recorded a creation time.
+    /// `Timestamp?`: present when the host recorded a creation time.
     fn created(&mut self, raw_id: RecId, raw: Value, ty: MTy) -> Result<Value, Error> {
         let TyKind::Opt(inner) = self.b.m.types.kind(ty).clone() else {
             return Err(Error::new("`created` is not an optional"));
