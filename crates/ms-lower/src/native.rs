@@ -2364,6 +2364,8 @@ impl<'a> FnLower<'a> {
                 } else {
                     self.b.unop(ms_mir::ir::Op::Not, some)
                 };
+                // Only read: an owned optional of a resource (`open().is_some()`) closes it.
+                self.close_owned_temp(recv);
                 self.finish(recv);
                 Ok(Val { v, own: false })
             }
