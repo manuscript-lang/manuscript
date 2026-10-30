@@ -10,7 +10,7 @@
 
 ## Status
 
-Proposal, revised 2026-10-30 after a skeptic review (verdict: revise; its corrections are folded in), checked against `f6755dfd`. Direction (Chinmay, 2026-10-30): "i see that's wrong ... we need to design it ground up" (about the `shared` listener); earlier: "does that mean server requests will fan out on all cores?" Nothing is built yet.
+Proposal, revised 2026-10-30 after a skeptic review (verdict: revise; its corrections are folded in), checked against `f6755dfd`. Direction (Chinmay, 2026-10-30): "i see that's wrong ... we need to design it ground up" (about the `shared` listener); earlier: "does that mean server requests will fan out on all cores?" Direction (Chinmay, 2026-10-30): "let's do round robin"; "okay build the threads first" (processes later). Stage 1 and 2 built: `Listener.accept_raw`, `Network.serve_connections`, `HttpServer.adopt` (below), measured in `bench/perf/web/results.md` (2026-10-30). Stage 3 (`serve_cores`, worker function value) is next.
 
 ## Problem
 
@@ -36,15 +36,15 @@ Proposal, revised 2026-10-30 after a skeptic review (verdict: revise; its correc
 ### Model
 
 - Each core runs one serving isolate (a `Worker`, `proposals/worker-threads.md`): its own arena, scheduler, reactor, task scope and handler. Isolates share nothing but connection tokens (an integer: `fd` on Unix, `SOCKET` on Windows) sent over the worker's existing `Channel`.
-- The acceptor is a Manuscript loop in the calling isolate: `conn = listener.accept()`, `token = conn.release()`, `workers[i].channel.send(token)`, `i = (i + 1) % n`. The channel is the queue (bounded, in order, no lost message), which also removes the `post_remote` hazard (`task.rs:1520` drops a post while `posted` is set).
-- Each worker is a Manuscript loop: `token = channel.receive()`, `conn = network.adopt(token)`, then a task per connection running `serve_connection(conn, handler, options)`. `adopt` registers the descriptor in this isolate's poller before any I/O, so it lives in exactly one poller.
+- The acceptor is a Manuscript loop in the calling isolate: `handle = listener.accept_raw()`, `workers[i].channel.send(handle)`, `i = (i + 1) % n`. The channel is the queue (bounded, in order, no lost message), which also removes the `post_remote` hazard (`task.rs:1520` drops a post while `posted` is set).
+- Each worker is a Manuscript loop: `handle = channel.receive()`, `server.adopt(handle)` on the worker's `serve_connections` server. `adopt` registers the descriptor in this isolate's poller before any I/O, so it lives in exactly one poller.
 - Pick rule (Chinmay, 2026-10-30: "let's do round robin"): connection i goes to worker i mod N. Connections that differ a lot in lifetime or load can skew cores over time; stage 1 gate (a) measures it, and load-aware picking (workers report closes over the same channel) is the follow-up if it fails.
 - Placement is per connection. HTTP/1 keep-alive and an HTTP/2 connection stay on their isolate for life; WebSocket upgrades too. A request is never moved. Balance is therefore by connection count, not load.
 
 ```mermaid
 flowchart LR
   L[listener] --> A[acceptor task]
-  A -- token via Channel --> I0[isolate 0: adopt, serve_connection, handler]
+  A -- token via Channel --> I0[isolate 0: adopt, h1/h2/TLS, handler]
   A -- token via Channel --> I1[isolate 1]
   A -- token via Channel --> I2[isolate N-1]
 ```
@@ -76,12 +76,13 @@ let started = serve_cores("127.0.0.1:8080", init, AppConfig(greeting: "hi"))
 
 Today `Listener.accept` returns a `Connection` with `read` and `write`, and workers exist, so the loop above is nearly writable. The gaps, each a small general primitive:
 
-| Gap | Primitive | Why not Manuscript |
+| Gap | Primitive (as built) | Why not Manuscript |
 | --- | --- | --- |
-| A live `Connection` cannot cross to a worker (messages are JSON; `workers.md` forbids live resources) | `Connection.release() -> ConnectionToken` and `Network.adopt(token) -> Connection`; the token is `Data`, single use, closes the socket if dropped unadopted | the socket belongs to the runtime's poller |
-| No way to speak HTTP on an accepted `Connection`; the server is a Rust state machine (`http/server.rs`, `h2serve.rs`, `exchange.rs`) bound to its own listener | `serve_connection(conn, handler, options)`: today's per-connection code (HTTP/1.1, HTTP/2 over ALPN, limits, deadlines, request tasks), refactored out of `Server`; `serve` becomes listener plus accept loop calling it | HTTP/2 framing and HPACK in Manuscript is a separate project; this keeps the measured hyper parity (`results.md`, 2026-10-27) |
-| `WorkerGroup.spawn` takes `fn() Unit` | start a worker with a function value and config bytes | needs the code pointer (`msrt_worker_start`) |
-| `listen_tls` accepts after the TLS handshake on the acceptor, serializing handshakes on core 0 | `Listener.accept_raw` and `Connection.accept_tls(config)` so the worker runs the handshake | handshake state is rustls in Rust |
+| A live `Connection` cannot cross to a worker (messages are JSON; `workers.md` forbids live resources) | `Listener.accept_raw() -> Int` returns the accepted socket's handle (descriptor, or `SOCKET`) without wrapping it; `HttpServer.adopt(handle)` registers it in the adopter's poller. A process-wide set of outstanding handles makes an invented or reused number a no-op instead of a closed descriptor | the socket belongs to the runtime's poller |
+| No way to speak HTTP on an accepted socket; the server is a Rust state machine (`http/server.rs`, `h2serve.rs`, `exchange.rs`) bound to its own listener | `Network.serve_connections(handler, options) -> HttpServer`: a server with no listener that serves what `adopt` hands it, with `serve`'s limits, deadlines, request tasks, HTTP/2 and TLS. `Server::start` and `start_adopting` share one constructor; no codec code moved | HTTP/2 framing and HPACK in Manuscript is a separate project; this keeps the measured hyper parity (`results.md`, 2026-10-27) |
+| `WorkerGroup.spawn` takes `fn() Unit` | start a worker with a function value and config bytes (stage 3) | needs the code pointer (`msrt_worker_start`) |
+
+TLS needs no separate primitive: the adopting server owns the rustls config and runs the handshake in `add_conn`, so it happens on the worker, not on the accepting core. `accept_raw` refuses a `listen_tls` listener.
 
 Not missing: the accept loop, round robin, worker lifecycle, `cores`/`max_requests` splitting, stop and drain, fault reporting (all `.ms`). Rewriting the HTTP codecs in Manuscript is not needed for multi-core and is out of scope; if wanted it is a separate proposal that would also drop `serve_connection`'s Rust body.
 
@@ -91,7 +92,7 @@ Not missing: the accept loop, round robin, worker lifecycle, `cores`/`max_reques
 - Permissions: connections adopted by a worker were accepted under the caller's `Network`, so no listen right is needed there. Handlers that call `fetch` or `network()` inside a worker get that thread's unrestricted root network (`ms-std-net/src/net.rs:697-705`), an existing worker gap that a multi-core server would make the default; `init` should receive the restricted network (Open question 3).
 - Backpressure: the channels are bounded (16 messages), so a slow worker blocks the accept loop; `max_requests` is enforced per worker by `serve_connection`. At the cap the kernel backlog fills, as one server does today.
 - Platform parity: the handoff is an integer over the existing worker channel, which already works on the three platforms. Pollers are epoll and kqueue through mio on Unix; on Windows mio plus a helper thread and a loopback wake socket, so each serving isolate costs one extra thread there (`ms-std-net/src/sys/windows.rs`). Registering an adopted, never-polled `SOCKET` should work on all three but is unverified until stage 2 runs on Windows. A `SOCKET` is process-wide on Windows and a descriptor on Unix, so the adopting thread can register it. No `SO_REUSEPORT`, `EPOLLEXCLUSIVE` or per-OS accept behavior is used, so distribution is the same everywhere. All three platforms run the same balance test; none is gated.
-- Failure of a handoff (worker gone, `send` fails): the acceptor drops the token, which closes the socket, and moves on.
+- Failure of a handoff (worker gone, `send` fails): the handle's socket leaks (a handle type that closes on drop is the follow-up), so the v1 loop stops accepting.
 
 ## Components touched
 
@@ -99,8 +100,8 @@ Not missing: the accept loop, round robin, worker lifecycle, `cores`/`max_reques
 | --- | --- | --- |
 | `stdlib/net.ms`, `stdlib/http.ms` | `Network.serve_cores`, `cores` option, start/stop/join and fault reporting in Manuscript on `WorkerGroup` | e2e fixture: balance, stop, fault, restricted network |
 | `stdlib/workers.ms`, `crates/ms-rt/src/worker.rs` | start a worker with a function value and config bytes | worker fixture |
-| `stdlib/net.ms`, `crates/ms-std-net` | `Connection.release`/`Network.adopt` (unsafe ownership transfer behind a token); `Listener.accept_raw`, `Connection.accept_tls` | unit tests; adopt on all three OS; leak test for unadopted tokens |
-| `crates/ms-std-net` `http/server.rs`, `h2serve.rs`, `exchange.rs` | `serve_connection` extracted from `Server`; `serve` calls it | existing h1/h2/TLS tests unchanged |
+| `stdlib/net.ms`, `crates/ms-std-net` (built) | `Listener.accept_raw`, `HttpServer.adopt` (ownership transfer behind an outstanding-handle set) | unit test, e2e fixture `serve-connections.ms`; a handle never adopted still leaks its socket (a token type with a drop is the follow-up) |
+| `crates/ms-std-net` `http/server.rs` (built) | `Server::start_adopting`, `Server::adopt`; shared constructor | existing h1/h2/TLS tests unchanged |
 | `crates/ms-check` | generalize the named-top-level entry rule to `serve_cores`' `init` | reject fixture |
 | `bench/perf/web`, `ms-conform` fixtures | multi-core server, balance script as a fixture | all three OS in CI |
 | docs, `ms guide`, `VISION.md` | serving chapter; remove "Serving on several cores" (done in #1977) | `make docs-check` |
@@ -121,8 +122,8 @@ Not missing: the accept loop, round robin, worker lifecycle, `cores`/`max_reques
 
 ## Staging and verification
 
-1. Spike (gate): release/adopt, `serve_connection` and the Manuscript accept loop on a scratch branch; measure on 4 CPUs with the client on separate cores (`bench/perf/web`, script committed): (a) uneven load, 4 busy connections plus 60 light ones, per-isolate CPU and request counts; even-count balance alone passes trivially; (b) `/top` on all 4 cores at least 3x one core, `/health` not below one core; (c) `Connection: close` requests per second, at least 70% of the single-thread server's rate, and the acceptor isolate's CPU share. No-go if (a) shows an isolate idle while another queues, or (c) misses its bar; then try a dedicated acceptor or the `SO_REUSEPORT` fallback before dropping.
-2. `ms-std-net`: release/adopt, `serve_connection` extraction, accept_raw/accept_tls, unit tests on Linux, macOS, Windows.
+1. Spike (gate): accept_raw/adopt, `serve_connections` and the Manuscript accept loop (done: `results.md`, 2026-10-30; gate (a) on skewed load and the 4-core rows still to run on a 4-core client box); measure on 4 CPUs with the client on separate cores (`bench/perf/web`, script committed): (a) uneven load, 4 busy connections plus 60 light ones, per-isolate CPU and request counts; even-count balance alone passes trivially; (b) `/top` on all 4 cores at least 3x one core, `/health` not below one core; (c) `Connection: close` requests per second, at least 70% of the single-thread server's rate, and the acceptor isolate's CPU share. No-go if (a) shows an isolate idle while another queues, or (c) misses its bar; then try a dedicated acceptor or the `SO_REUSEPORT` fallback before dropping.
+2. `ms-std-net`: accept_raw/adopt and `serve_connections` (done on Linux; macOS and Windows run in CI).
 3. Worker function value, `serve_cores`, `cores`, stop/fault/SIGINT semantics in `stdlib`; balance, shutdown, fault and restricted-network fixtures.
 4. Bench page: a dated section in `bench/perf/web/results.md` and the doc chapter; `serve` closure form documented as single-core.
 

@@ -6,7 +6,7 @@ set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../../.." && pwd)
 MS=${MS:-$ROOT/target/release/ms}; GO=${GO:-go}; SECS=${1:-5}
-SERVER_CPUS=${SERVER_CPUS:-0,1}; LOAD_CPUS=${LOAD_CPUS:-2,3}
+SERVER_CPUS=${SERVER_CPUS:-0,1}; MS_THREADS=${MS_THREADS:-2}; LOAD_CPUS=${LOAD_CPUS:-2,3}
 case "$SECS" in ''|*[!0-9]*|0) echo 'seconds must be a positive integer' >&2; exit 2;; esac
 MS=$(command -v "$MS"); GO=$(command -v "$GO")
 case "$MS" in /*) ;; *) MS="$(pwd)/$MS";; esac
@@ -32,7 +32,7 @@ syscalls() { timeout "$2" strace -f -c -p "$1" -o "$3" >/dev/null 2>&1 || true; 
 
 PORT=18090
 for name in $NAMES; do
-  extra=
+  extra=; [ "$name" = ms ] && extra=$MS_THREADS
   (on "$SERVER_CPUS" "$W/$name/server" "$PORT" "$W/data" $extra >/dev/null 2>&1) &
   i=0; until load 1 1 /health >/dev/null 2>&1; do i=$((i + 1)); [ $i -lt 50 ] || { echo "$name did not start" >&2; exit 1; }; sleep 0.1; done
   pid=$(pgrep -f "^$W/$name/server")

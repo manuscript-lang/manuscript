@@ -325,6 +325,18 @@ native! {
         Ok(())
     }
 
+    /// `Listener.accept_raw(timeout)`: the accepted socket's handle, for `HttpServer.adopt`.
+    fn msrt_net_listener_accept_raw(
+        l: ObjRef<ListenerH>,
+        has_timeout: bool,
+        timeout: i64,
+        out: Out<i64>,
+        err: ErrOut,
+    ) -> Result<(), StatusCode> {
+        out.write(report(l.accept_raw(opt(has_timeout, timeout)), &err)?);
+        Ok(())
+    }
+
     /// `Listener.address()`.
     fn msrt_net_listener_address(l: ObjRef<ListenerH>) -> String {
         l.address().to_string()

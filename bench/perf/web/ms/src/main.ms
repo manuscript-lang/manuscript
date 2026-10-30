@@ -1,9 +1,10 @@
-# Benchmark server: main <port> <data-dir>. One serving thread. The Go server in ../go answers the same requests.
+# Benchmark server: main <port> <data-dir> [threads]. With threads above 1 the main thread accepts and hands each connection, round robin, to one of that many serving workers. The Go server in ../go answers the same requests.
 import Bytes from "@std/bytes.ms"
 import filesystem from "@std/fs.ms"
-import {headers, HttpRequest, HttpResponse, buffered} from "@std/http.ms"
+import {headers, HttpError, HttpExchange, HttpRequest, HttpResponse, buffered} from "@std/http.ms"
 import network from "@std/net.ms"
 import arguments from "@std/process.ms"
+import {Worker, WorkerGroup, worker_channel} from "@std/workers.ms"
 
 fn score(id: Int) Int:
     return id * 7919 % 1000
@@ -84,8 +85,8 @@ fn write_and_read(path: String, payload: Bytes) Result[Bytes, Error]:
     try fs.write_file_bytes(path, payload, replace: true)
     return ok(try fs.read_file(path))
 
-# Serves the benchmark endpoints on 127.0.0.1:<port> until the server stops.
-fn serve_here(port: String, dir: String) Int:
+# The benchmark endpoints.
+fn make_handler(dir: String) fn(HttpExchange) Result[Unit, HttpError]:
     var text = "0123456789abcdef"
     var i = 0
 
@@ -108,8 +109,12 @@ fn serve_here(port: String, dir: String) Int:
 
         return reply(404, "not found\n")
 
+    return buffered(handler)
+
+# Serves the benchmark endpoints on 127.0.0.1:<port> until the server stops.
+fn serve_here(port: String, dir: String) Int:
     if let acquired = network().serve(
-        address: "127.0.0.1:{port}", handler: buffered(handler)
+        address: "127.0.0.1:{port}", handler: make_handler(dir)
     ):
         let server = acquired
         let _ignored = server.wait()
@@ -117,9 +122,55 @@ fn serve_here(port: String, dir: String) Int:
 
     return 1
 
+# One serving thread of a multi-threaded run: serves the connections its starter sends.
+fn serve_worker() Unit:
+    var ch = worker_channel[Int, Int]()
+    let args = arguments()
+
+    if let acquired = network().serve_connections(handler: make_handler(args.get(1))):
+        var server = acquired
+
+        while true:
+            if let connection = ch.receive().get(none):
+                server.adopt(connection)
+                continue
+
+            break
+
+        server.close()
+
+# Accepts on the main thread and deals the connections to `threads` workers.
+fn serve_threads(port: String, threads: Int) Int:
+    let group = WorkerGroup[Int, Int]()
+    var workers: List[Worker[Int, Int]] = []
+
+    for i in 0..threads:
+        let worker = group.spawn(serve_worker).get(none)
+        workers.append(worker)
+
+    if let bound = network().listen("127.0.0.1:{port}"):
+        let listener = bound
+        var next = 0
+
+        while true:
+            if let connection = listener.accept_raw():
+                let _sent = workers[next].channel.send(connection)
+                next = (next + 1) % threads
+                continue
+
+            break
+
+    return 1
+
 export fn main() Int:
     let args = arguments()
-    if args.length() != 2:
+    if args.length() < 2 or args.length() > 3:
         return 2
 
-    return serve_here(args.get(0), args.get(1))
+    var threads = 1
+    if args.length() == 3:
+        threads = args.get(2).parse_int().get(1)
+    if threads <= 1:
+        return serve_here(args.get(0), args.get(1))
+
+    return serve_threads(args.get(0), threads)
