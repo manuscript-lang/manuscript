@@ -44,13 +44,6 @@ test "builder":
     append("é")
     (sb.build() == "aé") | try expect_true
 
-test "sealed builder":
-    var sb = StringBuilder()
-    sb.build()
-
-    let message = try expect_fault(fn: sb.append(""))
-    message | try expect_contains("builder is sealed")
-
 test "sealed map and set builders fault on every add":
     var map_builder = MapBuilder[String, Int]()
     let _map_sealed = map_builder.build()

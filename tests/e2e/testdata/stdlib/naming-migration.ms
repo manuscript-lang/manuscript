@@ -113,14 +113,12 @@ test "all builders keep Unit mutation function types":
 
     let concat_bytes: fn(Bytes) Unit = bytes.append_bytes
     concat_bytes("B".to_bytes())
-    try expect_false(
-        (bytes.build() != "AB".to_bytes() or bytes.build() != "AB".to_bytes())
-    )
+    try expect_false(bytes.build() != "AB".to_bytes())
 
     var text = StringBuilder()
     let append_text: fn(String) Unit = text.append
     append_text("ab")
-    try expect_false(text.build() != "ab" or text.build() != "ab")
+    try expect_false(text.build() != "ab")
 
 test "copy names preserve Bytes and collection storage":
     let bytes = Bytes([1, 2, 3])

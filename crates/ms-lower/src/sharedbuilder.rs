@@ -11,17 +11,12 @@ use ms_check::types as ct;
 use ms_mir::ir::{Imm, Mode, Module, Op, Param, Value};
 use ms_mir::types::{RecId, Ty as MTy, TyKind};
 
-/// The std builder type `t` is, if any.
+/// The shared collection builder type `t` is, if any. `StringBuilder` and `BytesBuilder` are
+/// owned byte buffers, not shared handles.
 pub(crate) fn builder_kind(t: &ct::Ty) -> Option<&'static str> {
-    [
-        "ListBuilder",
-        "MapBuilder",
-        "SetBuilder",
-        "StringBuilder",
-        "BytesBuilder",
-    ]
-    .into_iter()
-    .find(|n| t.is_std(n))
+    ["ListBuilder", "MapBuilder", "SetBuilder"]
+        .into_iter()
+        .find(|n| t.is_std(n))
 }
 
 /// The handle type of a builder over the collection type `items`.
@@ -60,8 +55,6 @@ impl<'a> FnLower<'a> {
         let items_ty = self.b.m.records[rec.index()].fields[0].1;
         let items = match self.b.m.types.kind(items_ty).clone() {
             TyKind::List(elem) => self.b.list_lit(elem, &[]),
-            // A text or byte builder accumulates an empty byte buffer.
-            TyKind::Bytes => self.call_runtime("msrt_list_new", &[], items_ty)?,
             _ => self.map_new(items_ty)?,
         };
         let sealed = self.b.bconst(false);
@@ -154,6 +147,28 @@ impl<'a> FnLower<'a> {
         self.b.emit(Op::Put, &[items, new], Imm::None, None);
         let u = self.b.unit();
         Ok(Val { v: u, own: false })
+    }
+
+    /// `StringBuilder.build()` and `BytesBuilder.build()`: the consumed builder's buffer becomes the
+    /// result, frozen into text without validation for a `StringBuilder`.
+    pub(crate) fn text_builder_build(
+        &mut self,
+        e: &ms_syntax::ast::Expr,
+        recv_expr: &ms_syntax::ast::Expr,
+    ) -> Result<Val, Error> {
+        let recv = self.expr(recv_expr)?;
+        if self.dead {
+            return Ok(recv);
+        }
+        self.at(e.pos);
+        let result = self.emty(e)?;
+        let buf = self.owned(recv);
+        if result == MTy::STR {
+            let slot = self.put_slot(buf);
+            let text = self.call_runtime("msrt_strbuilder_freeze", &[slot], MTy::STR)?;
+            return Ok(Val { v: text, own: true });
+        }
+        Ok(Val { v: buf, own: true })
     }
 
     /// `builder.append(x)` and friends as a call expression.

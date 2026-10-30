@@ -516,6 +516,9 @@ impl<'a> FnLower<'a> {
         if crate::sharedbuilder::builder_kind(&m.receiver).is_some() {
             return self.builder_method(e, view, m, recv_expr, &method);
         }
+        if ms_check::effects::is_text_builder(&m.receiver) && method == "build" {
+            return self.text_builder_build(e, recv_expr);
+        }
         if m.receiver.is_std("Shared") {
             return self.shared_method(e, view, recv_expr, &method);
         }
@@ -907,6 +910,7 @@ impl<'a> FnLower<'a> {
         if crate::mapset::is_map_or_set(self.b.m, mt)
             || matches!(self.b.m.types.kind(mt), TyKind::List(_))
             || t.is_std("Bytes")
+            || ms_check::effects::is_text_builder(&t)
         {
             return self.construct_collection(view, mt);
         }

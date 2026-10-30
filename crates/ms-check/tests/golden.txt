@@ -5704,7 +5704,7 @@ fn probe() String:
         b.append("x")
         i += 1
     return b.freeze()
-resolution	8	14	173	unknown or ambiguous member freeze on StringBuilder; available: append, buildfn probe() Int:
+resolution	8	14	173	unknown or ambiguous member freeze on StringBuilder; available: append, build, drainfn probe() Int:
     let values = [parse	2	19	34	unterminated delimiter '[' opened at line 2:18; add the matching ']' before the end of the file
    type queryFaultContext struct {context.Context}
    func (queryFaultContext) Err() error {rt.Raise("query fault");return nil}

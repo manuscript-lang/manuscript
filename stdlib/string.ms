@@ -38,15 +38,18 @@ impl Error for StringError:
     # Returns original Failed text, or a string-prefixed diagnostic for other cases.
     fn message() String: ...
 
-# Mutable builder for constructing a string without repeated intermediate copies.
+# Owned builder for constructing a string without repeated intermediate copies; appending needs a `var` binding.
 export type StringBuilder: ...
 
 impl StringBuilder:
-    # Appends the supplied text in order; mutation after build raises a sealed-builder fault.
-    fn append(value: String) Unit: ...
+    # Appends the supplied text in order.
+    var fn append(value: String) Unit: ...
 
-    # Seals the builder and returns immutable text; repeated build returns the same text value.
+    # Consumes the builder and returns its text; the builder cannot be used afterwards.
     fn build() String: ...
+
+    # Returns the text appended so far and leaves the builder empty, for a builder held in a field.
+    var fn drain() String: ...
 
 # Errors returned for invalid patterns or configured result limits.
 export type RegexError:
