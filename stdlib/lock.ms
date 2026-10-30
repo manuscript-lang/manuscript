@@ -14,7 +14,7 @@ extern fn msrt_waitq_remove(key: Int, token: Int) Int
 # value is freed with the last holder. Any number of holders read it with `get`. To change it, one
 # holder at a time takes it with `lock()` into a `var` binding: `var held = box.lock()`, then change
 # `held.value`; it is handed back when the binding's scope ends, however it ends. `take`, `put`,
-# `locked` and `id` are the primitives `lock` is built on; calling them elsewhere is rejected.
+# `peek`, `locked` and `id` are the primitives `lock` is built on; calling them elsewhere is rejected.
 export type Lock[T]: ...
 
 # Moves `value` into a new `Lock` with one holder; copy the result to add holders.
@@ -22,7 +22,8 @@ export fn new_lock[T](value: T) Lock[T]: ...
 
 impl Lock[T]:
     # Reads the value in place; the result borrows from this `Lock`. Faults while it is locked.
-    fn get() ref T: ...
+    # Internal to `get`.
+    fn peek() ref T: ...
 
     # The identity of this lock, the same for every copy of the handle. Internal to `lock`.
     fn id() Int: ...
@@ -74,6 +75,12 @@ impl Closeable for Ticket:
                 msrt_waitq_wake(self.key)
 
 impl Lock[T]:
+    # Reads the value in place; the result borrows from this `Lock`. Any number of holders read at
+    # once; while a holder has it locked, waits until it is handed back.
+    fn get() ref T:
+        wait_free(self)
+        return self.peek()
+
     # Takes the value for changing and returns the guard that holds it. Waits while another holder
     # has it, and stops waiting if the task is cancelled. Bind it with `var`; the scope end hands it
     # back: `var held = box.lock()`, then change `held.value`.
@@ -82,6 +89,11 @@ impl Lock[T]:
 
 # Waits until `box` is free, then takes its value into a guard.
 fn acquire[T](box: Lock[T]) Locked[T]:
+    wait_free(box)
+    return Locked[T](box: box, value: box.take(), held: true)
+
+# Waits while another holder has `box` locked, and stops waiting if the task is cancelled.
+fn wait_free[T](box: Lock[T]) Unit:
     while box.locked():
         let key = box.id()
         let token = msrt_channel_token()
@@ -90,5 +102,3 @@ fn acquire[T](box: Lock[T]) Locked[T]:
         var ticket = Ticket(key: key, token: token, parked: true)
         msrt_channel_park(token)
         ticket.parked = false
-
-    return Locked[T](box: box, value: box.take(), held: true)

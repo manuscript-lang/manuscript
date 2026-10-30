@@ -40,7 +40,7 @@ impl<'a> FnLower<'a> {
         let value = field(self, 0);
         let taken = field(self, 1);
         match name {
-            "get" => {
+            "peek" => {
                 self.fault_if_flag(taken, true, "the lock is held");
                 let v = self
                     .b

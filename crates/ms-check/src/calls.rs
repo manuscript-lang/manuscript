@@ -499,7 +499,7 @@ impl Checker {
         };
         if let Some(m) = callable.method.as_ref()
             && m.receiver.is_std("Lock")
-            && matches!(name.as_str(), "take" | "put" | "locked" | "id")
+            && matches!(name.as_str(), "take" | "put" | "peek" | "locked" | "id")
             && self.m().file.as_str() != "@std/lock.ms+source"
         {
             self.type_error(

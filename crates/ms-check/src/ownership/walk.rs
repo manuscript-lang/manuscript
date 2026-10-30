@@ -510,6 +510,12 @@ impl Walker<'_> {
         self.class_of(e) == Class::Copy && self.cx.m.ty(e).is_std("Lock")
     }
 
+    /// Whether an accessor on `e` gives a copy: true for a `Copy` handle, except in a `ref`
+    /// function, which hands the handle's borrow on to its caller, where this rule applies again.
+    fn copy_handle_copies(&self, e: &Expr) -> bool {
+        self.copy_handle(e) && !self.cx.c.func.func().is_some_and(|f| f.result_ref)
+    }
+
     /// Whether `a` is converted to an interface where it is used: the use receives a new
     /// interface value holding a copy, a temporary of the call.
     fn converted(&self, a: &Expr) -> bool {
@@ -1339,9 +1345,6 @@ impl Walker<'_> {
             self.bind_borrowing(&b, role, mutable, pattern, value);
             return;
         }
-        if mutable && self.bind_getter(&b, role, pattern, value) {
-            return;
-        }
         // `var x = handle.get()` would change a copy, not the shared value.
         if mutable
             && class != Class::Copy
@@ -1360,6 +1363,9 @@ impl Walker<'_> {
                 ),
             );
             self.declare(&b, role, Perm::Mutable, None, false);
+            return;
+        }
+        if mutable && self.bind_getter(&b, role, pattern, value) {
             return;
         }
         // A `let` of a scalar copies; a `var` borrows its place whatever the type.
@@ -2140,7 +2146,7 @@ impl Walker<'_> {
         let ExprKind::Member { left, .. } = &callee.kind else {
             return None;
         };
-        if !self.is_place(left) || self.copy_handle(left) {
+        if !self.is_place(left) || self.copy_handle_copies(left) {
             return None;
         }
         let origins = self.pure_places(left)?;
@@ -2159,7 +2165,7 @@ impl Walker<'_> {
         let ExprKind::Member { left, .. } = &callee.kind else {
             return None;
         };
-        if self.copy_handle(left) {
+        if self.copy_handle_copies(left) {
             return None;
         }
         let origins = self.pure_places(left)?;
@@ -2651,7 +2657,8 @@ impl Walker<'_> {
         // A computed receiver is an owned temporary with no parent to dangle from, so the accessor
         // consumes it; only a result borrowed from a variable or part of one must stay in place.
         // A `Copy` handle lends nothing that stays put, so its accessor's kept result is a copy.
-        let on_place = receiver_expr.is_some_and(|r| self.is_place(r) && !self.copy_handle(r));
+        let on_place =
+            receiver_expr.is_some_and(|r| self.is_place(r) && !self.copy_handle_copies(r));
         if modes.accessor && on_place && d == Demand::Consume && self.class_of(e) != Class::Copy {
             // Returning the part of a read-only parameter lends it to the caller.
             let lent = self
