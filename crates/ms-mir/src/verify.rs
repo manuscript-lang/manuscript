@@ -163,6 +163,7 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         | Op::SharedNew
         | Op::AltUnbox
         | Op::AltRelease
+        | Op::RecRelease
         | Op::OptUnbox => one(0),
         Op::Put => one(1),
         Op::DropIf => one(1),
@@ -801,6 +802,19 @@ impl Verifier<'_> {
                 want(
                     matches!(m.types.kind(t(0)), TyKind::Alt(_)) && res == Some(Ty::INT),
                     "alt.tag takes an alternative and yields int",
+                )
+            }
+            Op::RecRelease => {
+                arity(1)?;
+                let Imm::RecMask(r, _) = inst.imm else {
+                    return Err("missing field mask".into());
+                };
+                want(
+                    r.index() < m.records.len()
+                        && m.records[r.index()].fields.len() <= 32
+                        && m.types.kind(t(0)) == &TyKind::Rec(r)
+                        && res.is_none(),
+                    "rec.release takes a record with at most 32 fields",
                 )
             }
             Op::AltRelease => {

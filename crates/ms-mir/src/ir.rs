@@ -280,7 +280,7 @@ pub enum Op {
     // Float arithmetic and conversions.
     FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, FFloor, FCeil, FTrunc, I2F, F2IOpt, B2I, Select,
     // Records and alternatives.
-    RecNew, RecGet, RecSet, RecFill, AltNew, AltTag, AltGet, AltUnbox, AltTake, AltRelease,
+    RecNew, RecGet, RecSet, RecFill, AltNew, AltTag, AltGet, AltUnbox, AltTake, AltRelease, RecRelease,
     // Lists.
     ListNew, ListLit, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast,
     // Borrowed views: `RefNew` wraps a borrowed value, `RefGet` reads it back as a borrow.
@@ -366,6 +366,8 @@ pub enum ImmKind {
     AltField,
     /// Alternative id, case and the set of payload fields that were moved out.
     AltMask,
+    /// Record id and the set of fields that were moved out.
+    RecMask,
     /// Vtable.
     Vtable,
     /// Global.
@@ -402,7 +404,7 @@ impl Op {
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
         Op::ICmp, Op::UICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
-        Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease,
+        Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
         Op::RefNew, Op::RefGet,
@@ -481,6 +483,7 @@ impl Op {
             Op::AltUnbox => ("alt.unbox", K::AltField, true, effects!(writes, rc)),
             Op::AltTake => ("alt.take", K::AltField, true, effects!(writes, rc)),
             Op::AltRelease => ("alt.release", K::AltMask, false, effects!(writes, rc)),
+            Op::RecRelease => ("rec.release", K::RecMask, false, effects!(writes, rc)),
             Op::ListNew => ("list.new", K::None, true, effects!(alloc)),
             Op::ListLit => ("list.lit", K::None, true, effects!(alloc)),
             Op::ListLen => ("list.len", K::None, true, effects!()),
@@ -595,6 +598,8 @@ pub enum Imm {
     AltField(AltId, u32, u32),
     /// Alternative id, case and a bit set of payload fields moved out by `alt.take`.
     AltMask(AltId, u32, u32),
+    /// Record id and a bit set of fields moved out before `rec.release`.
+    RecMask(RecId, u32),
     /// A vtable.
     Vtable(VtableId),
     /// A global.

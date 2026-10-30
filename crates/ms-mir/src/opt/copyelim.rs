@@ -944,8 +944,113 @@ pub fn run_takes(m: &mut Module) -> bool {
     let mut changed = false;
     for fi in 0..m.funcs.len() {
         changed |= take_dead_sources(m, fi);
+        while take_record_fields(m, fi) {
+            changed = true;
+        }
     }
     changed
+}
+
+/// Turns `p = rec.get f v; c = copy p; ...; drop v` into `c = rec.get f v` plus drops of the
+/// other droppable fields of `v`, when `v` is only read through `rec.get`s until its drop. The
+/// field moves out of the dying record instead of being deep-copied and then freed with it, so
+/// `w.inner.clone()` on a record that is dead afterwards costs no allocation. Nothing that can
+/// fault or unwind may sit between the first load and the drop, so no cleanup sees the field
+/// both moved and still owned by the record.
+fn take_record_fields(m: &mut Module, fi: usize) -> bool {
+    let f = &m.funcs[fi];
+    let mut uses = vec![0u32; f.values.len()];
+    for b in &f.blocks {
+        for i in &b.insts {
+            for a in &i.args {
+                uses[a.index()] += 1;
+            }
+        }
+        b.term.for_each_use(|v| uses[v.index()] += 1);
+    }
+    let nd: Vec<bool> = f.values.iter().map(|v| m.needs_drop(*v)).collect();
+    // (block, copy index, record drop index, moved field values) of the first site found.
+    let mut site = None;
+    'find: for (bi, b) in f.blocks.iter().enumerate() {
+        let idx = BlockUses::new(&b.insts);
+        for (di, drop) in b.insts.iter().enumerate() {
+            let v = drop.args.first().copied();
+            let (Op::Drop, Some(v)) = (drop.op, v) else {
+                continue;
+            };
+            let TyKind::Rec(_) = m.types.kind(f.ty(v)) else {
+                continue;
+            };
+            if idx.after(v, di).next().is_some() {
+                continue;
+            }
+            let mut gets: Vec<usize> = Vec::new();
+            let mut ok = true;
+            for k in 0..di {
+                if !b.insts[k].args.contains(&v) {
+                    continue;
+                }
+                if b.insts[k].op == Op::RecGet {
+                    gets.push(k);
+                } else {
+                    ok = false;
+                    break;
+                }
+            }
+            let Some(&first) = gets.first() else { continue };
+            if !ok {
+                continue;
+            }
+            // Between the first load and the drop there is nothing that can fault or unwind.
+            if b.insts[first..di]
+                .iter()
+                .any(|n| !matches!(n.op, Op::RecGet | Op::Copy))
+            {
+                continue;
+            }
+            let field_of = |k: usize| match b.insts[k].imm {
+                Imm::Field(_, i) => i,
+                _ => u32::MAX,
+            };
+            let mut taken: Vec<(usize, usize, u32)> = Vec::new();
+            for &gi in &gets {
+                let Some(p) = b.insts[gi].res else { continue };
+                if uses[p.index()] != 1 || !nd[p.index()] {
+                    continue;
+                }
+                let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Copy) else {
+                    continue;
+                };
+                let fld = field_of(gi);
+                // A field taken once must not also be read through another `rec.get`.
+                if ci < di && gets.iter().filter(|&&g| field_of(g) == fld).count() == 1 {
+                    taken.push((gi, ci, fld));
+                }
+            }
+            if taken.is_empty() {
+                continue;
+            }
+            site = Some((bi, di, taken));
+            break 'find;
+        }
+    }
+    let Some((bi, di, taken)) = site else {
+        return false;
+    };
+    let f = &mut m.funcs[fi];
+    let Imm::Field(rec, _) = f.blocks[bi].insts[taken[0].0].imm else {
+        return false;
+    };
+    // The copy becomes a move out of the dying record; the release drops the other fields.
+    let mut mask = 0u32;
+    for &(_, ci, fld) in &taken {
+        f.blocks[bi].insts[ci].op = Op::MoveOut;
+        mask |= 1 << fld;
+    }
+    let release = &mut f.blocks[bi].insts[di];
+    release.op = Op::RecRelease;
+    release.imm = Imm::RecMask(rec, mask);
+    true
 }
 
 fn take_dead_sources(m: &mut Module, fi: usize) -> bool {
