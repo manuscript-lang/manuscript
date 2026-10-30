@@ -109,7 +109,7 @@ export type Flag:
     # One-letter alias used as `-p`; empty for none.
     short: String = ""
     # Text used when the flag is absent; none for no default. A Bool defaults to false.
-    default: Optional[String] = none
+    default: String? = none
     # One line shown in help.
     help: String = ""
     # Absence is an error when there is no default.
@@ -164,19 +164,19 @@ impl Matches:
         return self.values.get(name).get([]).clone()
 
     # Returns the text, or none for an optional argument or flag that was not supplied.
-    fn string_or_none(name: String) Optional[String]:
+    fn string_or_none(name: String) String?:
         if let items = self.values.get(name):
             if not items.is_empty(): return items[0].clone()
         return none
 
     # Returns an Int value, or none when absent.
-    fn int_or_none(name: String) Optional[Int]:
+    fn int_or_none(name: String) Int?:
         if let text = self.string_or_none(name): return text.parse_int()
 
         return none
 
     # Returns a Float value, or none when absent.
-    fn float_or_none(name: String) Optional[Float]:
+    fn float_or_none(name: String) Float?:
         if let text = self.string_or_none(name): return text.parse_float()
 
         return none
@@ -245,7 +245,7 @@ impl Command:
                 return result.get()
 
     # Returns the help text for the command reached by following `path` from this node, or none for an unknown path.
-    fn help(path: List[String] = []) Optional[String]:
+    fn help(path: List[String] = []) String?:
         var node = self.clone()
         var names = [self.name.clone()]
         var inherited: List[Flag] = []
@@ -261,7 +261,7 @@ impl Command:
         return render_help(node, names, inherited)
 
     # Returns the child named `word`, or none.
-    fn child(word: String) Optional[Command]:
+    fn child(word: String) Command?:
         for candidate in self.children:
             if candidate.name == word: return candidate.clone()
         return none
@@ -280,7 +280,7 @@ impl Command:
 # | `FlagKind.List`, and a `rest` argument | `List[String]` (absent is empty) |
 # | any other `Arg` | `String` |
 #
-# A flag with neither a default nor `required`, and an optional `Arg`, needs an `Optional[...]` field, which is `none`
+# A flag with neither a default nor `required`, and an optional `Arg`, needs an `...?` field, which is `none`
 # when absent. A field with no matching value, or of the wrong type, fails the run with an `InvalidSchema` error. The
 # handler returns the exit status.
 export fn command[T: Data](
@@ -486,7 +486,7 @@ fn check_schema(
     return ok(unit)
 
 # Finds a flag by long name or one-letter alias.
-fn find_flag(flags: List[Flag], key: String, long: Bool) Optional[Flag]:
+fn find_flag(flags: List[Flag], key: String, long: Bool) Flag?:
     for flag in flags:
         if long and flag.name == key: return flag.clone()
         if not long and not flag.short.is_empty() and flag.short == key: return flag.clone()

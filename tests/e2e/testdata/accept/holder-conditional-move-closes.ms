@@ -19,7 +19,7 @@ test "a list moved on one path closes on the path that keeps it":
 
 fn block(log: Shared[List[Int]], id: Int) Unit:
     let doors = [Door(id, log)]
-    var moved: Optional[List[Door]] = none
+    var moved: List[Door]? = none
     if doors.length() == 0:
         moved = some(doors)
     if moved.is_some():
@@ -31,7 +31,7 @@ test "an optional resource reassigned after a conditional move closes the new va
     log.get().clone() | try expect_equal([1, 2])
 
 fn reassign(log: Shared[List[Int]]) Unit:
-    var held: Optional[Door] = some(Door(1, log))
+    var held: Door? = some(Door(1, log))
     if var door = held:
         door.id = 1
     held = some(Door(2, log))

@@ -82,7 +82,7 @@ impl SortedMap[K, V]:
         )
 
     # Returns the value stored for an equal key, or none when absent.
-    fn get(key: K) Optional[V]:
+    fn get(key: K) V?:
         if self.size == 0:
             return none
 
@@ -175,7 +175,7 @@ impl SortedMap[K, V]:
         self.size = 0
 
     # Returns the entry with the smallest key, or none when empty.
-    fn first() Optional[SortedEntry[K, V]]:
+    fn first() SortedEntry[K, V]?:
         if self.size == 0:
             return none
 
@@ -184,7 +184,7 @@ impl SortedMap[K, V]:
         )
 
     # Returns the entry with the largest key, or none when empty.
-    fn last() Optional[SortedEntry[K, V]]:
+    fn last() SortedEntry[K, V]?:
         if self.size == 0:
             return none
 
@@ -195,14 +195,14 @@ impl SortedMap[K, V]:
         )
 
     # Removes and returns the entry with the smallest key, or none when empty.
-    var fn pop_first() Optional[SortedEntry[K, V]]:
+    var fn pop_first() SortedEntry[K, V]?:
         let entry = self.first()
         if self.size > 0:
             self.remove_at(0, 0)
         return entry
 
     # Removes and returns the entry with the largest key, or none when empty.
-    var fn pop_last() Optional[SortedEntry[K, V]]:
+    var fn pop_last() SortedEntry[K, V]?:
         let entry = self.last()
 
         if self.size > 0:
@@ -212,7 +212,7 @@ impl SortedMap[K, V]:
         return entry
 
     # Returns the entry with the smallest key that is at least `key`, or none.
-    fn ceiling(key: K) Optional[SortedEntry[K, V]]:
+    fn ceiling(key: K) SortedEntry[K, V]?:
         if self.size == 0:
             return none
 
@@ -226,7 +226,7 @@ impl SortedMap[K, V]:
         )
 
     # Returns the entry with the largest key that is at most `key`, or none.
-    fn floor(key: K) Optional[SortedEntry[K, V]]:
+    fn floor(key: K) SortedEntry[K, V]?:
         if self.size == 0:
             return none
 
@@ -347,42 +347,42 @@ impl SortedSet[T]:
         self.members.clear()
 
     # Returns the smallest member, or none when empty.
-    fn first() Optional[T]:
+    fn first() T?:
         if let entry = self.members.first():
             return entry.key.clone()
 
         return none
 
     # Returns the largest member, or none when empty.
-    fn last() Optional[T]:
+    fn last() T?:
         if let entry = self.members.last():
             return entry.key.clone()
 
         return none
 
     # Removes and returns the smallest member, or none when empty.
-    var fn pop_first() Optional[T]:
+    var fn pop_first() T?:
         if let entry = self.members.pop_first():
             return entry.key.clone()
 
         return none
 
     # Removes and returns the largest member, or none when empty.
-    var fn pop_last() Optional[T]:
+    var fn pop_last() T?:
         if let entry = self.members.pop_last():
             return entry.key.clone()
 
         return none
 
     # Returns the smallest member that is at least `value`, or none.
-    fn ceiling(value: T) Optional[T]:
+    fn ceiling(value: T) T?:
         if let entry = self.members.ceiling(value):
             return entry.key.clone()
 
         return none
 
     # Returns the largest member that is at most `value`, or none.
-    fn floor(value: T) Optional[T]:
+    fn floor(value: T) T?:
         if let entry = self.members.floor(value):
             return entry.key.clone()
 

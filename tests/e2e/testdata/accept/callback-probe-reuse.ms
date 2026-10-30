@@ -5,7 +5,7 @@ fn apply[T, U](value: T, transform: fn(T) U) U: transform(value)
 
 fn choose[T](first: fn() T, second: fn() T) T: first()
 
-fn optional[T, U](value: T, transform: Optional[fn(T) U]) U:
+fn optional[T, U](value: T, transform: (fn(T) U)?) U:
     return transform.get()(value)
 
 fn with_result[T](transform: fn() Result[T, TextError]) Result[T, TextError]: transform()
@@ -53,7 +53,7 @@ test "callback inference retains captures and contextual metadata":
     try expect_false(failed.is_ok())
     try expect_equal(failed.err().message(), "9")
 
-fn absent[T]() Optional[T]: none
+fn absent[T]() T?: none
 
 fn from_callback[T](factory: fn() T) T: factory()
 

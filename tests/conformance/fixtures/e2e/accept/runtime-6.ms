@@ -23,6 +23,6 @@ test "numeric boundary rules":
     let third = 1d / 3d
     try expect_equal("{third}", "0.3333333333333333333333333333333333")
 
-    let absent: Optional[Int] = none
+    let absent: Int? = none
     try expect_equal(1e300.truncate_to_int(), absent)
     try expect_equal((2.seconds + 1.seconds), 3.seconds)

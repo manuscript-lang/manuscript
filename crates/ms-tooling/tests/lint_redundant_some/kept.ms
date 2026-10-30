@@ -1,4 +1,4 @@
-fn n(x: Optional[Optional[Int]]) Int:
+fn n(x: Int??) Int:
     return 1
 
 export fn main() Int:

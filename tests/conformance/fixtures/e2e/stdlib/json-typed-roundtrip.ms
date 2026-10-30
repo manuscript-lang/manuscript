@@ -10,12 +10,12 @@ type Color:
 
 type Swatch:
     color: Color
-    shade: Optional[Color]
+    shade: Color?
 
 type Endpoint:
     host: IpAddress
     network: Cidr
-    fallback: Optional[IpAddress]
+    fallback: IpAddress?
 
 test "JSON payloadless cases are their names and round-trip":
     let swatch = Swatch(Color.Green, some(Color.Red))

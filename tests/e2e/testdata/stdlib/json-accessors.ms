@@ -5,13 +5,13 @@ fn doc() JsonValue:
     let text = "\{\"user\":\{\"name\":\"ada\",\"age\":36,\"score\":1.5,\"big\":1e3,\"admin\":true,\"tags\":[\"a\",\"b\",\"c\"]\},\"none\":null\}"
     return parse(text).get()
 
-fn user_field(d: JsonValue, key: String) Optional[JsonValue]:
+fn user_field(d: JsonValue, key: String) JsonValue?:
     if let user = d.get("user"):
         if let field = user.get(key):
             return some(field.clone())
     return none
 
-fn string_of(value: JsonValue) Optional[String]:
+fn string_of(value: JsonValue) String?:
     if let text = value.as_string():
         return some(text.clone())
 
@@ -20,7 +20,7 @@ fn string_of(value: JsonValue) Optional[String]:
 fn has_map(value: JsonValue) Bool:
     return value.as_map().is_some()
 
-fn tag(d: JsonValue, index: Int) Optional[String]:
+fn tag(d: JsonValue, index: Int) String?:
     if let tags = d.get("user"):
         if let list = tags.get("tags"):
             if let item = list.at(index):
@@ -91,7 +91,7 @@ test "JSON is_null distinguishes null from absent and other values":
     try expect_true(d.get("missing").is_none())
 
 # `get_in` lends the member it reaches, so a `ref` function can hand it back.
-fn user_name(d: JsonValue) ref Optional[String]:
+fn user_name(d: JsonValue) ref String?:
     if let name = d.get_in(["user", "name"]):
         return name.as_string()
 

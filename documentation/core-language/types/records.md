@@ -10,7 +10,7 @@ A record groups named fields into one value. Fields can change through a `var` r
 ```manuscript
 type Customer:
     name: String
-    email: Optional[String]
+    email: String?
 ```
 
 Field types are explicit and names unique. An empty record is `type Marker:`. A field may have a default expression checked against its type.
@@ -122,7 +122,7 @@ import panic from "@std/core.ms"
 
 type Node:
     value: Int
-    next: Optional[Node]
+    next: Node?
 
 test "recursive links":
     var node = Node(value: 1, next: none)

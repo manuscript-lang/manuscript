@@ -4,7 +4,7 @@ let LIMIT = 10
 let DOUBLE = LIMIT * 2
 let NAMES: List[String] = ["a", "b"]
 let GREETING = "limit \{LIMIT\}"
-let NOTHING: Optional[Int] = none
+let NOTHING: Int? = none
 let from = 4
 
 fn limit_plus(extra: Int) Int:

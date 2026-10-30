@@ -14,7 +14,7 @@ impl ReadStream for BytesSource:
         self.offset = self.data.length()
         return unit
 
-    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
         let remaining = self.data.length() - self.offset
         if remaining <= 0: return ok(none)
 
@@ -41,7 +41,7 @@ impl ReadStream for MappedStream:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
         while true:
             let chunk = try self.input.read(max_bytes)
 
@@ -67,7 +67,7 @@ impl ReadStream for LimitedStream:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
         if self.remaining < 0: return error(IoError.InvalidInput)
         if self.remaining == 0: return ok(none)
 
@@ -105,7 +105,7 @@ impl ReadStream for ConcatStream:
         self.index = self.inputs.length()
         return unit
 
-    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
         while self.index < self.inputs.length():
             # Read the stored stream in place: a stream is a value, so a local copy would lose its position.
             let chunk = try self.inputs[self.index].read(max_bytes)
@@ -128,7 +128,7 @@ impl ReadStream for TeeStream:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
         let chunk = try self.input.read(max_bytes)
 
         if let bytes = chunk:
@@ -184,7 +184,7 @@ export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Result[Bytes, 
 # Reads every remaining line from `input`, omitting line endings. `max_bytes` bounds each line, as in `read_line`.
 export fn read_lines(
     input: ReadStream,
-    max_bytes: Optional[Int] = none
+    max_bytes: Int? = none
 ) Result[List[String], IoError]:
     var lines = List[String]()
 

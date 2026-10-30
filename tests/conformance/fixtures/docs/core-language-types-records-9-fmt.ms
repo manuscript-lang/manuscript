@@ -5,7 +5,7 @@ import panic from "@std/core.ms"
 
 type Node:
     value: Int
-    next: Optional[Node]
+    next: Node?
 
 test "recursive links":
     var node = Node(value: 1, next: none)

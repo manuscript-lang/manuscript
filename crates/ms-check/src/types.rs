@@ -131,6 +131,14 @@ impl fmt::Display for Type {
                 None => f.write_str("<unknown>"),
             };
         }
+        if self.is_std("Optional") && self.args.len() == 1 {
+            let inner = &self.args[0];
+            return if inner.kind == Kind::Function {
+                write!(f, "({inner})?")
+            } else {
+                write!(f, "{inner}?")
+            };
+        }
         f.write_str(self.name.as_str())?;
         if !self.args.is_empty() {
             f.write_char('[')?;

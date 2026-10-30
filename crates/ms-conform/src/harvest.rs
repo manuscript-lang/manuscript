@@ -442,7 +442,7 @@ pub fn tags_for(text: &str, phase: Phase) -> Vec<String> {
         ("match ", "match"),
         ("try ", "try-result"),
         ("Result[", "try-result"),
-        ("Optional[", "optional"),
+        ("?", "optional"),
         ("some(", "optional"),
         ("interface ", "interfaces"),
         ("impl ", "interfaces"),

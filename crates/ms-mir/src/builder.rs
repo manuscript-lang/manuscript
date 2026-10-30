@@ -221,7 +221,7 @@ impl<'m> FuncBuilder<'m> {
     pub fn conv(&mut self, a: Value, to: Ty) -> Value {
         self.val(Op::Conv, &[a], Imm::None, to)
     }
-    /// `inarrow.opt`: `some(a)` as `Optional[to]` when `a` fits the smaller int type `to`.
+    /// `inarrow.opt`: `some(a)` as `to?` when `a` fits the smaller int type `to`.
     pub fn inarrow_opt(&mut self, a: Value, to: Ty) -> Value {
         let t = self.m.types.opt(to);
         self.val(Op::INarrowOpt, &[a], Imm::None, t)

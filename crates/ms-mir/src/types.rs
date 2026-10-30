@@ -75,7 +75,7 @@ pub enum TyKind {
     Alt(AltId),
     /// `List[T]`: an owned list value.
     List(Ty),
-    /// `Optional[T]`. `T` must be a scalar or a single-word reference type;
+    /// `T?`. `T` must be a scalar or a single-word reference type;
     /// pointer-like payloads use the null pointer as `none`. Lowering wraps
     /// anything else (nested optionals, interfaces) in an alternative.
     Opt(Ty),
@@ -222,7 +222,7 @@ impl TyTable {
         self.intern(TyKind::List(elem))
     }
 
-    /// `Optional[inner]`.
+    /// `inner?`.
     pub fn opt(&mut self, inner: Ty) -> Ty {
         self.intern(TyKind::Opt(inner))
     }

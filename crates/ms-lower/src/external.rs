@@ -67,7 +67,7 @@ impl FnLower<'_> {
             return Ok(r);
         }
         if let TyKind::Opt(inner) = self.b.m.types.kind(result).clone() {
-            // `Optional[T]`: a presence flag, with `T` through `out` when present.
+            // `T?`: a presence flag, with `T` through `out` when present.
             let (slot, _) = self.out_slot(inner, &mut vals);
             let present = self.call_runtime(symbol, &vals, MTy::BOOL)?;
             return self.two_ways(

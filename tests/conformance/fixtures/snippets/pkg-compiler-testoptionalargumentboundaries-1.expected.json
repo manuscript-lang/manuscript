@@ -9,19 +9,19 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Optional[Int], found String (in argument 'value' of f)",
+        "message": "expected Int?, found String (in argument 'value' of f)",
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-1.ms",
           "line": 6,
           "column": 19,
-          "offset": 211
+          "offset": 202
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-1.ms:6:19: type: expected Optional[Int], found String (in argument 'value' of f)\n   |\n 6 | fn call() Unit: f(\"wrong\")\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-1.ms:6:19: type: expected Int?, found String (in argument 'value' of f)\n   |\n 6 | fn call() Unit: f(\"wrong\")\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

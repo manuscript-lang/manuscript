@@ -254,7 +254,7 @@ pub const STR_SIZE: usize = 16;
 /// Distance between consecutive entries of the shared one-character ASCII strings (`msrt_ascii_chars`).
 pub const ASCII_CHAR_STRIDE: usize = 2;
 
-/// `Optional[String]`: the string itself (16 bytes); none is a static empty string with a null
+/// `String?`: the string itself (16 bytes); none is a static empty string with a null
 /// `ptr`, which no present string has (an inline string may have a zero first word, but not the
 /// static tag), so dropping or copying none does nothing.
 #[repr(C)]
@@ -338,7 +338,7 @@ pub const KIND_BYTES: u32 = 4;
 /// header (`Shared[T]`, closures, handle objects...). Copy = retain, drop = release.
 /// `eq`/`hash` are called when present, else identity.
 pub const KIND_SHARED: u32 = 5;
-/// Plain bits without ownership (scalars, records of scalars, inline `Optional[Int]`).
+/// Plain bits without ownership (scalars, records of scalars, inline `Int?`).
 /// Copy is `memcpy`; equality `memcmp` and hash over the bytes unless `eq`/`hash` is set.
 pub const KIND_POD: u32 = 6;
 /// Slot holds a `VecVal` list whose element descriptor is `inner0`.
@@ -405,19 +405,19 @@ unsafe impl Sync for TypeDesc {}
 // Optional, Result, closures, interfaces
 // ---------------------------------------------------------------------------
 
-/// `Optional[Int]` and other 8-byte scalars: `{ present, value }`, 16 bytes.
+/// `Int?` and other 8-byte scalars: `{ present, value }`, 16 bytes.
 #[repr(C)]
 pub struct OptInt {
     pub present: u8,
     pub value: i64,
 }
-/// `Optional[Float]`.
+/// `Float?`.
 #[repr(C)]
 pub struct OptFloat {
     pub present: u8,
     pub value: f64,
 }
-/// `Optional[Bool]`.
+/// `Bool?`.
 #[repr(C)]
 pub struct OptBool {
     pub present: u8,

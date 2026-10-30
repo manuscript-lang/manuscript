@@ -5,7 +5,7 @@ type Choice[T]:
     case Found(value: T)
     case Missing
 
-fn f(c: Choice[Int], o: Optional[Int]) Int:
+fn f(c: Choice[Int], o: Int?) Int:
     match o:
         Optional.some(n): return n
         Optional.none: return 0

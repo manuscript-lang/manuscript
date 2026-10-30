@@ -193,7 +193,13 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
     }
     if matches!(
         current,
-        Tok::RParen | Tok::RBracket | Tok::RBrace | Tok::Comma | Tok::Dot | Tok::Colon
+        Tok::RParen
+            | Tok::RBracket
+            | Tok::RBrace
+            | Tok::Comma
+            | Tok::Dot
+            | Tok::Colon
+            | Tok::Question
     ) {
         return false;
     }

@@ -32,7 +32,7 @@ pub fn report<T, E: Status>(
     })
 }
 
-/// Flattened `Optional[Int]`/`Optional[Duration]` parameter.
+/// Flattened `Int?`/`Duration?` parameter.
 fn opt(has: bool, v: i64) -> Option<i64> {
     has.then_some(v)
 }

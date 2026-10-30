@@ -107,10 +107,10 @@ The removed spellings migrate as follows.
 
 | Receiver or constructor | Signature/result |
 | --- | --- |
-| `String` | `byte_length() Int`; `to_bytes() Bytes`; `parse_int() Optional[Int]`; `parse_float() Optional[Float]` |
+| `String` | `byte_length() Int`; `to_bytes() Bytes`; `parse_int() Int?`; `parse_float() Float?` |
 | `Bytes(values: List[UInt8])` | Immutable bytes; `Bytes([104, 105])` types its literals as `UInt8`, so a value outside 0–255 is a compile error |
-| `Bytes` | `length() Int`; `get(index: Int, default: Optional[UInt8] = none) UInt8`; `[index] UInt8`; `concat(values: Bytes) Bytes` |
-| `Bytes` | `to_string() Optional[String]` |
+| `Bytes` | `length() Int`; `get(index: Int, default: UInt8? = none) UInt8`; `[index] UInt8`; `concat(values: Bytes) Bytes` |
+| `Bytes` | `to_string() String?` |
 | `Bytes` | `values() List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
 
 `to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` and `data[index]` return the byte as `UInt8`; convert with `to_int()` for arithmetic; negative indexes count from the end, and `[]` faults out of range where `get` takes a default. Bytes are immutable, so `data[i] = v` is rejected.
@@ -129,7 +129,7 @@ test "explicit byte conversion":
         return panic("check failed")
     if not ("é".to_bytes().decode_utf8() == some("é")):
         return panic("check failed")
-    let invalid: Optional[String] = none
+    let invalid: String? = none
     if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")
     if not ("-007".parse_int() == some(-7)):

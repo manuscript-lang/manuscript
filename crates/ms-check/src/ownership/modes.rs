@@ -397,7 +397,7 @@ fn native_method_modes(
                 return ParamMode::Borrow;
             };
             // An element a mutator stores, or a value of the receiver's or result's type.
-            // An optional parameter (`default: Optional[T]`) holds a `T`.
+            // An optional parameter (`default: T?`) holds a `T`.
             let held = match p.ty.args.first() {
                 Some(inner) if p.ty.is_std("Optional") => inner,
                 _ => &p.ty,

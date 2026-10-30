@@ -50,7 +50,7 @@ export fn first_queries() Bool:
     )
 
 export fn first_converted(cause: Cause) Result[Int, Error]:
-    let missing: Optional[Int] = none
+    let missing: Int? = none
     return convert(missing, fn() Error: cause)
 
 export fn first_folded(cause: Cause) Error:

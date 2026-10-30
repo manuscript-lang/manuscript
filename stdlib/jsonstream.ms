@@ -24,7 +24,7 @@ export interface JsonDecoder:
 # an exceeded limit returns `LimitExceeded`. Omit limits only for trusted input, because
 # an unterminated value is otherwise buffered without bound. Negative limits return
 # `InvalidInput`.
-export fn decoder(limits: Optional[JsonLimits] = none) Result[JsonDecoder, JsonError]:
+export fn decoder(limits: JsonLimits? = none) Result[JsonDecoder, JsonError]:
     let bounds = limits.get(JsonLimits())
     if (
         bounds.max_bytes.get(0) < 0
@@ -50,7 +50,7 @@ type Decoder:
     in_string: Bool
     escaped: Bool
     finished: Bool
-    failure: Optional[JsonError]
+    failure: JsonError?
 
 fn is_space(byte: UInt8) Bool:
     return (byte == 32 or byte == 9 or byte == 10 or byte == 13)
@@ -142,7 +142,7 @@ fn scan(var state: Decoder, byte: UInt8) Result[Bool, JsonError]:
     return ok(false)
 
 # Consumes one byte and returns the value it completes, if any.
-fn step(var state: Decoder, byte: UInt8) Result[Optional[JsonValue], JsonError]:
+fn step(var state: Decoder, byte: UInt8) Result[JsonValue?, JsonError]:
     let done = try scan(var state, byte)
     if not done: return ok(none)
 

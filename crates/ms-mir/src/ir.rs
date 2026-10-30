@@ -1237,7 +1237,7 @@ impl Module {
         }
     }
 
-    /// Whether `Optional[inner]` contains itself by value (`type Node: next: Optional[Node]`)
+    /// Whether `inner?` contains itself by value (`type Node: next: Node?`)
     /// and therefore holds its payload in a heap block behind a nullable pointer. Backends
     /// share this rule through [`Boxing`], which memoizes it.
     pub fn opt_is_boxed(&self, inner: Ty) -> bool {
@@ -1402,7 +1402,7 @@ impl Boxing {
         b
     }
 
-    /// Whether `Optional[inner]` contains itself by value.
+    /// Whether `inner?` contains itself by value.
     pub fn opt(&mut self, m: &Module, inner: Ty) -> bool {
         if let Some(b) = self.opts.get(&inner) {
             return *b;

@@ -23,7 +23,7 @@ type Pair:
     a: Door
     b: Door
 
-fn maybe(n: String) Optional[Door]:
+fn maybe(n: String) Door?:
     return some(Door(n))
 
 fn doors() List[Door]:

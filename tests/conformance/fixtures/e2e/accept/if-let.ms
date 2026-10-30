@@ -4,13 +4,13 @@
 import TextError from "@std/core.ms"
 import expect_true, fail from "@std/test.ms"
 
-fn describe(name: Optional[String]) String:
+fn describe(name: String?) String:
     if let value = name:
         return "Hello, " + value
     else:
         return "Hello!"
 
-fn total(items: List[Optional[Int]]) Int:
+fn total(items: List[Int?]) Int:
     var sum = 0
     for item in items:
         if let value = item:
@@ -31,7 +31,7 @@ test "if let takes else when absent and keeps falsy payloads":
     (try check(value: describe(none) == "Hello!", message: "none"))
     (try check(value: describe(some("Ada")) == "Hello, Ada", message: "some"))
 
-    let items: List[Optional[Int]] = [some(1), none, some(0), some(2)]
+    let items: List[Int?] = [some(1), none, some(0), some(2)]
     (try check(value: total(items) == 3, message: "total"))
 
     let empty: List[Int] = []

@@ -7,7 +7,7 @@ fn total(rows: List[Row]) Int:
         n += r.name.length()
     return n
 
-fn first_name(r: Optional[Row]) Int:
+fn first_name(r: Row?) Int:
     match r:
         some(row):
             return row.name.length()

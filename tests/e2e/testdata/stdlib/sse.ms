@@ -7,13 +7,13 @@ type Chunks:
     parts: List[Bytes]
     index: Int
     closed: Bool
-    failure: Optional[IoError]
+    failure: IoError?
 
 impl ReadStream for Chunks:
     var fn close() Unit:
         self.closed = true
 
-    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
         if self.index < self.parts.length():
             let part = self.parts.get(self.index)
             self.index += 1
@@ -23,7 +23,7 @@ impl ReadStream for Chunks:
 
         return ok(none)
 
-fn stream(parts: List[Bytes], failure: Optional[IoError]) Chunks:
+fn stream(parts: List[Bytes], failure: IoError?) Chunks:
     return Chunks(parts, 0, closed: false, failure)
 
 # Splits at every byte boundary, one boundary at a time, plus one byte per chunk.

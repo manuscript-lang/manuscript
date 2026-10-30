@@ -4,4 +4,4 @@
 fn f(value: Int) Int: return value
 
 fn call() Unit:
-    let callback: fn(Optional[Int]) Int = f
+    let callback: fn(Int?) Int = f

@@ -11,8 +11,8 @@ interface Runner:
         program: String,
         arguments: List[String],
         input: Bytes,
-        max_output_bytes: Optional[Int] = none,
-        timeout: Optional[Duration] = none
+        max_output_bytes: Int? = none,
+        timeout: Duration? = none
     ) Result[CommandOutput, CommandError]
     fn spawn(program: String, arguments: List[String]) Result[Subprocess, CommandError]
 
@@ -24,8 +24,8 @@ impl Runner for Capture:
         program: String,
         arguments: List[String],
         input: Bytes,
-        max_output_bytes: Optional[Int],
-        timeout: Optional[Duration]
+        max_output_bytes: Int?,
+        timeout: Duration?
     ) Result[CommandOutput, CommandError]:
         self.calls += 1
         return ok(CommandOutput(0, input, "".to_bytes()))

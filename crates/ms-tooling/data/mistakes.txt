@@ -78,7 +78,7 @@ diag: there is no 'lambda'
 
 wrong: null
 right: none
-body: let x: Optional[Int] = {}
+body: let x: Int? = {}
 diag: no null
 
 wrong: let v = try f()

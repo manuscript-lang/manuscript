@@ -456,7 +456,7 @@ impl Checker {
             self.type_error(
                 s.pos,
                 format!(
-                    "for requires List, Set, Map, an Iterator, or an Iterable, found {t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var fn next() ref Optional[T]', or Iterable with 'fn iter() I' for a container whose iterator I borrows from it"
+                    "for requires List, Set, Map, an Iterator, or an Iterable, found {t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var fn next() ref T?', or Iterable with 'fn iter() I' for a container whose iterator I borrows from it"
                 ),
             );
         }

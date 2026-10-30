@@ -6,4 +6,4 @@ type Pair[T, U]:
     second: U
 
 type Config:
-    value: Pair[Optional[Int], Optional[Optional[String]]]
+    value: Pair[Int?, String??]

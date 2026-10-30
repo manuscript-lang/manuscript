@@ -4,7 +4,7 @@
 type Flag:
     case Ready
 
-fn use(value: Optional[Int]) Int:
+fn use(value: Int?) Int:
     let _Flag = 2
 
     match value:

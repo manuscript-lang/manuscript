@@ -30,7 +30,7 @@ fn unit_default() Unit:
 fn unit_value(value: Unit = unit_default()) Unit:
     return value
 
-fn optional(value: Optional[Int] = some(3)) Optional[Int]:
+fn optional(value: Int? = some(3)) Int?:
     return value
 
 fn fail() Result[Int, TextError]:
@@ -65,7 +65,7 @@ test "omitted and explicit defaults":
     (identity(value: 9) != 9 or identity(value: 9, fallback: 4) != 4) | try expect_false
     unit_value(unit) | try expect_equal(unit)
     unit_value() | try expect_equal(unit)
-    (optional(value: none) != Optional[Int].none or optional() != some(3)) | try expect_false
+    (not optional(value: none).is_none() or optional() != some(3)) | try expect_false
     (
         (
             propagate() != Result[Int, TextError].error(

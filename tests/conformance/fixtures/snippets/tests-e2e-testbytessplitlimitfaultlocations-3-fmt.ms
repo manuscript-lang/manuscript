@@ -2,6 +2,6 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/bytes_split_test.go:25 TestBytesSplitLimitFaultLocations
 export fn main() Int:
-    let cap: Optional[Int] = some(-7)
+    let cap: Int? = some(-7)
     let parts = Bytes([1]).split(Bytes([]), cap)
     return parts.length()
