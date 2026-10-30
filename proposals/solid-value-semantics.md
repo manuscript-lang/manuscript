@@ -6,15 +6,17 @@
 - Cause: the same facts are derived in more than one place, from different signals. `Classifier` walks alternative cases, but `clonable` does not. Temporary cleanup keys on `needs_drop` rather than the class. Natives default to `Copy`, and builder mutators are listed by name.
 - Change: fix each hole by routing it through the existing `Classifier`, one small PR each. Then remove name-based special cases one at a time, each one an owner decision. No GC, no reference counting or copy-on-write for ordinary data, and no new framework.
 - Cost: static checks only, until stage 3. Stage 3 changes user-visible APIs, and each change is gated on `bench/perf`.
-- Decisions requested: D1 and D2 (stage 2), then D3 to D7 (stage 3). All of them are user-visible.
+- Decisions: D1 to D7 are approved. Stages 4 to 6 carry Chinmay's roadmap: per-field ownership dataflow, mutation and cleanup contracts, then copy and allocation elimination. They are gated on a harness that counts clones, allocations, copied bytes and closes.
 
 ## Status
 
-Proposal, 2026-10-30, checked against `origin/main` at `02ea1a1c`. Direction (Chinmay):
+Approved, 2026-10-30, checked against `origin/main` at `02ea1a1c`. Direction (Chinmay):
 - "is our value semantics sound? feels like we're mixing value and references in weird ways"
 - "i don't want special casing, we should have everything handled by language model"
 - "Keep the owned-value model. Make the compiler preserve its rules consistently."
 - "yeah let's make value semantics solid and performant"
+- On D1 to D7: "if we can move deterministic let's not require clone, everything else is fine"
+- The roadmap for stages 4 to 7 is Chinmay's, given in the thread on 2026-10-30.
 
 This consolidates the thread's audit (`architecture/value-semantics-audit.md` in the project files) and Chinmay's independent source review of `63c8815d`.
 
@@ -26,7 +28,7 @@ Skeptical review (independent subagent, 2026-10-30): verdict "build with changes
 - named the real `bench/perf` suites and the `strfuse` dependency;
 - removed the claim that `CallModes` needs new fields, since `retained` and `origin` already exist (`modes.rs:131-133`).
 
-Nothing is implemented.
+Stage 1 is in progress.
 
 ## Problem
 
@@ -160,7 +162,7 @@ Expected diagnostics:
 
 ### Stage 2: escaping captures and generic cleanup (D1, D2)
 
-- **D1.** An escaping closure that cannot move a capture (the capture is used later, or is borrowed) is rejected, with the fix `let c = x.clone()` before the closure. This brings the code in line with `function-values-and-closures.md` ("Use `.clone()` before capturing to keep using the original") and with `OWNERSHIP.md:36` ("moved at creation"). Before landing, count the repo programs that rely on the implicit copy.
+- **D1.** A capture at its last use is moved into the closure, with no `.clone()` needed. An escaping closure that cannot move a capture (the capture is used later, or is borrowed) is rejected, with the fix `let c = x.clone()` before the closure. This brings the code in line with `function-values-and-closures.md` ("Use `.clone()` before capturing to keep using the original") and with `OWNERSHIP.md:36` ("moved at creation"). Before landing, count the repo programs that rely on the implicit copy.
 - **D2.** The checker also lists in `implicit_closes` any binding whose type mentions a type variable. Lowering then asks `cx.classes` for the instance type and emits no code when the instance has no closer.
 - D2 lands only after D1. Otherwise P4's escaping copy closes the same resource twice.
 - Each unreproduced item gets its repro in this stage. A reproduced one is fixed through `Classifier`; one that does not reproduce is dropped.
@@ -210,19 +212,51 @@ D6 performance requirements:
 
 Each step is its own PR and lands green on Linux, macOS and Windows with its repro as a test. The checks are `cargo fmt`, `clippy`, `nextest` and `make verify`, plus `make verify-full` for stage 3.
 
-1. **Stage 1:** P1, P2, P3 and the verifier `Copy` check. No decision needed.
+1. **Stage 1:** P1, P2 and P3. No decision needed.
+   - P3 also needs the lowering's ownership flag (`Val.own`, set in `FnLower::val`) to follow "storage or resource", not `needs_drop`. That is the first instance of stage 4's rule.
+   - The verifier `Copy` check moves to stage 4, where the MIR knows which values carry a close.
 2. **Stage 2:** D1, then D2. Each unreproduced item gets a repro, then a fix or a drop. Gate: `bench/perf/closure-capture` at parity.
 3. **Stage 3:** D3 to D7, one PR each. Gate: `strappend`, `string-lines`, `listloops`, `datastructures` and `representative` at parity or better, with a dated result section for D5 and D6.
 
-## Open questions
+4. **Stage 4: field-level ownership dataflow.**
+   - One analysis tracks, for every field path, whether it is initialized, moved, borrowed or mutably borrowed. It runs through branches, loops, early returns and reassignment.
+   - The same facts drive both the diagnostics and the generated cleanup and drop flags.
+   - Moving one field out of a record leaves the other fields' cleanup exact. This is what allows moving a large field without cloning the whole record.
+   - The analysis replaces the separate facts it covers: `drops_old`, the per-binding move tracking, and the close flags in `close.rs`. It does not run beside them.
+   - The MIR verifier checks the same per-path facts. It rejects a copy of a value that carries a close, and a close or drop of a field that has moved.
+5. **Stage 5: mutation and cleanup contracts.** Each item is written as a rule in `documentation/` before its code lands.
+   - **Overlap.** Accesses to fields and elements are modelled one way for every type. Provably disjoint paths are allowed, and unresolved overlap is rejected. A read that finishes before the mutation starts stays valid. A resize while an element borrow is live is rejected by the same rule, not a per-collection one.
+   - **Cleanup timing.** Closing a resource is observable and happens at scope exit, in a specified order. Freeing storage is not observable, so last-use drops and moves stay free to reorder it. The `lastuse` pass may move frees, never closes.
+   - **Clone.** `clone` runs no user code and cannot fail, so removing a clone is always legal. A type that needs user code to copy itself gets a named method, not `Clonable`.
+   - **Replacement on failure.** The replacement is evaluated first, then installed, then the old value is cleaned up. A partly built record or collection cleans up exactly the parts it initialized. This uses stage 4's facts, with no rollback machinery in APIs.
+   - **Equality and keys.** Structural equality and hashing follow the same structure walk as ownership and cloning. A type with identity declares it, and a value whose hash can change through an alias is never a key. This replaces `contracts.rs::shares_state`.
+6. **Stage 6: copy and allocation elimination from the stage 4 facts.** No collection names are involved.
+   - Dead inputs are moved into results instead of cloned.
+   - Returned records are built directly in caller-provided storage.
+   - A consumed collection's buffer is reused when representation and element lifetimes permit.
+   - Non-escaping captures stay on the stack.
+7. **Gate for stages 4 to 6, the counting harness.**
+   - Small programs are run in debug and release, recording:
+     - results;
+     - cleanup order and count;
+     - clone count;
+     - allocations;
+     - copied bytes.
+   - The programs cover nested wrappers, captures, generic calls, partial moves and failure paths.
+   - A change may not raise any count without a stated reason. Wall-clock suites alone do not catch a hidden clone.
+   - The harness lands first, in stage 4, and before stage 6.
 
-All of these change user-visible behavior. Each line gives my recommendation.
+Stages 4 to 6 each need their own proposal under this one: data model, evidence and skeptical review. That follows AGENTS.md, because each crosses `ms-check`, `ms-lower` and `ms-mir`.
 
-- **D1.** Require `.clone()` when an escaping closure cannot move a capture. Recommend yes; it is already the documented rule.
-- **D2.** Generic instances close the resources they own. Recommend yes, after D1.
-- **D3.** `HttpHeaders` becomes owned, and appending needs `var`. Recommend yes.
-- **D4.** The native default becomes `Move`, and time types become records. Recommend yes.
-- **D5.** Remove `ListBuilder`, `MapBuilder` and `SetBuilder`. Recommend yes, since `var List` already does this.
-- **D6.** `StringBuilder` and `BytesBuilder` become owned values, with a consuming `build`. Recommend yes, gated on `strappend`.
-- **D7.** `Shared` carve-outs. Defer to the `Lock[T]` work.
+## Decisions
+
+All of these are approved (Chinmay, 2026-10-30).
+
+- **D1.** A capture at its last use moves. `.clone()` is required only when the variable is used again after the closure, or is borrowed.
+- **D2.** Generic instances close the resources they own, after D1.
+- **D3.** `HttpHeaders` becomes owned, and appending needs `var`.
+- **D4.** The native default becomes `Move`, and time types become records.
+- **D5.** Remove `ListBuilder`, `MapBuilder` and `SetBuilder`.
+- **D6.** `StringBuilder` and `BytesBuilder` become owned values with a consuming `build`, gated on `strappend`.
+- **D7.** `Shared` carve-outs follow the `Lock[T]` work.
 - Out of scope: resource I/O as `var fn`. Resources are already move-only, so there is no aliasing to fix.
