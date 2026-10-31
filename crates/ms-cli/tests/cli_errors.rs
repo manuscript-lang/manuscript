@@ -60,3 +60,13 @@ fn init_next_command_for_hyphen_directory_is_a_file_operand() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn init_extra_argument_error_reads_cause_then_fix() {
+    let (status, err) = ms(&["init", "a", "b"]);
+    assert_eq!(status, 2);
+    assert!(
+        err.contains("unexpected init argument: b; ms init takes"),
+        "{err}"
+    );
+}
