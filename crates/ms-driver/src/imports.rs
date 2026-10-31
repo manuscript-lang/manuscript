@@ -8,7 +8,11 @@
 
 use std::collections::BTreeMap;
 use std::path::Path;
+use std::sync::Arc;
 
+use ms_syntax::ast::DeclKind;
+use ms_syntax::lexer;
+use ms_syntax::token::Tok;
 use ms_syntax::{Diagnostic, DiagnosticFix, Phase, Pos};
 
 use crate::project::pathops;
@@ -16,17 +20,35 @@ use crate::project::pathops;
 /// The most files one scan reads, so a huge tree cannot stall a check.
 const MAX_FILES: usize = 2000;
 
-/// Names declared by top-level `export` lines of `source`, without checking it.
+/// Names declared by top-level exports, without checking the source. Ordinary
+/// headers need no body parsing; grouped constants share the lexer's delimiters.
 pub fn exported_names(source: &str) -> Vec<String> {
     let mut names = Vec::new();
-    for line in source.lines() {
-        let Some(rest) = line.strip_prefix("export ") else {
+    let mut groups = None;
+    for (line, text) in source.lines().enumerate() {
+        let Some(rest) = text.strip_prefix("export ") else {
             continue;
         };
-        let rest = rest.strip_prefix("extern ").unwrap_or(rest);
-        let Some((keyword, rest)) = rest.split_once(' ') else {
+        let rest = rest.trim_start();
+        let rest = rest
+            .strip_prefix("extern ")
+            .or_else(|| rest.strip_prefix("opaque "))
+            .unwrap_or(rest)
+            .trim_start();
+        let Some((keyword, rest)) = rest.split_once(char::is_whitespace) else {
             continue;
         };
+        let rest = rest.trim_start();
+        if keyword == "let" && rest.starts_with('(') {
+            let Some(groups) = groups.get_or_insert_with(|| grouped_exports(source)) else {
+                // Keep valid neighboring exports when lexing an incomplete file fails.
+                return parsed_exported_names(source);
+            };
+            if let Some(group) = groups.get(&((line + 1) as u32)) {
+                names.extend(group.iter().cloned());
+            }
+            continue;
+        }
         if !matches!(keyword, "fn" | "type" | "interface" | "let") {
             continue;
         }
@@ -39,6 +61,65 @@ pub fn exported_names(source: &str) -> Vec<String> {
         }
     }
     names
+}
+
+/// Group entries start four columns past their export and outside any nested
+/// initializer delimiter. Lex once per file, even when it has several groups.
+fn grouped_exports(source: &str) -> Option<BTreeMap<u32, Vec<String>>> {
+    let file = Arc::from("<import-hints>");
+    let lexed = lexer::lex(&file, source).ok()?;
+    let tokens = &lexed.tokens;
+    let mut groups = BTreeMap::new();
+    for (index, export) in tokens.iter().enumerate() {
+        if export.kind != Tok::Export
+            || export.pos.column != 1
+            || tokens.get(index + 1)?.kind != Tok::Let
+            || tokens.get(index + 2)?.kind != Tok::LParen
+        {
+            continue;
+        }
+        let mut names = Vec::new();
+        let mut depth = 1;
+        for (index, token) in tokens.iter().enumerate().skip(index + 3) {
+            if token.kind == Tok::Name
+                && depth == 1
+                && token.pos.column == export.pos.column + 4
+                && tokens
+                    .get(index + 1)
+                    .is_some_and(|next| matches!(next.kind, Tok::Assign | Tok::Colon))
+            {
+                names.push(lexed.source[token.lo as usize..token.hi as usize].to_string());
+            }
+            if matches!(token.kind, Tok::LParen | Tok::LBracket | Tok::LBrace) {
+                depth += 1;
+            } else if matches!(token.kind, Tok::RParen | Tok::RBracket | Tok::RBrace) {
+                depth -= 1;
+                if depth == 0 {
+                    break;
+                }
+            }
+        }
+        groups.insert(export.pos.line, names);
+    }
+    Some(groups)
+}
+
+fn parsed_exported_names(source: &str) -> Vec<String> {
+    let file = Arc::from("<import-hints>");
+    let (module, _) = ms_syntax::parse_partial(&file, source);
+    module
+        .decls
+        .into_iter()
+        .filter(|decl| decl.export)
+        .filter_map(|decl| match decl.kind {
+            DeclKind::Fn(function) => Some(function.name.to_string()),
+            DeclKind::Const(constant) => Some(constant.name.to_string()),
+            DeclKind::Record(record) => Some(record.name.to_string()),
+            DeclKind::Alternative(alternative) => Some(alternative.name.to_string()),
+            DeclKind::Interface(interface) => Some(interface.name.to_string()),
+            DeclKind::Impl(_) | DeclKind::Test(_) => None,
+        })
+        .collect()
 }
 
 /// The name an `unknown binding`/`unknown type` diagnostic is about.
@@ -190,8 +271,8 @@ mod tests {
     }
 
     #[test]
-    fn exports_are_read_from_top_level_lines() {
-        let source = "export type A:\n    x: Int\nexport extern fn b() Int: ...\nexport let C = 1\nfn d() Int:\n    return 0\n";
+    fn exports_are_read_from_top_level_declarations() {
+        let source = "export type A:\n    x: Int\nexport extern fn b() Int\nexport let C = 1\nfn d() Int:\n    return 0\n";
         assert_eq!(exported_names(source), ["A", "b", "C"]);
     }
 }
