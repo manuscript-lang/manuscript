@@ -1,0 +1,12 @@
+{
+  "case_count": 83,
+  "canonical_identities_matched": true,
+  "source_pattern_literals_and_iteration_arrays_match": true,
+  "all_explicit_expected_outputs_match_independent_scalar_reverse": true,
+  "rust_binary_executed": false,
+  "benchmark_timings_collected": false,
+  "canonical_ms_sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e",
+  "canonical_identities_sha256": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0",
+  "minimum_input_bytes": 0,
+  "maximum_input_bytes": 1114112
+}

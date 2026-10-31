@@ -1120,10 +1120,14 @@ impl Checker {
         }
         if receiver.kind == Kind::Variable {
             let mut result: Vec<MethodRef> = Vec::new();
+            let mut seen_bounds: Vec<Ty> = Vec::new();
             for b in receiver.bounds() {
-                if b.kind != Kind::Contract {
+                // A bound inherited from both the receiver declaration and the
+                // implementation must not make its operations ambiguous.
+                if b.kind != Kind::Contract || seen_bounds.iter().any(|s| s.id == b.id) {
                     continue;
                 }
+                seen_bounds.push(b.clone());
                 // `Self` in a bound's operation is the bounded variable itself.
                 match contract_operation(&b, name, receiver) {
                     Some(method) => result.push(method),

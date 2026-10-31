@@ -1,0 +1,139 @@
+{
+  "complete": true,
+  "argv": [
+    "/workspace/byte-search-evidence/fresh-main-988/runner/string-normalize-ascii/compare_matrix.py",
+    "/workspace/byte-search-evidence/fresh-main-988/lines-programs.json",
+    "/workspace/byte-search-evidence/fresh-main-988/lines-identities.json",
+    "/workspace/byte-search-evidence/fresh-main-988/lines-matrix",
+    "--cpu",
+    "0",
+    "--cycles",
+    "2"
+  ],
+  "affinity": [
+    0
+  ],
+  "orders": [
+    [
+      "baseline",
+      "word"
+    ],
+    [
+      "word",
+      "baseline"
+    ],
+    [
+      "word",
+      "baseline"
+    ],
+    [
+      "baseline",
+      "word"
+    ],
+    [
+      "baseline",
+      "word"
+    ],
+    [
+      "word",
+      "baseline"
+    ],
+    [
+      "word",
+      "baseline"
+    ],
+    [
+      "baseline",
+      "word"
+    ]
+  ],
+  "cases": 16,
+  "validated_producers": [
+    [
+      "warmup",
+      "baseline"
+    ],
+    [
+      "warmup",
+      "word"
+    ],
+    [
+      0,
+      "baseline"
+    ],
+    [
+      0,
+      "word"
+    ],
+    [
+      1,
+      "word"
+    ],
+    [
+      1,
+      "baseline"
+    ],
+    [
+      2,
+      "word"
+    ],
+    [
+      2,
+      "baseline"
+    ],
+    [
+      3,
+      "baseline"
+    ],
+    [
+      3,
+      "word"
+    ],
+    [
+      4,
+      "baseline"
+    ],
+    [
+      4,
+      "word"
+    ],
+    [
+      5,
+      "word"
+    ],
+    [
+      5,
+      "baseline"
+    ],
+    [
+      6,
+      "word"
+    ],
+    [
+      6,
+      "baseline"
+    ],
+    [
+      7,
+      "baseline"
+    ],
+    [
+      7,
+      "word"
+    ]
+  ],
+  "programs": {
+    "baseline": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/baseline-lines",
+      "sha256": "e2195cfe6da848ac93bb25c21516351882e769d9a3e4174580926dc78ebb03ca"
+    },
+    "word": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/word-lines",
+      "sha256": "2366bed8606945ce9be44f7b9f6ac7dbce2c5928c5f496427a4a912083f932d5"
+    }
+  },
+  "program_inventory_sha256": "0eea6886915b0ba087602f8b72ee1917433ded03914b8b829ac4efd319c8790a",
+  "identities_sha256": "910d8ccb7b7065c8c90afefdaef31999c694aeefaeb27ee6283505e318d75bc0",
+  "runner_sha256": "d2ebeaf2c449cc49830beba5e267dc03b89e864ff0cb43830dd29a5144dcd485",
+  "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883"
+}
