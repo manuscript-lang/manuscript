@@ -77,7 +77,7 @@ fn wrap32(x: Int) Int:
     return u
 
 fn cc(c: String) Int:
-    return c.to_bytes().values() [0].to_int()
+    return c.to_bytes().values()[0].to_int()
 
 fn is_digit(k: Int) Bool:
     return k >= 48 and k <= 57
