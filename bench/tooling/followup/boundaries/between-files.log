@@ -1,5 +1,0 @@
---- FAIL: TestRenameChangesStopsBetweenFiles (0.00s)
-    boundaries_test.go:65: rename continued to the second file or returned partial edits map[] [] /tmp/b.ms:1:12: parse: unterminated text literal 0
-FAIL
-FAIL	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.002s
-FAIL

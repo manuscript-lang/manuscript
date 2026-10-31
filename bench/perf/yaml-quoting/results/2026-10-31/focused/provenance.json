@@ -1,5 +1,0 @@
-{
-  "runner_sha256": "0e37c37ec8b88f6524623031e94051f4516b604c874db670059fe846614d342e",
-  "command": "python3 bench/perf/yaml-quoting/focused.py --before .artifacts/yaml-quoting/before --after .artifacts/yaml-quoting/after --rust bench/perf/yaml-quoting/rust/target/release/yaml-quoting-control --output .artifacts/yaml-quoting/focused-1",
-  "base_commit": "3cfde58b6216ae4db54aeb3ae4e22ee7d527e323"
-}

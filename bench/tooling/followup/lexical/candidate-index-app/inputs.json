@@ -1,8 +1,0 @@
-{
-  "head": "9c2296984c92a2f90c08c1353775150802765bae",
-  "working_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "repo": "/workspace/manuscript-tooling-lexical",
-  "candidate": true,
-  "probe_sha256": "8574d2b777b6bb5bbec85b9ea4046f2fe0eb8f0bce3304d22756348326102584",
-  "adapter_sha256": "34a593f462fdff8f70030b596272a3ecacce03e6579fdf244f658997a4c69dc3"
-}

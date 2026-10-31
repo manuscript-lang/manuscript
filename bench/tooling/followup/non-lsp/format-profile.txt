@@ -1,7 +1,0 @@
-goos: linux
-goarch: amd64
-pkg: github.com/manuscript-lang/manuscript/pkg/tooling
-cpu: AMD EPYC 9V74 80-Core Processor                
-BenchmarkNonLSPFormatter/GroupExpressions/N512-2         	       7	  82875722 ns/op	   0.88 MB/s	142771768 B/op	  119701 allocs/op
-PASS
-ok  	github.com/manuscript-lang/manuscript/pkg/tooling	0.811s
