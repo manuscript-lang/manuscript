@@ -13,8 +13,9 @@ type Resource:
     output: WriteStream
 
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _ = self.output.write(data: "close {self.label}\n")
+        return ok(unit)
 
 type Pair:
     first: Int
@@ -70,7 +71,7 @@ fn exercise() Int!:
 
     var _resource = Resource(label: "normal", output: stdout())
     let completed = unit
-    _resource.close()
+    try _resource.close()
 
     let _ = stdout().write(data: "after normal\n")
     var count = 0

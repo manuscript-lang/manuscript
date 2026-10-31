@@ -369,7 +369,7 @@ impl Transport for Sink:
     var fn write(data: String) Unit!LogError:
         var guard = lock(self.lines)
         guard.value.append(data.clone())
-        guard.close()
+        guard.close().get(none)
         return ok(unit)
 
     var fn write_bytes(data: Bytes) Unit!LogError:

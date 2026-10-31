@@ -157,7 +157,7 @@ test "transport closure and stream errors preserve identity":
         path: "{directory.path()}/out.ndjson", flags: "w", mode: 420
     )
     var logger = try create(stream_transport(file.writer()))
-    file.close()
+    try file.close()
 
     let io_closed: Unit!LogError = error(LogError.Io(IoError.Closed))
     try expect_equal(logger.info("closed"), io_closed)

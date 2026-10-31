@@ -44,7 +44,7 @@ test "serve_cores serves clients across workers and fails when accepting fails":
         try expect_true(text.starts_with("HTTP/1.1 200 OK"))
         try expect_true(text.ends_with("hello"))
 
-    group.close()
+    try group.close()
 
 test "serve_cores rejects fewer than one core":
     let listener = try network().listen("127.0.0.1:0")

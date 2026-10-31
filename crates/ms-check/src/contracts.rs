@@ -1157,7 +1157,7 @@ impl Checker {
             return self
                 .methods(t, n("close"))
                 .iter()
-                .any(|m| m.ty.params.is_empty() && m.ty.result_ty().id == "Unit");
+                .any(|m| m.ty.params.is_empty() && is_close_result(&m.ty.result_ty()));
         }
         self.implements(t, &standard("Closeable", vec![]))
     }

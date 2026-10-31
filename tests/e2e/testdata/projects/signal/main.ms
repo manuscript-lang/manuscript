@@ -7,8 +7,9 @@ type Resource:
     output: WriteStream
 
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _ignored = self.output.write("close {self.label}\n")
+        return ok(unit)
 
 export fn main() Int:
     var output = stdout()
@@ -17,5 +18,5 @@ export fn main() Int:
     let _ignored = output.write("ready\n")
     while true:
         continue
-    _resource.close()
+    _resource.close().get(none)
     return 0

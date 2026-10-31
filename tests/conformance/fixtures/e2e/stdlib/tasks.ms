@@ -74,7 +74,7 @@ test "tasks switch while one waits":
 
     group.spawn(fn ch: record(second, "early"))
     group.wait() | try expect_ok
-    group.close()
+    try group.close()
     try expect_equal(log.get().clone(), ["early", "late"])
 
 test "a task owns the values its closure captures":
@@ -96,7 +96,7 @@ test "leaving the block cancels tasks that are still running":
             record(held, "finished")
     )
 
-    group.close()
+    try group.close()
     pause(300)
     try expect_equal(log.get().length(), 0)
 
@@ -106,12 +106,8 @@ test "an empty group has no results":
 
 test "a task that passes its timeout is cancelled":
     let group = TaskGroup[String]()
-    let late = group.spawn(
-        fn ch: slow(2000, "late"), timeout: nanoseconds(20000000)
-    )
-    let quick = group.spawn(
-        fn ch: slow(1, "quick"), timeout: nanoseconds(2000000000)
-    )
+    let late = group.spawn(fn ch: slow(2000, "late"), timeout: nanoseconds(20000000))
+    let quick = group.spawn(fn ch: slow(1, "quick"), timeout: nanoseconds(2000000000))
     late.result() | try expect_error | try expect_equal(TaskError.TimedOut)
     quick.result() | try expect_ok | try expect_equal("quick")
 
@@ -124,9 +120,7 @@ test "a group timeout limits every task started in it":
 
 test "a task shorter than its group limit uses its own limit":
     let group = TaskGroup[String](timeout: nanoseconds(2000000000))
-    let late = group.spawn(
-        fn ch: slow(2000, "late"), timeout: nanoseconds(20000000)
-    )
+    let late = group.spawn(fn ch: slow(2000, "late"), timeout: nanoseconds(20000000))
     late.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "wait reports a task that timed out":
@@ -142,9 +136,7 @@ test "a task without a timeout runs to its end":
 test "wait leaves every outcome readable through its handle":
     let group = TaskGroup[String]()
     let done = group.spawn(fn ch: slow(1, "done"))
-    let late = group.spawn(
-        fn ch: slow(2000, "late"), timeout: nanoseconds(20000000)
-    )
+    let late = group.spawn(fn ch: slow(2000, "late"), timeout: nanoseconds(20000000))
     group.wait() | try expect_error | try expect_equal(TaskError.TimedOut)
     done.result() | try expect_ok | try expect_equal("done")
     late.result() | try expect_error | try expect_equal(TaskError.TimedOut)
@@ -171,7 +163,7 @@ test "a task that never ran releases what it captured":
     let text = "captured by a task that is cancelled before it runs, long enough for the heap"
     var group = TaskGroup[String]()
     group.spawn(fn ch: text + "!")
-    group.close()
+    try group.close()
     try expect_equal(1, 1)
 
 test "many tasks run and keep their order":
@@ -195,7 +187,7 @@ test "groups nest and close independently":
     var inner = TaskGroup[Int]()
     let quick = inner.spawn(fn ch: square(2))
     quick.result() | try expect_ok | try expect_equal(4)
-    inner.close()
+    try inner.close()
     kept.result() | try expect_ok | try expect_equal(25)
 
 test "a task can wait for another task's value":
@@ -210,7 +202,7 @@ test "a task can wait for another task's value":
 
             var items = lock(producer)
             items.value.append(42)
-            items.close()
+            items.close().get(none)
             return 0
     )
 
@@ -222,16 +214,16 @@ test "a task cancelled before it first ran never starts":
     var group = TaskGroup[Unit]()
     let held = log
     group.spawn(fn ch: record(held, "ran"))
-    group.close()
+    try group.close()
     try expect_equal(log.get().length(), 0)
 
 test "closing a group twice leaves a later group alone":
     var first = TaskGroup[Int]()
-    first.close()
+    try first.close()
 
     let second = TaskGroup[Int]()
     let task = second.spawn(fn ch: slow_square(5))
-    first.close()
+    try first.close()
     task.result() | try expect_ok | try expect_equal(25)
 
 test "more sleeping tasks than the timer heap keeps all finish":
@@ -245,7 +237,7 @@ test "more sleeping tasks than the timer heap keeps all finish":
 test "using a task after its group closed gives Closed":
     var group = TaskGroup[Int]()
     let task = group.spawn(fn ch: slow_square(3))
-    group.close()
+    try group.close()
     task.result() | try expect_error | try expect_equal(TaskError.Closed)
     (
         group.spawn(

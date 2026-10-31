@@ -25,10 +25,11 @@ type Resource:
 # Resources own their state, so close records order through the filesystem:
 # resource 1 notes whether resource 2 had already closed.
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         let fs = filesystem()
         let inner_closed = fs.read_file("{self.dir}/2").is_ok()
         let _ = fs.write_file("{self.dir}/{self.id}", "{inner_closed}", true)
+        return ok(unit)
 
 fn leave(dir: String) Int:
     let _outer = Resource(dir, 1)

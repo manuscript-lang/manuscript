@@ -718,5 +718,5 @@ impl MapCloseValues[U] for Map[T, U]:
 
         while i >= 0:
             if var value = self[keys[i]]?:
-                value.close()
+                value.close().get(none)
             i -= 1

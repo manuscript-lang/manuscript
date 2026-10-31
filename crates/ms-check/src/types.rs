@@ -676,6 +676,11 @@ pub fn test_outcome() -> Ty {
     standard("Result", vec![unit(), standard("Error", vec![])])
 }
 
+/// Whether `t` is `Result[Unit, Error]`, the result of every `close`.
+pub fn is_close_result(t: &Ty) -> bool {
+    t.is_std("Result") && t.args.len() == 2 && t.args[0].id == "Unit" && t.args[1].is_std("Error")
+}
+
 // ------------------------------------------------------------ type algebra
 
 /// Substitution of type variables by id.

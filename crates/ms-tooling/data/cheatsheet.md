@@ -55,5 +55,5 @@ export fn main() Int:
 - `export opaque type T:` hides fields and cases outside its file. A `name: ref String` field makes a record a borrowing view: use it in place, never store or move it.
 - `var` parameter: `fn add(var xs: List[Int])`, called `add(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints: `ms lint`/`ms verify` fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail check (prefix `_`).
-- Any `Closeable` (files, or your `impl Closeable for T:`) has `close()` called when its `let`/`var` goes out of scope, unless moved on (returned, stored).
+- `Closeable` (files, `impl Closeable for T:` with `var fn close() Unit!`) closes at scope end unless moved; a failed close is returned or faults.
 - Not Python: no exceptions, classes, `async`, `null`, `pass`; `fn` not `def`/`lambda`, `true`/`false`, `else if`, `none`, no `f""`.

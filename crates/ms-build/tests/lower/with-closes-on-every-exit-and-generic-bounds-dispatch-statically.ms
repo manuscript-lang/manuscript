@@ -8,15 +8,16 @@ type Res:
     n: Int
 
 impl Closeable for Res:
-    fn close() Unit:
+    fn close() Unit!:
         let _x = self.n
+        return ok(unit)
 
 fn run[T: Closeable](r: T, early: Bool) Int:
     var _it = r
     if early:
         return 1
 
-    _it.close()
+    _it.close().get(none)
     return 2
 
 export fn main() Int:

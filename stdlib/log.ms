@@ -177,7 +177,7 @@ impl Transport for FileTransport:
     var fn close() Unit:
         if not self.inner.gate.is_shut():
             self.inner.close()
-            self.file.close()
+            self.file.close().get(none)
 
 # The logger behind the `Logger` interface: shared encoder state plus the transport it writes to.
 type StdLogger:

@@ -17,7 +17,7 @@ fn worker(url: String, nanos: Int) Int:
         else:
             return -1000000
 
-    f.close()
+    f.close().get(none)
     return n
 
 # One thread of a multi-threaded run: it receives "url connections seconds", runs that many fetching
@@ -38,7 +38,7 @@ fn fetch_thread() Unit:
 
         for r in group.results().get():
             total += r
-        group.close()
+        group.close().get(none)
 
         let _ = ch.send(total)
 
@@ -56,7 +56,7 @@ fn run_threads(url: String, conns: Int, secs: Int, threads: Int) Int:
     for i in 0..threads:
         if let n = workers[i].channel.receive().get(none):
             total += n
-    group.close()
+    group.close().get(none)
     return total
 
 export fn main() Int:
@@ -87,7 +87,7 @@ export fn main() Int:
 
     for r in group.results().get():
         total += r
-    group.close()
+    group.close().get(none)
 
     let _ = stdout().write("req/s {total / secs}\n")
     return 0

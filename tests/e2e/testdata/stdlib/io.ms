@@ -38,7 +38,7 @@ test "native line reads reject buffered lines after the shared file is closed":
     var handle = try fs.open(path, "r", 384)
     let input = handle.reader()
     try expect_equal((try read_line(input)), "first")
-    handle.close()
+    try handle.close()
 
     let closed: String?!IoError = error(IoError.Closed)
     try expect_equal(read_line(input), closed)

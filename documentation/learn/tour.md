@@ -324,11 +324,10 @@ fn copy_notes() Result[Unit, FileSystemError]:
     var source = try filesystem().open("notes.txt", flags: "r", mode: 0)
     let contents = try source.read_file(max_bytes: 1048576)
     try filesystem().write_file_bytes(path: "backup.txt", data: contents, replace: true)
-    source.close()
     return ok(unit)
 ```
 
-The file closes at the end of its scope, even on early return. Closures do not keep it open; see [resource captures](../core-language/functions/function-values-and-closures.md#resource-captures).
+The file closes at the end of its scope, even on early return. `close()` returns a `Result`: a function that returns `Result[_, Error]` gets a failed close as its error, and any other function faults on one. Closures do not keep it open; see [resource captures](../core-language/functions/function-values-and-closures.md#resource-captures).
 
 ## A few compiler errors to recognize
 

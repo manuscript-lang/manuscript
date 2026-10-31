@@ -12,8 +12,9 @@ type Resource:
     counter: Counter
 
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         self.counter.count = self.counter.count + 1
+        return ok(unit)
 
 fn identity[T](value: T) T: return value
 

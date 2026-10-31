@@ -10,8 +10,9 @@ type Resource:
     output: WriteStream
 
 impl Closeable for Resource:
-    fn close() Unit:
+    fn close() Unit!:
         let _ignored = self.output.write("close {self.label}\n")
+        return ok(unit)
 
 export fn main() Int:
     let output = stdout()

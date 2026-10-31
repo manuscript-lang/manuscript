@@ -132,8 +132,8 @@ test "a group forgets a closed process":
     let _second = group.spawn(describe) | try expect_ok
     let kept = first.result() | try expect_ok
     try expect_equal(kept.name, "child")
-    first.close()
-    first.close()
+    try first.close()
+    try first.close()
 
     let all = group.results() | try expect_ok
     try expect_equal(all.length(), 1)

@@ -20,4 +20,4 @@ test "closing a file handle by hand is allowed once more at scope end":
     let path = "{temporary.path()}/b.txt"
     var file = filesystem().open(path, "w", 420) | try expect_ok
     try expect_true(file.write("hello").is_ok())
-    file.close()
+    try file.close()

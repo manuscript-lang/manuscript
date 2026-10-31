@@ -11,8 +11,9 @@ type Resource:
 
 # Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _written = filesystem().write_file(self.marker, "closed", true)
+        return ok(unit)
 
 fn closed(marker: String) Bool: filesystem().read_file(marker).is_ok()
 
@@ -68,7 +69,7 @@ fn defaulted(
         number:
             var _resource = Resource(marker.clone())
             let _used = unit
-            _resource.close()
+            _resource.close().get(none)
             number
         none: 0
 ) Int: value
@@ -127,7 +128,7 @@ fn value_match_loop_try(marker: String) Int!TextError:
             number:
                 var _resource = Resource(marker.clone())
                 let _value = try failed()
-                _resource.close()
+                _resource.close().get(none)
                 number
             none: 0
 

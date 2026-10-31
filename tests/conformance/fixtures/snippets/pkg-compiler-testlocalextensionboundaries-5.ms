@@ -4,8 +4,8 @@
 import Closeable from "@std/core.ms"
 
 impl Closeable for Box[T]:
-    fn close() Unit:
-        return
+    fn close() Unit!:
+        return ok(unit)
 
 export fn loaded() Int:
     return 1

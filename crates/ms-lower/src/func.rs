@@ -90,6 +90,16 @@ pub(crate) struct FnLower<'a> {
     pub lent_expr: Option<usize>,
     /// A lent instance returned an owned value, which its caller would not free.
     pub lent_violation: bool,
+    /// The value `return` is carrying while the scopes unwind, which a close error replaces.
+    pub pending_return: Option<Value>,
+    /// `return` already ran its var-slot, temporary and fixture handling on this path.
+    pub prologue_done: bool,
+    /// Bindings whose close already ran on the path that is returning a close error.
+    pub closed_on_path: HashSet<usize>,
+    /// A close error is being returned, so a further close failure is dropped.
+    pub returning_close_error: bool,
+    /// Bindings of the scope being left whose close and drop already ran.
+    pub scope_done: Vec<usize>,
     /// Record to build on return and the binding uids of the `var` parameters it carries.
     pub var_slots: Vec<VarSlot>,
     /// The expression statement being lowered, whose value nothing reads (by address).
@@ -468,6 +478,11 @@ impl<'a> FnLower<'a> {
             lent_return: false,
             lent_expr: None,
             lent_violation: false,
+            pending_return: None,
+            prologue_done: false,
+            closed_on_path: HashSet::new(),
+            returning_close_error: false,
+            scope_done: Vec::new(),
             var_slots: Vec::new(),
             slotted: HashSet::new(),
             redefined: HashSet::new(),
@@ -854,9 +869,13 @@ impl<'a> FnLower<'a> {
     }
 
     fn drop_scope_locals(&mut self, depth: usize) {
+        let outer_done = std::mem::take(&mut self.scope_done);
         for i in (depth..self.scopes.len()).rev() {
             let uids = self.scopes[i].clone();
             for uid in uids.iter().rev() {
+                if self.closed_on_path.contains(uid) {
+                    continue;
+                }
                 if let Some((kind, list, idx)) = self.rest_closers.get(uid).cloned() {
                     self.close_rest(&kind, list, idx);
                     continue;
@@ -875,8 +894,10 @@ impl<'a> FnLower<'a> {
                     let v = self.local_take(&l);
                     self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
                 }
+                self.scope_done.push(*uid);
             }
         }
+        self.scope_done = outer_done;
     }
 
     /// Ends a scope, dropping its locals when control reaches the end.
@@ -923,18 +944,27 @@ impl<'a> FnLower<'a> {
             }
             x.v
         });
-        for slot in self.var_slots.clone() {
-            let l = self.locals[&slot.uid];
-            let x = self.local_take(&l);
-            self.move_into(slot.ptr, x);
+        // A close error returned from inside this unwinding re-enters here with the prologue done.
+        let nested = self.prologue_done;
+        if !nested {
+            for slot in self.var_slots.clone() {
+                let l = self.locals[&slot.uid];
+                let x = self.local_take(&l);
+                self.move_into(slot.ptr, x);
+            }
+            // The temporaries stay registered: a conditional return leaves the others running.
+            for t in self.temps.clone().into_iter().rev() {
+                self.close_temp(t);
+                self.drop_value(t);
+            }
+            self.end_fixture();
         }
-        // The temporaries stay registered: a conditional return leaves the others running.
-        for t in self.temps.clone().into_iter().rev() {
-            self.close_temp(t);
-            self.drop_value(t);
-        }
-        self.end_fixture();
+        let outer_pending =
+            std::mem::replace(&mut self.pending_return, if nested { None } else { v });
+        self.prologue_done = true;
         self.unwind_to(0);
+        self.prologue_done = nested;
+        self.pending_return = outer_pending;
         if self.counts_depth {
             self.b
                 .emit(Op::DepthLeave, &[], ms_mir::ir::Imm::None, None);

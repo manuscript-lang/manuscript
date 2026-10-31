@@ -9,7 +9,10 @@
 
 ## Status
 
-Proposal, 2026-10-31, checked against `ea4dfeab`.
+Implemented 2026-10-31 (one `Closeable`; supersedes the `Result[Unit, Never]` and two-interface variants discussed below).
+
+- Chinmay: "i want one interface"; chose "close always returns Result". `Closeable.close()` is `Unit!`.
+- A close with nowhere to return its error (non-`Result` function, a holder's part, a replaced or temporary value) faults; it is never ignored.
 
 - Chinmay: "i feel a bit bad that close and clone cannot return errors nicely".
 - Chinmay: "that'll create incorrect programs" (about ignoring an implicit close error).

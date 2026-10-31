@@ -16,6 +16,7 @@ fn branch(b: Big, flag: Bool) Int:
     if flag:
         let ys = size(b.items)
         return ys.length()
+
     return b.items.length() + b.name.length()
 
 fn reinit(b: Big) Int:

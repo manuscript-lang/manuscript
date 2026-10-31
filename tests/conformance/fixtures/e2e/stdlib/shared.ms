@@ -73,7 +73,7 @@ test "a read while the payload is locked faults":
     )
     try expect_equal(message, "shared value is in use")
     held.value.bump()
-    held.close()
+    try held.close()
     try expect_equal(shared.get().values.length(), 1)
 
 fn append_seven(shared: Shared[List[Int]]) Unit:
@@ -107,7 +107,7 @@ test "an optional payload keeps its value through lock":
 
     var held = lock(shared)
     held.value = held.value
-    held.close()
+    try held.close()
     try expect_equal(shared.get(), 5)
 
 type Pair:
@@ -118,6 +118,6 @@ test "a record payload with an optional field after a flag survives lock":
     let shared = share(Pair(flag: 1 == 1, value: 5))
     var pair = lock(shared)
     pair.value = Pair(flag: 1 == 2, value: pair.value.value)
-    pair.close()
+    try pair.close()
     try expect_equal(shared.get().value, 5)
     try expect_equal(shared.get().flag, 1 == 2)

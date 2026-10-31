@@ -17,7 +17,7 @@ test "flows compose stream transforms":
     var output = fs.open(path: path, flags: "w", mode: 420) | try expect_ok
     let source = from_bytes("hello world".to_bytes(), 4)
     let copied = source | map(upper) | take(8) | try copy(output.writer())
-    output.close()
+    try output.close()
     if copied != 8: return panic("byte count")
     if (fs.read_file(path: path) | try expect_ok) != "HELLO WO".to_bytes(): return panic(
         "pipeline output"
@@ -32,7 +32,7 @@ test "concat tee and writer helpers":
     let seen = tee(joined, log.writer())
     if (try read_all(seen)) != "abcd".to_bytes(): return panic("concat")
 
-    log.close()
+    try log.close()
     if (fs.read_file(path: log_path) | try expect_ok) != "abcd".to_bytes(): return panic(
         "tee"
     )
@@ -42,7 +42,7 @@ test "concat tee and writer helpers":
     var writer = map_writer(sink.writer(), upper)
     try writer.write("quiet")
     try writer.write_bytes("!".to_bytes())
-    sink.close()
+    try sink.close()
     if (fs.read_file(path: sink_path) | try expect_ok) != "QUIET!".to_bytes(): return panic(
         "map_writer"
     )

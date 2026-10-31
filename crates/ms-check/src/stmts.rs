@@ -180,6 +180,7 @@ impl Checker {
         if let PatternKind::Name(name) = &pattern.kind {
             self.begin_lock(s, *name, value, &bound);
         }
+        self.release_guard(value);
         // The scope closes a resource nothing takes; ownership decides which bindings that is.
         if matches!(pattern.kind, PatternKind::Name(_))
             && !is_invalid_id(&bound)
@@ -314,16 +315,39 @@ impl Checker {
         (false, false)
     }
 
-    fn check_call_statement(&mut self, pos: Pos, value: &Expr) -> (bool, bool) {
-        // `guard.close()` releases the lock the guard holds.
-        if let ExprKind::Call { callee, .. } = &value.kind
-            && let ExprKind::Member { left, name } = &callee.kind
-            && let ExprKind::Name(guard) = &left.kind
-            && name.as_str() == "close"
-            && let Some(at) = self.held_locks.iter().rposition(|(_, _, g)| g == guard)
-        {
-            self.held_locks.remove(at);
+    /// `guard.close()` releases the lock the guard holds, also as `try guard.close()`,
+    /// `guard.close().get(none)` or the value of a `let`.
+    pub(crate) fn release_guard(&mut self, value: &Expr) {
+        let mut e = value;
+        loop {
+            match &e.kind {
+                ExprKind::Unary {
+                    op: UnaryOp::Try,
+                    operand,
+                } => e = operand,
+                ExprKind::Call { callee, .. } => {
+                    let ExprKind::Member { left, name } = &callee.kind else {
+                        return;
+                    };
+                    if name.as_str() == "close" {
+                        let ExprKind::Name(guard) = &left.kind else {
+                            return;
+                        };
+                        if let Some(at) = self.held_locks.iter().rposition(|(_, _, g)| g == guard) {
+                            self.held_locks.remove(at);
+                        }
+                        return;
+                    }
+                    // `.get(none)` and the like wrap the close.
+                    e = left;
+                }
+                _ => return,
+            }
         }
+    }
+
+    fn check_call_statement(&mut self, pos: Pos, value: &Expr) -> (bool, bool) {
+        self.release_guard(value);
         let i = if matches!(value.kind, ExprKind::Match { .. }) {
             // A match used as a statement discards its result, so its arms need
             // not agree on a value.
@@ -729,7 +753,7 @@ impl Checker {
         self.block(&expansion, false)
     }
 
-    /// The `close() -> Unit` operations of `t`: the standard `Closeable` one when it has it.
+    /// The `close() -> Result[Unit, Error]` operations of `t`: the standard `Closeable` one when it has it.
     /// Records the close operation a parameter or loop variable of a closeable type gets at
     /// scope end, when it turns out to own its value.
     pub(crate) fn record_cleanup(&mut self, b: &BindingRef) {
@@ -748,7 +772,7 @@ impl Checker {
     pub(crate) fn close_method(&mut self, t: &Ty) -> Vec<MethodRef> {
         let mut candidates: Vec<MethodRef> = Vec::new();
         for method in self.methods(t, n("close")) {
-            if method.ty.params.is_empty() && method.ty.result_ty().id == "Unit" {
+            if method.ty.params.is_empty() && is_close_result(&method.ty.result_ty()) {
                 if method
                     .contract
                     .as_ref()

@@ -27,7 +27,7 @@ bench "fs.write_file_64k":
             return keep(n)
 
         try measure(200, work)
-        dir.close()
+        dir.close().get(none)
 
 bench "fs.read_file_64k":
     let fs = filesystem()
@@ -44,7 +44,7 @@ bench "fs.read_file_64k":
             return keep(n)
 
         try measure(200, work)
-        dir.close()
+        dir.close().get(none)
 
 bench "fs.stat":
     let fs = filesystem()
@@ -61,7 +61,7 @@ bench "fs.stat":
             return keep(n)
 
         try measure(200, work)
-        dir.close()
+        dir.close().get(none)
 
 bench "fs.list_200":
     let fs = filesystem()
@@ -77,7 +77,7 @@ bench "fs.list_200":
             return keep(0)
 
         try measure(1, work)
-        dir.close()
+        dir.close().get(none)
 
 bench "log.info":
     let fs = filesystem()
@@ -94,4 +94,4 @@ bench "log.info":
 
                 try measure(20000, work)
 
-        dir.close()
+        dir.close().get(none)

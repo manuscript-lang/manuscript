@@ -45,7 +45,7 @@ test "collected buffered channels close with their group":
     var group = TaskGroup[Unit!ChannelError, Unit, Int]()
     var task = group.spawn(send_one)
     task.result() | try expect_ok | try expect_ok
-    group.close()
+    try group.close()
     task.channel.receive() | try expect_error | try expect_equal(ChannelError.Closed)
     task.channel.send(unit) | try expect_error | try expect_equal(ChannelError.Closed)
 
@@ -53,7 +53,7 @@ test "collected empty channels close with their group":
     var group = TaskGroup[Unit!ChannelError, Unit, Int]()
     var task = group.spawn(send_nothing)
     task.result() | try expect_ok | try expect_ok
-    group.close()
+    try group.close()
     task.channel.receive() | try expect_error | try expect_equal(ChannelError.Closed)
 
 test "results collection preserves group ownership of cloned channels":
@@ -63,13 +63,13 @@ test "results collection preserves group ownership of cloned channels":
     let results = group.results() | try expect_ok
     results.length() | try expect_equal(1)
     results[0] | try expect_ok
-    group.close()
+    try group.close()
     end.receive() | try expect_error | try expect_equal(ChannelError.Closed)
 
 test "a channel retained without its collected task closes with the group":
     var group = TaskGroup[Unit!ChannelError, Unit, Int]()
     var end = retained_end(group) | try expect_ok
-    group.close()
+    try group.close()
     end.receive() | try expect_error | try expect_equal(ChannelError.Closed)
 
 test "collected channels can drain buffered values before group close":
@@ -78,26 +78,26 @@ test "collected channels can drain buffered values before group close":
     task.result() | try expect_ok | try expect_ok
     task.channel.receive() | try expect_ok | try expect_equal(7)
     task.channel.receive() | try expect_ok | try expect_equal(none)
-    group.close()
+    try group.close()
     task.channel.receive() | try expect_error | try expect_equal(ChannelError.Closed)
 
 test "uncollected channels still close with their group":
     var group = TaskGroup[Unit!ChannelError, Unit, Int]()
     var task = group.spawn(send_one)
     group.wait() | try expect_ok
-    group.close()
+    try group.close()
     task.channel.receive() | try expect_error | try expect_equal(ChannelError.Closed)
 
 test "repeated close cannot close another groups channels":
     var first = TaskGroup[Unit!ChannelError, Unit, Int]()
     var old = first.spawn(send_one)
     old.result() | try expect_ok | try expect_ok
-    first.close()
+    try first.close()
 
     let second = TaskGroup[Unit!ChannelError, Unit, Int]()
     var fresh = second.spawn(send_one)
     fresh.result() | try expect_ok | try expect_ok
-    first.close()
+    try first.close()
     old.channel.receive() | try expect_error | try expect_equal(ChannelError.Closed)
     fresh.channel.receive() | try expect_ok | try expect_equal(7)
 
@@ -107,7 +107,7 @@ test "group close releases unread payloads while the channel stays alive":
     task.result() | try expect_ok | try expect_ok
 
     let before = control().memory_usage() | try expect_ok
-    group.close()
+    try group.close()
 
     let after = control().memory_usage() | try expect_ok
     try expect_true(before.heap_used - after.heap_used >= 16 * 352)
@@ -128,12 +128,12 @@ test "a long lived group does not retain discarded collected channels":
 
 test "channels spawned after group close are closed immediately":
     var group = TaskGroup[Unit!ChannelError, Unit, Int]()
-    group.close()
+    try group.close()
 
     var late = group.spawn(send_one)
     late.result() | try expect_error | try expect_equal(TaskError.Closed)
     late.channel.receive() | try expect_error | try expect_equal(ChannelError.Closed)
-    group.close()
+    try group.close()
 
 test "return cleanup closes a collected channels retained end":
     var end = close_on_return() | try expect_ok

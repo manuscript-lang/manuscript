@@ -54,9 +54,10 @@ test "first local extensions":
 import Resource from "./domain.ms"
 
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         var guard = lock(self.events)
         guard.value.append(value: 10)
+        return ok(unit)
 
 fn leave(resource: Resource) Unit:
     let _local = resource

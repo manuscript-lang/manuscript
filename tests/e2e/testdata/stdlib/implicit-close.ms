@@ -8,8 +8,9 @@ type Resource:
 
 # Close records itself by writing a marker file named after the resource.
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _ = filesystem().write_file("{self.dir}/{self.id}", "closed", true)
+        return ok(unit)
 
 fn closed(dir: String, id: Int) Bool:
     return filesystem().read_file("{dir}/{id}").is_ok()
@@ -46,7 +47,7 @@ fn breaks_out(dir: String) Int:
 
 fn closes_by_hand_too(dir: String) Int:
     var r = Resource(dir, 20)
-    r.close()
+    r.close().get(none)
     return r.id
 
 test "a resource nothing takes is closed when its scope ends":

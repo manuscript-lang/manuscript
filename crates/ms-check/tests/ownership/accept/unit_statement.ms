@@ -3,4 +3,5 @@ fn f(n: Int) Int:
         unit
     else:
         return 0
+
     return n

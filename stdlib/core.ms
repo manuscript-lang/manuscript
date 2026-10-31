@@ -58,10 +58,16 @@ export fn category(cause: Error) ErrorCategory?: ...
 export fn panic(message: String) Never: ...
 
 # A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
+# The implicit close behaves like `try value.close()`: a failed close becomes the function's error, after the
+# other bindings of the scopes it leaves have closed. Where the function cannot return an `Error`, or the
+# close happens inside a holder (a record, list or temporary), a failed close is a fault. If the scope is
+# already returning an error, that error is kept and the close error is dropped. Call `close()` yourself to
+# handle the failure; the binding is then consumed.
 export interface Closeable:
     # Releases the implementation's resource state; with calls this on every scope exit.
-    # Cleanup runs during return, expected errors, faults, and cancellation too.
-    var fn close() Unit
+    # Cleanup runs during return, expected errors, faults, and cancellation too. A type whose release cannot
+    # fail returns `ok(unit)`.
+    var fn close() Unit!
 
 # A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
 # `for item in source:` calls `next` until `none`; a variable or field path advances in place and

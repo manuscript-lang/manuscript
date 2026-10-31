@@ -108,8 +108,9 @@ export type Subprocess:
 
 impl Closeable for Subprocess:
     # Kills the process group, joins the child, kills leftover group members, and closes all three streams. Idempotent; scope exit calls it.
-    var fn close() Unit:
+    var fn close() Unit!:
         msstd_process_subprocess_close(self.native)
+        return ok(unit)
 
 impl Subprocess:
     # The child's standard input as a WriteStream; writes block when the pipe is full. Closing the stream delivers end-of-input to the child.

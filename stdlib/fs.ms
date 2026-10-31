@@ -353,8 +353,9 @@ export type FileHandle:
 impl Closeable for FileHandle:
     # Closes the file, interrupts calls in progress, and waits for them to stop.
     # Safe to call repeatedly; later operations return Closed.
-    var fn close() Unit:
+    var fn close() Unit!:
         msstd_io_close(self.native)
+        return ok(unit)
 
 impl FileHandle:
     # Returns a second handle over a duplicate of the file's descriptor, which closes on its own.
@@ -473,8 +474,9 @@ export type Directory:
 impl Closeable for Directory:
     # Releases the directory handle.
     # Safe to call repeatedly; later reads return Closed.
-    var fn close() Unit:
+    var fn close() Unit!:
         msstd_fs_directory_close(self.native)
+        return ok(unit)
 
 impl Directory:
     # Returns the path this cursor was opened with.
@@ -501,8 +503,9 @@ export type FileWatcher:
 impl Closeable for FileWatcher:
     # Stops the watcher, wakes a pending `next` with Closed, and waits for its worker to stop.
     # Safe to call repeatedly.
-    var fn close() Unit:
+    var fn close() Unit!:
         msstd_fs_watch_close(self.native)
+        return ok(unit)
 
 impl FileWatcher:
     # Waits for filesystem activity and returns events. A native watcher returns one event per call; a polling watcher returns every difference seen after an interval.
@@ -525,8 +528,9 @@ export type TemporaryDirectory:
 impl Closeable for TemporaryDirectory:
     # Removes the directory and everything inside it.
     # Safe to call repeatedly.
-    var fn close() Unit:
+    var fn close() Unit!:
         let _ = msstd_fs_temporary_close(self.native)
+        return ok(unit)
 
 impl TemporaryDirectory:
     # Returns the absolute path of the directory, created under the host's temporary root.

@@ -11,8 +11,9 @@ type Door:
     name: String
 
 impl Closeable for Door:
-    var fn close() Unit:
+    var fn close() Unit!:
         stdout().write("close {self.name}\n").get()
+        return ok(unit)
 
 fn faulting() Unit:
     var xs: List[Door] = []
