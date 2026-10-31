@@ -367,6 +367,18 @@ impl Loader<'_> {
         let mut resolved: Vec<(ms_syntax::NodeId, Name)> = Vec::new();
         for item in &module.imports {
             if item.path.starts_with("@std/") {
+                if let Err(message) =
+                    crate::project::check_import(self.config, canonical, &item.path)
+                {
+                    let failure =
+                        Failure::diagnostic(Box::new(resolution(file, item.pos, message)));
+                    if !self.recover {
+                        return Err(failure);
+                    }
+                    self.graph
+                        .diagnostics
+                        .push(failure.into_diagnostic(file, item.pos));
+                }
                 continue;
             }
             match self.import_module(canonical, file, item) {
@@ -409,6 +421,9 @@ impl Loader<'_> {
             self.resolved.insert(request, target.clone());
             target
         };
+        crate::project::check_import(self.config, importer, &target).map_err(|message| {
+            Failure::diagnostic(Box::new(resolution(file, item.pos, message)))
+        })?;
         self.visit(&target).map_err(|failure| match failure {
             failure @ Failure::Diagnostic(..) => failure,
             Failure::CycleDiagnostic(d) => Failure::CycleDiagnostic(d),
@@ -426,6 +441,10 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     fn with_loader(test: impl FnOnce(&mut Loader<'_>, &str)) {
+        with_loader_rules(&[], test);
+    }
+
+    fn with_loader_rules(rules: &[(&str, &[&str])], test: impl FnOnce(&mut Loader<'_>, &str)) {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let dir = std::env::temp_dir().join(format!(
             "ms-loader-{}-{}",
@@ -436,6 +455,14 @@ mod tests {
         let root = pathops::eval_symlinks(dir.to_str().unwrap()).unwrap();
         let config = Project {
             root: root.clone(),
+            imports: rules
+                .iter()
+                .map(|(pattern, allowed)| crate::project::ImportRule {
+                    pattern: pattern.to_string(),
+                    allowed: allowed.iter().map(|s| s.to_string()).collect(),
+                    ..Default::default()
+                })
+                .collect(),
             ..Project::default()
         };
         let mut graph = Graph::default();
@@ -556,6 +583,54 @@ mod tests {
         let module =
             ms_syntax::parser::parse(&file, &format!("import value from \"{path}\"\n")).unwrap();
         loader.import_module(importer, &file, &module.imports[0])
+    }
+
+    #[test]
+    fn import_allow_list_rejects_at_the_import_position() {
+        with_loader_rules(
+            &[("src/**", &["src/**", "@std/json.ms"]), ("lib/**", &["**"])],
+            |loader, root| {
+                for (name, body) in [
+                    (
+                        "src/ok.ms",
+                        "import value from \"./value.ms\"\nimport parse from \"@std/json.ms\"\n",
+                    ),
+                    ("src/value.ms", "export let value = 1\n"),
+                    ("src/fs.ms", "import read_file from \"@std/fs.ms\"\n"),
+                    ("src/lib.ms", "import a from \"../lib/a.ms\"\n"),
+                    (
+                        "lib/a.ms",
+                        "import read_file from \"@std/fs.ms\"\nexport let a = 1\n",
+                    ),
+                    ("other/free.ms", "import read_file from \"@std/fs.ms\"\n"),
+                ] {
+                    let path = format!("{root}/{name}");
+                    std::fs::create_dir_all(pathops::dir(&path)).unwrap();
+                    std::fs::write(&path, body).unwrap();
+                }
+                assert!(loader.visit(&format!("{root}/src/ok.ms")).is_ok());
+                assert!(loader.visit(&format!("{root}/lib/a.ms")).is_ok());
+                assert!(loader.visit(&format!("{root}/other/free.ms")).is_ok());
+                for (name, target, line) in [
+                    ("src/fs.ms", "@std/fs.ms", 1),
+                    ("src/lib.ms", "lib/a.ms", 1),
+                ] {
+                    let d = loader
+                        .visit(&format!("{root}/{name}"))
+                        .err()
+                        .unwrap()
+                        .into_diagnostic(&Arc::from("unused"), start());
+                    assert_eq!(&*d.file, name);
+                    assert_eq!(d.pos.line, line);
+                    assert_eq!(
+                        d.message,
+                        format!(
+                            "{name} may not import {target}; ms.toml [imports] \"src/**\" allows only \"src/**\", \"@std/json.ms\", so import one of those or extend the list"
+                        )
+                    );
+                }
+            },
+        );
     }
 
     #[test]

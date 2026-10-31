@@ -1,0 +1,9 @@
+[project]
+name = "imports"
+source = "src"
+entry = "src/main.ms"
+
+[imports]
+"src/**"   = ["src/**", "types/**", "@std/collections.ms", "@std/string.ms", "@std/json.ms"]
+"types/**" = ["@std/**", "types/**"]
+"tests/**" = ["**"]

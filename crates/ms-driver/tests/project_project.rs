@@ -290,3 +290,71 @@ fn reserved_std_alias_is_not_suggested() {
     assert!(error.contains("invalid or reserved alias std"), "{error}");
     assert!(!error.contains("did you mean"), "{error}");
 }
+
+#[test]
+fn imports_table_parses_and_validates() {
+    let (_dir, p) = fixture(&format!(
+        "{MANIFEST}[imports]\n\"src/**\" = [\"src/**\", \"@std/json.ms\"] # agent code\n\"types/**\" = [ \"@std/**\" ]\n\"tests/**\" = []\n"
+    ));
+    let rules: Vec<(&str, Vec<&str>)> = p
+        .imports
+        .iter()
+        .map(|r| {
+            (
+                r.pattern.as_str(),
+                r.allowed.iter().map(String::as_str).collect(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        rules,
+        vec![
+            ("src/**", vec!["src/**", "@std/json.ms"]),
+            ("types/**", vec!["@std/**"]),
+            ("tests/**", vec![]),
+        ]
+    );
+    assert_eq!(p.imports[1].location.line, 7);
+    for (name, line, expected) in [
+        (
+            "string value",
+            "\"src/**\" = \"src/**\"\n",
+            "arrays of double-quoted patterns",
+        ),
+        (
+            "bare item",
+            "\"src/**\" = [src]\n",
+            "arrays of double-quoted patterns",
+        ),
+        (
+            "missing comma",
+            "\"src/**\" = [\"a\" \"b\"]\n",
+            "arrays of double-quoted patterns",
+        ),
+        (
+            "absolute pattern",
+            "\"/src/**\" = [\"**\"]\n",
+            "project-relative paths",
+        ),
+        (
+            "backslash",
+            "\"src/**\" = [\"src\\\\a.ms\"]\n",
+            "project-relative paths",
+        ),
+        (
+            "duplicate",
+            "\"src/**\" = [\"**\"]\n\"src/**\" = [\"**\"]\n",
+            "duplicate manifest key imports.src/**",
+        ),
+    ] {
+        let dir = TempDir::new();
+        write(dir.path(), "src/main.ms", "");
+        let manifest = write(
+            dir.path(),
+            "ms.toml",
+            &format!("{MANIFEST}[imports]\n{line}"),
+        );
+        let error = read_project(&manifest).expect_err(name).to_string();
+        assert!(error.contains(expected), "{name}: {error}");
+    }
+}

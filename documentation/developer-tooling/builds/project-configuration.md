@@ -25,9 +25,25 @@ entry = "./src/main.ms"
 - `name` names the project; `source` is its source directory.
 - `entry` is the executable entry file. Omit it for a library; an empty or invalid entry is an error. There is no default.
 - All manifest paths resolve relative to the directory containing `ms.toml` (the entry is not relative to `source`).
-- Only `[project]` and `[aliases]` exist. Unknown or duplicate tables and keys are rejected, as are `[adapters]` tables. Values are double-quoted strings; `#` starts a comment.
+- Only `[project]`, `[aliases]`, and `[imports]` exist. Unknown or duplicate tables and keys are rejected, as are `[adapters]` tables. Values are double-quoted strings, or arrays of them under `[imports]`; `#` starts a comment.
 - Application modules are found by following imports from the entry, not listed in the manifest.
 - The compiler supplies the prelude and `@std` modules. Third-party Manuscript packages are unsupported; native dependencies are pinned inside `ms` ([how it works](../how-it-works.md)).
+
+## Import allow list
+
+`[imports]` says which modules each file may import. Each key is a pattern over project-relative importer paths; its value lists the patterns an import must match. `*` matches within one path segment and `**` matches any number of segments. Standard modules match by their `@std/name.ms` spelling; relative imports and aliases are matched after resolution, so neither is a way around the list.
+
+```toml
+[imports]
+"src/**"   = ["src/**", "types/**", "@std/collections.ms", "@std/string.ms", "@std/json.ms"]
+"types/**" = ["@std/**", "types/**"]
+"tests/**" = ["**"]
+```
+
+- The matching key with the longest literal prefix (the text before its first `*`) decides. Two matching keys with equal prefixes are an error at the import.
+- A file matching no key, and a project without the table, is unrestricted. A single file checked without `ms.toml` is unrestricted.
+- The check happens at import resolution whenever the manifest is read (`ms check ms.toml`, `build`, `test`, and the language server), and is reported at the import line. `ms check file.ms` on one file reads no manifest, as for aliases. Example: "`src/leak.ms` may not import `@std/fs.ms`; ms.toml [imports] "src/**" allows only ..., so import one of those or extend the list".
+- The list limits which modules a file names, not what an allowed module can do: allowing `@std/net.ms` allows any socket. Put the raw modules behind your own module (`types/disk.ms` above) and allow only that.
 
 ## Commands and module discovery
 

@@ -1,10 +1,11 @@
 //! `ms.toml` reading: the supported subset is `[project]` and `[aliases]`
-//! tables holding double-quoted string values. Diagnostics, locations and their
+//! tables holding double-quoted string values, and `[imports]` holding arrays of them. Diagnostics, locations and their
 //! order are pinned by the project tests.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::project::error::{Location, ProjectError};
+use crate::project::imports::ImportRule;
 use crate::project::overlay::Overlay;
 use crate::project::pathops;
 use crate::project::paths::source_path;
@@ -29,6 +30,8 @@ pub struct Project {
     /// The manifest text as read.
     pub configuration: String,
     pub aliases: BTreeMap<String, String>,
+    /// The `[imports]` rules in manifest order.
+    pub imports: Vec<ImportRule>,
     /// The `[project]` table header (or 1:1 when the table is absent).
     pub location: Location,
     pub assignments: BTreeMap<String, Assignment>,
@@ -145,6 +148,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             let table = match line {
                 "[project]" => "project",
                 "[aliases]" => "aliases",
+                "[imports]" => "imports",
                 _ => {
                     let advice = if !line.ends_with(']') {
                         "close the header with ']'"
@@ -157,7 +161,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                     } else {
                         "ms.toml has no other tables"
                     };
-                    return Err(fail.at(&location, format!("unsupported manifest table {line}; ms.toml supports only [project] and [aliases]: {advice}")));
+                    return Err(fail.at(&location, format!("unsupported manifest table {line}; ms.toml supports only [project], [aliases], and [imports]: {advice}")));
                 }
             };
             if !tables.insert(table) {
@@ -207,6 +211,39 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
         let value_start = line.len() - value.len();
         location.column += value_start;
         location.offset += value_start;
+        if section == "imports" {
+            let id = format!("imports.{key}");
+            if !seen.insert(id.clone()) {
+                return Err(fail.at(
+                    &key_location,
+                    format!("duplicate manifest key {id}; each key may be set once"),
+                ));
+            }
+            let allowed = import_list(value)
+                .ok_or_else(|| fail.at(&location, format!("[imports] values are arrays of double-quoted patterns; write \"{key}\" = [\"src/**\", \"@std/json.ms\"]")))?;
+            if key.is_empty()
+                || key.starts_with('/')
+                || key.contains('\\')
+                || allowed
+                    .iter()
+                    .any(|a| a.is_empty() || a.starts_with('/') || a.contains('\\'))
+            {
+                return Err(fail.at(&key_location, format!("[imports] patterns are project-relative paths with / separators, such as \"src/**\" or \"@std/json.ms\"; fix \"{key}\"")));
+            }
+            p.assignments.insert(
+                id,
+                Assignment {
+                    key: key_location.clone(),
+                    value: location.clone(),
+                },
+            );
+            p.imports.push(ImportRule {
+                pattern: key,
+                allowed,
+                location: key_location,
+            });
+            continue;
+        }
         if value.len() < 2 || !value.starts_with('"') || !value.ends_with('"') {
             return Err(fail.at(
                 &location,
@@ -339,6 +376,27 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
         }
     }
     Ok(())
+}
+
+/// `["a", "b"]`: a one-line array of double-quoted strings, or `None` when malformed.
+fn import_list(value: &str) -> Option<Vec<String>> {
+    let inner = value.strip_prefix('[')?.strip_suffix(']')?.trim();
+    let mut items = Vec::new();
+    let mut rest = inner;
+    while !rest.is_empty() {
+        if !rest.starts_with('"') {
+            return None;
+        }
+        let (quoted, after) = quoted_prefix(rest)?;
+        items.push(quoting::unquote(quoted)?);
+        rest = after.trim_start();
+        match rest.strip_prefix(',') {
+            Some(after) => rest = after.trim_start(),
+            None if rest.is_empty() => {}
+            None => return None,
+        }
+    }
+    Some(items)
 }
 
 fn valid_alias(key: &str) -> bool {

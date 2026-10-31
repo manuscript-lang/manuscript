@@ -21,6 +21,7 @@
 
 pub mod discovery;
 pub mod error;
+pub mod imports;
 pub mod manifest;
 pub mod overlay;
 pub mod pathops;
@@ -29,6 +30,7 @@ pub mod quoting;
 
 pub use discovery::{discover_modules, discover_modules_with_overlay};
 pub use error::{Location, ManifestError, PathError, ProjectError};
+pub use imports::{ImportRule, check_import};
 pub use manifest::{Assignment, Project, find_manifest, read_project, read_project_partial};
 pub use overlay::{Overlay, canonical_overlay};
 pub use paths::{resolve_import, source_path};
