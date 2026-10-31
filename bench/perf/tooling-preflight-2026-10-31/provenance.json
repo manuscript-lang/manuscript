@@ -103,5 +103,13 @@
       "step": 17,
       "step_name": "Conformance corpus (LLVM)"
     }
-  ]
+  ],
+  "maintenance": {
+    "main": "81b804d58131224a00a10ebe3f3824e6c84313e1",
+    "formatter_head": "15b318784dfff57fa8802c2ac67bde3c0add231d",
+    "formatter_focused_tests": 181,
+    "previous_failure_diagnosed": false,
+    "historical_samples_changed": false,
+    "normal_ci": "fresh runs required; observed separately from prior failures"
+  }
 }

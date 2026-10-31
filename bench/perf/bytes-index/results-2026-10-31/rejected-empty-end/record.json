@@ -1,0 +1,155 @@
+{
+  "complete": true,
+  "argv": [
+    "bench/perf/bytes-index/compare.py",
+    "/workspace/byte-search-evidence/ms-before-final",
+    "/workspace/byte-search-evidence/ms-after-final",
+    "/workspace/perf-toolchain/bytes-index-rust-target/release/bytes-index-rust",
+    "/workspace/byte-search-evidence/final-130",
+    "--cpu",
+    "0"
+  ],
+  "host": [
+    "Linux",
+    "6199f3f85d57",
+    "6.18.57",
+    "#1 SMP Tue Oct 20 21:56:04 UTC 2026",
+    "x86_64"
+  ],
+  "affinity": [
+    0
+  ],
+  "expected_cases": 130,
+  "executables": {
+    "before": {
+      "path": "/workspace/byte-search-evidence/ms-before-final",
+      "sha256": "94b4decfdf1694c7fbf8e26e72f3d34d4bc07a752da9b5095803a476dcd55489"
+    },
+    "after": {
+      "path": "/workspace/byte-search-evidence/ms-after-final",
+      "sha256": "f233c3a520b00c3a9b1930e81024a0c3be67eba552fecb7b3fbab8868d6ddfd5"
+    },
+    "rust": {
+      "path": "/workspace/perf-toolchain/bytes-index-rust-target/release/bytes-index-rust",
+      "sha256": "bab58952aac42d4537e3c5befc1b8f6ed4d7a39ed4899976a3b21c748b743a97"
+    }
+  },
+  "validated_producers": [
+    [
+      "warmup",
+      "before"
+    ],
+    [
+      "warmup",
+      "after"
+    ],
+    [
+      "warmup",
+      "rust"
+    ],
+    [
+      0,
+      "before"
+    ],
+    [
+      0,
+      "after"
+    ],
+    [
+      0,
+      "rust"
+    ],
+    [
+      1,
+      "before"
+    ],
+    [
+      1,
+      "rust"
+    ],
+    [
+      1,
+      "after"
+    ],
+    [
+      2,
+      "after"
+    ],
+    [
+      2,
+      "before"
+    ],
+    [
+      2,
+      "rust"
+    ],
+    [
+      3,
+      "after"
+    ],
+    [
+      3,
+      "rust"
+    ],
+    [
+      3,
+      "before"
+    ],
+    [
+      4,
+      "rust"
+    ],
+    [
+      4,
+      "before"
+    ],
+    [
+      4,
+      "after"
+    ],
+    [
+      5,
+      "rust"
+    ],
+    [
+      5,
+      "after"
+    ],
+    [
+      5,
+      "before"
+    ]
+  ],
+  "orders": [
+    [
+      "before",
+      "after",
+      "rust"
+    ],
+    [
+      "before",
+      "rust",
+      "after"
+    ],
+    [
+      "after",
+      "before",
+      "rust"
+    ],
+    [
+      "after",
+      "rust",
+      "before"
+    ],
+    [
+      "rust",
+      "before",
+      "after"
+    ],
+    [
+      "rust",
+      "after",
+      "before"
+    ]
+  ]
+}
