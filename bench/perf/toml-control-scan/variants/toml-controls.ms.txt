@@ -1,0 +1,53 @@
+import expect_equal, expect_true from "@std/test.ms"
+import parse, TomlLimits from "@std/toml.ms"
+import from_scalars from "@std/string.ms"
+
+fn rejected(text: String, limits: TomlLimits? = none) String:
+    match parse(text, limits):
+        ok(_): return "accepted"
+        error(cause): return cause.message()
+
+test "TOML control admission covers every ASCII byte and C1 scalar":
+    for code in 0..128:
+        let text = "#é🙂 ".concat(from_scalars([code]).get()).concat("# next\nvalue = 1")
+
+        if code == 9 or code == 10 or (code >= 32 and code != 127):
+            try expect_true(parse(text).is_ok())
+        else:
+            let reason = if code == 13: "bare carriage return" else: "invalid control character"
+
+            try expect_equal(rejected(text), "TOML 1:5: {reason}")
+
+    for code in 128..160:
+        let text = "#é🙂 ".concat(from_scalars([code]).get()).concat("# next\nvalue = 1")
+        try expect_true(parse(text).is_ok())
+
+test "TOML control errors keep first Unicode scalar location after normalization":
+    try expect_equal(rejected("\u{0} x"), "TOML 1:1: invalid control character")
+    try expect_equal(
+        rejected("#é🙂 \u{0}\n#\u{7f}"), "TOML 1:5: invalid control character"
+    )
+    try expect_equal(rejected("#é🙂\r\n#x\u{0}"), "TOML 2:3: invalid control character")
+    try expect_equal(rejected("#é🙂\r\nx = 1\ry = 2"), "TOML 2:6: bare carriage return")
+
+test "TOML control errors retain admission and syntax precedence":
+    let text = "???\n#\u{0}"
+    try expect_equal(rejected(text), "TOML 2:2: invalid control character")
+    try expect_equal(rejected(text, TomlLimits(max_bytes: 0)), "TOML limit exceeded")
+    try expect_equal(rejected(text, TomlLimits(max_bytes: -1)), "invalid TOML input")
+    try expect_equal(
+        rejected(text, TomlLimits(max_values: 0)), "TOML 2:2: invalid control character"
+    )
+    try expect_equal(
+        rejected(text, TomlLimits(max_depth: 0)), "TOML 2:2: invalid control character"
+    )
+
+test "TOML control admission retains byte scan boundaries":
+    for count in [0, 1, 31, 32, 127, 128, 129, 255, 256, 1024]:
+        var scalars: List[Int] = [35]
+        for unused in 0..count: scalars.append(120)
+        scalars.append(0)
+        try expect_equal(
+            rejected(from_scalars(scalars).get()),
+            "TOML 1:{count + 2}: invalid control character"
+        )

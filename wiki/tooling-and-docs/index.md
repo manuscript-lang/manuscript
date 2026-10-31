@@ -4,6 +4,7 @@
 
 Formatter, LSP, CLI, diagnostics, documentation, site.
 
+- [Bound formatter scans to required context](bound-formatter-scans-to-required-context.md): track flow prefix facts and stop suffix measurement once a safe bound forces expansion.
 - [Bound navigation coordinate work to the query](bound-navigation-coordinate-work-to-the-query.md): avoid repeated prefix scans while preserving malformed snapshots and early-reference costs.
 
 - [Agent help is CLI commands, not a protocol server](agent-help-is-cli-commands-not-a-protocol-server.md): the user evaluated an MCP server (PR #528), judged the CLI the better surface for coding agents, and had it removed.
@@ -27,4 +28,5 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [Stream coordinates for ordered token batches](stream-coordinates-for-ordered-token-batches.md): keep an exact boundary anchor to avoid repeated UTF-16 prefix work without changing exceptional offsets.
 - [Teach a runnable path before formal reference](teach-a-runnable-path-before-formal-reference.md): public documentation should focus on Manuscript and what readers can build.
 - [User tooling must work in the shipped binary](user-tooling-must-work-in-the-shipped-binary.md): documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator.
+- [Tooling change checklist](tooling-change-checklist.md): formatter, LSP, CLI, diagnostics, and debugging rules to check before editing tooling.
 - [Stdout errors include the final flush](stdout-errors-include-final-flush.md): small buffered writes and large direct writes fail at different points; neither failure may silently become a successful command.

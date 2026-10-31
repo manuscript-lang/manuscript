@@ -1,0 +1,8 @@
+{
+  "timing_environment_sha256": "2e9282a8fbe864f705990fada9b8c5d5e0eb0d28dc0704d7ec1c794c8ac3ea64",
+  "source_environment": "/workspace/toml-scan/.artifacts/control-scan/file-integrated/environment.json",
+  "driver_sha256": "4ace05b633fb08126b75ab81d2a39224745e50df1b6eadaa796744825ce5c63c",
+  "rss_sha256": "09441b9246dd4d6a5b1454b9d3652f8a8b3dc1b1f925218d00fa91d3fdc98347",
+  "rss_source_sha256": "c671c66114469e2438d3486a19f5826d25cac131405eda0b43cfc5980af62a34",
+  "note": "Whole-process RSS includes setup and cached-file I/O, not allocation counts."
+}
