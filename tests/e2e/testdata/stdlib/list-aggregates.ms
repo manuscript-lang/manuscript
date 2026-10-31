@@ -11,7 +11,7 @@ impl Comparable for Version:
 
         return 0
 
-fn ordered[T: Comparable](values: List[T]) List[T]:
+fn ordered[T: Comparable & Clonable](values: List[T]) List[T]:
     return values.sorted()
 
 test "sorted orders Int, Float and String ascending without a comparator":

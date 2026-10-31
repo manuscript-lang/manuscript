@@ -9,7 +9,7 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export nope; @std/core.ms exports: Clonable, Closeable, Comparable, Data, Equal, Error, ErrorCategory, Hashable, Iterator, MissingValue, Optional, Result, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/core.ms\"'",
+        "message": "module does not export nope; did you mean 'Copy'?",
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-29.ms",
           "line": 4,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-29.ms:4:8: resolution: module does not export nope; @std/core.ms exports: Clonable, Closeable, Comparable, Data, Equal, Error, ErrorCategory, Hashable, Iterator, MissingValue, Optional, Result, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/core.ms\"'\n   |\n 4 | import nope from \"@std/core.ms\"\n   |        ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-29.ms:4:8: resolution: module does not export nope; did you mean 'Copy'?\n   |\n 4 | import nope from \"@std/core.ms\"\n   |        ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

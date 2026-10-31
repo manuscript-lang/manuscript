@@ -5,11 +5,11 @@ import expect_equal, expect_false, fail from "@std/test.ms"
 
 fn slice(values: List[Int]) Result[List[Int], CollectionError]: values.slice(0, 1)
 
-fn list_entries[T](values: List[T]) List[ListEntry[T]]: values.entries()
+fn list_entries[T: Clonable](values: List[T]) List[ListEntry[T]]: values.entries()
 
-fn map_entries[K: Hashable, V](values: Map[K, V]) List[MapEntry[K, V]]: values.entries()
+fn map_entries[K: Hashable, V: Clonable](values: Map[K, V]) List[MapEntry[K, V]]: values.entries()
 
-fn group[T, K: Hashable](values: List[T], key: fn(T) K) Map[K, List[T]]: values.group_by(
+fn group[T: Clonable, K: Hashable](values: List[T], key: fn(T) K) Map[K, List[T]]: values.group_by(
     key
 )
 

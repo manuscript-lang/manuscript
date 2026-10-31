@@ -18,7 +18,7 @@ impl Hashable for Key:
 fn map_values[K: Hashable, V, W](values: Map[K, V], transform: fn(K, V) W) Map[K, W]:
     return values.map[W](transform)
 
-fn map_keys[K: Hashable, V, W: Hashable](
+fn map_keys[K: Hashable, V: Clonable, W: Hashable](
     values: Map[K, V],
     transform: fn(K, V) W
 ) Map[W, V]:
