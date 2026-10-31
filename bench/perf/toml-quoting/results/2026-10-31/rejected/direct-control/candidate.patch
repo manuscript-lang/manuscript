@@ -1,0 +1,14 @@
+--- a/stdlib/toml.ms
++++ b/stdlib/toml.ms
+@@ -1038,5 +1037,0 @@
+-fn hex4(code: Int) String:
+-    var digits = code.to_string_radix(16)
+-    while digits.length() < 4: digits = "0".concat(digits)
+-    return digits
+-
+@@ -1058,2 +1053,3 @@
+-            result.append("\\u")
+-            result.append(hex4(code))
++            result.append("\\u00")
++            result.append("0123456789abcdef".get(code / 16))
++            result.append("0123456789abcdef".get(code % 16))

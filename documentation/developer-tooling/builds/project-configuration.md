@@ -40,6 +40,8 @@ entry = "./src/main.ms"
 
 `ms check ms.toml` checks every `.ms` file below `project.source`, including modules the entry does not import, plus `test.ms` and `*_test.ms` anywhere below the project root. It never runs `main` or tests and needs no native toolchain. Text output reports the number of modules checked.
 
+Discovered source filenames and visited directory names must be valid UTF-8. Invalid names report a resolution error with a rename remedy; discovery never replaces them with another path. Excluded files and directories keep their existing discovery rules.
+
 - Discovery skips hidden directories (such as `.ms-cache`), `vendor`, `node_modules`, and directory symlinks. Entries and imports are always followed.
 - Files outside the source directory are checked only if imported, the entry, or tests.
 - `ms check file.ms` checks that file and its imports only.

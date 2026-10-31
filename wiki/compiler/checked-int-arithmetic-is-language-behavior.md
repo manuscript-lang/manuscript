@@ -5,7 +5,7 @@
 Decision: `Int` arithmetic faults on overflow ([design contract](../../crates/DESIGN.md)). An optimizer may remove a check only with a proof that covers the whole result range (a literal divisor, an identity operand, a guarded counter step); unknown `+`, `-`, and `*` stay checked. Evaluate both operands even when the result is constant so effectful calls are preserved.
 
 Apply when: adding overflow-check elimination, bounds narrowing, or constant folding.
-Evidence: [overflow faults](../../tests/e2e/testdata/accept/numeric-faults.ms), [bounded arithmetic](../../tests/e2e/testdata/accept/bounded-int-arithmetic.ms), [counter step](../../tests/e2e/testdata/accept/counter-steps-keep-overflow-faults.ms), [int identities](../../tests/e2e/testdata/accept/int-identities.ms).
+Evidence: [overflow faults](../../tests/conformance/fixtures/e2e/accept/numeric-faults.ms), [bounded arithmetic](../../tests/e2e/testdata/accept/bounded-int-arithmetic.ms), [counter step](../../tests/conformance/fixtures/e2e/accept/counter-steps-keep-overflow-faults.ms), [int identities](../../tests/conformance/fixtures/e2e/accept/int-identities.ms).
 Evidence: [interpreter](../../crates/ms-mir/src/interp.rs), [native lowering](../../crates/ms-clif/src/lower.rs), [simplifier boundary regressions](../../crates/ms-mir/tests/opt_simplify.rs).
 Evidence: [simplifier and checked-CSE regressions](../../crates/ms-mir/tests/opt_simplify.rs), [dominator-scoped value numbering](../../crates/ms-mir/src/opt/simplify.rs).
 Evidence: [range analysis](../../crates/ms-mir/src/opt/range.rs), [saved-length regressions](../../crates/ms-mir/tests/opt_range.rs).

@@ -4,6 +4,12 @@
 
 Decision: the user wants parsing, checking, and lowering to stay linear (or n log n) in source size, with no ad-hoc special cases. A pass that re-walks a shared graph per root, scans a list per lookup, or allocates per-byte tables is a defect even when small inputs hide it.
 
+Verified: type-suffix sugar must move the accumulated syntax tree into each wrapper. Cloning it for every `?` or `!` copies all preceding wrappers and makes construction quadratic; preserve node IDs and positions while removing the discarded copies.
+Evidence: [suffix parser](../../crates/ms-syntax/src/parser.rs), [shape and position regressions](../../crates/ms-syntax/tests/type_suffix.rs), [interleaved parser measurements](../../bench/perf/parser-suffix/README.md).
+
+Verified: replaying failed type-argument speculation must preserve the token cursor, final nesting depth, consumed node IDs and diagnostic; include starting depth in the key so a nesting-limit failure is not treated as an unconditional grammar failure. Record only nested, retry-eligible failures, and measure shallow indexing: unconditional cache work can erase gains on ordinary input.
+Evidence: [speculative parser](../../crates/ms-syntax/src/parser.rs), [metadata regressions](../../crates/ms-syntax/tests/bracket_speculation.rs), [accepted and rejected measurements](../../bench/perf/parser-speculation/README.md).
+
 Verified: repeatedly recomputing use counts and scanning a function to delete the last unused instruction makes dead-expression chains quadratic. Decrement operand use counts as dead users are removed, and visit newly dead definitions with a worklist. Preserve faulting instructions and owned results as roots.
 
 Apply when: adding or changing a lexer, parser, checker, or lowering pass, or a cache or table they share.

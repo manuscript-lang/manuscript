@@ -301,7 +301,7 @@ fn escaped_char(s: &[char], i: &mut usize, in_class: bool) -> R<char> {
             } else {
                 (s.get(*i..*i + 2).ok_or(())?.iter().collect(), 2)
             };
-            if hex.is_empty() || hex.len() > 8 {
+            if hex.is_empty() || hex.len() > 8 || !hex.bytes().all(|c| c.is_ascii_hexdigit()) {
                 return Err(());
             }
             *i += used;

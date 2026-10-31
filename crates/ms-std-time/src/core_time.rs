@@ -101,17 +101,19 @@ pub fn parse_timestamp(text: &[u8]) -> Result<Ts, u8> {
 /// `Timestamp.to_string()`: UTC RFC 3339 with the fraction trimmed of trailing zeros.
 pub fn to_string(ts: Ts) -> String {
     let c = civil_of(ts.seconds, ts.nanos);
-    let mut s = String::new();
+    // Four year digits, the calendar/time separators, nine fractional digits and Z.
+    // This is an initial capacity, so internal callers outside the UTC range still grow.
+    let mut s = String::with_capacity(30);
     let _ = write!(
         s,
         "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
         c.year, c.month, c.day, c.hour, c.minute, c.second
     );
     if ts.nanos != 0 {
-        let mut frac = String::new();
-        let _ = write!(frac, "{:09}", ts.nanos);
-        s.push('.');
-        s.push_str(frac.trim_end_matches('0'));
+        let _ = write!(s, ".{:09}", ts.nanos);
+        while s.ends_with('0') {
+            s.pop();
+        }
     }
     s.push('Z');
     s
@@ -160,45 +162,69 @@ pub fn calendar(ts: Ts, zone: &str) -> Result<Calendar, u8> {
     })
 }
 
+// A padded i64 needs at most 20 bytes; the signed hh:mm offset also fits. Keep
+// the ordinary formatter's minimum-width behavior, including years 0 and 10000.
+#[derive(Clone, Copy)]
+struct TokenText {
+    bytes: [u8; 32],
+    len: usize,
+}
+
+impl Write for TokenText {
+    fn write_str(&mut self, text: &str) -> core::fmt::Result {
+        let end = self.len + text.len();
+        let dst = self.bytes.get_mut(self.len..end).ok_or(core::fmt::Error)?;
+        dst.copy_from_slice(text.as_bytes());
+        self.len = end;
+        Ok(())
+    }
+}
+
+fn render_token(index: usize, c: &Calendar, out: &mut TokenText) {
+    let v = &c.civil;
+    let result = match index {
+        0 => write!(out, "{:04}", v.year),
+        1 => write!(out, "{:02}", v.month),
+        2 => write!(out, "{:02}", v.day),
+        3 => write!(out, "{:02}", v.hour),
+        4 => write!(out, "{:02}", v.minute),
+        5 => write!(out, "{:02}", v.second),
+        6 => write!(out, "{:03}", v.nanosecond / 1_000_000),
+        7 => {
+            let sign = if c.offset_seconds < 0 { '-' } else { '+' };
+            let abs = c.offset_seconds.abs();
+            write!(out, "{sign}{:02}:{:02}", abs / 3_600, abs % 3_600 / 60)
+        }
+        _ => unreachable!(),
+    };
+    result.expect("numeric calendar token fits in 32 bytes");
+}
+
 /// `Timestamp.format(pattern, zone)`: at each position the first matching token wins, in this order.
 pub fn format(ts: Ts, pattern: &[u8], zone: &str) -> Result<Vec<u8>, u8> {
     let c = calendar(ts, zone)?;
-    let (sign, abs) = if c.offset_seconds < 0 {
-        ('-', -c.offset_seconds)
-    } else {
-        ('+', c.offset_seconds)
-    };
-    let v = &c.civil;
-    let mut tokens: [(&[u8], String); 9] = [
-        (b"YYYY", String::new()),
-        (b"MM", String::new()),
-        (b"DD", String::new()),
-        (b"HH", String::new()),
-        (b"mm", String::new()),
-        (b"ss", String::new()),
-        (b"SSS", String::new()),
-        (b"ZZ", String::new()),
-        (b"zone", c.zone.clone()),
+    let keys: [&[u8]; 9] = [
+        b"YYYY", b"MM", b"DD", b"HH", b"mm", b"ss", b"SSS", b"ZZ", b"zone",
     ];
-    let _ = write!(tokens[0].1, "{:04}", v.year);
-    let _ = write!(tokens[1].1, "{:02}", v.month);
-    let _ = write!(tokens[2].1, "{:02}", v.day);
-    let _ = write!(tokens[3].1, "{:02}", v.hour);
-    let _ = write!(tokens[4].1, "{:02}", v.minute);
-    let _ = write!(tokens[5].1, "{:02}", v.second);
-    let _ = write!(tokens[6].1, "{:03}", v.nanosecond / 1_000_000);
-    let _ = write!(
-        tokens[7].1,
-        "{sign}{:02}:{:02}",
-        abs / 3_600,
-        abs % 3_600 / 60
-    );
+    let mut values = [TokenText {
+        bytes: [0; 32],
+        len: 0,
+    }; 8];
     let mut out = Vec::with_capacity(pattern.len() + 16);
     let mut i = 0;
     'scan: while i < pattern.len() {
-        for (key, value) in &tokens {
+        for (index, key) in keys.iter().enumerate() {
             if pattern[i..].starts_with(key) {
-                out.extend_from_slice(value.as_bytes());
+                if index == values.len() {
+                    out.extend_from_slice(c.zone.as_bytes());
+                } else {
+                    let value = &mut values[index];
+                    // Every numeric token emits at least one byte; render it only once.
+                    if value.len == 0 {
+                        render_token(index, &c, value);
+                    }
+                    out.extend_from_slice(&value.bytes[..value.len]);
+                }
                 i += key.len();
                 continue 'scan;
             }
@@ -259,6 +285,129 @@ pub fn from_calendar(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // The original eager renderer is a byte-for-byte differential oracle for
+    // token ordering, padding, truncation and unmatched (possibly non-UTF-8) bytes.
+    fn eager_format(ts: Ts, pattern: &[u8], zone: &str) -> Result<Vec<u8>, u8> {
+        let c = calendar(ts, zone)?;
+        let v = &c.civil;
+        let sign = if c.offset_seconds < 0 { '-' } else { '+' };
+        let abs = c.offset_seconds.abs();
+        let tokens: [(&[u8], String); 9] = [
+            (b"YYYY", alloc::format!("{:04}", v.year)),
+            (b"MM", alloc::format!("{:02}", v.month)),
+            (b"DD", alloc::format!("{:02}", v.day)),
+            (b"HH", alloc::format!("{:02}", v.hour)),
+            (b"mm", alloc::format!("{:02}", v.minute)),
+            (b"ss", alloc::format!("{:02}", v.second)),
+            (b"SSS", alloc::format!("{:03}", v.nanosecond / 1_000_000)),
+            (
+                b"ZZ",
+                alloc::format!("{sign}{:02}:{:02}", abs / 3_600, abs % 3_600 / 60),
+            ),
+            (b"zone", c.zone),
+        ];
+        let mut out = Vec::new();
+        let mut i = 0;
+        'scan: while i < pattern.len() {
+            for (key, value) in &tokens {
+                if pattern[i..].starts_with(key) {
+                    out.extend_from_slice(value.as_bytes());
+                    i += key.len();
+                    continue 'scan;
+                }
+            }
+            out.push(pattern[i]);
+            i += 1;
+        }
+        Ok(out)
+    }
+
+    #[test]
+    fn format_matches_eager_renderer_across_patterns_and_zones() {
+        let patterns: &[&[u8]] = &[
+            b"",
+            b"literal",
+            b"YYYY",
+            b"YYYY-MM-DD HH:mm:ss.SSS ZZ [zone]",
+            b"YYYYYYYYYMMMMMDDDDHHHHmmmmssssSSSSSSSZZZZzonezone",
+            b"YYY M D H m s SS Z zon",
+            b"\xffYYYY\x80MM\0zone",
+            "日付 YYYY 年 MM 月 DD 日 🕰 HH:mm:ss".as_bytes(),
+        ];
+        let zones = [
+            "UTC",
+            "",
+            "+23:59",
+            "-23:59",
+            "Europe/Berlin",
+            "America/New_York",
+        ];
+        let mut random = 42_u64;
+        for i in 0..512 {
+            random = random
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
+            let seconds = match i {
+                0 => MIN_SECONDS,
+                1 => MAX_SECONDS,
+                2 => -1,
+                3 => 0,
+                _ => MIN_SECONDS + (random % (MAX_SECONDS - MIN_SECONDS + 1) as u64) as i64,
+            };
+            let ts = Ts {
+                seconds,
+                nanos: (random % 1_000_000_000) as i64,
+            };
+            for zone in zones {
+                for pattern in patterns {
+                    assert_eq!(
+                        format(ts, pattern, zone),
+                        eager_format(ts, pattern, zone),
+                        "{ts:?}, {pattern:?}, {zone}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn format_preserves_extended_years_and_output_growth() {
+        let first = Ts {
+            seconds: MIN_SECONDS,
+            nanos: 0,
+        };
+        let last = Ts {
+            seconds: MAX_SECONDS,
+            nanos: 999_999_999,
+        };
+        assert_eq!(
+            format(first, b"YYYY-MM-DD HH:mm:ss.SSS ZZ [zone]", "-23:59").unwrap(),
+            b"0000-12-31 00:01:00.000 -23:59 [-23:59]"
+        );
+        assert_eq!(
+            format(last, b"YYYY-MM-DD HH:mm:ss.SSS ZZ [zone]", "+23:59").unwrap(),
+            b"10000-01-01 23:58:59.999 +23:59 [+23:59]"
+        );
+        assert_eq!(
+            format(last, &b"YYYYZZzone".repeat(256), "+23:59").unwrap(),
+            b"10000+23:59+23:59".repeat(256)
+        );
+    }
+
+    #[test]
+    fn format_validates_zone_even_without_tokens() {
+        let ts = Ts {
+            seconds: 0,
+            nanos: 0,
+        };
+        for pattern in [b"".as_slice(), b"literal"] {
+            assert_eq!(
+                format(ts, pattern, "Nowhere/City"),
+                Err(STATUS_INVALID_INPUT)
+            );
+        }
+    }
     use alloc::string::ToString;
 
     fn ts(text: &str) -> Ts {
@@ -375,6 +524,53 @@ mod tests {
             core::str::from_utf8(&text).unwrap(),
             "2024-07-04 18:05:09.123 +02:00 [CEST] SS"
         );
+    }
+
+    #[test]
+    fn timestamp_text_matches_previous_renderer() {
+        let mut random = 7_u64;
+        for i in 0..512 {
+            random = random
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
+            let seconds = match i {
+                0 => MIN_SECONDS,
+                1 => MAX_SECONDS,
+                2 => -1,
+                3 => 0,
+                _ => MIN_SECONDS + (random % (MAX_SECONDS - MIN_SECONDS + 1) as u64) as i64,
+            };
+            for nanos in [
+                0,
+                1,
+                9,
+                10,
+                99,
+                100,
+                99_999_999,
+                100_000_000,
+                250_000_000,
+                999_999_999,
+            ] {
+                let c = civil_of(seconds, nanos);
+                let mut previous = String::new();
+                let _ = write!(
+                    previous,
+                    "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
+                    c.year, c.month, c.day, c.hour, c.minute, c.second
+                );
+                if nanos != 0 {
+                    let mut frac = String::new();
+                    let _ = write!(frac, "{:09}", nanos);
+                    previous.push('.');
+                    previous.push_str(frac.trim_end_matches('0'));
+                }
+                previous.push('Z');
+                let value = Ts { seconds, nanos };
+                assert_eq!(to_string(value), previous, "{value:?}");
+                assert_eq!(parse_timestamp(previous.as_bytes()), Ok(value));
+            }
+        }
     }
 
     #[test]

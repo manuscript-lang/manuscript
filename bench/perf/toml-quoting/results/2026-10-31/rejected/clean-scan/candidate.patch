@@ -1,0 +1,18 @@
+--- a/stdlib/toml.ms
++++ b/stdlib/toml.ms
+@@ -1043,0 +1044,15 @@
++    # Escapes are ASCII bytes, so non-ASCII UTF-8 can pass through unchanged.
++    let bytes = text.to_bytes()
++    var clean = true
++    var at = 0
++
++    while at < bytes.length():
++        let code = bytes.get(at).to_int()
++        if code < 32 or code == 34 or code == 92 or code == 127:
++            clean = false
++            break
++
++        at += 1
++
++    if clean: return "\"".concat(text).concat("\"")
++

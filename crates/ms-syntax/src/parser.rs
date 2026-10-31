@@ -64,6 +64,16 @@ struct Parser<'a> {
     next_id: u32,
     /// While positive, failures are speculative: their messages are never shown.
     speculative: u32,
+    failed_type_args: Vec<FailedTypeArgs>,
+}
+
+struct FailedTypeArgs {
+    start: usize,
+    initial_depth: usize,
+    end: usize,
+    depth: usize,
+    ids: u32,
+    diagnostic: Box<Diagnostic>,
 }
 
 fn describe(src: &str, t: Token) -> String {
@@ -215,6 +225,10 @@ fn binary_op(kind: Tok) -> Option<BinaryOp> {
     })
 }
 
+fn starts_type(kind: Tok) -> bool {
+    matches!(kind, Tok::Name | Tok::Fn | Tok::LParen)
+}
+
 fn arith_op(kind: Tok) -> Option<BinaryOp> {
     match kind {
         Tok::Plus | Tok::Minus | Tok::Star | Tok::Slash | Tok::Percent => binary_op(kind),
@@ -246,6 +260,7 @@ impl<'a> Parser<'a> {
             queued: Vec::new(),
             next_id,
             speculative: 0,
+            failed_type_args: Vec::new(),
         }
     }
 
@@ -696,7 +711,11 @@ impl<'a> Parser<'a> {
             );
         }
         if self.take(Tok::LBracket) {
-            args = self.type_args()?;
+            args = if self.speculative > 0 && starts_type(self.kind()) {
+                self.speculative_type_args(true)?
+            } else {
+                self.type_args()?
+            };
         }
         let lt = self.peek();
         if lt.kind == Tok::Lt
@@ -712,6 +731,46 @@ impl<'a> Parser<'a> {
             pos: name.pos,
             kind: TypeKind::Named { name: full, args },
         })
+    }
+
+    /// Nested type lists remember failures; expression brackets only replay them.
+    fn speculative_type_args(&mut self, remember: bool) -> PResult<Vec<TypeRef>> {
+        // Replaying a failed speculative parse must preserve its side effects.
+        // Include nesting depth: a limit failure is not a grammar failure.
+        let (start, initial_depth) = (self.at, self.depth);
+        // Recursive failures unwind in reverse source order; expression parsing
+        // then revisits them in forward order. Discard entries already passed.
+        while self
+            .failed_type_args
+            .last()
+            .is_some_and(|failed| failed.start < start)
+        {
+            self.failed_type_args.pop();
+        }
+        if let Some(failed) = self
+            .failed_type_args
+            .pop_if(|failed| failed.start == start && failed.initial_depth == initial_depth)
+        {
+            self.at = failed.end;
+            self.depth = failed.depth;
+            self.next_id += failed.ids;
+            return Err(failed.diagnostic);
+        }
+        let first_id = self.next_id;
+        let result = self.type_args();
+        // Only nested failures can be retried by the enclosing expression.
+        // Ordinary flat indexing never allocates a cache.
+        if remember && let Err(diagnostic) = &result {
+            self.failed_type_args.push(FailedTypeArgs {
+                start,
+                initial_depth,
+                end: self.at,
+                depth: self.depth,
+                ids: self.next_id - first_id,
+                diagnostic: diagnostic.clone(),
+            });
+        }
+        result
     }
 
     fn type_args(&mut self) -> PResult<Vec<TypeRef>> {
@@ -758,8 +817,9 @@ impl<'a> Parser<'a> {
     /// type needs parentheses first, since its result type takes the suffix.
     fn type_suffix(&mut self, mut t: TypeRef) -> PResult<TypeRef> {
         loop {
+            let pos = t.pos;
             let (name, args) = if self.take(Tok::Question) {
-                ("Optional", vec![t.clone()])
+                ("Optional", vec![t])
             } else if self.take(Tok::Bang) {
                 let bang = self.previous();
                 let next = self.peek();
@@ -769,19 +829,18 @@ impl<'a> Parser<'a> {
                     let id = self.id();
                     TypeRef {
                         id,
-                        pos: t.pos,
+                        pos,
                         kind: TypeKind::Named {
                             name: Symbol::intern("Error"),
                             args: Vec::new(),
                         },
                     }
                 };
-                ("Result", vec![t.clone(), error])
+                ("Result", vec![t, error])
             } else {
                 return Ok(t);
             };
             let id = self.id();
-            let pos = t.pos;
             t = TypeRef {
                 id,
                 pos,
@@ -2870,9 +2929,13 @@ impl<'a> Parser<'a> {
         let saved_depth = self.depth;
         let mut types = None;
         // A type starts with a name, `fn` or `(`; anything else is a value.
-        if matches!(self.kind(), Tok::Name | Tok::Fn | Tok::LParen) {
+        if starts_type(self.kind()) {
             self.speculative += 1;
-            let r = self.type_args();
+            let r = if self.failed_type_args.is_empty() {
+                self.type_args()
+            } else {
+                self.speculative_type_args(false)
+            };
             self.speculative -= 1;
             match r {
                 Ok(t) => types = Some(t),

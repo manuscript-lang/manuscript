@@ -252,6 +252,14 @@ impl Scanner<'_> {
     fn fail_at<T>(&self, pos: Pos, message: impl Into<String>) -> PResult<T> {
         Err(self.err(pos, message))
     }
+    /// Reports a character whose first byte was just consumed. The cursor can
+    /// be inside its UTF-8 encoding, so it is not itself a diagnostic boundary.
+    fn fail_previous_byte<T>(&self, message: impl Into<String>) -> PResult<T> {
+        let mut pos = self.pos();
+        pos.offset -= 1;
+        pos.column -= 1;
+        self.fail_at(pos, message)
+    }
     /// Fails on the single ASCII character at the cursor, with its range and,
     /// when one exists, the replacement that fixes it.
     fn fail_char<T>(&self, message: String, replacement: Option<&str>) -> PResult<T> {
@@ -897,7 +905,7 @@ impl Scanner<'_> {
                 return self.fail("literal control characters are not allowed in text; write an escape such as \\t, \\r, or \\u{H}");
             }
             if b == 0xE2 && self.bidi_control_at(self.offset - 1) {
-                return self.fail(BIDI_TEXT);
+                return self.fail_previous_byte(BIDI_TEXT);
             }
             if b == b'\\' {
                 let mut backslash = self.pos();
@@ -909,7 +917,12 @@ impl Scanner<'_> {
                 let c = self.advance();
                 if c == b'u' {
                     if self.offset == n || self.advance() != b'{' {
-                        return self.fail("Unicode escapes use \\u{H}; write 1 to 6 hexadecimal digits in braces, e.g. \\u{1F600}");
+                        let message = "Unicode escapes use \\u{H}; write 1 to 6 hexadecimal digits in braces, e.g. \\u{1F600}";
+                        return if self.src[self.offset - 1].is_ascii() {
+                            self.fail(message)
+                        } else {
+                            self.fail_previous_byte(message)
+                        };
                     }
                     let start = self.offset;
                     let mut value: u64 = 0;
@@ -919,7 +932,14 @@ impl Scanner<'_> {
                             b'0'..=b'9' => (c - b'0') as u64,
                             b'a'..=b'f' => (c - b'a') as u64 + 10,
                             b'A'..=b'F' => (c - b'A') as u64 + 10,
-                            _ => return self.fail("invalid Unicode scalar escape; use only hexadecimal digits 0-9 and a-f inside \\u{...}"),
+                            _ => {
+                                let message = "invalid Unicode scalar escape; use only hexadecimal digits 0-9 and a-f inside \\u{...}";
+                                return if c.is_ascii() {
+                                    self.fail(message)
+                                } else {
+                                    self.fail_previous_byte(message)
+                                };
+                            }
                         };
                         value = value.saturating_mul(16).saturating_add(d);
                     }

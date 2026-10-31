@@ -17,3 +17,9 @@ nonzero starts, empty inputs and exact-end starts alongside long misses. The
 candidate and all distributions; [called tests](../../tests/e2e/testdata/stdlib/bytes-index-search.ms)
 pin offsets and high-bit bytes. Opaque Rust benchmark wrappers add tiny-call
 overhead, so their nanosecond comparisons alone do not establish language parity.
+
+Verified (2026-10-31, TOML quoting): batching UTF-8 runs improved ASCII timing by
+6.9x but raised whole-process peak RSS by 64% for a large string with one late
+escape. Retain large sparse-escape memory controls alongside timing; the accepted
+change only removes general radix formatting for known ASCII control escapes.
+Evidence: [matched controls and rejected variants](../../bench/perf/toml-quoting/README.md).

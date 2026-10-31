@@ -52,6 +52,12 @@ pub fn run_format(args: &[String], io: &mut Io) -> i32 {
         );
         return 2;
     }
+    if targets.iter().any(String::is_empty) {
+        return crate::util::usage_error(
+            io,
+            "ms fmt: an input argument is empty; pass a .ms file, directory, or ms.toml",
+        );
+    }
     if structured && !check {
         let _ = writeln!(
             io.stderr,

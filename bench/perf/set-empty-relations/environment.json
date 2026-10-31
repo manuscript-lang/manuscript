@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-31",
+  "baseline_commit": "3cfde58b6",
+  "initial_control_baseline": "d4a94aa9283348133542078e22ccaa3b2c9dc348",
+  "patch": "candidate.patch",
+  "rustc": "1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "1.99.1 (5f94df478 2026-08-27)",
+  "cpu": "AMD EPYC 9V45 96-Core Processor",
+  "affinity": [
+    0
+  ],
+  "build_commands": [
+    "cargo xtask runtime",
+    "cargo build --release --locked -p ms-cli",
+    "ms build SOURCE --build-type Release -o BINARY",
+    "rustc --edition=2021 -C opt-level=3 -C overflow-checks=on -C force-frame-pointers=yes SOURCE -o BINARY"
+  ],
+  "inventory": {
+    "backend": "cranelift",
+    "build_type": "Release"
+  },
+  "source_sha256": {
+    "bench/perf/set-empty-relations/maps-control.ms": "e29dbd671a8d4091d787624a8f4413b7c259dafb7f7cf3115e4f15d300214862",
+    "bench/perf/set-empty-relations/measure-maps.py": "f5969c1137ec2c56f2fdfaf6341a8885aa0f3b935db7d3fff0b9f17955b3243b",
+    "bench/perf/set-empty-relations/maps-growth-control.ms": "0408e2b1f193bbcd930627f7f1750804d9df44dbb2c4fddedd5325dc68b86838",
+    "bench/perf/set-empty-relations/candidate.patch": "4ad42260353b7784bbdd9dbf1d54c4699c297ef7aeaa1243d9beee0a0e73a692",
+    "bench/perf/set-empty-relations/measure.py": "0cf9e30697a1edef7f2e1eff77daa60f1f63832e18a5c93b65cf3c6b06d6a695",
+    "bench/perf/set-empty-relations/focused-maps.py": "4268afc6b3ab44a0d95bc5dd51dffe43cad61bcd60d5251f2f9a41df7cca934a",
+    "bench/perf/set-empty-relations/focused.py": "9053ffbaf75b32c4ec0c537a07828baf84d529cbb4f8d65fa212a07f09b45b37",
+    "bench/perf/set-empty-relations/measure-growth.py": "54b758d07cb3e574ade4d41ff4eae2a51b55b95e51fc4314d7fa5291fce36c6a",
+    "bench/perf/set-empty-relations/decisive.py": "750f8a05db1bb5e5572918bab25f02b30c9071cceb7d91e6a12fcebdcaf872a4",
+    "bench/perf/set-empty-relations/main.ms": "fbcb9f827a649416bbe79d9f48a186ce47f8be7101c8d43c313f1e568b7e5564",
+    "bench/perf/set-empty-relations/rust/main.rs": "2b14408536425f0727d5aaaa5b3e7496de753604437009ed40eff497ff43644c",
+    "bench/perf/set-empty-relations/rust/maps-growth-control.rs": "a8ea08e6c67db474a6b35270ef02a1d88a7ab9cfc01cfa57c3a3e478f74f44fa",
+    "bench/perf/set-empty-relations/rust/maps-control.rs": "434d7d9c5b5ee7001c062e9d9b9e01c89fe94912b328125dc3b19f3b6d5393ec"
+  },
+  "artifact_sha256": {
+    "/workspace/collection-evidence/sets-fresh-before": "c9e8c14fa01c75566225c9da6f53786f912882033dc3834d93f1db788d797210",
+    "/workspace/collection-evidence/sets-fresh-after": "652996ee19110875e483906bb08117f2a9b80309a2887067f6c14ff122b6cbc2",
+    "/workspace/collection-evidence/maps-fresh-before": "5147ac049fe4aac8cefbe428cadf07c55c75fe3c1e8b3382135f2ca0cbee32cc",
+    "/workspace/collection-evidence/maps-fresh-after": "5a40e61d17f286620fa481de0f2742b6c231a5bc9337a49b7a72cb382d59e109",
+    "/workspace/collection-evidence/growth-fresh-before": "2bdd6d9b7bc8bd5b37f5822c767e64ffe9355919e7cfd579b2cfc53dca8f1a45",
+    "/workspace/collection-evidence/growth-fresh-after": "7a0d70ede0122e9188d606da487028126d3080b334ae9ee8a0fc1513a6ed0b77",
+    "/workspace/collection-evidence/sets-rust": "b0b47234e424a273755acc927658682e90ca24d7b1a91a6ff07b7455d77a121b",
+    "/workspace/collection-evidence/maps-rust": "b23d9df7f73013ce32bbc3eba1c885e493c8927ca705bc80e1e42501a6c3b8fb",
+    "/workspace/collection-evidence/growth-rust": "a12419c0c94b99da5d4cc2dd0c33c5b62759ee54a90ce6ea51fc40a15d95fc79",
+    "/workspace/collections-baseline/target/release/ms": "b16a5f3d3dd92c16dce63d5ab9016d94080e3d9f6cc3ae1d71c318e7941dcbee",
+    "target/release/ms": "b9f630dd66ba0a6a0a0d9b3001d7cee78240875170a3878ebbd581a5b0753703",
+    "/workspace/collections-baseline/target/ms-native/libms_native.a": "b885013a0452386d27e2ffc8bf116bea67f1cf62a9bb17ecabf14113361e28aa",
+    "target/ms-native/libms_native.a": "c96a372c8bb6daf73a4139fbdec3c4a6e3c24297fa9ee13d596ad8f73fec55e5"
+  },
+  "note": "samples,focused-samples,map-samples,growth-samples use fresh main3cfde58b6 and formatted committed-path source. focused-map-samples retains earlier d4a94aa92 controls, before whitespace-only source formatting; original producer hashes retained in campaign local evidence. CLI/runtime paths are build provenance, not portable installation requirements.",
+  "initial_producer_sources_sha256": {
+    "/workspace/collection-evidence/maps.ms": "3b51c37ec3a27586ac2829030c5fa0b17b5e1d22fbacdbd67a461f983a33a08e",
+    "/workspace/collection-evidence/maps.rs": "434d7d9c5b5ee7001c062e9d9b9e01c89fe94912b328125dc3b19f3b6d5393ec",
+    "/workspace/collection-evidence/measure-maps-focused.py": "4268afc6b3ab44a0d95bc5dd51dffe43cad61bcd60d5251f2f9a41df7cca934a"
+  },
+  "data_sha256": {
+    "bench/perf/set-empty-relations/map-samples.json": "132e9e6c099a8a4982bff8344becaca625c742a6166c2d7f809dc5fe834c3ecf",
+    "bench/perf/set-empty-relations/focused-map-samples.json": "0dd37672cb869c06b1982ffc6bca11353e86c9ea6475a0a10fcc08d3e74b25c1",
+    "bench/perf/set-empty-relations/growth-samples.json": "16ef807e6cf731ae6db5ada35ba71560f78fa627ef642f8fd2ce2211ad7d1e4a",
+    "bench/perf/set-empty-relations/focused-samples.json": "83c7646f75ab194dbf7f6789ed9178a384808bc1686a77320b4d65eeb222f752",
+    "bench/perf/set-empty-relations/decisive-samples.json": "c7cffb3672069b925b30fd2e95a9692c92d3e9851f277d6f30788996650bd0eb",
+    "bench/perf/set-empty-relations/samples.json": "fa76f2036cc95b3cb5bff38f47137d9b308450cbcbbc0d04f22a6cb1dbbc201e"
+  }
+}

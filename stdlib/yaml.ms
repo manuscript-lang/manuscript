@@ -100,6 +100,33 @@ type Flow:
     context: Context
     delimited: Bool
 
+# YAML separates tokens with only space and tab; Unicode spaces such as U+00A0 are scalar content.
+fn blank(code: Int) Bool:
+    return code == 32 or code == 9
+
+# `text` without leading spaces and tabs.
+fn blank_trim_start(text: String) String:
+    let count = text.scalar_length()
+    var from = 0
+    while from < count and blank(text.scalar_at(from, default: 0)):
+        from += 1
+    if from == 0: return text.clone()
+
+    return text.slice_scalars(from, count).get("")
+
+# `text` without trailing spaces and tabs.
+fn blank_trim_end(text: String) String:
+    var end = text.scalar_length()
+    while end > 0 and blank(text.scalar_at(end - 1, default: 0)):
+        end -= 1
+    if end == text.scalar_length(): return text.clone()
+
+    return text.slice_scalars(0, end).get("")
+
+# `text` without leading and trailing spaces and tabs.
+fn blank_trim(text: String) String:
+    return blank_trim_end(blank_trim_start(text))
+
 # Limits applied when `parse` is called without any: deep nesting and alias expansion are
 # the usual resource attacks. Pass a `YamlLimits` (even an empty one) to lift or change them.
 fn default_limits() YamlLimits:
@@ -399,7 +426,7 @@ fn fold_plain(text: String) String:
     var first = true
 
     for line in text.split("\n"):
-        let trimmed = line.trim()
+        let trimmed = blank_trim(line)
 
         if trimmed == "":
             blanks += 1
@@ -465,7 +492,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
         flow.pos += 1
 
     # Slice once: appending each character to a string is quadratic on long scalars.
-    var text = flow.chars.slice(start, flow.pos).get([]).join("").trim()
+    var text = blank_trim(flow.chars.slice(start, flow.pos).get([]).join(""))
     if text.starts_with("?") and (text.length() == 1 or " \t".contains(text.get(1))): return error(
         YamlError.UnsupportedFeature(
             line: flow.line, reason: "explicit mapping keys are unsupported"
@@ -645,9 +672,13 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
                 if cur(flow) == 0: return error(
                     flow_invalid(flow, "unterminated flow mapping")
                 )
+                if cur(flow) == 44: return error(
+                    flow_invalid(flow, "expected flow mapping key")
+                )
 
                 quoted_key = cur(flow) == 34 or cur(flow) == 39
 
+                let key_start = flow.pos
                 let parsed_key = try flow_value(var flow, level, key: true)
 
                 match parsed_key:
@@ -670,6 +701,19 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
                 if step(var flow) != 58: return error(
                     flow_invalid(flow, "expected mapping colon")
                 )
+
+                # A colon makes this an implicit key: validate physical source lines, not
+                # decoded text, which may legitimately contain an escaped newline.
+                var key_at = key_start
+
+                while key_at < flow.pos:
+                    if flow.codes.get(key_at) == 10: return error(
+                        flow_invalid(
+                            flow, "an implicit mapping key must stay on one line"
+                        )
+                    )
+
+                    key_at += 1
 
                 phase = 0
                 continue
@@ -809,9 +853,9 @@ fn uncomment(text: String) String:
         if not (text.ends_with(" ") or text.ends_with("\t")): return text.clone()
         if not complete(text): return text.clone()
 
-        return text.trim_end().clone()
+        return blank_trim_end(text).clone()
 
-    return text.slice(0, index).get("").trim_end().clone()
+    return blank_trim_end(text.slice(0, index).get("")).clone()
 
 fn indent(text: String) Int:
     var result = 0
@@ -889,7 +933,7 @@ fn skip(var context: Context) Unit:
 
         if context.simple.get(context.index): break
 
-        let line = context.lines.get(context.index).trim_start()
+        let line = blank_trim_start(context.lines.get(context.index))
         if line != "" and not line.starts_with("#"): break
 
         context.index += 1
@@ -968,10 +1012,10 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
         text != ""
         and not structured_lead(text.scalar_at(0, default: 0), blank: true)
         and not text.contains(": ")
-        and plain_may_start(text.trim())
+        and plain_may_start(blank_trim(text))
     ):
         try count(var context, depth)
-        return ok(plain(text.trim().clone()))
+        return ok(plain(blank_trim(text).clone()))
 
     var joined = text.clone()
     let line = context.index
@@ -1165,7 +1209,7 @@ fn may_continue(context: Context, base: Int) Bool:
 fn block_value(
     var context: Context, text: String, base: Int, depth: Int, indentless: Bool
 ) YamlValue!YamlError:
-    var remainder = text.trim_start().clone()
+    var remainder = blank_trim_start(text).clone()
     var anchor = ""
     var lead = remainder.scalar_at(0, default: 0)
 
@@ -1175,19 +1219,19 @@ fn block_value(
             context: context.clone(), delimited: false
         )
         anchor = try anchor_name(var flow)
-        remainder = remainder.slice(
-            flow.pos, remainder.scalar_length()
-        ).get("").trim_start()
+        remainder = blank_trim_start(
+            remainder.slice(flow.pos, remainder.scalar_length()).get("")
+        )
         lead = remainder.scalar_at(0, default: 0)
 
     var result = YamlValue.Null
 
     if lead == 124 or lead == 62:
         try count(var context, depth)
-        result = try block_string(var context, remainder.trim_end(), base)
+        result = try block_string(var context, blank_trim_end(remainder), base)
     else if remainder != "":
         if not structured_lead(lead):
-            remainder = remainder.trim_end().clone()
+            remainder = blank_trim_end(remainder).clone()
 
             if may_continue(context, base):
                 var joined = StringBuilder()
@@ -1200,14 +1244,14 @@ fn block_value(
                 while probe < context.lines.length():
                     let line = context.lines.get(probe)
 
-                    if line.trim() == "":
+                    if blank_trim(line) == "":
                         blanks += 1
                         probe += 1
                         continue
 
                     let next = uncomment(line.clone())
                     if (
-                        next.trim() == ""
+                        blank_trim(next) == ""
                         or indent(next) <= base
                         or document_marker(next)
                     ): break
@@ -1215,11 +1259,10 @@ fn block_value(
                     context.index = probe
 
                     let _indent = try indentation(context, next)
-                    if (boundary(next, colon: true) >= 0 or sequence(next.trim_start())): return error(
-                        invalid(
-                            context, "unexpected indented collection"
-                        )
-                    )
+                    if (
+                        boundary(next, colon: true) >= 0
+                        or sequence(blank_trim_start(next))
+                    ): return error(invalid(context, "unexpected indented collection"))
 
                     var separator = " "
 
@@ -1231,7 +1274,7 @@ fn block_value(
                             blanks -= 1
 
                     joined.append(separator)
-                    joined.append(next.trim())
+                    joined.append(blank_trim(next))
                     probe += 1
                     context.index = probe
 
@@ -1250,7 +1293,7 @@ fn block_value(
                 or (
                     indentless
                     and next_indent == base
-                    and sequence(line.trim_start())
+                    and sequence(blank_trim_start(line))
                 )
             ):
                 result = try block(var context, next_indent, depth)
@@ -1309,19 +1352,23 @@ fn sequence_items(
             if line_indent != base or not context.dash.get(context.index): break
 
             line = context.lines.get(context.index).clone()
-            item = line.slice(
-                line_indent + 1, line.scalar_length()
-            ).get("").trim_start()
+            item = blank_trim_start(
+                line.slice(line_indent + 1, line.scalar_length()).get(
+                    ""
+                )
+            )
             compact = context.col.get(context.index) >= 0 or sequence(item)
         else:
             line = uncomment(context.lines.get(context.index))
             line_indent = try indentation(context, line)
             if line_indent < base: break
-            if line_indent != base or not sequence(line.trim_start()): break
+            if line_indent != base or not sequence(blank_trim_start(line)): break
 
-            item = line.trim_start().slice(
-                1, (line.trim_start().scalar_length())
-            ).get("").trim_start()
+            item = blank_trim_start(
+                blank_trim_start(line).slice(
+                    1, (blank_trim_start(line).scalar_length())
+                ).get("")
+            )
             compact = sequence(item) or boundary(item, colon: true) >= 0
 
         var chain: List[Int] = []
@@ -1375,8 +1422,8 @@ fn sequence_items(
         else if compact:
             # Treat a compact mapping/sequence as a virtual indented first line.
             # Its column follows the indicator, so extra spaces move the nested base.
-            let marker = line.trim_start().slice(
-                1, (line.trim_start().scalar_length())
+            let marker = blank_trim_start(line).slice(
+                1, (blank_trim_start(line).scalar_length())
             ).get("")
             var gap = indent(marker)
             if gap == 0: gap = 1
@@ -1418,8 +1465,8 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
         is_sequence = context.dash.get(context.index)
         has_colon = not is_sequence and context.col.get(context.index) >= 0
     else:
-        first = uncomment(context.lines.get(context.index)).trim_start()
-        if first.starts_with("?"): return error(
+        first = blank_trim_start(uncomment(context.lines.get(context.index)))
+        if first.starts_with("?") and not plain_may_start(first): return error(
             YamlError.UnsupportedFeature(
                 line: (context.index + 1),
                 reason: "explicit mapping keys are unsupported"
@@ -1460,21 +1507,27 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
                 if colon < 0: break
 
                 let raw = context.lines.get(context.index)
-                name = raw.slice(line_indent, colon).get("").trim()
-                text = raw.slice(colon + 1, raw.scalar_length()).get("").trim_start()
+                name = blank_trim(raw.slice(line_indent, colon).get(""))
+                text = blank_trim_start(
+                    raw.slice(colon + 1, raw.scalar_length()).get(
+                        ""
+                    )
+                )
             else:
                 let line = uncomment(context.lines.get(context.index))
                 line_indent = try indentation(context, line)
-                if line_indent != base or sequence(line.trim_start()): break
+                if line_indent != base or sequence(blank_trim_start(line)): break
 
-                let content = line.trim_start()
+                let content = blank_trim_start(line)
                 let colon = boundary(content, colon: true)
                 if colon < 0: break
 
-                name = content.slice(0, colon).get("").trim()
-                text = content.slice(
-                    colon + 1, content.scalar_length()
-                ).get("").trim_start()
+                name = blank_trim(content.slice(0, colon).get(""))
+                text = blank_trim_start(
+                    content.slice(
+                        colon + 1, content.scalar_length()
+                    ).get("")
+                )
 
             let key_start = name.scalar_at(0, default: 0)
             let quoted_key = key_start == 34 or key_start == 39
@@ -1502,6 +1555,19 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
                     )
                 )
 
+            if (
+                not quoted_key
+                and (
+                    not plain_may_start(name)
+                    or key_start == 124
+                    or key_start == 62
+                )
+            ): return error(
+                invalid(
+                    context,
+                    "a plain mapping key cannot start with an indicator character"
+                )
+            )
             if explicit.contains(name): return error(
                 invalid(context, "duplicate mapping key")
             )
@@ -1526,7 +1592,7 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
 
         return ok(YamlValue.ObjectValue(values))
 
-    if first == "": first = context.lines.get(context.index).trim_start()
+    if first == "": first = blank_trim_start(context.lines.get(context.index))
     context.index += 1
     return block_value(
         context: var context,
@@ -1613,7 +1679,7 @@ export fn parse(text: String, limits: YamlLimits?) YamlValue!YamlError:
         let line = context.lines.get(context.index)
         let rest = line.slice(4, line.scalar_length()).get("")
 
-        if not rest.trim().starts_with("#"):
+        if not blank_trim(rest).starts_with("#"):
             context.lines.splice(context.index, 1, ["---", rest])
             classify(var context, context.lines.join("\n").to_bytes())
 
