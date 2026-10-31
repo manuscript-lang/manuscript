@@ -5,7 +5,7 @@ edition = "2024"
 publish = false
 [dependencies]
 ms-std-json = { path = "../../../crates/ms-std-json" }
-serde_json = { version = "=1.0.154", features = ["float_roundtrip"] }
+serde_json = { version = "=1.0.154", features = ["float_roundtrip", "arbitrary_precision"] }
 [profile.release]
 opt-level = 3
 panic = "abort"

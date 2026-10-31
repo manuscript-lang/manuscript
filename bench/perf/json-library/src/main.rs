@@ -132,7 +132,14 @@ fn main() {
             assert_eq!(&serde_json::from_str::<Vec<i64>>(&ms_expected).unwrap(), v)
         }
         Payload::Floats(v) => {
-            assert_eq!(&serde_json::from_str::<Vec<f64>>(&ms_expected).unwrap(), v)
+            let decoded = serde_json::from_str::<Vec<f64>>(&ms_expected).unwrap();
+            assert_eq!(decoded.len(), v.len());
+            assert!(
+                decoded
+                    .iter()
+                    .zip(v)
+                    .all(|(a, b)| a.to_bits() == b.to_bits())
+            );
         }
     }
     let (doc, root) = ms_std_json::parse(&text, Limits::default()).unwrap();

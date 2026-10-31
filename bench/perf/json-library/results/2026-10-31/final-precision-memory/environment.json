@@ -1,0 +1,21 @@
+{
+  "binaries": {
+    "before": {
+      "path": "/workspace/json-perf/.artifacts/json-library/precision-before",
+      "sha256": "1e9aff4b43d124362184f88966097b7c214ca6d475fc90575fbc2f2c8d78e3ed"
+    },
+    "after": {
+      "path": "/workspace/json-perf/.artifacts/json-library/precision-after",
+      "sha256": "519584d9194280815925c6b4488d70f98d165e5ca832369a4df2d794b9747e49"
+    },
+    "rust": {
+      "path": "/workspace/json-perf/.artifacts/json-library/precision-before",
+      "sha256": "1e9aff4b43d124362184f88966097b7c214ca6d475fc90575fbc2f2c8d78e3ed"
+    }
+  },
+  "timing_environment_sha256": "5f42636c79ba3a7cebe62b18b02e5858fa967673c0ad0ad9f747ba6f8c906d76",
+  "driver_sha256": "e8f758d9ee75465181040af047ff505759674ddb0346c396cce6bdd95e850c4c",
+  "rss_sha256": "09441b9246dd4d6a5b1454b9d3652f8a8b3dc1b1f925218d00fa91d3fdc98347",
+  "rss_source_sha256": "c671c66114469e2438d3486a19f5826d25cac131405eda0b43cfc5980af62a34",
+  "note": "Whole-process RSS includes setup and full semantic validation; not allocation counts."
+}

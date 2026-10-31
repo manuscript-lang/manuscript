@@ -13,3 +13,10 @@ Verified (2026-10-31, TOML quoting): batching UTF-8 runs improved ASCII timing b
 escape. Retain large sparse-escape memory controls alongside timing; the accepted
 change only removes general radix formatting for known ASCII control escapes.
 Evidence: [matched controls and rejected variants](../../bench/perf/toml-quoting/README.md).
+
+Shortest float round trips do not establish byte-identical serialization: equally short,
+equally close decimals can use different tie rules. Preserve the previous exact output
+with a direct formatter oracle, midpoint families and signed/nonfinite cases before
+comparing speed. The JSON float study retained a rejected converter whose dense win
+coincided with a reproducible Unicode slowdown; its replacement must pass the same
+controls. Evidence: [JSON library controls](../../bench/perf/json-library/README.md).

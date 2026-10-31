@@ -82,7 +82,7 @@ for case in cases:
             distributions[label] = dict(median_ns=median, mad_ns=statistics.median(abs(x - median) for x in values), min_ns=min(values), max_ns=max(values))
         summary.append(dict(case=case, operation=operation, distributions=distributions,
                             before_over_after=distributions["before"]["median_ns"] / distributions["after"]["median_ns"],
-                            after_over_rust=distributions["after"]["median_ns"] / distributions["rust"]["median_ns"]))
+                            after_over_rust=distributions["after"]["median_ns"] / distributions["rust"]["median_ns"] if operation == "write" else None))
 (args.output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
 for row in summary:
-    print(row["case"], row["operation"], f'library/Rust={row["after_over_rust"]:.3f}x', f'before/after={row["before_over_after"]:.3f}x')
+    print(row["case"], row["operation"], f'library/Rust={row["after_over_rust"] if row["after_over_rust"] is not None else "unmatched parser representation"}', f'before/after={row["before_over_after"]:.3f}x')
