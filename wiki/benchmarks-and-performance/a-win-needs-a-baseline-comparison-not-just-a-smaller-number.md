@@ -41,3 +41,9 @@ first-byte gate removed one flag but exposed other NFD costs; both were rejected
 Retain complete matrices and composition controls rather than accepting a
 removed flag or a clean screen.
 Evidence: [both rejected normalization candidates](../../bench/perf/string-normalize-ascii/results-2026-10-31.md).
+
+Verified (2026-10-31, adjacent JSON escapes): grouping consecutive escaped bytes
+improved dense writer timing 3.43x but cost ASCII writing 1.46% in 10/12 long paired
+trials, with near-identical A/A medians. The candidate was rejected; keep plain and
+tiny controls even when their source path looks unchanged. This does not identify
+a backend cause. Evidence: [escape-run study](../../bench/perf/json-escape-runs/README.md).
