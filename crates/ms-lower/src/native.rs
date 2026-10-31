@@ -1139,7 +1139,9 @@ impl<'a> FnLower<'a> {
         let name = native.rsplit('/').next().unwrap_or(native);
         let rty = self.ty_of(recv.v);
         // `map_add`, `set_values`: the receiver type already says which.
-        let name = if crate::mapset::is_map_or_set(self.b.m, rty) {
+        // `Map.map_keys` is itself the method's name, which the `map_` rule would cut.
+        let keep = name == "map_keys";
+        let name = if !keep && crate::mapset::is_map_or_set(self.b.m, rty) {
             name.strip_prefix("map_")
                 .or_else(|| name.strip_prefix("set_"))
                 .unwrap_or(name)
@@ -1164,7 +1166,7 @@ impl<'a> FnLower<'a> {
                 self.map_entries(recv_expr, recv, result)
             }
             (TyKind::List(_), "list_keys") => self.list_keys(recv_expr, recv, result),
-            (TyKind::List(_), "list_entries") => self.list_entries(recv_expr, recv, result),
+            (TyKind::List(_), "entries") => self.list_entries(recv_expr, recv, result),
             (TyKind::List(_) | TyKind::Bytes, "length") => {
                 let r = self.borrow(recv);
                 let v = self.b.list_len(r);
@@ -1195,7 +1197,7 @@ impl<'a> FnLower<'a> {
                 let out = self.call_runtime(sym, &[r, d, n], rty)?;
                 Ok(Val { v: out, own: true })
             }
-            (TyKind::List(_), "list_zip") => {
+            (TyKind::List(_), "zip") => {
                 let TyKind::List(pair) = self.b.m.types.kind(result).clone() else {
                     return Err(Error::new("zip without a list result"));
                 };
@@ -1233,8 +1235,8 @@ impl<'a> FnLower<'a> {
                 let out = self.b.use_var(acc);
                 Ok(Val { v: out, own: true })
             }
-            (TyKind::List(elem), "list_chunks" | "list_windows") => {
-                self.list_pieces(name == "list_chunks", elem, recv, &args, result)
+            (TyKind::List(elem), "chunks" | "windows") => {
+                self.list_pieces(name == "chunks", elem, recv, &args, result)
             }
             (TyKind::List(elem), "get") => {
                 // Arguments arrive in written order; the names say which is which.
