@@ -1,7 +1,7 @@
 import Data from "@std/core.ms"
 
 # An immutable sequence of bytes. Indices and slice bounds are zero-based.
-export type Bytes: ...
+export extern type Bytes
 
 impl Data for Bytes:
 
@@ -75,7 +75,7 @@ export fn join(parts: List[Bytes]) Bytes: ...
 export fn values(data: Bytes) List[UInt8]: ...
 
 # Builds a byte sequence efficiently before freezing it into an immutable value.
-export type BytesBuilder: ...
+export extern type BytesBuilder
 
 impl BytesBuilder:
     # Appends one byte to the end of the builder.

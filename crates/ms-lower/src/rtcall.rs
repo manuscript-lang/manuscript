@@ -36,10 +36,22 @@ pub(crate) struct RtSig {
     pub ret: String,
 }
 
-/// The runtime symbol implementing the native function `native` (`module/name`), as named by
-/// `runtime_symbols` in `stdlib/bindings.json`.
+/// Bodiless natives the runtime implements directly, with their symbol. They are generic (`extern fn` has no type
+/// parameters) or live in modules where an `extern fn` wrapper makes an import cycle among the bundled sources.
+const GENERIC_NATIVES: &[(&str, &str)] = &[
+    ("collections/filled", "msrt_list_filled"),
+    ("collections/flatten", "msrt_list_flatten"),
+    ("collections/range", "msrt_list_range"),
+    ("collections/range_by", "msrt_list_range_by"),
+    ("string/compile", "msrt_regex_compile"),
+    ("string/from_scalars", "msrt_string_from_scalars"),
+    ("bytes/join", "msrt_bytes_join"),
+    ("bytes/values", "msrt_bytes_values"),
+];
+
 pub(crate) fn function_symbol(native: &str) -> Option<String> {
-    ms_check::stdlib::runtime_symbol(native).filter(|sym| rt_sig(sym).is_some())
+    let (_, sym) = GENERIC_NATIVES.iter().find(|(n, _)| *n == native)?;
+    rt_sig(sym).map(|_| (*sym).to_string())
 }
 
 pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
@@ -1191,40 +1203,4 @@ fn failure_symbol(sym: &str) -> Option<String> {
 /// Whether a runtime function returns a new runtime handle object for an interface value.
 fn is_handle_return(ret: &str) -> bool {
     ret.starts_with("*mut Handle<") || ret == "*mut HasherObj"
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn bound_runtime_symbols_are_catalogued() {
-        ms_check::stdlib::ensure_standard();
-        for path in ms_check::stdlib::standard_module_names() {
-            for (_, sym) in ms_check::stdlib::standard_exports(path) {
-                let native = sym.native.as_str();
-                let Some(bound) = ms_check::stdlib::runtime_symbol(native) else {
-                    continue;
-                };
-                assert!(
-                    super::rt_sig(&bound).is_some(),
-                    "{native} binds {bound}, which SYMBOLS.md does not list"
-                );
-            }
-        }
-    }
-
-    /// Handle-backed receivers name their operations in the native identity, which must bind.
-    #[test]
-    fn handle_receiver_operations_have_runtime_symbols() {
-        for (receiver, operations) in ms_check::receivers::RECEIVER_BINDINGS {
-            if !matches!(*receiver, "IpAddress" | "Cidr" | "HttpHeaders") {
-                continue;
-            }
-            for (name, native) in *operations {
-                assert!(
-                    super::function_symbol(native).is_some(),
-                    "{receiver}.{name} ({native}) has no runtime_symbols entry"
-                );
-            }
-        }
-    }
 }

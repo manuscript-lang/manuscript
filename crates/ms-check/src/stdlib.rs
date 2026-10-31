@@ -1,12 +1,11 @@
 //! The bundled standard declarations.
 //!
-//! `stdlib/*.ms` and `bindings.json` are embedded unchanged. Native
+//! `stdlib/*.ms` is embedded unchanged. Native
 //! modules (declarations without bodies) are declared once per thread; source
 //! modules (declarations with bodies) are checked lazily with the ordinary
 //! checker and shared by every program.
 
 use crate::checker::{CheckOptions, Checker, Names};
-use crate::json;
 use crate::receivers::RECEIVER_BINDINGS;
 use crate::syntax::*;
 use crate::types::Case;
@@ -72,8 +71,6 @@ struct World {
     implementations: Vec<MethodRef>,
     operation_variables: HashMap<String, Vec<Ty>>,
     receiver_bindings: HashMap<String, Name>,
-    runtime_symbols: HashMap<String, String>,
-    kept_callbacks: HashSet<String>,
     done: HashMap<Name, Rc<StdResult>>,
     checking: HashSet<Name>,
 }
@@ -86,39 +83,59 @@ fn world<R>(f: impl FnOnce(&mut World) -> R) -> R {
     WORLD.with(|w| f(&mut w.borrow_mut()))
 }
 
-#[derive(Default)]
-struct Bindings {
-    native_types: HashMap<String, String>,
-    function_overrides: HashMap<String, String>,
-    intrinsic_receivers: HashMap<String, String>,
-    contract_methods: HashMap<String, String>,
-    runtime_symbols: HashMap<String, String>,
-    kept_callbacks: HashMap<String, String>,
+/// The primitive types whose operations the `<Type>Operations` interfaces of `intrinsics.ms` declare.
+const INTRINSIC_RECEIVERS: &[&str] = &[
+    "Float", "Float32", "Int", "Int16", "Int32", "Int8", "String", "UInt16", "UInt32", "UInt64",
+    "UInt8",
+];
+
+/// Externs that store their function arguments instead of running them before they return. A parameter-level
+/// marker would replace this list.
+const KEPT_CALLBACKS: &[&str] = &[
+    "extern:msstd_process_fork",
+    "extern:msrt_channel_group_add",
+    "extern:msrt_scope_spawn",
+];
+
+/// Whether a native function (`module/name`, or `extern:name`) keeps the function values it is given.
+pub fn keeps_callbacks(native: &str) -> bool {
+    KEPT_CALLBACKS.contains(&native)
 }
 
-fn read_bindings() -> Result<Bindings, String> {
-    let root = json::parse(BINDINGS)?;
-    let entries = root.entries();
-    let strings = |key: &str| -> HashMap<String, String> {
-        entries
-            .get(key)
-            .map(|v| {
-                v.entries()
-                    .into_iter()
-                    .map(|(k, v)| (k, v.text().to_string()))
-                    .collect()
-            })
-            .unwrap_or_default()
-    };
-    Ok(Bindings {
-        native_types: strings("native_types"),
-        function_overrides: strings("function_overrides"),
-        intrinsic_receivers: strings("intrinsic_receivers"),
-        contract_methods: strings("contract_methods"),
-        runtime_symbols: strings("runtime_symbols"),
-        kept_callbacks: strings("kept_callbacks"),
-    })
-}
+/// The native identity of each bodiless method of a contract implementation (`Contract/method`).
+const CONTRACT_METHODS: &[(&str, &str)] = &[
+    ("Error/message", "core/message"),
+    ("ListCopies/chunks", "collections/list_chunks"),
+    ("ListCopies/clone", "collections/clone"),
+    ("ListCopies/concat", "collections/concat"),
+    ("ListCopies/copy_within", "collections/copy_within"),
+    ("ListCopies/drop", "collections/drop"),
+    ("ListCopies/entries", "collections/list_entries"),
+    ("ListCopies/fill", "collections/fill"),
+    ("ListCopies/filter", "collections/filter"),
+    ("ListCopies/find", "collections/find"),
+    ("ListCopies/find_last", "collections/find_last"),
+    ("ListCopies/partition", "collections/partition"),
+    ("ListCopies/reversed", "collections/reversed"),
+    ("ListCopies/slice", "collections/slice"),
+    ("ListCopies/sorted", "collections/sorted"),
+    ("ListCopies/take", "collections/take"),
+    ("ListCopies/windows", "collections/list_windows"),
+    ("ListCopiesGeneric/group_by", "collections/group_by"),
+    ("ListCopiesGeneric/zip", "collections/list_zip"),
+    ("MapCopies/clone", "collections/clone"),
+    ("MapCopies/entries", "collections/map_entries"),
+    ("MapCopies/filter", "collections/map_filter"),
+    ("MapCopies/find", "collections/map_find"),
+    ("MapCopies/find_last", "collections/map_find_last"),
+    ("MapCopies/get_or", "collections/map_get_or"),
+    ("MapCopies/map_keys", "collections/map_transform_keys"),
+    ("MapCopies/merge", "collections/map_merge"),
+    ("MapCopies/values", "collections/map_values"),
+];
+
+/// Native types that declare fields, so they cannot be written `extern type`.
+const NATIVE_WITH_FIELDS: &[&str] = &["List"];
 
 // -------------------------------------------------------------------- queries
 
@@ -190,33 +207,6 @@ pub fn intrinsic_operations(id: Name) -> Option<Ty> {
 /// The native identity of a receiver operation (`Receiver id/name`).
 pub fn receiver_binding(key: &str) -> Option<Name> {
     world(|w| w.receiver_bindings.get(key).copied())
-}
-
-/// The native function (`module/name`) that bindings.json binds to a runtime symbol, when exactly one is.
-pub fn native_for_symbol(symbol: &str) -> Option<String> {
-    ensure_standard();
-    world(|w| {
-        let mut bound = w
-            .runtime_symbols
-            .iter()
-            .filter(|(_, s)| s.as_str() == symbol)
-            .map(|(k, _)| k.clone());
-        let first = bound.next()?;
-        bound.next().is_none().then_some(first)
-    })
-}
-
-/// Whether a native function (`module/name`, or `extern:name`) keeps the function values it is given instead of
-/// running them before it returns, as bindings.json declares under `kept_callbacks`.
-pub fn keeps_callbacks(native: &str) -> bool {
-    ensure_standard();
-    world(|w| w.kept_callbacks.contains(native))
-}
-
-/// The runtime symbol that implements a native function (`module/name`), as bindings.json names it.
-pub fn runtime_symbol(native: &str) -> Option<String> {
-    ensure_standard();
-    world(|w| w.runtime_symbols.get(native).cloned())
 }
 
 /// Records the type variables an operation declares for itself (`Receiver id/name`).
@@ -945,11 +935,6 @@ fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
 }
 
 fn load() -> Result<(), String> {
-    let bindings = read_bindings()?;
-    world(|w| {
-        w.runtime_symbols = bindings.runtime_symbols.clone();
-        w.kept_callbacks = bindings.kept_callbacks.keys().cloned().collect();
-    });
     let mut modules: Vec<ModRef> = Vec::new();
     for (name, source) in SOURCES {
         let file: Arc<str> = Arc::from(format!("@std/{name}").as_str());
@@ -975,10 +960,7 @@ fn load() -> Result<(), String> {
     }
     let mut checker = Checker::new(&CheckOptions::default());
     checker.standard_declarations = true;
-    let mut loader = Loader {
-        bindings,
-        c: &mut checker,
-    };
+    let mut loader = Loader { c: &mut checker };
     for module in &modules {
         loader.register(module)?;
     }
@@ -991,7 +973,6 @@ fn load() -> Result<(), String> {
 }
 
 struct Loader<'a> {
-    bindings: Bindings,
     c: &'a mut Checker,
 }
 
@@ -1089,8 +1070,8 @@ impl Loader<'_> {
             let mut id = n(&format!("@std/{name}"));
             let mut native = name;
             if sym_kind == SymKind::Fn {
-                // Identities are module/name unless bindings.json overrides them.
-                let mut ident = format!(
+                // Identities are module/name.
+                let ident = format!(
                     "{}/{}",
                     module
                         .file
@@ -1099,14 +1080,6 @@ impl Loader<'_> {
                         .trim_end_matches(".ms"),
                     name
                 );
-                if let Some(o) = self
-                    .bindings
-                    .function_overrides
-                    .get(&format!("{}/{}", module.file, name))
-                    .filter(|o| !o.is_empty())
-                {
-                    ident = o.clone();
-                }
                 native = n(&ident);
                 id = n(&format!("@std/{ident}"));
             }
@@ -1122,19 +1095,10 @@ impl Loader<'_> {
                 decl: Some(d.clone()),
             });
             if let Some(mut kind) = kind {
-                if let Some(nk) = self
-                    .bindings
-                    .native_types
-                    .get(&format!("{}/{}", module.file, name))
-                    .filter(|k| !k.is_empty())
-                {
-                    kind = match nk.as_str() {
-                        "native" => Kind::Native,
-                        "record" => Kind::Record,
-                        "alternative" => Kind::Alternative,
-                        "contract" => Kind::Contract,
-                        other => return Err(format!("unknown native kind {other}")),
-                    };
+                // `extern type` declares an opaque runtime value; `List` also carries a constructor field.
+                let external = matches!(&d.decl().kind, DeclKind::Record(r) if r.external);
+                if external || NATIVE_WITH_FIELDS.contains(&name.as_str()) {
+                    kind = Kind::Native;
                 }
                 let def = Definition::new(&s, kind);
                 let mut t = Type::new(name, id, kind);
@@ -1333,7 +1297,6 @@ impl Loader<'_> {
 
     /// Checks native impl blocks and ties each to its binding.
     fn bind_implementations(&mut self) -> Result<(), String> {
-        let mut used: HashSet<String> = HashSet::new();
         for module in self.native_sources() {
             self.scope_module(&module);
             for d in &module.decls {
@@ -1360,27 +1323,16 @@ impl Loader<'_> {
                     );
                     method.id = n(&key);
                     let contract = format!("{contract_name}/{name}");
-                    let native = self
-                        .bindings
-                        .contract_methods
-                        .get(&contract)
-                        .cloned()
-                        .unwrap_or_default();
-                    if native.is_empty() {
+                    let Some((_, native)) = CONTRACT_METHODS.iter().find(|(c, _)| *c == contract)
+                    else {
                         return Err(format!(
                             "missing native implementation binding for {contract}: {}",
                             position_text(module.file, method.decl.as_ref().expect("decl").pos())
                         ));
-                    }
-                    method.native = n(&native);
-                    used.insert(contract);
+                    };
+                    method.native = n(native);
                     self.c.p.methods[index] = Rc::new(method);
                 }
-            }
-        }
-        for contract in self.bindings.contract_methods.keys() {
-            if !used.contains(contract) {
-                return Err(format!("unused native implementation binding: {contract}"));
             }
         }
         let implementations = self.c.p.methods.clone();
@@ -1392,8 +1344,9 @@ impl Loader<'_> {
                 text.join("; ")
             ));
         }
-        for (receiver, name) in &self.bindings.intrinsic_receivers {
-            let Some(typ) = world(|w| w.symbols.get(&n(name)).cloned()) else {
+        for receiver in INTRINSIC_RECEIVERS {
+            let name = format!("{receiver}Operations");
+            let Some(typ) = world(|w| w.symbols.get(&n(&name)).cloned()) else {
                 return Err(format!("missing intrinsic receiver declaration {name}"));
             };
             world(|w| w.intrinsic.insert(n(receiver), typ.ty()));
@@ -1403,12 +1356,6 @@ impl Loader<'_> {
 
     /// Attaches native receiver bindings and their requirements.
     fn bind_receivers(&mut self) -> Result<(), String> {
-        let intrinsic_names: HashMap<String, String> = self
-            .bindings
-            .intrinsic_receivers
-            .iter()
-            .map(|(r, name)| (name.clone(), r.clone()))
-            .collect();
         let mut bound: HashSet<String> = HashSet::new();
         for module in self.native_sources() {
             self.scope_module(&module);
@@ -1418,8 +1365,11 @@ impl Loader<'_> {
                 }
                 let symbol = self.module_symbol(&module, declaration);
                 let mut receiver = declaration.name().to_string();
-                if let Some(name) = intrinsic_names.get(&receiver) {
-                    receiver = name.clone();
+                if let Some(primitive) = receiver
+                    .strip_suffix("Operations")
+                    .filter(|p| INTRINSIC_RECEIVERS.contains(p))
+                {
+                    receiver = primitive.to_string();
                 }
                 for method in declaration.methods() {
                     let mname = method.func.name;

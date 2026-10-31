@@ -108,7 +108,7 @@ impl List[T]:
     fn length() Int: ...
 
 # A mutable key-value collection. Keys use explicit `Hashable` value semantics.
-export type Map[T: Hashable, U]: ...
+export extern type Map[T: Hashable, U]
 
 impl Map[T, U]:
     # Reports whether this map has no entries.
@@ -171,7 +171,7 @@ export type MapEntry[T: Hashable, U]:
     value: U
 
 # A mutable collection of unique values using explicit `Hashable` value semantics.
-export type Set[T: Hashable]: ...
+export extern type Set[T: Hashable]
 
 impl Set[T]:
     # Copies elements deeply into independent storage, retaining insertion order.
