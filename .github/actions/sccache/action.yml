@@ -23,7 +23,7 @@ runs:
     - name: Keep the sccache directory in runner storage
       shell: bash
       run: echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> "$GITHUB_ENV"
-    # One entry per run, saved from main: the key ends in the run id, so every scheduled main run writes
+    # One entry per run, saved from main: the key ends in the run id, so every manual main run writes
     # a fresh cache holding what it compiled, and a restore takes the newest entry for the prefix (the
     # prune workflow keeps only that one). sccache entries are content-addressed, so an entry from an
     # older lockfile is still valid.
