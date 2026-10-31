@@ -83,3 +83,38 @@ fn source_only_commands_reject_program_arguments_before_discovery() {
         }
     }
 }
+
+#[test]
+fn empty_source_targets_are_usage_errors_before_discovery() {
+    let cases: &[&[&str]] = &[
+        &["check", ""],
+        &["check", "--", ""],
+        &["check", "missing.ms", "--", ""],
+        &["check", "missing.ms", "--json", "--", ""],
+        &["lint", ""],
+        &["lint", "--", ""],
+        &["lint", "missing.ms", "--", ""],
+        &["lint", "missing.ms", "--json", "--", ""],
+        &["fmt", ""],
+        &["fmt", "--", ""],
+        &["fmt", "missing.ms", ""],
+        &["fmt", "missing.ms", "--check", "--json", "--", ""],
+        &["review", ""],
+        &["review", "", "--json"],
+    ];
+    for args in cases {
+        let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(*args)
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert_eq!(output.status.code(), Some(2), "{args:?}: {stderr}");
+        assert!(output.stdout.is_empty(), "{args:?}: {output:?}");
+        assert!(stderr.contains("argument is empty;"), "{args:?}: {stderr}");
+        assert!(
+            stderr.contains("pass a .ms file, directory, or ms.toml"),
+            "{args:?}: {stderr}"
+        );
+        assert!(!stderr.contains("file not found:"), "{args:?}: {stderr}");
+    }
+}
