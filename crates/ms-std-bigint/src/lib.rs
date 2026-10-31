@@ -209,12 +209,16 @@ native! {
         let bits = i64::try_from(n(&a).bits()).unwrap_or(i64::MAX);
         if exponent > 1
             && bits > 1
-            && (exponent > MAX_BITS || bits.saturating_mul(exponent) > MAX_BITS + exponent)
+            && (bits - 1).saturating_mul(exponent) >= MAX_BITS
         {
             return Err(Code(STATUS_LIMIT_EXCEEDED));
         }
         poll_cancel();
-        Ok(make(num_traits::pow::Pow::pow(n(&a), exponent as u64)))
+        let result = num_traits::pow::Pow::pow(n(&a), exponent as u64);
+        if result.bits() > MAX_BITS as u64 {
+            return Err(Code(STATUS_LIMIT_EXCEEDED));
+        }
+        Ok(make(result))
     }
 
     fn msstd_bigint_shift_left(a: ObjRef<Big>, count: i64) -> Result<Object<Big>, Code> {
@@ -451,6 +455,36 @@ mod tests {
                 msstd_bigint_pow(two, 100_000_000, &mut out),
                 STATUS_LIMIT_EXCEEDED
             );
+        }
+    }
+
+    #[test]
+    fn powers_enforce_the_actual_result_bit_limit() {
+        let mut out: *mut ObjCell<Big> = core::ptr::null_mut();
+        // SAFETY: each input is a live handle and out points to writable storage.
+        unsafe {
+            let two = msstd_bigint_from_int(2);
+            assert_eq!(msstd_bigint_pow(two, MAX_BITS - 1, &mut out), STATUS_OK);
+            assert_eq!(val(out).bits(), MAX_BITS as u64);
+            assert_eq!(
+                msstd_bigint_pow(two, MAX_BITS, &mut out),
+                STATUS_LIMIT_EXCEEDED
+            );
+
+            let one = msstd_bigint_from_int(1);
+            assert_eq!(
+                msstd_bigint_shift_left(one, MAX_BITS / 2, &mut out),
+                STATUS_OK
+            );
+            let large = out;
+            assert_eq!(msstd_bigint_pow(large, 2, &mut out), STATUS_LIMIT_EXCEEDED);
+
+            assert_eq!(
+                msstd_bigint_shift_left(one, MAX_BITS / 3 + 1, &mut out),
+                STATUS_OK
+            );
+            let dense = msstd_bigint_subtract(out, one);
+            assert_eq!(msstd_bigint_pow(dense, 3, &mut out), STATUS_LIMIT_EXCEEDED);
         }
     }
 
