@@ -5,7 +5,7 @@ import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
 import control from "@std/process.ms"
 import arguments from "@std/process.ms"
 import entropy from "@std/random.ms"
-import filesystem from "@std/fs.ms"
+import append_file, open, read_file, remove, stat, watch_native, write_file from "@std/fs.ms"
 import system from "@std/process.ms"
 import wall_clock from "@std/time.ms"
 import uuid_v4 from "@std/random.ms"
@@ -23,20 +23,20 @@ fn common_result[T, E: Error](result: T!E) T!:
 
 fn exercise(path: String) Unit!:
     let _written = try common_result(
-        result: filesystem().write_file(
+        result: write_file(
             path: path, data: "hello", replace: false
         )
     )
     try expect_false(
         not (
             try common_result(
-                result: filesystem().read_file(path: path, max_bytes: 5)
+                result: read_file(path: path, max_bytes: 5)
             ) == "hello".to_bytes()
         )
     )
 
     let info = try common_result(
-        result: filesystem().stat(path: path, follow_links: true)
+        result: stat(path: path, follow_links: true)
     )
     info.size | try expect_equal(5)
     (not info.directory) | try expect_true
@@ -59,7 +59,7 @@ fn exercise(path: String) Unit!:
     (system().info().cpu_count > 0) | try expect_true
 
     var file = try common_result(
-        result: filesystem().open(path: path, flags: "r+", mode: 384)
+        result: open(path: path, flags: "r+", mode: 384)
     )
     let _updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
     try expect_false(
@@ -76,13 +76,13 @@ fn exercise(path: String) Unit!:
     try file.close()
 
     var watcher = try common_result(
-        result: filesystem().watch_native(
+        result: watch_native(
             path: path, recursive: false, max_entries: 4, max_events: 16,
             overflow: "error"
         )
     )
     let _appended = try common_result(
-        result: filesystem().append_file(path: path, data: "!")
+        result: append_file(path: path, data: "!")
     )
     let events = try common_result(result: watcher.next())
     (events.length() > 0) | try expect_true
@@ -109,7 +109,7 @@ fn exercise(path: String) Unit!:
     (memory.heap_system > 0) | try expect_true
 
     let _removed = try common_result(
-        result: filesystem().remove(path: path, recursive: false)
+        result: remove(path: path, recursive: false)
     )
     return ok(unit)
 

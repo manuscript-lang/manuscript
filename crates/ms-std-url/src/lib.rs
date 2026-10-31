@@ -1,4 +1,4 @@
-//! `@std/net.ms` natives, built on the byte-oriented parser in [`gourl`].
+//! `@std/net.ms` natives, built on the byte-oriented parser in [`parser`].
 #![no_std]
 
 // Links the msrt_* runtime symbols into this crate's test binaries.
@@ -8,12 +8,12 @@ use ms_rt as _;
 extern crate alloc;
 
 pub mod ffi;
-pub mod gourl;
+pub mod parser;
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use gourl::{S, Url};
 use ms_rt::ffi::Fail;
+use parser::{S, Url};
 
 /// The `Url` record of `@std/net.ms`.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -82,8 +82,51 @@ pub fn encode_component(text: &str) -> String {
 
 /// Decodes `%XX` escapes; `+` stays a plus; the result must be valid UTF-8.
 pub fn decode_component(text: &str) -> Result<String, Fail> {
-    let b = gourl::path_unescape(text.as_bytes()).map_err(|_| Fail::InvalidData)?;
-    string(b)
+    let bytes = text.as_bytes();
+    let mut first = 0;
+    while first < bytes.len() && bytes[first] != b'%' {
+        first += 1;
+    }
+    if first == bytes.len() {
+        return Ok(String::from(text));
+    }
+    // Validate the whole suffix before allocating, including malformed escapes
+    // after a valid escape whose decoded byte is not UTF-8.
+    let mut i = first;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            let pair = bytes.get(i + 1..i + 3).ok_or(Fail::InvalidData)?;
+            if !pair[0].is_ascii_hexdigit() || !pair[1].is_ascii_hexdigit() {
+                return Err(Fail::InvalidData);
+            }
+            i += 3;
+        } else {
+            i += 1;
+        }
+    }
+    let mut out = Vec::with_capacity(bytes.len());
+    out.extend_from_slice(&bytes[..first]);
+    i = first;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            out.push(component_unhex(bytes[i + 1]) << 4 | component_unhex(bytes[i + 2]));
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    string(out)
+}
+
+// Called only after every percent escape's two ASCII hex digits were checked.
+fn component_unhex(byte: u8) -> u8 {
+    match byte {
+        b'0'..=b'9' => byte - b'0',
+        b'a'..=b'f' => byte - b'a' + 10,
+        b'A'..=b'F' => byte - b'A' + 10,
+        _ => unreachable!("validated component escape"),
+    }
 }
 
 fn valid_query(query: &[u8]) -> bool {
@@ -145,7 +188,7 @@ fn components(u: &Url) -> Result<Components, Fail> {
 
 /// Parses an absolute URL; user information, opaque URLs and a missing scheme are rejected.
 pub fn parse(text: &str) -> Result<Components, Fail> {
-    let u = gourl::parse(text.as_bytes()).map_err(|_| Fail::InvalidData)?;
+    let u = parser::parse(text.as_bytes()).map_err(|_| Fail::InvalidData)?;
     if u.scheme.is_empty() || u.has_user() {
         return Err(Fail::InvalidData);
     }
@@ -182,7 +225,7 @@ fn go_url(v: &Components) -> Option<Url> {
     if host.is_empty() && !raw.is_empty() && raw[0] != b'/' {
         return None;
     }
-    let decoded = gourl::path_unescape(raw).ok()?;
+    let decoded = parser::path_unescape(raw).ok()?;
     if !valid_utf8(&decoded) {
         return None;
     }
@@ -198,7 +241,7 @@ fn go_url(v: &Components) -> Option<Url> {
         fragment: v.fragment.as_bytes().to_vec(),
         ..Url::default()
     };
-    let parsed = gourl::parse(&u.render()).ok()?;
+    let parsed = parser::parse(&u.render()).ok()?;
     if parsed.scheme.is_empty()
         || !parsed.scheme.eq_ignore_ascii_case(&u.scheme)
         || !parsed.opaque.is_empty()
@@ -230,7 +273,7 @@ pub fn format(v: &Components) -> Result<String, Fail> {
 /// Resolves a relative reference against `base` (RFC 3986 section 5.2 as in Go).
 pub fn resolve(base: &Components, reference: &str) -> Result<Components, Fail> {
     let b = go_url(base).ok_or(Fail::InvalidInput)?;
-    let r = gourl::parse(reference.as_bytes()).map_err(|_| Fail::InvalidData)?;
+    let r = parser::parse(reference.as_bytes()).map_err(|_| Fail::InvalidData)?;
     if r.has_user() {
         return Err(Fail::InvalidData);
     }
@@ -257,8 +300,8 @@ pub fn parse_query(text: &str, max_entries: Option<i64>) -> Result<Vec<(String, 
         }
         let (k, v) = part.split_once('=').unwrap_or((part, ""));
         let (k, v) = match (
-            gourl::query_unescape(k.as_bytes()),
-            gourl::query_unescape(v.as_bytes()),
+            parser::query_unescape(k.as_bytes()),
+            parser::query_unescape(v.as_bytes()),
         ) {
             (Ok(k), Ok(v)) => (string(k)?, string(v)?),
             _ => return Err(Fail::InvalidData),
@@ -276,9 +319,9 @@ pub fn format_query<K: AsRef<str>, V: AsRef<str>>(entries: &[(K, V)]) -> String 
             out.push('&');
         }
         for part in [
-            gourl::query_escape(k.as_ref().as_bytes()),
+            parser::query_escape(k.as_ref().as_bytes()),
             alloc::vec![b'='],
-            gourl::query_escape(v.as_ref().as_bytes()),
+            parser::query_escape(v.as_ref().as_bytes()),
         ] {
             out.push_str(core::str::from_utf8(&part).unwrap_or(""));
         }
@@ -315,6 +358,62 @@ mod tests {
         assert_eq!(decode_component("a%20b+c").unwrap(), "a b+c");
         assert_eq!(decode_component("%zz"), Err(Fail::InvalidData));
         assert_eq!(decode_component("%ff"), Err(Fail::InvalidData));
+    }
+
+    #[test]
+    fn component_decoder_preserves_previous_results() {
+        let check = |input: &str| {
+            let previous = parser::path_unescape(input.as_bytes())
+                .map_err(|_| Fail::InvalidData)
+                .and_then(string);
+            assert_eq!(decode_component(input), previous, "{input:?}");
+        };
+        for input in [
+            "",
+            "a+b",
+            "a\0b",
+            "%00",
+            "%2b",
+            "%2B",
+            "%",
+            "%0",
+            "%zz",
+            "%C3%A9",
+            "%F0%9F%95%B0",
+            "%ff",
+            "%C0%AF",
+            "%ED%A0%80",
+            "%F4%90%80%80",
+            "é%20🕰",
+            "%é",
+            "%1é",
+            "%FF%zz",
+            "%FF%",
+            "%41%zz",
+            "%41%",
+            "%C3%A9%zz",
+            "é%00",
+            "%25%32%30",
+        ] {
+            check(input);
+        }
+        for byte in 0..=255 {
+            check(&alloc::format!("prefix%{byte:02x}+suffix"));
+            check(&alloc::format!("prefix%{byte:02X}+suffix"));
+        }
+        let chunks = ["a", "+", "%", "0", "f", "é", "🕰", "\0"];
+        for mut seed in 0..chunks.len().pow(5) {
+            let mut input = String::new();
+            for _ in 0..5 {
+                input.push_str(chunks[seed % chunks.len()]);
+                seed /= chunks.len();
+            }
+            check(&input);
+        }
+        for tail in ["", "%", "%ff", "%20", "%C3%A9"] {
+            check(&alloc::format!("{}{tail}", "a".repeat(16384)));
+            check(&alloc::format!("{}{tail}", "%20".repeat(16384)));
+        }
     }
 
     #[test]

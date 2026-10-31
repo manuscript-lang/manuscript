@@ -5,7 +5,7 @@ description: Write a Manuscript design proposal grounded in the existing languag
 
 # Author a proposal
 
-Use whenever you write or revise a design proposal. Store it in the repo as `proposals/<kebab-name>.md` (in the change's PR or its own); update it in place and record the decision in Status. This includes the short proposal AGENTS.md requires before a cross-package change. Follow [manuscript-change](../manuscript-change/SKILL.md) and [language-design-taste](../language-design-taste/SKILL.md).
+Use whenever you write or revise a design proposal. Store it in the repo as `proposals/<kebab-name>.md` (in the change's PR or its own); update it in place and record the decision in Status. This includes the short proposal AGENTS.md requires before a cross-package change. Follow [manuscript-change](../manuscript-change/SKILL.md) and [language-design](../language-design/SKILL.md).
 
 The default design is no new syntax, no new type, and no new keyword. Earn each addition.
 

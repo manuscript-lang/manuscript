@@ -29,5 +29,7 @@ Use these four sections, in this order, then Documentation and Compatibility lin
 
 - Open every PR ready for review, not as a draft, and enable squash auto-merge in the same step so it lands when required checks pass. The owner does not review PRs; an independent reviewer subagent challenges a structural proposal before implementation (see [AGENTS.md](../../AGENTS.md#shared-guidance-and-checks)).
 - Auto-merge only waits for green CI, so keep the PR green: watch it, merge or rebase `main` on conflicts, and fix failures from the cause rather than re-running.
+- For host-specific changes, dispatch the full `cicd.yml` matrix on the branch and read the Windows result before closing the issue ([why](../../wiki/repository/pr-checks-skip-windows-so-dispatch-the-full-matrix.md)).
+- If the user holds a PR, turn off its auto-merge and say so.
 - A merge queue may be required. Do not bypass it or merge by hand while checks are pending.
 - Keep a PR small enough that its CI stays meaningful: the corpus runs in four shards and tests in two partitions, so a PR that touches many crates waits on the slowest job.

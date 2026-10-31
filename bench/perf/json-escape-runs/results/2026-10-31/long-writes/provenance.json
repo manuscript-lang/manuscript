@@ -1,0 +1,37 @@
+{
+  "driver_sha256": "c79da56aa7678bf94e6349e0200c6b406d957fe556baaaeb48221c43d5c981b6",
+  "input_summary_sha256": "5be7b0239e814e0dfec545e97e4fd71e1f95b91c0d8de44858d794450a8db240",
+  "command": [
+    "bench/perf/json-library/focused.py",
+    "--before",
+    ".artifacts/escape-runs/before",
+    "--after",
+    ".artifacts/escape-runs/after",
+    "--summary",
+    ".artifacts/escape-runs/full/summary.json",
+    "--output",
+    ".artifacts/escape-runs/long-writes",
+    "--cases",
+    "empty",
+    "tiny",
+    "ascii",
+    "unicode",
+    "escapes",
+    "integers",
+    "decimals",
+    "hard-floats",
+    "--operation",
+    "write"
+  ],
+  "cases": [
+    "empty",
+    "tiny",
+    "ascii",
+    "unicode",
+    "escapes",
+    "integers",
+    "decimals",
+    "hard-floats"
+  ],
+  "operation": "write"
+}

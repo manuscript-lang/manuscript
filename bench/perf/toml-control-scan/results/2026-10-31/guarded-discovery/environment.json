@@ -1,0 +1,47 @@
+{
+  "revision": "26d586480a0aa786035d3def7bfe47651c96e297",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "before_toml_sha256": "2eb4e52f3248829ac728d0a8847f987ba2a6b4ac9c728cee10c3eb41729cf4c5",
+  "after_toml_sha256": "0f945e6f4536a2f87828935049e21bd2c292bf8e056c91a9d97022fa0cc2c7be",
+  "binaries": {
+    "before": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/final-before",
+      "sha256": "0269ce5697a4a3774424a2ca6855e30b74a9b17519ecd2389a908d1e04ad2ea9"
+    },
+    "after": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/final-after",
+      "sha256": "f60af392d846040ed2497793bd8cc8d4a0ddeb88e74e50e17b535608d8f96e5b"
+    },
+    "rust": {
+      "path": "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/toml-parser-control",
+      "sha256": "6f6708e4b7aac6d8ef2e76c5c188feceb1f9f4bafcae1b467041e0f4afe9252e"
+    }
+  },
+  "error_binaries": {
+    "before": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/error-before",
+      "sha256": "771534bc95ae4f0ee1f68847eed00377f80eef43acfa0dd4553a0cf1fde75854"
+    },
+    "after": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/error-after",
+      "sha256": "4c4eb9ef5f3b109272da36e20cf37df31fba11728adef2cc71f32d20fea5076e"
+    }
+  },
+  "source_and_runtime_sha256": {
+    "bench/perf/toml-control-scan/main.ms": "ddf2e0201cf26665445c7f0ecf837e8b103b3ec4e82de5723c532b557dbfe147",
+    "bench/perf/toml-control-scan/error.ms": "86ee3a0c797f80078776f535635fe743e9bbce22442f0af9108b0e3bb37bac7e",
+    "bench/perf/toml-control-scan/run.py": "114205b01c4d13566c4ab3d7665f65e8fafb776c118343a0b7e919d78887db42",
+    "bench/perf/toml-control-scan/rust/src/main.rs": "74b57ae55d5d8eaa46bf6a6ddaf3214b9c17d764be79ea7a4bac949efb3652ae",
+    "bench/perf/toml-control-scan/rust/Cargo.toml": "ef79c60baceaaa7ba8eb9ca85dfff347733fdc5723c0500626d4dbc34ee12798",
+    "bench/perf/toml-control-scan/rust/Cargo.lock": "21b823c8a50ae6ef118aaaae5bcbce499e870ad5a30ed65d7c284ff8c2b056f2",
+    "Cargo.lock": "998cb7c3e0e21215625429800b7d885428c8f4f32388dba45dcc5abfd3f6f6e3",
+    "rust-toolchain.toml": "7f5140056a968f51f7a91e1d73fd6b8c226054ecb5c6d39e791de484f9616457",
+    ".cargo/config.toml": "c411c17fbefc5c7148567d4a348fbf29cde557426121c29c6ae0525fbbd8c34e",
+    "scripts/lld.lock": "6026878d9013e192ec3d1fc384691808383f0593d386d52b5faa2ca2d903fa41",
+    "target/ms-native/libms_native.a": "d404441191788e45de9570a36800336746c59fd6444149556141b0ac7c5fd4f9"
+  },
+  "build": "cargo xtask runtime; cargo build --release --locked -p ms-cli; ms build each unchanged source producer --build-type Release; Rust standalone Cargo release opt-level3 panic=abort with repository frame pointers",
+  "trials": 12,
+  "note": "Valid string-table parse+stringify: full equivalent values, possible different TOML quoting. Errors compare exact MS diagnostics only, no unmatched Rust error ratio. Setup outside timer, full output checks inside."
+}

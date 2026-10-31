@@ -15,7 +15,7 @@ import (
 ) from "@std/log.ms"
 import WriteStream, IoError from "@std/io.ms"
 import JsonValue from "@std/json.ms"
-import filesystem, FileSystemError from "@std/fs.ms"
+import FileSystemError, read_file, temporary from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
 import MemoryStream from "./support/streams.ms"
 
@@ -158,8 +158,7 @@ test "transport closure and stream errors preserve identity":
     try expect_equal(logger.flush(), closed)
 
 test "file transport appends and flushes with scoped cleanup":
-    let fs = filesystem()
-    let directory = try fs.temporary("manuscript-log-")
+    let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/events.ndjson"
     var transport = try file_transport(path)
     let logger = try create(transport, timestamp: false)
@@ -172,7 +171,7 @@ test "file transport appends and flushes with scoped cleanup":
     try logger.warn("second")
     transport2.close()
 
-    let data = try fs.read_file(path)
+    let data = try read_file(path)
     try expect_false(
         (
             data.decode_utf8() != "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"

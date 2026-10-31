@@ -1,7 +1,7 @@
 # Runs the packaged ms for this host (built by package.ms) on the hello example, from a path that
 # contains spaces. Usage: ms run tools/dist-check.ms
 import dist_arch, dist_os, host, note, run, capture from "./lib.ms"
-import filesystem from "@std/fs.ms"
+import create_directory, temporary from "@std/fs.ms"
 import stdout from "@std/io.ms"
 
 export fn main() Int:
@@ -10,10 +10,9 @@ export fn main() Int:
         return 1
 
     let name = "manuscript-rust-{dist_os()}-{dist_arch()}"
-    let fs = filesystem()
-    let staging = fs.temporary("ms-dist-check-").get()
+    let staging = temporary("ms-dist-check-").get()
     let base = "{staging.path()}/extracted distribution"
-    fs.create_directory(base, recursive: true).get()
+    create_directory(base, recursive: true).get()
 
     var code = run("tar", ["-xzf", "dist/{name}.tar.gz", "-C", base.clone()])
     if code != 0: return code

@@ -1,4 +1,4 @@
-import filesystem from "@std/fs.ms"
+import read_file from "@std/fs.ms"
 import stdout from "@std/io.ms"
 import parse, stringify, JsonValue from "@std/json.ms"
 import arguments from "@std/process.ms"
@@ -60,7 +60,7 @@ fn bench_one(name: String, op: String, budget: Int, runs: Int) Unit:
         bench_records(budget, runs)
         return
 
-    let read = filesystem().read_file("bench/perf/json/data/{name}.json")
+    let read = read_file("bench/perf/json/data/{name}.json")
 
     if let bytes = read:
         if let text = bytes.decode_utf8():

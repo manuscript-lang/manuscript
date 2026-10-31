@@ -13,7 +13,7 @@ import (
 import TextError from "@std/core.ms"
 import network, Connection from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
-import filesystem from "@std/fs.ms"
+import read_file, temporary, write_file_bytes from "@std/fs.ms"
 import sleep from "@std/time.ms"
 
 fn ok_route(request: HttpRequest) HttpResponse:
@@ -82,18 +82,17 @@ fn expect_file_reply(conn: Connection) Unit!:
 
 test "serve answers requests while handlers read and write files":
     let net = network()
-    let fs = filesystem()
-    var dir = fs.temporary("ms-http-io") | try expect_ok
+    var dir = temporary("ms-http-io") | try expect_ok
     let root = dir.path()
     let payload = ("0123456789abcdef".repeat(262144) | try expect_ok).to_bytes()
 
     fn io_route(request: HttpRequest) HttpResponse:
         let path = "{root}/slot{request.query}.bin"
-        let wrote = filesystem().write_file_bytes(path, payload.clone(), replace: true)
+        let wrote = write_file_bytes(path, payload.clone(), replace: true)
         if wrote.is_error():
             return HttpResponse(500, headers(), "write".to_bytes())
 
-        let read = filesystem().read_file(path)
+        let read = read_file(path)
         if read.is_error():
             return HttpResponse(500, headers(), "read".to_bytes())
 

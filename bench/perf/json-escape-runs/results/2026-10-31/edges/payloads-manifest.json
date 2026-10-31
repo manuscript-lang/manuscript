@@ -1,0 +1,38 @@
+{
+  "compressed_sha256": "d3af9f5f0faadbcf6206d6d15ab2f4554c617050c6046d9f02a032e8bbdcd2ce",
+  "uncompressed_sha256": "87c5095942a10ee061dee942a12df18d6a99e1e22c1d3659890bb4f144af8ea9",
+  "files": {
+    "thresholds-rust.json": {
+      "bytes": 17470,
+      "sha256": "88c9b34828cc042378f2d18118921507a7bddf9c23ec73f6b136e4e399882a83"
+    },
+    "thresholds-ms.json": {
+      "bytes": 17639,
+      "sha256": "b982332a7fa5965e8ccf00b31d825bdcf39c3c87b6b6352c0b11c42775f6c02b"
+    },
+    "whole-rust.json": {
+      "bytes": 23329,
+      "sha256": "cbe48db99855efdd8c0fe9c646170f9c92edac98f4ed40104f7b8c683420bad1"
+    },
+    "midrange-ms.json": {
+      "bytes": 19354,
+      "sha256": "eb737bde51ac42a0350ebba22733a90b4db04cb0319af6168aaf34fc219d5a09"
+    },
+    "halfway-rust.json": {
+      "bytes": 16559,
+      "sha256": "cee75f07887f07c49f449d8a145f1e1edac7eb2956b05a7fb4296647bbbc3e14"
+    },
+    "midrange-rust.json": {
+      "bytes": 19354,
+      "sha256": "0c160d794a3c6f0124016c23141d5e14c028470eb48bcb9dfca334f39a473446"
+    },
+    "whole-ms.json": {
+      "bytes": 19741,
+      "sha256": "ffb059b1bdb750b2e2328452577b0fbe142e3f0252aae4a314c7398eca050b68"
+    },
+    "halfway-ms.json": {
+      "bytes": 16559,
+      "sha256": "61834ebed8a6d4d5fa8e058a7a8ca9fc2ce4e1f4e040418465073026d0f8d78c"
+    }
+  }
+}

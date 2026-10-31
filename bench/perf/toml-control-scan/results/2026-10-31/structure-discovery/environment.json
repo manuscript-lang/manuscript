@@ -1,0 +1,18 @@
+{
+  "binaries": {
+    "before": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-latest-before",
+      "sha256": "4eef203b38e09c96cc6cfc64d249d2980f25ce0c08bcafb0e9dbdfa1c22cd972"
+    },
+    "after": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-latest-after",
+      "sha256": "e321df9a7b3ded3b34b574eba6dfd263c0fbad3ea29a16437cdc2ebf984ca4c3"
+    },
+    "rust": {
+      "path": "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/file",
+      "sha256": "db46b21bb7225895b0bf97f429033764eb02e2a6a19ee6389e9f358f662aeed7"
+    }
+  },
+  "driver_sha256": "52e798b93e4560022c49c67ed3997375ce4a9eb2a794290f7d7bc3d15e48a1ac",
+  "note": "Fresh discovery only; cached-file input each iteration; per-producer counts, six balanced three-label trials."
+}

@@ -1,7 +1,7 @@
 # Reports build prerequisites without downloading or changing the checkout (`make doctor`).
 # Usage: ms run tools/doctor.ms
 import env, host, works, capture from "./lib.ms"
-import filesystem from "@std/fs.ms"
+import read_file from "@std/fs.ms"
 import stdout from "@std/io.ms"
 
 fn say(ok: Bool, ok_text: String, missing_text: String) Bool:
@@ -25,14 +25,7 @@ export fn main() Int:
     for command in ["git", "tar"]:
         if not say(works(command, ["--version"]), command, command): failed += 1
 
-    let expected_node = (
-        filesystem()
-        .read_file(".node-version")
-        .get()
-        .decode_utf8()
-        .get("")
-        .trim()
-    )
+    let expected_node = read_file(".node-version").get().decode_utf8().get("").trim()
     let node = capture("node", ["--version"]).trim()
     if not say(
         node == "v{expected_node}", "Node {expected_node}",

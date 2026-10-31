@@ -167,8 +167,8 @@ pub fn chmod_link(path: &CPath, mode: u32) -> Result<(), Errno> {
     }
 }
 
-/// Go's text for an errno (`syscall.Errno.Error`); `None` for codes Go has no wording for.
-pub fn go_text(e: Errno) -> Option<&'static str> {
+/// Fixed wording for an errno, the same on every Unix; `None` for codes without one.
+pub fn errno_text(e: Errno) -> Option<&'static str> {
     Some(match e {
         libc::EPERM => "operation not permitted",
         libc::ENOENT => "no such file or directory",

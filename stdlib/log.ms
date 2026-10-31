@@ -4,7 +4,7 @@ import WriteStream from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
-import FileHandle, FileSystemError, filesystem from "@std/fs.ms"
+import FileHandle, FileSystemError, open from "@std/fs.ms"
 import stdout from "@std/io.ms"
 import stringify from "@std/json.ms"
 import wall_clock from "@std/time.ms"
@@ -296,7 +296,7 @@ export fn stdout_transport() Transport:
 
 # Appends log records to a file at `path`.
 export fn file_transport(path: String) Transport!LogError:
-    match filesystem().open(path, "a", 420):
+    match open(path, "a", 420):
         ok(file): return ok(file_stream_transport(file))
         error(cause): return error(LogError.FileSystem(cause))
 

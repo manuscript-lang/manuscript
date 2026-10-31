@@ -132,7 +132,7 @@ export type FileInfo:
     gid: Int
 
 # Filesystem operations and resource factories for the current host.
-export interface FileSystem:
+interface FileSystem:
     # Opens a path using host flag bits in 0..2147483647 and permission bits in 0..4095.
     # Use fs.constants() on this host; unknown bits/combinations are left to the OS.
     fn open_flags(path: String, flags: Int, mode: Int) FileHandle!FileSystemError
@@ -624,9 +624,216 @@ impl Error for FileSystemError:
             Closed: return "filesystem: resource is closed"
             Failed(message): return message.clone()
 
-# Returns filesystem operations for the current host.
-export fn filesystem() FileSystem:
+# The filesystem of the current host.
+fn host() FileSystem:
     return msstd_fs_filesystem()
+
+# Opens a path using host flag bits in 0..2147483647 and permission bits in 0..4095.
+# Use fs.constants() on this host; unknown bits/combinations are left to the OS.
+export fn open_flags(path: String, flags: Int, mode: Int) FileHandle!FileSystemError:
+    return host().open_flags(path, flags, mode)
+
+# Returns entries matching the supplied include and exclude patterns.
+export fn glob_entries(
+    path: String,
+    options: GlobOptions,
+    exclude: (fn(PathEntry) Bool)?
+) List[PathEntry]!FileSystemError:
+    return host().glob_entries(path, options, exclude)
+
+# Copies a file or tree according to the supplied replacement and size policies.
+export fn copy(
+    source: String,
+    destination: String,
+    options: CopyOptions,
+    filter: (fn(String, String) Bool)?
+) Unit!FileSystemError:
+    return host().copy(source, destination, options, filter)
+
+# Watches native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows); overflow is exactly `error` or `ignore` (case-sensitive).
+# Other policies return InvalidInput. `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts and failing with LimitExceeded, the same on every platform; `max_events` bounds queued events.
+export fn watch_native(
+    path: String,
+    recursive: Bool,
+    max_entries: Int?,
+    max_events: Int?,
+    overflow: String
+) FileWatcher!FileSystemError:
+    return host().watch_native(path, recursive, max_entries, max_events, overflow)
+
+# Resolves symlinks and returns the canonical absolute path.
+export fn canonicalize(path: String) String!FileSystemError:
+    return host().canonicalize(path)
+
+# Copies one file; replace defaults to False, refusing an existing destination.
+export fn copy_file(
+    source: String,
+    destination: String,
+    replace: Bool = false,
+    max_bytes: Int?
+) Unit!FileSystemError:
+    return host().copy_file(source, destination, replace, max_bytes)
+
+# Creates one directory; recursive defaults to False, requiring its parent to exist.
+export fn create_directory(path: String, recursive: Bool = false) Unit!FileSystemError:
+    return host().create_directory(path, recursive)
+
+# Creates a symbolic link at `path` pointing to `target`.
+export fn create_link(path: String, target: String) Unit!FileSystemError:
+    return host().create_link(path, target)
+
+# Lists a directory, optionally limiting the number of returned entries.
+# A name that is not valid UTF-8 is listed with U+FFFD in place of each invalid byte, so it no longer addresses the entry. The same holds for `glob`, `glob_entries`, `stat` names and directory cursors.
+export fn list(path: String, max_entries: Int?) List[DirectoryEntry]!FileSystemError:
+    return host().list(path, max_entries)
+
+# Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
+export fn read_file(path: String, max_bytes: Int?) Bytes!FileSystemError:
+    return host().read_file(path, max_bytes)
+
+# Returns the target text stored in the symbolic link at `path`, without resolving it.
+# A path that is not a link returns InvalidInput.
+export fn read_link(path: String) String!FileSystemError:
+    return host().read_link(path)
+
+# Removes a file or empty directory; recursive defaults to False, retaining nonempty trees.
+# A missing path returns NotFound, except that a recursive removal of a missing path succeeds.
+export fn remove(path: String, recursive: Bool = false) Unit!FileSystemError:
+    return host().remove(path, recursive)
+
+# Moves `source` to `destination` using the operating system's rename, applying its rules for replacing an existing destination.
+# It never falls back to copying, so a move across devices returns an error.
+export fn rename(source: String, destination: String) Unit!FileSystemError:
+    return host().rename(source, destination)
+
+# Returns metadata for `path`. `follow_links` True describes the link target and False describes the link itself.
+export fn stat(path: String, follow_links: Bool) FileInfo!FileSystemError:
+    return host().stat(path, follow_links)
+
+# Queries the host temp root without creating or checking a directory.
+export fn temporary_root() String!FileSystemError:
+    return host().temporary_root()
+
+# Creates a new directory under the host temp root; the caller must remove it.
+# Prefix must be nonempty and contain no slash, backslash, or NUL.
+export fn temporary_directory(prefix: String) String!FileSystemError:
+    return host().temporary_directory(prefix)
+
+# Creates a file exclusively; replace defaults to False, retaining an existing file.
+export fn write_file(
+    path: String,
+    data: String,
+    replace: Bool = false
+) Unit!FileSystemError:
+    return host().write_file(path, data, replace)
+
+# Creates a file exclusively from raw bytes; replace defaults to False, retaining an existing file.
+export fn write_file_bytes(
+    path: String,
+    data: Bytes,
+    replace: Bool = false
+) Unit!FileSystemError:
+    return host().write_file_bytes(path, data, replace)
+
+# Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined bits.
+# Native permissions and Windows access policy still apply.
+export fn access(path: String, mode: Int) Unit!FileSystemError:
+    return host().access(path, mode)
+
+# Appends `data` to the end of the file, creating it with mode 0600 when absent. Writes every byte or fails, possibly leaving a partial append.
+export fn append_file(path: String, data: String) Unit!FileSystemError:
+    return host().append_file(path, data)
+
+# Appends raw bytes to the end of the file, with the same creation and partial-write rules as append_file.
+export fn append_file_bytes(path: String, data: Bytes) Unit!FileSystemError:
+    return host().append_file_bytes(path, data)
+
+# Changes target permissions with mode 0..4095; follows a final symbolic link.
+export fn chmod(path: String, mode: Int) Unit!FileSystemError:
+    return host().chmod(path, mode)
+
+# Sets the owning user and group of `path` by numeric id; -1 leaves that id unchanged.
+# `follow_links` chooses the link target (True) or the link itself (False). Usually needs privilege, and Windows returns Unsupported.
+export fn chown(
+    path: String,
+    uid: Int,
+    gid: Int,
+    follow_links: Bool
+) Unit!FileSystemError:
+    return host().chown(path, uid, gid, follow_links)
+
+# Sets the target size in bytes; follows a final symbolic link.
+export fn truncate(path: String, size: Int) Unit!FileSystemError:
+    return host().truncate(path, size)
+
+# Sets the access and modification times of `path`.
+# `follow_links` chooses the link target (True) or the link itself (False); no-follow updates return Unsupported where the host lacks them, such as Windows.
+export fn set_times(
+    path: String,
+    accessed: Timestamp,
+    modified: Timestamp,
+    follow_links: Bool
+) Unit!FileSystemError:
+    return host().set_times(path, accessed, modified, follow_links)
+
+# Creates `destination` as another name for the file at `source`.
+# An existing destination returns AlreadyExists; it must be on the same filesystem as `source`.
+export fn hard_link(source: String, destination: String) Unit!FileSystemError:
+    return host().hard_link(source, destination)
+
+# Opens with exactly r, r+, w, wx, w+, wx+, a, ax, a+, or ax+; other strings return InvalidInput.
+# Mode is permission bits in 0..4095, applied on creation subject to umask/OS policy.
+export fn open(path: String, flags: String, mode: Int) FileHandle!FileSystemError:
+    return host().open(path, flags, mode)
+
+# Opens `path` as a directory cursor that yields one child per `read` in native order; close it when done.
+# A path that is not a directory returns InvalidInput.
+export fn open_directory(path: String) Directory!FileSystemError:
+    return host().open_directory(path)
+
+# Copies a tree; replace defaults to False, refusing existing destinations.
+# Entry and byte limits remain separate and apply cumulatively across the copy.
+export fn copy_tree(
+    source: String,
+    destination: String,
+    replace: Bool = false,
+    max_entries: Int?,
+    max_bytes: Int?
+) Unit!FileSystemError:
+    return host().copy_tree(source, destination, replace, max_entries, max_bytes)
+
+# Returns the sorted relative paths under `path` matching `pattern`, without following directory symlinks.
+# A malformed pattern, or one over 4096 bytes, or a negative `max_entries` returns InvalidInput. Matches beyond `max_entries` return LimitExceeded.
+export fn glob(
+    path: String,
+    pattern: String,
+    max_entries: Int?
+) List[String]!FileSystemError:
+    return host().glob(path, pattern, max_entries)
+
+# Returns a polling watcher that compares snapshots of `path` every `interval`, which must be positive.
+# `max_entries` bounds the tracked paths; exceeding it returns LimitExceeded. Transient changes between polls can be missed.
+export fn watch(
+    path: String,
+    recursive: Bool,
+    interval: Duration,
+    max_entries: Int?
+) FileWatcher!FileSystemError:
+    return host().watch(path, recursive, interval, max_entries)
+
+# Creates a new temp directory whose contents are removed by scoped close.
+# Prefix has the same validation as temporary_directory; this does not query the temp root.
+export fn temporary(prefix: String) TemporaryDirectory!FileSystemError:
+    return host().temporary(prefix)
+
+# Returns capacity and free-space statistics for the filesystem containing `path`.
+# Hosts without the query return Unsupported.
+export fn stat_filesystem(path: String) FileSystemInfo!FileSystemError:
+    return host().stat_filesystem(path)
+
+# Changes the link itself without following it; Unsupported on hosts lacking this operation.
+export fn chmod_link(path: String, mode: Int) Unit!FileSystemError:
+    return host().chmod_link(path, mode)
 
 # Errors returned when a path cannot be parsed or resolved.
 export type PathError:

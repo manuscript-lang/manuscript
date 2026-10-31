@@ -1,0 +1,14 @@
+{
+  "source_revision": "741707912c768f30fb9750d665a900f56826d07d",
+  "base_revision": "1b1a0359806e2a23e37190ba12d1063e4d16301f",
+  "native_baseline_revision": "28946f9c42b48eff4b79a01edc2130bd92c82133",
+  "artifacts": {
+    "compiler": "279c8a640ac9aa7b46c6535028b230f8db3905518459b08b09f67fabca0e68d3",
+    "native_before": "9f4313e5ed42a5b7c5c1d5eee08968c145f8f7b2d0203b6a9285c8d01f4139e5",
+    "native_after": "6fe6b54d0139db1baffe8f9c4ceefa4eaa8a74228a5c39a07ce00e39e58edf09",
+    "url_before": "d5db62a0f0cfd2b93b7a781604375faf162523d4de68ba8bee5ec525c917b885",
+    "url_after": "92a53bd006decb9c8f357db1f4825f402aa013ba11ee4e1864a82143d09b7882",
+    "rust": "e8ecaffd7043c1d94d9d66c5a7ce81b48f5a2bf4cd0712c83093319b9755a70e"
+  },
+  "url_source_sha256": "de5d743f84f32decf5e8dfa45c40eb6fa6a4e7c74081017422e70e3eb394dd46"
+}

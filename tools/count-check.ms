@@ -6,7 +6,7 @@
 # MS names the ms that runs the programs (default target/release/ms).
 # Usage: ms run tools/count-check.ms [-- files]
 import env, exe, host, use_stats_runtime from "./lib.ms"
-import filesystem from "@std/fs.ms"
+import glob, read_file, temporary from "@std/fs.ms"
 import arguments, commands, control from "@std/process.ms"
 import stdout from "@std/io.ms"
 
@@ -27,7 +27,7 @@ export fn main() Int:
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
     if files.length() == 0:
-        for f in filesystem().glob("tests/ownership-counts", "*.ms").get(List[String]()): files.append(
+        for f in glob("tests/ownership-counts", "*.ms").get(List[String]()): files.append(
             "tests/ownership-counts/{f}"
         )
 
@@ -43,14 +43,14 @@ export fn main() Int:
         startup_bytes = 16
 
     let ms = env("MS", "{root}/target/release/ms{exe()}")
-    let scratch = filesystem().temporary("ms-counts-").get()
+    let scratch = temporary("ms-counts-").get()
     control().change_directory(scratch.path()).get()
 
     var failures = 0
     var checked = 0
 
     for f in files:
-        let source = filesystem().read_file("{root}/{f}").get().decode_utf8().get("")
+        let source = read_file("{root}/{f}").get().decode_utf8().get("")
         let expected_out = after(source, "# expect-stdout: ")
 
         for build in ["debug", "release"]:

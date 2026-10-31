@@ -4,46 +4,44 @@ import CompressionFormat from "@std/archive.ms"
 import HashAlgorithm, sha256 from "@std/crypto.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
-import filesystem from "@std/fs.ms"
+import open, read_file, temporary from "@std/fs.ms"
 import expect_ok from "@std/test.ms"
 
 fn upper(chunk: Bytes) Bytes:
     return chunk.decode_utf8().get("").upper().to_bytes()
 
 test "flows compose stream transforms":
-    let fs = filesystem()
-    let temporary = fs.temporary("manuscript-streams-") | try expect_ok
+    let temporary = temporary("manuscript-streams-") | try expect_ok
     let path = "{temporary.path()}/pipeline.bin"
-    var output = fs.open(path: path, flags: "w", mode: 420) | try expect_ok
+    var output = open(path: path, flags: "w", mode: 420) | try expect_ok
     let source = from_bytes("hello world".to_bytes(), 4)
     let copied = source | map(upper) | take(8) | try copy(output.writer())
     try output.close()
     if copied != 8: return panic("byte count")
-    if (fs.read_file(path: path) | try expect_ok) != "HELLO WO".to_bytes(): return panic(
+    if (read_file(path: path) | try expect_ok) != "HELLO WO".to_bytes(): return panic(
         "pipeline output"
     )
 
 test "concat tee and writer helpers":
-    let fs = filesystem()
-    let temporary = fs.temporary("manuscript-streams-") | try expect_ok
+    let temporary = temporary("manuscript-streams-") | try expect_ok
     let log_path = "{temporary.path()}/tee.bin"
-    var log = fs.open(path: log_path, flags: "w", mode: 420) | try expect_ok
+    var log = open(path: log_path, flags: "w", mode: 420) | try expect_ok
     let joined = concat([from_bytes("ab".to_bytes()), from_bytes("cd".to_bytes())])
     let seen = tee(joined, log.writer())
     if (try read_all(seen)) != "abcd".to_bytes(): return panic("concat")
 
     try log.close()
-    if (fs.read_file(path: log_path) | try expect_ok) != "abcd".to_bytes(): return panic(
+    if (read_file(path: log_path) | try expect_ok) != "abcd".to_bytes(): return panic(
         "tee"
     )
 
     let sink_path = "{temporary.path()}/writer.bin"
-    var sink = fs.open(path: sink_path, flags: "w", mode: 420) | try expect_ok
+    var sink = open(path: sink_path, flags: "w", mode: 420) | try expect_ok
     var writer = map_writer(sink.writer(), upper)
     try writer.write("quiet")
     try writer.write_bytes("!".to_bytes())
     try sink.close()
-    if (fs.read_file(path: sink_path) | try expect_ok) != "QUIET!".to_bytes(): return panic(
+    if (read_file(path: sink_path) | try expect_ok) != "QUIET!".to_bytes(): return panic(
         "map_writer"
     )
 

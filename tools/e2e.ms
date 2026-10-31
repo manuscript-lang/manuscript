@@ -7,7 +7,7 @@
 # fixtures need to finish quickly); E2E_JOBS the number of parallel workers.
 # Usage: ms run tools/e2e.ms [-- fixture paths to run instead]
 import env, exe, host, note, run from "./lib.ms"
-import DirectoryEntry, filesystem from "@std/fs.ms"
+import DirectoryEntry, access, list, read_file, stat from "@std/fs.ms"
 import CpuInfo, arguments, commands, control, system from "@std/process.ms"
 import TaskGroup, Task from "@std/tasks.ms"
 import stdout from "@std/io.ms"
@@ -39,7 +39,7 @@ fn read_expected(files: List[String]) Map[String, String]:
     var listed = Map[String, String]()
 
     for file in files:
-        let text = filesystem().read_file(file).get().decode_utf8().get("")
+        let text = read_file(file).get().decode_utf8().get("")
 
         for line in text.split("\n"):
             if line.starts_with("#") or line == "": continue
@@ -68,22 +68,19 @@ fn base(path: String) String:
 fn covered_by_corpus(ctx: Context, case_path: String) Bool:
     let parts = case_path.split("/")
     let twin = "tests/conformance/fixtures/e2e/{parts[parts.length() - 2]}/{parts[parts.length() - 1]}"
-    let fs = filesystem()
-    if not fs.access(twin, 0).is_ok(): return false
+    if not access(twin, 0).is_ok(): return false
     if ctx.expected.contains(case_path): return false
 
-    let lines = fs.read_file(twin).get().decode_utf8().get("").split("\n")
+    let lines = read_file(twin).get().decode_utf8().get("").split("\n")
     if not lines.contains("# conform: phase=test"): return false
     if lines.any(fn l: l.starts_with("# conform: tags=") and l.contains("aliasing")): return false
 
     let body = lines.filter(fn l: not l.starts_with("# conform:")).join("\n")
-    return body == fs.read_file(case_path).get().decode_utf8().get("")
+    return body == read_file(case_path).get().decode_utf8().get("")
 
 # Whether the project's tests pass, or its main.ms checks and prints expected-output.txt.
 fn project_passes(ctx: Context, dir: String) Ran:
-    let fs = filesystem()
-
-    if fs.access("{dir}/conformance_test.ms", 0).is_ok():
+    if access("{dir}/conformance_test.ms", 0).is_ok():
         control().change_directory(dir).get()
 
         let ran = exec(
@@ -95,13 +92,13 @@ fn project_passes(ctx: Context, dir: String) Ran:
         control().change_directory(back(dir)).get()
         return ran
 
-    if fs.access("{dir}/ms.toml", 0).is_ok(): return exec(
+    if access("{dir}/ms.toml", 0).is_ok(): return exec(
         ctx.ms, ["check", "{dir}/ms.toml"]
     )
 
     let checked = exec(ctx.ms, ["check", "{dir}/main.ms"])
     if checked.code != 0: return checked
-    if not fs.access("{dir}/expected-output.txt", 0).is_ok(): return checked
+    if not access("{dir}/expected-output.txt", 0).is_ok(): return checked
 
     control().change_directory(dir).get()
 
@@ -109,7 +106,7 @@ fn project_passes(ctx: Context, dir: String) Ran:
     control().change_directory(back(dir)).get()
     if ran.code != 0: return ran
 
-    let want = fs.read_file("{dir}/expected-output.txt").get().decode_utf8().get("")
+    let want = read_file("{dir}/expected-output.txt").get().decode_utf8().get("")
     if ran.output == want: return ran
 
     return Ran(1, "output differs from expected-output.txt\n")
@@ -208,7 +205,7 @@ fn check_test_fixture(ctx: Context, case_path: String) List[String]:
 
 fn ms_files(dir: String) List[String]:
     var names = List[String]()
-    for entry in filesystem().list(dir).get(List[DirectoryEntry]()):
+    for entry in list(dir).get(List[DirectoryEntry]()):
         if entry.name.ends_with(".ms") and not entry.directory: names.append(
             "{dir}/{entry.name}"
         )
@@ -247,15 +244,13 @@ export fn main() Int:
 
         for f in ms_files("tests/e2e/testdata/reject"): fixtures.append(f.clone())
 
-        for entry in filesystem().list("tests/e2e/testdata/projects").get(
-            List[DirectoryEntry]()
-        ):
+        for entry in list("tests/e2e/testdata/projects").get(List[DirectoryEntry]()):
             let path = "tests/e2e/testdata/projects/{entry.name}"
             projects.append(path.clone())
 
         for dir in projects.sorted(fn(a: String, b: String) Int: a.compare(b)):
             fixtures.append(dir.clone())
-            if filesystem().stat(dir.clone(), true).get().directory:
+            if stat(dir.clone(), true).get().directory:
                 for f in ms_files(dir):
                     if base(f).starts_with("reject_"): fixtures.append(f.clone())
 

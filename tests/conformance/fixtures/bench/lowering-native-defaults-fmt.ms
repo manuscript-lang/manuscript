@@ -6,7 +6,7 @@ import CsvOptions from "@std/csv.ms"
 import Bytes from "@std/bytes.ms"
 import commands, CommandOutput, CommandError from "@std/process.ms"
 import Duration from "@std/time.ms"
-import filesystem, FileSystem, FileSystemError from "@std/fs.ms"
+import write_file_bytes, FileSystemError from "@std/fs.ms"
 
 fn direct_explicit(data: Bytes) String: base64_encode(data, false)
 
@@ -41,13 +41,11 @@ fn command_bind() fn(
 ) CommandOutput!CommandError:
     return commands().run
 
-fn filesystem_setup() FileSystem: filesystem()
+fn filesystem_explicit(data: Bytes) Unit!FileSystemError:
+    return write_file_bytes("", data, false)
 
-fn filesystem_explicit(fs: FileSystem, data: Bytes) Unit!FileSystemError:
-    return fs.write_file_bytes("", data, false)
+fn filesystem_omitted(data: Bytes) Unit!FileSystemError:
+    return write_file_bytes("", data)
 
-fn filesystem_omitted(fs: FileSystem, data: Bytes) Unit!FileSystemError:
-    return fs.write_file_bytes("", data)
-
-fn filesystem_bind(fs: FileSystem) fn(String, Bytes, Bool) Unit!FileSystemError:
+fn filesystem_bind() fn(String, Bytes, Bool) Unit!FileSystemError:
     return fs.write_file

@@ -1,7 +1,7 @@
 # Shared helpers for the repository tools in this directory. Run a tool from the repository root
 # with `ms run tools/<name>.ms [-- arguments]`.
 import Stdio, commands, control, os_type from "@std/process.ms"
-import filesystem from "@std/fs.ms"
+import canonicalize, read_file from "@std/fs.ms"
 import stderr from "@std/io.ms"
 import hex_encode from "@std/encoding.ms"
 import sha256 from "@std/crypto.ms"
@@ -76,7 +76,7 @@ export fn works(program: String, arguments: List[String]) Bool:
 
 # The SHA-256 of the file at `path` as lowercase hex.
 export fn file_sha256(path: String) String:
-    let data = filesystem().read_file(path).get()
+    let data = read_file(path).get()
     return hex_encode(sha256(data))
 
 # The host triple's architecture field, as `rustc` reports it (`x86_64`, `aarch64`).
@@ -126,6 +126,6 @@ export fn use_stats_runtime() Int:
     code = run("cargo", ["xtask", "runtime"])
     if code != 0: return code
 
-    let lib = filesystem().canonicalize("{stats_target}/{release}/libms_native.a").get()
+    let lib = canonicalize("{stats_target}/{release}/libms_native.a").get()
     control().set_environment("MS_RT_LIB", lib).get()
     return 0

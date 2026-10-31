@@ -1,0 +1,23 @@
+{
+  "driver_sha256": "c79da56aa7678bf94e6349e0200c6b406d957fe556baaaeb48221c43d5c981b6",
+  "input_summary_sha256": "3897f9c246b8b87efe8651f82b464bd48cd2e066729c0698b49bf7c707218bf5",
+  "command": [
+    "bench/perf/json-library/focused.py",
+    "--before",
+    ".artifacts/json-library/main-before",
+    "--after",
+    ".artifacts/json-library/main-after",
+    "--summary",
+    ".artifacts/json-library/main-replay/summary.json",
+    "--output",
+    ".artifacts/json-library/main-tiny-parse",
+    "--cases",
+    "tiny",
+    "--operation",
+    "parse"
+  ],
+  "cases": [
+    "tiny"
+  ],
+  "operation": "parse"
+}

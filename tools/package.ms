@@ -3,7 +3,7 @@
 # each target builds it natively.
 # Usage: ms run tools/package.ms [-- OS ARCH]
 import capture, dist_arch, dist_os, file_sha256, note, run from "./lib.ms"
-import filesystem from "@std/fs.ms"
+import canonicalize, chmod, copy_file, create_directory, remove, temporary, write_file from "@std/fs.ms"
 import arguments, control from "@std/process.ms"
 import stdout from "@std/io.ms"
 
@@ -55,26 +55,23 @@ export fn main() Int:
     )
     if code != 0: return code
 
-    let fs = filesystem()
     let name = "manuscript-rust-{target_os}-{target_arch}"
-    fs.create_directory("dist", recursive: true).get()
+    create_directory("dist", recursive: true).get()
 
-    let staging = fs.temporary("ms-package-").get()
+    let staging = temporary("ms-package-").get()
     let bundle = "{staging.path()}/{name}"
-    fs.create_directory("{bundle}/examples/hello/src", recursive: true).get()
-    fs.copy_file("target/{triple}/release/{executable}", "{bundle}/{executable}").get()
-    fs.copy_file("examples/hello/ms.toml", "{bundle}/examples/hello/ms.toml").get()
-    fs.copy_file("examples/hello/test.ms", "{bundle}/examples/hello/test.ms").get()
-    fs.copy_file(
-        "examples/hello/src/main.ms", "{bundle}/examples/hello/src/main.ms"
-    ).get()
+    create_directory("{bundle}/examples/hello/src", recursive: true).get()
+    copy_file("target/{triple}/release/{executable}", "{bundle}/{executable}").get()
+    copy_file("examples/hello/ms.toml", "{bundle}/examples/hello/ms.toml").get()
+    copy_file("examples/hello/test.ms", "{bundle}/examples/hello/test.ms").get()
+    copy_file("examples/hello/src/main.ms", "{bundle}/examples/hello/src/main.ms").get()
 
     # `copy_file` writes private modes; the archive carries the usual ones.
     for dir in ["", "/examples", "/examples/hello", "/examples/hello/src"]:
-        fs.chmod("{bundle}{dir}", 493).get()
-    fs.chmod("{bundle}/{executable}", 493).get()
+        chmod("{bundle}{dir}", 493).get()
+    chmod("{bundle}/{executable}", 493).get()
     for file in ["ms.toml", "test.ms", "src/main.ms"]:
-        fs.chmod("{bundle}/examples/hello/{file}", 420).get()
+        chmod("{bundle}/examples/hello/{file}", 420).get()
 
     var archive = "dist/{name}.tar.gz"
     var archive_name = "{name}.tar.gz"
@@ -83,8 +80,8 @@ export fn main() Int:
         archive = "dist/{name}.zip"
         archive_name = "{name}.zip"
 
-        let _ = fs.remove(archive.clone(), recursive: false)
-        let zip_path = fs.canonicalize("dist").get()
+        let _ = remove(archive.clone(), recursive: false)
+        let zip_path = canonicalize("dist").get()
         control().change_directory(staging.path()).get()
         code = run(
             "7z",
@@ -98,6 +95,6 @@ export fn main() Int:
     if code != 0: return code
 
     let digest = file_sha256(archive)
-    fs.write_file("{archive}.sha256", "{digest}  {archive_name}\n", replace: true).get()
+    write_file("{archive}.sha256", "{digest}  {archive_name}\n", replace: true).get()
     stdout().write("{archive}\n").get()
     return 0

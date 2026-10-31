@@ -1,12 +1,17 @@
-//! Whole-build cache: a finished executable is reused when nothing that shapes it changed.
+//! Build cache: a finished executable is reused while the files it came from are unchanged.
 //!
-//! The key hashes the optimized module (including file names and lines), the build profile, the
-//! `ms` executable, the runtime archive, `--link` inputs, every codegen environment variable, the
-//! working directory (it is baked into debug info) and the output file name (the macOS debug
-//! companion names it). `MS_CACHE=off` skips the cache; `MS_CACHE=verify` rebuilds and compares.
+//! An entry is keyed by the cheap facts of a build (profile, output, working directory, codegen
+//! environment variables, the `ms` executable's and runtime's size and modification time). Its
+//! manifest lists every source file with the size and modification time it had; the entry is
+//! valid while all of them still match. Nothing is read or hashed, so a hit skips the whole
+//! front end. `MS_CACHE=off` skips the cache; `MS_CACHE=verify` rebuilds and compares.
+//!
+//! A new file that would shadow an imported one (a different resolution of the same import) is
+//! not noticed until some listed file changes; `MS_CACHE=off` or deleting `.ms-cache` covers it.
 
 use std::fmt::Write as _;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 
 use sha2::{Digest, Sha256};
 
@@ -18,6 +23,7 @@ const ENV: &[&str] = &[
     "MS_RT_HOT",
     "MS_VECTORIZE",
     "MS_KEEP_LL",
+    "MS_RT_LIB",
 ];
 
 /// How the cache is used for one build.
@@ -36,54 +42,91 @@ pub fn mode() -> Mode {
     }
 }
 
-struct Feed(Sha256);
-
-impl std::fmt::Write for Feed {
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
-        self.0.update(s.as_bytes());
-        Ok(())
-    }
+/// A file's modification time (nanoseconds since the epoch) and size.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Stamp {
+    pub mtime: u128,
+    pub size: u64,
 }
 
-fn file_hash(hasher: &mut Sha256, path: &Path) -> std::io::Result<()> {
-    use std::io::Read;
-    let mut file = std::fs::File::open(path)?;
-    let mut buffer = vec![0u8; 1 << 16];
-    loop {
-        let n = file.read(&mut buffer)?;
-        if n == 0 {
-            return Ok(());
-        }
-        hasher.update(&buffer[..n]);
+pub fn stamp(path: &Path) -> Option<Stamp> {
+    let meta = std::fs::metadata(path).ok()?;
+    if !meta.is_file() {
+        return None;
     }
+    let mtime = meta
+        .modified()
+        .ok()?
+        .duration_since(UNIX_EPOCH)
+        .ok()?
+        .as_nanos();
+    Some(Stamp {
+        mtime,
+        size: meta.len(),
+    })
 }
 
-/// The cache key, or `None` when an input cannot be read (the build then runs uncached).
-pub fn key(module: &[&str], profile: &str, output: &Path, inputs: &[&Path]) -> Option<String> {
-    let mut feed = Feed(Sha256::new());
-    let _ = write!(feed, "ms-build-cache-v1\n{profile}\n");
-    let _ = writeln!(feed, "{}", output.file_name()?.to_string_lossy());
-    let _ = writeln!(feed, "{}", std::env::current_dir().ok()?.display());
-    let _ = writeln!(feed, "{}", std::env::consts::OS);
+/// The entry name for a build: a digest of `parts`, the codegen environment, the working
+/// directory and the stamps of `inputs` (the `ms` executable, the runtime, `--link` files).
+/// `None` when an input cannot be stamped.
+pub fn key(parts: &[&str], inputs: &[&Path]) -> Option<String> {
+    let mut hasher = Sha256::new();
+    let mut text = String::from("ms-build-cache-v2\n");
+    for part in parts {
+        let _ = writeln!(text, "{part}");
+    }
+    let _ = writeln!(text, "{}", std::env::current_dir().ok()?.display());
+    let _ = writeln!(text, "{}", std::env::consts::OS);
     for name in ENV {
-        let _ = writeln!(feed, "{name}={:?}", std::env::var_os(name));
+        let _ = writeln!(text, "{name}={:?}", std::env::var_os(name));
     }
-    for part in module {
-        let _ = writeln!(feed, "{}", part.len());
-        let _ = feed.write_str(part);
-    }
-    let mut hasher = feed.0;
-    file_hash(&mut hasher, &std::env::current_exe().ok()?).ok()?;
     for input in inputs {
-        hasher.update(input.to_string_lossy().as_bytes());
-        file_hash(&mut hasher, input).ok()?;
+        let s = stamp(input)?;
+        let _ = writeln!(text, "{} {} {}", input.display(), s.mtime, s.size);
     }
-    let digest = hasher.finalize();
+    hasher.update(text.as_bytes());
     let mut hex = String::with_capacity(64);
-    for byte in digest {
+    for byte in hasher.finalize() {
         let _ = write!(hex, "{byte:02x}");
     }
     Some(hex)
+}
+
+/// A stored build whose sources are unchanged.
+pub struct Entry {
+    dir: PathBuf,
+    /// The source root recorded with the build (reported in `--json` output).
+    pub source_root: String,
+}
+
+fn parse(manifest: &str) -> Option<(String, Vec<(Stamp, &str)>)> {
+    let mut lines = manifest.lines();
+    let root = lines.next()?.to_string();
+    let mut files = Vec::new();
+    for line in lines {
+        let mut f = line.splitn(3, '\t');
+        let mtime = f.next()?.parse().ok()?;
+        let size = f.next()?.parse().ok()?;
+        files.push((Stamp { mtime, size }, f.next()?));
+    }
+    Some((root, files))
+}
+
+/// The entry for `key` in `dir` when every listed source still has its recorded stamp.
+pub fn lookup(dir: &Path, key: &str) -> Option<Entry> {
+    let entry = dir.join(key);
+    if !entry.join("exe").is_file() {
+        return None;
+    }
+    let manifest = std::fs::read_to_string(entry.join("manifest")).ok()?;
+    let (source_root, files) = parse(&manifest)?;
+    if files.is_empty() || files.iter().any(|(s, p)| stamp(Path::new(p)) != Some(*s)) {
+        return None;
+    }
+    Some(Entry {
+        dir: entry,
+        source_root,
+    })
 }
 
 fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
@@ -98,12 +141,28 @@ fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
     std::fs::copy(from, to).map(|_| ())
 }
 
-/// Stores the finished `executable` (and its debug companion) under `key`.
-pub fn store(dir: &Path, key: &str, executable: &Path, companion: Option<&Path>) {
-    let entry = dir.join(key);
-    if entry.exists() {
-        return;
+/// Stores the finished `executable` (and its debug companion) under `key`, valid while
+/// `sources` keep their stamps. Sources that cannot be stamped or named in the manifest make
+/// the build uncacheable.
+pub fn store(
+    dir: &Path,
+    key: &str,
+    source_root: &str,
+    sources: &[PathBuf],
+    executable: &Path,
+    companion: Option<&Path>,
+) {
+    let mut manifest = format!("{}\n", source_root.replace('\n', " "));
+    for source in sources {
+        let (Some(s), Some(text)) = (stamp(source), source.to_str()) else {
+            return;
+        };
+        if text.contains(['\n', '\t']) {
+            return;
+        }
+        let _ = writeln!(manifest, "{}\t{}\t{text}", s.mtime, s.size);
     }
+    let entry = dir.join(key);
     let staged = dir.join(format!(".{key}.{}", std::process::id()));
     let done = (|| -> std::io::Result<()> {
         std::fs::create_dir_all(&staged)?;
@@ -111,6 +170,8 @@ pub fn store(dir: &Path, key: &str, executable: &Path, companion: Option<&Path>)
         if let Some(companion) = companion.filter(|c| c.exists()) {
             copy_tree(companion, &staged.join("companion"))?;
         }
+        std::fs::write(staged.join("manifest"), manifest)?;
+        let _ = std::fs::remove_dir_all(&entry);
         std::fs::rename(&staged, &entry)
     })();
     if done.is_err() {
@@ -139,34 +200,41 @@ fn prune(dir: &Path, keep: usize) {
     }
 }
 
-/// Copies the cached entry for `key` to `staged` (and `companion`); `false` on any miss.
-pub fn restore(dir: &Path, key: &str, staged: &Path, companion: Option<&Path>) -> bool {
-    let entry = dir.join(key);
-    if !entry.join("exe").is_file() {
-        return false;
-    }
-    let restored = (|| -> std::io::Result<()> {
-        std::fs::copy(entry.join("exe"), staged)?;
-        if let Some(companion) = companion {
-            let cached = entry.join("companion");
-            if cached.exists() {
+impl Entry {
+    /// Copies the executable to `staged`, and the debug companion to `companion`, whose DWARF
+    /// resource is renamed after `staged` as the publication step expects. `false` on failure.
+    pub fn restore(&self, staged: &Path, companion: Option<&Path>) -> bool {
+        let restored = (|| -> std::io::Result<()> {
+            std::fs::copy(self.dir.join("exe"), staged)?;
+            let cached = self.dir.join("companion");
+            if let (Some(companion), true) = (companion, cached.exists()) {
                 copy_tree(&cached, companion)?;
+                let resources = companion.join("Contents/Resources/DWARF");
+                if let (Ok(mut found), Some(name)) =
+                    (std::fs::read_dir(&resources), staged.file_name())
+                    && let Some(Ok(only)) = found.next()
+                    && only.file_name() != name
+                {
+                    std::fs::rename(only.path(), resources.join(name))?;
+                }
             }
-        }
-        Ok(())
-    })();
-    restored.is_ok()
-}
+            Ok(())
+        })();
+        restored.is_ok()
+    }
 
-/// Whether two files have the same bytes.
-pub fn same_bytes(a: &Path, b: &Path) -> bool {
-    matches!((std::fs::read(a), std::fs::read(b)), (Ok(x), Ok(y)) if x == y)
+    /// Whether the stored executable has the same bytes as `built`.
+    pub fn matches(&self, built: &Path) -> bool {
+        matches!(
+            (std::fs::read(self.dir.join("exe")), std::fs::read(built)),
+            (Ok(x), Ok(y)) if x == y
+        )
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     fn scratch(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("ms-cache-test-{name}-{}", std::process::id()));
@@ -176,44 +244,66 @@ mod tests {
     }
 
     #[test]
-    fn key_depends_on_module_profile_output_and_inputs() {
+    fn key_depends_on_parts_and_input_stamps() {
         let dir = scratch("key");
         let input = dir.join("rt.a");
         std::fs::write(&input, b"one").unwrap();
-        let out = dir.join("prog");
-        let base = key(&["m"], "Debug", &out, &[&input]).unwrap();
-        assert_eq!(base, key(&["m"], "Debug", &out, &[&input]).unwrap());
-        assert_ne!(base, key(&["n"], "Debug", &out, &[&input]).unwrap());
-        assert_ne!(base, key(&["m"], "Release", &out, &[&input]).unwrap());
-        assert_ne!(
-            base,
-            key(&["m"], "Debug", &dir.join("other"), &[&input]).unwrap()
-        );
-        std::fs::write(&input, b"two").unwrap();
-        assert_ne!(base, key(&["m"], "Debug", &out, &[&input]).unwrap());
-        assert!(key(&["m"], "Debug", &out, &[&dir.join("missing")]).is_none());
+        let base = key(&["Debug", "out"], &[&input]).unwrap();
+        assert_eq!(base, key(&["Debug", "out"], &[&input]).unwrap());
+        assert_ne!(base, key(&["Release", "out"], &[&input]).unwrap());
+        assert_ne!(base, key(&["Debug", "other"], &[&input]).unwrap());
+        std::fs::write(&input, b"longer").unwrap();
+        assert_ne!(base, key(&["Debug", "out"], &[&input]).unwrap());
+        assert!(key(&["Debug"], &[&dir.join("missing")]).is_none());
         let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
-    fn stored_entries_restore_and_misses_do_not() {
+    fn entries_are_valid_until_a_source_changes() {
         let dir = scratch("store");
-        let cache = dir.join("exe");
+        let cache = dir.join("build");
         let built = dir.join("built");
         std::fs::write(&built, b"binary").unwrap();
-        let companion = dir.join("built.dSYM");
-        std::fs::create_dir_all(companion.join("Contents")).unwrap();
-        std::fs::write(companion.join("Contents/x"), b"dwarf").unwrap();
+        let source = dir.join("main.ms");
+        std::fs::write(&source, b"fn main() Int: return 0").unwrap();
+        assert!(lookup(&cache, "k").is_none());
+        store(
+            &cache,
+            "k",
+            "/root",
+            std::slice::from_ref(&source),
+            &built,
+            None,
+        );
+        let entry = lookup(&cache, "k").expect("fresh entry");
+        assert_eq!(entry.source_root, "/root");
         let staged = dir.join("staged");
-        assert!(!restore(&cache, "k", &staged, None));
-        store(&cache, "k", &built, Some(&companion));
-        let again = dir.join("again.dSYM");
-        assert!(restore(&cache, "k", &staged, Some(&again)));
-        assert!(same_bytes(&built, &staged));
-        assert_eq!(std::fs::read(again.join("Contents/x")).unwrap(), b"dwarf");
-        assert!(!restore(&cache, "other", &staged, None));
+        assert!(entry.restore(&staged, None));
+        assert!(entry.matches(&staged));
+        std::fs::write(&source, b"fn main() Int: return 12").unwrap();
+        assert!(lookup(&cache, "k").is_none());
+        std::fs::remove_file(&source).unwrap();
+        assert!(lookup(&cache, "k").is_none());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn only_the_newest_entries_stay() {
+        let dir = scratch("prune");
+        let cache = dir.join("build");
+        let built = dir.join("built");
+        let source = dir.join("a.ms");
+        std::fs::write(&built, b"x").unwrap();
+        std::fs::write(&source, b"y").unwrap();
         for i in 0..KEEP + 3 {
-            store(&cache, &format!("e{i}"), &built, None);
+            store(
+                &cache,
+                &format!("e{i}"),
+                "/r",
+                std::slice::from_ref(&source),
+                &built,
+                None,
+            );
         }
         assert_eq!(std::fs::read_dir(&cache).unwrap().count(), KEEP);
         let _ = std::fs::remove_dir_all(dir);

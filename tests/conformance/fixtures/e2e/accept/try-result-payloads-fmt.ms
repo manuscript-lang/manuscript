@@ -4,7 +4,7 @@
 import expect_equal, expect_false, expect_ok, expect_true from "@std/test.ms"
 import TextError from "@std/core.ms"
 import Closeable from "@std/core.ms"
-import filesystem from "@std/fs.ms"
+import read_file, temporary, write_file from "@std/fs.ms"
 
 type Failure:
     detail: String
@@ -61,7 +61,7 @@ type TailCleanup:
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for TailCleanup:
     var fn close() Unit!:
-        let _written = filesystem().write_file(self.marker, "closed", true)
+        let _written = write_file(self.marker, "closed", true)
         return ok(unit)
 
 fn tail_cleanup(
@@ -88,21 +88,20 @@ test "tail Results evaluate once and retain payload identity":
 
 test "tail Results preserve cleanup on success and failure":
     var visits: List[Int] = []
-    let fs = filesystem()
-    let temporary = fs.temporary("manuscript-tail-") | try expect_ok
+    let temporary = temporary("manuscript-tail-") | try expect_ok
     let first = "{temporary.path()}/first"
     let second = "{temporary.path()}/second"
     tail_cleanup(Result[Int, TextError].ok(42), var visits, first.clone()).get() | try expect_equal(
         42
     )
     visits | try expect_equal([1])
-    fs.read_file(first).is_ok() | try expect_true
-    fs.read_file(second).is_ok() | try expect_false
+    read_file(first).is_ok() | try expect_true
+    read_file(second).is_ok() | try expect_false
     tail_cleanup(
         Result[Int, TextError].error(TextError("")), var visits, second.clone()
     ).is_error() | try expect_true
     visits | try expect_equal([1, 1])
-    fs.read_file(second).is_ok() | try expect_true
+    read_file(second).is_ok() | try expect_true
 
 test "function Result payloads keep their calling convention":
     let original = fn() Int: 42

@@ -1,10 +1,10 @@
-import filesystem from "@std/fs.ms"
+import list, read_file from "@std/fs.ms"
 import arguments from "@std/process.ms"
 import TaskGroup from "@std/tasks.ms"
 import stdout from "@std/io.ms"
 
 fn read_pipe(path: String) Int:
-    let _data = filesystem().read_file(path)
+    let _data = read_file(path)
     return 1
 
 fn cancel_read(path: String) Int:
@@ -21,11 +21,11 @@ export fn main() Int:
     if cancel_read(path.clone()) != 1:
         return 1
 
-    let before = filesystem().list("/proc/self/fd").get().length()
+    let before = list("/proc/self/fd").get().length()
     var cancelled = 0
     for i in 0..10:
         cancelled += cancel_read(path.clone())
 
-    let after = filesystem().list("/proc/self/fd").get().length()
+    let after = list("/proc/self/fd").get().length()
     stdout().write("{cancelled} {before} {after}\n").get()
     return 0
