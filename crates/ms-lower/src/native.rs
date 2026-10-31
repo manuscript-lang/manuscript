@@ -331,7 +331,10 @@ impl<'a> FnLower<'a> {
                 let want = self.emty(e)?;
                 self.fit_ty(r, &declared, want)
             }
-            "random/draw_int" | "random/draw_uuid" | "random/draw_float" | "random/draw_shuffle"
+            "random/draw_int"
+            | "random/draw_uuid"
+            | "random/draw_float"
+            | "random/draw_shuffle"
             | "random/draw_choice" => self.random_native(e, view, native),
             "html/parse" => {
                 let mut args = self.native_args(view)?;
