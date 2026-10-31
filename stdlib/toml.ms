@@ -1,6 +1,6 @@
 # TOML 1.0 parser implemented in Manuscript.
 import parse_int, parse_float from "@std/math.ms"
-import from_scalars, StringBuilder, Regex, compile from "@std/string.ms"
+import from_scalars, StringBuilder from "@std/string.ms"
 import Bytes from "@std/bytes.ms"
 import log, sqrt from "@std/math.ms"
 
@@ -919,8 +919,12 @@ fn materialize(
             return ok(TomlValue.ArrayValue(result))
 
 # ASCII control characters other than tab and newline, which no TOML document may contain.
-fn control_pattern() Regex:
-    return compile("[\\x00-\\x08\\x0b-\\x1f\\x7f]").get()
+fn control_offset(data: Bytes) Int?:
+    for pos in 0..data.length():
+        let code = data.get(pos).to_int()
+        if code == 127 or (code < 32 and code != 9 and code != 10): return pos
+
+    return none
 
 # Parses a TOML document into a table value and reports source line and column on invalid input.
 export fn parse(text: String, limits: TomlLimits?) TomlValue!TomlError:
@@ -944,10 +948,10 @@ export fn parse(text: String, limits: TomlLimits?) TomlValue!TomlError:
         entries: []
     )
 
-    if let span = control_pattern().find_span(normalized):
-        let place = locate(reader.data, span.get(0))
+    if let pos = control_offset(reader.data):
+        let place = locate(reader.data, pos)
         var reason = "invalid control character"
-        if reader.data.get(span.get(0)) == 13: reason = "bare carriage return"
+        if reader.data.get(pos) == 13: reason = "bare carriage return"
         return error(
             TomlError.InvalidData(
                 line: place.get(0), column: place.get(1), reason: reason
