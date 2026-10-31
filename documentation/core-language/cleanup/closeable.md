@@ -43,6 +43,34 @@ A similarly named method without `impl Closeable`, or an unconstrained type para
 
 Expected failures belong to explicit operations such as `commit()`, `flush()`, or `finish()` returning `Result`. The automatic close returns `Unit`; an unexpected release failure is a cleanup fault.
 
+## A close that can fail
+
+Implement `FallibleCloseable` instead of `Closeable` when releasing the resource can fail:
+
+```manuscript
+import FallibleCloseable, TextError from "@std/core.ms"
+
+type Gate:
+    fails: Bool
+
+impl FallibleCloseable for Gate:
+    var fn close() Result[Unit, Error]:
+        if self.fails:
+            return error(TextError("gate stuck"))
+        return ok(unit)
+
+fn use_gate(fails: Bool) Result[Int, Error]:
+    let _gate = Gate(fails)
+    return ok(7)
+```
+
+The scope-end close behaves like `try gate.close()`: a failed close becomes the function's error, after the other bindings of the scopes it leaves have closed. This holds for every exit, including `break`, `continue` and `return`.
+
+- The enclosing function must return `Result[_, Error]`; otherwise the checker rejects the binding and asks for an explicit `close()`.
+- Call `close()` yourself to handle the failure; the binding is then consumed and closes nothing more.
+- If the scope is already returning an error, that error stays and a close failure after it is dropped. A fault or cancellation runs the close without returning its error.
+- A record, alternative or collection cannot hold a value whose close can fail, because closing the holder would drop the error. Bind the value on its own.
+
 A close failure does not skip other actions. After a failed release, leave the object unusable or quarantined; faults and remaining obligations go to the host.
 
 User `defer` is unsupported; package custom cleanup in a `Closeable` library object. See [scope-end cleanup](scopes.md), [cleanup faults](cleanup-faults.md), and [operation contracts](../types/contracts.md).

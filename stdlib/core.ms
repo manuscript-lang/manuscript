@@ -63,6 +63,14 @@ export interface Closeable:
     # Cleanup runs during return, expected errors, faults, and cancellation too.
     var fn close() Unit
 
+# A resource whose release can fail. A binding that holds one is closed when its scope ends, as with
+# `Closeable`, but a failed close is returned: the implicit close behaves like `try value.close()`, so the
+# enclosing function must return `Result[_, Error]`. When the scope already ends in an error, that error
+# is returned and the close error is dropped. Call `close()` yourself to handle a failure.
+export interface FallibleCloseable:
+    # Releases the resource, returning the failure if it could not be released cleanly.
+    var fn close() Result[Unit, Error]
+
 # A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
 # `for item in source:` calls `next` until `none`; a variable or field path advances in place and
 # keeps its final state, while any other expression is held by the loop alone. `next` should keep

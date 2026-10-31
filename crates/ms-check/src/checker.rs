@@ -1482,7 +1482,7 @@ impl Checker {
             }
             let mutable = params.get(i).is_some_and(|a| a.mutable);
             let b = self.bind_reporting(p.name, &p.ty, mutable, pos, !repeated);
-            self.record_cleanup(&b);
+            self.record_cleanup(&b, pos);
             self.m()
                 .facts_mut()
                 .decls

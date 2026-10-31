@@ -180,6 +180,9 @@ impl Checker {
         if let PatternKind::Name(name) = &pattern.kind {
             self.begin_lock(s, *name, value, &bound);
         }
+        if matches!(pattern.kind, PatternKind::Name(_)) && !is_invalid_id(&bound) {
+            self.reject_fallible_parts(&bound, s.pos);
+        }
         // The scope closes a resource nothing takes; ownership decides which bindings that is.
         if matches!(pattern.kind, PatternKind::Name(_))
             && !is_invalid_id(&bound)
@@ -187,7 +190,9 @@ impl Checker {
         {
             let mut close = self.close_method(&bound);
             if close.len() == 1 {
-                self.m().facts_mut().stmts.entry(s.id).or_default().cleanup = close.pop();
+                let method = close.pop().expect("one");
+                self.require_error_return(&bound, &method, s.pos);
+                self.m().facts_mut().stmts.entry(s.id).or_default().cleanup = Some(method);
             }
         }
         (!info.no_return, info.breaks)
@@ -463,7 +468,7 @@ impl Checker {
         let old = self.scope.clone();
         self.scope = Scope::new(Some(old.clone()));
         let b = self.bind(name, &element, false, s.pos);
-        self.record_cleanup(&b);
+        self.record_cleanup(&b, s.pos);
         self.m()
             .facts_mut()
             .stmts
@@ -665,27 +670,63 @@ impl Checker {
     /// The `close() -> Unit` operations of `t`: the standard `Closeable` one when it has it.
     /// Records the close operation a parameter or loop variable of a closeable type gets at
     /// scope end, when it turns out to own its value.
-    pub(crate) fn record_cleanup(&mut self, b: &BindingRef) {
-        if is_invalid_id(&b.ty) || !self.closeable(&b.ty) {
+    pub(crate) fn record_cleanup(&mut self, b: &BindingRef, pos: Pos) {
+        if is_invalid_id(&b.ty) {
+            return;
+        }
+        self.reject_fallible_parts(&b.ty, pos);
+        if !self.closeable(&b.ty) {
             return;
         }
         let mut close = self.close_method(&b.ty);
         if close.len() == 1 {
-            self.m()
-                .facts_mut()
-                .cleanups
-                .insert(b.uid, close.pop().expect("one"));
+            let method = close.pop().expect("one");
+            self.require_error_return(&b.ty, &method, pos);
+            self.m().facts_mut().cleanups.insert(b.uid, method);
+        }
+    }
+
+    /// A scope closes a binding whose close can fail like `try value.close()`, so the enclosing
+    /// function has to return a `Result` whose error is `Error`.
+    pub(crate) fn reject_fallible_parts(&mut self, t: &Ty, pos: Pos) {
+        if self.holds_fallible_part(t, &mut Vec::new()) {
+            self.type_error(
+                pos,
+                format!(
+                    "{} holds a value whose close can fail, and closing the holder would drop that error; bind the value on its own and close it with close()",
+                    show(&Some(t.clone()))
+                ),
+            );
+        }
+    }
+
+    pub(crate) fn require_error_return(&mut self, t: &Ty, close: &MethodRef, pos: Pos) {
+        if !is_fallible_close_result(&close.ty.result_ty()) {
+            return;
+        }
+        let returns_error = self
+            .result
+            .as_ref()
+            .is_some_and(|r| r.is_std("Result") && r.args.len() == 2 && r.args[1].is_std("Error"));
+        if !returns_error {
+            self.type_error(
+                pos,
+                format!(
+                    "{} is closed when its scope ends and its close can fail; return Result[_, Error] from this function, or call close() and handle the result",
+                    show(&Some(t.clone()))
+                ),
+            );
         }
     }
 
     pub(crate) fn close_method(&mut self, t: &Ty) -> Vec<MethodRef> {
         let mut candidates: Vec<MethodRef> = Vec::new();
         for method in self.methods(t, n("close")) {
-            if method.ty.params.is_empty() && method.ty.result_ty().id == "Unit" {
+            if method.ty.params.is_empty() && is_close_result(&method.ty.result_ty()) {
                 if method
                     .contract
                     .as_ref()
-                    .is_some_and(|c| c.is_std("Closeable"))
+                    .is_some_and(|c| c.is_close_contract())
                 {
                     return vec![method];
                 }

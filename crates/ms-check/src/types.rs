@@ -215,6 +215,12 @@ impl Type {
         id.len() == 5 + name.len() && id.starts_with("@std/") && &id[5..] == name
     }
 
+    /// Whether this is a standard close contract: `Closeable`, or `FallibleCloseable`, whose close
+    /// can fail.
+    pub fn is_close_contract(&self) -> bool {
+        self.is_std("Closeable") || self.is_std("FallibleCloseable")
+    }
+
     /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/time.ms`.
     pub fn is_time(&self, name: &str) -> bool {
         self.is_source_type("@std/time.ms", name)
@@ -674,6 +680,16 @@ pub fn time_type(name: &str) -> Ty {
 /// `TestOutcome`: the implicit `Result[Unit, Error]` of a test block.
 pub fn test_outcome() -> Ty {
     standard("Result", vec![unit(), standard("Error", vec![])])
+}
+
+/// Whether `t` is the result of a `close`: `Unit`, or `Result[Unit, Error]` for a close that can fail.
+pub fn is_close_result(t: &Ty) -> bool {
+    t.id == "Unit" || is_fallible_close_result(t)
+}
+
+/// Whether `t` is `Result[Unit, Error]`, the result of a `close` that can fail.
+pub fn is_fallible_close_result(t: &Ty) -> bool {
+    t.is_std("Result") && t.args.len() == 2 && t.args[0].id == "Unit" && t.args[1].is_std("Error")
 }
 
 // ------------------------------------------------------------ type algebra

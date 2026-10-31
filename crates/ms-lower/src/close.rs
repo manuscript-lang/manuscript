@@ -137,18 +137,24 @@ struct SplitItem {
     flag: Option<ms_mir::builder::Var>,
 }
 
-/// Calls the close operation on `v` of type `ty`.
+/// Calls the close operation on `v` of type `ty` and drops what it returns: a close that can
+/// fail has its error dropped here, so only the sites that propagate it use [`close_call_result`].
 fn close_call(b: &mut FuncBuilder<'_>, kind: &CloseKind, v: Value, ty: MTy) {
+    let r = close_call_result(b, kind, v, ty);
+    if b.m.needs_drop(b.ty(r)) {
+        b.emit(Op::Drop, &[r], Imm::None, None);
+    }
+}
+
+/// Calls the close operation on `v` of type `ty`; the result is `Unit`, or the `Result` of a
+/// close that can fail, which the caller owns.
+fn close_call_result(b: &mut FuncBuilder<'_>, kind: &CloseKind, v: Value, ty: MTy) -> Value {
     match kind {
-        CloseKind::Iface(iface, k) => {
-            b.call_method(*iface, *k, v, &[]);
-        }
+        CloseKind::Iface(iface, k) => b.call_method(*iface, *k, v, &[]),
         CloseKind::Func {
             fid,
             writes_back: false,
-        } => {
-            b.call(*fid, &[v]);
-        }
+        } => b.call(*fid, &[v]),
         CloseKind::Func {
             fid,
             writes_back: true,
@@ -169,12 +175,13 @@ fn close_call(b: &mut FuncBuilder<'_>, kind: &CloseKind, v: Value, ty: MTy) {
                 Imm::None,
                 None,
             );
-            b.call(*fid, &[slot]);
+            let r = b.call(*fid, &[slot]);
             let take = if droppable { Op::Take } else { Op::Load };
             let after = b.emit(take, &[slot], Imm::Ty(ty), Some(ty)).expect("take");
             if droppable {
                 b.emit(Op::Drop, &[after], Imm::None, None);
             }
+            r
         }
     }
 }
@@ -647,7 +654,7 @@ impl FnLower<'_> {
             .iter()
             .find(|m| {
                 m.name().is_some_and(|n| n.as_str() == "close")
-                    && m.contract.as_ref().is_some_and(|c| c.is_std("Closeable"))
+                    && m.contract.as_ref().is_some_and(|c| c.is_close_contract())
                     && ct::unify(
                         &m.receiver,
                         ty,
@@ -969,10 +976,14 @@ impl FnLower<'_> {
     /// Leaves the binding `uid` at the end of its scope, closing it unless a move took it.
     pub(crate) fn close_at_scope_end(&mut self, uid: usize, closer: &Closer) {
         if closer.split.is_some() {
-            return self.emit_close(uid, closer);
+            self.emit_close(uid, closer);
+            return;
         }
         let Some(flag) = closer.flag else {
-            return self.emit_close(uid, closer);
+            if let Some(r) = self.emit_close(uid, closer) {
+                self.propagate_close_error(uid, r);
+            }
+            return;
         };
         let held = self.b.use_var(flag);
         let (close, moved, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
@@ -980,7 +991,9 @@ impl FnLower<'_> {
         self.b.seal_block(close);
         self.b.seal_block(moved);
         self.b.switch_to(close);
-        self.emit_close(uid, closer);
+        if let Some(r) = self.emit_close(uid, closer) {
+            self.propagate_close_error(uid, r);
+        }
         self.b.br(join, &[]);
         // A move cancelled the entry; it leaves the stack now.
         self.b.switch_to(moved);
@@ -1018,9 +1031,11 @@ impl FnLower<'_> {
 
     /// Leaves the closing binding `uid`: the cleanup entry goes away and its close runs on the
     /// current value.
-    pub(crate) fn emit_close(&mut self, uid: usize, closer: &Closer) {
+    /// The result of a close that can fail is returned for the caller to propagate.
+    pub(crate) fn emit_close(&mut self, uid: usize, closer: &Closer) -> Option<Value> {
         if let Some(split) = &closer.split {
-            return self.close_split(uid, split, closer.flag);
+            self.close_split(uid, split, closer.flag);
+            return None;
         }
         let l = self.locals[&uid];
         let v = self.local_get(&l);
@@ -1044,15 +1059,95 @@ impl FnLower<'_> {
                     self.put_slot(moved)
                 }
             };
-            self.b.call(*fid, &[slot]);
+            let r = self.b.call(*fid, &[slot]);
             if l.slot.is_none() {
                 let after = self.take_slot(slot, l.ty);
                 self.local_put(&l, after);
             }
             let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
+            return self.fallible_result(r);
+        }
+        let r = close_call_result(&mut self.b, &closer.kind, v, l.ty);
+        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
+        self.fallible_result(r)
+    }
+
+    /// `r` when it is the `Result` of a close that can fail; a `Unit` result needs nothing.
+    fn fallible_result(&mut self, r: Value) -> Option<Value> {
+        (self.b.ty(r) != MTy::UNIT).then_some(r)
+    }
+
+    /// A scope-end close returned `r`: on an error, the function returns it after closing what
+    /// is still open, like `try value.close()`. A close that fails while an error is already on its
+    /// way out is dropped, so the first error is the one returned.
+    fn propagate_close_error(&mut self, uid: usize, r: Value) {
+        let rty = self.b.ty(r);
+        let (TyKind::Alt(a), TyKind::Alt(ra)) = (
+            self.b.m.types.kind(rty).clone(),
+            self.b.m.types.kind(self.result_ty()).clone(),
+        ) else {
+            self.close_error_misfit = true;
+            self.drop_value(r);
+            return;
+        };
+        let case_of = |m: &ms_mir::ir::Module, alt: AltId, name: &str| {
+            m.alts[alt.index()]
+                .cases
+                .iter()
+                .position(|c| c.name == name)
+        };
+        let (Some(err), Some(ret_err)) = (
+            case_of(self.b.m, a, "error"),
+            case_of(self.b.m, ra, "error"),
+        ) else {
+            self.close_error_misfit = true;
+            self.drop_value(r);
+            return;
+        };
+        if self.returning_close_error {
+            self.drop_value(r);
             return;
         }
-        close_call(&mut self.b, &closer.kind, v, l.ty);
-        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
+        let want = self.b.m.alts[ra.index()].cases[ret_err].fields[0].1;
+        let tag = self.b.alt_tag(r);
+        let k = self.b.iconst(err as i64);
+        let is_err = self.b.icmp(Cc::Eq, tag, k);
+        let (errb, okb) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(is_err, errb, &[], okb, &[]);
+        self.b.seal_block(errb);
+        self.b.seal_block(okb);
+
+        self.enter(errb);
+        let payload = self.b.alt_get(a, err as u32, 0, r);
+        if self.ty_of(payload) != want {
+            self.close_error_misfit = true;
+        }
+        let po = self.owned(crate::func::Val {
+            v: payload,
+            own: false,
+        });
+        let out = self.b.alt_new(ra, ret_err as u32, &[po]);
+        self.drop_value(r);
+        if let Some(pending) = self.pending_return {
+            self.drop_value(pending);
+        }
+        // This binding is closed; release its value, then return through the enclosing scopes
+        // without closing again what this path has already closed.
+        let l = self.locals[&uid];
+        if self.needs_drop(l.ty) {
+            let v = self.local_take(&l);
+            self.b.emit(Op::Drop, &[v], Imm::None, None);
+        }
+        let before = self.closed_on_path.clone();
+        self.closed_on_path.insert(uid);
+        let done = self.scope_done.clone();
+        self.closed_on_path.extend(done);
+        self.returning_close_error = true;
+        self.emit_return(Some(crate::func::Val { v: out, own: true }));
+        self.returning_close_error = false;
+        self.closed_on_path = before;
+
+        self.enter(okb);
+        self.drop_value(r);
     }
 }
