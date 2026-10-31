@@ -1,4 +1,42 @@
-# Ordered lexer header depths — 2026-10-31
+# Held lexer header-depth experiment — 2026-10-31
+
+**Held, not accepted for production.** The tail check preserves semantics and
+consistently speeds deep inputs, but a fresh-main run showed an unexplained
+11% tiny-parse regression in all ten pairs. A later favorable run cannot erase
+that observation. The candidate remains on an unmerged experiment branch;
+the evidence-only PR does not change the production lexer.
+
+## Complete decision record
+
+| Run | Samples | Tiny parse, baseline → candidate | Deep LF512 lex speedup |
+| --- | ---: | --- | ---: |
+| Initial baseline56ea comparison | 1000 | 0.432 → 0.423 µs | 2.57x |
+| Fresh-main e01fb141e, separate build paths | 1000 | 0.432 → 0.480 µs | 2.55x |
+| Identical-baseline A/A path control | 160 | 0.434 → 0.431 µs | not measured |
+| Same-path build, regenerated input identities | 1000 | 0.434 → 0.434 µs | 2.52x |
+
+The A/A control does **not** establish a build-path cause. The candidate binary
+in the bad and later flat runs has the identical SHA-256
+`3dbb685921cbd9245792be7063d2edf5796b627a66319862724e9f280fc57ff0`.
+Source bytes are also identical, but full input filename identities differ
+between output directories. Their relevance is unproven. Do not call the bad
+run noise, attribute it to code placement, or choose a favorable input identity.
+
+All four runs, the same-path build commands/fingerprints and both rejected
+reservation alternatives are preserved. `tail-check.patch` is a counterfactual
+only. Independent review confirmed the source invariant, all sample/order/
+checksum checks, and the final decision to hold publication. No GitHub approval
+was submitted.
+
+Any future attribution protocol must predeclare and hold actual input and
+invocation identities fixed, include the original problematic identity, and
+retain every result. The historical runner regenerates fixture paths beneath
+each output directory; it is retained for reproducing these observations, not
+as a completed attribution method. No further layout, flag or path tuning was
+performed to produce a green result.
+
+The historical initial-run report follows; its favorable results alone are
+insufficient to accept the production patch.
 
 The lexer records delimiter depths for `fn` and `match` headers. Each push uses
 the current depth, and closing a delimiter pops greater depths. At every query
@@ -64,8 +102,8 @@ tree, and original positions. `delimited_function_and_match_suites_keep_their_bo
 verifies both header kinds inside open delimiters, later grouping boundaries,
 and formatting idempotence. Full syntax tests, focused clippy, formatting and
 repository checks pass. An independent reviewer verified the ordering invariant
-across every stack mutation. Full affected controls still need repeating on
-combined main after merging.
+across every stack mutation. These correctness checks do not resolve the observed
+shallow performance cost; the production optimization remains held.
 
 ## Reproduce
 
