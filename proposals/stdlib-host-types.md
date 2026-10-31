@@ -83,3 +83,4 @@ let limited = try narrow.http_client(HttpClientOptions())
 2. `process`, `io`: functions. `make verify`.
 3. `net`, with `restrict` as a function. `make verify`.
 4. Constants as exported values (small language change). `make verify-full`.
+5. Private helpers with a leading `var` receiver become `var fn` methods on that type (`csv` `Reader`: `next_quote`, `next_delimiter`, `next_line`, `read_record`; the same shape in `toml`, `sse`, `jsonstream`, `bytes`, `encoding`, `cli`). Behaviour-preserving; `ms check` accepts `impl Reader:` with `var fn` (scratch project). Own PR. `make verify`.
