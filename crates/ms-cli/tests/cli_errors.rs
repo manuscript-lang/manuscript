@@ -2,6 +2,46 @@
 
 use std::process::Command;
 
+#[cfg(unix)]
+#[test]
+fn invalid_unicode_argument_does_not_select_a_different_file() {
+    use std::os::unix::ffi::OsStringExt;
+
+    let dir = std::env::temp_dir().join(format!("ms-cli-invalid-unicode-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("\u{fffd}.ms"), "").unwrap();
+
+    let invalid = std::ffi::OsString::from_vec(vec![0xff, b'.', b'm', b's']);
+    let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .arg("check")
+        .arg(invalid)
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(output.stdout.is_empty(), "{output:?}");
+    assert!(stderr.contains("argument is not valid UTF-8;"), "{stderr}");
+    assert!(
+        stderr.contains("pass UTF-8 command-line arguments"),
+        "{stderr}"
+    );
+
+    let valid = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .args(["check", "\u{fffd}.ms"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(valid.status.success(), "{valid:?}");
+    assert!(valid.stderr.is_empty(), "{valid:?}");
+    assert_eq!(
+        String::from_utf8(valid.stdout).unwrap(),
+        "Checked \u{fffd}.ms\n"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 fn ms(args: &[&str]) -> (i32, String) {
     let out = Command::new(env!("CARGO_BIN_EXE_ms"))
         .args(args)
@@ -11,6 +51,49 @@ fn ms(args: &[&str]) -> (i32, String) {
         out.status.code().unwrap_or(-1),
         String::from_utf8_lossy(&out.stderr).into_owned(),
     )
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn stdout_errors_are_not_reported_as_success() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-stdout-flush-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("empty.ms"), "").unwrap();
+    let mut guide = vec!["guide", "--json"];
+    guide.extend(vec!["MS1001"; 200]);
+    for args in [vec!["diagram", "empty.ms"], guide] {
+        let normal = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(&args)
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert!(normal.status.success(), "{args:?}: {normal:?}");
+        assert!(!normal.stdout.is_empty(), "{args:?}: {normal:?}");
+        if args[0] == "guide" {
+            assert!(
+                normal.stdout.len() > 16_384,
+                "the large-write case must exceed buffering"
+            );
+        }
+
+        let destination = std::fs::OpenOptions::new()
+            .write(true)
+            .open("/dev/full")
+            .unwrap();
+        let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(&args)
+            .stdout(destination)
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert_eq!(output.status.code(), Some(1), "{args:?}: {output:?}");
+        assert!(output.stdout.is_empty(), "{args:?}: {output:?}");
+        assert!(stderr.contains("cannot write stdout:"), "{stderr}");
+        assert!(stderr.contains("check the output destination"), "{stderr}");
+    }
+    let _ = std::fs::remove_dir_all(dir);
 }
 
 #[test]

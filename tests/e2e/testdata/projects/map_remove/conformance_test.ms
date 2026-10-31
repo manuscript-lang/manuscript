@@ -20,7 +20,7 @@ test "Map removal keeps direct bound generic and defining-module key scopes":
     let remove = returned_values.remove
     remove(Key(1, "different"))
     try expect_false(
-        (returned_values.length() != 2 or returned_values.keys() [0].id != 2)
+        (returned_values.length() != 2 or returned_values.keys()[0].id != 2)
     )
 
 test "Map lookup clone and clear keep the creator key identity":

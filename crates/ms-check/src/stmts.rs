@@ -50,6 +50,36 @@ fn literal_key(path: &Expr) -> Option<String> {
 }
 
 impl Checker {
+    /// A member of the optional itself (`get`, `map`, ...) written inside a `?.` chain runs on
+    /// the payload, which does not have it: say how to apply it to the whole chain.
+    fn explain_chain_optional_member(&mut self, from: usize) {
+        const OPTIONAL_MEMBERS: [&str; 9] = [
+            "get",
+            "get_or_else",
+            "map",
+            "and_then",
+            "is_some",
+            "is_none",
+            "ok_or",
+            "ok_or_else",
+            "or_else",
+        ];
+        for d in &mut self.p.diagnostics[from..] {
+            let Some(rest) = d.message.strip_prefix("unknown or ambiguous member ") else {
+                continue;
+            };
+            let Some((name, receiver)) = rest.split_once(" on ") else {
+                continue;
+            };
+            let receiver = receiver.split(';').next().unwrap_or("");
+            if OPTIONAL_MEMBERS.contains(&name) && !receiver.ends_with('?') {
+                d.message.push_str(&format!(
+                    "; this call is part of the `?.` chain, so it runs on the present value; to use the optional's {name} on the whole chain, parenthesize it: (a?.b()).{name}(...)"
+                ));
+            }
+        }
+    }
+
     pub(crate) fn info_of(&self, e: &Expr) -> Option<Info> {
         self.m().facts().info(e.id).cloned()
     }
@@ -1630,7 +1660,14 @@ impl Checker {
                         self.check_expression(value, info, result.as_ref())
                     }
                     Some(info) => info,
-                    None => self.arm_value(value, result.as_ref(), expected),
+                    None => {
+                        let before = self.p.diagnostics.len();
+                        let info = self.arm_value(value, result.as_ref(), expected);
+                        if arm.chain {
+                            self.explain_chain_optional_member(before);
+                        }
+                        info
+                    }
                 };
                 states[si].info = Some(info);
                 if normal {

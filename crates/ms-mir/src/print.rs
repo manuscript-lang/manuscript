@@ -54,11 +54,6 @@ fn write_ty(m: &Module, t: Ty, out: &mut String) {
             write_ty(m, *e, out);
             out.push('>');
         }
-        TyKind::Ref(e) => {
-            out.push_str("ref<");
-            write_ty(m, *e, out);
-            out.push('>');
-        }
         TyKind::Obj(n, args) => {
             if args.is_empty() {
                 out.push_str("obj ");

@@ -1396,7 +1396,7 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
         };
     if name == "clone"
         && (matches!(t.kind, Kind::Record | Kind::Alternative)
-            || (t.kind == Kind::Variable && t.bounds().iter().any(|b| b.is_std("Clonable")))
+            || (t.kind == Kind::Variable && t.bounds().iter().any(implies_clonable))
             || (t.kind == Kind::Primitive && t.id.as_str() == "String")
             || t.is_std("List")
             || t.is_std("Map")
