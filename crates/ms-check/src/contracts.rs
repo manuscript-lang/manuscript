@@ -506,8 +506,18 @@ impl Checker {
                     self.type_error(
                         method.pos,
                         format!(
-                            "implementation operation signature does not match contract; {} must be declared as fn {}{}",
+                            "implementation operation signature does not match contract; {} must be declared as {} {}{}",
                             method.func.name,
+                            if op
+                                .decl
+                                .as_ref()
+                                .and_then(|f| f.decl.methods().get(f.index?))
+                                .is_some_and(|m| m.mutating)
+                            {
+                                "var fn"
+                            } else {
+                                "fn"
+                            },
                             method.func.name,
                             signature_text(&op.ty)
                         ),

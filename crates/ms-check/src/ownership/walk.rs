@@ -106,6 +106,7 @@ struct Borrow {
 }
 
 /// A place expression resolved to its root.
+#[derive(Clone)]
 struct PlaceInfo {
     root: BindingRef,
     root_node: NodeId,
@@ -136,6 +137,8 @@ pub fn analyze(cx: &Context) -> Outcome {
         used: cx.live.uses.keys().map(|(_, uid)| *uid).collect(),
         resources: Vec::new(),
         arm_payloads: Vec::new(),
+        chain_places: HashMap::new(),
+        keep_scrutinee: false,
         closed: HashSet::new(),
     };
     w.run();
@@ -204,6 +207,10 @@ struct Walker<'a> {
     resources: Vec<(usize, Name, Pos, bool)>,
     /// Payload bindings of match arms over a consumed scrutinee.
     arm_payloads: Vec<usize>,
+    /// The optional place each `?.` payload binding was read from.
+    chain_places: HashMap<usize, PlaceInfo>,
+    /// The scrutinee being walked stays borrowed, never consumed at its last use.
+    keep_scrutinee: bool,
     /// Bindings that had `close()` called on them.
     closed: HashSet<usize>,
 }
@@ -358,6 +365,9 @@ impl Walker<'_> {
                 // tracks that with a flag cleared at each move.
                 if closable {
                     self.facts.implicit_closes.insert(uid);
+                    if self.closed.contains(&uid) {
+                        self.facts.explicit_closes.insert(uid);
+                    }
                     self.facts
                         .close_moves
                         .insert(uid, moves.into_iter().collect());
@@ -368,6 +378,9 @@ impl Walker<'_> {
                 // Never handed on: the scope closes it, after any early `.close()` of its own
                 // (close is idempotent).
                 self.facts.implicit_closes.insert(uid);
+                if self.closed.contains(&uid) {
+                    self.facts.explicit_closes.insert(uid);
+                }
             } else if !self.closed.contains(&uid) {
                 self.error(
                     pos,
@@ -1309,6 +1322,32 @@ impl Walker<'_> {
             (m.perm, m.role, m.parameter, m.is_receiver)
         };
         let text = info.text.clone();
+        // `?.` desugars to a hidden `?N` binding of the payload. Changing it changes the
+        // optional it was read from, so the binding becomes an exclusive borrow of that place.
+        if root.name.as_str().starts_with('?') && perm != Perm::MutBorrowed {
+            let Some(place) = self.chain_places.get(&root.uid).cloned() else {
+                // A consumed or temporary optional: the payload is the chain's own value.
+                if !self.arm_payloads.contains(&root.uid) {
+                    self.error(
+                        pos,
+                        format!(
+                            "cannot {what} through `?.` on a borrowed value; call it on a `var`"
+                        ),
+                    );
+                }
+                return;
+            };
+            // The read-only borrow `?N` held becomes the exclusive one.
+            self.active.retain(|a| a.holder != root.uid);
+            let before = self.diags.len();
+            self.mutate(pos, &place, what);
+            if self.diags.len() == before {
+                let origins = place.resolved.clone();
+                let parent = self.borrow_parent(&place.root);
+                self.declare_mut_borrow(&root, role, origins, pos, parent);
+            }
+            return;
+        }
         if let Some(field) = info.through_ref {
             self.error(
                 pos,
@@ -1406,6 +1445,7 @@ impl Walker<'_> {
             let whole = matches!(e.kind, ExprKind::Name(_));
             let mut deferred = None;
             if whole
+                && !std::mem::take(&mut self.keep_scrutinee)
                 && class != Class::Copy
                 && let Resolution::Local(b) = self.cx.m.resolution(e)
                 && self.is_last(e.id, &b)
@@ -2408,7 +2448,11 @@ impl Walker<'_> {
     // ---------------------------------------------------------- match
 
     fn match_expr(&mut self, e: &Expr, scrutinee: &Expr, arms: &[Arm], d: Demand, returning: bool) {
+        // A `?.` chain only borrows its receiver, even at its last use: a change through the
+        // chain (`c?.bump()`) lands in the receiver.
+        self.keep_scrutinee = arms.first().is_some_and(|a| a.chain);
         let source = self.scrutinee(e.id, scrutinee);
+        self.keep_scrutinee = false;
         self.release_pending();
         let entry = self.active.clone();
         let mut joined: Vec<Borrow> = Vec::new();
@@ -2420,6 +2464,12 @@ impl Walker<'_> {
                     self.arm_payloads.push(b.uid);
                 }
                 self.payload(b, &source, Role::Arm, arm.pos);
+                if arm.chain
+                    && !source.owned
+                    && let Some((info, _)) = self.place(scrutinee)
+                {
+                    self.chain_places.insert(b.uid, info);
+                }
             }
             self.block(&arm.body);
             // `block` ended its own declarations; the arm bindings end here.

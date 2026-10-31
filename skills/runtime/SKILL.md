@@ -5,7 +5,7 @@ description: Implement or review Manuscript native execution, resources, cancell
 
 # Runtime
 
-Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or lowering that changes execution. Read [runtime lessons](../../.experts/runtime.md), [cleanup](../../documentation/core-language/cleanup/_index.md).
+Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or lowering that changes execution. Read [runtime lessons](../../wiki/runtime/index.md), [cleanup](../../documentation/core-language/cleanup/_index.md).
 
 - State observable result/error identity, evaluation order, aliasing, cancellation, close, join, and use-after-close behavior before editing.
 - Keep value ownership and external resource lifetime separate. Borrowing does not extend a resource lifetime; moves and exclusive mutation must satisfy the checker. Do not carry shared-reference or synchronization assumptions from the retired runtime into native code.
@@ -13,7 +13,7 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - Exercise return/error/fault/cancellation/break/continue across cleanup scopes. Close does not deadlock callbacks or reentry.
 - Use ownership and borrowing from `crates/ms-check/OWNERSHIP.md`: mutation requires `var`, and `.clone()` makes a deep value copy; `Clonable` is the bound for generic copying. Native resource handles cannot be cloned. Guard validation covers actual operations and reads where required.
 - Native I/O remains interruptible after descriptor metadata access. Completeness includes blocked I/O, concurrent close, bounded streaming, and shutdown, beyond successful return values. Process `stdin`/`stdout` reads and writes need not be cancellable (the user dropped that item).
-- Concurrency is intentionally absent from the language and standard library until it is redesigned from the ground up; do not add task, scheduler, lock, or channel APIs without a new user direction.
+- Concurrency was removed once and rebuilt as `@std/tasks.ms`, `channels.ms`, `sync.ms`, and `workers.ms`; extend those per their [proposals](../../proposals/taskgroup.md) and do not restore the removed Scheduler, Synchronized, or BlockingQueue APIs. See the [concurrency lesson](../../wiki/runtime/concurrency-was-removed-once-and-rebuilt-on-tasks-channels-a.md).
 - Map and Set are hash-indexed and iterate in insertion order. Key and element types must be `Hashable`; an unhashable key type is a compile error, never a linear-scan fallback. `Equal` and `Hashable` are ordinary source interfaces.
 - User code binds a native symbol with `extern fn name(...) T` (symbol is the function name, linked with `--link`; may return `Result` with a payload-free error type; not generic, not a method). Stdlib natives are `extern fn` declarations wrapped by ordinary functions; the few generic natives are bodiless and named in `ms-lower/src/rtcall.rs`, checked against the runtime catalogue by `scripts/extern-parity.py`. `extern type` and source-level `Shared[T]`, `Weak[T]`, `Arena[T]` are planned, not shipped.
 - Preserve declared error types/cases/causes and checked binding identities.
@@ -26,9 +26,9 @@ The runtime is `crates/ms-rt`, `ms-rt-abi`, and one `crates/ms-std-*` crate per 
 
 ## Standard library
 
-For standard APIs (intrinsic/native members, design), read [declaration ownership](../../stdlib/intrinsics.ms), [contracts](../../stdlib/intrinsics.ms), [runtime lessons](../../.experts/runtime.md), and [taste](../language-design-taste/SKILL.md).
+For standard APIs (intrinsic/native members, design), read [declaration ownership](../../stdlib/intrinsics.ms), [contracts](../../stdlib/intrinsics.ms), [runtime lessons](../../wiki/runtime/index.md), and [taste](../language-design-taste/SKILL.md).
 
-- Inspect [newer stdlib direction](../../.experts/runtime.md#newer-stdlib-direction-needs-checkout-reconciliation) and current source first. Distinguish requested changes from shipped interfaces/bounds, removals, optional limits, and scheduling consolidation.
+- Inspect [newer stdlib direction](../../wiki/runtime/newer-stdlib-direction-needs-checkout-reconciliation.md) and current source first. Distinguish requested changes from shipped interfaces/bounds, removals, optional limits, and scheduling consolidation.
 - Give each operation one appropriate module/spelling. Cover units, defaults, errors, streaming, mutation, edge cases, and cancellation; use Manuscript's execution model.
 - Pick the failure mode by the [one rule](../../stdlib/intrinsics.ms): absence is `Optional`, invalid external data is `Result`, a violated documented precondition faults with operation, argument, and valid range. Mutators take verbs (`set`, `remove`, `add`); copies keep past-tense or noun names. Do not restore the removed copy-sounding aliases (`with_value`, `without`, `with_entry`).
 - Every standard type and function carries a doc comment, and a type's comment includes a short usage example; it appears in the generated reference.

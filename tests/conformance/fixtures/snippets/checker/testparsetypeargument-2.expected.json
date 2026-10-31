@@ -1,0 +1,68 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type JsonError; add: import JsonError from \"@std/json.ms\"",
+        "position": {
+          "file": "testparsetypeargument-2.ms",
+          "line": 7,
+          "column": 28,
+          "offset": 222
+        },
+        "fix": {
+          "position": {
+            "file": "testparsetypeargument-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "testparsetypeargument-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import JsonError from \"@std/json.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding parse; add: import parse from \"@std/csv.ms\"",
+        "position": {
+          "file": "testparsetypeargument-2.ms",
+          "line": 8,
+          "column": 12,
+          "offset": 244
+        },
+        "fix": {
+          "position": {
+            "file": "testparsetypeargument-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "testparsetypeargument-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import parse from \"@std/csv.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testparsetypeargument-2.ms:7:28: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n   |\n 7 | fn f(text: String) Request!JsonError:\n   |                            ^\n<DIR>/testparsetypeargument-2.ms:8:12: resolution: unknown binding parse; add: import parse from \"@std/csv.ms\"\n   |\n 8 |     return parse[Request](text)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

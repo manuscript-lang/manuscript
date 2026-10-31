@@ -237,7 +237,13 @@ pub fn signature_text(t: &Ty) -> String {
         .iter()
         .map(|p| format!("{}: {}", p.name, p.ty))
         .collect();
-    format!("({}) {}", parts.join(", "), t.result_ty())
+    let result = t.result_ty();
+    // `T!` is the declared spelling of `Result[T, Error]`.
+    let result = match result.args.as_slice() {
+        [ok, err] if result.is_std("Result") && err.is_std("Error") => format!("{ok}!"),
+        _ => result.to_string(),
+    };
+    format!("({}) {result}", parts.join(", "))
 }
 
 /// The builtin type other languages call by this name.

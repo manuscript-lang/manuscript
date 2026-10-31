@@ -80,7 +80,15 @@ impl<'a> FnLower<'a> {
             Resolution::Method(_) if self.receiver_expr(e).is_none() => {
                 self.call_value(e, &view)?
             }
-            Resolution::Method(m) => self.method_call(e, &view, m)?,
+            Resolution::Method(m) => {
+                let out = self.method_call(e, &view, m)?;
+                if m.name().is_some_and(|n| n.as_str() == "close")
+                    && let Some(recv) = self.receiver_expr(e)
+                {
+                    self.note_explicit_close(recv);
+                }
+                out
+            }
             Resolution::Constructor { ty, case } => self.construct(e, &view, ty, *case)?,
             Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
             _ => return Err(Error::new("unsupported call target")),
@@ -395,7 +403,7 @@ impl<'a> FnLower<'a> {
             if vars.len() == 1
                 && !a.own
                 && let Some(place) = args.places.get(i).cloned().flatten()
-                && !matches!(place.kind, ExprKind::Name(_))
+                && (!matches!(place.kind, ExprKind::Name(_)) || self.is_alias_name(&place))
                 && self.is_place(&place)
                 && self.place_is_owned(&place)
             {
@@ -467,6 +475,11 @@ impl<'a> FnLower<'a> {
             }
         }
         Ok(self.val(v, true))
+    }
+
+    /// Whether `e` names an exclusive borrow of another place (`if var x = ...`, `c?.f()`).
+    fn is_alias_name(&self, e: &Expr) -> bool {
+        matches!(self.hir.resolution(e), ms_check::hir::Resolution::Local(b) if self.aliases.contains_key(&b.uid))
     }
 
     // ------------------------------------------------------------- methods

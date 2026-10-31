@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown case Some of Optional; cases: none, some; did you mean 'some'?",
+        "position": {
+          "file": "testdiagnosticsstatecauseandfix-18.ms",
+          "line": 6,
+          "column": 9,
+          "offset": 195
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown case None of Optional; cases: none, some; did you mean 'none'?",
+        "position": {
+          "file": "testdiagnosticsstatecauseandfix-18.ms",
+          "line": 8,
+          "column": 9,
+          "offset": 233
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-18.ms:6:9: resolution: unknown case Some of Optional; cases: none, some; did you mean 'some'?\n   |\n 6 |         Some(v):\n   |         ^\n<DIR>/testdiagnosticsstatecauseandfix-18.ms:8:9: resolution: unknown case None of Optional; cases: none, some; did you mean 'none'?\n   |\n 8 |         None:\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
