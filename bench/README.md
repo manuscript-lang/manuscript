@@ -5,7 +5,7 @@ Each directory has its own run script and committed results naming the revision 
 | Directory | Contents |
 | --- | --- |
 | [`perf/`](perf/README.md) | Compiler and runtime speed against Go and Rust, standard-library baselines, and per-change trial records (dated `results-*` folders and rejected-trial write-ups). Finished trial folders that nothing cites are deleted; git history has them. |
-| [`agent/`](agent/README.md) | How well agents write programs in different languages. Never shares results with `perf/`. Checked by `make` (`bench/agent/tests`). |
+| [`agent/`](agent/README.md) | How well agents write programs in different languages. Never shares results with `perf/`. Checked by `make agent-bench-check` (`bench/agent/core_test.ms`). |
 | [`compile-time/`](compile-time/) | Generated-project compile-time measurements for the incremental-builds proposal (`gen.py`, `report.md`). |
 | [`language/`](language/) | Small language-level benchmark programs (calls, lists, numeric, life). |
 | [`lists/`](lists/) | List storage investigation: programs, pair/memory scripts, results. |

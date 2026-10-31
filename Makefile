@@ -102,8 +102,8 @@ dist-check: dist
 	$(MS) run tools/dist-check.ms
 
 agent-bench-check: build
-	PATH="$(dir $(RELEASE_MS)):$$PATH" python3 bench/agent/run.py oracle
-	python3 -m unittest discover -s bench/agent/tests
+	PATH="$(dir $(RELEASE_MS)):$$PATH" "$(RELEASE_MS)" run bench/agent/run.ms -- oracle
+	"$(RELEASE_MS)" test bench/agent/core_test.ms
 
 # Type-checks every benchmark project so the suites cannot rot unnoticed.
 bench-check: build
