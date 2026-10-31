@@ -464,6 +464,7 @@ impl Checker {
                 );
             }
             let own = self.method_variables(method);
+            self.type_defaults(&method.func.type_params, &own);
             let mut t = (*self.signature(&method.func.params, Some(&method.func.result))).clone();
             let mut found = false;
             for op in &ops {
@@ -684,7 +685,6 @@ impl Checker {
                 own[i].bounds.borrow_mut().push(t);
             }
         }
-        self.type_defaults(&method.func.type_params, &own);
         own
     }
 
