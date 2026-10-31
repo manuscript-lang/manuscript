@@ -6,5 +6,5 @@ Decision: applications export `def main() -> Int` and import the standard servic
 
 
 Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
-Evidence: [CLI contract](../../stdlib/process.ms), [host accessors fixture](../../tests/e2e/testdata/accept/host-accessors.ms).
+Evidence: [CLI contract](../../stdlib/process.ms), [host accessors fixture](../../tests/conformance/fixtures/e2e/accept/host-accessors.ms).
 Verify: a parameterless entry runs; parameterized entries fail; imported accessors share roots across derived executions and imported helpers, while separate tests receive separate root wrappers.

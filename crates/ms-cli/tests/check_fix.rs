@@ -248,3 +248,14 @@ fn fix_removes_only_a_trailing_semicolon() {
     assert_eq!(std::fs::read_to_string(dir.join("b.ms")).unwrap(), source);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn unknown_standard_module_suggests_the_extended_name() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-mod-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("a.ms"), "import x from \"@std/testing.ms\"\n").unwrap();
+    let (_, text) = ms(&["check", "a.ms"], &dir);
+    assert!(text.contains("did you mean '@std/test.ms'?"), "{text}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
