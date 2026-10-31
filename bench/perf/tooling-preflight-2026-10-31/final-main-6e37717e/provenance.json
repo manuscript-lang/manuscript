@@ -1,0 +1,108 @@
+{
+  "main_commit": "6e37717ed3b4035af48cafb50f92272e9fa042c9",
+  "main_tree": "d958d00a06a8e9dda054355b10be3888bf104234",
+  "counterfactual_tree": "6a37bedb7f05a91c7dc8933d82f5582ef15b403b",
+  "counterfactual": "Reverse only own production diffs9cf35d/cb11524/b69559b/18f496; preserve all other final main behavior",
+  "external_harness_provenance": {
+    "source_commit": "6e37717ed3b4035af48cafb50f92272e9fa042c9",
+    "source_tree": "d958d00a06a8e9dda054355b10be3888bf104234",
+    "harnesses": {
+      "lsp": {
+        "immutable_source_sha256": {
+          "Cargo.lock": "c95b3267f5d0b47c2455c54f11c7af8337d680eadf010eabfd0e12b1572d126a",
+          "Cargo.toml": "3dfe6c388a948b17a62d0ba0ae143ec0402a358521f08f0f547258566bbdcd68",
+          "compare.py": "3c04606cfdd23bdf6ebd590751f2626caf0525706f84a58150f8878f50ebbc09",
+          "function.ms": "8f59b7e93c205937343f3371023a46f18352580ecb9e8c520e2118fe09d8fa6f",
+          "main.rs": "a78e99da9b31009d83a662fd57718c399263b6d06e17e230e7dca95c36226acb",
+          "references.ms": "00b3a62b7aedbdc25c867667185e95831ce7eec0b5a824ccd87b41dc288830e7"
+        },
+        "adapted_manifest_sha256": "3f5fad3b16d926852c35290cd6a04fe73ea746b40bfe8b9182aaa0b377b7ef59",
+        "lock_seed": "actual main Cargo.lock; resolver must retain canonical registry versions"
+      },
+      "lsp-semantic": {
+        "immutable_source_sha256": {
+          "Cargo.lock": "7c4af02be07f8d52dcfa2a1cbb6f6216c69dbb447c547afd8d8e3f92ba749fe8",
+          "Cargo.toml": "31be6087906389de4ccb439d619d78ea394098477f92335858d744867cc27ef9",
+          "compare.py": "5923eba85ccfd5c2cce4f2b07e678f878d28e781ec517fab0e3e82ba4f2a52c1",
+          "function.ms": "8f59b7e93c205937343f3371023a46f18352580ecb9e8c520e2118fe09d8fa6f",
+          "list.ms": "5ff519c5e42cfb70ffb3d13c8fab410ea88021c4506594752edc2d1101d32ff5",
+          "main.rs": "9dc66f96d8499853c31720ecfb521bc778f1cf49bb9e2b3d08fabe1853f6ae74",
+          "references.ms": "00b3a62b7aedbdc25c867667185e95831ce7eec0b5a824ccd87b41dc288830e7",
+          "unfinished.src": "c1d6399464d79c37bb7e3db2769605cd03ea70fe7e49d1feb5eb6824a13b6549"
+        },
+        "adapted_manifest_sha256": "03a623429dee9f40bfa08eb6f5730c528442cb857ff9c1dfd12ad6c3e2b424e7",
+        "lock_seed": "actual main Cargo.lock; resolver must retain canonical registry versions"
+      },
+      "lsp-outline": {
+        "immutable_source_sha256": {
+          "Cargo.lock": "590fa2db5fc2db2e66a578fba8869e4594afd3319a9ed153e286805d29b15206",
+          "Cargo.toml": "62d2ba451747429eef5a43181d75eb29edd31b45e31a4d8ce9f027338fc99548",
+          "compare.py": "799948aafbaabdc70f5ca76628c1ae06fd225cf3d83dfb74bcd288c14517a1b7",
+          "function.ms": "8f59b7e93c205937343f3371023a46f18352580ecb9e8c520e2118fe09d8fa6f",
+          "main.rs": "e3bc0a682bbd2c7075ae94b650d015a464a163b1babf8ec2822c606c719a9834",
+          "references.ms": "00b3a62b7aedbdc25c867667185e95831ce7eec0b5a824ccd87b41dc288830e7"
+        },
+        "adapted_manifest_sha256": "cb1956455ab507c75a862d73f1e1388eed3c3d5b0f4303f6bffb83f7baabea37",
+        "lock_seed": "actual main Cargo.lock; resolver must retain canonical registry versions"
+      },
+      "formatter-flow": {
+        "immutable_source_sha256": {
+          "Cargo.lock": "a51d17474618cf43db04824ed6954b5aac761b150d784c4dadf14cd2db4ea3ae",
+          "Cargo.toml": "48725303e11603adfdf5279bdadc5548d499edf5441575dc4e3f26fa5543a38a",
+          "clause.ms": "c28e44596db5fed8578623ed4a7d629f5574e1f96f43ebed066b13b00c2f7d19",
+          "compare.py": "7575ec4e32a755238760e2ef3b1f7dfb6f09a4e255647e9c35e1581ba96853a9",
+          "flow.ms": "b954d4986177f4b1778398e91f3e43db7882c32ef423a82d02743743bfde2010",
+          "function.ms": "8f59b7e93c205937343f3371023a46f18352580ecb9e8c520e2118fe09d8fa6f",
+          "inline.ms": "595be1669d80e640d4fc80a89e7b68b351502979291b2faf00c616e55336147a",
+          "list.ms": "5ff519c5e42cfb70ffb3d13c8fab410ea88021c4506594752edc2d1101d32ff5",
+          "main.rs": "9f5a516590d995cb994ab1980f46bc0c07a7aae5fe6378403d3f40055326ba9d",
+          "member.ms": "c038d23aae683661d03d7c2e8830e90fd2caedcc1e08eaab8fb9b20f7fe98da4"
+        },
+        "adapted_manifest_sha256": "567782c5916fb3765db5dc6cac08c7f3c5a6b44157231fd4db934b79b026ff51",
+        "lock_seed": "actual main Cargo.lock; resolver must retain canonical registry versions"
+      }
+    }
+  },
+  "allowed_cpus": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "timing_cpu": 0,
+  "profile": "release opt-level3, debug1, panicabort; no custom flags below",
+  "compiler_env": {
+    "RUSTFLAGS": null,
+    "CARGO_ENCODED_RUSTFLAGS": null,
+    "CARGO_BUILD_RUSTFLAGS": null,
+    "RUSTC_WRAPPER": null,
+    "RUSTC_WORKSPACE_WRAPPER": null,
+    "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS": null
+  },
+  "files": {
+    "final-rustc-version.txt": "f22d5e4e9ced367e774ce5bc140d9e6b1235c1882fec80d011044851f3ae6369",
+    "final-cargo-version.txt": "c35608815f43d0b8788a9b826fad2bb17384f49fb328dc4fe64da9db5f5ef4d6",
+    "final-main-own-production.patch": "7fdce144678b6d0ce7bb4db15bc0c49cc7e7327dfb96f8f7ab843dc8e3731bfa",
+    "final-main-correctness.log": "507daa33f2bd0de8f0935cb94a9075857949e57595de1e7bfc5828ba3f5b76e7",
+    "final-baseline-correctness.log": "fcfc36efbb9e5ef4ea7ae1dbdd1cb66690dbef35c4ca81ce53d715b70ac174d2",
+    "final-main-clippy.log": "a13905646e2aed93ec6ea9ed6ac91490a4e01f91af0215c3965279a910612149",
+    "final-main-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "final-main-before-build.log": "f52859069520c73f17711870eea21e0911ff50935ab2517cb8e61939fd6dcc2e",
+    "final-main-after-build.log": "0a984fdcc019958d11408c0f6bd0c6fc2e3dee8c1e88748dd4de0324b2e7a663",
+    "final-main-binaries.sha256": "aafa2f33d23b6ee50cfa21c25de8155e71b765882cbe428db79eafd0dd6d1c24"
+  },
+  "tests": {
+    "main": 182,
+    "counterfactual": 181,
+    "failed": 0,
+    "ignored": 0
+  },
+  "omissions": "Unrelated archive bodies omitted skip-worktree; focused source/fixture graph complete. No full repository invariant check or native conformance run.",
+  "resolved_locks": {
+    "lsp": "c95b3267f5d0b47c2455c54f11c7af8337d680eadf010eabfd0e12b1572d126a",
+    "lsp-semantic": "7c4af02be07f8d52dcfa2a1cbb6f6216c69dbb447c547afd8d8e3f92ba749fe8",
+    "lsp-outline": "590fa2db5fc2db2e66a578fba8869e4594afd3319a9ed153e286805d29b15206",
+    "formatter-flow": "a51d17474618cf43db04824ed6954b5aac761b150d784c4dadf14cd2db4ea3ae"
+  }
+}

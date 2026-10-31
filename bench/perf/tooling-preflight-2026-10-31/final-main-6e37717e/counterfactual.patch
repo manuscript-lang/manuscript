@@ -1,0 +1,311 @@
+diff --git a/crates/ms-lsp/src/nav.rs b/crates/ms-lsp/src/nav.rs
+index 8fa4980d2..762856fb6 100644
+--- a/crates/ms-lsp/src/nav.rs
++++ b/crates/ms-lsp/src/nav.rs
+@@ -39,7 +39,7 @@ pub struct Hit {
+ struct Finder<'a> {
+     module: &'a ModRef,
+     source: &'a str,
+-    p: Position,
++    cursor: Result<usize, Position>,
+     best: Option<Hit>,
+ }
+ 
+@@ -50,11 +50,23 @@ impl Finder<'_> {
+             return;
+         };
+         let offset = e.pos.offset as usize;
+-        let start = text::position(self.source, offset);
+-        let end = text::position(self.source, offset + text.len());
+-        let inside = self.p.line == start.line
+-            && self.p.character >= start.character
+-            && self.p.character < end.character;
++        let end = offset + text.len();
++        let inside = if let Ok(cursor) = self.cursor
++            && self.source.get(offset..end) == Some(text)
++            && !text.contains('\n')
++        {
++            cursor >= offset && cursor < end
++        } else {
++            // Invalid positions and mismatched/recovered snapshots retain the
++            // original clamped UTF-16 comparison.
++            let p = self
++                .cursor
++                .map(|at| text::position(self.source, at))
++                .unwrap_or_else(|p| p);
++            let start = text::position(self.source, offset);
++            let end = text::position(self.source, end);
++            p.line == start.line && p.character >= start.character && p.character < end.character
++        };
+         if inside && self.best.as_ref().is_none_or(|b| text.len() < b.text.len()) {
+             self.best = Some(Hit {
+                 offset,
+@@ -97,7 +109,7 @@ pub fn at(analysis: &Analysis, d: &Document, p: Position, index: &[Occurrence])
+     let mut finder = Finder {
+         module: &module,
+         source: &d.text,
+-        p,
++        cursor: text::offset(&d.text, p).map_err(|_| p),
+         best: None,
+     };
+     for decl in &module.decls {
+@@ -414,11 +426,37 @@ pub fn references_with_index(
+     let Some(selected) = occurrence_at(analysis, d, p, index) else {
+         return Vec::new();
+     };
+-    index
++    let entries: Vec<_> = index
+         .iter()
+         .filter(|e| e.key == selected.key && (include || !e.declaration))
+-        .filter_map(|e| occurrence_location(analysis, e))
+-        .collect()
++        .collect();
++    if entries.is_empty() {
++        return Vec::new();
++    }
++    let modules = analysis.source_modules();
++    let mut locations = Vec::with_capacity(entries.len());
++    for entries in entries.chunk_by(|a, b| a.file == b.file) {
++        let file = entries[0].file;
++        let Some(module) = modules.iter().find(|m| m.file == file) else {
++            continue;
++        };
++        // Index only the prefix needed by these locations. A reference near the
++        // start of a large file should not scan the unrelated remainder.
++        let end = entries
++            .iter()
++            .map(|e| e.offset.max(e.end))
++            .max()
++            .unwrap_or(0);
++        let source = module.source.get(..end).unwrap_or(&module.source);
++        let positions = text::SourcePositions::new(source);
++        let source_uri = analysis.source_uri(file.as_str());
++        locations.extend(
++            entries
++                .iter()
++                .map(|entry| location(&source_uri, positions.range(entry.offset, entry.end))),
++        );
++    }
++    locations
+ }
+ 
+ /// Go prints a location map as `map[range:{{a b} {c d}} uri:u]`; results
+diff --git a/crates/ms-lsp/src/semantic.rs b/crates/ms-lsp/src/semantic.rs
+index 4a0b1f81c..5d55eca97 100644
+--- a/crates/ms-lsp/src/semantic.rs
++++ b/crates/ms-lsp/src/semantic.rs
+@@ -3,7 +3,7 @@
+ use crate::analysis::{Analysis, Document};
+ use crate::index::{Occurrence, expr_text};
+ use crate::json::{Json, obj};
+-use crate::text::{self, EditorKind, SourcePositions};
++use crate::text::{self, EditorKind, ForwardPositions};
+ use ms_check::types::Kind;
+ use ms_syntax::ast::*;
+ use ms_syntax::token::{KEYWORDS, Tok};
+@@ -210,7 +210,7 @@ pub fn semantic_tokens(analysis: Option<&Analysis>, index: &[Occurrence], d: &Do
+             }
+         }
+     }
+-    let positions = SourcePositions::new(&d.text);
++    let mut positions = ForwardPositions::new(&d.text);
+     let (mut line, mut character) = (0usize, 0usize);
+     let mut data: Vec<Json> = Vec::new();
+     for token in &tokens {
+diff --git a/crates/ms-lsp/src/text.rs b/crates/ms-lsp/src/text.rs
+index 0f13a195c..3211c57a3 100644
+--- a/crates/ms-lsp/src/text.rs
++++ b/crates/ms-lsp/src/text.rs
+@@ -128,6 +128,39 @@ impl<'a> SourcePositions<'a> {
+     }
+ }
+ 
++/// Coordinates for an ordered batch without rescanning already visited text.
++pub(crate) struct ForwardPositions<'a> {
++    source: &'a str,
++    offset: usize,
++    at: Position,
++}
++
++impl<'a> ForwardPositions<'a> {
++    pub(crate) fn new(source: &'a str) -> Self {
++        Self {
++            source,
++            offset: 0,
++            at: Position::default(),
++        }
++    }
++
++    pub(crate) fn position(&mut self, offset: usize) -> Position {
++        let offset = offset.min(self.source.len());
++        if offset < self.offset || !self.source.is_char_boundary(offset) {
++            return position(self.source, offset);
++        }
++        let next = &self.source[self.offset..offset];
++        if let Some(last) = next.rfind('\n') {
++            self.at.line += next.bytes().filter(|&b| b == b'\n').count();
++            self.at.character = utf16_length(&next.as_bytes()[last + 1..]);
++        } else {
++            self.at.character += utf16_length(next.as_bytes());
++        }
++        self.offset = offset;
++        self.at
++    }
++}
++
+ /// The position just past the last byte.
+ pub fn end_position(source: &str) -> Position {
+     position(source, source.len())
+@@ -356,6 +389,29 @@ pub fn line_span(source: &str, line: usize) -> (usize, usize) {
+ mod tests {
+     use super::*;
+ 
++    #[test]
++    fn forward_positions_preserve_every_original_byte_position() {
++        for source in ["", "plain", "a😀b\r\né\n\nlast\rignored", "\n😀\n日本\r\n"] {
++            let mut positions = ForwardPositions::new(source);
++            for offset in (0..=source.len() + 2)
++                .chain((0..=source.len()).rev())
++                .chain([0, 1, 2, source.len(), usize::MAX, 0, source.len()])
++            {
++                assert_eq!(positions.position(offset), position(source, offset));
++            }
++            let mut positions = ForwardPositions::new(source);
++            for at in 0..=source.len() {
++                for offset in [at, source.len() - at, at, at + 1] {
++                    assert_eq!(positions.position(offset), position(source, offset));
++                }
++            }
++            let mut positions = ForwardPositions::new(source);
++            for offset in [0, 1, 2, 5, 0, 6, 5, 7, 3, source.len(), usize::MAX] {
++                assert_eq!(positions.position(offset), position(source, offset));
++            }
++        }
++    }
++
+     #[test]
+     fn diagnostic_index_preserves_all_original_byte_ranges() {
+         for source in [
+diff --git a/crates/ms-lsp/src/symbols.rs b/crates/ms-lsp/src/symbols.rs
+index a7d2c8bb0..bfebbe49c 100644
+--- a/crates/ms-lsp/src/symbols.rs
++++ b/crates/ms-lsp/src/symbols.rs
+@@ -183,11 +183,11 @@ pub fn document_symbols(analysis: &Analysis, d: &Document) -> Json {
+         if decl.0.decl.synthetic && matches!(decl.decl().kind, DeclKind::Interface(_)) {
+             continue;
+         }
+-        let mut end = outline.block_end(d.text.len());
+-        if let Some(next) = declarations.get(i + 1) {
+-            end = outline.block_end(next.pos().offset as usize);
+-        }
+-        end = end.max(decl.pos().offset as usize);
++        // Select the boundary before scanning a potentially large EOF suffix.
++        let next = declarations
++            .get(i + 1)
++            .map_or(d.text.len(), |next| next.pos().offset as usize);
++        let end = outline.block_end(next).max(decl.pos().offset as usize);
+         out.push(outline.declaration(decl, end));
+     }
+     Json::Arr(out)
+diff --git a/crates/ms-syntax/src/format.rs b/crates/ms-syntax/src/format.rs
+index 6b662101e..76f731b51 100644
+--- a/crates/ms-syntax/src/format.rs
++++ b/crates/ms-syntax/src/format.rs
+@@ -864,11 +864,13 @@ impl<'a> Layout<'a> {
+     fn flat(&self, nodes: &[Node]) -> String {
+         let mut out = String::new();
+         let mut last_line = 0u32;
+-        for (index, node) in nodes.iter().enumerate() {
++        let mut flow = FlowPrefix::default();
++        for node in nodes {
++            let joined = flow.advance(node, last_line);
+             if layout_token(node.tok.kind) || node.tok.kind == Tok::Comment {
+                 continue;
+             }
+-            if joined_flow_dot(&nodes[..index], node, last_line) {
++            if joined {
+                 out.push_str(" | ");
+             } else if !out.is_empty() && node.space {
+                 out.push(' ');
+@@ -1111,12 +1113,20 @@ impl<'a> Layout<'a> {
+     /// group (such as a list before a map callback) to expand as well.
+     fn following_width(&self, rest: &[Node], clause: bool) -> usize {
+         let mut tail: Vec<Node> = Vec::new();
++        let mut minimum = 0usize;
+         for next in rest {
+             if matches!(next.tok.kind, Tok::Newline | Tok::Comment)
+                 || (clause && next.tok.kind == Tok::Colon)
+             {
+                 break;
+             }
++            minimum +=
++                usize::from(!layout_token(next.tok.kind) && !self.text(&next.tok).is_empty());
++            // Callers only ask whether this suffix forces a line past WIDTH.
++            // Every visible nonempty token contributes at least one character.
++            if minimum > WIDTH {
++                return WIDTH + 1;
++            }
+             let mut next = *next;
+             if let Some(ng) = next.group
+                 && !self.groups[ng].nodes.is_empty()
+@@ -1186,7 +1196,9 @@ impl<'a> Layout<'a> {
+             }
+         }
+         let (mut pending, mut suite, mut last_line) = (false, false, 0u32);
++        let mut flow = FlowPrefix::default();
+         for (index, node) in nodes.iter().enumerate() {
++            let joined = flow.advance(node, last_line);
+             if layout_token(node.tok.kind) {
+                 pending = pending || node.tok.kind == Tok::Newline;
+                 suite = suite || node.tok.kind == Tok::Newline;
+@@ -1229,7 +1241,7 @@ impl<'a> Layout<'a> {
+                 }
+             } else if comment {
+                 w.write("  ");
+-            } else if joined_flow_dot(&nodes[..index], node, last_line) {
++            } else if joined {
+                 w.write(" | ");
+             } else if node.space {
+                 w.write(" ");
+@@ -1252,20 +1264,28 @@ impl<'a> Layout<'a> {
+ /// A line starting with `.` after a flow step applies to the whole flow so far.
+ /// Joined onto the previous line it must read `| .name(...)`, since `step.name`
+ /// would instead select a member of the step.
+-fn joined_flow_dot(before: &[Node], node: &Node, last_line: u32) -> bool {
+-    if node.tok.kind != Tok::Dot || last_line == 0 || last_line == node.tok.pos.line {
+-        return false;
++#[derive(Default)]
++struct FlowPrefix {
++    previous: Option<Tok>,
++    has_pipe: bool,
++}
++
++impl FlowPrefix {
++    fn advance(&mut self, node: &Node, last_line: u32) -> bool {
++        let joined = node.tok.kind == Tok::Dot
++            && last_line != 0
++            && last_line != node.tok.pos.line
++            && self.has_pipe
++            && !matches!(self.previous, Some(Tok::Pipe | Tok::Try));
++        // Only preceding code in the current comma-separated item contributes.
++        if node.group.is_none() && node.tok.kind == Tok::Comma {
++            *self = Self::default();
++        } else if !layout_token(node.tok.kind) && node.tok.kind != Tok::Comment {
++            self.previous = Some(node.tok.kind);
++            self.has_pipe |= node.tok.kind == Tok::Pipe;
++        }
++        joined
+     }
+-    // Only the current comma-separated item is part of the flow.
+-    let item = before
+-        .iter()
+-        .rposition(|n| n.group.is_none() && n.tok.kind == Tok::Comma)
+-        .map_or(before, |comma| &before[comma + 1..]);
+-    let mut code = item
+-        .iter()
+-        .filter(|n| !layout_token(n.tok.kind) && n.tok.kind != Tok::Comment);
+-    let previous = code.clone().next_back().map(|n| n.tok.kind);
+-    !matches!(previous, Some(Tok::Pipe | Tok::Try)) && code.any(|n| n.tok.kind == Tok::Pipe)
+ }
+ 
+ fn is_comparison(k: Tok) -> bool {

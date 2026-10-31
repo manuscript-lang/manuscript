@@ -1,0 +1,11 @@
+[package]
+name = "ms-tooling-discovery"
+version = "0.0.0"
+edition = "2024"
+[workspace]
+[dependencies]
+ms-lsp = { path = "/workspace/main-api-current/crates/ms-lsp" }
+ms-syntax = { path = "/workspace/main-api-current/crates/ms-syntax" }
+[profile.release]
+debug = 1
+panic = "abort"

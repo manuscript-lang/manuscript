@@ -14,4 +14,4 @@ must stop the run. Reconstruct a same-main baseline by reversing only the measur
 production patches; retain output assertions rather than filtering changed facts.
 The [matched preflight](../../bench/perf/tooling-preflight-2026-10-31/README.md)
 records this correction and keeps the rejected comparison separate. Required CI
-and an actual merged-main replay still gate completion.
+and an actual merged-main replay still gate completion. The [merged replay](../../bench/perf/tooling-preflight-2026-10-31/final-main-6e37717e/README.md) preserves all 4,480 matched observations and six slower controls; its fresh discovery also records follow-up candidates rather than claiming global cleanliness.
