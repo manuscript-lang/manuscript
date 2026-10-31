@@ -104,6 +104,18 @@ integrated current-main branch replay.
   final 220-case comparison. The original native/compiler result metadata stays
   attached to its own phase; absolute times and speed ratios vary between phases.
 
+## Fresh-main readiness follow-up
+
+A later [8dd79f417 replay](results-2026-10-31/fresh-main-8dd/README.md) initially
+flagged 63-byte reversal at +6.63%, paired +9.76 ns, seven of eight slower pairs.
+This temporarily held the word/vector PR. Two predeclared full-suite repeats show
++2.21%/+1.49%; identical-binary A/A shows a +5.01% median difference. The material
+penalty is unconfirmed, not disproved; a smaller persistent cost remains possible.
+All original/repeat/A/A phases and paired ranges remain. The same experiment's
+separate ASCII-normalization prototype has an unresolved composition cost and is
+not accepted by the byte PR. Read the follow-up before interpreting the earlier
+zero-screen results as proof that unrelated operations are unchanged.
+
 ## Reproduce
 
 Build the compiler/runtime normally, preserve the baseline native archive, and
