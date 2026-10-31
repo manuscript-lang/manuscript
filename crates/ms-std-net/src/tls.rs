@@ -8,10 +8,6 @@ use crate::conn::{Io, OwnedSock, Step, TlsDetails};
 use crate::error::{NetErr, TlsErr, describe_io_error};
 use crate::sys::{AsSock, Borrowed};
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
-use base64::Engine as _;
-use base64::alphabet::STANDARD;
-use base64::engine::DecodePaddingMode;
-use base64::engine::general_purpose::{GeneralPurpose, GeneralPurposeConfig};
 use ms_rt::fault::with_cleanup;
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerifier};
 use rustls::crypto::{CryptoProvider, WebPkiSupportedAlgorithms, ring};
@@ -27,13 +23,6 @@ use std::sync::{Arc, OnceLock};
 use x509_parser::prelude::*;
 
 // ------------------------------------------------------------------------ PEM
-
-const LENIENT: GeneralPurpose = GeneralPurpose::new(
-    &STANDARD,
-    GeneralPurposeConfig::new()
-        .with_decode_allow_trailing_bits(true)
-        .with_decode_padding_mode(DecodePaddingMode::RequireCanonical),
-);
 
 /// Decodes one block at the start of `text` as PEM requires,
 /// returning its label, bytes and the remaining text. Blocks with headers are
@@ -62,7 +51,7 @@ fn decode_block(text: &str, skip_junk: bool) -> Option<(String, Vec<u8>, &str)> 
         };
         let trimmed = line.trim();
         if trimmed == end {
-            let bytes = LENIENT.decode(body.as_bytes()).ok()?;
+            let bytes = ms_std_encoding::base64_decode_lenient(&body)?;
             return Some((label, bytes, after));
         }
         if trimmed.contains(':') {
