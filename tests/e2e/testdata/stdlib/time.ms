@@ -81,10 +81,17 @@ test "calendar rejects unknown zones and impossible dates":
 
 test "sub-millisecond sleeps are not rounded up to a millisecond":
     let monotonic = clock()
-    let start = monotonic.now()
-    for round in 0..500:
-        sleep(microseconds(50))
+    var fastest = milliseconds(5000)
 
     # Rounding each sleep up to 1 ms would take at least 500 ms; 50 us sleeps take about 25 ms.
-    let elapsed = monotonic.now().difference(start)
-    try expect_true(elapsed.compare(milliseconds(400)) < 0)
+    # A loaded or coarse-timer runner can stretch one pass, so the fastest of a few passes decides.
+    for attempt in 0..5:
+        let start = monotonic.now()
+        for round in 0..500:
+            sleep(microseconds(50))
+
+        let elapsed = monotonic.now().difference(start)
+        if elapsed.compare(fastest) < 0:
+            fastest = elapsed
+
+    try expect_true(fastest.compare(milliseconds(400)) < 0)

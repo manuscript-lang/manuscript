@@ -6,5 +6,5 @@ Verified (a Go-era crash class; the invariant is language-level): reporting an i
 
 
 Apply when: resolving generic bounds, copying implementation variables, or traversing recovered types for diagnostics and editor queries.
-Evidence: [recursive interface bound fixture](../../tests/e2e/testdata/accept/recursive-interface-bound.ms).
+Evidence: [recursive interface bound fixture](../../tests/conformance/fixtures/e2e/accept/recursive-interface-bound.ms).
 Verify: a program with `T: T` reports a diagnostic and the checker and language server both terminate.
