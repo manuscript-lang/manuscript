@@ -2615,6 +2615,7 @@ impl<'a> Parser<'a> {
                 body: Vec::new(),
                 value: Some(branch),
                 from_if: true,
+                bare: false,
             });
         }
         Ok(self.mk(
@@ -2652,13 +2653,37 @@ impl<'a> Parser<'a> {
             let literal = matches!(k, Tok::Number | Tok::True | Tok::False | Tok::String)
                 || (k == Tok::Minus && self.ahead(1).kind == Tok::Number);
             let mut bindings = Vec::new();
+            let mut bare = false;
             let path;
             if literal {
                 path = self.expression(0)?;
             } else if self.take(Tok::Underscore) {
                 path = self.mk(start.pos, ExprKind::Name(Symbol::intern("_")));
             } else {
-                path = self.case_path()?;
+                let mut written = self.case_path()?;
+                if let ExprKind::Name(n) = &written.kind
+                    && n.as_str() == "some"
+                    && self.kind() == Tok::LParen
+                    && self.speculative == 0
+                {
+                    let t = self.peek();
+                    return self.fail(t, "there is no some pattern; write the payload name alone, e.g. 'value:' beside 'none:'");
+                }
+                if let ExprKind::Name(n) = &written.kind
+                    && self.kind() != Tok::LParen
+                    && n.as_str() != "none"
+                    && n.as_str()
+                        .starts_with(|c: char| c.is_ascii_lowercase() || c == '_')
+                {
+                    // A lone lowercase name binds an Optional's payload.
+                    bindings.push(ArmBinding {
+                        name: *n,
+                        pos: start.pos,
+                    });
+                    written = self.mk(start.pos, ExprKind::Name(Symbol::intern("some")));
+                    bare = true;
+                }
+                path = written;
                 if self.take(Tok::LParen) {
                     loop {
                         let tok = self.peek();
@@ -2692,6 +2717,7 @@ impl<'a> Parser<'a> {
                 body: Vec::new(),
                 value: None,
                 from_if: false,
+                bare,
             };
             self.value_arm(&mut arm)?;
             arms.push(arm);

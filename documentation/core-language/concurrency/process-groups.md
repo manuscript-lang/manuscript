@@ -28,7 +28,7 @@ test "a child process answers messages on its channel":
     let group = ProcessGroup[Result[Int, ChannelError], Int, Int]()
     var child = group.spawn(square_all) | try expect_ok
     child.channel.send(3) | try expect_ok
-    child.channel.receive() | try expect_ok | try expect_equal(some(9))
+    child.channel.receive() | try expect_ok | try expect_equal(9)
     child.channel.close()
     child.result() | try expect_ok | try expect_ok | try expect_equal(1)
 ```

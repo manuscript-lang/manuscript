@@ -56,7 +56,7 @@ fn t_consume_in_loop() Int:
     return total
 
 fn t_optional() Int:
-    let o: List[String]? = some(["a", "b"])
+    let o: List[String]? = ["a", "b"]
     nap()
     return o.get([]).length()
 
@@ -67,10 +67,10 @@ fn t_closure() Int:
     return f()
 
 fn t_match() Int:
-    let r: List[Int]? = some([1, 2, 3])
+    let r: List[Int]? = [1, 2, 3]
 
     match r:
-        some(v):
+        v:
             nap()
             return v.length()
         none:
@@ -157,7 +157,7 @@ fn t_while_sleep() Int:
     return n
 
 fn run_one(which: Int) Unit:
-    let group = TaskGroup[Int](timeout: some(nanoseconds(1000000)))
+    let group = TaskGroup[Int](timeout: nanoseconds(1000000))
 
     if which == 0: group.spawn(fn ch: t_var_reassign())
     else if which == 1: group.spawn(fn ch: t_var_list_swap())

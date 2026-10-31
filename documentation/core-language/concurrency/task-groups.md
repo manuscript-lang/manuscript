@@ -87,13 +87,13 @@ test "a task answers messages on its channel":
     let group = TaskGroup[Result[Unit, ChannelError], Int, Int]()
     var task = group.spawn(square_all)
     task.channel.send(3) | try expect_ok
-    task.channel.receive() | try expect_ok | try expect_equal(some(9))
+    task.channel.receive() | try expect_ok | try expect_equal(9)
     task.channel.close()
     task.result() | try expect_ok | try expect_ok
 ```
 
 - `send(value)` moves `value` to the other end. It waits while the other end has 16 unread values.
-- `receive()` waits for the next value: `ok(some(value))`, or `ok(none)` once the other end closed and every value it sent was read.
+- `receive()` waits for the next value: `ok(value)`, or `ok(none)` once the other end closed and every value it sent was read.
 - `close()` closes this end. The other end reads what is left, then `ok(none)`; its sends give `error(ChannelError.Closed)`. Using an end after closing it gives `Closed`, and unread values on it are dropped. Closing again does nothing.
 - A task's end closes when its entry returns, is cancelled, or never ran, so the group's `receive` ends with `ok(none)` instead of waiting forever. Closing the group closes every end.
 - Collecting a task's result leaves its channel readable, including buffered values. Closing the group closes retained and cloned channel handles too, even after result collection, and drops their unread values. Discarded collected channels are released without waiting for group close or another spawn.

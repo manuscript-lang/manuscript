@@ -8,8 +8,8 @@ fn smallest[T: Comparable & Clonable](values: List[T]) T?:
 
 test "List operations written in Manuscript apply without an import":
     try expect_equal([4, 5].sum(), 9)
-    try expect_equal([4, 5].min(), some(4))
-    try expect_equal([4, 5].max(), some(5))
+    try expect_equal([4, 5].min(), 4)
+    try expect_equal([4, 5].max(), 5)
     try expect_equal([5, 4].sorted(), [4, 5])
 
 test "a comparator-less call and a comparator call share a name":
@@ -24,7 +24,7 @@ test "a comparator-less call and a comparator call share a name":
     try expect_equal(numbers, [3, 2, 1])
 
 test "the bound is carried through a generic function":
-    try expect_equal(smallest(["b", "a"]), some("a"))
+    try expect_equal(smallest(["b", "a"]), "a")
     try expect_true(smallest(List[Int]()).is_none())
 
 test "keys of a temporary list is built and released once":

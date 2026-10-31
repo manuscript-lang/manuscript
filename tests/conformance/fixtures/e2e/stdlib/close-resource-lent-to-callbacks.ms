@@ -16,7 +16,7 @@ fn say(s: String) Unit:
     stdout().write("{s}\n").get()
 
 fn maybe(n: String) Door?:
-    return some(Door(n))
+    return Door(n)
 
 fn open(n: String) Result[Door, TextError]:
     return ok(Door(n))

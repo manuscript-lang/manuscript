@@ -1,8 +1,8 @@
 fn use(value: Int?) Unit:
     match value:
-        some(_):
+        _value:
             match value:
-                some(_): unit
+                _value: unit
                 none: unit
         none: unit
 import filesystem from "@std/fs.ms"
@@ -510,13 +510,13 @@ resolution	7	12	168	unknown binding panic; add: import panic from "@std/core.ms"
 fn required(value: Int) Int: return value
 fn call(x: Int?) Int:
     let chosen = match x:
-        some(n): optional
+        n: optional
         none: required
     return chosen()
-type	7	12	196	missing argument value: Int in call to chosen; add 'value: <Int>'fn f(x: Int?) Int:
+type	7	12	190	missing argument value: Int in call to chosen; add 'value: <Int>'fn f(x: Int?) Int:
     while true:
         while (match x:
-            some(n): true
+            n: true
             none: break
         ):
             break
@@ -528,29 +528,29 @@ fn call(x: Int?) Int:
 type	1	27	26	operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. interpolate into text with "{value}", or convert between Int and Float)fn f() String: return "a" - "b"
 type	1	27	26	arithmetic requires numeric operandsfn f(x: Int?) Int:
     return match x:
-        some(n): n
+        n: n
 type	2	12	30	non-exhaustive match; missing cases: none, or add a final '_:' arm; add the arms 'case none:'fn f(x: Int?) Unit:
     let y = match x:
-        some(n): n
+        n: n
         none: "missing"
-type	4	15	74	expected Int, found Stringfn f(x: Int?) Int:
+type	4	15	68	expected Int, found Stringfn f(x: Int?) Int:
     return match x:
-        some(n): n
+        n: n
         none: return "missing"
-type	4	22	79	expected Int, found String (in the return value)fn f(x: Int?) Int:
+type	4	22	73	expected Int, found String (in the return value)fn f(x: Int?) Int:
     let y = match x:
-        some(n): n
+        n: n
         none: 0
     return n
-resolution	5	12	86	unknown binding n; declare it with 'let n = ...' before use, define 'fn n(...) T:', or import it from a modulefn p() Result[Int, Error]:
+resolution	5	12	80	unknown binding n; declare it with 'let n = ...' before use, define 'fn n(...) T:', or import it from a modulefn p() Result[Int, Error]:
     return ok(1)
 fn f(x: Int?) Result[Unit, Error]:
     match x:
-        some(n):
+        n:
             try p()
             return ok(unit)
         none: return ok(unit)
-type	6	13	121	standalone try requires a Unit success value, found Int; use 'let name = try ...' to keep the value or 'return try ...' to return itfn p() Result[Int, Error]:
+type	6	13	115	standalone try requires a Unit success value, found Int; use 'let name = try ...' to keep the value or 'return try ...' to return itfn p() Result[Int, Error]:
     return ok(1)
 fn f() Int:
     return p()
@@ -558,11 +558,11 @@ fn f() Int:
     return x
 type	2	12	30	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f(x: Int?) Int:
     return match x:
-        some(n):
+        n:
             n
             n + 1
         none: 0
-parse	4	13	68	an arm value must be its final expressionimport filesystem, FileSystemError from "@std/fs.ms"
+parse	4	13	62	an arm value must be its final expressionimport filesystem, FileSystemError from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
 fn forward[T](item: T) T: item
 fn check() Unit: ...
@@ -1050,7 +1050,7 @@ fn call(view: Read) Unit:
     return 0
 fn f() Int:
     match peek():
-        some(x):
+        x:
             return x
         none:
             return 0
@@ -1140,28 +1140,28 @@ resolution	3	13	54	unknown binding SetBuilder; declare it with 'let SetBuilder =
 resolution	4	13	84	unknown binding Queue; add: import Queue from "@std/queue.ms"
 resolution	5	13	109	unknown binding Queue; add: import Queue from "@std/queue.ms"fn f(counts: Map[String, Int], names: List[String], found: Int?) Unit:
     match found:
-        some(n):
+        n:
             counts.add(key: "a", value: n)
         none:
             names.append("x")
-type	4	13	117	cannot change `counts`: parameter `counts` is not declared var; write `var counts: <Type>` in the signature and pass `var` at every call
-type	6	13	174	cannot change `names`: parameter `names` is not declared var; write `var names: <Type>` in the signature and pass `var` at every callfn f(xs: List[Int], o: Int?) Unit:
+type	4	13	111	cannot change `counts`: parameter `counts` is not declared var; write `var counts: <Type>` in the signature and pass `var` at every call
+type	6	13	168	cannot change `names`: parameter `names` is not declared var; write `var names: <Type>` in the signature and pass `var` at every callfn f(xs: List[Int], o: Int?) Unit:
     var n = 0
     match o:
-        some(v):
+        v:
             n = v
             xs.set(index: 0, value: 5)
         none:
             n = 2
     xs.append(n)
-type	6	13	109	cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every call
-type	9	5	172	cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every callfn f(xs: List[Int], o: Int?) Unit:
+type	6	13	103	cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every call
+type	9	5	166	cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every callfn f(xs: List[Int], o: Int?) Unit:
     let r = match o:
-        some(v):
+        v:
             xs.set(index: 0, value: v)
         none:
             xs.length()
-type	6	16	141	expected Unit, found Int# A described record.
+type	6	16	135	expected Unit, found Int# A described record.
 export type Counter:
     # Current count in items.
     # May start at zero.
@@ -1215,7 +1215,7 @@ resolution	6	89	352	unknown type NetworkError; add: import NetworkError from "@s
     weight: Int
     port: Int
 resolution	2	11	26	unknown type DnsKind; add: import DnsKind from "@std/net.ms"type Optional[T]:
-    case some(value: T)
+    case T
     case none
 
 impl T?:
@@ -1228,7 +1228,7 @@ impl T?:
     fn ok_or[E: Error = MissingValue](cause: E? = none) Result[T, E]: ...
     fn ok_or_else[E: Error](create: fn() E) Result[T, E]: ...
 resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
-type	5	1	57	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesfn helper(left: Int, right: Int) Int:
+type	5	1	44	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesfn helper(left: Int, right: Int) Int:
     return left + right
 export fn defaults(first: Int = -3, second: Int = helper(left: first, right: 2), text: String = "literal, )", callback: fn(Int) Int = (fn(value: Int) Int:
     return value + 1
@@ -1341,7 +1341,7 @@ resolution	5	9	78	unknown case None of Optional; cases: none, some; did you mean
     if n == 0:
         return 1
     return 0
-type	2	10	28	operator operands require the same independently known type, found Int? == Int; Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f(n: Int?) Int:
+fn f(n: Int?) Int:
     return 1 + n
 type	2	14	32	operator operands require the same independently known type, found Int + Int?; Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn p() Result[Int, Error]:
     return ok(1)
@@ -1361,7 +1361,7 @@ fn f() Int:
 resolution	2	5	17	unknown binding println; there is no built-in print: import stdout from "@std/io.ms" and call stdout().write("text\\n")fn f() Int:
     let s = null
     return 0
-resolution	2	13	24	unknown binding null; Manuscript has no null: absence is an Optional, written none, and a present value is some(value)fn f() Int:
+resolution	2	13	24	unknown binding null; Manuscript has no null: absence is an Optional, written none, and a present value is just the value, which converts where an Optional is expectedfn f() Int:
     let x = 1
     return x()
 type	3	12	37	x is not a function (it has type Int); only functions and methods can be called, so remove the (...) or call a function insteadimport nope from "@std/faults.ms"
@@ -1433,7 +1433,7 @@ fn f(s: S) Int:
             return 1
         other:
             return 2
-resolution	8	9	99	'other' is not a case of S; use '_' for a catch-all arm (it cannot bind a name); cases: A, Bexport type MoneyError:
+resolution	8	9	99	'other' is not a case of S; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: A, Bexport type MoneyError:
     case Invalid
 export fn parse_cents() Int: 0
 export fn format_cents() String: "0"
@@ -1710,8 +1710,8 @@ resolution	1	36	35	unknown type Bytes; add: import Bytes from "@std/bytes.ms"ty
     let x = parse	2	13	30	expected an expression, found end of line; write a value, name, call, or literal heretype Box[T]:
     value: T
 fn f() Unit:
-    let x = some(some(none))
-type	2	23	35	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f(value: Int?) Int: return value.get()
+    let x = none
+type	2	13	25	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f(value: Int?) Int: return value.get()
 fn call() Int: return f(4)
 fn call[T](operation: fn() T) T:
     return operation()
@@ -1729,7 +1729,7 @@ type	9	19	243	local binding e is never read; remove it, use it, or name it with 
     value: Int
 fn identity[T](value: T) T: value
 fn use() Unit: ...
-    let v%d = identity(some(%d))
+    let v%d = identity(%d)
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it    let v%d = value.f%d
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn f0[T](value: T) T: value
 fn f%d[T](value: T) T: f%d(f%d(value))
@@ -1878,8 +1878,8 @@ resolution	1	28	27	unknown type Bytes; add: import Bytes from "@std/bytes.ms"fn
         return ok(4)
     )parse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let value = choose(first: fn():
         if true: return none
-        return some(1)
-    , second: fn(): some(2))parse	2	9	40	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let value = choose(first: fn():
+        return 1
+    , second: fn(): 2)parse	2	9	40	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let value = choose(first: fn():
         let value = try checked()
         return Result[Int, TextError].ok(value)
     , second: fn(): ok(4))parse	2	9	40	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let offset = 7
@@ -2134,11 +2134,11 @@ type	2	50	86	String does not satisfy Error; pass a type that already implements 
 type	2	61	97	expected fn() String, found fn(Int) String (in argument 'create' of value.ok_or_else)
 type	2	1	37	String does not satisfy Error; use a type that implements itfn check(value: Int, key: String) Bool: true
 fn wrong(value: Map[String, Int]) Bool: value.every(check)resolution	2	47	91	unknown or ambiguous member every on Map[String, Int]; every(predicate) is now all(predicate)type Optional[T]:
-    case some(value: T)
+    case T
     case none
 fn wrong(value: Int?) Result[Int, String]: value.ok_or("missing")resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
-type	4	50	105	String does not satisfy Error; pass a type that already implements it
-type	4	1	56	String does not satisfy Error; use a type that implements ittype Result[T, E]:
+type	4	50	92	String does not satisfy Error; pass a type that already implements it
+type	4	1	43	String does not satisfy Error; use a type that implements ittype Result[T, E]:
     case ok(value: T)
     case error(cause: E)
 fn wrong(value: Result[Int, String]) Int?: value.to_optional()resolution	1	1	0	declaration Result reuses a prelude name; rename it, because Result always refers to the standard declaration
@@ -2229,13 +2229,13 @@ type	3	17	46	recursive generic applications must preserve their parameters; a ty
 parse	2	5	17	a type declares only fields or cases; write its methods in an 'impl Handle:' block, or implement an interface with 'impl <Interface> for Handle:'fn wrong() String:
     let convert = unescape
     return convert(value: "&amp;")resolution	2	19	37	unknown binding unescape; add: import unescape from "@std/html.ms"fn identity[T](value: T) T: value
-fn first() Int: ... type	2	1	34	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)let x = match some(0):
-            some(n):
+fn first() Int: ... type	2	1	34	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)let x = match 0:
+            n:
                 sum = start
                 n
             none: 0
         sum += i
-        i += 1parse	2	13	35	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn identity[T](value: T) T: return value
+        i += 1parse	2	13	29	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn identity[T](value: T) T: return value
 fn effect(value: Int) Int: return value + 1
 fn probe(start: Int, flag: Bool) Int: ...
     type	3	1	85	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)fn identity[T](value: T) T: return value
@@ -2390,11 +2390,11 @@ export type Box[T: Read]:
         let child = fn() Int:
             let grandchild = fn() Int: values.length()
             return grandchild()
-        return child()parse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let size = match some(1):
-        some(n):
+        return child()parse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let size = match 1:
+        n:
             values.add(n, n)
             values.get(n).get()
-        none: values.length()parse	2	9	34	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let callback = fn() Int:
+        none: values.length()parse	2	9	28	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let callback = fn() Int:
         let values = Map[Int, Int]()
         values.add(1, 2)
         return values.get(1).get()parse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn consume(values: Map[Int, Int]) Unit: unit
@@ -2424,8 +2424,8 @@ fn probe() Int:
     return number
 type	3	5	77	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change it
 type	3	16	88	`key` is moved here but used again at 4:23; a value has one owner, so pass `key.clone()` to keep the original, or move it only at its last usevar i = 0
-    let captured = match some(0):
-        some(n):
+    let captured = match 0:
+        n:
             i = start
             n
         none: 0parse	2	5	14	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn probe(start: Int, flag: Bool) Unit: ...
@@ -2563,8 +2563,8 @@ fn call() Unit: f()
 fn f(value: Int??) Unit: return
 fn call() Unit: f(4)
 type	2	19	50	expected Int??, found Int (in argument 'value' of f)fn f(value: Int) Unit: return
-fn call() Unit: f(some(value: 4))
-type	2	19	48	expected Int, found Int? (in argument 'value' of f); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f(value: Float?) Unit: return
+fn call() Unit: f(4)
+fn f(value: Float?) Unit: return
 fn call(value: Int?) Unit: f(value)
 type	2	30	62	expected Float?, found Int? (in argument 'value' of f)fn f[T](first: T?, second: T) Unit: return
 fn call() Unit: f(first: 4, second: "wrong")
@@ -2583,7 +2583,7 @@ fn call() Unit: f(other: 4)
 type	2	19	49	unknown argument other; parameters of f: valuefn f(value: Int?) Unit: return
 fn call() Unit: f(4, value: 5)
 type	2	22	52	duplicate argument value; pass each argument oncetype Optional[T]:
-    case some(value: T)
+    case T
     case none
 fn f(value: Int?) Unit: return
 fn call() Unit: f(4)
@@ -2595,7 +2595,7 @@ fn call() Unit: f(4)
     return value.is_some()
 resolution	2	18	60	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, get_or_else, is_error, is_ok, map, map_error, or_else, to_optional
 type	1	1	0	String does not satisfy Error; use a type that implements ittype Optional[T]:
-    case some(value: T)
+    case T
     case none
 fn wrong(value: Int?) Int:
     return value.get()
@@ -2620,10 +2620,10 @@ type	2	18	30	<invalid> does not satisfy Error; use a type that implements itfn 
 type	2	18	30	error(...) needs a value that implements Error, not a String; to fail a test write `try fail("message")` (from @std/test.ms), otherwise wrap the message in a type that implements Errorfn f() Error:
     return "failed"
 type	2	12	25	expected Error, found String (in the return value); use a concrete value implementing Errortype Other:
-    case some(value: Int)
+    case Int
 fn f() Int?:
-    return some(value: 1)
-resolution	4	12	62	ambiguous alternative case some; qualify it with its type, e.g. Type.somefn use() Int:
+    return 1
+fn use() Int:
     let nested: List[List[Int]] = [[], [1]]
     let empty: Map[String, Int] = {}
     return Map[String, Int]().add("a", nested[1][0]).get("a").get()
@@ -2692,8 +2692,8 @@ resolution	2	1	38	declaration Set reuses a prelude name; rename it, because Set 
 resolution	1	1	0	declaration ListEntry reuses a prelude name; rename it, because ListEntry always refers to the standard declarationinterface Equal:
     fn same() Bool
 resolution	1	1	0	declaration Equal reuses a prelude name; rename it, because Equal always refers to the standard declarationfn List(value: Int) Int: value
-resolution	1	1	0	declaration List reuses a prelude name; rename it, because List always refers to the standard declarationfn some(value: Int) Int: value
-resolution	1	1	0	declaration some reuses a prelude constructor name; rename it, because some always refers to the prelude casefn ok(value: Int) Int: value
+resolution	1	1	0	declaration List reuses a prelude name; rename it, because List always refers to the standard declarationfn Int Int: value
+parse	1	8	7	expected '(', found name 'Int'; a call or parameter list starts with '('fn ok(value: Int) Int: value
 resolution	1	1	0	declaration ok reuses a prelude constructor name; rename it, because ok always refers to the prelude casefn none() Int: 1
 resolution	1	1	0	declaration none reuses a prelude constructor name; rename it, because none always refers to the prelude casefn error(value: Int) Int: value
 resolution	1	1	0	declaration error reuses a prelude constructor name; rename it, because error always refers to the prelude caseexport type List[T]:
@@ -2943,8 +2943,8 @@ resolution	2	28	65	unknown binding Cause; declare it with 'let Cause = ...' befo
 resolution	1	31	30	unknown type Cause; declare it with 'type Cause:' / 'interface Cause:', declare it as a type parameter, or import it
 resolution	2	28	65	unknown binding Cause; declare it with 'let Cause = ...' before use, define 'fn Cause(...) T:', or import it from a modulefn affine(n: Int) Result[Int, Cause]:
     if n < 0:
-        return error(Cause(match some(n):
-            some(value):
+        return error(Cause(match n:
+            value:
                 return ok(9223372036854775807)
             none: "negative"
         ))
@@ -3232,14 +3232,18 @@ fn work(counter: Counter) List[Int]:
     var value = 1
     return [
         value, counter.value, counter.value, advance(counter), value,
-        match some(2):
-            some(number):
+        match 2:
+            number:
                 value = number
                 advance(counter)
             none: 0
         , value, counter.value, advance(counter)
     ]
-type	5	13	76	cannot change `counter.value`: parameter `counter` is not declared var; write `var counter: <Type>` in the signature and pass `var` at every callexport let LIMIT = 10
+type	13	13	280	a match on Int takes literal arms such as 1, "text" or true, and a final '_:' arm; to bind or compare computed values use if/else
+type	13	13	280	a literal arm has no payload to bind
+resolution	14	25	312	unknown binding number; declare it with 'let number = ...' before use, define 'fn number(...) T:', or import it from a module
+type	16	13	364	a match on Int takes literal arms such as 1, "text" or true, and a final '_:' arm; to bind or compare computed values use if/else
+type	12	9	259	non-exhaustive match on Int; add a final '_:' armexport let LIMIT = 10
 let NAMES: List[String] = ["a"]
 fn f(record: Box) Int:
     var total = 12
@@ -3252,9 +3256,11 @@ let NAMES: List[String] = ["a"]
     return 0
 type	2	5	31	non-exhaustive match on String; add a final '_:' armfn f(r: Result[Int?, String]) Int:
     match r:
-        ok(some(n)): return n
+        ok(n): return n
     return 0
-parse	3	16	63	patterns cannot be nested; bind the outer payload, then handle it in a separate match or helper functionfn f() String: "é \{1 + * 2\}"
+type	3	23	70	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match
+type	2	5	39	non-exhaustive match; missing cases: error, or add a final '_:' arm; add the arms 'case error(cause):'
+type	1	1	0	String does not satisfy Error; use a type that implements itfn f() String: "é \{1 + * 2\}"
 export fn commands() Commands: ...
 resolution	1	22	21	unknown type Commands; add: import Commands from "@std/process.ms"export type Duration: ...
 type List[T]: ...
@@ -3264,11 +3270,11 @@ impl List[T]:
 resolution	1	1	0	declaration List reuses a prelude name; rename it, because List always refers to the standard declaration
 type	2	1	18	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typestype Optional[T]:
     case none
-    case some(value: T)
+    case T
 impl T?:
     fn get() T: ...
 resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
-type	4	1	56	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typestype Counter:
+type	4	1	43	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typestype Counter:
     value: Int
 impl Counter:
     fn double() Int:
@@ -3584,11 +3590,11 @@ type	4	34	127	expected fn() Unit, found fn() Int (in entry 2 of the literal, who
 parse	2	14	26	only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a functionfn f() Unit:
     let value = parse	2	17	29	expected an expression, found end of line; write a value, name, call, or literal herefn f(x: Int?) Result[Unit, Error]:
     match x:
-        some(n):
+        n:
             try g(n)
             return ok(unit)
         none: return ok(unit)
-resolution	4	17	81	unknown binding g; declare it with 'let g = ...' before use, define 'fn g(...) T:', or import it from a module} from "./module.ms"
+resolution	4	17	75	unknown binding g; declare it with 'let g = ...' before use, define 'fn g(...) T:', or import it from a module} from "./module.ms"
 fn broken(
 parse	1	1	0	unmatched closing delimiter '}'; remove it or add the matching opener before itlet values = [
 parse	2	1	15	unterminated delimiter '[' opened at line 1:14; add the matching ']' before the end of the file]
@@ -3678,12 +3684,12 @@ fn later() Int:
 parse	18	1	204	unterminated delimiter '(' opened at line 15:10; add the matching ')' before the end of the filefn broken(
 fn later(values: List[Int]) Int:
     let result = match values[0]:
-        some(number):
+        number:
             let doubled = number * 2
             doubled
         none: return 0
     return result
-parse	9	1	198	unterminated delimiter '(' opened at line 1:10; add the matching ')' before the end of the filefn broken(
+parse	9	1	192	unterminated delimiter '(' opened at line 1:10; add the matching ')' before the end of the filefn broken(
 fn later(values: List[Int]) Unit:
     let field = values[holder . index]
     let nested = values[indices[index]]
@@ -4096,16 +4102,16 @@ let affordable = (
 )
 type	3	12	55	a constant takes literals, operators, collections, and other constants; compute this value in a functionfn work(early: Int) Int:
     let result = subtract(try
-        match some(0):
-            some(_):
+        match 0:
+            _value:
                 10
             none: 10
     )
     return result
 resolution	2	18	42	unknown binding subtract; declare it with 'let subtract = ...' before use, define 'fn subtract(...) T:', or import it from a modulefn work(early: Int) Int:
     let result = subtract(
-        try match some(0):
-            some(_):
+        try match 0:
+            _value:
                 10
             none: 10
     )
@@ -4326,7 +4332,7 @@ resolution	4	8	181	unknown binding enabled; declare it with 'let enabled = ...' 
 resolution	2	22	34	unknown binding allowed; declare it with 'let allowed = ...' before use, define 'fn allowed(...) T:', or import it from a module
 resolution	2	34	46	unknown binding remaining; declare it with 'let remaining = ...' before use, define 'fn remaining(...) T:', or import it from a modulefn read(values: List[Int]) Int:
     let result=match values.first():
-        some(number):
+        number:
             let doubled=number*2
             doubled
         none: return 0
@@ -5009,7 +5015,7 @@ fn answer() Int:
     return 42
 resolution	1	8	7	module does not export ListBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'fn answer(value: Int?) Int:
     match value:
-        some(_):
+        _value:
             return 1
         none:
             return 0
@@ -5060,7 +5066,7 @@ fn lookup(fields: HttpHeaders) Unit:
 let arbitrary = 1
 fn read(values: List[Int], index: Int) Int:
     let result = match values.take(index).first():
-        some(number):
+        number:
             let doubled = number * 2
             doubled
         none: 0
@@ -5214,25 +5220,25 @@ fn read(node: Node) Int:
 fn missing_binding() Int: ...
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)fn use(value: Int?) Int:
     return match value:
-        some(_):
+        _value:
             match value:
-                some(n): n
+                n: n
                 none: 0
         none: 0
 fn use(value: Int?) Int:
     return match value:
-        some(_):
+        _value:
             let callback = fn() Int:
                 return match value:
-                    some(n): n
+                    n: n
                     none: 0
             callback()
         none: 0
 fn use(value: Int?) Int:
     return match value:
-        some(_):
+        _value:
             let callback = fn(n: Int = match value:
-                some(x): x
+                x: x
                 none: 0
             ) Int:
                 return n
@@ -5241,44 +5247,48 @@ fn read(node: Node) Int:
 fn use(value: Int?) Int:
     return match (
         match value:
-            some(x): some(x)
-            none: some(0)
+            x: x
+            none: 0
     ):
-        some(x): x
+        x: x
         none: 0
-fn use(value: Int?) Int:
+type	7	9	117	a match on Int takes literal arms such as 1, "text" or true, and a final '_:' arm; to bind or compare computed values use if/else
+type	7	9	117	a literal arm has no payload to bind
+type	8	9	130	a match on Int takes literal arms such as 1, "text" or true, and a final '_:' arm; to bind or compare computed values use if/else
+type	2	12	36	non-exhaustive match on Int; add a final '_:' arm
+resolution	7	12	120	unknown binding x; declare it with 'let x = ...' before use, define 'fn x(...) T:', or import it from a modulefn use(value: Int?) Int:
     return match value:
-        some(_):
+        _value:
             match value:
-                some(_):
+                _value:
                     match value:
-                        some(n): n
+                        n: n
                         none: 0
                 none: 0
         none: 0
 fn use(value: Int?) Int:
     let present = match value:
-        some(n): n
+        n: n
         none: return 0
     return match value:
-        some(n): present + n
+        n: present + n
         none: 0
 fn inner(value: Int?) Int:
     return match value:
-        some(n): n
+        n: n
         none: 0
 fn use(value: Int?) Int:
     return match value:
-        some(_): inner(value)
+        _value: inner(value)
         none: 0
 fn use() String: "match nested match"
 fn use(value: Int?) Int:
     match value:
-        some(n): return n
+        n: return n
         none: return 0
 fn use(value: Int?) Int:
     return match value:
-        some(n): n
+        n: n
         none: 0
 fn use(value: Int?) Int:
     if let n = value:
@@ -5316,27 +5326,27 @@ fn use(value: Envelope) Int:
     value: Int
 fn use(value: Item?) Int:
     match value:
-        some(Item): return Item.value
+        item: return Item.value
         none: return 0
-fn use(value: Int?) Int:
+resolution	5	27	95	unknown or non-nullary alternative case value of Item; cases:  (cases with payloads need call syntax)fn use(value: Int?) Int:
     match value:
-        some(Int): return Int
+        int: return Int
         none: return 0
-type Flag:
+type	3	21	62	type name requires a constructor call; write Int(field: value, ...) to build a valuetype Flag:
     case Ready
 fn use(value: Int?) Int:
     match value:
-        some(Ready): return Ready
+        ready: return Ready
         none: return 0
-type First:
+type	5	23	90	expected Int, found Flag (in the return value)type First:
     case Ready
 type Second:
     case Ready
 fn use(value: Int?) Int:
     match value:
-        some(Ready): return Ready
+        ready: return Ready
         none: return 0
-type Failure[T]:
+resolution	7	23	119	ambiguous alternative case Ready; qualify it with its type, e.g. Type.Readytype Failure[T]:
     case NotFound
     case Denied(reason: T)
 impl Error for Failure[T]:
@@ -5360,16 +5370,17 @@ fn use(value: Describe) Int:
     value: T
 fn use[T](value: Box[T]?) T:
     match value:
-        some(Box): return Box.value
+        box: return Box.value
         none: return panic(message: "empty")
-resolution	6	22	129	unknown binding panic; add: import panic from "@std/core.ms"type Flag:
+resolution	5	25	96	unknown or non-nullary alternative case value of Box; cases:  (cases with payloads need call syntax)
+resolution	6	22	123	unknown binding panic; add: import panic from "@std/core.ms"type Flag:
     case Ready
 fn use(value: Int?) Int:
     let Flag = 2
     match value:
-        some(Ready): return Ready
+        ready: return Ready
         none: return 0
-type	4	9	59	local binding Flag is never read; remove it, use it, or name it with a leading '_' to ignore it    let NotFound = 2
+type	6	23	107	expected Int, found Flag (in the return value)    let NotFound = 2
     match result:parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn NotFound() Int: 2
 type Failure:
     case NotFound
@@ -5378,9 +5389,11 @@ fn use() Int:
     return NotFound
 fn use[T](value: T?) T:
     match value:
-        some(Value): return Value
+        value: return Value
         none: return panic(message: "empty")
-resolution	4	22	96	unknown binding panic; add: import panic from "@std/core.ms"type Failure:
+type	3	9	49	binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'
+resolution	3	23	63	unknown binding Value; did you mean 'value'?
+resolution	4	22	90	unknown binding panic; add: import panic from "@std/core.ms"type Failure:
     case NotFound
     case Denied(reason: String)
 impl Error for Failure:
@@ -5408,7 +5421,7 @@ fn use() Int:
         ok(value): return value
 fn record(value: Item?) Int:
     match value:
-        some(Item): return Item.value
+        item: return Item.value
         none: return 0
 parse	1	1	0	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakimport filesystem from "@std/fs.ms"
 fn classify(path: String) String:
@@ -5726,11 +5739,11 @@ resolution	3	28	74	unknown binding Bytes; add: import Bytes from "@std/bytes.ms"
     let parts = split(max_parts: -7, separator: Bytes([0]))
     return parts.length()
 resolution	2	16	37	unknown binding Bytes; add: import Bytes from "@std/bytes.ms"export fn main() Int:
-    let cap: Int? = some(-7)
+    let cap: Int? = -7
     let parts = Bytes([1]).split(Bytes([]), cap)
     return parts.length()
-resolution	3	17	67	unknown binding Bytes; add: import Bytes from "@std/bytes.ms"
-resolution	3	34	84	unknown binding Bytes; add: import Bytes from "@std/bytes.ms"fn depth(n: Int) Int:
+resolution	3	17	61	unknown binding Bytes; add: import Bytes from "@std/bytes.ms"
+resolution	3	34	78	unknown binding Bytes; add: import Bytes from "@std/bytes.ms"fn depth(n: Int) Int:
     return 1 + depth(n + 1)
 export fn main() Int:
     return depth(0)
@@ -6127,9 +6140,9 @@ export fn main() Int:
     let value = Set[Int]().add(0)
     return value.map(crash).length()
 resolution	5	18	120	unknown or ambiguous member map on Unit; this type has no fields or operationsfn crash(value: Int) Int?:
-    return some(1 / value)
+    return (1 / value)
 export fn main() Int:
-    let value: Int? = some(0)
+    let value: Int? = 0
     return value.and_then(crash).get()
 fn deep(l: List[Int], i: Int) Int:
     return l.get(i)
@@ -6462,8 +6475,8 @@ export fn main() Int:
     let chunk = read.get()
 
     match chunk:
-        some(data):
-            if data.decode_utf8() != some(value: "d"):
+        data:
+            if data.decode_utf8() != "d":
                 return 5
         none:
             return 6
@@ -6485,8 +6498,8 @@ export fn main() Int:
         _:
             return 2
 
-type	25	33	558	cannot move `file` out: it only borrows its value (a borrow); use `file.clone()` to get an owned copy
-type	27	10	624	cannot change `copy.label`: `copy` is declared with let, which is immutable including its contents; declare it `var copy` to change ittest %q:
+type	25	33	539	cannot move `file` out: it only borrows its value (a borrow); use `file.clone()` to get an owned copy
+type	27	10	605	cannot change `copy.label`: `copy` is declared with let, which is immutable including its contents; declare it `var copy` to change ittest %q:
     let minimum = nanoseconds(-9223372036854775808)
     let maximum = nanoseconds(9223372036854775807)
     let divide = minimum.divide
@@ -6566,9 +6579,9 @@ export fn main() Int:
     next: Node?
 export fn main() Int:
     let node = Node(none)
-    node.next = some(node)
+    node.next = node
     return node.hash()
-resolution	6	17	118	unknown or ambiguous member hash on Node; available: nexttype Grow[T]:
+resolution	6	17	112	unknown or ambiguous member hash on Node; available: nexttype Grow[T]:
     next: fn() Grow[List[T]]
 export fn main() Int: return 0
 type	2	5	18	recursive generic applications must preserve their parameters in Grow.next; keep the same type arguments in the same positions along a recursive cyclelet replace = "a".replace_n

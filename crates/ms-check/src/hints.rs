@@ -425,12 +425,12 @@ impl Checker {
             }
             "nil" | "null" | "None" | "undefined" => {
                 return format!(
-                    "{message}; Manuscript has no null: absence is an Optional, written none, and a present value is some(value)"
+                    "{message}; Manuscript has no null: absence is an Optional, written none, and a present value is just the value, which converts where an Optional is expected"
                 );
             }
             "Some" => {
                 return format!(
-                    "{message}; write the lowercase some(value) for a present Optional"
+                    "{message}; there is no Some: a plain value converts where an Optional is expected, so pass it directly"
                 );
             }
             "Ok" => {

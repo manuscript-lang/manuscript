@@ -43,9 +43,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
             fs.glob_entries(
                 path: root,
                 options: options.clone(),
-                exclude: some(
-                    fn(entry: PathEntry) Bool: entry.path == "missing.txt"
-                )
+                exclude: fn(entry: PathEntry) Bool: entry.path == "missing.txt"
             )
         )
     )
@@ -138,6 +136,12 @@ test "file handles positional I/O stream adapters and closed errors":
     (handle.stat() | try expect_ok).size | try expect_equal(4)
 
     let _sought = handle.seek(offset: 0, origin: 0) | try expect_ok
+    handle.read_lines(max_bytes: -1) | try expect_fs_error(
+        FileSystemError.InvalidInput
+    )
+    handle.read_lines(max_lines: -1) | try expect_fs_error(
+        FileSystemError.InvalidInput
+    )
     read_all(input: handle.reader()) | try expect_ok | try expect_equal(
         "aXYd".to_bytes()
     )

@@ -9,7 +9,7 @@ impl Words:
             return none
 
         self.current = "w"
-        return some(self.current)
+        return self.current
 
 fn total(var w: Words) Int:
     var n = 0

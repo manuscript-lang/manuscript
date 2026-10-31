@@ -111,7 +111,7 @@ test "list prefixes and Optional defaults keep overflow checks":
     (try expect_fault(fn: let _ignored = optional_overflow(none))) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn: let _ignored = optional_overflow(some(0)))) | try expect_contains(
+    (try expect_fault(fn: let _ignored = optional_overflow(0))) | try expect_contains(
         "Int overflow;"
     )
 
@@ -154,8 +154,8 @@ fn scalar_append_overflow() Int:
 fn match_length() Int:
     var values: List[Int] = []
 
-    let _ignored = match some(1):
-        some(n):
+    let _ignored = match present(1):
+        n:
             values.append(n)
             n
         none: 0
@@ -197,3 +197,6 @@ fn literal_length_sum() Int:
 
 test "constant length keeps its local valid through partial polling chunks":
     literal_length_sum() | try expect_equal(963)
+
+fn present[T](value: T) T?:
+    return value

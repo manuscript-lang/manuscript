@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding null; Manuscript has no null: absence is an Optional, written none, and a present value is some(value)",
+        "message": "unknown binding null; Manuscript has no null: absence is an Optional, written none, and a present value is just the value, which converts where an Optional is expected",
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-27.ms",
           "line": 5,
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-27.ms:5:13: resolution: unknown binding null; Manuscript has no null: absence is an Optional, written none, and a present value is some(value)\n   |\n 5 |     let s = null\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-27.ms:5:13: resolution: unknown binding null; Manuscript has no null: absence is an Optional, written none, and a present value is just the value, which converts where an Optional is expected\n   |\n 5 |     let s = null\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

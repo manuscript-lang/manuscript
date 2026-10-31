@@ -41,7 +41,7 @@ test "map literals and positional identifier arguments":
     let nested: Map[String, Map[String, Int]] = {"a": {}, "b": {"c": 1}}
     try expect_equal(nested.get("b").get().get("c").get(), 1)
 
-    let optional: Map[String, Int?] = {"a": none, "b": some(2)}
+    let optional: Map[String, Int?] = {"a": none, "b": 2}
     try expect_false(not optional.get("a").get().is_none())
 
     let key = "c"

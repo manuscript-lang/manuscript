@@ -137,7 +137,7 @@ impl Iterator[String] for LineReader:
             return none
 
         self.current = text.get().clone()
-        return some(self.current)
+        return self.current
 
 # Returns a reader over the lines of `input`, for `for line in reader:`. `max_bytes` bounds each
 # line, as in `read_line`.
@@ -352,21 +352,17 @@ impl RawTerminal:
         if ready.is_none(): return ok(none)
 
         let kind = msstd_terminal_event_kind()
-        if kind == 0: return ok(some(TerminalEvent.Text(msstd_terminal_event_text())))
+        if kind == 0: return ok(TerminalEvent.Text(msstd_terminal_event_text()))
         if kind == 1: return ok(
-            some(
-                TerminalEvent.Key(
-                    msstd_terminal_event_text(), msstd_terminal_event_ctrl(),
-                    msstd_terminal_event_alt(), msstd_terminal_event_shift()
-                )
+            TerminalEvent.Key(
+                msstd_terminal_event_text(), msstd_terminal_event_ctrl(),
+                msstd_terminal_event_alt(), msstd_terminal_event_shift()
             )
         )
 
         return ok(
-            some(
-                TerminalEvent.Resize(
-                    msstd_terminal_event_columns(), msstd_terminal_event_rows()
-                )
+            TerminalEvent.Resize(
+                msstd_terminal_event_columns(), msstd_terminal_event_rows()
             )
         )
 

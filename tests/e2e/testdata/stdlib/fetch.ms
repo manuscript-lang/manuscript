@@ -91,7 +91,7 @@ test "fetch follows redirects unless max_redirects is 0":
     let followed = try fetch(url)
     try expect_equal(followed.head.status, 200)
 
-    let client = try fetcher(FetcherOptions(max_redirects: some(0)))
+    let client = try fetcher(FetcherOptions(max_redirects: 0))
     let stopped = try client.fetch(url)
     try expect_equal(stopped.head.status, 302)
 
@@ -113,16 +113,16 @@ test "error statuses are ordinary responses and check_status rejects them":
 test "fetch enforces max_response_bytes":
     let server = try network().serve("127.0.0.1:0", buffered(route))
     let url = "http://{server.address()}/big"
-    let small = fetch(url, FetchOptions(max_response_bytes: some(4)))
+    let small = fetch(url, FetchOptions(max_response_bytes: 4))
     try expect_equal(small.is_error(), true)
 
-    let whole = try fetch(url, FetchOptions(max_response_bytes: some(10)))
+    let whole = try fetch(url, FetchOptions(max_response_bytes: 10))
     try expect_equal(whole.body.length(), 10)
 
 test "fetch times out a slow response":
     let server = try network().serve("127.0.0.1:0", buffered(route))
     let url = "http://{server.address()}/slow"
-    let slow = fetch(url, FetchOptions(timeout: some(milliseconds(200))))
+    let slow = fetch(url, FetchOptions(timeout: milliseconds(200)))
     try expect_equal(slow.is_error(), true)
     try expect_equal(slow.err().message(), "HTTP: operation timed out")
 

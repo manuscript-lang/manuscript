@@ -69,7 +69,7 @@ test "compression streams round trip all formats":
         )
 
     let limited = CompressionFormat.Gzip.decompress_stream(
-        CompressionFormat.Gzip.compress_stream(from_bytes(text.clone())), some(4)
+        CompressionFormat.Gzip.compress_stream(from_bytes(text.clone())), 4
     )
     if read_all(limited).is_ok(): return panic("decompression budget")
 

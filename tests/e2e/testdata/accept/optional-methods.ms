@@ -17,7 +17,7 @@ fn value_or[T](value: T?, fallback: T) T:
 fn increment(value: Int) Int: value + 1
 
 test "Optional presence and extraction preserve false and zero":
-    let present: Int? = some(0)
+    let present: Int? = 0
     let missing: Int? = none
     try expect_false(not (present.is_some()))
     try expect_false(present.is_none())
@@ -25,37 +25,37 @@ test "Optional presence and extraction preserve false and zero":
     try expect_false(not (missing.is_none()))
     try expect_equal(present.get(), 0)
 
-    let flag: Bool? = some(false)
+    let flag: Bool? = false
     try expect_false(flag.get())
     try expect_equal(value_or(missing, 7), 7)
     try expect_equal(value_or(present, 7), 0)
     try expect_false(missing.is_some())
 
 test "Optional fallbacks distinguish eager and lazy evaluation":
-    let present: Int? = some(0)
+    let present: Int? = 0
     let missing: Int? = none
     var counter = Counter(0)
     try expect_equal(present.get(fallback(var counter)), 0)
     try expect_equal(counter.calls, 1)
 
-    let create = fn: some(42)
+    let create = fn() Int?: 42
     try expect_equal(present.or_else(create).get(), 0)
     try expect_equal(missing.or_else(create).get(), 42)
 
 test "Optional methods retain generic payload and receiver identity":
     let inner: Int? = none
-    let outer: Int?? = some(inner)
+    let outer: Int?? = inner
     try expect_false(not (outer.is_some()))
     try expect_false(not (outer.get().is_none()))
 
     let counter = Counter(3)
-    let record: Counter? = some(counter.clone())
+    let record: Counter? = counter.clone()
     try expect_equal(record.get().calls, 3)
 
     let extract = record.get
     try expect_equal(extract().calls, 3)
 
-    let callback: (fn(Int) Int)? = some(increment)
+    let callback: (fn(Int) Int)? = increment
     try expect_equal(callback.get()(2), 3)
 
     let snapshot = outer.clone()
@@ -67,7 +67,7 @@ test "Optional fallbacks preserve standard option records":
     var extracted = missing.get(limits).clone()
     try expect_equal(extracted.max_bytes.get(), -1)
     try expect_false(not (extracted.max_depth.is_none()))
-    extracted.max_values = some(7)
+    extracted.max_values = 7
     try expect_equal(extracted.max_values.get(), 7)
 
 test "Optional methods work on inferred library return values":

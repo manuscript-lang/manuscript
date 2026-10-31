@@ -75,7 +75,7 @@ fn keep_map(text: String) Int:
 fn keep_opt(text: String) Int:
     var os: List[(fn() Int)?] = []
     for p in text.split(","):
-        os.append(some(fn() Int: return p.length()))
+        os.append((fn() Int: return p.length()))
 
     var t = 0
     for o in os:

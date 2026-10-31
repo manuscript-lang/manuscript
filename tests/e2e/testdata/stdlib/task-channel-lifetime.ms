@@ -80,7 +80,7 @@ test "collected channels can drain buffered values before group close":
     var group = TaskGroup[Result[Unit, ChannelError], Unit, Int]()
     var task = group.spawn(send_one)
     task.result() | try expect_ok | try expect_ok
-    task.channel.receive() | try expect_ok | try expect_equal(some(7))
+    task.channel.receive() | try expect_ok | try expect_equal(7)
     task.channel.receive() | try expect_ok | try expect_equal(none)
     group.close()
     task.channel.receive() | try expect_error | try expect_equal(ChannelError.Closed)
@@ -103,7 +103,7 @@ test "repeated close cannot close another groups channels":
     fresh.result() | try expect_ok | try expect_ok
     first.close()
     old.channel.receive() | try expect_error | try expect_equal(ChannelError.Closed)
-    fresh.channel.receive() | try expect_ok | try expect_equal(some(7))
+    fresh.channel.receive() | try expect_ok | try expect_equal(7)
 
 test "group close releases unread payloads while the channel stays alive":
     var group = TaskGroup[Result[Unit, ChannelError], Unit, String]()
@@ -145,7 +145,7 @@ test "return cleanup closes a collected channels retained end":
 
 test "cancellation cleanup closes collected channels retained outside the task":
     let outer = TaskGroup[Unit, Unit, Channel[Unit, Int]]()
-    var task = outer.spawn(close_on_cancel, timeout: some(nanoseconds(20000000)))
+    var task = outer.spawn(close_on_cancel, timeout: nanoseconds(20000000))
 
     if var end = task.channel.receive() | try expect_ok:
         task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
@@ -170,4 +170,4 @@ test "channel ends send and receive without a var binding":
     let group = TaskGroup[Int, Int, Int]()
     let task = group.spawn(double_all)
     task.channel.send(4) | try expect_ok
-    task.channel.receive() | try expect_ok | try expect_equal(some(8))
+    task.channel.receive() | try expect_ok | try expect_equal(8)

@@ -184,7 +184,7 @@ impl PriorityQueue[T]:
         if self.heap.length() == 0:
             return none
 
-        return some(self.heap.get(0))
+        return self.heap.get(0)
 
     # Reports whether the queue has no values to peek or dequeue.
     fn is_empty() Bool:
@@ -201,7 +201,7 @@ impl PriorityQueue[T]:
         if index < 0 or index >= self.heap.length():
             return none
 
-        return some(self.heap.get(index))
+        return self.heap.get(index)
 
 # Walks a priority queue in heap order, lending each value; made by `iter()` and used by `for`.
 export type PriorityQueueIter[T: Comparable]:

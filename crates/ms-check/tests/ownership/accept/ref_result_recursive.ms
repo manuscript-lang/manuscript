@@ -9,7 +9,7 @@ fn find(node: Node, path: List[String], from: Int) ref Node?:
 
     for child in node.children:
         if child.name == path[from]:
-            if from == path.length() - 1: return some(child)
+            if from == path.length() - 1: return child
 
             return find(child, path, from + 1)
 
@@ -17,6 +17,6 @@ fn find(node: Node, path: List[String], from: Int) ref Node?:
 
 fn name_at(root: Node) ref String?:
     if let n = find(root, ["a", "b"], 0):
-        return some(n.name)
+        return n.name
 
     return none

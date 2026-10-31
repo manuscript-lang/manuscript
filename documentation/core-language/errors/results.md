@@ -72,7 +72,7 @@ Callbacks run sequentially in the caller's context; faults and cancellation prop
 
 ## Converting success to an Optional
 
-`to_optional() T?` returns `some` with the original payload, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
+`to_optional() T?` returns the original payload as a present optional, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
 
 ```manuscript
 import TextError from "@std/core.ms"

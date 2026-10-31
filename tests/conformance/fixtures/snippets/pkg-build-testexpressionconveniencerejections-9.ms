@@ -3,4 +3,4 @@
 # conform: origin=pkg/build/expression_conveniences_test.go:20 TestExpressionConvenienceRejections
 fn f(x: Int?) Int:
     return match x:
-        some(n): n
+        n: n

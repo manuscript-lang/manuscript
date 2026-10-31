@@ -47,7 +47,7 @@ fn hold_fault_and_break(dir: String, id: Int) Unit:
     let _ = holder.id
 
 fn cancel_a_holder(dir: String, id: Int, pause: Bool) Unit:
-    let group = TaskGroup[Int](timeout: some(nanoseconds(20000000)))
+    let group = TaskGroup[Int](timeout: nanoseconds(20000000))
     group.spawn(fn ch: hold_and_wait(dir.clone(), id, pause))
 
     let _ignored = group.wait()

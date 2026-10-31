@@ -6,7 +6,7 @@ fn p() Result[Int, Error]:
 
 fn f(x: Int?) Result[Unit, Error]:
     match x:
-        some(n):
+        n:
             try p()
             return ok(unit)
         none: return ok(unit)

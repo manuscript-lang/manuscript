@@ -22,7 +22,7 @@ fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
             return error(cause)
 
 fn exercise(path: String) Result[Unit, Error]:
-    let written = try common_result(
+    let _written = try common_result(
         result: filesystem().write_file(
             path: path, data: "hello", replace: false
         )
@@ -61,7 +61,7 @@ fn exercise(path: String) Result[Unit, Error]:
     var file = try common_result(
         result: filesystem().open(path: path, flags: "r+", mode: 384)
     )
-    let updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
+    let _updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
     try expect_false(
         not (
             try common_result(
@@ -70,8 +70,8 @@ fn exercise(path: String) Result[Unit, Error]:
         )
     )
 
-    let synced = try common_result(result: file.sync())
-    let resized = try common_result(result: file.truncate(size: 3))
+    let _synced = try common_result(result: file.sync())
+    let _resized = try common_result(result: file.truncate(size: 3))
     (try common_result(result: file.stat())).size | try expect_equal(3)
     file.close()
 
@@ -81,7 +81,7 @@ fn exercise(path: String) Result[Unit, Error]:
             overflow: "error"
         )
     )
-    let appended = try common_result(
+    let _appended = try common_result(
         result: filesystem().append_file(path: path, data: "!")
     )
     let events = try common_result(result: watcher.next())
@@ -108,7 +108,7 @@ fn exercise(path: String) Result[Unit, Error]:
     let memory = try common_result(result: control().memory_usage())
     (memory.heap_system > 0) | try expect_true
 
-    let removed = try common_result(
+    let _removed = try common_result(
         result: filesystem().remove(path: path, recursive: false)
     )
     return ok(unit)

@@ -31,7 +31,7 @@ impl Iterator[Int] for Counter:
         if self.n == 0: return none
 
         self.n -= 1
-        return some(self.n)
+        return self.n
 
 fn add(a: Int, b: Int) Int:
     let total = a + b

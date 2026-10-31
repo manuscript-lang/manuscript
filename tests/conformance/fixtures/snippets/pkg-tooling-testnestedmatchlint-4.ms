@@ -3,10 +3,10 @@
 # conform: origin=pkg/tooling/nested_match_lint_test.go:22 TestNestedMatchLint
 fn use(value: Int?) Int:
     return match value:
-        some(_):
+        _value:
             let callback = fn(
                 n: Int = match value:
-                    some(x): x
+                    x: x
                     none: 0
             ) Int:
                 return n

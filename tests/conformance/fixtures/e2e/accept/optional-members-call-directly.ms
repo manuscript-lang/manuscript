@@ -6,7 +6,7 @@ import expect_equal, expect_true from "@std/test.ms"
 fn fallback() Int: 9
 
 test "optional members":
-    let present = some(3)
+    let present: Int? = 3
     let absent: Int? = none
     try expect_true((present.is_some() and not present.is_none()))
     try expect_true((absent.is_none() and not absent.is_some()))
@@ -15,7 +15,7 @@ test "optional members":
     try expect_true(
         (
             absent.or_else(
-                create: fn() Int?: some(fallback())
+                create: fn() Int?: fallback()
             ).get() == 9
         )
     )

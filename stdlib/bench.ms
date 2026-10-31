@@ -89,7 +89,7 @@ export fn measure(operations: Int, work: fn() Result[Unit, Error]) Result[Unit, 
     let median = (sorted[last / 2] + sorted[(last + 1) / 2]) / 2.0
     let line = "MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)}\}\n"
     stdout().write(line).get()
-    control().set_environment(measured_flag, some("1")).get()
+    control().set_environment(measured_flag, "1").get()
     return ok(unit)
 
 # Set once a body has timed its own work with `measure`.

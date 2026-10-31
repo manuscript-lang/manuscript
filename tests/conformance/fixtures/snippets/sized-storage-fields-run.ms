@@ -33,7 +33,7 @@ export fn main() Int:
     let p = Pix(r: -5, g: 7, b: 127, w: -300, f: 2.5, n: -70000)
     let q = Pix(r: -5, g: 7, b: 127, w: -300, f: 2.5, n: -70000)
     let _ = stdout().write("{p.r} {p.g} {p.b} {p.w} {p.f} {p.n} {p == q}\n")
-    let o: Int16? = some(-2)
+    let o: Int16? = -2
     let n: Int16? = none
     let _ = stdout().write("{o == n} {o == o}\n")
     var m = Map[Int8, Int16]()

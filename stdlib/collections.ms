@@ -511,7 +511,7 @@ impl ListSearch[T] for List[T]:
     fn index_of(value: T) Int?:
         for i in 0..self.length():
             if self[i].equals(value):
-                return some(i)
+                return i
         return none
 
     # Returns the last equal element's zero-based index, or none; elements require Equal.
@@ -520,7 +520,7 @@ impl ListSearch[T] for List[T]:
 
         while i >= 0:
             if self[i].equals(value):
-                return some(i)
+                return i
 
             i -= 1
 
@@ -587,7 +587,7 @@ interface ListExtremes[T: Comparable & Clonable]:
 
 impl ListExtremes[T] for List[T]:
     # Returns a copy of the least element, or none for an empty list; the first of equal elements wins.
-    # Example: `[3, 1, 2].min()` is `some(1)`; `List[Int]().min()` is `none`.
+    # Example: `[3, 1, 2].min()` is `1`; `List[Int]().min()` is `none`.
     fn min() T?:
         if self.length() == 0:
             return none
@@ -599,7 +599,7 @@ impl ListExtremes[T] for List[T]:
         return self[at].clone()
 
     # Returns a copy of the greatest element, or none for an empty list; the first of equal elements wins.
-    # Example: `[3, 1, 2].max()` is `some(3)`.
+    # Example: `[3, 1, 2].max()` is `3`.
     fn max() T?:
         if self.length() == 0:
             return none
@@ -617,7 +617,7 @@ interface ListKeyedExtremes[T: Clonable]:
 impl ListKeyedExtremes[T] for List[T]:
     # Returns the first element whose `key` is greatest, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
     # Returns a copy of the element, like `find`.
-    # Example: `["bb", "a", "ccc"].max_by(fn w: w.length())` is `some("ccc")`.
+    # Example: `["bb", "a", "ccc"].max_by(fn w: w.length())` is `"ccc"`.
     fn max_by[K: Comparable](key: fn(T) K) T?:
         if self.length() == 0:
             return none
@@ -636,7 +636,7 @@ impl ListKeyedExtremes[T] for List[T]:
 
     # Returns the first element whose `key` is least, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
     # Returns a copy of the element, like `find`.
-    # Example: `["bb", "a", "ccc"].min_by(fn w: w.length())` is `some("a")`.
+    # Example: `["bb", "a", "ccc"].min_by(fn w: w.length())` is `"a"`.
     fn min_by[K: Comparable](key: fn(T) K) T?:
         if self.length() == 0:
             return none

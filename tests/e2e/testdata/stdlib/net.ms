@@ -124,7 +124,7 @@ test "two tasks accept on one listener":
     shared.get().close()
 
 fn read_some(c: Shared[Connection]) Int:
-    let r = c.get().read(some(1), some(2.seconds))
+    let r = c.get().read(1, 2.seconds)
     if r.is_ok() and r.get().is_some():
         return 1
 

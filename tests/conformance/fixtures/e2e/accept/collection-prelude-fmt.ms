@@ -71,7 +71,7 @@ test "map add retains optional wrapping and generic bound calls":
     try expect_equal(values.get(1).get().get(), 3)
     try expect_equal(values.get(4).get().get(), 5)
 
-    var generic = update[Int?, Int?](var values, some(6), some(7))
+    var generic = update[Int?, Int?](var values, 6, 7)
     generic.add(8, 9)
     try expect_false(generic.get(6).get().get() != 7 or generic.get(8).get().get() != 9)
 
@@ -79,8 +79,8 @@ test "map add captures receivers and arguments in written order":
     var original = Map[Int, Int]()
     var visits = 0
     original.add(
-        match some(1):
-            some(_):
+        match present(1):
+            _value:
                 visits = 1
                 1
             none: 0
@@ -92,8 +92,8 @@ test "map add captures receivers and arguments in written order":
     var key = 3
     original.add(
         key,
-        match some(1):
-            some(_):
+        match present(1):
+            _value:
                 key = 4
                 5
             none: 0
@@ -102,17 +102,20 @@ test "map add captures receivers and arguments in written order":
 
     var order = 0
     original.add(
-        value: match some(1):
-            some(_):
+        value: match 1:
+            _value:
                 order = 1
                 7
             none: 0
         ,
-        key: match some(1):
-            some(_):
+        key: match 1:
+            _value:
                 try expect_equal(order, 1)
                 order = 2
                 6
             none: 0
     )
     try expect_false(order != 2 or original.get(6).get() != 7)
+
+fn present[T](value: T) T?:
+    return value

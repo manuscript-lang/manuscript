@@ -35,12 +35,12 @@ test "logger writes typed escaped records and protects metadata":
     var transport = stream_transport(WriteStream(output))
     let logger = try create(transport, timestamp: false)
     let fields = Payload(
-        9007199254740993, ok: true, Items([none, some(1)]), 0, "fake", 0
+        9007199254740993, ok: true, Items([none, 1]), 0, "fake", 0
     )
     try record(logger, LogLevel.Info, "say \"hi\"\nnext", fields)
 
     let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
-    try expect_equal(output.data.decode_utf8(), some(expected))
+    try expect_equal(output.data.decode_utf8(), expected)
     try logger.flush()
     transport.close()
     try expect_false(output.closed)
@@ -53,7 +53,7 @@ test "non-object values are written under data":
     try record(logger, LogLevel.Warn, "l", ["a", "b"])
 
     let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
-    try expect_equal(output.data.decode_utf8(), some(expected))
+    try expect_equal(output.data.decode_utf8(), expected)
 
 test "levels filter methods and function values":
     let output = MemoryStream("".to_bytes(), 0, closed: false)
@@ -78,7 +78,7 @@ test "levels filter methods and function values":
     try logger.info("info")
 
     let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"error\"\}\n\{\"level\":60,\"msg\":\"fatal\"\}\n\{\"level\":10,\"msg\":\"trace\"\}\n\{\"level\":20,\"msg\":\"debug\"\}\n\{\"level\":30,\"msg\":\"info\"\}\n"
-    try expect_equal(output.data.decode_utf8(), some(expected))
+    try expect_equal(output.data.decode_utf8(), expected)
     logger.set_level(LogLevel.Silent)
     try expect_false(
         (logger.enabled(LogLevel.Fatal) or logger.enabled(LogLevel.Silent))
@@ -109,7 +109,7 @@ test "child bindings snapshot values and merge without mutating inputs":
     try logger.fatal("parent")
 
     let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
-    try expect_equal(output.data.decode_utf8(), some(expected))
+    try expect_equal(output.data.decode_utf8(), expected)
 
 test "limits and unencodable values reject before writing":
     let output = MemoryStream("".to_bytes(), 0, closed: false)
@@ -119,7 +119,7 @@ test "limits and unencodable values reject before writing":
         transport, timestamp: false, max_bytes: (line.to_bytes().length())
     )
     try logger.info("x")
-    try expect_equal(output.data.decode_utf8(), some(line))
+    try expect_equal(output.data.decode_utf8(), line)
 
     let before = output.data.clone()
     let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
@@ -175,9 +175,7 @@ test "file transport appends and flushes with scoped cleanup":
     let data = try fs.read_file(path)
     try expect_false(
         (
-            data.decode_utf8() != some(
-                "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
-            )
+            data.decode_utf8() != "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
         )
     )
     try expect_false(
@@ -227,9 +225,7 @@ test "source transports receive complete records and close through their contrac
     try logger.flush()
     try expect_false(
         (
-            output.data.decode_utf8() != some(
-                "\{\"level\":30,\"msg\":\"source transport\"\}\n"
-            )
+            output.data.decode_utf8() != "\{\"level\":30,\"msg\":\"source transport\"\}\n"
         )
     )
     transport.close()
@@ -250,4 +246,4 @@ test "log_json and child_json accept only JSON objects":
     try record(logger, LogLevel.Info, "m", [1])
 
     let expected = "\{\"level\":30,\"msg\":\"m\",\"a\":1\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
-    try expect_equal(output.data.decode_utf8(), some(expected))
+    try expect_equal(output.data.decode_utf8(), expected)
