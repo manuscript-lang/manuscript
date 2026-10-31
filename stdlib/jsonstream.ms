@@ -24,7 +24,7 @@ export interface JsonDecoder:
 # an exceeded limit returns `LimitExceeded`. Omit limits only for trusted input, because
 # an unterminated value is otherwise buffered without bound. Negative limits return
 # `InvalidInput`.
-export fn decoder(limits: JsonLimits? = none) Result[JsonDecoder, JsonError]:
+export fn decoder(limits: JsonLimits?) Result[JsonDecoder, JsonError]:
     let bounds = limits.get(JsonLimits())
     if (
         bounds.max_bytes.get(0) < 0

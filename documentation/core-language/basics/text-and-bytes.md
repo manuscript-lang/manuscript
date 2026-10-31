@@ -109,7 +109,7 @@ The removed spellings migrate as follows.
 | --- | --- |
 | `String` | `byte_length() Int`; `to_bytes() Bytes`; `parse_int() Int?`; `parse_float() Float?` |
 | `Bytes(values: List[UInt8])` | Immutable bytes; `Bytes([104, 105])` types its literals as `UInt8`, so a value outside 0–255 is a compile error |
-| `Bytes` | `length() Int`; `get(index: Int, default: UInt8? = none) UInt8`; `[index] UInt8`; `concat(values: Bytes) Bytes` |
+| `Bytes` | `length() Int`; `get(index: Int, default: UInt8?) UInt8`; `[index] UInt8`; `concat(values: Bytes) Bytes` |
 | `Bytes` | `to_string() String?` |
 | `Bytes` | `values() List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
 

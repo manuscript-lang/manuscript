@@ -14,7 +14,7 @@ export type EncodingError:
 export fn base64_decode(
     text: String,
     url_safe: Bool = false,
-    max_bytes: Int? = none
+    max_bytes: Int?
 ) Result[Bytes, EncodingError]:
     let limit = budget(max_bytes)
     if limit < 0: return error(EncodingError.InvalidInput)
@@ -124,7 +124,7 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
     return out.build()
 
 # Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
-export fn hex_decode(text: String, max_bytes: Int? = none) Result[Bytes, EncodingError]:
+export fn hex_decode(text: String, max_bytes: Int?) Result[Bytes, EncodingError]:
     let limit = budget(max_bytes)
     if limit < 0: return error(EncodingError.InvalidInput)
 
@@ -217,7 +217,7 @@ fn text_of(scalars: List[Int]) String:
 export fn utf16_decode(
     data: Bytes,
     little_endian: Bool = true,
-    max_bytes: Int? = none
+    max_bytes: Int?
 ) Result[String, EncodingError]:
     let limit = budget(max_bytes)
     if limit < 0: return error(EncodingError.InvalidInput)

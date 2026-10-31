@@ -158,8 +158,8 @@ export interface FileSystem:
     fn watch_native(
         path: String,
         recursive: Bool,
-        max_entries: Int? = none,
-        max_events: Int? = none,
+        max_entries: Int?,
+        max_events: Int?,
         overflow: String
     ) Result[FileWatcher, FileSystemError]
     # Resolves symlinks and returns the canonical absolute path.
@@ -169,7 +169,7 @@ export interface FileSystem:
         source: String,
         destination: String,
         replace: Bool = false,
-        max_bytes: Int? = none
+        max_bytes: Int?
     ) Result[Unit, FileSystemError]
     # Creates one directory; recursive defaults to False, requiring its parent to exist.
     fn create_directory(
@@ -182,10 +182,10 @@ export interface FileSystem:
     # A name that is not valid UTF-8 is listed with U+FFFD in place of each invalid byte, so it no longer addresses the entry. The same holds for `glob`, `glob_entries`, `stat` names and directory cursors.
     fn list(
         path: String,
-        max_entries: Int? = none
+        max_entries: Int?
     ) Result[List[DirectoryEntry], FileSystemError]
     # Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
-    fn read_file(path: String, max_bytes: Int? = none) Result[Bytes, FileSystemError]
+    fn read_file(path: String, max_bytes: Int?) Result[Bytes, FileSystemError]
     # Returns the target text stored in the symbolic link at `path`, without resolving it.
     # A path that is not a link returns InvalidInput.
     fn read_link(path: String) Result[String, FileSystemError]
@@ -256,15 +256,15 @@ export interface FileSystem:
         source: String,
         destination: String,
         replace: Bool = false,
-        max_entries: Int? = none,
-        max_bytes: Int? = none
+        max_entries: Int?,
+        max_bytes: Int?
     ) Result[Unit, FileSystemError]
     # Returns the sorted relative paths under `path` matching `pattern`, without following directory symlinks.
     # A malformed pattern, or one over 4096 bytes, or a negative `max_entries` returns InvalidInput. Matches beyond `max_entries` return LimitExceeded.
     fn glob(
         path: String,
         pattern: String,
-        max_entries: Int? = none
+        max_entries: Int?
     ) Result[List[String], FileSystemError]
     # Returns a polling watcher that compares snapshots of `path` every `interval`, which must be positive.
     # `max_entries` bounds the tracked paths; exceeding it returns LimitExceeded. Transient changes between polls can be missed.
@@ -272,7 +272,7 @@ export interface FileSystem:
         path: String,
         recursive: Bool,
         interval: Duration,
-        max_entries: Int? = none
+        max_entries: Int?
     ) Result[FileWatcher, FileSystemError]
     # Creates a new temp directory whose contents are removed by scoped close.
     # Prefix has the same validation as temporary_directory; this does not query the temp root.
@@ -392,7 +392,7 @@ impl FileHandle:
         return msstd_fs_file_writer(self.native)
 
     # Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
-    fn read(max_bytes: Int? = none) Result[Bytes?, FileSystemError]:
+    fn read(max_bytes: Int?) Result[Bytes?, FileSystemError]:
         return msstd_io_read(self.native, max_bytes)
 
     # Writes the UTF-8 text at the current position; errors can leave a prefix. Does not truncate or reposition this handle.
@@ -412,7 +412,7 @@ impl FileHandle:
         return msstd_io_write_bytes(self.native, data)
 
     # Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF.
-    fn read_at(offset: Int, max_bytes: Int? = none) Result[Bytes, FileSystemError]:
+    fn read_at(offset: Int, max_bytes: Int?) Result[Bytes, FileSystemError]:
         return msstd_fs_file_read_at(self.native, offset, max_bytes)
 
     # Writes the UTF-8 text at a nonnegative offset without moving the position; a handle opened for append returns InvalidInput because the host would ignore the offset; errors can leave a prefix.
@@ -424,7 +424,7 @@ impl FileHandle:
         return msstd_fs_file_write_at(self.native, offset, data)
 
     # Reads remaining bytes from the current position; EOF returns empty Bytes.
-    fn read_file(max_bytes: Int? = none) Result[Bytes, FileSystemError]:
+    fn read_file(max_bytes: Int?) Result[Bytes, FileSystemError]:
         return msstd_fs_file_read_file(self.native, max_bytes)
 
     # Reads consecutive buffers of the given `sizes` in bytes, each up to 65536 and all together up to 16 MiB, and returns the bytes obtained for each.
@@ -474,8 +474,8 @@ impl FileHandle:
     # Reads from the current position to the end and returns the lines with their `\n` or `\r\n` terminators removed.
     # Invalid UTF-8 returns InvalidData, and more bytes than `max_bytes` or lines than `max_lines` returns LimitExceeded. A negative `max_bytes` or `max_lines` returns InvalidInput.
     fn read_lines(
-        max_bytes: Int? = none,
-        max_lines: Int? = none
+        max_bytes: Int?,
+        max_lines: Int?
     ) Result[List[String], FileSystemError]:
         return msstd_fs_file_read_lines(self.native, max_bytes, max_lines)
 
@@ -610,9 +610,9 @@ export type CopyOptions:
     # try falls back to byte copying; force requires a native clone operation.
     clone: String
     # Most files, directories, and links visited, counting the root. Exceeding it returns LimitExceeded. none sets no limit.
-    max_entries: Int? = none
+    max_entries: Int?
     # Most file bytes copied in total. Exceeding it returns LimitExceeded. none sets no limit.
-    max_bytes: Int? = none
+    max_bytes: Int?
 
 # A matched path together with its filesystem entry metadata.
 export type PathEntry:
@@ -630,9 +630,9 @@ export type GlobOptions:
     # When True, symbolic links to directories are traversed, with cycles detected; when False, links are reported but not entered.
     follow_links: Bool
     # Most filesystem entries visited while searching. Exceeding it returns LimitExceeded. none sets no limit.
-    max_entries: Int? = none
+    max_entries: Int?
     # Most distinct matches returned. Exceeding it returns LimitExceeded. none sets no limit.
-    max_results: Int? = none
+    max_results: Int?
 
 impl Error for FileSystemError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `filesystem: <reason>`, such as `filesystem: file or directory not found`.

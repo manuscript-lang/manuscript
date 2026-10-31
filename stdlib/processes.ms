@@ -109,7 +109,7 @@ export type Inbox:
     # The other end sent `close` or its result: no more messages come.
     finished: Bool = false
     # The body of the result frame, once read.
-    result: String? = none
+    result: String?
     # This end sent `close`.
     closed: Bool = false
 
@@ -356,7 +356,7 @@ impl Process[T, In, Out]:
 
     # Waits for the child to exit and returns its exit status. Returns `Timeout` if `timeout`
     # elapses first, leaving the child running.
-    fn wait(timeout: Duration? = none) Result[Int, CommandError]:
+    fn wait(timeout: Duration?) Result[Int, CommandError]:
         return msstd_process_forked_wait(self.native, nanos(timeout))
 
     # Asks the child to stop (SIGTERM on Unix; Windows ends the whole tree). Does not wait.

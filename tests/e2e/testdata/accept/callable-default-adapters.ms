@@ -64,7 +64,7 @@ test "required bound native methods decode supplied payloads":
     try expect_equal(callback("needle".clone()), true)
 
 interface Reader:
-    fn read(value: Int? = none) Int
+    fn read(value: Int?) Int
 
 type ReaderOffset:
     base: Int

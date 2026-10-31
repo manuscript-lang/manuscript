@@ -30,7 +30,7 @@ type Node:
 
 type DefaultNode:
     value: Int
-    next: DefaultNode? = none
+    next: DefaultNode?
 
 type Link:
     value: Int

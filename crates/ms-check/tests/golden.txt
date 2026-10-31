@@ -2556,7 +2556,7 @@ fn call() Unit: f("wrong")
 fn call() Unit: f(4)
 type	2	19	51	expected Float?, found Int (in argument 'value' of f)fn f(value: Int?) Unit: return
 fn call() Unit: f()
-type	2	17	47	missing argument value: Int? in call to f; add 'value: <Int?>'fn call() Unit:
+fn call() Unit:
     let value: Int? = 4
 type	2	9	24	local binding value is never read; remove it, use it, or name it with a leading '_' to ignore itfn f() Int?: return 4
 fn f(value: Int? = 4) Unit: return
@@ -2580,8 +2580,7 @@ fn call() Unit:
     let callback: fn(Int?) Int = f
 type	3	34	84	expected fn(Int?) Int, found fn(Int) Int (in the initializer of 'callback')fn f(value: Int?) Unit: return
 fn call() Unit: f(other: 4)
-type	2	19	49	unknown argument other; parameters of f: value
-type	2	17	47	missing argument value: Int? in call to f; add 'value: <Int?>'fn f(value: Int?) Unit: return
+type	2	19	49	unknown argument other; parameters of f: valuefn f(value: Int?) Unit: return
 fn call() Unit: f(4, value: 5)
 type	2	22	52	duplicate argument value; pass each argument oncetype Optional[T]:
     case some(value: T)

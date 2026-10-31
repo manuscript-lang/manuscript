@@ -638,6 +638,8 @@ impl<'a> Parser<'a> {
                         return self.fail(t, "function types and case payloads cannot have defaults; put the default on a named function parameter or a record field instead");
                     }
                     default = Some(self.expression(0)?);
+                } else if defaults && let Some(t) = &ty {
+                    default = self.implicit_none(t);
                 }
                 let id = self.id();
                 params.push(Param {
@@ -659,6 +661,15 @@ impl<'a> Parser<'a> {
             self.need(Tok::RParen)?;
         }
         Ok(params)
+    }
+
+    /// The default of a `T?` parameter or field written without one: `none`.
+    fn implicit_none(&mut self, t: &TypeRef) -> Option<Expr> {
+        let TypeKind::Named { name, args } = &t.kind else {
+            return None;
+        };
+        (name.as_str() == "Optional" && args.len() == 1)
+            .then(|| self.mk(t.pos, ExprKind::Name(Symbol::intern("none"))))
     }
 
     fn named_type(&mut self) -> PResult<TypeRef> {
@@ -1286,10 +1297,11 @@ impl<'a> Parser<'a> {
                 self.need_name_colon(fname)?;
                 let by_ref = self.take(Tok::Ref);
                 let ty = self.typ()?;
-                let mut default = None;
-                if self.take(Tok::Assign) {
-                    default = Some(self.expression(0)?);
-                }
+                let default = if self.take(Tok::Assign) {
+                    Some(self.expression(0)?)
+                } else {
+                    self.implicit_none(&ty)
+                };
                 let id = self.id();
                 fields.push(Param {
                     id,

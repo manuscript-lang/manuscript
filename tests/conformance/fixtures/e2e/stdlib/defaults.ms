@@ -44,7 +44,7 @@ impl Commands for Override:
         program: String,
         arguments: List[String],
         input: Bytes = self.input,
-        max_output_bytes: Int? = none,
+        max_output_bytes: Int?,
         timeout: Duration?
     ) Result[CommandOutput, CommandError]:
         return ok(CommandOutput(0, input, "".to_bytes()))

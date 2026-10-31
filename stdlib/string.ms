@@ -26,7 +26,7 @@ export type NormalizationForm:
 impl NormalizationForm:
     # Normalizes text with the existing String.normalize budgets and StringError cases.
     # Omission or none adds no output budget; a supplied budget counts UTF-8 bytes.
-    fn normalize(text: String, max_bytes: Int? = none) Result[String, StringError]: ...
+    fn normalize(text: String, max_bytes: Int?) Result[String, StringError]: ...
 
 # Builds text from Unicode scalar values. Invalid scalars return `InvalidInput`.
 export fn from_scalars(values: List[Int]) Result[String, StringError]: ...
@@ -66,14 +66,14 @@ impl Regex:
 
     # Returns nonoverlapping full-match text in occurrence order, excluding capture groups.
     # A supplied cap is a strict budget, not truncation; zero-width matches follow native regexp rules.
-    fn find_all(text: String, max_matches: Int? = none) Result[List[String], RegexError]: ...
+    fn find_all(text: String, max_matches: Int?) Result[List[String], RegexError]: ...
 
     # Replaces every nonoverlapping match with literal replacement text; $ and capture names are not expanded.
     # max_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded.
     fn replace_all(
         text: String,
         replacement: String,
-        max_bytes: Int? = none
+        max_bytes: Int?
     ) Result[String, RegexError]: ...
 
     # Returns the first match as [whole, group1, ...]; groups that did not participate are "". Empty list when nothing matches.
@@ -82,7 +82,7 @@ impl Regex:
     # Like captures for every nonoverlapping match, under find_all's match-count budget.
     fn captures_all(
         text: String,
-        max_matches: Int? = none
+        max_matches: Int?
     ) Result[List[List[String]], RegexError]: ...
 
     # Returns the first match's named groups that participated; empty map when nothing matches.
@@ -92,13 +92,13 @@ impl Regex:
     fn find_span(text: String) List[Int]?: ...
 
     # Splits text around every match, always returning at least one piece. max_pieces is a strict budget like find_all's.
-    fn split(text: String, max_pieces: Int? = none) Result[List[String], RegexError]: ...
+    fn split(text: String, max_pieces: Int?) Result[List[String], RegexError]: ...
 
     # Like replace_all but expands $1, ${name}, and $$ in template from each match (Rust regex syntax: use ${1}x, not $1x).
     fn replace_template(
         text: String,
         template: String,
-        max_bytes: Int? = none
+        max_bytes: Int?
     ) Result[String, RegexError]: ...
 
 # Compiles a regular expression. Invalid pattern syntax is returned as an error.

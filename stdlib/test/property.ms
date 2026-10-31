@@ -396,7 +396,7 @@ export fn check[T](
     gen: Gen[T],
     property: fn(T) Result[Unit, Error],
     runs: Int = 100,
-    seed: Int? = none
+    seed: Int?
 ) Result[Unit, Error]:
     let config = settings(runs)
     var chosen = seed

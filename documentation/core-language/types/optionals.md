@@ -14,6 +14,8 @@ let missing: String? = none
 
 `T?` is the only spelling; `Optional[T]` is rejected. It applies to the type before it, so a function type needs parentheses: `fn(Int) Int?` returns an optional, `(fn(Int) Int)?` is an optional function.
 
+A parameter or record field of type `T?` with no default is `none` when omitted, so `= none` is never written; a plain `T` passed for it wraps without `some`.
+
 `T?` is an invariant alternative. `some` and `none` use the expected type or infer `T` from a `some` payload; `none` needs the type written on its binding.
 
 ```manuscript
@@ -56,7 +58,7 @@ Receiver methods:
 | --- | --- |
 | `is_some() Bool` | Whether the optional contains a value, including `false`, zero, or an empty string |
 | `is_none() Bool` | Whether the optional is absent |
-| `get(default: T? = none) T` | Return the contained value, or `default` when absent; without a default, [fault](../errors/faults.md) with `called Optional.get() on none` |
+| `get(default: T?) T` | Return the contained value, or `default` when absent; without a default, [fault](../errors/faults.md) with `called Optional.get() on none` |
 | `map[U](transform: fn(T) U) U?` | Transform a present payload once; preserve absence |
 | `and_then[U](transform: fn(T) U?) U?` | Return the callback's Optional when present; preserve absence |
 | `get_or_else(create: fn() T) T` | Return the contained value, or call `create` once when absent |
@@ -107,7 +109,7 @@ A [match](../control-flow/pattern-matching.md) with only `some` and `none` arms 
 
 ## Converting absence to a Result
 
-- `ok_or[E: Error = MissingValue](cause: E? = none) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` must implement `Error`.
+- `ok_or[E: Error = MissingValue](cause: E?) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` must implement `Error`.
 - `ok_or_else[E: Error](create: fn() E) Result[T, E]`: calls `create` once, only on absence.
 
 Omitting the cause yields the prelude `MissingValue` (from `@std/core.ms`), the [default type argument](generics.md#default-type-arguments). It records the source file and line of the `ok_or()` call, and `message()` reports them, such as `missing value at src/main.ms:12`. Since `MissingValue` implements `Error`, `try` flattens it in any function whose error type is `Error`:

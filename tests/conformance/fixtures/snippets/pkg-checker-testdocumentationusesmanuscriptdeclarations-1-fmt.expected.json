@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface DatagramSocket:\n    fn address() String\n    fn close() Unit\n    fn receive(\n        max_bytes: Int? = none,\n        timeout: Duration? = none\n    ) Result[Datagram, NetworkError]\n    fn send(\n        data: String,\n        address: String,\n        timeout: Duration? = none\n    ) Result[Unit, NetworkError]\n    fn send_bytes(\n        data: Bytes,\n        address: String,\n        timeout: Duration? = none\n    ) Result[Unit, NetworkError]\n"
+    "fmt": "interface DatagramSocket:\n    fn address() String\n    fn close() Unit\n    fn receive(max_bytes: Int?, timeout: Duration?) Result[Datagram, NetworkError]\n    fn send(\n        data: String,\n        address: String,\n        timeout: Duration?\n    ) Result[Unit, NetworkError]\n    fn send_bytes(\n        data: Bytes,\n        address: String,\n        timeout: Duration?\n    ) Result[Unit, NetworkError]\n"
   }
 }

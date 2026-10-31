@@ -81,7 +81,7 @@ export type FetchOptions:
     # The request method; defaults to Get. Extension tokens use the Custom case.
     method: HttpMethod = HttpMethod.Get
     # Extra request headers; none sends no extra fields. The caller's headers are never modified.
-    headers: HttpHeaders? = none
+    headers: HttpHeaders?
     # The request body; defaults to Empty. A Text, Raw, or JSON body adds a `Content-Type` only when `headers` lacks one.
     body: FetchBody = FetchBody.Empty
     # Whole-exchange deadline; none waits without limit.

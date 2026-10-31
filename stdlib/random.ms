@@ -22,7 +22,7 @@ export interface Entropy:
 export fn secure_int(
     entropy: Entropy,
     min: Int,
-    max_exclusive: Int? = none
+    max_exclusive: Int?
 ) Result[Int, RandomError]: ...
 
 # Creates a version-4 UUID using the supplied cryptographic entropy source.

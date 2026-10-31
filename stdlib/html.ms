@@ -17,11 +17,11 @@ export type HtmlError:
 # Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 nodes; pass an `HtmlLimits` to change that.
 export type HtmlLimits:
     # Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
-    max_bytes: Int? = none
+    max_bytes: Int?
     # Maximum normalized node depth; the document is depth zero and direct children depth one.
-    max_depth: Int? = none
+    max_depth: Int?
     # Maximum returned nodes, including document/text/comment/doctype and implied element nodes.
-    max_nodes: Int? = none
+    max_nodes: Int?
 
 # An HTML attribute, including its namespace and decoded value.
 export type HtmlAttribute:
@@ -81,7 +81,7 @@ export fn unescape(text: String) String:
     return msrt_html_unescape(text)
 
 # Parses HTML into a normalized tree and applies the supplied resource limits.
-export fn parse(text: String, limits: HtmlLimits? = none) Result[HtmlNode, HtmlError]:
+export fn parse(text: String, limits: HtmlLimits?) Result[HtmlNode, HtmlError]:
     return msrt_html_parse(text, limits)
 
 impl Error for HtmlError:
