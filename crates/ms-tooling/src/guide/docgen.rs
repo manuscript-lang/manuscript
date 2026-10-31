@@ -193,7 +193,7 @@ pub fn to_json(modules: &[ApiModule]) -> String {
         ("format".to_string(), Json::int(1)),
         ("modules".to_string(), Json::Arr(modules)),
     ]);
-    value.pretty_line(ms_json::Escape::GoHtml)
+    value.pretty_line(ms_json::Escape::HtmlSafe)
 }
 
 /// Includes every rendered declaration and member, including prelude aliases.
@@ -293,7 +293,7 @@ impl DocumentationInventory {
             ),
             ("entries".to_string(), Json::Arr(entries)),
         ]);
-        value.pretty_line(ms_json::Escape::GoHtml)
+        value.pretty_line(ms_json::Escape::HtmlSafe)
     }
 }
 

@@ -42,7 +42,7 @@ fn decode(
 }
 
 #[test]
-fn decode_matches_go() {
+fn decode_matches_oracle() {
     let data = include_str!("oracle/stream.tsv");
     let mut inputs: HashMap<String, Vec<u8>> = HashMap::new();
     let mut n = 0;

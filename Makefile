@@ -1,11 +1,12 @@
 HUGO ?= hugo
+VSCODE_CLI ?= code
 RELEASE_MS ?= $(CURDIR)/target/release/ms
 BENCHREPEATS ?= 5
 BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime setup tools doctor verify verify-full check lint repo-check unit test build conform e2e leak-check count-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench
+.PHONY: runtime setup tools doctor verify verify-full check lint repo-check unit test build conform e2e leak-check count-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 setup: tools
 
@@ -14,6 +15,15 @@ tools:
 
 doctor:
 	HUGO="$(HUGO)" sh scripts/doctor.sh
+
+# Use the locked editor dependencies; packaging runs the extension checks and bundle.
+vscode-package:
+	cd extensions/vscode && npm ci && npm run package
+
+vscode-install: vscode-package
+	@command -v "$(VSCODE_CLI)" >/dev/null 2>&1 || { echo 'VS Code CLI not found; add code to PATH or set VSCODE_CLI=/path/to/code.' >&2; exit 1; }
+	@vsix=$$(node -p 'const p = require("./extensions/vscode/package.json"); "extensions/vscode/" + p.name + "-" + p.version + ".vsix"') && \
+		"$(VSCODE_CLI)" --install-extension "$$vsix" --force
 
 # Routine feedback excludes native distributions. The merge gate adds the conformance corpus and the book.
 verify: check lint repo-check bench-check unit docs-check licenses-check

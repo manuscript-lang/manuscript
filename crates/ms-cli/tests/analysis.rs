@@ -1,6 +1,9 @@
 //! Independent check/lint inputs keep their own results and share only reporting.
 
-use std::path::{Path, PathBuf};
+mod common;
+
+use common::scratch;
+use std::path::Path;
 use std::process::{Command, Output};
 
 // Exercise raw byte filenames on Linux; APFS rejects their creation.
@@ -75,13 +78,6 @@ fn discovered_source_names_are_never_replaced() {
         assert!(output.status.success(), "{command}: {output:?}");
     }
     let _ = std::fs::remove_dir_all(dir);
-}
-
-fn scratch(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("ms-analysis-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
 }
 
 fn ms(dir: &Path, args: &[&str]) -> Output {

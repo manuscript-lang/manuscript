@@ -84,7 +84,7 @@ fn result<T>(r: Result<T, Fail>, ok: impl FnOnce(T) -> String) -> String {
 }
 
 #[test]
-fn matches_go() {
+fn matches_oracle() {
     let data = include_str!("oracle/url.tsv");
     let mut n = 0;
     for line in data.lines().filter(|l| !l.starts_with('#')) {

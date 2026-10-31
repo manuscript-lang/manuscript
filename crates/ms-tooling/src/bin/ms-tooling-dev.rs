@@ -116,7 +116,7 @@ fn inspect(files: &[String]) -> i32 {
         "{}",
         ms_tooling::inspect::inspect(&program)
             .to_json()
-            .pretty(ms_json::Escape::GoHtml)
+            .pretty(ms_json::Escape::HtmlSafe)
     );
     0
 }

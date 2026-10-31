@@ -128,7 +128,7 @@ fn parse_diagnostics_match_go() {
 }
 
 #[test]
-fn recovery_matches_go() {
+fn recovery_matches_oracle() {
     big_stack(|| {
         let files = sorted(&data("partial"), "src");
         assert!(files.len() >= 25);
@@ -174,7 +174,7 @@ fn recovery_matches_go() {
 }
 
 #[test]
-fn formatter_matches_go() {
+fn formatter_matches_oracle() {
     big_stack(|| {
         let files = sorted(&data("format"), "src");
         let inputs: Vec<_> = files
