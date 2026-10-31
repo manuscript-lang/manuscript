@@ -40,7 +40,7 @@ tree or line count alone does not establish simpler behavior.
   for current choices, flat control flow, and generated-code performance goals.
 - Simplify an example's scenario before adding helpers or types. Follow
   [documentation](../documentation/SKILL.md) for authoring and
-  [improve-documentation](../improve-documentation/SKILL.md) for a broad redesign.
+  [documentation](../documentation/SKILL.md) for a broad redesign.
 
 For a broad restructure, new representation, layer, or pass, follow the proposal
 and independent skeptical review requirement in

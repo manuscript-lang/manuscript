@@ -10,10 +10,6 @@ It uses the affected domain skills for contract checks.
 grounding in the language, `ms check`-verified examples, component tables, and
 a simplification pass for design proposals.
 
-[Improve documentation](improve-documentation/SKILL.md) handles broad accuracy,
-marketing, and reader-journey improvements. [Documentation](documentation/SKILL.md)
-owns the shared authoring and publication rules, including narrow edits.
-
 [Bug bash](bug-bash/SKILL.md) and [perf bash](perf-bash/SKILL.md) are the repeated
 probe-fix-file and measure-fix-record workflows.
 

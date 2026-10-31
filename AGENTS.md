@@ -19,10 +19,8 @@ Manuscript is a statically typed, natively compiled language implemented in Rust
 | Simplification, duplicated behavior, unnecessary work, or hard-to-follow layers | [simplify](skills/simplify/SKILL.md), then affected domain skills |
 | Syntax, types, calls, imports, interfaces, language semantics | [language-design](skills/language-design/SKILL.md) |
 | Syntax nodes, lexer/parser, checking, lowering, module resolution, build pins/cache, native toolchain | [compiler](skills/compiler/SKILL.md) |
-| Execution, resources, cancellation, cleanup, native dispatch, standard declarations, bindings, API design | [runtime](skills/runtime/SKILL.md) |
 | Formatter, lint, inspection, LSP, VS Code, CLI, profiling | [tooling](skills/tooling/SKILL.md) |
-| Tutorials, exact rules, generated API reference, Hugo book/publication | [documentation](skills/documentation/SKILL.md) |
-| Documentation revamps, marketing landing page, onboarding, reading order, or quality audits | [improve-documentation](skills/improve-documentation/SKILL.md), then documentation |
+| Tutorials, exact rules, generated API reference, Hugo book/publication, docs revamps, landing page, onboarding | [documentation](skills/documentation/SKILL.md) |
 | Package organization, dependency policy, pins, CI, releases, repository cleanup | [repository-maintenance](skills/repository-maintenance/SKILL.md) |
 | Writing or revising a design proposal | [author-proposal](skills/author-proposal/SKILL.md) |
 | Opening or updating a pull request | [create-pr](skills/create-pr/SKILL.md) |
@@ -30,7 +28,7 @@ Manuscript is a statically typed, natively compiled language implemented in Rust
 | "Bug bash" of an area | [bug-bash](skills/bug-bash/SKILL.md), then affected domain skills |
 | "Perf bash", perf gaps and perf issues | [perf-bash](skills/perf-bash/SKILL.md) |
 
-Syntax changes usually need language-design, compiler, tooling, and documentation. Standard API changes usually need runtime, tooling, and documentation. Select only domains the change reaches.
+Syntax changes usually need language-design, compiler, tooling, and documentation. Standard API changes usually need the [runtime checklist](wiki/runtime/runtime-and-stdlib-change-checklist.md), tooling, and documentation. Select only domains the change reaches.
 
 ## Repository layout
 
