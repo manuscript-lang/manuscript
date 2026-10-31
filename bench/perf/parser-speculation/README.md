@@ -56,6 +56,11 @@ Errors include their exact positions, messages and repairs. There is no timing
 threshold in CI. Raw distributions, input/binary/source hashes, toolchain and
 parity digests are in `results-2026-10-31-initial.json`.
 
+An additional 1,000 deterministic generated expressions (seed 1729; 364 accepted,
+636 rejected) have identical full outcomes, including mixed brackets, calls,
+operators, malformed types, CRLF and truncated input. Reproduce with
+`python3 bench/perf/parser-speculation/parity.py BASELINE CANDIDATE NEW_OUTPUT`.
+
 The first HashMap design was rejected after shallow-input screening. Two later
 wrappers still added common-path cost; the final path avoids work for numeric
 starts and makes root replay-only behavior explicit. All three complete earlier
