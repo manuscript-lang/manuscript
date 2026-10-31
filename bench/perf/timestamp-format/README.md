@@ -101,6 +101,50 @@ verified all 1,089 samples, published medians/ratios/win counts, source and bina
 identities, and both archive hashes. Fresh combined-main replay remains separate
 from these local results.
 
+## Replay after rebasing onto merged main
+
+After token-cache PR #2079 merged, the RFC 3339 commit was rebased onto
+`649ddeb9a2fb91eb36d1eb074842eaaa4ee370fc`. A fresh compiler and baseline native
+archive were built from that main; the candidate is `a3bd7dfc8` with the same
+production patch. Affected tests, workspace checks and 18 time conformance
+fixtures passed again. The complete workload sets were rerun, with 12 balanced
+repeats and A/A; no sample was discarded.
+
+| RFC input | Main before ns/op | Rebased after ns/op | Rust ns/op | Paired after/before | A/A |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Whole seconds | 180.89 | 150.73 | 133.95 | 0.836 | 0.996 |
+| Milliseconds | 220.21 | 175.22 | 155.58 | 0.805 | 1.002 |
+| Nine-digit fractions | 213.32 | 171.04 | 154.14 | 0.802 | 1.017 |
+| Leading zeros | 240.90 | 187.93 | 170.94 | 0.774 | 1.027 |
+| Year limits | 207.53 | 166.64 | 150.89 | 0.816 | 1.002 |
+| Mixed lengths | 203.00 | 167.21 | 147.82 | 0.825 | 1.013 |
+
+The gains remain 16–23%, with 11–12 faster pairs per case. In the full unchanged
+calendar suite, paired ratios range from 0.951 to 1.021; A/A ranges from 0.973 to
+1.041. The small literal-control uncertainty remains; no all-path assertion is
+added. [Rebased RFC data](results/rebased-rfc.jsonl) has 312 invocations and
+[rebased calendar controls](results/rebased-calendar-controls.jsonl) has 390.
+
+The first optimization was also replayed on that merged main, against the
+original `d4a94aa92` archive using the same fresh compiler, matched Rust control
+and A/A. All ten patterns remain faster in all 12 pairs (paired main/original
+ratios 0.139–0.507). [Integrated token-cache data](results/integrated-token-cache.jsonl)
+contains 520 invocations. Together with the earlier sessions, the seven committed
+datasets contain **2,311** validated invocations. This names the actual replayed
+main; later campaign merges still require final integration controls.
+
+The native archive hashes are unchanged from the initial RFC experiment. New
+compiler/workload identities are:
+
+```text
+compiler 66999da4568f9738eb958ea6633e875bec7f3eac34a2909d0d73d1844459298e
+rebased RFC before 26d2e9d246687b3b926b6fb1a7374a6938ddb0e0179a42963567c1064a03476e
+rebased RFC after fd6e2a4d37c864b0a6d0f8354cba189ce93563321992eb477cbe91e5dae0b52d
+rebased Rust 1f385ce42a747716cf59ab575b6ef2ae31e553347d9a69fb2e5a45a89a175dd3
+main calendar 7f3d6aca8eb5c5a3fb9d7fd13a376f1e1982316e0676717d080dfeecde493689
+after-RFC calendar af7cd22f9147953bf15cebb4506000d720c3c591b6c35c871f01dd7472dbe9c2
+```
+
 ## Reproduce and artifact provenance
 
 Build the baseline archive at the named revision in an isolated worktree. Build
