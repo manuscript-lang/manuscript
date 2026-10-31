@@ -36,6 +36,7 @@ export MS_RT_LIB
 # The headers are written against Linux and macOS. A Windows process makes one more 16-byte allocation than they do in
 # every counted program, release and debug alike (the 15 programs with count headers each report allocs +1 and
 # alloc_bytes +16), so the Windows run adds that constant to the expectation instead of loosening any count.
+# Workaround: remove it once the allocation is found (https://github.com/manuscript-lang/manuscript/issues/2052).
 startup_allocs=0
 startup_bytes=0
 case "$(uname -s)" in
