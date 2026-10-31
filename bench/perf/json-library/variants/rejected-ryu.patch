@@ -1,18 +1,9 @@
 --- a/crates/ms-std-json/src/lib.rs
 +++ b/crates/ms-std-json/src/lib.rs
-@@ -1545,7 +1545,7 @@
- 
- /// The shortest round-trip digits of `abs` through the standard formatter, as in
- /// [`short_digits`].
+@@ -1548 +1548 @@
 -fn sci_digits(abs: f64, buf: &mut [u8; 24]) -> Option<(usize, i32)> {
 +fn std_sci_digits(abs: f64, buf: &mut [u8; 24]) -> Option<(usize, i32)> {
-     use core::fmt::Write;
-     let mut sci = Sci {
-         bytes: [0; 32],
-@@ -1565,6 +1565,70 @@
-     Some((n, exp))
- }
- 
+@@ -1567,0 +1568,64 @@
 +/// Whether `2 * abs / 10^power` is an odd integer: exactly halfway between decimals.
 +fn decimal_midpoint(abs: f64, power: i32) -> bool {
 +    let bits = abs.to_bits();
@@ -77,13 +68,7 @@
 +    Some((n, exp))
 +}
 +
- const POW10_INT: [u64; 5] = [1, 10, 100, 1000, 10000];
- 
- /// Writes the decimal digits of `n` (none for zero) so that they end just before `end`, two at a
-@@ -1702,3 +1766,89 @@
-     let v: f64 = text.parse().ok()?;
-     v.is_finite().then_some(v)
- }
+@@ -1704,0 +1769,86 @@
 +
 +#[cfg(test)]
 +mod scalar_tests {

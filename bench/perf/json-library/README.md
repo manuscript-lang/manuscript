@@ -142,6 +142,8 @@ controls: 4849/4873→5294ns, so it was rejected. The
 [unapplied patch](variants/rejected-ryu.patch), manifest, lockfile,
 [full records](results/2026-10-31/rejected-ryu-full/summary.json) and
 [long records](results/2026-10-31/rejected-ryu-focused/summary.json) are retained.
+The archive patch uses zero context (apply with `git apply --unidiff-zero` against
+the pinned original library); reconstruction matches the rejected source exactly.
 No backend or placement tuning was attempted. The Zmij replacement changes the
 actual conversion/tie-correction algorithm and repeats the protected controls.
 
@@ -150,7 +152,11 @@ integrated records remain in their named directories. Their numeric Rust parse
 ratios are unmatched; only final writer comparisons above support claims.
 Escaped input JSON retains decoded-byte hashes where raw CR inputs cannot be
 committed under repository rules. RSS rows are complete aggregates; duplicate
-per-child metric files are omitted.
+per-child metric files are omitted. Per-case outputs and escaped input records are
+losslessly bundled in each directory's `outputs.json` / `inputs.json`: original
+filenames are keys; `utf8` encodes the exact file bytes and `sha256` verifies them.
+Every bundled entry was decoded and compared byte-for-byte before removing the
+individual duplicate file, keeping the PR reviewable without discarding evidence.
 
 ## Verification and limits
 
@@ -172,8 +178,10 @@ checks pass. `make bench-check` is blocked by existing obsolete `Optional[T]` sy
 in `bench/perf/competence/ms/src/main.ms:241` (separately reported as #2034).
 Full workspace/native conformance, FFI-only lifetime tests, Debug JSON, backend,
 cleanup/ownership, HTTP and Windows investigations were not run under campaign
-exclusions. Normal required CI remains enabled. Final merged-main replay remains
-required after publication.
+exclusions. Normal required CI remains enabled. After merging main ead45f307 (combined tree c80c33897), the JSON native source,
+runtime source and root dependencies remain unchanged. Normal native/CLI rebuild,
+source float/scalar/nonfinite controls and all five newer YAML physical-key tests
+pass. Final merged-main replay remains required after publication.
 
 Remaining writer/Rust gaps include empty/tiny setup, dense escaping, integer output
 and residual float-presentation overhead. These are not clean claims. This patch
