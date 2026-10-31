@@ -958,8 +958,9 @@ impl FnLower<'_> {
                 let _ = self.call_runtime("msrt_cleanup_cancel", &[item.handle], MTy::UNIT);
             }
         } else {
+            // Cancel, not discard: entries registered after this one must still run on a fault.
             let handle = self.entry_of(&closer);
-            let _ = self.call_runtime("msrt_cleanup_discard", &[handle], MTy::UNIT);
+            let _ = self.call_runtime("msrt_cleanup_cancel", &[handle], MTy::UNIT);
         }
         let gone = self.b.bconst(false);
         self.b.def_var(flag, gone);
@@ -974,11 +975,17 @@ impl FnLower<'_> {
             return self.emit_close(uid, closer);
         };
         let held = self.b.use_var(flag);
-        let (close, join) = (self.b.new_block(), self.b.new_block());
-        self.b.br_if(held, close, &[], join, &[]);
+        let (close, moved, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br_if(held, close, &[], moved, &[]);
         self.b.seal_block(close);
+        self.b.seal_block(moved);
         self.b.switch_to(close);
         self.emit_close(uid, closer);
+        self.b.br(join, &[]);
+        // A move cancelled the entry; it leaves the stack now.
+        self.b.switch_to(moved);
+        let handle = self.entry_of(closer);
+        let _ = self.call_runtime("msrt_cleanup_discard", &[handle], MTy::UNIT);
         self.b.br(join, &[]);
         self.b.seal_block(join);
         self.b.switch_to(join);
