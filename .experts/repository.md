@@ -12,7 +12,7 @@ Verify: identify the duplicate traversal, query, serialization, or forwarding pa
 
 Verified: optimization works on a separate lowering view of checked source. Rewriting or removing AST nodes would break the node identities used by editor queries, lint, effects, and source maps. Parsing and resolution diagnostics travel with the syntax graph, including during recovery; folding a short-circuited expression must never let an invalid operand bypass checking.
 
-Verified: a payload binder such as `error(NotFound)` can conceal a case name without a checking error. Advisory lint needs the checked identity before any sibling payload bindings enter scope, and each binder keeps its original position (rebased during partial parsing). Evidence: [binding lint](../crates/ms-tooling/src/lint/bindings.rs), [pattern lint](../crates/ms-tooling/src/lint/patterns.rs), [native binding versus separate payload handling](../tests/e2e/testdata/accept/pattern-binding-capture.ms).
+Verified: a payload binder such as `error(NotFound)` can conceal a case name without a checking error. Advisory lint needs the checked identity before any sibling payload bindings enter scope, and each binder keeps its original position (rebased during partial parsing). Evidence: [binding lint](../crates/ms-tooling/src/lint/bindings.rs), [pattern lint](../crates/ms-tooling/src/lint/patterns.rs), [native binding versus separate payload handling](../tests/conformance/fixtures/e2e/accept/pattern-binding-capture.ms).
 
 ### Documentation and site inputs keep their own homes
 

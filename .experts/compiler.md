@@ -37,7 +37,7 @@ Verified: checking can attach an implicit conversion (for example Optional wrapp
 Verified: choose a lowering path before lowering its operands. Lowering mutates generator state (source markers, temporaries) even when its result is discarded, so an eligibility probe that lowers operands and then abandons them breaks exact-once invariants. Eligibility checks must return without lowering on an ineligible path. Keep the invariant assertion and an independent baseline rather than dropping unprinted markers.
 
 Apply when: adding a lowering fast path, a direct call, or an optimization that tries one form then falls back.
-Evidence: [lowering contract](../documentation/contributing/compiler/lowering/evaluation-order.md), [Optional argument fixture](../tests/e2e/testdata/accept/optional-arguments.ms), [collection conversion fixture](../tests/e2e/testdata/accept/direct-collection-conversions.ms).
+Evidence: [lowering contract](../documentation/contributing/compiler/lowering/evaluation-order.md), [Optional argument fixture](../tests/conformance/fixtures/e2e/accept/optional-arguments.ms), [collection conversion fixture](../tests/conformance/fixtures/e2e/accept/direct-collection-conversions.ms).
 Verify: a plain value passed to an Optional parameter inside a list call executes, and operands run once in written order.
 
 ### Evaluation order: receivers and operands are captured before later calls
@@ -45,7 +45,7 @@ Verify: a plain value passed to an Optional parameter inside a list call execute
 Verified: a plain local read is not ordered against a later call unless the lowering orders it. A right-hand `match` or an index expression can reassign the receiver or the left operand local, so the receiver and each operand must be captured in written order before the operation that uses them, and prerequisites stay inside their short-circuit, match, and loop regions. Hoisting them changes source behavior.
 
 Apply when: removing bound-call wrappers or lowering expressions to direct operations.
-Evidence: [evaluation order](../documentation/contributing/compiler/lowering/evaluation-order.md), [receiver reassignment regression](../tests/e2e/testdata/accept/collection-call-order.ms), [operand order](../tests/e2e/testdata/accept/operand-order.ms).
+Evidence: [evaluation order](../documentation/contributing/compiler/lowering/evaluation-order.md), [receiver reassignment regression](../tests/conformance/fixtures/e2e/accept/collection-call-order.ms), [operand order](../tests/conformance/fixtures/e2e/accept/operand-order.ms).
 Verify: a list receiver initially holding 7 still yields 7 when its index expression reassigns the local to a list holding 9.
 
 ### Checked Int arithmetic is language behavior
@@ -53,7 +53,7 @@ Verify: a list receiver initially holding 7 still yields 7 when its index expres
 Decision: `Int` arithmetic faults on overflow ([design contract](../crates/DESIGN.md)). An optimizer may remove a check only with a proof that covers the whole result range (a literal divisor, an identity operand, a guarded counter step); unknown `+`, `-`, and `*` stay checked. Evaluate both operands even when the result is constant so effectful calls are preserved. A proof must be invalidated by every write to a cell it relies on, including peers modified in a loop body and closures, and must account for every loop prefix, not just the net delta.
 
 Apply when: adding overflow-check elimination, bounds narrowing, or constant folding.
-Evidence: [overflow faults](../tests/e2e/testdata/accept/numeric-faults.ms), [bounded arithmetic](../tests/e2e/testdata/accept/bounded-int-arithmetic.ms), [counter step](../tests/e2e/testdata/accept/counter-steps-keep-overflow-faults.ms), [int identities](../tests/e2e/testdata/accept/int-identities.ms).
+Evidence: [overflow faults](../tests/conformance/fixtures/e2e/accept/numeric-faults.ms), [bounded arithmetic](../tests/e2e/testdata/accept/bounded-int-arithmetic.ms), [counter step](../tests/conformance/fixtures/e2e/accept/counter-steps-keep-overflow-faults.ms), [int identities](../tests/conformance/fixtures/e2e/accept/int-identities.ms).
 Verify: reset and conditional-reset loops still fault with the overflow message; run `make conform`.
 
 Verified: checked signed remainder differs from checked division at `MIN, -1`: remainder is zero while division faults. Constant folding must follow that distinction, and a variable numerator with divisor `-1` can fold to zero without removing evaluation of the numerator.
@@ -82,7 +82,7 @@ Verify: `cargo nextest run -p ms-clif`; preserve the long-Debug-function allocat
 Verified: defaults for native functions, methods, and constructor fields are written in the standard `.ms` declaration and checked as ordinary expressions. Constructor omission follows source metadata, application implementations inherit standard interface default permissions and receive concrete values, and native compositions pass `some(n)` through source-defined streams. Inferring permission or default expressions from a field's name would create a second schema; passing raw integers through an Optional interface would break source implementations.
 
 Apply when: adding native defaults, changing source/native signatures, or implementing stream compositions.
-Evidence: [native default checking](../crates/ms-check/src/native_defaults.rs), [native defaults fixture](../tests/e2e/testdata/stdlib/defaults.ms), [stdlib revamp fixture](../tests/e2e/testdata/accept/stdlib-revamp.ms).
+Evidence: [native default checking](../crates/ms-check/src/native_defaults.rs), [native defaults fixture](../tests/e2e/testdata/stdlib/defaults.ms), [stdlib revamp fixture](../tests/conformance/fixtures/e2e/accept/stdlib-revamp.ms).
 Verify: exercise stored, bound, and generic calls that omit a defaulted argument and fresh records; omit a limit through an application-defined ReadStream and match `none`.
 
 ### Fault locations name the failing operation's statement, without columns
@@ -93,7 +93,7 @@ Verified: omitted defaults lowered directly into a caller still need the callee'
 Evidence: [default frame regressions](../crates/ms-cli/tests/default_frames.rs), [default lowering](../crates/ms-lower/src/call.rs), and the frozen `tests-e2e-testfaultsourcelocations-20` corpus fixture.
 
 Apply when: adding lowered operations, inlining, source fault traces, or call fast paths.
-Evidence: [expected failures](../tests/conformance/expect-fail.txt), [call depth fixture](../tests/e2e/testdata/accept/call-depth.ms), [fault and frame docs](../documentation/contributing/compiler/lowering/cleanup-and-faults.md).
+Evidence: [expected failures](../tests/conformance/expect-fail.txt), [call depth fixture](../tests/conformance/fixtures/e2e/accept/call-depth.ms), [fault and frame docs](../documentation/contributing/compiler/lowering/cleanup-and-faults.md).
 Verify: `make conform` fault-location cases; preserve frame order, line numbers, and names.
 
 Verified: the runaway-recursion corpus count reflects a one-million raw-frame traversal budget, not a call-depth limit. Recursion is admitted by stack size. Windows must count native callers after the same `fault_vec` anchor before spending the remaining budget on generated frames; removing its old 256-frame cap without preserving that shared budget produces a different repeat count. Never manufacture a source-frame count by subtracting guessed native overhead.

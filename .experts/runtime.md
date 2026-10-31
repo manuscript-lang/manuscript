@@ -174,7 +174,7 @@ Decision: the user chose an ordinary local `make_fixture()` convention and a con
 Verified (design from the retired runtime): file roots retain fixture resources while each test uses independent hosts and work scopes. Listing performs no setup. Unjoined fixture work poisons further use and suppresses owner teardown; closing resources concurrently with that work would race the resource owner. Cooperative cancellation runs teardown with a fresh bounded cleanup context.
 
 Apply when: changing fixture injection, runner hook ordering, or default hooks.
-Evidence: [fixture lowering](../crates/ms-lower/src/fixture.rs), [fixture fixture](../tests/e2e/testdata/stdlib/testing-fixture.ms), [testing declarations](../stdlib/test.ms).
+Evidence: [fixture lowering](../crates/ms-lower/src/fixture.rs), [fixture fixture](../tests/conformance/fixtures/e2e/stdlib/testing-fixture.ms), [testing declarations](../stdlib/test.ms).
 Verify: no setup for `--list`, one construction across repetitions, per-file isolation, ordinary interface calls to omitted hooks, and failure/cancellation cleanup with preserved machine outcomes.
 
 ### Typed JSON is generated per type, like format and equality

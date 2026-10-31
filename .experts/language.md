@@ -11,7 +11,7 @@ Decision (Chinmay, reversing the explicit-view rule): a type with a declared `im
 Decision: the user required that the standard library, as the reference, use only forms user code can write. Methods live in `impl` blocks, never in `type` bodies: `impl Type:` declares a type's own methods and `impl Interface for Type:` implements an interface; the presence of `for` fixes which name is the type, so no lookup is needed. Rejected spellings: `impl Type as/with/satisfies Interface`, a comma form, and a stdlib-only `native impl`. Method-level type parameters work only in bundled modules; source methods reject them, a known gap.
 
 Apply when: changing impl parsing, method declaration rules, stdlib receiver operations, or docs that show type declarations with methods.
-Evidence: [contract rules](../documentation/core-language/types/contracts.md#explicit-implementations), [parser](../crates/ms-syntax/src/parser.rs), [inherent method fixture](../tests/e2e/testdata/accept/inherent-methods.ms).
+Evidence: [contract rules](../documentation/core-language/types/contracts.md#explicit-implementations), [parser](../crates/ms-syntax/src/parser.rs), [inherent method fixture](../tests/conformance/fixtures/e2e/accept/inherent-methods.ms).
 Verify: `def` in a `type` body is a parse error; `impl Type:` works across modules for exported types; `impl Interface:`, `impl Foreign:`, and generic methods give targeted errors; `make conform` still binds every receiver operation.
 
 ### An unsaved overlay cannot replace a dangling source symlink
@@ -35,7 +35,7 @@ Verify: a record and an unconstrained `T` both support `.to_string()` and direct
 Verified (a Go-era crash class; the invariant is language-level): reporting an invalid bound without removing it lets implementation substitution turn a variable bound into a self-referential graph. Diagnostic hints and editor member discovery must terminate even on malformed bound graphs. Keep valid interface bounds such as `T: Compare[T]`; reject variable bounds such as `T: T` without attaching them as evidence.
 
 Apply when: resolving generic bounds, copying implementation variables, or traversing recovered types for diagnostics and editor queries.
-Evidence: [recursive interface bound fixture](../tests/e2e/testdata/accept/recursive-interface-bound.ms).
+Evidence: [recursive interface bound fixture](../tests/conformance/fixtures/e2e/accept/recursive-interface-bound.ms).
 Verify: a program with `T: T` reports a diagnostic and the checker and language server both terminate.
 
 ### Local implementations must remain selected across module boundaries
@@ -83,7 +83,7 @@ Decision: the stdlib revamp explicitly replaces compiler-only equality/hashing b
 Decision (user, 2026-10-26): `Equal.equals` and `Comparable.compare` take `other: Self`, so an implementation writes its own type instead of matching an `Equal` argument. `Self` is an interface-only implicit variable allowed as a whole parameter or result type (`Clonable.clone` returns `Self`); calls substitute the receiver (the interface itself for interface values, the bounded variable for `T: Equal`). The vtable entry unboxes a `Self` argument and answers `False` (`equals`) or faults (`compare`) for another dynamic type, so direct calls and `==` never box. In an `impl Type:` block (inherent methods), `Self` is the receiver type and is allowed anywhere in a signature or body (user, 2026-10-26).
 
 Apply when: changing equality operators, generic bounds, contract views, key lookup, or implementation visibility.
-Evidence: [equality rules](../documentation/core-language/types/equality-and-hashing.md), [source interfaces](../stdlib/core.ms), and [compiled domain-key fixture](../tests/e2e/testdata/accept/stdlib-revamp.ms).
+Evidence: [equality rules](../documentation/core-language/types/equality-and-hashing.md), [source interfaces](../stdlib/core.ms), and [compiled domain-key fixture](../tests/conformance/fixtures/e2e/accept/stdlib-revamp.ms).
 Verify: two keys with equal IDs and different labels compare equal and occupy one map entry; an equality override without a hash is rejected as a map key. Keep local implementation selection when forwarding generic arguments.
 
 Decision: all values may be passed freely, and closures have ordinary captures. Concurrency and shared-state guards were removed pending a ground-up redesign. (Under value semantics, closure capture is by borrow or move; see the ownership notes.)
@@ -93,7 +93,7 @@ Decision: all values may be passed freely, and closures have ordinary captures. 
 Decision: the user asked to add `+= -= *= /= %=`, a step-1 `range(start, end)`, and removal of redundant argument labels (October 2026 proposal `structural-syntax`), reversing the earlier MS1000 rejection of compound assignment. A compound statement means `target = target op (value)` with the written operator kept for formatting; the receiver of a field target must be names only so it is read once. `range(start, end)` returns `List[Int]` and `for x in range(a, b)` is a counter loop with bounds evaluated once; the stepped, fallible form is `range_by`. The formatter cannot know parameter order, so label removal is the checked `ms fmt --drop-labels`, never part of plain `ms fmt`. Provable-bounds `[]` narrowing was already merged in #555 and later removed (see the indexing entry).
 
 Apply when: changing assignment syntax, `for` lowering, `@std/collections.ms` factories, or the formatter.
-Evidence: [native fixture](../tests/e2e/testdata/accept/compound-assignment.ms), [range fixture](../tests/e2e/testdata/stdlib/collections.ms).
+Evidence: [native fixture](../tests/conformance/fixtures/e2e/accept/compound-assignment.ms), [range fixture](../tests/e2e/testdata/stdlib/collections.ms).
 Verify: `total -= a - b` subtracts the whole right side, a call or index receiver is rejected, a `range` bound mutated in the body does not change the count, and `--drop-labels` is idempotent and skips labels that select another parameter.
 
 ### Syntax improvements need examples across their boundaries
@@ -116,7 +116,7 @@ Verify: exact nominal identities and generic arguments determine a match; the re
 
 ### Default arguments must not leak across callable replacement
 
-Decision: ordinary record fields may have default expressions. Constructors evaluate supplied arguments before omitted defaults in field order, with earlier fields available to later defaults; explicit values skip defaults and each construction evaluates fresh storage. A source function's default is evaluated in the callee's scope, so it can read earlier parameters. The user explicitly requires standard runtime functions to appear as syntactically correct empty functions, with their full declarations and ordinary colon headers; do not introduce a `native` keyword or hide invalid syntax in editor analysis. Evidence: [record construction rules](../documentation/core-language/types/records.md#construction), [field-default conformance](../tests/e2e/testdata/accept/field-defaults.ms).
+Decision: ordinary record fields may have default expressions. Constructors evaluate supplied arguments before omitted defaults in field order, with earlier fields available to later defaults; explicit values skip defaults and each construction evaluates fresh storage. A source function's default is evaluated in the callee's scope, so it can read earlier parameters. The user explicitly requires standard runtime functions to appear as syntactically correct empty functions, with their full declarations and ordinary colon headers; do not introduce a `native` keyword or hide invalid syntax in editor analysis. Evidence: [record construction rules](../documentation/core-language/types/records.md#construction), [field-default conformance](../tests/conformance/fixtures/e2e/accept/field-defaults.ms).
 
 Verified: defaults are permissions on a known callable, not part of function-type identity. Retaining that permission on a mutable binding or inferred generic type could let a required-argument function replace a defaulted function, then be called with a missing argument. Explicit function types, mutable bindings, and generic inference erase defaults; inferred immutable copies retain them.
 
@@ -141,7 +141,7 @@ Decision: the user requested Optional, Result, their related helpers, and Error 
 Reason: a spelling-only ban would reject application declarations, and duplicated support definitions would split native identities. An ambiguous unqualified `LimitExceeded` needs `CollectionError.LimitExceeded` or another explicit case owner; match patterns still resolve through their scrutinee. MissingValue also makes `Missing` ambient; qualify an expression as `MissingValue.Missing` or another explicit owner when needed.
 
 Apply when: changing prelude scope, standard imports, case lookup, or editor auto-imports.
-Evidence: [module scope rules](../documentation/core-language/modules/declarations.md#names-and-declaration-order), [prelude conformance](../tests/e2e/testdata/accept/prelude.ms), [collection execution](../tests/e2e/testdata/accept/collection-prelude.ms), [Set execution](../tests/e2e/testdata/accept/set-prelude.ms), [prelude import resolution](../crates/ms-check/src/prelude_imports.rs).
+Evidence: [module scope rules](../documentation/core-language/modules/declarations.md#names-and-declaration-order), [prelude conformance](../tests/e2e/testdata/accept/prelude.ms), [collection execution](../tests/e2e/testdata/accept/collection-prelude.ms), [Set execution](../tests/conformance/fixtures/e2e/accept/set-prelude.ms), [prelude import resolution](../crates/ms-check/src/prelude_imports.rs).
 Verify: Optional methods and Result propagation into Error execute without imports; incomplete constructors and ambiguous cases still fail; editor completion adds no redundant import and definitions reach standard source.
 
 ### Parameterless main and imported host accessors
@@ -149,7 +149,7 @@ Verify: Optional methods and Result propagation into Error execute without impor
 Decision: applications export `def main() -> Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
 
 Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
-Evidence: [CLI contract](../stdlib/process.ms), [host accessors fixture](../tests/e2e/testdata/accept/host-accessors.ms).
+Evidence: [CLI contract](../stdlib/process.ms), [host accessors fixture](../tests/conformance/fixtures/e2e/accept/host-accessors.ms).
 Verify: a parameterless entry runs; parameterized entries fail; imported accessors share roots across derived executions and imported helpers, while separate tests receive separate root wrappers.
 
 ### Keep short bodies available without a second function kind
@@ -157,7 +157,7 @@ Verify: a parameterless entry runs; parameterized entries fail; imported accesso
 Decision: the user requested a terse language with single-line functions and conditions. Do not restore the earlier blanket requirement for indented function bodies. The user clarified that `else` must start on a separate line: allow one branch per line, and reject same-line `else` or `elif`. The latest correction permits a single expression after a function or method colon and implicitly returns it. Multiline bodies retain explicit returns. Other inline suites retain ordinary statement semantics; there is no separate callable kind.
 
 Apply when: changing suite parsing, anonymous-function layout, formatting, or syntax documentation.
-Evidence: [canonical suite rules](../documentation/core-language/basics/grammar.md#statements-and-patterns), [inline suite fixture](../tests/e2e/testdata/accept/inline-suites.ms).
+Evidence: [canonical suite rules](../documentation/core-language/basics/grammar.md#statements-and-patterns), [inline suite fixture](../tests/conformance/fixtures/e2e/accept/inline-suites.ms).
 Verify: parse an inline callback inside a call without consuming the enclosing delimiter; execute inline and indented branches together; preserve formatting idempotence and reject multiple statements in an inline body.
 
 ### Optional values need presence and extraction methods
@@ -177,10 +177,10 @@ Decision: the later request to accept `Queue[Int](capacity: 4)` permits a plain 
 Decision: the user asked for `if let name = optional:` (with `else`) and that a match with only two arms is an anti-pattern. `if let` unwraps an Optional (present) or a Result (ok, error not captured; extended by a later request); the binding is immutable and scoped to the then-branch. MSL108 advises on Optional matches whose only arms are some and none, and MSL109 on Result matches whose only arms are ok and error; user alternatives are not covered. Decision (Chinmay, after #587): show no `match` as a way to unwrap a Result anywhere (docs, examples, stdlib, fixtures that are not testing pattern semantics): use `try`, `if let`, `get(default)`, or `is_ok`/`is_error`/`err`. Stdlib sources use `if let`; accepted conformance fixtures keep their some/none matches because they exercise match-expression semantics.
 
 Apply when: changing Optional declarations, alternative method lookup, fallback evaluation, or introductory examples.
-Evidence: [if let rules](../documentation/core-language/control-flow/conditionals.md#unwrapping-an-optional-or-result), [if let fixture](../tests/e2e/testdata/accept/if-let.ms), [two-arm match lint](../crates/ms-tooling/src/lint/matches.rs), [Optional contract](../documentation/core-language/types/optionals.md#checking-and-extracting-values), [optional argument rules](../documentation/core-language/types/optionals.md#passing-optional-arguments), [canonical declaration](../stdlib/core.ms), [method fixture](../tests/e2e/testdata/accept/optional-methods.ms), [argument fixture](../tests/e2e/testdata/accept/optional-arguments.ms).
+Evidence: [if let rules](../documentation/core-language/control-flow/conditionals.md#unwrapping-an-optional-or-result), [if let fixture](../tests/conformance/fixtures/e2e/accept/if-let.ms), [two-arm match lint](../crates/ms-tooling/src/lint/matches.rs), [Optional contract](../documentation/core-language/types/optionals.md#checking-and-extracting-values), [optional argument rules](../documentation/core-language/types/optionals.md#passing-optional-arguments), [canonical declaration](../stdlib/core.ms), [method fixture](../tests/e2e/testdata/accept/optional-methods.ms), [argument fixture](../tests/conformance/fixtures/e2e/accept/optional-arguments.ms).
 Verify: false and zero are present; eager `get(default)` values evaluate normally; `or_else` callbacks run exactly once only for none; `get()` with no default on none or error faults clearly. Extraction retains nested type arguments and payload identity, stored receiver methods still work, and local alternatives with the same spelling receive no native methods.
 
-Verified: Optional argument checking retains the expression's source type and records wrapping separately, so editor queries and Boolean folding keep their existing meaning. Reuse an inferred payload type before retrying with context: checking every nested call twice causes exponential work for both accepted and rejected inputs. The same rule applies to successful independent generic argument checks: reuse their checked information within the owning call, then apply ordinary expected-type and conversion checks. Do not cache probes across calls or scopes. Contextual callback probes can be retained within their owning call only when their final function signature is identical and contains no unresolved inference variables; replay retained root diagnostics once. A complete result signature alone is insufficient: earlier unresolved or conflicting returns, and `try` checked before the enclosing result is known, can require the final context to repair a valid body. Record this dependence and recheck those bodies; invalid result slots can be reused only when the final signature retains exactly those slots. Evidence: [callback probe fixture](../tests/e2e/testdata/accept/callback-probe-reuse.ms), [inference call order](../tests/e2e/testdata/accept/inference-call-order.ms), and [issue #151](https://github.com/manuscript-lang/manuscript/issues/151).
+Verified: Optional argument checking retains the expression's source type and records wrapping separately, so editor queries and Boolean folding keep their existing meaning. Reuse an inferred payload type before retrying with context: checking every nested call twice causes exponential work for both accepted and rejected inputs. The same rule applies to successful independent generic argument checks: reuse their checked information within the owning call, then apply ordinary expected-type and conversion checks. Do not cache probes across calls or scopes. Contextual callback probes can be retained within their owning call only when their final function signature is identical and contains no unresolved inference variables; replay retained root diagnostics once. A complete result signature alone is insufficient: earlier unresolved or conflicting returns, and `try` checked before the enclosing result is known, can require the final context to repair a valid body. Record this dependence and recheck those bodies; invalid result slots can be reused only when the final signature retains exactly those slots. Evidence: [callback probe fixture](../tests/e2e/testdata/accept/callback-probe-reuse.ms), [inference call order](../tests/conformance/fixtures/e2e/accept/inference-call-order.ms), and [issue #151](https://github.com/manuscript-lang/manuscript/issues/151).
 
 ### Recursive data; generic applications still stay finite
 
@@ -208,12 +208,12 @@ Verified: a callable parameter or result mismatch cannot be fixed by renaming it
 
 Decision: unambiguous generic inference from the expected result to address [issue #98](https://github.com/manuscript-lang/manuscript/issues/98), superseding the argument-only restriction. Preserve argument evidence and explicit specialization; use result context before deferred callbacks, without widening ordinary nominal/function types or adding Optional return wrapping. Existing Error boundaries retain concrete error evidence. Inferred function types still erase default omission permissions.
 
-Verified: argument inference must apply Result error widening within each transactional match, including the single Optional payload attempt, and check the completed target after substitution. A separate root-only fallback missed Optional wrapping and an error parameter already determined as Error; committing a failed success prefix would constrain unrelated later evidence. Keep success types and nested applications invariant, then let final argument checking retain scoped Error evidence. Evidence: [native identity and order](../tests/e2e/testdata/accept/result-argument-inference.ms) and [error widening](../tests/e2e/testdata/accept/result-error-widening-inference.ms).
+Verified: argument inference must apply Result error widening within each transactional match, including the single Optional payload attempt, and check the completed target after substitution. A separate root-only fallback missed Optional wrapping and an error parameter already determined as Error; committing a failed success prefix would constrain unrelated later evidence. Keep success types and nested applications invariant, then let final argument checking retain scoped Error evidence. Evidence: [native identity and order](../tests/conformance/fixtures/e2e/accept/result-argument-inference.ms) and [error widening](../tests/conformance/fixtures/e2e/accept/result-error-widening-inference.ms).
 
 Verify: source and native callbacks cover generic map results, callbacks listed before their inference inputs, optional callbacks, nested closures, constructors, and editor parameter navigation. Expected-result tests also cover return/binding contexts, bounds, conflicting evidence, concrete Error conversion, and nested call order. Preserve explicit annotations where incomplete Result construction or `try` lacks a known result context.
 
 Apply when: changing callback checking, generic inference, syntax or editor annotations.
-Evidence: [callback rules](../documentation/core-language/functions/function-values-and-closures.md#contextual-callback-inference), [contextual callbacks fixture](../tests/e2e/testdata/accept/contextual-callbacks.ms). Expected-result evidence: [inference rules](../documentation/core-language/types/generics.md#inference-from-arguments), [contextual generics fixture](../tests/e2e/testdata/accept/contextual-generics.ms), and [inference module](../crates/ms-check/src/inference.rs).
+Evidence: [callback rules](../documentation/core-language/functions/function-values-and-closures.md#contextual-callback-inference), [contextual callbacks fixture](../tests/conformance/fixtures/e2e/accept/contextual-callbacks.ms). Expected-result evidence: [inference rules](../documentation/core-language/types/generics.md#inference-from-arguments), [contextual generics fixture](../tests/conformance/fixtures/e2e/accept/contextual-generics.ms), and [inference module](../crates/ms-check/src/inference.rs).
 
 ### Module-level constants are use-site evaluations, not stored values
 
@@ -223,7 +223,7 @@ Verified (design, from the retired implementation): a constant is a parameterles
 Open: hoisting scalar constants to compile-time values for performance.
 
 Apply when: changing top-level declarations, name resolution of module symbols, or the formatter's blank-line rules.
-Evidence: [constants rules](../documentation/core-language/modules/declarations.md#constants), [constant checking](../crates/ms-check/src/constants.rs), and [constants fixture](../tests/e2e/testdata/accept/constants.ms).
+Evidence: [constants rules](../documentation/core-language/modules/declarations.md#constants), [constant checking](../crates/ms-check/src/constants.rs), and [constants fixture](../tests/conformance/fixtures/e2e/accept/constants.ms).
 Verify: `ms run` on a module using an exported constant from another module, a local `let` shadowing a constant, and `A()` on a constant rejected.
 
 ### Pipe steps desugar in the parser; a leading `.` or `|` line continues a statement
@@ -232,7 +232,7 @@ Decision: Chinmay chose `|` (not `|>`, `?`, UFCS, or `map_error`) to compose fre
 Verified: the parser rewrites each step to the plain call or `try` it names, so checking, lowering and diagnostics are unchanged and argument order is the written order (the step head is a name path with no calls). The lexer treats a line starting with `|`, or `.` not followed by a digit or `.`, as a statement continuation indented exactly four spaces past the statement; no valid program started a line with either, so nothing existing changed meaning. A `.member` after a step applies to the step's result, and an operator after a pipe needs parentheses (the parser's diagnostic says so).
 
 Apply when: changing operator precedence, line layout, `try`, or call argument binding.
-Evidence: [pipe flows](../documentation/core-language/basics/expressions.md#pipe-flows), [parser](../crates/ms-syntax/src/parser.rs), and [pipe fixture](../tests/e2e/testdata/accept/pipe-flow.ms).
+Evidence: [pipe flows](../documentation/core-language/basics/expressions.md#pipe-flows), [parser](../crates/ms-syntax/src/parser.rs), and [pipe fixture](../tests/conformance/fixtures/e2e/accept/pipe-flow.ms).
 Verify: `try parse(text) | double | try check | .to_string_radix(radix: 10)` runs; a continuation line at the wrong indentation is rejected.
 
 ### Result types use `->` (Python-aligned surface)
@@ -262,7 +262,7 @@ Verify: `Result[Int, String]` fails with "String does not satisfy Error"; `Resul
 Decision: `let (` / `var (` declare several bindings of one kind, one entry per line, closing `)` aligned with the keyword; each entry is an ordinary binding (annotation or destructuring allowed) and sees earlier entries. Parenthesized patterns such as `let (a, b) = value` remain rejected, so a grouped block and a tuple pattern must stay distinguishable by the token after the keyword.
 
 Apply when: changing binding grammar, formatter layout of declarations, or destructuring.
-Evidence: [grouping rules](../documentation/core-language/basics/bindings.md#grouping-bindings), [destructuring](../documentation/core-language/types/destructuring.md), [module constants](../documentation/core-language/modules/declarations.md), [binding groups fixture](../tests/e2e/testdata/accept/binding-groups.ms).
+Evidence: [grouping rules](../documentation/core-language/basics/bindings.md#grouping-bindings), [destructuring](../documentation/core-language/types/destructuring.md), [module constants](../documentation/core-language/modules/declarations.md), [binding groups fixture](../tests/conformance/fixtures/e2e/accept/binding-groups.ms).
 Verify: `let (` entries evaluate in order with earlier ones in scope, `export let (` exports every entry, and `let (a, b) = pair` still fails with the not-a-binding-pattern diagnostic.
 
 ### `ref` marks borrows; reference types stay out
