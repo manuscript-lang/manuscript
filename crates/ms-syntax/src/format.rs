@@ -183,6 +183,48 @@ fn align_suite_headers(lines: &[String], tokens: &[Token]) -> Option<Vec<String>
     )
 }
 
+/// Reports whether the final `)` closes the parameter list of an `fn`
+/// declaration or function type, so a `(` after it opens a parenthesized
+/// return type (`fn f() (fn() Int)?`) rather than calling a result.
+fn closes_parameter_list(tokens: &[Token]) -> bool {
+    let mut depth = 0usize;
+    let mut open = None;
+    for (index, token) in tokens.iter().enumerate().rev() {
+        match token.kind {
+            Tok::RParen => depth += 1,
+            Tok::LParen => {
+                depth -= 1;
+                if depth == 0 {
+                    open = Some(index);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    let Some(mut at) = open else {
+        return false;
+    };
+    if at > 0 && tokens[at - 1].kind == Tok::RBracket {
+        let mut depth = 0usize;
+        while at > 0 {
+            at -= 1;
+            match tokens[at].kind {
+                Tok::RBracket => depth += 1,
+                Tok::LBracket => {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let kind = |back: usize| at.checked_sub(back).map(|i| tokens[i].kind);
+    kind(1) == Some(Tok::Fn) || (kind(1) == Some(Tok::Name) && kind(2) == Some(Tok::Fn))
+}
+
 fn token_space(tokens: &[Token], at: usize) -> bool {
     let (current, previous) = (tokens[at].kind, tokens[at - 1].kind);
     if current == Tok::Dot && matches!(previous, Tok::Pipe | Tok::Try) {
@@ -226,7 +268,7 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
     if current == Tok::LParen
         && matches!(previous, Tok::Name | Tok::RParen | Tok::RBracket | Tok::Fn)
     {
-        return false;
+        return previous == Tok::RParen && closes_parameter_list(&tokens[..at]);
     }
     if current == Tok::LBracket && matches!(previous, Tok::Name | Tok::SelfKw | Tok::RBracket) {
         return false;

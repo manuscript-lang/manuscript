@@ -3,7 +3,7 @@ import from_scalars from "@std/string.ms"
 import TextError from "@std/core.ms"
 import parse, stringify, YamlValue, YamlError, YamlLimits from "@std/yaml.ms"
 
-fn entries(value: YamlValue)(Map[String, YamlValue])!:
+fn entries(value: YamlValue) Map[String, YamlValue]!:
     match value:
         ObjectValue(values): return ok(values)
         _: return error(TextError("expected YAML mapping"))

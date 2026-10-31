@@ -1,0 +1,8 @@
+fn g() Int: return 1
+fn f()(fn() Int)?: return none
+fn h[T](a: Int)(fn() Int)!String: return g
+export fn main() Int:
+    let a = g()(1)
+    let b = g(1)   (2)
+    let c: fn(Int)(fn() Int) = x
+    return 0

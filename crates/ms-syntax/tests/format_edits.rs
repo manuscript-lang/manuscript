@@ -12,3 +12,12 @@ fn adjacent_source_edits_keep_exact_output_with_unicode_and_crlf() {
         assert_eq!(ms_syntax::format(&file, &actual).unwrap(), actual);
     }
 }
+
+#[test]
+fn parenthesized_return_type_gets_a_space_but_call_chains_do_not() {
+    let file: Arc<str> = Arc::from("edits.ms");
+    let source = include_str!("format_edits/paren_return.src");
+    let expected = include_str!("format_edits/paren_return.expected");
+    assert_eq!(ms_syntax::format(&file, source).unwrap(), expected);
+    assert_eq!(ms_syntax::format(&file, expected).unwrap(), expected);
+}
