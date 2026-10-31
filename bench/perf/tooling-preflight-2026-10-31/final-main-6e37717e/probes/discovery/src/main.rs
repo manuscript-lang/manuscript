@@ -7,7 +7,7 @@ fn main(){
   "completion" | "completion-doc"=>{
    let doc=if mode=="completion-doc" {"# ".to_owned()+&"sample ".repeat(50)+"\n"}else{String::new()};
    let mut s=(0..n).map(|i|doc.clone()+&include_str!("../function.ms").replace("item_N",&format!("item_{i}"))).collect::<String>();
-   s.push_str(include_str!("../cursor.ms"));s
+   s.push_str(include_str!("../cursor.src"));s
   },
   "nesting"=>include_str!("../expression.ms").replace("{{expr}}",&("f(".repeat(n)+"1"+&")".repeat(n))),
   "calls"=>include_str!("../expression.ms").replace("{{expr}}",&("x".repeat(100)+&".m(1, 2, 3)".repeat(n))),

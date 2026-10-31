@@ -1,0 +1,12 @@
+{
+  "reason": "Preserve intentional raw editor whitespace; canonical .ms normalization would change workload input. Repository fixture convention is .src.",
+  "original_measured_artifact_commit": "3ba3f5c8a4d50cb4c38d4290de713aa96f32b0e6",
+  "mapping": {
+    "cursor.ms": "cursor.src"
+  },
+  "original_fixture_sha256": "cdc618e7a323c1c0c30de0a6c63e81a3292b7a3188135d9bfd90f93018b98cf3",
+  "packaged_fixture_sha256": "cdc618e7a323c1c0c30de0a6c63e81a3292b7a3188135d9bfd90f93018b98cf3",
+  "original_measured_harness_sha256": "995abb77d6e0d8ab5dd75b9cfe34223a26230e5c5bfb9010ff42ac2629cab9c0",
+  "packaged_harness_sha256": "8b2f926e5d111e7fdc2e21de4e4dbec691e86cadb6de78e813b5718764fa6a28",
+  "timings": "Existing observations and measured binaries are unchanged; only packaging/include path changes."
+}

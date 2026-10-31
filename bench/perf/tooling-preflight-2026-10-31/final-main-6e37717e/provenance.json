@@ -104,5 +104,18 @@
     "lsp-semantic": "7c4af02be07f8d52dcfa2a1cbb6f6216c69dbb447c547afd8d8e3f92ba749fe8",
     "lsp-outline": "590fa2db5fc2db2e66a578fba8869e4594afd3319a9ed153e286805d29b15206",
     "formatter-flow": "a51d17474618cf43db04824ed6954b5aac761b150d784c4dadf14cd2db4ea3ae"
+  },
+  "fresh_discovery": {
+    "source_commit": "6e37717ed3b4035af48cafb50f92272e9fa042c9",
+    "original_measured_harness_artifact_commit": "3ba3f5c8a4d50cb4c38d4290de713aa96f32b0e6",
+    "discovery_binary_sha256": "a39cd535248b05286e386c11cb10616e905c8abe7801bd2019072c2ed2c9d840",
+    "workspace_binary_sha256": "df82a92ca9c93c005bf21139fc6bff04594b63586feb2bde85b5964d239225de",
+    "packaging_mapping": "packaging.json",
+    "data_sha256": {
+      "larger-flows.csv": "c82e73ce8b77c84146a9633e8411e297ea719c05464fb30da8e1d179f19277ba",
+      "workspace.csv": "e06ca4de9b91394cf1ce4718a1073993b6d54c6242e438116ea049a0260479dc",
+      "new-candidates.csv": "a96c862bd42eabae190966aae6e649a2bed529919abd554c3bc723d2c7c054d3",
+      "rejected-invalid-result.csv": "3b9f3aa1e003e26347533c0ddd178cb654e18d034bd5ec9c11c37c97292d0316"
+    }
   }
 }
