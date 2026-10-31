@@ -115,6 +115,10 @@ pub(crate) struct Closer {
     /// The current cleanup entry of a binding that can be reassigned after a move, which pushes
     /// a new one.
     entry: Option<ms_mir::builder::Var>,
+    /// Set once the program calls `close()` on the binding itself: the scope end still closes
+    /// it, which releases what the call left, but a result the program handled is dropped
+    /// instead of returned again. Present only for a binding with such a call.
+    explicit: Option<ms_mir::builder::Var>,
     /// A binding some path moves a resource field out of closes field by field.
     pub(crate) split: Option<std::rc::Rc<Split>>,
 }
@@ -334,6 +338,12 @@ impl FnLower<'_> {
             self.b.def_var(flag, held);
             flag
         });
+        let explicit = self.cx.explicit_closes.contains(&binding.uid).then(|| {
+            let explicit = self.b.declare_var(MTy::BOOL, Mode::Borrow);
+            let no = self.b.bconst(false);
+            self.b.def_var(explicit, no);
+            explicit
+        });
         let entry = (flag.is_some() && binding.mutable).then(|| {
             let entry = self.b.declare_var(MTy::INT, Mode::Borrow);
             self.b.def_var(entry, handle);
@@ -346,6 +356,7 @@ impl FnLower<'_> {
                 handle,
                 flag,
                 entry,
+                explicit,
                 split: None,
             },
         );
@@ -389,6 +400,7 @@ impl FnLower<'_> {
                 handle,
                 flag,
                 entry: None,
+                explicit: None,
                 split: Some(std::rc::Rc::new(split)),
             },
         );
@@ -1012,6 +1024,49 @@ impl FnLower<'_> {
         self.b.def_var(flag, gone);
     }
 
+    /// The close at scope end: its failure is returned like `try`, unless the program already
+    /// called `close()` on this path and handled the result, which is not returned a second time.
+    fn scope_close(&mut self, uid: usize, closer: &Closer) {
+        let Some(explicit) = closer.explicit else {
+            if let Some(r) = self.emit_close(uid, closer) {
+                self.propagate_close_error(uid, r);
+            }
+            return;
+        };
+        let called = self.b.use_var(explicit);
+        let (again, first, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br_if(called, again, &[], first, &[]);
+        self.b.seal_block(again);
+        self.b.seal_block(first);
+        self.b.switch_to(again);
+        if let Some(r) = self.emit_close(uid, closer) {
+            self.drop_value(r);
+        }
+        self.b.br(join, &[]);
+        self.b.switch_to(first);
+        if let Some(r) = self.emit_close(uid, closer) {
+            self.propagate_close_error(uid, r);
+        }
+        self.b.br(join, &[]);
+        self.b.seal_block(join);
+        self.b.switch_to(join);
+    }
+
+    /// Records that the program called `close()` on the closing binding `recv` named.
+    pub(crate) fn note_explicit_close(&mut self, recv: &Expr) {
+        let ms_check::hir::Resolution::Local(b) = self.hir.resolution(recv) else {
+            return;
+        };
+        let Some(explicit) = self.closers.get(&b.uid).and_then(|c| c.explicit) else {
+            return;
+        };
+        if self.dead {
+            return;
+        }
+        let yes = self.b.bconst(true);
+        self.b.def_var(explicit, yes);
+    }
+
     /// Leaves the binding `uid` at the end of its scope, closing it unless a move took it.
     pub(crate) fn close_at_scope_end(&mut self, uid: usize, closer: &Closer) {
         if closer.split.is_some() {
@@ -1019,9 +1074,7 @@ impl FnLower<'_> {
             return;
         }
         let Some(flag) = closer.flag else {
-            if let Some(r) = self.emit_close(uid, closer) {
-                self.propagate_close_error(uid, r);
-            }
+            self.scope_close(uid, closer);
             return;
         };
         let held = self.b.use_var(flag);
@@ -1030,9 +1083,7 @@ impl FnLower<'_> {
         self.b.seal_block(close);
         self.b.seal_block(moved);
         self.b.switch_to(close);
-        if let Some(r) = self.emit_close(uid, closer) {
-            self.propagate_close_error(uid, r);
-        }
+        self.scope_close(uid, closer);
         self.b.br(join, &[]);
         // A move cancelled the entry; it leaves the stack now.
         self.b.switch_to(moved);

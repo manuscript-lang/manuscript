@@ -69,7 +69,7 @@ fn use_gate(fails: Bool) Unit!:
 The scope-end close behaves like `try gate.close()`: a failed close becomes the function's error, after the other bindings of the scopes it leaves have closed. This holds for every exit, including `break`, `continue` and `return`.
 
 - If the scope is already returning an error, that error is kept and a close error after it is dropped.
-- Call `close()` yourself to handle the failure; the binding is then consumed and closes nothing more. Like any `Result`, the call needs `try`, `match` or `let _ =`.
+- Call `close()` yourself to handle the failure; the scope end then closes the binding once more, which `close()` being idempotent makes harmless, and drops that second result, so a failure you handled is not returned again. Like any `Result`, the call needs `try`, `match` or `let _ =`.
 - A close with nowhere to return its error is a fault, never silently ignored: a function that does not return `Unit!` (`Result[_, Error]`), a part of a holder, a replaced or temporary value.
 - A fault or cancellation runs each close and discards its result; the failure being reported takes precedence.
 

@@ -358,6 +358,9 @@ impl Walker<'_> {
                 // tracks that with a flag cleared at each move.
                 if closable {
                     self.facts.implicit_closes.insert(uid);
+                    if self.closed.contains(&uid) {
+                        self.facts.explicit_closes.insert(uid);
+                    }
                     self.facts
                         .close_moves
                         .insert(uid, moves.into_iter().collect());
@@ -368,6 +371,9 @@ impl Walker<'_> {
                 // Never handed on: the scope closes it, after any early `.close()` of its own
                 // (close is idempotent).
                 self.facts.implicit_closes.insert(uid);
+                if self.closed.contains(&uid) {
+                    self.facts.explicit_closes.insert(uid);
+                }
             } else if !self.closed.contains(&uid) {
                 self.error(
                     pos,
