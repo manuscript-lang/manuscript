@@ -930,7 +930,25 @@ impl FnLower<'_> {
     /// binding's cleanup entry stays: it closes whatever the binding holds when its scope ends.
     pub(crate) fn close_replaced(&mut self, closer: &Closer, old: Value, ty: MTy) {
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
-        close_call(&mut self.b, &closer.kind, old, ty);
+        if let Some(explicit) = closer.explicit {
+            // The program already closed `old` and handled the result: closing it again
+            // releases what is left, and its result is dropped.
+            let called = self.b.use_var(explicit);
+            let (again, first, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+            self.b.br_if(called, again, &[], first, &[]);
+            self.b.seal_block(again);
+            self.b.seal_block(first);
+            self.b.switch_to(again);
+            close_call_silent(&mut self.b, &closer.kind, old, ty);
+            self.b.br(join, &[]);
+            self.b.switch_to(first);
+            close_call(&mut self.b, &closer.kind, old, ty);
+            self.b.br(join, &[]);
+            self.b.seal_block(join);
+            self.b.switch_to(join);
+        } else {
+            close_call(&mut self.b, &closer.kind, old, ty);
+        }
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
     }
 
@@ -946,6 +964,22 @@ impl FnLower<'_> {
     /// closed when the binding still holds one, and a binding a move emptied registers a new
     /// cleanup entry for `new`.
     pub(crate) fn assign_closing(
+        &mut self,
+        uid: usize,
+        closer: &Closer,
+        old: Value,
+        ty: MTy,
+    ) -> Result<(), Error> {
+        self.replace_closing(uid, closer, old, ty)?;
+        // The new value has not been closed by the program.
+        if let Some(explicit) = closer.explicit {
+            let no = self.b.bconst(false);
+            self.b.def_var(explicit, no);
+        }
+        Ok(())
+    }
+
+    fn replace_closing(
         &mut self,
         uid: usize,
         closer: &Closer,

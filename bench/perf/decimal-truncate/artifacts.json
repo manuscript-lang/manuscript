@@ -1,0 +1,80 @@
+{
+  "base_revision": "d4a94aa9283348133542078e22ccaa3b2c9dc348",
+  "status": "rejected: reproducible negation control regression",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "cpu": "AMD EPYC 9V45 96-Core Processor (KVM)",
+  "cpu_affinity": [
+    0
+  ],
+  "cpu_quota": "400000 100000",
+  "memory_limit": "17179869184",
+  "rust": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "nextest": "0.9.150",
+  "compiler_sha256": "7b8307b2825be00fb6c61920a4bd5e92bdea9c093500750c0fdfbaf0057d103f",
+  "ms_settings": "MS_BACKEND=cranelift --build-type Release; same compiler, selected MS_RT_LIB archives",
+  "runtime_settings": "cargo xtask runtime: --release --locked; opt-level=3, debug=0; x86_64-unknown-linux-musl",
+  "rust_settings": "cargo build --release; opt-level=3; overflow-checks=true; host x86_64-unknown-linux-gnu",
+  "artifacts": {
+    "before_runtime": {
+      "sha256": "f9efb1ebd944ed2489790149342064a6bdc324f0826d5af3d9dc45920b83355d",
+      "bytes": 47127354
+    },
+    "after_runtime": {
+      "sha256": "059aa24017e85364ad0bfee66cd6d29629b3cdd2c9e66c595e1ec39e520d587c",
+      "bytes": 47127306
+    },
+    "before_program": {
+      "sha256": "44505ebe7438dfc9db9d819d046f99cc1222cee5559877b5e7557618df97a3ca",
+      "bytes": 727912
+    },
+    "after_program": {
+      "sha256": "650b443744037839d893fac46d9a215efbc0854463e4d20c35a6e57ce7417203",
+      "bytes": 659696
+    },
+    "before_control": {
+      "sha256": "7625d6830854e7bb1c45a769a09e65071337f6b5539c4214d92de1e48c86b269",
+      "bytes": 766360
+    },
+    "after_control": {
+      "sha256": "173ffb6afb5489ded1ecbb36811459152a19e05290c2ec27492360d07eb39079",
+      "bytes": 766664
+    },
+    "rust_reference": {
+      "sha256": "2fee2c486d791c3e52afd5ca6ce8dc8c76041fed1e8057d18e68987c64838a9e",
+      "bytes": 507088
+    },
+    "workload": {
+      "sha256": "d918a7c69c0193cb96a1741eb7e37a2b5452ac9bd5f2377c9534569fecb06405",
+      "bytes": 2869
+    },
+    "rust_source": {
+      "sha256": "f62b63fae6feb83bcc07c0e6513da294f3ad85afa7f821fb60fd965171a3a336",
+      "bytes": 4468
+    },
+    "repeat": {
+      "sha256": "52eeb63852c87686f66c89eab0c3ec3c873125c586e367184c8013fdd9226bec",
+      "bytes": 4428
+    },
+    "controls": {
+      "sha256": "c8d359c3b4b57e8abbb524c0eb40c8a34bbc4527076cf5991f35b84c164d91c5",
+      "bytes": 1105
+    },
+    "inputs": {
+      "sha256": "6378b6181d10a0a79bb6fd399066d59bccccc863c40e8dc390a894a919947eef",
+      "bytes": 1067
+    },
+    "rejected_patch": {
+      "sha256": "8638e06044dfd47d0ed386d845031be294cb78cc225843807ab43bb7b00dc6fc",
+      "bytes": 5639
+    },
+    "conversion_source": {
+      "sha256": "dbd95c3f6b03cb4912fdffcd51d4b701372dd3b90b0cc12c1a01e929491514aa",
+      "bytes": 2387
+    },
+    "conversion_harness": {
+      "sha256": "6731dab6ffd68d6a000e531444d481e30cf23985d8ec303c64f66adb6fd706a1",
+      "bytes": 3756
+    }
+  }
+}

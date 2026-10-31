@@ -1376,6 +1376,12 @@ impl Checker {
             let Some(st) = s.ty_opt() else {
                 continue;
             };
+            if st
+                .opaque_module()
+                .is_some_and(|module| module != self.current_file())
+            {
+                continue;
+            }
             if s.kind == SymKind::Type
                 && st.kind == Kind::Alternative
                 && let Some(candidate) = case_of(&st, name)
