@@ -672,6 +672,9 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
                 if cur(flow) == 0: return error(
                     flow_invalid(flow, "unterminated flow mapping")
                 )
+                if cur(flow) == 44: return error(
+                    flow_invalid(flow, "expected flow mapping key")
+                )
 
                 quoted_key = cur(flow) == 34 or cur(flow) == 39
 
