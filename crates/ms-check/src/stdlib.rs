@@ -295,7 +295,10 @@ pub fn standard_module_names() -> Vec<&'static str> {
         names.extend(w.modules.keys().map(|k| k.as_str()));
         names.extend(w.source_modules.keys().map(|k| k.as_str()));
     });
-    names.into_iter().filter(|path| !is_internal(path)).collect()
+    names
+        .into_iter()
+        .filter(|path| !is_internal(path))
+        .collect()
 }
 
 /// A standard module's exported declarations, checking a bundled source

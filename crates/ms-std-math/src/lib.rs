@@ -99,4 +99,3 @@ fn is_integer(v: f64) -> bool {
 }
 
 const MAX_SAFE_INTEGER: i64 = (1 << 53) - 1;
-
