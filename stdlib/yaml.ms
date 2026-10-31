@@ -91,12 +91,21 @@ type Context:
     dash: List[Bool]
     ind: List[Int]
     col: List[Int]
+    # Diagnostic projection for virtual lines; parsing continues to use the same bases.
+    split_line: Int = -1
+    shift_row: Int = -1
+    shift_column: Int = 0
+
+type SourcePosition:
+    line: Int
+    column: Int
 
 type Flow:
     chars: List[String]
     codes: List[Int]
     pos: Int
     line: Int
+    column: Int = 1
     context: Context
     delimited: Bool
 
@@ -178,8 +187,22 @@ fn count(var context: Context, depth: Int) Unit!YamlError:
 
     return ok(unit)
 
+fn source_line(context: Context, row: Int) Int:
+    if context.split_line >= 0 and row > context.split_line: return row
+
+    return row + 1
+
+fn source_column(context: Context, row: Int, column: Int) Int:
+    var result = column
+    if context.split_line >= 0 and row == context.split_line + 1: result += 4
+    if row == context.shift_row: result += context.shift_column
+    return result
+
 fn invalid(context: Context, reason: String) YamlError:
-    return YamlError.InvalidData(line: context.index + 1, column: 1, reason: reason)
+    return YamlError.InvalidData(
+        line: source_line(context, context.index),
+        column: source_column(context, context.index, 1), reason: reason
+    )
 
 fn peek(flow: Flow) String:
     return flow.chars.get(flow.pos, default: "").clone()
@@ -205,8 +228,37 @@ fn flow_space(var flow: Flow) Unit:
 
         flow.pos += 1
 
-fn flow_invalid(flow: Flow, reason: String) YamlError:
-    return YamlError.InvalidData(line: flow.line, column: flow.pos + 1, reason: reason)
+# Project an existing scalar cursor only on errors. Valid input needs no position scan.
+fn cursor_position(
+    chars: List[String],
+    cursor: Int,
+    line: Int,
+    column: Int
+) SourcePosition:
+    var breaks = 0
+    var width = 0
+    var at = 0
+
+    while at < cursor and at < chars.length():
+        if chars.get(at) == "\n":
+            breaks += 1
+            width = 0
+        else: width += 1
+
+        at += 1
+
+    return SourcePosition(
+        line: line + breaks, column: if breaks == 0: column + width else: width + 1
+    )
+
+fn flow_position(flow: Flow, cursor: Int) SourcePosition:
+    return cursor_position(flow.chars, cursor, flow.line, flow.column)
+
+fn flow_invalid(flow: Flow, reason: String, cursor: Int = -1) YamlError:
+    let position = flow_position(flow, if cursor < 0: flow.pos else: cursor)
+    return YamlError.InvalidData(
+        line: position.line, column: position.column, reason: reason
+    )
 
 # The first physical break folds to a space, or is removed before empty lines.
 # An escaped first break is removed even when no empty lines follow it.
@@ -464,7 +516,8 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
 
     if c == 33: return error(
         YamlError.UnsupportedFeature(
-            line: flow.line, reason: "explicit tags are unsupported"
+            line: flow_position(flow, flow.pos).line,
+            reason: "explicit tags are unsupported"
         )
     )
     if c == 34 or c == 39: return ok(YamlValue.StringValue(try quoted(var flow)))
@@ -495,7 +548,8 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
     var text = blank_trim(flow.chars.slice(start, flow.pos).get([]).join(""))
     if text.starts_with("?") and (text.length() == 1 or " \t".contains(text.get(1))): return error(
         YamlError.UnsupportedFeature(
-            line: flow.line, reason: "explicit mapping keys are unsupported"
+            line: flow_position(flow, start).line,
+            reason: "explicit mapping keys are unsupported"
         )
     )
     if not plain_may_start(text): return error(
@@ -521,9 +575,28 @@ fn flow_entry(
     explicit.add(name.clone())
 
     if name == "<<" and not quoted_key:
-        try merge(
+        let cause = match merge(
             line: flow.line, column: flow.pos + 1, target: var entries, value: value
-        )
+        ):
+            ok(_): return ok(unit)
+            error(cause): cause
+
+        let reason = match cause:
+            InvalidData(_, _, reason): reason.clone()
+            _: return error(cause)
+
+        # A plain value may have consumed trailing separation before the delimiter.
+        # Point this value-type error at its end, rather than a later closing line.
+        let end = flow.pos
+        var trailing = 0
+
+        while end - trailing > 0:
+            let code = flow.codes.get(end - trailing - 1)
+            if code != 32 and code != 9 and code != 10: break
+
+            trailing += 1
+
+        return error(flow_invalid(flow, reason, cursor: end - trailing))
     else:
         entries.add(name.clone(), value)
 
@@ -586,7 +659,10 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
                 flow.delimited = true
                 if is_key: return error(
                     YamlError.UnsupportedFeature(
-                        line: flow.line, reason: "complex mapping keys are unsupported"
+                        line: flow_position(
+                            flow, flow.pos
+                        ).line,
+                        reason: "complex mapping keys are unsupported"
                     )
                 )
 
@@ -685,7 +761,10 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
                     StringValue(text): name = text
                     _: return error(
                         YamlError.UnsupportedFeature(
-                            line: flow.line, reason: "mapping keys must be strings"
+                            line: flow_position(
+                                flow, key_start
+                            ).line,
+                            reason: "mapping keys must be strings"
                         )
                     )
 
@@ -1004,7 +1083,7 @@ fn structured_lead(code: Int, blank: Bool = false) Bool:
         or code == 33
     )
 
-fn inline_value(var context: Context, text: String, depth: Int) Result[
+fn inline_value(var context: Context, text: String, depth: Int, line: Int, column: Int) Result[
     YamlValue, YamlError
 ]:
     # A plain scalar needs no character scan: only its trimmed text and a count.
@@ -1018,7 +1097,6 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
         return ok(plain(blank_trim(text).clone()))
 
     var joined = text.clone()
-    let line = context.index
     let structured = (
         text.starts_with("[")
         or text.starts_with("\{")
@@ -1050,6 +1128,7 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
         codes: joined.scalar_values(),
         pos: 0,
         line: line,
+        column: column,
         context: Context(
             lines: [], final_break: context.final_break, index: context.index,
             limits: context.limits, values: context.values,
@@ -1067,21 +1146,13 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
     context.sizes = flow.context.sizes.clone()
     return ok(result)
 
-fn block_string(var context: Context, header: String, base: Int) Result[
-    YamlValue, YamlError
-]:
+fn block_string(
+    var context: Context, header: String, base: Int, header_line: Int,
+    header_column: Int
+) Result[YamlValue, YamlError]:
     var mode = ""
     var explicit = 0
     var offset = 0
-
-    # The header line was already consumed, so it is the previous line.
-    let header_line = context.index
-    let header_column = (
-        context.lines.get(context.index - 1, default: "").index_of(header).get(
-            0
-        )
-        + 1
-    )
 
     for c in header.slice(1, header.scalar_length()).get("").split(""):
         offset += 1
@@ -1207,28 +1278,35 @@ fn may_continue(context: Context, base: Int) Bool:
     return false
 
 fn block_value(
-    var context: Context, text: String, base: Int, depth: Int, indentless: Bool
+    var context: Context, text: String, base: Int, depth: Int, indentless: Bool,
+    column: Int
 ) YamlValue!YamlError:
+    let start_line = source_line(context, context.index - 1)
+    var origin = source_column(context, context.index - 1, column)
     var remainder = blank_trim_start(text).clone()
     var anchor = ""
     var lead = remainder.scalar_at(0, default: 0)
 
     if lead == 38:
         var flow = Flow(
-            chars: remainder.split(""), codes: [], pos: 1, line: context.index,
-            context: context.clone(), delimited: false
+            chars: remainder.split(""), codes: [], pos: 1, line: start_line,
+            column: origin, context: context.clone(), delimited: false
         )
         anchor = try anchor_name(var flow)
-        remainder = blank_trim_start(
-            remainder.slice(flow.pos, remainder.scalar_length()).get("")
-        )
+
+        let previous_length = remainder.scalar_length()
+        remainder = blank_trim_start(remainder.slice(flow.pos, previous_length).get(""))
+        origin += previous_length - remainder.scalar_length()
         lead = remainder.scalar_at(0, default: 0)
 
     var result = YamlValue.Null
 
     if lead == 124 or lead == 62:
         try count(var context, depth)
-        result = try block_string(var context, blank_trim_end(remainder), base)
+        result = try block_string(
+            var context, blank_trim_end(remainder), base, header_line: start_line,
+            header_column: origin
+        )
     else if remainder != "":
         if not structured_lead(lead):
             remainder = blank_trim_end(remainder).clone()
@@ -1280,7 +1358,7 @@ fn block_value(
 
                 remainder = joined.build()
 
-        result = try inline_value(var context, remainder, depth)
+        result = try inline_value(var context, remainder, depth, start_line, origin)
     else:
         skip(var context)
 
@@ -1429,9 +1507,16 @@ fn sequence_items(
             if gap == 0: gap = 1
 
             let column = base + 1 + gap
+            let shift = column - (line.scalar_length() - item.scalar_length())
+
+            if shift != 0:
+                if context.shift_row != context.index:
+                    context.shift_row = context.index
+                    context.shift_column = 0
+
+                context.shift_column -= shift
 
             if fast:
-                let shift = column - (line.scalar_length() - item.scalar_length())
                 if context.col.get(context.index) >= 0: context.col.set(
                     context.index, context.col.get(context.index) + shift
                 )
@@ -1448,7 +1533,8 @@ fn sequence_items(
             values.append(
                 try block_value(
                     context: var context, text: item, base: base, depth: (depth + 1),
-                    indentless: false
+                    indentless: false,
+                    column: line.scalar_length() - item.scalar_length() + 1
                 )
             )
 
@@ -1468,7 +1554,7 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
         first = blank_trim_start(uncomment(context.lines.get(context.index)))
         if first.starts_with("?") and not plain_may_start(first): return error(
             YamlError.UnsupportedFeature(
-                line: (context.index + 1),
+                line: source_line(context, context.index),
                 reason: "explicit mapping keys are unsupported"
             )
         )
@@ -1498,6 +1584,7 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
             var line_indent = 0
             var name = ""
             var text = ""
+            var value_column = 1
 
             if context.simple.get(context.index):
                 line_indent = context.ind.get(context.index)
@@ -1513,6 +1600,7 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
                         ""
                     )
                 )
+                value_column = raw.scalar_length() - text.scalar_length() + 1
             else:
                 let line = uncomment(context.lines.get(context.index))
                 line_indent = try indentation(context, line)
@@ -1528,14 +1616,22 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
                         colon + 1, content.scalar_length()
                     ).get("")
                 )
+                value_column = line.scalar_length() - text.scalar_length() + 1
 
             let key_start = name.scalar_at(0, default: 0)
             let quoted_key = key_start == 34 or key_start == 39
 
             if quoted_key:
                 var flow = Flow(
-                    chars: name.split(""), codes: [], pos: 0, line: (context.index + 1),
-                    context: context.clone(), delimited: false
+                    chars: name.split(""),
+                    codes: [],
+                    pos: 0,
+                    line: source_line(context, context.index),
+                    column: source_column(
+                        context, context.index, line_indent + 1
+                    ),
+                    context: context.clone(),
+                    delimited: false
                 )
                 name = try quoted(var flow)
                 if flow.pos != flow.chars.length(): return error(
@@ -1551,7 +1647,10 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
             ):
                 return error(
                     YamlError.UnsupportedFeature(
-                        line: context.index + 1, reason: "mapping keys must be strings"
+                        line: source_line(
+                            context, context.index
+                        ),
+                        reason: "mapping keys must be strings"
                     )
                 )
 
@@ -1574,18 +1673,18 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
 
             explicit.add(name.clone())
 
-            let key_line = context.index + 1
+            let key_line = source_line(context, context.index)
+            let key_column = source_column(context, context.index, line_indent + 1)
             context.index += 1
 
             let value = try block_value(
                 context: var context, text: text, base: base, depth: (depth + 1),
-                indentless: true
+                indentless: true, column: value_column
             )
 
             if name == "<<" and not quoted_key:
                 try merge(
-                    line: key_line, column: line_indent + 1, target: var values,
-                    value: value
+                    line: key_line, column: key_column, target: var values, value: value
                 )
             else:
                 values.add(name, value)
@@ -1600,7 +1699,8 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
         # A scalar or anchor on its own line may continue at the same indentation.
         base: base - 1,
         depth: depth,
-        indentless: false
+        indentless: false,
+        column: base + 1
     )
 
 fn validate(var context: Context, value: YamlValue, depth: Int) Unit!YamlError:
@@ -1631,14 +1731,21 @@ export fn parse(text: String, limits: YamlLimits?) YamlValue!YamlError:
     if normalized.starts_with("\u{feff}"): normalized = normalized.slice(
         1, normalized.scalar_length()
     ).get("")
+
     for code in normalized.scalar_values():
         if (
             (code < 32 and code != 9 and code != 10)
             or (code >= 127 and code <= 159 and code != 133)
         ):
+            # The first occurrence of this invalid scalar is necessarily the first
+            # one encountered above; find its position only on the rejection path.
+            let character = from_scalars([code]).get("")
+            let at = normalized.index_of(character).get(0)
+            let position = cursor_position(normalized.split(""), at, 1, 1)
             return error(
                 YamlError.InvalidData(
-                    line: 1, column: 1, reason: "invalid control character"
+                    line: position.line, column: position.column,
+                    reason: "invalid control character"
                 )
             )
 
@@ -1659,7 +1766,7 @@ export fn parse(text: String, limits: YamlLimits?) YamlValue!YamlError:
     ):
         if uncomment(context.lines.get(context.index)) != "%YAML 1.2": return error(
             YamlError.UnsupportedFeature(
-                line: (context.index + 1),
+                line: source_line(context, context.index),
                 reason: "only the YAML 1.2 directive is supported"
             )
         )
@@ -1680,6 +1787,7 @@ export fn parse(text: String, limits: YamlLimits?) YamlValue!YamlError:
         let rest = line.slice(4, line.scalar_length()).get("")
 
         if not blank_trim(rest).starts_with("#"):
+            context.split_line = context.index
             context.lines.splice(context.index, 1, ["---", rest])
             classify(var context, context.lines.join("\n").to_bytes())
 
