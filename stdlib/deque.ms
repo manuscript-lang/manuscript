@@ -82,14 +82,14 @@ impl Deque[T]:
         return value
 
     # Returns the first value without removing it, or `none` when empty.
-    fn front() ref T?:
+    fn front() T?:
         if self.size == 0:
             return none
 
         return self.slots.get(self.start)
 
     # Returns the last value without removing it, or `none` when empty.
-    fn back() ref T?:
+    fn back() T?:
         if self.size == 0:
             return none
 
@@ -120,7 +120,7 @@ impl Deque[T]:
 
     # Returns the value at `index` counted from the front, or `none` when out of range.
     # Negative indexes are out of range.
-    fn at(index: Int) ref T?:
+    fn at(index: Int) T?:
         if index < 0 or index >= self.size:
             return none
 
@@ -129,13 +129,13 @@ impl Deque[T]:
 # Walks a deque from front to back, lending each value; made by `iter()` and used by `for`.
 export type DequeIter[T]:
     # The deque being walked.
-    source: ref Deque[T]
+    source: Deque[T]
     # Index of the value `next` returns.
     position: Int
 
 impl Iterator[T] for DequeIter[T]:
     # Returns the value at the current position and moves past it, or none after the last one.
-    var fn next() ref T?:
+    var fn next() T?:
         let item = self.source.at(self.position)
         self.position += 1
         return item
@@ -143,4 +143,4 @@ impl Iterator[T] for DequeIter[T]:
 impl Iterable[DequeIter[T]] for Deque[T]:
     # Returns an iterator over the values from front to back, borrowing the deque.
     fn iter() DequeIter[T]:
-        return DequeIter(source: self, position: 0)
+        return DequeIter(source: self.clone(), position: 0)

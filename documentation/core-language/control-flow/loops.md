@@ -83,7 +83,7 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 | `Set[T]` | `T` | Insertion order |
 | `Map[K, V]` | `MapEntry[K, V]` | Key insertion order |
 | `Iterator[T]` implementation | `T` | Order of `next()` results |
-| `Iterable[I]` implementation (`Deque`, `Queue`, `PriorityQueue`) | borrowed `T` | Order of `iter()`'s `next()` results |
+| `Iterable[I]` implementation (`Deque`, `Queue`, `PriorityQueue`) | owned `T` | Order of `iter()`'s `next()` results |
 
 `MapEntry[K, V]` is a record with `key: K` and `value: V` (constructor from `@std/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body. The entry is borrowed from the map, not copied. A loop header `for e in m.entries()`, `m.values()` or `m.keys()` over a map the body does not change walks the map the same way instead of building the list; when the body changes the map, the list is built first, so the loop sees the entries as they were.
 
@@ -100,7 +100,7 @@ fn total(values: Map[String, Int]) Int:
 
 ## Iterators
 
-A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item in source:` calls `source.next()` until it returns `none`, binding each `T` as a borrow of the iterator (`next` is declared `var fn next() ref T?`): the iterator stays unchanged until the end of the iteration, and `item.clone()` keeps an item. It is the same as `while true:` with `if let item = source.next(): ... else: break`, so `break`, `continue`, and `return` behave as in any loop and the body may use the loop variable as `T`. A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
+A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item in source:` calls `source.next()` until it returns `none`, binding each `T` as the owned result of `next` (`var fn next() T?`). It is the same as `while true:` with `if let item = source.next(): ... else: break`, so `break`, `continue`, and `return` behave as in any loop and the body may use the loop variable as `T`. A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n2\n1\n"} -->
 ```manuscript
@@ -126,9 +126,9 @@ export fn main() Int:
 
 ## Borrowing containers
 
-A type that implements `Iterable[I]` from `@std/iterable.ms` (`fn iter() I`, where `I` is an `Iterator` that borrows from the container) is iterable without cloning: `for item in container:` is the same as `for item in container.iter():`. `item` borrows the element in place, so `T` needs no `Clonable`, and the usual borrow rules hold: the iterator holds `container` unchanged for the whole loop, and `item` is copied out with `.clone()`. A place is read where it stands, so it need not be `var`; any other expression is held by the loop. `Deque` iterates front to back (`DequeIter`), `Queue` oldest first (`QueueIter`), and `PriorityQueue` in heap order, not dequeue order (`PriorityQueueIter`). A type that implements both `Iterator` and `Iterable` iterates with `Iterator`.
+A type that implements `Iterable[I]` from `@std/iterable.ms` (`fn iter() I`, where `I` is an `Iterator` made from the container) is iterable: `for item in container:` is the same as `for item in container.iter():`. `item` is an owned element; the iterator holds its own copy of `container`. A place is read where it stands, so it need not be `var`; any other expression is held by the loop. `Deque` iterates front to back (`DequeIter`), `Queue` oldest first (`QueueIter`), and `PriorityQueue` in heap order, not dequeue order (`PriorityQueueIter`). A type that implements both `Iterator` and `Iterable` iterates with `Iterator`.
 
-An iterator that borrows is a record with a `ref` field (`source: ref Deque[T]`) whose `next` returns `ref T?` and lends from that field; `iter()` builds it from the receiver. A record with a `ref` field keeps its source unchanged for as long as it is used. It can be moved into a new variable (`var b = it`), cloned into one (`let c = it.clone()`), and returned when it was built from parameters, but not stored in a collection, record or closure that outlives the statement, so build such an iterator in `iter()` and use it in place.
+An iterator over a container is a record holding a copy of its source (`source: Deque[T]`) whose `next` returns owned items; `iter()` builds it from the receiver.
 
 <!-- manuscript-example: {"mode":"run","stdout":"11\n12\n"} -->
 ```manuscript

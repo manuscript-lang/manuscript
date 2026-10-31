@@ -49,7 +49,7 @@ impl Queue[T]:
         return value
 
     # Returns the oldest value without removing it, or none when the queue is empty.
-    fn peek() ref T?:
+    fn peek() T?:
         if self.head >= self.items.length():
             return none
 
@@ -65,7 +65,7 @@ impl Queue[T]:
         return self.items.length() - self.head
 
     # Returns the value `index` places after the oldest, or none when out of range; negative indexes are out of range.
-    fn at(index: Int) ref T?:
+    fn at(index: Int) T?:
         if index < 0 or index >= self.length():
             return none
 
@@ -74,13 +74,13 @@ impl Queue[T]:
 # Walks a queue from the oldest value to the newest, lending each value; made by `iter()` and used by `for`.
 export type QueueIter[T]:
     # The queue being walked.
-    source: ref Queue[T]
+    source: Queue[T]
     # Distance from the oldest value of the value `next` returns.
     position: Int
 
 impl Iterator[T] for QueueIter[T]:
     # Returns the value at the current position and moves past it, or none after the newest.
-    var fn next() ref T?:
+    var fn next() T?:
         let item = self.source.at(self.position)
         self.position += 1
         return item
@@ -88,7 +88,7 @@ impl Iterator[T] for QueueIter[T]:
 impl Iterable[QueueIter[T]] for Queue[T]:
     # Returns an iterator over the values from oldest to newest, borrowing the queue.
     fn iter() QueueIter[T]:
-        return QueueIter(source: self, position: 0)
+        return QueueIter(source: self.clone(), position: 0)
 
 # Orders two values: negative when `left` dequeues first, zero when equal, positive when `right` dequeues first.
 fn order[T: Comparable](left: T, right: T) Int:
@@ -180,7 +180,7 @@ impl PriorityQueue[T]:
         return top
 
     # Returns the next value by priority without removing it, or none when empty.
-    fn peek() ref T?:
+    fn peek() T?:
         if self.heap.length() == 0:
             return none
 
@@ -197,7 +197,7 @@ impl PriorityQueue[T]:
 
     # Returns the value at `index` in heap order, or none when out of range; only index 0 is known to be the next to dequeue.
     # Negative indexes are out of range.
-    fn at(index: Int) ref T?:
+    fn at(index: Int) T?:
         if index < 0 or index >= self.heap.length():
             return none
 
@@ -206,13 +206,13 @@ impl PriorityQueue[T]:
 # Walks a priority queue in heap order, lending each value; made by `iter()` and used by `for`.
 export type PriorityQueueIter[T: Comparable]:
     # The queue being walked.
-    source: ref PriorityQueue[T]
+    source: PriorityQueue[T]
     # Heap index of the value `next` returns.
     position: Int
 
 impl Iterator[T] for PriorityQueueIter[T]:
     # Returns the value at the current heap position and moves past it, or none after the last.
-    var fn next() ref T?:
+    var fn next() T?:
         let item = self.source.at(self.position)
         self.position += 1
         return item
@@ -220,4 +220,4 @@ impl Iterator[T] for PriorityQueueIter[T]:
 impl Iterable[PriorityQueueIter[T]] for PriorityQueue[T]:
     # Returns an iterator over the values in heap order, borrowing the queue; only the first is known to be the next to dequeue.
     fn iter() PriorityQueueIter[T]:
-        return PriorityQueueIter(source: self, position: 0)
+        return PriorityQueueIter(source: self.clone(), position: 0)

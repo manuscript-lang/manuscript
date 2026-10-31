@@ -1,7 +1,6 @@
-# A container that can be walked by borrow. `for item in container:` calls `container.iter()` and
-# iterates the result, so `item` borrows the container's value in place: nothing is cloned and `T`
-# needs no `Clonable`. The container stays unchanged until the loop's last use of its items.
-# `I` is the iterator type, an `Iterator` whose `next` lends from the container it was made from.
+# A container that can be walked. `for item in container:` calls `container.iter()` and iterates the
+# result, binding each `item` as an owned value; an item that is only read is not copied.
+# `I` is the iterator type, an `Iterator` made from the container.
 export interface Iterable[I]:
-    # Returns an iterator over the container's items, borrowing the container.
+    # Returns an iterator over the container's items.
     fn iter() I
