@@ -13,6 +13,49 @@ fn ms(args: &[&str]) -> (i32, String) {
     )
 }
 
+#[cfg(target_os = "linux")]
+#[test]
+fn stdout_errors_are_not_reported_as_success() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-stdout-flush-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("empty.ms"), "").unwrap();
+    let mut guide = vec!["guide", "--json"];
+    guide.extend(vec!["MS1001"; 200]);
+    for args in [vec!["diagram", "empty.ms"], guide] {
+        let normal = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(&args)
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert!(normal.status.success(), "{args:?}: {normal:?}");
+        assert!(!normal.stdout.is_empty(), "{args:?}: {normal:?}");
+        if args[0] == "guide" {
+            assert!(
+                normal.stdout.len() > 16_384,
+                "the large-write case must exceed buffering"
+            );
+        }
+
+        let destination = std::fs::OpenOptions::new()
+            .write(true)
+            .open("/dev/full")
+            .unwrap();
+        let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(&args)
+            .stdout(destination)
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert_eq!(output.status.code(), Some(1), "{args:?}: {output:?}");
+        assert!(output.stdout.is_empty(), "{args:?}: {output:?}");
+        assert!(stderr.contains("cannot write stdout:"), "{stderr}");
+        assert!(stderr.contains("check the output destination"), "{stderr}");
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 #[test]
 fn help_for_unknown_command_lists_commands() {
     let (status, err) = ms(&["help", "bogus"]);

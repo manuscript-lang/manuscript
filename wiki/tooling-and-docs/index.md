@@ -21,3 +21,4 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [Standard-library prose has the same owner as declarations](standard-library-prose-has-the-same-owner-as-declarations.md): the user requires `.ms` standard-library sources to own all library documentation.
 - [Teach a runnable path before formal reference](teach-a-runnable-path-before-formal-reference.md): public documentation should focus on Manuscript and what readers can build.
 - [User tooling must work in the shipped binary](user-tooling-must-work-in-the-shipped-binary.md): documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator.
+- [Stdout errors include the final flush](stdout-errors-include-final-flush.md): small buffered writes and large direct writes fail at different points; neither failure may silently become a successful command.
