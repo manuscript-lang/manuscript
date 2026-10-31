@@ -26,7 +26,7 @@ struct Outline<'a> {
 impl Outline<'_> {
     /// The range of `name` on the declaration's line, else an empty range.
     fn selection(&self, offset: usize, name: &str) -> Range {
-        if let Some(at) = self.tokens.as_ref().and_then(|l| l.header(offset, name)) {
+        if let Some(at) = lexical::header(self.tokens.as_deref(), &self.d.text, offset, name) {
             return self.positions.range(at, at + name.len());
         }
         Range::at(self.positions.position(offset))

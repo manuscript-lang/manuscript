@@ -1,19 +1,19 @@
 # conform: tags=formatter,generics,lists,modules,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/default-type-arguments.ms
-from "@std/test.ms" import expect_equal, expect_false
+import expect_equal, expect_false from "@std/test.ms"
 
 type Box[T, U = T]:
     first: T
     second: U
 
-def pick[T = Int](values: List[T]) -> Int:
+fn pick[T = Int](values: List[T]) Int:
     return values.length()
 
-def make[T = String]() -> Optional[T]:
+fn make[T = String]() T?:
     return none
 
-def pair[A, B = A](first: A, second: B) -> Box[A, B]:
+fn pair[A, B = A](first: A, second: B) Box[A, B]:
     return Box[A, B](first, second)
 
 test "omitted trailing type arguments use their defaults":
@@ -30,7 +30,7 @@ test "calls infer first and only then use the default":
     let inferred = make()
     try expect_false(not (inferred.is_none()))
 
-    let explicit: Optional[Int] = make()
+    let explicit: Int? = make()
     try expect_false(not (explicit.is_none()))
     try expect_equal(pick([1, 2, 3]), 3)
     try expect_equal(pair(1, "a").second, "a")

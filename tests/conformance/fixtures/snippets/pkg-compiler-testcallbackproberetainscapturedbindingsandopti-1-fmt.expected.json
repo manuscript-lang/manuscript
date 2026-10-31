@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def wrap[T](callback: Optional[Callable[[Int], T]]) -> Unit: return\n\ndef apply[T, U](value: T, transform: Callable[[T], U]) -> U: transform(value)\n\ndef first() -> Unit:\n    let offset = 7\n    let result = apply(\n        value: 1,\n        transform: lambda outer: apply(\n            value: 2, transform: lambda inner: (outer + inner + offset)\n        )\n    )\n    wrap(lambda (item: Int = 4): item + offset)\n"
-  }
-}

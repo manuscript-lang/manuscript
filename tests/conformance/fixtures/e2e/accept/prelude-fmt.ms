@@ -1,35 +1,35 @@
 # conform: tags=closures,control-flow,faults,formatter,interfaces,match,modules,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/prelude.ms
-from "@std/test.ms" import expect_equal, expect_false, fail
+import expect_equal, expect_false, fail from "@std/test.ms"
 
 type Failure:
     message_text: String
 
 impl Error for Failure:
-    def message() -> String:
+    fn message() String:
         return self.message_text.clone()
 
-def success() -> Result[Optional[Int], Error]:
-    return ok(some(7))
+fn success() Int?!:
+    return ok(7)
 
-def failure() -> Result[Int, Failure]:
+fn failure() Int!Failure:
     return error(Failure("failed"))
 
-def propagated() -> Result[Int, Error]:
+fn propagated() Int!:
     return ok(try failure())
 
 test "prelude cases and optional methods need no imports":
-    let inferred = some(3)
-    let absent: Optional[Int] = none
-    let qualified = Optional[Int].some(5)
+    let inferred: Int? = 3
+    let absent: Int? = none
+    let qualified: Int? = 5
     try expect_false(not inferred.is_some() or not absent.is_none())
     try expect_false(inferred.get() != 3 or qualified.get() != 5)
     try expect_false(
         (
             absent.get(9) != 9
             or absent.or_else(
-                lambda () -> Optional[Int]: return some(11)
+                fn() Int?: return 11
             ).get() != 11
         )
     )
@@ -45,6 +45,6 @@ test "prelude Error preserves concrete failures through try":
     try expect_equal(cause.message(), "failed")
 
     match cause:
-        case Failure(value):
+        Failure(value):
             try expect_equal(value.message_text, "failed")
-        case _: return fail("concrete error lost")
+        _: return fail("concrete error lost")

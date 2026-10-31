@@ -9,7 +9,7 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "Decimal literal requires the canonical Decimal import; add: from \"@std/decimal.ms\" import Decimal",
+        "message": "Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"",
         "position": {
           "file": "core-language-basics-numbers-and-booleans-1.ms",
           "line": 6,
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
+          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-basics-numbers-and-booleans-1.ms:6:13: resolution: Decimal literal requires the canonical Decimal import; add: from \"@std/decimal.ms\" import Decimal\n   |\n 6 | let price = 12.50d\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-basics-numbers-and-booleans-1.ms:6:13: resolution: Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"\n   |\n 6 | let price = 12.50d\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

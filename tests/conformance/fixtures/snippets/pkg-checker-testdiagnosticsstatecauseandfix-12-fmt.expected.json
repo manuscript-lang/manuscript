@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def start[T](operation: Callable[[], T]) -> Int:\n    return 0\n\ndef work(n: Int) -> Int:\n    return n\n\ndef f() -> Int:\n    return start(work)\n"
-  }
-}

@@ -8,27 +8,15 @@ import platform
 import statistics
 import subprocess
 
+from stdlib_results import case_labels, read_cases
+
 SUITE = Path(__file__).resolve().parent / "stdlib"
 
 
 def parse_sample(output, expected=None):
     """Reads one `ms bench --json` document: ({case: (operations, median ns/op)}, {case: operations})."""
-    document = json.loads(output)
-    if document.get("diagnostics"):
-        raise ValueError("; ".join(d["message"] for d in document["diagnostics"]))
-    rows = {}
-    for case in document["benches"]:
-        name = case["name"].split("::", 1)[-1]
-        if name in rows:
-            raise ValueError(f"duplicate case: {name}")
-        if case["status"] != "passed":
-            raise ValueError(f"{name}: {case['status']}: {case.get('failure', '')}")
-        stats = case["stats"]
-        if stats["operations"] <= 0 or stats["median_ns"] < 0:
-            raise ValueError(f"invalid measurement: {name}")
-        rows[name] = (stats["operations"], stats["median_ns"])
-    if not rows:
-        raise ValueError("no cases were measured")
+    rows = {name: (case["stats"]["operations"], case["stats"]["median_ns"])
+            for name, case in read_cases(output).items()}
     identity = {name: operations for name, (operations, _) in rows.items()}
     if expected is not None and identity != expected:
         raise ValueError("cases or operation counts changed")
@@ -56,6 +44,8 @@ def main():
             if args.filter:
                 command += ["--filter", args.filter]
             result = subprocess.run(command, cwd=SUITE, capture_output=True, text=True, check=False)
+            if result.returncode:
+                raise SystemExit(f"{version} benchmark exited {result.returncode}: {result.stderr.strip()}")
             rows, identity = parse_sample(result.stdout, expected)
             if expected is None:
                 expected = identity
@@ -64,6 +54,7 @@ def main():
                 samples[version].setdefault(name, []).append(value)
     args.output.mkdir(parents=True, exist_ok=True)
     summary = {}
+    labels = case_labels(expected)
     table = [f"Median of {args.repeats} alternating runs of {args.samples} samples; all {len(expected)} cases and operation counts verified.", "",
              "| operation | ops | before ns/op | after ns/op | after/before |",
              "|---|---:|---:|---:|---:|"]
@@ -71,9 +62,9 @@ def main():
         before = statistics.median(samples["before"][name])
         after = statistics.median(samples["after"][name])
         ratio = after / before if before else None
-        summary[name] = {"ops": ops, "before": before, "after": after, "ratio": ratio}
+        summary[labels[name]] = {"ops": ops, "before": before, "after": after, "ratio": ratio}
         ratio_text = f"{ratio:.3f}x" if ratio is not None else "—"
-        table.append(f"| {name} | {ops} | {before:.4g} | {after:.4g} | {ratio_text} |")
+        table.append(f"| {labels[name]} | {ops} | {before:.4g} | {after:.4g} | {ratio_text} |")
     for version, outputs in raw.items():
         (args.output / f"stdlib-{version}.jsonl").write_text("".join(o.strip() + "\n" for o in outputs))
     metadata = {"platform": platform.platform(), "repeats": args.repeats, "samples": args.samples,

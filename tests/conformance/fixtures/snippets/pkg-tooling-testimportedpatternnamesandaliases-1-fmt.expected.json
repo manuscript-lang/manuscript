@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "export type Failure:\n    case NotFound\n    case Denied(reason: String)\n\nimpl Error for Failure:\n    def message() -> String: \"f\"\n\nexport type Item:\n    value: Int\n\nexport def fail() -> Result[Int, Failure]: error(Failure.Denied(\"denied\"))\n"
-  }
-}

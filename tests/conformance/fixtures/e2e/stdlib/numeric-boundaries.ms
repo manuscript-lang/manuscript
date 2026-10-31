@@ -1,10 +1,10 @@
 # conform: tags=decimal,modules,stdlib-bigint,stdlib-decimal,stdlib-testing,stdlib-time,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/numeric-boundaries.ms
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/decimal.ms" import Decimal
-from "@std/time.ms" import nanoseconds
-from "@std/math.ms" import BigInt, BigIntError, from_int
+import expect_equal, expect_false from "@std/test.ms"
+import Decimal from "@std/decimal.ms"
+import nanoseconds from "@std/time.ms"
+import BigInt, BigIntError, from_int from "@std/math.ms"
 
 test "integer division retains signed boundary and remainder rules":
     let minimum = -9223372036854775808
@@ -15,7 +15,7 @@ test "integer division retains signed boundary and remainder rules":
     try expect_equal(1d / -1d, -1d)
     try expect_false((1.0 / 0.0).is_finite() or not (0.0 / 0.0).is_nan())
 
-    let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
+    let invalid: BigInt!BigIntError = error(BigIntError.InvalidInput)
     try expect_equal(from_int(1).divide(from_int(0)), invalid)
     try expect_equal(from_int(1).remainder(from_int(0)), invalid)
 
@@ -32,7 +32,9 @@ test "duration arithmetic retains full signed nanosecond range":
     try expect_false(
         (
             minimum.multiply(0) != nanoseconds(0)
-            or nanoseconds(0).multiply(-9223372036854775808) != nanoseconds(0)
+            or nanoseconds(0).multiply(-9223372036854775808) != nanoseconds(
+                0
+            )
         )
     )
     try expect_false(
@@ -42,7 +44,8 @@ test "duration arithmetic retains full signed nanosecond range":
         )
     )
     try expect_equal(
-        nanoseconds(-1).multiply(9223372036854775807), nanoseconds((-9223372036854775807))
+        nanoseconds(-1).multiply(9223372036854775807),
+        nanoseconds((-9223372036854775807))
     )
     try expect_false(
         (
@@ -63,7 +66,9 @@ test "duration safe addition subtraction negation and unit edges":
     try expect_false(
         (
             minimum + maximum != nanoseconds(-1)
-            or minimum - nanoseconds(-1) != nanoseconds((-9223372036854775807))
+            or minimum - nanoseconds(-1) != nanoseconds(
+                (-9223372036854775807)
+            )
         )
     )
     try expect_false(

@@ -1,20 +1,20 @@
 # conform: tags=control-flow,faults,interpolation,lists,modules,mutation,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/nested-try-returns-in-source-order.ms
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_true
+import TextError from "@std/core.ms"
+import expect_true from "@std/test.ms"
 
-def step(var log: List[String], name: String, n: Int) -> Result[Int, TextError]:
+fn step(var log: List[String], name: String, n: Int) Int!TextError:
     log.append(value: name.clone())
     if n < 0:
         return error(cause: TextError(name))
 
     return ok(value: n)
 
-def add(x: Int, y: Int) -> Int:
+fn add(x: Int, y: Int) Int:
     return x + y
 
-def sum(var log: List[String], a: Int, b: Int) -> Result[Int, TextError]:
+fn sum(var log: List[String], a: Int, b: Int) Int!TextError:
     let v = (
         (try step(log: var log, name: "a", n: a))
         + (try step(log: var log, name: "b", n: b))
@@ -22,7 +22,7 @@ def sum(var log: List[String], a: Int, b: Int) -> Result[Int, TextError]:
     log.append(value: "done")
     return ok(value: v)
 
-def arguments(var log: List[String], a: Int, b: Int) -> Result[Int, TextError]:
+fn arguments(var log: List[String], a: Int, b: Int) Int!TextError:
     return ok(
         value: add(
             x: try step(log: var log, name: "x", n: a),
@@ -30,13 +30,13 @@ def arguments(var log: List[String], a: Int, b: Int) -> Result[Int, TextError]:
         )
     )
 
-def effect_first(var log: List[String], a: Int) -> Result[Int, TextError]:
+fn effect_first(var log: List[String], a: Int) Int!TextError:
     log.append(value: "before")
 
     let v = add(x: 1, y: try step(log: var log, name: "s", n: a))
     return ok(value: v)
 
-def loop(var log: List[String], n: Int) -> Result[Int, TextError]:
+fn loop(var log: List[String], n: Int) Int!TextError:
     var total = 0
     var i = 0
 
@@ -46,12 +46,12 @@ def loop(var log: List[String], n: Int) -> Result[Int, TextError]:
 
     return ok(value: total)
 
-def joined(var log: List[String]) -> Result[String, TextError]:
+fn joined(var log: List[String]) String!TextError:
     return ok(
-        value: f"{try step(log: var log, name: "p", n: 1)}-{try step(log: var log, name: "q", n: -1)}"
+        value: "{try step(log: var log, name: "p", n: 1)}-{try step(log: var log, name: "q", n: -1)}"
     )
 
-def text(log: List[String]) -> String:
+fn text(log: List[String]) String:
     return log.join(separator: ",")
 
 test "nested try":

@@ -163,6 +163,7 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         | Op::SharedNew
         | Op::AltUnbox
         | Op::AltRelease
+        | Op::RecRelease
         | Op::OptUnbox => one(0),
         Op::Put => one(1),
         Op::DropIf => one(1),
@@ -803,6 +804,19 @@ impl Verifier<'_> {
                     "alt.tag takes an alternative and yields int",
                 )
             }
+            Op::RecRelease => {
+                arity(1)?;
+                let Imm::RecMask(r, _) = inst.imm else {
+                    return Err("missing field mask".into());
+                };
+                want(
+                    r.index() < m.records.len()
+                        && m.records[r.index()].fields.len() <= 32
+                        && m.types.kind(t(0)) == &TyKind::Rec(r)
+                        && res.is_none(),
+                    "rec.release takes a record with at most 32 fields",
+                )
+            }
             Op::AltRelease => {
                 arity(1)?;
                 let Imm::AltMask(a, c, _) = inst.imm else {
@@ -889,6 +903,20 @@ impl Verifier<'_> {
                 arity(1)?;
                 m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
                 want(res == Some(t(0)), "yields the shortened list")
+            }
+            Op::RefNew => {
+                arity(1)?;
+                want(
+                    res.is_some_and(|r| m.types.kind(r) == &TyKind::Ref(t(0))),
+                    "ref.new yields a view of its operand",
+                )
+            }
+            Op::RefGet => {
+                arity(1)?;
+                want(
+                    matches!(m.types.kind(t(0)), TyKind::Ref(inner) if Some(*inner) == res),
+                    "ref.get reads the value a view borrows",
+                )
             }
             Op::OptSome | Op::OptView => {
                 arity(1)?;
@@ -1291,11 +1319,6 @@ impl Verifier<'_> {
                 }
             }
         }
-        let from_owned = if f.ret_borrowed {
-            borrows_from_owned(m, f)
-        } else {
-            Vec::new()
-        };
         let mut entry_state: Vec<Option<BTreeSet<u32>>> = vec![None; f.blocks.len()];
         for &b in rpo {
             let bi = b.index();
@@ -1365,25 +1388,7 @@ impl Verifier<'_> {
             blk.term.for_each_target(|t| edges.push(t.clone()));
             if let Term::Ret(v) = &blk.term {
                 if let Some(v) = v.filter(|v| rc(*v)) {
-                    if f.ret_borrowed {
-                        if owned_def[v.index()] {
-                            self.err(
-                                Some(bi),
-                                format!(
-                                    "ret: %{} is owned; a function that lends returns a borrow",
-                                    v.0
-                                ),
-                            );
-                        } else if from_owned[v.index()] {
-                            self.err(
-                                Some(bi),
-                                format!(
-                                    "ret: %{} borrows from a value this function owns; a function that lends returns part of a parameter",
-                                    v.0
-                                ),
-                            );
-                        }
-                    } else if !owned_def[v.index()] {
+                    if !owned_def[v.index()] {
                         self.err(
                             Some(bi),
                             format!(
@@ -1508,155 +1513,4 @@ pub fn dominators(f: &Func, rpo: &[Block], preds: &[Vec<Block>]) -> Vec<usize> {
         }
     }
     idom
-}
-
-/// For each value of `f`, whether it is, or borrows from, a value `f` owns: an owned
-/// instruction result or an owned block parameter. A lent result must not, since the owner is
-/// dropped before the caller reads it.
-fn borrows_from_owned(m: &Module, f: &Func) -> Vec<bool> {
-    let masks = lent_masks(m, f);
-    sources(m, f, &masks)
-        .into_iter()
-        .map(|s| s & OWNED != 0)
-        .collect()
-}
-
-/// Source bit of a value the function owns; bit `i + 1` is entry parameter `i`, and the last
-/// bit stands for every parameter past the others.
-const OWNED: u128 = 1;
-const EVERY_PARAM: u128 = !OWNED;
-
-fn param_bit(i: usize) -> u128 {
-    if i < 126 { 1 << (i + 1) } else { 1 << 127 }
-}
-
-/// What the storage of each value of `f` comes from, as source bits.
-fn sources(m: &Module, f: &Func, masks: &std::collections::HashMap<usize, u128>) -> Vec<u128> {
-    let rc = |v: Value| m.needs_drop(f.ty(v));
-    let mut src = vec![0u128; f.values.len()];
-    for (bi, b) in f.blocks.iter().enumerate() {
-        for (i, p) in b.params.iter().enumerate() {
-            if !rc(p.value) {
-                continue;
-            }
-            // An owned parameter (one the function consumes) is dropped at return, like a local.
-            let own = if p.mode == Mode::Own { OWNED } else { 0 };
-            src[p.value.index()] = own | if bi == 0 { param_bit(i) } else { 0 };
-        }
-    }
-    loop {
-        let mut changed = false;
-        for b in &f.blocks {
-            for i in &b.insts {
-                let Some(r) = i.res else { continue };
-                let x = match m.result_mode(f, i) {
-                    None | Some(Mode::Var) => 0,
-                    Some(Mode::Own) => OWNED,
-                    Some(Mode::Borrow) => match (i.op, i.imm) {
-                        // A lending call's result comes from the arguments its callee lends from.
-                        (Op::Call, Imm::Func(g)) => {
-                            let mask = masks.get(&g.index()).copied().unwrap_or(EVERY_PARAM);
-                            i.args
-                                .iter()
-                                .enumerate()
-                                .filter(|(j, a)| mask & param_bit(*j) != 0 && rc(**a))
-                                .fold(0, |acc, (_, a)| acc | src[a.index()])
-                        }
-                        // A lending interface operation may lend from any of its operands.
-                        (Op::CallMethod, _) => i
-                            .args
-                            .iter()
-                            .filter(|a| rc(**a))
-                            .fold(0, |acc, a| acc | src[a.index()]),
-                        (
-                            Op::RecGet
-                            | Op::AltGet
-                            | Op::ListGet
-                            | Op::ListGetNn
-                            | Op::ListGetU
-                            | Op::OptGet
-                            | Op::OptView,
-                            _,
-                        ) => i.args.first().map_or(0, |a| src[a.index()]),
-                        _ => 0,
-                    },
-                };
-                if x & !src[r.index()] != 0 {
-                    src[r.index()] |= x;
-                    changed = true;
-                }
-            }
-            b.term.for_each_target(|t| {
-                let params = &f.blocks[t.block.index()].params;
-                for (p, a) in params.iter().zip(&t.args) {
-                    let x = src[a.index()];
-                    if p.mode == Mode::Borrow && rc(p.value) && x & !src[p.value.index()] != 0 {
-                        src[p.value.index()] |= x;
-                        changed = true;
-                    }
-                }
-            });
-        }
-        if !changed {
-            return src;
-        }
-    }
-}
-
-/// The parameters each lending function that `f` reaches can return storage from, as source
-/// bits: every parameter for a function without a body. Masks start at no parameters and grow
-/// together until stable, so recursion gets the least mask its paths support.
-fn lent_masks(m: &Module, f: &Func) -> std::collections::HashMap<usize, u128> {
-    let lending = |func: &Func| {
-        let mut out = Vec::new();
-        for b in &func.blocks {
-            for i in &b.insts {
-                if let (Op::Call, Imm::Func(g), Some(Mode::Borrow)) =
-                    (i.op, i.imm, m.result_mode(func, i))
-                {
-                    out.push(g.index());
-                }
-            }
-        }
-        out
-    };
-    let mut masks = std::collections::HashMap::new();
-    let mut work = lending(f);
-    while let Some(g) = work.pop() {
-        if masks.contains_key(&g) {
-            continue;
-        }
-        let callee = &m.funcs[g];
-        if callee.blocks.is_empty() {
-            masks.insert(g, EVERY_PARAM);
-            continue;
-        }
-        masks.insert(g, 0);
-        work.extend(lending(callee));
-    }
-    let bodies: Vec<usize> = masks
-        .keys()
-        .copied()
-        .filter(|g| !m.funcs[*g].blocks.is_empty())
-        .collect();
-    loop {
-        let mut changed = false;
-        for &g in &bodies {
-            let callee = &m.funcs[g];
-            let src = sources(m, callee, &masks);
-            let mut mask = masks[&g];
-            for b in &callee.blocks {
-                if let Term::Ret(Some(v)) = &b.term {
-                    mask |= src[v.index()] & EVERY_PARAM;
-                }
-            }
-            if mask != masks[&g] {
-                masks.insert(g, mask);
-                changed = true;
-            }
-        }
-        if !changed {
-            return masks;
-        }
-    }
 }

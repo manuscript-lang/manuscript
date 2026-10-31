@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import ListEntry from \"@std/collections.ms\"\nimport system from \"@std/process.ms\"\n\nfn length(values: List[Int]) Int:\n    return values.length()\n\nfn os_name() String:\n    return system().info().os\n"
+  }
+}

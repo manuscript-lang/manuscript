@@ -1,6 +1,6 @@
-from "@std/core.ms" import Iterator
-from "@std/io.ms" import stdout
-from "@std/test.ms" import expect_equal
+import Iterator from "@std/core.ms"
+import stdout from "@std/io.ms"
+import expect_equal from "@std/test.ms"
 
 # A point in the plane.
 type Point:
@@ -13,56 +13,56 @@ type Shape:
     case Empty
 
 interface Named:
-    def label() -> String
+    fn label() String
 
 impl Point:
-    def norm() -> Int:
+    fn norm() Int:
         return self.x * self.x + self.y * self.y
 
 impl Named for Point:
-    def label() -> String:
+    fn label() String:
         return "point"
 
 type Counter:
     n: Int
 
 impl Iterator[Int] for Counter:
-    var def next() -> Optional[Int]:
+    var fn next() Int?:
         if self.n == 0: return none
 
         self.n -= 1
-        return some(self.n)
+        return self.n
 
-def add(a: Int, b: Int) -> Int:
+fn add(a: Int, b: Int) Int:
     let total = a + b
     return total
 
-def area(shape: Shape) -> Int:
+fn area(shape: Shape) Int:
     match shape:
-        case Circle(r):
+        Circle(r):
             return r * r * 3
-        case Square(s):
+        Square(s):
             return s * s
-        case _:
+        _:
             return 0
 
-def describe(p: Point) -> String:
+fn describe(p: Point) String:
     let n = p.norm()
-    return f"norm is {n} at {p.x}"
+    return "norm is {n} at {p.x}"
 
-export def main() -> Int:
+export fn main() Int:
     let _p = Point(x: 1, y: 2)
     let values = [1, 2, 3]
     for v in values:
-        let _ = say(f"{v}")
+        let _ = say("{v}")
     for tick in Counter(n: 2):
-        let _ = say(f"{tick}")
+        let _ = say("{tick}")
 
     let result = add(1, 2)
     return result
 
-def say(text: String) -> Result[Unit, Error]:
-    try stdout().write(f"{text}\n")
+fn say(text: String) Result[Unit, Error]:
+    try stdout().write("{text}\n")
     return stdout().flush()
 
 test "addition":

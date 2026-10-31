@@ -143,11 +143,12 @@ impl<'a> FnLower<'a> {
                 self.discard = Some(e as *const Expr as usize);
                 let x = self.expr(e)?;
                 if x.own {
+                    let ty = self.ety(e);
+                    self.close_unused(x.v, &ty);
                     self.drop_value(x.v);
                 }
             }
             StmtKind::Return(e) => {
-                self.lent_expr = e.as_ref().map(|e| e as *const Expr as usize);
                 let x = match e {
                     Some(e) => self.expr(e)?,
                     None => Val {
@@ -175,8 +176,9 @@ impl<'a> FnLower<'a> {
                     .last_mut()
                     .ok_or_else(|| Error::new("break outside loop"))?;
                 ctx.brk_used = true;
-                let (brk, depth) = (ctx.brk, ctx.depth);
+                let (brk, depth, outer) = (ctx.brk, ctx.depth, ctx.temps);
                 self.flush_temps(mark);
+                self.drop_temps_from(outer);
                 self.unwind_to(depth);
                 self.b.br(brk, &[]);
                 self.terminated();
@@ -188,8 +190,9 @@ impl<'a> FnLower<'a> {
                     .last_mut()
                     .ok_or_else(|| Error::new("continue outside loop"))?;
                 ctx.cont_used = true;
-                let (cont, depth) = (ctx.cont, ctx.depth);
+                let (cont, depth, outer) = (ctx.cont, ctx.depth, ctx.temps);
                 self.flush_temps(mark);
+                self.drop_temps_from(outer);
                 self.unwind_to(depth);
                 self.b.br(cont, &[]);
                 self.terminated();
@@ -202,7 +205,7 @@ impl<'a> FnLower<'a> {
                 body,
                 else_body,
             } => {
-                self.if_stmt(binding.as_ref(), cond, body, else_body)?;
+                self.if_stmt(s, binding.as_ref(), cond, body, else_body)?;
                 self.flush_temps(mark);
                 return Ok(());
             }
@@ -214,9 +217,6 @@ impl<'a> FnLower<'a> {
                 } else {
                     self.for_stmt(s, iter, body)?;
                 }
-            }
-            StmtKind::With { value, body, .. } => {
-                self.with_stmt(s, value, body)?;
             }
         }
         self.flush_temps(mark);
@@ -249,15 +249,6 @@ impl<'a> FnLower<'a> {
             self.bind_lent(&b, opt.v);
             return Ok(());
         }
-        if self.lent_return
-            && let PatternKind::Name(_) = pattern.kind
-            && let Some(b) = self.hir.pattern_binding(pattern)
-            && self.cx.shared(b.uid)
-        {
-            // A `let` borrow in a lending function takes the lent form of an accessor, so the
-            // function can hand it back.
-            self.lent_expr = Some(value as *const Expr as usize);
-        }
         let x = self.expr(value)?;
         if self.dead {
             return Ok(());
@@ -281,9 +272,9 @@ impl<'a> FnLower<'a> {
         if let PatternKind::Name(_) = pattern.kind
             && let Some(b) = self.hir.pattern_binding(pattern)
             && self.cx.implicit_closes.contains(&b.uid)
-            && let Some(cleanup) = self.hir.stmt(s).cleanup
         {
-            return self.bind_closing(&b, x, &cleanup);
+            let cleanup = self.hir.stmt(s).cleanup;
+            return self.bind_closing(&b, x, cleanup.as_ref());
         }
         self.bind_pattern(pattern, x)
     }
@@ -391,7 +382,12 @@ impl<'a> FnLower<'a> {
                 let old = self.local_take(&l);
                 // A registered resource closes the value it replaces; the scope closes the new one.
                 if let Some(closer) = self.closers.get(&b.uid).cloned() {
-                    self.close_replaced(&closer, old, l.ty);
+                    self.assign_closing(b.uid, &closer, old, l.ty)?;
+                } else if self.var_slots.iter().any(|v| v.uid == b.uid) {
+                    // A `var` parameter holds the caller's value, which the caller closes at
+                    // the end, but a value this assignment replaces is the callee's to close.
+                    let ty = ms_check::types::sub(&b.ty, &self.subst);
+                    self.close_discarded_ty(&ty, old)?;
                 }
                 self.local_put(&l, new);
                 if self.cx_needs_drop_ty(l.ty) {
@@ -613,6 +609,9 @@ impl<'a> FnLower<'a> {
             .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
         let mut moved = false;
         let inner = if rest.is_empty() {
+            // The field's old value dies here: a resource in it closes first.
+            let cur = self.b.rec_get(rid, idx, obj);
+            self.close_discarded(first, cur)?;
             new
         } else {
             let cur = self.b.rec_get(rid, idx, obj);
@@ -641,6 +640,7 @@ impl<'a> FnLower<'a> {
 
     fn if_stmt(
         &mut self,
+        s: &Stmt,
         binding: Option<&Pattern>,
         cond: &Expr,
         body: &[Stmt],
@@ -658,7 +658,7 @@ impl<'a> FnLower<'a> {
             let found = if exclusive {
                 let (alias, found) = self.alias_accessor(cond)?;
                 accessor_alias = Some(alias);
-                found
+                crate::alias::Found::Present(found)
             } else if let Some((b, shape)) = self.lendable(binding, cond)? {
                 // `if let x = m.get(k)`: the test is the entry's presence and `x` is the entry
                 // itself, lent for the branch; no `Optional` is built.
@@ -724,7 +724,13 @@ impl<'a> FnLower<'a> {
                 // The payload of a scrutinee that is itself a borrow is a lexical borrow for
                 // the branch (the checker rejects changing its origin meanwhile): no copy. An
                 // owned scrutinee is dropped here, so its payload is copied out first.
-                let lend = !o.own
+                let closing = self
+                    .cx
+                    .implicit_closes
+                    .contains(&bnd.uid)
+                    .then(|| self.hir.stmt(s).cleanup);
+                let lend = closing.is_none()
+                    && !o.own
                     && !bnd.mutable
                     && matches!(p.kind, PatternKind::Name(_))
                     && self.ownership_checked()
@@ -732,6 +738,12 @@ impl<'a> FnLower<'a> {
                     && self.needs_drop(self.ty_of(payload));
                 if lend {
                     self.bind_lent(&bnd, payload);
+                } else if let Some(cleanup) = closing.as_ref() {
+                    let held = Val {
+                        v: payload,
+                        own: false,
+                    };
+                    self.bind_closing(&bnd, held, cleanup.as_ref())?;
                 } else {
                     self.bind_local(
                         &bnd,
@@ -828,6 +840,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: header,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
@@ -956,6 +969,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: step,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
@@ -1048,6 +1062,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: header,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
@@ -1169,6 +1184,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: header,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
@@ -1299,6 +1315,21 @@ impl<'a> FnLower<'a> {
         let one = self.b.iconst(1);
         let idx = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
         self.b.def_var(idx, start);
+        let closing = if list_var.is_some() && self.cx.implicit_closes.contains(&loop_var.uid) {
+            self.closer_opt(
+                self.hir.binding_cleanup(loop_var.uid).as_ref(),
+                &loop_var.ty,
+            )?
+        } else {
+            None
+        };
+        if let (Some(kind), Some(list)) = (&closing, list_var) {
+            // Leaving the loop early (`break`, `return`, `try`) closes the elements it never
+            // reached, after the one in hand.
+            let uid = usize::MAX - self.rest_closers.len() - 1_000_000;
+            self.rest_closers.insert(uid, (kind.clone(), list, idx));
+            self.scopes.last_mut().expect("scope").push(uid);
+        }
         let (header, body_b, step, exit) = (
             self.b.new_block(),
             self.b.new_block(),
@@ -1317,6 +1348,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: step,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
@@ -1329,7 +1361,10 @@ impl<'a> FnLower<'a> {
             }
             None => i,
         };
-        if list_var.is_some() && !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {
+        if let Some(kind) = closing {
+            // The loop owns its elements: the one in hand closes with the iteration.
+            self.bind_closing_kind(&loop_var, Val { v: e, own: false }, kind)?;
+        } else if list_var.is_some() && !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {
             // The loop holds the list and the body cannot change it: the element is a borrow.
             self.bind_lent(&loop_var, e);
         } else {
@@ -1359,6 +1394,50 @@ impl<'a> FnLower<'a> {
         self.enter(exit);
         self.pop_scope();
         Ok(())
+    }
+
+    /// After a `break` out of a loop that owns its elements, closes the ones it never reached
+    /// (those after index `idx`); a loop that ran to the end has `idx` at the length and closes
+    /// nothing.
+    pub(crate) fn close_rest(
+        &mut self,
+        kind: &crate::close::CloseKind,
+        list: ms_mir::builder::Var,
+        idx: ms_mir::builder::Var,
+    ) {
+        let next = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
+        let at = self.b.use_var(idx);
+        let one = self.b.iconst(1);
+        let first = self
+            .b
+            .emit(Op::IAdd, &[at, one], Imm::None, Some(MTy::INT))
+            .expect("add");
+        self.b.def_var(next, first);
+        let (header, body, done) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br(header, &[]);
+        self.enter(header);
+        let j = self.b.use_var(next);
+        let l = self.b.use_var(list);
+        let len = self.b.list_len(l);
+        let more = self.b.icmp(Cc::Lt, j, len);
+        self.b.br_if(more, body, &[], done, &[]);
+        self.b.seal_block(body);
+        self.enter(body);
+        let j = self.b.use_var(next);
+        let l = self.b.use_var(list);
+        let v = self.b.list_get(l, j);
+        self.close_discarded_kind(kind, v);
+        let j = self.b.use_var(next);
+        let one = self.b.iconst(1);
+        let bumped = self
+            .b
+            .emit(Op::IAdd, &[j, one], Imm::None, Some(MTy::INT))
+            .expect("add");
+        self.b.def_var(next, bumped);
+        self.b.br(header, &[]);
+        self.b.seal_block(header);
+        self.b.seal_block(done);
+        self.enter(done);
     }
 }
 

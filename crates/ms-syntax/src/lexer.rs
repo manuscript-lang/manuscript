@@ -78,6 +78,8 @@ struct Scanner<'a> {
     virtual_paren: bool,
 }
 
+const BIDI_COMMENT: &str = "bidirectional text controls (U+202A..U+202E, U+2066..U+2069) are not allowed in comments because they can make source display differently from how it is read; remove the character";
+const BIDI_TEXT: &str = "bidirectional text controls (U+202A..U+202E, U+2066..U+2069) are not allowed in text because they can make source display differently from how it is read; write the escape instead, e.g. \\u{202E}";
 const BRACE_HINT: &str = "'{' starts an interpolation; write \\{ and \\} for literal braces";
 const MAX_INTERPOLATION_DEPTH: usize = 1000;
 
@@ -105,7 +107,7 @@ pub(crate) fn lex_at<'a>(
     let (tokens, mut boundaries) = {
         let mut s = Scanner::new(file, &normalized, base_offset, base_line, offsets);
         s.tokens.reserve(source.len() / 4 + 16);
-        s.run()?;
+        s.run(None)?;
         (s.tokens, s.boundaries)
     };
     boundaries.strings.sort_unstable_by_key(|&(start, _)| start);
@@ -133,10 +135,25 @@ pub(crate) fn lex_interpolation(
     s.virtual_paren = true;
     s.delimiters.push(b'(');
     s.opened.push(Pos::new(0, 1, 1));
-    s.run()?;
+    s.run(None)?;
     let closing = s.tokens.len() - 3;
     s.tokens.remove(closing);
     Ok(s.tokens)
+}
+
+/// For each physical line start (including the empty line after a final newline),
+/// reports whether lexing the prefix ending there has an unterminated delimiter.
+/// A different lexical error on a line makes all later prefixes false.
+pub(crate) fn unterminated_prefixes(file: &Arc<str>, source: &str, stop_at: &[bool]) -> Vec<bool> {
+    if source.starts_with('\u{feff}') {
+        return vec![false; source.bytes().filter(|b| *b == b'\n').count() + 1];
+    }
+    let (normalized, offsets) = normalize_source(source);
+    let mut scanner = Scanner::new(file, &normalized, 0, 0, offsets);
+    let mut prefixes = Vec::with_capacity(source.bytes().filter(|b| *b == b'\n').count() + 1);
+    let _ = scanner.run(Some((&mut prefixes, stop_at)));
+    prefixes.resize(source.bytes().filter(|b| *b == b'\n').count() + 1, false);
+    prefixes
 }
 
 impl<'a> Scanner<'a> {
@@ -235,6 +252,14 @@ impl Scanner<'_> {
     fn fail_at<T>(&self, pos: Pos, message: impl Into<String>) -> PResult<T> {
         Err(self.err(pos, message))
     }
+    /// Reports a character whose first byte was just consumed. The cursor can
+    /// be inside its UTF-8 encoding, so it is not itself a diagnostic boundary.
+    fn fail_previous_byte<T>(&self, message: impl Into<String>) -> PResult<T> {
+        let mut pos = self.pos();
+        pos.offset -= 1;
+        pos.column -= 1;
+        self.fail_at(pos, message)
+    }
     /// Fails on the single ASCII character at the cursor, with its range and,
     /// when one exists, the replacement that fixes it.
     fn fail_char<T>(&self, message: String, replacement: Option<&str>) -> PResult<T> {
@@ -248,6 +273,16 @@ impl Scanner<'_> {
             replacement: r.to_string(),
         });
         Err(d)
+    }
+    /// Whether only whitespace or a `#` comment follows the cursor on its line.
+    fn trailing_semicolon(&self) -> bool {
+        let rest = &self.text[self.offset + 1..];
+        let line = rest
+            .split('\n')
+            .next()
+            .unwrap_or("")
+            .trim_start_matches([' ', '\t']);
+        line.is_empty() || line.starts_with('#') || line == "\r"
     }
     /// Fails on the source range `[start, cursor)`.
     fn fail_range<T>(&self, start: Pos, message: String) -> PResult<T> {
@@ -291,13 +326,22 @@ impl Scanner<'_> {
         self.src.get(i).copied()
     }
 
-    fn run(&mut self) -> PResult<()> {
+    fn run(&mut self, mut prefixes: Option<(&mut Vec<bool>, &[bool])>) -> PResult<()> {
         let n = self.src.len();
         let (mut pending, mut header_indent, mut pending_depth) = (false, 0usize, 0usize);
+        // Where the pending header's statement began, when it spans several lines.
+        let mut header_start = 0usize;
         // A line that starts with '.' or '|' continues the previous statement,
         // which began at statement_indent; it opens no block and ends no statement.
         let (mut continuing, mut statement_indent) = (false, 0usize);
         while self.offset < n {
+            if let Some((prefixes, stop_at)) = prefixes.as_mut() {
+                let open = !self.delimiters.is_empty();
+                prefixes.push(open);
+                if stop_at.get(prefixes.len() - 1) == Some(&true) && !open {
+                    return Ok(());
+                }
+            }
             let mut leading = 0usize;
             while self.offset < n && self.src[self.offset] == b' ' {
                 self.advance();
@@ -352,6 +396,13 @@ impl Scanner<'_> {
                         });
                         self.emit_layout(Tok::Indent);
                         started_suite = true;
+                    } else if leading > header_start && leading <= header_indent {
+                        return self.fail(format!(
+                            "a suite begins four spaces after the line that ends with ':' (at {} spaces); indent this line to {}, or move that closing line back to {} spaces",
+                            header_indent,
+                            header_indent + 4,
+                            header_start
+                        ));
                     } else if leading <= header_indent {
                         // An empty declaration suite has the same layout
                         // boundaries as a populated one.
@@ -427,13 +478,6 @@ impl Scanner<'_> {
                         "tabs and lone carriage returns are not allowed in code; use spaces, and line endings of LF or CRLF",
                     );
                 }
-                if b == b'f' && self.at(self.offset + 1) == Some(b'"') {
-                    let start = self.offset;
-                    self.advance();
-                    self.scan_string(true)?;
-                    self.emit(Tok::String, start, self.offset, p);
-                    continue;
-                }
                 if letter(b) {
                     let start = self.offset;
                     let mut i = start;
@@ -443,7 +487,7 @@ impl Scanner<'_> {
                     self.column += (i - start) as u32;
                     self.offset = i;
                     let kind = Tok::from_word(&self.text[start..i]);
-                    if kind == Tok::Lambda || kind == Tok::Match {
+                    if kind == Tok::Fn || kind == Tok::Match {
                         self.function_depths.push(self.delimiters.len());
                     }
                     self.emit(kind, start, i, p);
@@ -455,7 +499,7 @@ impl Scanner<'_> {
                 }
                 if b == b'"' {
                     let start = self.offset;
-                    self.scan_string(false)?;
+                    self.scan_string()?;
                     self.emit(Tok::String, start, self.offset, p);
                     continue;
                 }
@@ -486,7 +530,19 @@ impl Scanner<'_> {
                     self.emit(kind, start, start + 2, p);
                     continue;
                 }
+                // `!` directly after a type-ending character is the Result suffix of `T!`
+                // or `T!E`; anywhere else it stays the removed negation.
+                let result_suffix = b == b'!'
+                    && self.offset > 0
+                    && self.tokens.last().is_some_and(|t| {
+                        matches!(
+                            t.kind,
+                            Tok::Name | Tok::RBracket | Tok::RParen | Tok::Question | Tok::Bang
+                        )
+                    })
+                    && matches!(self.src[self.offset - 1], b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_' | b']' | b')' | b'?' | b'!');
                 let kind = match b {
+                    b'!' if result_suffix => Tok::Bang,
                     b'(' => Tok::LParen,
                     b')' => Tok::RParen,
                     b'[' => Tok::LBracket,
@@ -496,6 +552,7 @@ impl Scanner<'_> {
                     b':' => Tok::Colon,
                     b',' => Tok::Comma,
                     b'.' => Tok::Dot,
+                    b'?' => Tok::Question,
                     b'+' => Tok::Plus,
                     b'-' => Tok::Minus,
                     b'*' => Tok::Star,
@@ -521,7 +578,8 @@ impl Scanner<'_> {
                                 character_hint(b)
                             ),
                             match b {
-                                b';' => Some(""),
+                                // Removing a mid-line `;` would fuse two statements.
+                                b';' if self.trailing_semicolon() => Some(""),
                                 b'!' => Some("not "),
                                 _ => None,
                             },
@@ -603,6 +661,7 @@ impl Scanner<'_> {
                 if last_kind == Tok::Colon && (self.delimiters.len() == top_depth || has_function) {
                     pending = true;
                     header_indent = leading;
+                    header_start = statement_indent;
                     pending_depth = self.delimiters.len();
                     self.emit_layout(Tok::Newline);
                     self.function_depths.clear();
@@ -626,6 +685,9 @@ impl Scanner<'_> {
         if pending {
             self.emit_layout(Tok::Indent);
             self.emit_layout(Tok::Dedent);
+        }
+        if let Some((prefixes, _)) = prefixes {
+            prefixes.push(!self.delimiters.is_empty());
         }
         if let Some(&open) = self.delimiters.last() {
             let where_ = *self.opened.last().unwrap();
@@ -681,11 +743,23 @@ impl Scanner<'_> {
         false
     }
 
+    /// Whether the UTF-8 sequence at `at` is a bidirectional text control (U+202A..U+202E,
+    /// U+2066..U+2069), which can make source display differently from how it is read.
+    fn bidi_control_at(&self, at: usize) -> bool {
+        matches!(
+            self.src.get(at..at + 3),
+            Some([0xE2, 0x80, 0xAA..=0xAE] | [0xE2, 0x81, 0xA6..=0xA9])
+        )
+    }
+
     /// Consumes a comment through the end of its physical line.
     fn skip_comment(&mut self) -> PResult<()> {
         while self.offset < self.src.len() && self.src[self.offset] != b'\n' {
             if self.src[self.offset] == b'\r' {
                 return self.fail("lone carriage returns are not allowed in comments; use line endings of LF or CRLF");
+            }
+            if self.bidi_control_at(self.offset) {
+                return self.fail(BIDI_COMMENT);
             }
             self.advance();
         }
@@ -797,7 +871,7 @@ impl Scanner<'_> {
         Ok(())
     }
 
-    fn scan_string(&mut self, fstring: bool) -> PResult<()> {
+    fn scan_string(&mut self) -> PResult<()> {
         let start = self.offset;
         if let Some(end) = self
             .cached
@@ -830,6 +904,9 @@ impl Scanner<'_> {
             if b < 32 {
                 return self.fail("literal control characters are not allowed in text; write an escape such as \\t, \\r, or \\u{H}");
             }
+            if b == 0xE2 && self.bidi_control_at(self.offset - 1) {
+                return self.fail_previous_byte(BIDI_TEXT);
+            }
             if b == b'\\' {
                 let mut backslash = self.pos();
                 backslash.column -= 1;
@@ -840,7 +917,12 @@ impl Scanner<'_> {
                 let c = self.advance();
                 if c == b'u' {
                     if self.offset == n || self.advance() != b'{' {
-                        return self.fail("Unicode escapes use \\u{H}; write 1 to 6 hexadecimal digits in braces, e.g. \\u{1F600}");
+                        let message = "Unicode escapes use \\u{H}; write 1 to 6 hexadecimal digits in braces, e.g. \\u{1F600}";
+                        return if self.src[self.offset - 1].is_ascii() {
+                            self.fail(message)
+                        } else {
+                            self.fail_previous_byte(message)
+                        };
                     }
                     let start = self.offset;
                     let mut value: u64 = 0;
@@ -850,7 +932,14 @@ impl Scanner<'_> {
                             b'0'..=b'9' => (c - b'0') as u64,
                             b'a'..=b'f' => (c - b'a') as u64 + 10,
                             b'A'..=b'F' => (c - b'A') as u64 + 10,
-                            _ => return self.fail("invalid Unicode scalar escape; use only hexadecimal digits 0-9 and a-f inside \\u{...}"),
+                            _ => {
+                                let message = "invalid Unicode scalar escape; use only hexadecimal digits 0-9 and a-f inside \\u{...}";
+                                return if c.is_ascii() {
+                                    self.fail(message)
+                                } else {
+                                    self.fail_previous_byte(message)
+                                };
+                            }
                         };
                         value = value.saturating_mul(16).saturating_add(d);
                     }
@@ -863,13 +952,7 @@ impl Scanner<'_> {
                         return self.fail("invalid Unicode scalar escape; use 1 to 6 hexadecimal digits for a value up to 10FFFF that is not a surrogate (D800-DFFF)");
                     }
                     self.advance();
-                } else if !(if fstring {
-                    &b"\"\\nrt{}"[..]
-                } else {
-                    &b"\"\\nrt"[..]
-                })
-                .contains(&c)
-                {
+                } else if !b"\"\\nrt{}".contains(&c) {
                     let escape = if c.is_ascii_graphic() {
                         format!(" \\{}", char::from(c))
                     } else {
@@ -878,9 +961,9 @@ impl Scanner<'_> {
                     };
                     return self.fail_at(backslash, format!("unknown text escape{escape}; valid escapes are \\n \\t \\r \\\\ \\\" \\{{ \\}} and \\u{{H}}"));
                 }
-            } else if fstring && b == b'{' {
+            } else if b == b'{' {
                 self.scan_interpolation()?;
-            } else if fstring && b == b'}' {
+            } else if b == b'}' {
                 return self.fail("an unmatched closing brace must be escaped; write \\} for a literal brace (and \\{ for the opening brace), or open an interpolation with {expression}");
             }
         }
@@ -925,12 +1008,7 @@ impl Scanner<'_> {
                 );
             }
             if b == b'"' {
-                self.scan_string(false)?;
-                continue;
-            }
-            if b == b'f' && self.at(self.offset + 1) == Some(b'"') {
-                self.advance();
-                self.scan_string(true)?;
+                self.scan_string()?;
                 continue;
             }
             self.advance();
@@ -977,15 +1055,12 @@ impl Scanner<'_> {
         if first.pos.line != last.end.line
             || !matches!(
                 first.kind,
-                Tok::Def
-                    | Tok::Lambda
-                    | Tok::Elif
+                Tok::Fn
                     | Tok::If
                     | Tok::Else
                     | Tok::For
                     | Tok::While
                     | Tok::Match
-                    | Tok::With
                     | Tok::Type
                     | Tok::Impl
                     | Tok::Test
@@ -1040,9 +1115,6 @@ fn character_hint(b: u8) -> &'static str {
         b';' => "; Manuscript ends a statement at the end of the line, so remove the semicolon",
         b'\'' => "; text uses double quotes, e.g. \"text\"",
         b'!' => "; write 'not x' for negation and '!=' for inequality",
-        b'?' => {
-            "; Manuscript has no ? operator, so use 'if let' for Optional values, or 'try' for Result"
-        }
         b'`' => "; text uses double quotes with {expression} interpolation",
         b'$' | b'@' | b'\\' | b'^' | b'~' => {
             "; this character is not part of Manuscript's syntax outside text"

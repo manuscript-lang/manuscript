@@ -1,18 +1,18 @@
 # conform: tags=control-flow,decimal,formatter,generics,interfaces,lists,match,modules,optional,parser,records,stdlib-decimal,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/comparable.ms
-from "@std/test.ms" import expect_true
-from "@std/math.ms" import max, min
-from "@std/decimal.ms" import Decimal
+import expect_true from "@std/test.ms"
+import max, min from "@std/math.ms"
+import Decimal from "@std/decimal.ms"
 
 type Version:
     major: Int
 
 impl Comparable for Version:
-    def compare(other: Version) -> Int:
+    fn compare(other: Version) Int:
         return self.major - other.major
 
-def larger[T: Comparable](left: T, right: T) -> T:
+fn larger[T: Comparable](left: T, right: T) T:
     return max(left, right)
 
 test "max and min over built-in types":
@@ -39,6 +39,6 @@ test "compare through an explicit view":
 test "max and min over a list":
     let numbers = [3, 9, 2]
     let empty: List[Int] = []
-    try expect_true((numbers.max() == some(9) and numbers.min() == some(2)))
+    try expect_true((numbers.max() == 9 and numbers.min() == 2))
     try expect_true((empty.max().is_none() and empty.min().is_none()))
-    try expect_true(([Version(4), Version(8)].max() == some(Version(8))))
+    try expect_true(([Version(4), Version(8)].max() == Version(8)))

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def first() -> Int: return 1\n\nfrom \"./value.ms\" import Value\nfrom \"./other.ms\" import Other\n\ndef last() -> Int: return 2\n"
-  }
-}

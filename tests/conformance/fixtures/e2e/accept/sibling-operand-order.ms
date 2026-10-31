@@ -1,19 +1,19 @@
 # conform: tags=decimal,faults,match,modules,mutation,optional,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/sibling-operand-order.ms
-from "@std/test.ms" import expect_equal
-from "@std/decimal.ms" import Decimal
+import expect_equal from "@std/test.ms"
+import Decimal from "@std/decimal.ms"
 
 test "list elements read before a later match assigns them":
     var x = 1
     var y = "a"
     let items = [
         x,
-        match some(5):
-            case some(value):
+        match present(5):
+            value:
                 x = 50
                 value
-            case none: 0
+            none: 0
         ,
         x
     ]
@@ -21,35 +21,35 @@ test "list elements read before a later match assigns them":
 
     let texts = [
         y,
-        match some("b"):
-            case some(value):
+        match present("b"):
+            value:
                 y = "z"
                 value
-            case none: ""
+            none: ""
     ]
     try expect_equal(texts, ["a", "b"])
 
 test "map keys read before a later match assigns them":
     var key = 1
     let entries = {
-        key: match some(5):
-            case some(value):
+        key: match present(5):
+            value:
                 key = 50
                 value
-            case none: 0
+            none: 0
         ,
         key: key
     }
     try expect_equal(entries.length(), 2)
-    try expect_equal(entries.get(key: 1), some(5))
+    try expect_equal(entries.get(key: 1), 5)
 
 test "generic binary operands read before a later match assigns them":
     var amount = 1.5d
-    let sum = amount + match some(2.5d):
-        case some(value):
+    let sum = amount + match present(2.5d):
+        value:
             amount = 100d
             value
-        case none: 0d
+        none: 0d
     try expect_equal(sum, 4d)
 
 type Cell:
@@ -59,11 +59,14 @@ type Cell:
 test "field assignment keeps sibling field writes made while evaluating the value":
     var cell = Cell(n: 1, s: "a")
 
-    cell.n = match some(2):
-        case some(value):
+    cell.n = match present(2):
+        value:
             cell.s = "changed"
             value
-        case none: 0
+        none: 0
 
     try expect_equal(cell.n, 2)
     try expect_equal(cell.s, "changed")
+
+fn present[T](value: T) T?:
+    return value

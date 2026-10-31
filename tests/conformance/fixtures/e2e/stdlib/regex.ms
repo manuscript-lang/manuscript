@@ -1,8 +1,8 @@
 # conform: tags=lists,modules,stdlib-regex,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/regex.ms
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/string.ms" import compile, RegexError
+import expect_equal, expect_false from "@std/test.ms"
+import compile, RegexError from "@std/string.ms"
 
 test "regex receivers execute matching replacement and empty results":
     let regex = try compile("[0-9]+")
@@ -18,8 +18,8 @@ test "regex rejects invalid expressions and exhausted budgets":
     try expect_equal(invalid.err(), RegexError.InvalidData)
 
     let regex = try compile("[0-9]+")
-    let limited: Result[List[String], RegexError] = error(RegexError.LimitExceeded)
+    let limited: List[String]!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(regex.find_all("1 2", 1), limited)
 
-    let output_limit: Result[String, RegexError] = error(RegexError.LimitExceeded)
+    let output_limit: String!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(regex.replace_all("1", "long", 3), output_limit)

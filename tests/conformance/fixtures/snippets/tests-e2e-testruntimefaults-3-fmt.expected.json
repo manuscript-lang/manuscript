@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def sum(value: Int) -> Int:\n    return value + 1\n\ntest \"fault\":\n    let impossible = sum(value: 9223372036854775807)\n"
-  }
-}

@@ -1,16 +1,20 @@
-diag parse 1:1:0 end=1:7:6 fix=- "imports read: from \x22path.ms\x22 import name, other"
-diag parse 2:1:56 end=2:7:62 fix=- "imports read: from \x22path.ms\x22 import name, other"
-diag parse 3:1:110 end=3:7:116 fix=- "imports read: from \x22path.ms\x22 import name, other"
-diag parse 4:1:170 end=4:7:176 fix=- "imports read: from \x22path.ms\x22 import name, other"
-diag parse 5:1:207 end=5:7:213 fix=- "imports read: from \x22path.ms\x22 import name, other"
-diag parse 8:5:283 end=8:7:285 fix=- "expected 'def', found name 'fn'"
-diag parse 11:1:339 end=11:3:341 fix=11:1:339>11:3:341="def" "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'"
-diag parse 15:5:399 end=15:7:401 fix=- "expected 'def', found name 'fn'"
-diag parse 19:5:469 end=19:7:471 fix=- "expected 'def', found name 'fn'"
-diag parse 28:5:701 end=28:7:703 fix=- "a type has only fields or cases; an interface has only operation signatures; declare fields as 'name: Type' in a type, and put method bodies in an 'impl' block"
-diag parse 30:7:725 end=30:7:725 fix=- "expected ':', found end of line; block headers (def, if, elif, else, for, while, match, case, with, type, impl, test) end with ':' before their indented body"
-(decl 7:1:254 impl "" false false 0:0:0 false [] [] [] [] [] nil (type 7:6:259 "Read" [(type 7:11:264 "Int" [] [] nil) ] [] nil) (type 7:20:273 "Item" [] [] nil) [])
-(decl 14:1:370 impl "" false false 0:0:0 false [] [] [] [] [] nil (type 14:6:375 "Read" [(type 14:11:380 "T" [] [] nil) ] [] nil) (type 14:18:387 "Box" [(type 14:22:391 "T" [] [] nil) ] [] nil) [])
-(decl 18:1:438 impl "" false false 0:0:0 false [] [] [] [] [] nil (type 18:6:443 "Read" [(type 18:11:448 "Int" [] [] nil) ] [] nil) (type 18:20:457 "Choice" [] [] nil) [])
-omitted ["Extract" ]
-recovered [254-339 370-438 438-678 ]
+diag parse 30:7:719 end=30:7:719 fix=- "expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body"
+import 1:1:0 1:8:7 "expect_equal" "@std/test.ms"
+import 1:1:0 1:22:21 "expect_false" "@std/test.ms"
+import 2:1:54 2:8:61 "Item" "./domain.ms"
+import 2:1:54 2:14:67 "Box" "./domain.ms"
+import 2:1:54 2:19:72 "Holder" "./domain.ms"
+import 2:1:54 2:27:80 "Choice" "./domain.ms"
+import 3:1:106 3:8:113 "Read" "./contracts.ms"
+import 3:1:106 3:14:119 "invoke" "./contracts.ms"
+import 3:1:106 3:22:127 "relay" "./contracts.ms"
+import 3:1:106 3:29:134 "as_view" "./contracts.ms"
+import 4:1:164 4:8:171 "Closeable" "@std/core.ms"
+import 5:1:201 5:8:208 "ListBuilder" "@std/collections.ms"
+(decl 7:1:248 impl "" false false 0:0:0 false [] [] [] [(decl 8:8:280 fn "get" false false 0:0:0 false [] [] [] [] [] (type 8:14:286 "Int" [] [] nil) nil nil [(stmt 9:9:299 return "" "" false 0:0:0 nil nil nil (expr 9:32:322 binary "+" (expr 9:21:311 call "" (expr 9:21:311 member "original" (expr 9:16:306 name "self" nil nil [] [] [] [] [] nil [] []) nil [] [] [] [] [] nil [] []) nil [] [] [] [] [] nil [] []) (expr 9:34:324 call "" (expr 9:34:324 name "delta" nil nil [] [] [] [] [] nil [] []) nil [] [] [] [] [] nil [] []) [] [] [] [] [] nil [] []) [] []) ]) ] [] nil (type 7:6:253 "Read" [(type 7:11:258 "Int" [] [] nil) ] [] nil) (type 7:20:267 "Item" [] [] nil) [])
+(decl 11:1:333 fn "delta" false false 0:0:0 false [] [] [] [] [] (type 11:12:344 "Int" [] [] nil) nil nil [(stmt 12:5:353 return "" "" false 0:0:0 nil nil nil (expr 12:12:360 number "20" nil nil [] [] [] [] [] nil [] []) [] []) ])
+(decl 14:1:364 impl "" false false 0:0:0 false [] [] [] [(decl 15:8:396 fn "get" false false 0:0:0 false [] [] [] [] [] (type 15:14:402 "T" [] [] nil) nil nil [(stmt 16:9:413 return "" "" false 0:0:0 nil nil nil (expr 16:21:425 member "value" (expr 16:16:420 name "self" nil nil [] [] [] [] [] nil [] []) nil [] [] [] [] [] nil [] []) [] []) ]) ] [] nil (type 14:6:369 "Read" [(type 14:11:374 "T" [] [] nil) ] [] nil) (type 14:18:381 "Box" [(type 14:22:385 "T" [] [] nil) ] [] nil) [])
+(decl 18:1:432 impl "" false false 0:0:0 false [] [] [] [(decl 19:8:466 fn "get" false false 0:0:0 false [] [] [] [] [] (type 19:14:472 "Int" [] [] nil) nil nil [(stmt 20:9:485 call "" "" false 0:0:0 nil nil nil (expr 20:9:485 match "match" (expr 20:15:491 name "self" nil nil [] [] [] [] [] nil [] []) nil [] [] [] [] [] nil [] [(arm 21:13:509 (expr 21:13:509 name "Some" nil nil [] [] [] [] [] nil [] []) [("value" 21:18:514) ] [(stmt 22:17:538 return "" "" false 0:0:0 nil nil nil (expr 22:30:551 binary "+" (expr 22:24:545 name "value" nil nil [] [] [] [] [] nil [] []) (expr 22:32:553 call "" (expr 22:32:553 name "delta" nil nil [] [] [] [] [] nil [] []) nil [] [] [] [] [] nil [] []) [] [] [] [] [] nil [] []) [] []) ] nil) (arm 23:13:573 (expr 23:13:573 name "Empty" nil nil [] [] [] [] [] nil [] []) [] [(stmt 24:17:596 return "" "" false 0:0:0 nil nil nil (expr 24:24:603 call "" (expr 24:24:603 name "delta" nil nil [] [] [] [] [] nil [] []) nil [] [] [] [] [] nil [] []) [] []) ] nil) ]) [] []) ]) ] [] nil (type 18:6:437 "Read" [(type 18:11:442 "Int" [] [] nil) ] [] nil) (type 18:20:451 "Choice" [] [] nil) [])
+(decl 27:1:672 interface "Extract" false false 0:0:0 false [] [] [] [(decl 28:8:698 fn "extract" false false 0:0:0 false [] [] [] [] [] (type 28:18:708 "Int" [] [] nil) nil nil []) ] [] nil nil nil [])
+omitted []
+recovered []

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn f(a: Int) Int:\n    let b = (if a == 1: 2 else: 3)\n\n    return b\n"
+  }
+}

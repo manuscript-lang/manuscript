@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def work(enabled: Bool) -> Int:\n    let count = 2\n\n    if enabled:\n        run(count)\n    elif count > 0: run(1)\n    else:\n        run(0)\n\n    while enabled:\n        if count == 0: break\n\n        run(count)\n        break\n\n    for item in [1, 2]:\n        if item == 1: continue\n\n        run(item)\n\n    with let resource = acquire():\n        run(resource)\n    return count\n"
-  }
-}

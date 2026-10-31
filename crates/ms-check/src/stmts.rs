@@ -78,6 +78,7 @@ impl Checker {
         if nested {
             self.scope = Scope::new(Some(old.clone()));
         }
+        let locks = self.held_locks.len();
         let mut fall = true;
         let mut breaks = false;
         for s in body {
@@ -88,6 +89,7 @@ impl Checker {
             }
         }
         self.scope = old;
+        self.held_locks.truncate(locks);
         (fall, breaks)
     }
 
@@ -129,19 +131,13 @@ impl Checker {
                 body,
                 else_body,
             } => match binding {
-                Some(p) => self.check_if_let(p, *mutable, cond, body, else_body),
+                Some(p) => self.check_if_let(s, p, *mutable, cond, body, else_body),
                 None => self.check_if(cond, body, else_body),
             },
             StmtKind::While { cond, body } => self.check_while(cond, body),
             StmtKind::For {
                 name, iter, body, ..
             } => self.check_for(s, *name, iter, body),
-            StmtKind::With {
-                name,
-                mutable,
-                value,
-                body,
-            } => self.check_with(s, *name, *mutable, value, body),
         }
     }
 
@@ -181,6 +177,10 @@ impl Checker {
             info = self.check_expression(value, info, Some(&bound));
         }
         self.pattern(pattern, &bound, mutable, Some(value));
+        if let PatternKind::Name(name) = &pattern.kind {
+            self.begin_lock(s, *name, value, &bound);
+        }
+        self.release_guard(value);
         // The scope closes a resource nothing takes; ownership decides which bindings that is.
         if matches!(pattern.kind, PatternKind::Name(_))
             && !is_invalid_id(&bound)
@@ -315,7 +315,39 @@ impl Checker {
         (false, false)
     }
 
+    /// `guard.close()` releases the lock the guard holds, also as `try guard.close()`,
+    /// `guard.close().get(none)` or the value of a `let`.
+    pub(crate) fn release_guard(&mut self, value: &Expr) {
+        let mut e = value;
+        loop {
+            match &e.kind {
+                ExprKind::Unary {
+                    op: UnaryOp::Try,
+                    operand,
+                } => e = operand,
+                ExprKind::Call { callee, .. } => {
+                    let ExprKind::Member { left, name } = &callee.kind else {
+                        return;
+                    };
+                    if name.as_str() == "close" {
+                        let ExprKind::Name(guard) = &left.kind else {
+                            return;
+                        };
+                        if let Some(at) = self.held_locks.iter().rposition(|(_, _, g)| g == guard) {
+                            self.held_locks.remove(at);
+                        }
+                        return;
+                    }
+                    // `.get(none)` and the like wrap the close.
+                    e = left;
+                }
+                _ => return,
+            }
+        }
+    }
+
     fn check_call_statement(&mut self, pos: Pos, value: &Expr) -> (bool, bool) {
+        self.release_guard(value);
         let i = if matches!(value.kind, ExprKind::Match { .. }) {
             // A match used as a statement discards its result, so its arms need
             // not agree on a value.
@@ -376,6 +408,7 @@ impl Checker {
     /// Ok payload in the then-branch only. A Result's error is not captured.
     fn check_if_let(
         &mut self,
+        s: &Stmt,
         pattern: &Pattern,
         mutable: bool,
         cond: &Expr,
@@ -399,6 +432,16 @@ impl Checker {
         let old = self.scope.clone();
         self.scope = Scope::new(Some(old.clone()));
         self.pattern(pattern, &payload, mutable, Some(cond));
+        // The branch closes a resource payload nothing takes; ownership decides which it is.
+        if matches!(pattern.kind, PatternKind::Name(_))
+            && !is_invalid_id(&payload)
+            && self.closeable(&payload)
+        {
+            let mut close = self.close_method(&payload);
+            if close.len() == 1 {
+                self.m().facts_mut().stmts.entry(s.id).or_default().cleanup = close.pop();
+            }
+        }
         let (a, ab) = self.block(body, true);
         self.scope = old;
         let (mut b, mut bb) = (true, false);
@@ -429,19 +472,22 @@ impl Checker {
             if t.args.len() == 2 {
                 element = standard("MapEntry", t.args.clone());
             }
-        } else if let Some(item) = self.iterator_item(&t) {
-            return self.check_iterator_for(s, name, iter, body, item, i.no_return, i.breaks);
+        } else if self.iterator_item(&t).is_some() {
+            return self.check_iterator_for(s, name, iter, body, Vec::new());
+        } else if self.is_iterable(&t) {
+            return self.check_iterable_for(s, name, iter, body);
         } else {
             self.type_error(
                 s.pos,
                 format!(
-                    "for requires List, Set, Map, or an Iterator, found {t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var def next() -> Optional[T]'"
+                    "for requires List, Set, Map, an Iterator, or an Iterable, found {t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var fn next() T?', or Iterable with 'fn length() Int' and 'fn at(index: Int) T?'"
                 ),
             );
         }
         let old = self.scope.clone();
         self.scope = Scope::new(Some(old.clone()));
         let b = self.bind(name, &element, false, s.pos);
+        self.record_cleanup(&b);
         self.m()
             .facts_mut()
             .stmts
@@ -471,18 +517,14 @@ impl Checker {
     /// `while True: if let name = iterator.next(): body else: break`. A variable or field path
     /// is advanced in place, so it keeps the iterator's final state (`error()` of a reader);
     /// any other expression is held in a hidden `var` for the loop.
-    #[allow(clippy::too_many_arguments)]
     fn check_iterator_for(
         &mut self,
         s: &Stmt,
         name: Name,
         iter: &Expr,
         body: &[Stmt],
-        _item: Ty,
-        _no_return: bool,
-        _breaks: bool,
+        mut expansion: Vec<Stmt>,
     ) -> (bool, bool) {
-        let mut expansion: Vec<Stmt> = Vec::new();
         let pos = s.pos;
         let id = |c: &Self| c.m().facts_mut().fresh_id();
         let place = is_place_path(iter);
@@ -576,11 +618,161 @@ impl Checker {
         self.block(&expansion, false)
     }
 
-    /// The `close() -> Unit` operations of `t`: the standard `Closeable` one when it has it.
-    fn close_method(&mut self, t: &Ty) -> Vec<MethodRef> {
+    /// Whether `t` implements `Iterable[T]`, the contract of iterating a container by position.
+    fn is_iterable(&self, t: &Ty) -> bool {
+        self.methods(t, n("at")).into_iter().any(|m| {
+            m.contract
+                .as_ref()
+                .is_some_and(|contract| contract.is_std("Iterable"))
+        })
+    }
+
+    /// `for name in container:` over an `Iterable` container is checked as
+    /// `for $i in 0..container.length(): if let name = container.at($i): body`, so the container is
+    /// read in place and never copied. A container that is not a place is held in a hidden `let`
+    /// first.
+    fn check_iterable_for(
+        &mut self,
+        s: &Stmt,
+        name: Name,
+        iter: &Expr,
+        body: &[Stmt],
+    ) -> (bool, bool) {
+        let pos = s.pos;
+        let id = |c: &Self| c.m().facts_mut().fresh_id();
+        let expr = |c: &Self, kind: ExprKind| Expr {
+            id: id(c),
+            pos: iter.pos,
+            end: iter.pos,
+            kind,
+        };
+        let mut expansion: Vec<Stmt> = Vec::new();
+        let holder = |c: &Self, hidden: Name| {
+            if is_place_path(iter) {
+                iter.clone()
+            } else {
+                expr(c, ExprKind::Name(hidden))
+            }
+        };
+        let hidden = n(&format!("$iterable{}", s.id.0));
+        if !is_place_path(iter) {
+            let pattern = Pattern {
+                id: id(self),
+                pos,
+                kind: PatternKind::Name(hidden),
+            };
+            expansion.push(Stmt {
+                id: id(self),
+                pos,
+                kind: StmtKind::Bind {
+                    mutable: false,
+                    pattern,
+                    ty: None,
+                    value: iter.clone(),
+                    group: None,
+                },
+            });
+        }
+        let index = n(&format!("$index{}", s.id.0));
+        let method = |c: &Self, member: &str, args: Vec<Expr>| {
+            let callee = expr(
+                c,
+                ExprKind::Member {
+                    left: Box::new(holder(c, hidden)),
+                    name: n(member),
+                },
+            );
+            expr(
+                c,
+                ExprKind::Call {
+                    callee: Box::new(callee),
+                    args: args
+                        .into_iter()
+                        .map(|value| Argument {
+                            pos: value.pos,
+                            name: None,
+                            value,
+                            mutable: false,
+                        })
+                        .collect(),
+                },
+            )
+        };
+        expansion.push(Stmt {
+            id: id(self),
+            pos,
+            kind: StmtKind::For {
+                name: index,
+                iter: {
+                    let callee = expr(self, ExprKind::Name(n("..")));
+                    let zero = expr(self, ExprKind::Number(n("0")));
+                    let length = method(self, "length", Vec::new());
+                    expr(
+                        self,
+                        ExprKind::Call {
+                            callee: Box::new(callee),
+                            args: [zero, length]
+                                .into_iter()
+                                .map(|value| Argument {
+                                    pos: value.pos,
+                                    name: None,
+                                    value,
+                                    mutable: false,
+                                })
+                                .collect(),
+                        },
+                    )
+                },
+                body: vec![Stmt {
+                    id: id(self),
+                    pos,
+                    kind: StmtKind::If {
+                        binding: Some(Pattern {
+                            id: id(self),
+                            pos,
+                            kind: PatternKind::Name(name),
+                        }),
+                        mutable: false,
+                        cond: {
+                            let position = expr(self, ExprKind::Name(index));
+                            method(self, "at", vec![position])
+                        },
+                        body: body.to_vec(),
+                        else_body: Vec::new(),
+                    },
+                }],
+            },
+        });
+        let expansion = Rc::new(expansion);
+        self.m()
+            .facts_mut()
+            .stmts
+            .entry(s.id)
+            .or_default()
+            .expansion = Some(expansion.clone());
+        self.block(&expansion, false)
+    }
+
+    /// The `close() -> Result[Unit, Error]` operations of `t`: the standard `Closeable` one when it has it.
+    /// Records the close operation a parameter or loop variable of a closeable type gets at
+    /// scope end, when it turns out to own its value.
+    pub(crate) fn record_cleanup(&mut self, b: &BindingRef) {
+        if is_invalid_id(&b.ty) || !self.closeable(&b.ty) {
+            return;
+        }
+        let mut close = self.close_method(&b.ty);
+        if close.len() == 1 {
+            self.m()
+                .facts_mut()
+                .cleanups
+                .insert(b.uid, close.pop().expect("one"));
+        }
+    }
+
+    pub(crate) fn close_method(&mut self, t: &Ty) -> Vec<MethodRef> {
         let mut candidates: Vec<MethodRef> = Vec::new();
         for method in self.methods(t, n("close")) {
-            if method.ty.params.is_empty() && method.ty.result_ty().id == "Unit" {
+            if method.ty.params.is_empty() && is_close_result(&method.ty.result_ty()) {
                 if method
                     .contract
                     .as_ref()
@@ -592,48 +784,6 @@ impl Checker {
             }
         }
         candidates
-    }
-
-    fn check_with(
-        &mut self,
-        s: &Stmt,
-        name: Name,
-        mutable: bool,
-        value: &Expr,
-        body: &[Stmt],
-    ) -> (bool, bool) {
-        let i = self.expression(value, None);
-        let t = i.t();
-        let held = self.begin_lock(s, value, &t);
-        if !is_invalid_id(&t) && !self.closeable(&t) {
-            let msg = self.with_not_closeable_message(&t);
-            self.type_error(s.pos, msg);
-        }
-        let candidates = self.close_method(&t);
-        if candidates.len() == 1 {
-            self.m().facts_mut().stmts.entry(s.id).or_default().cleanup =
-                Some(candidates[0].clone());
-        } else if candidates.len() > 1 {
-            self.type_error(
-                s.pos,
-                "with cleanup operation is ambiguous; bind the value to a Closeable-typed let first, e.g. let view: Closeable = x",
-            );
-        }
-        let old = self.scope.clone();
-        self.scope = Scope::new(Some(old.clone()));
-        let b = self.bind(name, &t, mutable, s.pos);
-        self.m()
-            .facts_mut()
-            .stmts
-            .entry(s.id)
-            .or_default()
-            .loop_binding = Some(b);
-        let (fall, br) = self.block(body, false);
-        self.scope = old;
-        if held {
-            self.held_locks.pop();
-        }
-        (!i.no_return && fall, i.breaks || br)
     }
 
     pub(crate) fn pattern(&mut self, p: &Pattern, t: &Ty, mutable: bool, source: Option<&Expr>) {
@@ -650,6 +800,7 @@ impl Checker {
                     );
                     return;
                 }
+                self.opaque_denied(p.pos, t, "its fields cannot be destructured here");
                 let fs = fields(t);
                 let mut seen: HashSet<Name> = HashSet::new();
                 for f in pfields {
@@ -715,6 +866,13 @@ impl Checker {
     ) -> (bool, bool) {
         let info = self.expression(value, None);
         let t = info.t();
+        if arms.first().is_some_and(|a| a.chain) && t.id != "<invalid>" && !t.is_std("Optional") {
+            self.type_error(
+                value.pos,
+                format!("`?.` needs an optional receiver, found {t}; write `.` to read a member of a value that is always present"),
+            );
+            return (true, false);
+        }
         if t.kind == Kind::Contract {
             return self.match_contract(pos, arms, &info, body);
         }
@@ -742,6 +900,7 @@ impl Checker {
             );
             return (true, false);
         }
+        self.opaque_denied(pos, &t, "its cases cannot be matched here");
         let all_cases = cases(&t);
         let mut seen: HashSet<Name> = HashSet::new();
         let (mut fall, mut breaks) = (false, false);
@@ -790,7 +949,17 @@ impl Checker {
                         .next()
                         .is_some_and(|b| b.is_ascii_uppercase());
                     let names = case_names(&t);
-                    if arm.bindings.is_empty() && !name.is_empty() && !upper {
+                    if arm.bare {
+                        let binding = arm.bindings[0].name;
+                        self.res_error(
+                            arm.pos,
+                            format!(
+                                "'{binding}' is not a case of {}; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: {}",
+                                t.name,
+                                list(&names, 12)
+                            ),
+                        );
+                    } else if arm.bindings.is_empty() && !name.is_empty() && !upper {
                         self.res_error(
                             arm.pos,
                             format!(
@@ -853,7 +1022,7 @@ impl Checker {
             self.type_error(
                 pos,
                 format!(
-                    "non-exhaustive match; missing cases: {}, or add a final 'case _:' arm; add the arms {}",
+                    "non-exhaustive match; missing cases: {}, or add a final '_:' arm; add the arms {}",
                     list(&missing_cases(&all_cases, &seen), 12),
                     missing_arms(&all_cases, &seen)
                 ),
@@ -894,7 +1063,7 @@ impl Checker {
             } else {
                 self.type_error(
                     arm.pos,
-                    format!("a match on {t} takes literal arms such as 1, \"text\" or true, and a final 'case _:' arm; to bind or compare computed values use if/else"),
+                    format!("a match on {t} takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else"),
                 );
             }
             if !arm.bindings.is_empty() {
@@ -911,7 +1080,7 @@ impl Checker {
         if !covered {
             self.type_error(
                 pos,
-                format!("non-exhaustive match on {t}; add a final 'case _:' arm"),
+                format!("non-exhaustive match on {t}; add a final '_:' arm"),
             );
         }
         (!info.no_return && fall, info.breaks || breaks)
@@ -1207,6 +1376,12 @@ impl Checker {
             let Some(st) = s.ty_opt() else {
                 continue;
             };
+            if st
+                .opaque_module()
+                .is_some_and(|module| module != self.current_file())
+            {
+                continue;
+            }
             if s.kind == SymKind::Type
                 && st.kind == Kind::Alternative
                 && let Some(candidate) = case_of(&st, name)
@@ -1308,6 +1483,41 @@ impl Checker {
         info
     }
 
+    /// `target?` where `target` is `left[index]`: the entry of a map or list, when present.
+    pub(crate) fn probe(&mut self, e: &Expr, target: &Expr) -> Info {
+        let left = match &target.kind {
+            ExprKind::Index { left, .. } => left,
+            ExprKind::Apply {
+                left,
+                value: Some(_),
+                ..
+            } => left,
+            _ => {
+                return Info {
+                    ty: Some(invalid()),
+                    ..Info::default()
+                };
+            }
+        };
+        let mut info = self.expression(target, None);
+        let receiver = self.info_of(left).and_then(|i| i.ty);
+        let entries = receiver.is_some_and(|r| {
+            (r.is_std("List") && r.args.len() == 1) || (r.is_std("Map") && r.args.len() == 2)
+        });
+        info.ty = match info.ty {
+            Some(t) if entries => Some(standard("Optional", vec![t])),
+            Some(t) if t.id == "<invalid>" => Some(t),
+            _ => {
+                self.type_error(
+                    e.pos,
+                    "`?` after an index tests whether a List or Map entry exists; use it as `if var name = place[key]?`",
+                );
+                Some(invalid())
+            }
+        };
+        info
+    }
+
     pub(crate) fn match_expression<'a>(
         &mut self,
         e: &'a Expr,
@@ -1356,6 +1566,7 @@ impl Checker {
         }
         // Infer from independently typed, reachable arms before checking
         // contextual values such as none or []. Keep each arm's checked lexical scope.
+        let mut invalid_arm = false;
         // Each pass reads and updates one arm's state while `self` is borrowed mutably.
         #[allow(clippy::needless_range_loop)]
         for si in 0..states.len() {
@@ -1372,19 +1583,37 @@ impl Checker {
                 }
                 Some(value) => {
                     if !self.contextual(value) {
+                        let before = self.p.diagnostics.len();
                         let info = self.arm_value(value, result.as_ref(), expected);
                         let t = info.t();
+                        invalid_arm = invalid_arm || t.id == "<invalid>";
                         if result.is_none()
                             && t.id != "Never"
                             && crate::inference::inference_type_known(&t, &self.inference_variables)
                         {
-                            result = Some(required_type(&t));
+                            let t = required_type(&t);
+                            result = Some(if arm.chain && !t.is_std("Optional") {
+                                crate::types::standard("Optional", vec![t])
+                            } else {
+                                t
+                            });
                             result_at = value.pos;
                         }
-                        states[si].info = Some(info);
+                        // A chain's present value becomes optional by being checked
+                        // again against the optional result.
+                        let rewrap = arm.chain && !info.t().is_std("Optional");
+                        if rewrap {
+                            self.p.diagnostics.truncate(before);
+                        }
+                        states[si].info = (!rewrap).then_some(info);
                     }
                 }
             }
+        }
+        if result.is_none() && invalid_arm {
+            // An arm already failed, so a contextual arm (`none`, `[]`) has no type to infer
+            // and would only add a second error about the first.
+            result = Some(invalid());
         }
         let (mut fall, mut breaks) = (false, false);
         // Each pass reads and updates one arm's state while `self` is borrowed mutably.
@@ -1396,6 +1625,7 @@ impl Checker {
             let arm = states[si].arm;
             if let Some(value) = &arm.value {
                 let info = match states[si].info.take() {
+                    // A chain's present value becomes optional only here, once the result is known.
                     Some(info) if info.t().kind == Kind::Function => {
                         self.check_expression(value, info, result.as_ref())
                     }

@@ -23,16 +23,16 @@
 Reuse the server's types. `HttpMethod`, `HttpHeaders`, `HttpError`, `Bytes` and `Duration` are exactly the ones `HttpRequest` and `HttpResponse` use, so a handler and a client share vocabulary.
 
 ```manuscript
-from "@std/fetch.ms" import fetch, FetchOptions, json_body
+import fetch, FetchOptions, json_body from "@std/fetch.ms"
 
 type User:
     name: String
 
-def load() -> Result[User, FetchError]:
+fn load() Result[User, FetchError]:
     let response = try fetch("https://example.com/user/1")
     return read_json[User](response)
 
-def create(user: User) -> Result[Int, FetchError]:
+fn create(user: User) Result[Int, FetchError]:
     let response = try fetch(
         "https://example.com/users",
         FetchOptions(method: HttpMethod.Post, body: try json_body(user))

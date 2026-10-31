@@ -1,37 +1,37 @@
-from "@std/test.ms" import expect_true, expect_false, expect_equal
+import expect_true, expect_false, expect_equal from "@std/test.ms"
 
 type CustomerKey:
     id: Int
     label: String
 
 impl Equal for CustomerKey:
-    def equals(other: CustomerKey) -> Bool:
+    fn equals(other: CustomerKey) Bool:
         return self.id == other.id
 
 impl Hashable for CustomerKey:
-    def hash() -> Int: self.id
+    fn hash() Int: self.id
 
 type Version:
     major: Int
 
 impl Comparable for Version:
-    def compare(other: Version) -> Int:
+    fn compare(other: Version) Int:
         return self.major - other.major
 
 interface Merge:
-    def merge(other: Self) -> Int
+    fn merge(other: Self) Int
 
 impl Merge for Version:
-    def merge(other: Version) -> Int:
+    fn merge(other: Version) Int:
         return self.major + other.major
 
-def same[T: Equal](left: T, right: T) -> Bool:
+fn same[T: Equal](left: T, right: T) Bool:
     return left.equals(right)
 
-def lower[T: Comparable](left: T, right: T) -> Bool:
+fn lower[T: Comparable](left: T, right: T) Bool:
     return left.compare(right) < 0
 
-def total[T: Merge](left: T, right: T) -> Int:
+fn total[T: Merge](left: T, right: T) Int:
     return left.merge(right)
 
 test "implementations take their own type":

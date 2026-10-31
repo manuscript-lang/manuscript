@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def add(value: Int) -> Int:\n    return value\n\ndef render() -> String:\n    return f\"héllo { add(value: 2) }\"\n"
-  }
-}

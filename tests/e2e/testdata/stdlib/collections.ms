@@ -1,34 +1,21 @@
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/collections.ms" import (
-    ListBuilder,
-    MapBuilder,
-    SetBuilder,
-    range_by,
-    filled,
-    map_from_entries,
-    flatten
-)
+import expect_equal, expect_false from "@std/test.ms"
+import (range_by, filled, map_from_entries, flatten) from "@std/collections.ms"
 
-def positive(value: Int) -> Bool: value > 0
+fn positive(value: Int) Bool: value > 0
 
-def twice(value: Int) -> Int: value * 2
+fn twice(value: Int) Int: value * 2
 
-def duplicate(value: Int) -> List[Int]: [value, value]
+fn duplicate(value: Int) List[Int]: [value, value]
 
-def sum(accumulator: Int, value: Int) -> Int: accumulator + value
+fn sum(accumulator: Int, value: Int) Int: accumulator + value
 
-def parity(value: Int) -> Int: value % 2
+fn parity(value: Int) Int: value % 2
 
 test "list search callbacks empty identities and folding":
     let list = [-1, 2, 0, 3]
+    try expect_false((list.find(positive) != 2 or list.find_last(positive) != 3))
     try expect_false(
-        (list.find(positive) != some(2) or list.find_last(positive) != some(3))
-    )
-    try expect_false(
-        (
-            list.find_index(positive) != some(1)
-            or list.find_last_index(positive) != some(3)
-        )
+        (list.find_index(positive) != 1 or list.find_last_index(positive) != 3)
     )
     try expect_equal(list.filter(positive).map(twice), [4, 6])
     try expect_equal(([1, 2]).flat_map(duplicate), [1, 1, 2, 2])
@@ -39,7 +26,33 @@ test "list search callbacks empty identities and folding":
     try expect_false(not empty.first().is_none() or not empty.last().is_none())
 
     let groups = ([1, 2, 3]).group_by(parity)
-    try expect_false(groups.get(1) != some([1, 3]) or groups.get(0) != some([2]))
+    try expect_false(groups.get(1) != [1, 3] or groups.get(0) != [2])
+
+test "group_by keeps first-seen key order and element order across few and many buckets":
+    let values = 0..600
+    let few = values.group_by(fn(x: Int) Int: x % 3)
+    try expect_equal(few.keys(), [0, 1, 2])
+
+    var total = 0
+
+    for k in 0..3:
+        let group = few.get(k).get()
+        try expect_equal(group.length(), 200)
+
+        for j in 0..200:
+            try expect_equal(group[j], j * 3 + k)
+            total += group[j]
+
+    try expect_equal(total, 599 * 600 / 2)
+
+    let words = ["b", "a", "b", "c", "a", "b"].group_by(fn(w: String) String: w)
+    try expect_equal(words.keys(), ["b", "a", "c"])
+    try expect_equal(words.get("b"), ["b", "b", "b"])
+    try expect_equal(words.get("c"), ["c"])
+
+    let unique = values.group_by(fn(x: Int) Int: x)
+    try expect_equal(unique.length(), 600)
+    try expect_equal(unique.get(599), [599])
 
 test "list mutation and clone keep separate storage":
     let original = [1, 2, 3]
@@ -58,7 +71,7 @@ test "maps preserve insertion order and overwrite duplicate keys":
     var map = map_from_entries(entries)
     try expect_false(map.keys() != ["a", "b"] or map.values() != [3, 2])
     map.add_default("a", 99)
-    try expect_equal(map.get("a"), some(3))
+    try expect_equal(map.get("a"), 3)
 
     var copy = map.clone()
     copy.remove("a")
@@ -80,14 +93,10 @@ test "collection constructors validate bounds and exact limits":
     try expect_equal((try range_by(3, -1, -1, 4)), [3, 2, 1, 0])
     try expect_equal((try filled("x", 2)), ["x", "x"])
 
-    let invalid: Result[List[Int], CollectionError] = error(
-        CollectionError.InvalidInput
-    )
+    let invalid: List[Int]!CollectionError = error(CollectionError.InvalidInput)
     try expect_equal(range_by(0, 1, 0), invalid)
 
-    let limited: Result[List[Int], CollectionError] = error(
-        CollectionError.LimitExceeded
-    )
+    let limited: List[Int]!CollectionError = error(CollectionError.LimitExceeded)
     try expect_equal(range_by(0, 3, 1, 2), limited)
 
 test "stepped ranges handle full-width spans and minimum negative steps":
@@ -99,9 +108,7 @@ test "stepped ranges handle full-width spans and minimum negative steps":
     try expect_equal((try range_by(maximum, minimum, minimum, 2)), [maximum, -1])
     try expect_equal((try range_by(0, minimum, minimum, 1)), [0])
 
-    let limited: Result[List[Int], CollectionError] = error(
-        CollectionError.LimitExceeded
-    )
+    let limited: List[Int]!CollectionError = error(CollectionError.LimitExceeded)
     try expect_equal(range_by(minimum, maximum, maximum, 2), limited)
 
 test "range counts up by one":
@@ -147,34 +154,16 @@ test "for over range counts without a list":
 
     try expect_equal(skipped, 16)
 
-    var callbacks: List[Callable[[], Int]] = []
+    var callbacks: List[fn() Int] = []
     for index in 0..3:
-        callbacks.append(lambda: index)
-    try expect_equal(callbacks.map(lambda call: call()), [0, 1, 2])
+        callbacks.append(fn: index)
+    try expect_equal(callbacks.map(fn call: call()), [0, 1, 2])
 
 test "huge sizes return LimitExceeded instead of exhausting memory":
-    let limited: Result[List[Int], CollectionError] = error(
-        CollectionError.LimitExceeded
-    )
+    let limited: List[Int]!CollectionError = error(CollectionError.LimitExceeded)
     try expect_equal(filled(1, 9223372036854775807), limited)
     try expect_equal(filled(1, 4611686018427387904, 9223372036854775807), limited)
     try expect_equal(range_by(0, 9223372036854775807, 1), limited)
-
-test "collection builders freeze all accumulated values":
-    var list = ListBuilder[Int]()
-    list.append(1)
-    list.append(2)
-    try expect_false(list.build() != [1, 2] or list.build() != [1, 2])
-
-    var map = MapBuilder[String, Int]()
-    map.add("a", 1)
-    map.add("a", 2)
-    try expect_equal(map.build().get("a"), some(2))
-
-    var set = SetBuilder[Int]()
-    set.add(1)
-    set.add(1)
-    try expect_equal(set.build().values(), [1])
 
 test "imported map add interoperates with with_entry":
     var values = Map[String, Int]()
@@ -189,3 +178,14 @@ test "imported map add interoperates with with_entry":
 test "flatten concatenates lists":
     try expect_equal(flatten([[1, 2], [], [3]]), [1, 2, 3])
     try expect_equal(flatten(List[List[Int]]()), List[Int]())
+
+type JoinPoint:
+    x: Int
+
+test "List join renders any element type":
+    try expect_equal([1.5, 2.5].join(","), "1.5,2.5")
+    try expect_equal([true, false].join("/"), "true/false")
+    try expect_equal(
+        [JoinPoint(1), JoinPoint(2)].join(";"), "JoinPoint(x: 1);JoinPoint(x: 2)"
+    )
+    try expect_equal(List[Int]().join(","), "")

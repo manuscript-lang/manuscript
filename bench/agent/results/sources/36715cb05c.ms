@@ -1,7 +1,7 @@
-from "@std/io.ms" import read_all, stdin, stdout
-from "@std/collections.ms" import range
-from "@std/bytes.ms" import BytesBuilder
-from "@std/bits.ms" import bit_and, bit_or, bit_xor, bit_not, shift_left, shift_right
+import read_all, stdin, stdout from "@std/io.ms"
+import range from "@std/collections.ms"
+import BytesBuilder from "@std/bytes.ms"
+import bit_and, bit_or, bit_xor, bit_not, shift_left, shift_right from "@std/bits.ms"
 
 let WORD = 4294967296
 let HALF = 2147483648
@@ -22,7 +22,7 @@ type AsmError:
     msg: String
 
 impl Error for AsmError:
-    def message() -> String:
+    fn message() String:
         return self.msg
 
 type Operand:
@@ -68,32 +68,32 @@ type Machine:
     outbuf: BytesBuilder
     last: Int
 
-def ch(s: String, i: Int) -> Int:
+fn ch(s: String, i: Int) Int:
     return s.scalar_at(i, some(0))
 
-def sub(s: String, start: Int, end: Int) -> String:
+fn sub(s: String, start: Int, end: Int) String:
     return s.slice(start, end).get("")
 
-def is_digit(c: Int) -> Bool:
+fn is_digit(c: Int) Bool:
     return c >= 48 and c <= 57
 
-def is_ident_start(c: Int) -> Bool:
+fn is_ident_start(c: Int) Bool:
     return (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 95
 
-def is_ident_char(c: Int) -> Bool:
+fn is_ident_char(c: Int) Bool:
     return is_ident_start(c) or is_digit(c) or c == 46
 
-def is_ident(s: String) -> Bool:
+fn is_ident(s: String) Bool:
     let n = s.length()
     if n == 0 or not is_ident_start(ch(s, 0)):
-        return False
+        return false
 
     for i in range(1, n):
         if not is_ident_char(ch(s, i)):
-            return False
-    return True
+            return false
+    return true
 
-def wrap32(v: Int) -> Int:
+fn wrap32(v: Int) Int:
     var m = v % WORD
     if m < 0:
         m += WORD
@@ -101,14 +101,14 @@ def wrap32(v: Int) -> Int:
         m -= WORD
     return m
 
-def bool_int(b: Bool) -> Int:
+fn bool_int(b: Bool) Int:
     if b:
         return 1
 
     return 0
 
 # Register indexes: r0..r7 are 0..7, sp is 8, bp is 9. Returns -1 for any other text.
-def reg_index(name: String) -> Int:
+fn reg_index(name: String) Int:
     if name == "sp":
         return 8
     if name == "bp":
@@ -121,7 +121,7 @@ def reg_index(name: String) -> Int:
 
     return -1
 
-def strip_cr(s: String) -> String:
+fn strip_cr(s: String) String:
     let n = s.length()
     if n > 0 and ch(s, n - 1) == 13:
         return sub(s, 0, n - 1)
@@ -129,7 +129,7 @@ def strip_cr(s: String) -> String:
     return s
 
 # Removes a ';' comment that is not inside a string or character literal.
-def strip_comment(line: String) -> String:
+fn strip_comment(line: String) String:
     let n = line.length()
     var i = 0
     var quote = 0
@@ -144,7 +144,7 @@ def strip_comment(line: String) -> String:
             if c == 34 or c == 39:
                 quote = c
             i += 1
-        elif c == 92:
+        else if c == 92:
             i += 2
         else:
             if c == quote:
@@ -154,7 +154,7 @@ def strip_comment(line: String) -> String:
     return line
 
 # Index just past the character literal that starts at i, or i + 1 if it is not terminated.
-def char_end(s: String, i: Int) -> Int:
+fn char_end(s: String, i: Int) Int:
     let n = s.length()
     var j = i + 1
 
@@ -169,14 +169,14 @@ def char_end(s: String, i: Int) -> Int:
     return i + 1
 
 # Index of the first space or tab at or after 0, or the length of s.
-def word_end(s: String) -> Int:
+fn word_end(s: String) Int:
     var i = 0
     while i < s.length() and ch(s, i) != 32 and ch(s, i) != 9:
         i += 1
     return i
 
 # Length of the label name if s starts with "name:", otherwise 0.
-def label_len(s: String) -> Int:
+fn label_len(s: String) Int:
     let n = s.length()
     if n == 0 or not is_ident_start(ch(s, 0)):
         return 0
@@ -190,7 +190,7 @@ def label_len(s: String) -> Int:
     return 0
 
 # Splits an operand list at commas outside brackets and character literals.
-def split_args(s: String) -> List[String]:
+fn split_args(s: String) List[String]:
     var out = List[String]()
     let n = s.length()
     if n == 0:
@@ -205,13 +205,13 @@ def split_args(s: String) -> List[String]:
 
         if c == 39:
             i = char_end(s, i)
-        elif c == 91:
+        else if c == 91:
             depth += 1
             i += 1
-        elif c == 93:
+        else if c == 93:
             depth -= 1
             i += 1
-        elif c == 44 and depth == 0:
+        else if c == 44 and depth == 0:
             out.append(sub(s, start, i).trim())
             start = i + 1
             i += 1
@@ -222,7 +222,7 @@ def split_args(s: String) -> List[String]:
     return out
 
 # Splits an expression into signed terms such as "+a" and "-1". Each term keeps its sign as the first character.
-def split_terms(text: String) -> List[String]:
+fn split_terms(text: String) List[String]:
     var terms = List[String]()
     let n = text.length()
     var sign = "+"
@@ -234,7 +234,7 @@ def split_terms(text: String) -> List[String]:
 
         if c == 39:
             i = char_end(text, i)
-        elif c == 43 or c == 45:
+        else if c == 43 or c == 45:
             if i > 0:
                 terms.append(sign.concat(sub(text, start, i).trim()))
             sign = sub(text, i, i + 1)
@@ -246,7 +246,7 @@ def split_terms(text: String) -> List[String]:
     terms.append(sign.concat(sub(text, start, n).trim()))
     return terms
 
-def escape_value(c: Int) -> Int:
+fn escape_value(c: Int) Int:
     if c == 110:
         return 10
     if c == 116:
@@ -258,7 +258,7 @@ def escape_value(c: Int) -> Int:
 
     return -1
 
-def char_value(body: String, full: String) -> Result[Int, AsmError]:
+fn char_value(body: String, full: String) Result[Int, AsmError]:
     let n = body.length()
 
     if n >= 3 and ch(body, n - 1) == 39:
@@ -276,9 +276,9 @@ def char_value(body: String, full: String) -> Result[Int, AsmError]:
             if v >= 0:
                 return ok(v)
 
-    return error(AsmError(msg: f"invalid expression '{full}'"))
+    return error(AsmError(msg: "invalid expression '{full}'"))
 
-def digit_value(c: Int) -> Int:
+fn digit_value(c: Int) Int:
     if c >= 48 and c <= 57:
         return c - 48
     if c >= 97 and c <= 102:
@@ -288,7 +288,7 @@ def digit_value(c: Int) -> Int:
 
     return -1
 
-def number_value(body: String, full: String) -> Result[Int, AsmError]:
+fn number_value(body: String, full: String) Result[Int, AsmError]:
     let n = body.length()
     var base = 10
     var start = 0
@@ -296,14 +296,14 @@ def number_value(body: String, full: String) -> Result[Int, AsmError]:
     if n > 2 and ch(body, 0) == 48 and ch(body, 1) == 120:
         base = 16
         start = 2
-    elif n > 2 and ch(body, 0) == 48 and ch(body, 1) == 98:
+    else if n > 2 and ch(body, 0) == 48 and ch(body, 1) == 98:
         base = 2
         start = 2
 
     for i in range(start, n):
         let d = digit_value(ch(body, i))
         if d < 0 or d >= base:
-            return error(AsmError(msg: f"invalid expression '{full}'"))
+            return error(AsmError(msg: "invalid expression '{full}'"))
 
     var v = 0
 
@@ -314,7 +314,7 @@ def number_value(body: String, full: String) -> Result[Int, AsmError]:
 
     return ok(v)
 
-def symbol_value(var a: Asm, name: String) -> Result[Int, AsmError]:
+fn symbol_value(var a: Asm, name: String) Result[Int, AsmError]:
     if a.symbols.contains(name):
         return ok(a.symbols.get_or(name, 0))
     if a.equ_val.contains(name):
@@ -322,7 +322,7 @@ def symbol_value(var a: Asm, name: String) -> Result[Int, AsmError]:
 
     if a.equ_text.contains(name):
         if a.busy.contains(name):
-            return error(AsmError(msg: f"circular definition of '{name}'"))
+            return error(AsmError(msg: "circular definition of '{name}'"))
 
         a.busy.add(name)
 
@@ -331,9 +331,9 @@ def symbol_value(var a: Asm, name: String) -> Result[Int, AsmError]:
         a.equ_val.add(name, v)
         return ok(v)
 
-    return error(AsmError(msg: f"undefined symbol '{name}'"))
+    return error(AsmError(msg: "undefined symbol '{name}'"))
 
-def term_value(var a: Asm, body: String, full: String) -> Result[Int, AsmError]:
+fn term_value(var a: Asm, body: String, full: String) Result[Int, AsmError]:
     let c = ch(body, 0)
     if c == 39:
         return char_value(body, full)
@@ -342,16 +342,16 @@ def term_value(var a: Asm, body: String, full: String) -> Result[Int, AsmError]:
     if is_ident(body):
         return symbol_value(var a, body)
 
-    return error(AsmError(msg: f"invalid expression '{full}'"))
+    return error(AsmError(msg: "invalid expression '{full}'"))
 
-def eval_expr(var a: Asm, text: String) -> Result[Int, AsmError]:
+fn eval_expr(var a: Asm, text: String) Result[Int, AsmError]:
     let full = text.trim()
     var total = 0
 
     for t in split_terms(full):
         let body = sub(t, 1, t.length())
         if body.length() == 0:
-            return error(AsmError(msg: f"invalid expression '{full}'"))
+            return error(AsmError(msg: "invalid expression '{full}'"))
 
         let v = try term_value(var a, body, full)
 
@@ -362,7 +362,7 @@ def eval_expr(var a: Asm, text: String) -> Result[Int, AsmError]:
 
     return ok(wrap32(total))
 
-def parse_string(s: String) -> Result[List[Int], AsmError]:
+fn parse_string(s: String) Result[List[Int], AsmError]:
     let n = s.length()
     var out = List[Int]()
     if n < 2 or ch(s, 0) != 34 or ch(s, n - 1) != 34:
@@ -383,7 +383,7 @@ def parse_string(s: String) -> Result[List[Int], AsmError]:
 
             out.append(v)
             i += 2
-        elif c == 34:
+        else if c == 34:
             return error(AsmError(msg: "invalid string"))
         else:
             let bytes = sub(s, i, i + 1).to_bytes()
@@ -393,7 +393,7 @@ def parse_string(s: String) -> Result[List[Int], AsmError]:
 
     return ok(out)
 
-def parse_budget(s: String) -> Int:
+fn parse_budget(s: String) Int:
     let n = s.length()
     if n == 0:
         return -1
@@ -414,26 +414,26 @@ def parse_budget(s: String) -> Int:
 
     return v
 
-def is_int_token(t: String) -> Bool:
+fn is_int_token(t: String) Bool:
     let n = t.length()
     var start = 0
     if n > 0 and ch(t, 0) == 45:
         start = 1
     if start >= n:
-        return False
+        return false
 
     for i in range(start, n):
         if not is_digit(ch(t, i)):
-            return False
-    return True
+            return false
+    return true
 
 # Value of a token accepted by is_int_token, wrapped to 32 bits.
-def int_value(t: String) -> Int:
-    var neg = False
+fn int_value(t: String) Int:
+    var neg = false
     var start = 0
 
     if ch(t, 0) == 45:
-        neg = True
+        neg = true
         start = 1
 
     var acc = 0
@@ -443,7 +443,7 @@ def int_value(t: String) -> Int:
         acc = (WORD - acc) % WORD
     return wrap32(acc)
 
-def parse_operand(arg: String) -> Result[Operand, AsmError]:
+fn parse_operand(arg: String) Result[Operand, AsmError]:
     if arg.length() == 0:
         return error(AsmError(msg: "invalid operand ''"))
 
@@ -455,11 +455,11 @@ def parse_operand(arg: String) -> Result[Operand, AsmError]:
 
     let n = arg.length()
     if n < 2 or ch(arg, n - 1) != 93:
-        return error(AsmError(msg: f"invalid operand '{arg}'"))
+        return error(AsmError(msg: "invalid operand '{arg}'"))
 
     let content = sub(arg, 1, n - 1).trim()
     if content.length() == 0:
-        return error(AsmError(msg: f"invalid operand '{arg}'"))
+        return error(AsmError(msg: "invalid operand '{arg}'"))
 
     var base = -1
     var exprs = List[String]()
@@ -468,7 +468,7 @@ def parse_operand(arg: String) -> Result[Operand, AsmError]:
         let body = sub(t, 1, t.length())
         let idx = reg_index(body)
         if body.length() == 0 or (idx >= 0 and (ch(t, 0) == 45 or base >= 0)):
-            return error(AsmError(msg: f"invalid operand '{arg}'"))
+            return error(AsmError(msg: "invalid operand '{arg}'"))
 
         if idx >= 0:
             base = idx
@@ -477,7 +477,7 @@ def parse_operand(arg: String) -> Result[Operand, AsmError]:
 
     return ok(Operand(kind: K_MEM, reg: base, text: exprs.join("")))
 
-def opcode_of(name: String) -> Int:
+fn opcode_of(name: String) Int:
     if name == "jz":
         return 21
     if name == "jnz":
@@ -488,7 +488,7 @@ def opcode_of(name: String) -> Int:
             return i
     return -1
 
-def arity(opc: Int) -> Int:
+fn arity(opc: Int) Int:
     if opc <= 12 or opc == 17:
         return 2
     if opc == 28 or opc == 32 or opc == 33:
@@ -497,9 +497,9 @@ def arity(opc: Int) -> Int:
     return 1
 
 # Operand classes allowed for an instruction, checked after the operand count.
-def shape_ok(opc: Int, ops: List[Operand]) -> Bool:
+fn shape_ok(opc: Int, ops: List[Operand]) Bool:
     if arity(opc) == 0:
-        return True
+        return true
 
     let k0 = ops.get(0).kind
 
@@ -513,30 +513,28 @@ def shape_ok(opc: Int, ops: List[Operand]) -> Bool:
         return k0 == K_REG
 
     if opc == 18 or opc == 30 or opc == 31:
-        return True
+        return true
     if opc >= 20 and opc <= 27:
         return k0 == K_IMM
 
     return k0 == K_REG
 
-def defined(a: Asm, name: String) -> Bool:
+fn defined(a: Asm, name: String) Bool:
     return a.symbols.contains(name) or a.seen_equ.contains(name)
 
-def check_data_size(a: Asm) -> Result[Int, AsmError]:
+fn check_data_size(a: Asm) Result[Int, AsmError]:
     if a.dcount > MEM_WORDS:
         return error(AsmError(msg: "data section too large"))
 
     return ok(0)
 
-def instruction(var a: Asm, ln: Int, name: String, rest: String) -> Result[
-    Int, AsmError
-]:
+fn instruction(var a: Asm, ln: Int, name: String, rest: String) Result[Int, AsmError]:
     if a.section == 1:
         return error(AsmError(msg: "instruction in data section"))
 
     let opc = opcode_of(name)
     if opc < 0:
-        return error(AsmError(msg: f"unknown mnemonic '{name}'"))
+        return error(AsmError(msg: "unknown mnemonic '{name}'"))
 
     let args = split_args(rest)
     var ops = List[Operand]()
@@ -546,9 +544,9 @@ def instruction(var a: Asm, ln: Int, name: String, rest: String) -> Result[
         ops.append(o)
 
     if ops.length() != arity(opc):
-        return error(AsmError(msg: f"wrong number of operands for '{name}'"))
+        return error(AsmError(msg: "wrong number of operands for '{name}'"))
     if not shape_ok(opc, ops):
-        return error(AsmError(msg: f"invalid operands for '{name}'"))
+        return error(AsmError(msg: "invalid operands for '{name}'"))
 
     a.items.append(
         Item(
@@ -559,7 +557,7 @@ def instruction(var a: Asm, ln: Int, name: String, rest: String) -> Result[
     a.ninstr += 1
     return ok(0)
 
-def data_word(var a: Asm, ln: Int, rest: String) -> Result[Int, AsmError]:
+fn data_word(var a: Asm, ln: Int, rest: String) Result[Int, AsmError]:
     if a.section == 0:
         return error(AsmError(msg: "data directive in text section"))
 
@@ -577,9 +575,7 @@ def data_word(var a: Asm, ln: Int, rest: String) -> Result[Int, AsmError]:
     a.dcount += words
     return check_data_size(a)
 
-def data_string(var a: Asm, ln: Int, zero_term: Bool, rest: String) -> Result[
-    Int, AsmError
-]:
+fn data_string(var a: Asm, ln: Int, zero_term: Bool, rest: String) Result[Int, AsmError]:
     if a.section == 0:
         return error(AsmError(msg: "data directive in text section"))
 
@@ -597,7 +593,7 @@ def data_string(var a: Asm, ln: Int, zero_term: Bool, rest: String) -> Result[
     a.dcount += words
     return check_data_size(a)
 
-def data_space(var a: Asm, ln: Int, rest: String) -> Result[Int, AsmError]:
+fn data_space(var a: Asm, ln: Int, rest: String) Result[Int, AsmError]:
     if a.section == 0:
         return error(AsmError(msg: "data directive in text section"))
 
@@ -607,7 +603,7 @@ def data_space(var a: Asm, ln: Int, rest: String) -> Result[Int, AsmError]:
 
     let count = try eval_expr(var a, args.get(0))
     if count < 0:
-        return error(AsmError(msg: f"invalid operand '{args.get(0)}'"))
+        return error(AsmError(msg: "invalid operand '{args.get(0)}'"))
 
     var fill = "0"
     if args.length() == 2:
@@ -624,10 +620,10 @@ def data_space(var a: Asm, ln: Int, rest: String) -> Result[Int, AsmError]:
     a.dcount += count
     return check_data_size(a)
 
-def directive(var a: Asm, ln: Int, word: String, rest: String) -> Result[Int, AsmError]:
+fn directive(var a: Asm, ln: Int, word: String, rest: String) Result[Int, AsmError]:
     if word == ".text" or word == ".data":
         if rest.length() > 0:
-            return error(AsmError(msg: f"invalid operand '{rest}'"))
+            return error(AsmError(msg: "invalid operand '{rest}'"))
 
         if word == ".text":
             a.section = 0
@@ -639,7 +635,7 @@ def directive(var a: Asm, ln: Int, word: String, rest: String) -> Result[Int, As
     if word == ".budget":
         let v = parse_budget(rest)
         if v < 0:
-            return error(AsmError(msg: f"invalid operand '{rest}'"))
+            return error(AsmError(msg: "invalid operand '{rest}'"))
 
         a.budget = v
         return ok(0)
@@ -651,11 +647,11 @@ def directive(var a: Asm, ln: Int, word: String, rest: String) -> Result[Int, As
 
         let nm = args.get(0)
         if not is_ident(nm):
-            return error(AsmError(msg: f"invalid operand '{nm}'"))
+            return error(AsmError(msg: "invalid operand '{nm}'"))
         if reg_index(nm) >= 0:
-            return error(AsmError(msg: f"reserved name '{nm}'"))
+            return error(AsmError(msg: "reserved name '{nm}'"))
         if defined(a, nm):
-            return error(AsmError(msg: f"duplicate symbol '{nm}'"))
+            return error(AsmError(msg: "duplicate symbol '{nm}'"))
 
         a.seen_equ.add(nm)
         return ok(0)
@@ -663,24 +659,24 @@ def directive(var a: Asm, ln: Int, word: String, rest: String) -> Result[Int, As
     if word == ".word":
         return data_word(var a, ln, rest)
     if word == ".ascii":
-        return data_string(var a, ln, False, rest)
+        return data_string(var a, ln, false, rest)
     if word == ".asciz":
-        return data_string(var a, ln, True, rest)
+        return data_string(var a, ln, true, rest)
     if word == ".space":
         return data_space(var a, ln, rest)
 
-    return error(AsmError(msg: f"unknown directive '{word}'"))
+    return error(AsmError(msg: "unknown directive '{word}'"))
 
-def line_pass1(var a: Asm, ln: Int, raw: String) -> Result[Int, AsmError]:
+fn line_pass1(var a: Asm, ln: Int, raw: String) Result[Int, AsmError]:
     var body = raw.trim()
     var k = label_len(body)
 
     while k > 0:
         let name = sub(body, 0, k)
         if reg_index(name) >= 0:
-            return error(AsmError(msg: f"reserved name '{name}'"))
+            return error(AsmError(msg: "reserved name '{name}'"))
         if defined(a, name):
-            return error(AsmError(msg: f"duplicate symbol '{name}'"))
+            return error(AsmError(msg: "duplicate symbol '{name}'"))
 
         if a.section == 0:
             a.symbols.add(name, a.ninstr)
@@ -703,17 +699,17 @@ def line_pass1(var a: Asm, ln: Int, raw: String) -> Result[Int, AsmError]:
     return instruction(var a, ln, word, rest)
 
 # Value of an operand's expression: the immediate, or the memory displacement.
-def operand_value(var a: Asm, o: Operand) -> Result[Int, AsmError]:
+fn operand_value(var a: Asm, o: Operand) Result[Int, AsmError]:
     if o.kind == K_MEM and o.text.length() == 0:
         return ok(0)
 
     return eval_expr(var a, o.text)
 
-def is_jump(opc: Int) -> Bool:
+fn is_jump(opc: Int) Bool:
     return opc >= 20 and opc <= 27
 
 # Pass 2 for one item. Instructions append 8 slots to code: op, line, then (kind, reg, value) for two operands.
-def item_pass2(var a: Asm, var code: List[Int], var mem: List[Int], item: Item) -> Result[
+fn item_pass2(var a: Asm, var code: List[Int], var mem: List[Int], item: Item) Result[
     Int, AsmError
 ]:
     if item.kind == 0:
@@ -756,7 +752,7 @@ def item_pass2(var a: Asm, var code: List[Int], var mem: List[Int], item: Item) 
         mem.set(item.addr + j, fill)
     return ok(0)
 
-def alu(opc: Int, x: Int, y: Int) -> Result[Int, AsmError]:
+fn alu(opc: Int, x: Int, y: Int) Result[Int, AsmError]:
     if opc == 1:
         return ok(wrap32(x + y))
     if opc == 2:
@@ -787,28 +783,28 @@ def alu(opc: Int, x: Int, y: Int) -> Result[Int, AsmError]:
 
     return ok(shift_right(x, c))
 
-def mem_read(var vm: Machine, addr: Int) -> Result[Int, AsmError]:
+fn mem_read(var vm: Machine, addr: Int) Result[Int, AsmError]:
     if addr < 0 or addr >= MEM_WORDS:
-        return error(AsmError(msg: f"memory access out of range: {addr}"))
+        return error(AsmError(msg: "memory access out of range: {addr}"))
 
     return ok(vm.mem.get(addr))
 
-def mem_write(var vm: Machine, addr: Int, value: Int) -> Result[Int, AsmError]:
+fn mem_write(var vm: Machine, addr: Int, value: Int) Result[Int, AsmError]:
     if addr < 0 or addr >= MEM_WORDS:
-        return error(AsmError(msg: f"memory access out of range: {addr}"))
+        return error(AsmError(msg: "memory access out of range: {addr}"))
 
     vm.mem.set(addr, value)
     return ok(0)
 
 # Effective address of operand slot s in the instruction at base.
-def ea(var vm: Machine, base: Int, s: Int) -> Int:
+fn ea(var vm: Machine, base: Int, s: Int) Int:
     let r = vm.code.get(base + 3 + 3 * s)
     var addr = vm.code.get(base + 4 + 3 * s)
     if r >= 0:
         addr += vm.regs.get(r)
     return wrap32(addr)
 
-def read_op(var vm: Machine, base: Int, s: Int) -> Result[Int, AsmError]:
+fn read_op(var vm: Machine, base: Int, s: Int) Result[Int, AsmError]:
     let k = vm.code.get(base + 2 + 3 * s)
     if k == K_REG:
         return ok(vm.regs.get(vm.code.get(base + 3 + 3 * s)))
@@ -818,7 +814,7 @@ def read_op(var vm: Machine, base: Int, s: Int) -> Result[Int, AsmError]:
     let addr = ea(var vm, base, s)
     return mem_read(var vm, addr)
 
-def write_op(var vm: Machine, base: Int, s: Int, value: Int) -> Result[Int, AsmError]:
+fn write_op(var vm: Machine, base: Int, s: Int, value: Int) Result[Int, AsmError]:
     let k = vm.code.get(base + 2 + 3 * s)
 
     if k == K_REG:
@@ -828,9 +824,9 @@ def write_op(var vm: Machine, base: Int, s: Int, value: Int) -> Result[Int, AsmE
     let addr = ea(var vm, base, s)
     return mem_write(var vm, addr, value)
 
-def jump_taken(opc: Int, z: Int, l: Int) -> Bool:
+fn jump_taken(opc: Int, z: Int, l: Int) Bool:
     if opc == 20:
-        return True
+        return true
     if opc == 21:
         return z == 1
     if opc == 22:
@@ -845,7 +841,7 @@ def jump_taken(opc: Int, z: Int, l: Int) -> Bool:
     return l == 0
 
 # Executes one instruction. Ok(1) means halt; an error is a trap message.
-def step(var vm: Machine) -> Result[Int, AsmError]:
+fn step(var vm: Machine) Result[Int, AsmError]:
     let base = vm.pc * 8
     let opc = vm.code.get(base)
     var next = vm.pc + 1
@@ -853,32 +849,32 @@ def step(var vm: Machine) -> Result[Int, AsmError]:
     if opc == 0:
         let v = try read_op(var vm, base, 1)
         let stored = try write_op(var vm, base, 0, v)
-    elif opc <= 11:
+    else if opc <= 11:
         let src = try read_op(var vm, base, 1)
         let dst = vm.code.get(base + 3)
         let res = try alu(opc, vm.regs.get(dst), src)
         vm.regs.set(dst, res)
-    elif opc == 12:
+    else if opc == 12:
         let src = try read_op(var vm, base, 1)
         let x = vm.regs.get(vm.code.get(base + 3))
         vm.z = bool_int(x == src)
         vm.l = bool_int(x < src)
-    elif opc >= 13 and opc <= 16:
+    else if opc >= 13 and opc <= 16:
         let dst = vm.code.get(base + 3)
         let x = vm.regs.get(dst)
 
         if opc == 13:
             vm.regs.set(dst, wrap32(0 - x))
-        elif opc == 14:
+        else if opc == 14:
             vm.regs.set(dst, bit_not(x))
-        elif opc == 15:
+        else if opc == 15:
             vm.regs.set(dst, wrap32(x + 1))
         else:
             vm.regs.set(dst, wrap32(x - 1))
-    elif opc == 17:
+    else if opc == 17:
         let addr = ea(var vm, base, 1)
         vm.regs.set(vm.code.get(base + 3), addr)
-    elif opc == 18:
+    else if opc == 18:
         let v = try read_op(var vm, base, 0)
         let sp = vm.regs.get(8)
         if sp <= 0:
@@ -887,7 +883,7 @@ def step(var vm: Machine) -> Result[Int, AsmError]:
         vm.regs.set(8, sp - 1)
 
         let stored = try mem_write(var vm, sp - 1, v)
-    elif opc == 19:
+    else if opc == 19:
         let sp = vm.regs.get(8)
         if sp >= MEM_WORDS:
             return error(AsmError(msg: "stack underflow"))
@@ -896,11 +892,11 @@ def step(var vm: Machine) -> Result[Int, AsmError]:
         vm.regs.set(8, sp + 1)
 
         let stored = try write_op(var vm, base, 0, v)
-    elif opc >= 20 and opc <= 26:
+    else if opc >= 20 and opc <= 26:
         let target = try read_op(var vm, base, 0)
         if jump_taken(opc, vm.z, vm.l):
             next = target
-    elif opc == 27:
+    else if opc == 27:
         let target = try read_op(var vm, base, 0)
         let sp = vm.regs.get(8)
         if sp <= 0:
@@ -911,14 +907,14 @@ def step(var vm: Machine) -> Result[Int, AsmError]:
 
         let stored = try mem_write(var vm, sp - 1, ret_addr)
         next = target
-    elif opc == 28:
+    else if opc == 28:
         let sp = vm.regs.get(8)
         if sp >= MEM_WORDS:
             return error(AsmError(msg: "stack underflow"))
 
         next = try mem_read(var vm, sp)
         vm.regs.set(8, sp + 1)
-    elif opc == 29:
+    else if opc == 29:
         if vm.in_pos >= vm.inputs.length():
             return error(AsmError(msg: "input exhausted"))
 
@@ -926,19 +922,19 @@ def step(var vm: Machine) -> Result[Int, AsmError]:
         vm.in_pos += 1
 
         let stored = try write_op(var vm, base, 0, v)
-    elif opc == 30:
+    else if opc == 30:
         let v = try read_op(var vm, base, 0)
         vm.outbuf.concat(v.to_string_radix(10).to_bytes())
         vm.outbuf.append(10)
         vm.last = 10
-    elif opc == 31:
+    else if opc == 31:
         let v = try read_op(var vm, base, 0)
         if v < 0 or v > 127:
             return error(AsmError(msg: "invalid character"))
 
         vm.outbuf.append(v)
         vm.last = v
-    elif opc == 32:
+    else if opc == 32:
         vm.steps += 1
         return ok(1)
 
@@ -946,30 +942,30 @@ def step(var vm: Machine) -> Result[Int, AsmError]:
     vm.steps += 1
     return ok(0)
 
-def trap_text(vm: Machine, msg: String) -> String:
+fn trap_text(vm: Machine, msg: String) String:
     var line = "-"
     if vm.pc >= 0 and vm.pc < vm.n:
-        line = f"{vm.code.get(vm.pc * 8 + 1)}"
-    return f"-- trap: {msg} (pc={vm.pc} line={line}) after {vm.steps} steps"
+        line = "{vm.code.get(vm.pc * 8 + 1)}"
+    return "-- trap: {msg} (pc={vm.pc} line={line}) after {vm.steps} steps"
 
 # Runs until halt or trap and returns the first summary line.
-def run(var vm: Machine) -> String:
-    while True:
+fn run(var vm: Machine) String:
+    while true:
         if vm.steps == vm.budget:
             return trap_text(vm, "budget exceeded")
         if vm.pc < 0 or vm.pc >= vm.n:
-            return f"-- trap: pc out of range (pc={vm.pc} line=-) after {vm.steps} steps"
+            return "-- trap: pc out of range (pc={vm.pc} line=-) after {vm.steps} steps"
 
         let r = step(var vm)
         if r.is_error():
             return trap_text(vm, r.err().msg)
         if r.get(0) == 1:
-            return f"-- halted after {vm.steps} steps"
+            return "-- halted after {vm.steps} steps"
 
     return ""
 
 # Records every .equ name and expression before pass 1, so .space counts can use constants defined further down.
-def prescan_equ(var a: Asm, raw: String) -> Int:
+fn prescan_equ(var a: Asm, raw: String) Int:
     var body = raw.trim()
     var k = label_len(body)
 
@@ -990,12 +986,12 @@ def prescan_equ(var a: Asm, raw: String) -> Int:
         a.equ_text.add(args.get(0), args.get(1))
     return 0
 
-def report(ln: Int, msg: String) -> Int:
-    stdout().write(f"asm error line {ln}: {msg}\n")
+fn report(ln: Int, msg: String) Int:
+    stdout().write("asm error line {ln}: {msg}\n")
     stdout().flush()
     return 0
 
-export def main() -> Int:
+export fn main() Int:
     let data = read_all(stdin()).get()
     let lines = data.decode_utf8().get("").split("\n")
     var src_end = lines.length()
@@ -1055,7 +1051,7 @@ export def main() -> Int:
     stdout().write_bytes(body)
 
     let rv = vm.regs
-    let summary = f"{status}\nregs: r0={rv.get(0)} r1={rv.get(1)} r2={rv.get(2)} r3={rv.get(3)} r4={rv.get(4)} r5={rv.get(5)} r6={rv.get(6)} r7={rv.get(7)} sp={rv.get(8)} bp={rv.get(9)}\nflags: Z={vm.z} L={vm.l}\n"
+    let summary = "{status}\nregs: r0={rv.get(0)} r1={rv.get(1)} r2={rv.get(2)} r3={rv.get(3)} r4={rv.get(4)} r5={rv.get(5)} r6={rv.get(6)} r7={rv.get(7)} sp={rv.get(8)} bp={rv.get(9)}\nflags: Z={vm.z} L={vm.l}\n"
     stdout().write(summary)
     stdout().flush()
     return 0

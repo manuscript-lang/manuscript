@@ -24,12 +24,12 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "implementation of message is declared var def but Error declares it def; an operation that changes its receiver is declared `var def` in the interface too",
+          "message": "implementation of message is declared var fn but Error declares it fn; an operation that changes its receiver is declared `var fn` in the interface too",
           "position": {
             "file": "error-categories.ms",
             "line": 34,
-            "column": 13,
-            "offset": 1371
+            "column": 12,
+            "offset": 1369
           }
         }
       ]

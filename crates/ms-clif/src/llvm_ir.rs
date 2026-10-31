@@ -61,6 +61,17 @@ struct Def {
     avx2: Option<(String, String)>,
 }
 
+/// Body lines above which a function is compiled without LLVM's optimizer (`optnone`): SROA, the
+/// SLP vectorizer and the code generator grow faster than linearly with one function's size, so
+/// a generated function of thousands of statements took minutes. Hand-written functions are far
+/// below this; a function above it is run-once straight-line code in practice.
+const HUGE_FUNCTION_LINES: usize = 100_000;
+
+/// Whether a function body is long enough to skip optimization.
+fn is_huge(body: &str) -> bool {
+    body.bytes().filter(|&b| b == b'\n').count() > HUGE_FUNCTION_LINES
+}
+
 /// Symbol suffix of a function's x86-64-v3 (AVX2, FMA) copy.
 pub(crate) const AVX2_SUFFIX: &str = ".avx2";
 /// Symbol suffix of a dispatched function's baseline copy.
@@ -425,14 +436,30 @@ struct Tr<'a> {
     calls: Vec<bool>,
     /// `(from, to)` layout positions of the branches that go back to an earlier or the same block.
     back_edges: Vec<(usize, usize)>,
+    /// `(from, to)` layout positions of every branch, and per block position: it ends the function
+    /// (a return) or calls a fault.
+    edges: Vec<(usize, usize)>,
+    returns: Vec<bool>,
+    faults: Vec<bool>,
 }
 
 impl<'a> Tr<'a> {
-    /// Whether some loop addresses list elements and calls nothing: the loops LLVM may vectorize.
-    /// A loop is the layout range from a branch target to the branch back to it.
+    /// Whether some loop addresses list elements, calls nothing and has a single way out: the
+    /// loops LLVM may vectorize. A loop is the layout range from a branch target to the branch
+    /// back to it. A search loop that returns or breaks early has a second way out and stays
+    /// scalar, so a function holding only such loops keeps one copy and can be inlined.
     fn has_element_loop(&self) -> bool {
         self.back_edges.iter().any(|&(from, to)| {
-            self.elements[to..=from].iter().any(|&e| e) && !self.calls[to..=from].iter().any(|&c| c)
+            let range = to..=from;
+            let exits = self
+                .edges
+                .iter()
+                .filter(|&&(f, t)| range.contains(&f) && !range.contains(&t) && !self.faults[t])
+                .count()
+                + self.returns[to..=from].iter().filter(|&&r| r).count();
+            self.elements[to..=from].iter().any(|&e| e)
+                && !self.calls[to..=from].iter().any(|&c| c)
+                && exits <= 1
         })
     }
 
@@ -539,8 +566,11 @@ impl<'a> Tr<'a> {
     fn target(&mut self, bc: ir::BlockCall) -> String {
         let pool = &self.f.dfg.value_lists;
         let blk = bc.block(pool);
-        if let Some(&to) = self.order.get(&blk).filter(|&&to| to <= self.at) {
-            self.back_edges.push((self.at, to));
+        if let Some(&to) = self.order.get(&blk) {
+            self.edges.push((self.at, to));
+            if to <= self.at {
+                self.back_edges.push((self.at, to));
+            }
         }
         let args: Vec<String> = bc
             .args(pool)
@@ -746,6 +776,7 @@ impl<'a> Tr<'a> {
                     self.calls[self.at] = true;
                 }
                 if fault_function(&name) {
+                    self.faults[self.at] = true;
                     // Keeps fault sites distinct, so LLVM neither merges them (which drops the
                     // line of a fault in a trace) nor hoists them.
                     self.sites += 1;
@@ -795,6 +826,7 @@ impl<'a> Tr<'a> {
             }
             InstructionData::MultiAry { args, .. } => {
                 assert_eq!(opc, Opcode::Return, "multi-ary {opc}");
+                self.returns[self.at] = true;
                 let vals: Vec<Value> = args.as_slice(&self.f.dfg.value_lists).to_vec();
                 self.ret(&vals);
             }
@@ -1119,6 +1151,9 @@ impl LlvmModule {
             elements: vec![false; blocks.len()],
             calls: vec![false; blocks.len()],
             back_edges: Vec::new(),
+            edges: Vec::new(),
+            returns: vec![false; blocks.len()],
+            faults: vec![false; blocks.len()],
         };
         // Entry parameters are the function parameters; other block parameters are phis.
         let mut params = Vec::new();
@@ -1324,6 +1359,8 @@ impl LlvmModule {
             }
             let header = if deep.contains(&d.name) {
                 d.header.replacen(" #0 ", " #1 ", 1)
+            } else if is_huge(&d.body) {
+                d.header.replacen(" #0 ", " #4 ", 1)
             } else {
                 d.header.clone()
             };
@@ -1369,6 +1406,7 @@ impl LlvmModule {
         }
         s.push_str("attributes #0 = { \"frame-pointer\"=\"all\" nounwind }\n");
         s.push_str("attributes #1 = { \"frame-pointer\"=\"all\" nounwind noinline }\n");
+        s.push_str("attributes #4 = { \"frame-pointer\"=\"all\" nounwind noinline optnone }\n");
         s.push_str("attributes #2 = { \"frame-pointer\"=\"all\" nounwind noimplicitfloat }\n");
         s.push_str("attributes #3 = { \"frame-pointer\"=\"all\" nounwind noinline \"target-features\"=\"+avx,+avx2,+fma,+f16c,+bmi,+bmi2\" }\n");
         if uses_level {
@@ -1444,6 +1482,12 @@ mod tests {
             .map(|n| format!("ms.glue.{n}.drop"))
             .collect();
         assert_eq!(glue_module(&edges).deep_glue(), expected);
+    }
+
+    #[test]
+    fn only_a_huge_body_skips_optimization() {
+        assert!(!is_huge(&"  ret void\n".repeat(HUGE_FUNCTION_LINES)));
+        assert!(is_huge(&"  ret void\n".repeat(HUGE_FUNCTION_LINES + 1)));
     }
 
     #[test]

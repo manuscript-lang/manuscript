@@ -1,9 +1,9 @@
 # conform: tags=control-flow,faults,formatter,modules,mutation,parser,stdlib-faults,tier-stdlib
 # conform: phase=parse
 # conform: origin=bench/lists/repro-cleared-tail.ms
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
-export def main() -> Int:
+export fn main() Int:
     var values = [1, 2, 3]
     var total = 0
     var count = 0

@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Entry:
     name: String
@@ -18,10 +18,10 @@ test "replace moves owned records":
     try expect_equal(entries.length(), 2)
 
 test "replace takes an optional slot":
-    var slots: List[Optional[String]] = ["a", "b"]
+    var slots: List[String?] = ["a", "b"]
     let taken = slots.replace(0, none)
-    try expect_equal(taken, some("a"))
-    try expect_equal(slots, [none, some("b")])
+    try expect_equal(taken, "a")
+    try expect_equal(slots, [none, "b"])
 
 test "swap exchanges two elements":
     var items = ["a", "b", "c", "d"]
@@ -39,9 +39,9 @@ test "swap moves records without copying":
     try expect_equal(entries.get(1).weight, 1)
 
 test "replace takes a scalar optional slot":
-    var slots: List[Optional[Int]] = [1, 2]
-    try expect_equal(slots.replace(1, none), some(2))
-    try expect_equal(slots, [some(1), none])
+    var slots: List[Int?] = [1, 2]
+    try expect_equal(slots.replace(1, none), 2)
+    try expect_equal(slots, [1, none])
 
 test "swap exchanges scalars, counting negative indexes from the end":
     var numbers = [1, 2, 3, 4]
@@ -52,6 +52,6 @@ test "swap exchanges scalars, counting negative indexes from the end":
     numbers.swap(1, 1)
     try expect_equal(numbers, [4, 3, 2, 1])
 
-    var flags = [True, False]
+    var flags = [true, false]
     flags.swap(0, -1)
-    try expect_equal(flags, [False, True])
+    try expect_equal(flags, [false, true])

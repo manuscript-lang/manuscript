@@ -1,61 +1,55 @@
-# conform: tags=control-flow,faults,formatter,interpolation,modules,parser,records,stdlib-io,stdlib-json,stdlib-log,stdlib-process,strings,tier-io,try-result,with-cleanup
+# conform: tags=control-flow,faults,formatter,interpolation,modules,parser,records,stdlib-io,stdlib-json,stdlib-log,stdlib-process,strings,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/logging/main.ms
-from "@std/log.ms" import Logger, LogLevel, create, bind, record, stdout_transport, file_transport
-from "@std/json.ms" import JsonValue
-from "@std/process.ms" import arguments
-from "@std/io.ms" import stderr
-from "./records.ms" import emit
+import Logger, LogLevel, create, record, stdout_transport, file_transport from "@std/log.ms"
+import JsonValue from "@std/json.ms"
+import arguments from "@std/process.ms"
+import stderr from "@std/io.ms"
+import emit from "./records.ms"
 
-type Service:
-    service: String
-
-def exercise(mode: String, path: String) -> Result[Unit, Error]:
-    let bindings = Service("api")
-
+fn exercise(mode: String, path: String) Unit!:
     if (mode == "file" or mode == "missing"):
-        with let transport = try file_transport(path):
-            let logger = try create(transport, timestamp: False)
-                | try bind(bindings)
+        var root = try create(try file_transport(path), timestamp: false)
+        let logger = try root.child_json("\{\"service\":\"api\"\}")
+        try emit(logger)
+        try logger.flush()
+        root.close()
+        return ok(unit)
+
+    if mode == "limit":
+        let logger = try create(stdout_transport(), max_bytes: 1)
+        try logger.info("too large")
+    else if mode == "closed":
+        var root = try create(stdout_transport())
+        let logger = try root.child_json("\{\"service\":\"api\"\}")
+        root.close()
+        try logger.info("closed")
+    else:
+        let root = try create(stdout_transport())
+        let logger = try root.child_json("\{\"service\":\"api\"\}")
+
+        if mode == "invalid":
+            try record(
+                logger, level: LogLevel.Info, message: "invalid",
+                fields: JsonValue.NumberValue("NaN")
+            )
+        else:
             try emit(logger)
             try logger.flush()
 
-        return ok(())
+    var logger = try create(stdout_transport(), timestamp: false)
+    try logger.info("still open")
+    logger.close()
+    return ok(unit)
 
-    with let transport = stdout_transport():
-        if mode == "limit":
-            let logger = try create(transport, max_bytes: 1)
-            try logger.info("too large")
-        else:
-            let logger = try create(transport)
-                | try bind(bindings)
-
-            if mode == "invalid":
-                try record(
-                    logger, level: LogLevel.Info, message: "invalid",
-                    fields: JsonValue.NumberValue("NaN")
-                )
-            elif mode == "closed":
-                transport.close()
-                try logger.info("closed")
-            else:
-                try emit(logger)
-                try logger.flush()
-
-    with let transport = stdout_transport():
-        let logger = try create(transport, timestamp: False)
-        try logger.info("still open")
-
-    return ok(())
-
-export def main() -> Int:
+export fn main() Int:
     let args = arguments()
     let mode = args.get(0, default: "stdout")
     let path = args.get(1, default: "events.ndjson")
     let result = exercise(mode, path)
 
     if result.is_error():
-        let _ignored = stderr().write(f"{result.err().message()}\n")
+        let _ignored = stderr().write("{result.err().message()}\n")
         return 1
 
     return 0

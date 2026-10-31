@@ -9,7 +9,7 @@ export type Shape:
 # Anything that can be measured.
 export interface Measured:
     # The measured size.
-    def size() -> Int
+    fn size() Int
 
 # A box of things.
 export type Box[T]:
@@ -19,12 +19,12 @@ export type Box[T]:
 
 impl Measured for Box[Int]:
     # Reports the count.
-    def size() -> Int:
+    fn size() Int:
         return self.count
 
 impl Equal for Shape:
-    def equals(other: Shape) -> Bool:
-        return True
+    fn equals(other: Shape) Bool:
+        return true
 
 export let LIMIT = 10
 # The default name.

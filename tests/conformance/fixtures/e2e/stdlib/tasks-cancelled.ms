@@ -1,11 +1,11 @@
-# conform: tags=closures,with-cleanup,stdlib-tasks,tier-io
+# conform: tags=closures,scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
-from "@std/core.ms" import Closeable
-from "@std/io.ms" import stdout
-from "@std/tasks.ms" import TaskGroup, cancelled
-from "@std/time.ms" import nanoseconds, sleep
+import Closeable from "@std/core.ms"
+import stdout from "@std/io.ms"
+import TaskGroup, cancelled from "@std/tasks.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
-def say(text: String) -> Unit:
+fn say(text: String) Unit:
     let _ = stdout().write(text + "\n")
 
 # Reports, as its task unwinds, whether the task counts as cancelled.
@@ -13,30 +13,32 @@ type Reporter:
     name: String
 
 impl Closeable for Reporter:
-    var def close() -> Unit:
-        say(f"{self.name} cleanup sees cancelled: {cancelled()}")
+    var fn close() Unit!:
+        say("{self.name} cleanup sees cancelled: {cancelled()}")
+        return ok(unit)
 
-def sleep_with_reporter() -> Int:
-    with let reporter = Reporter("timeout"):
-        sleep(nanoseconds(60000000000))
+fn sleep_with_reporter() Int:
+    let _reporter = Reporter("timeout")
+    sleep(nanoseconds(60000000000))
     return 0
 
-def returns_normally() -> Int:
-    with let reporter = Reporter("normal"):
-        say(f"normal body sees cancelled: {cancelled()}")
+fn returns_normally() Int:
+    let _reporter = Reporter("normal")
+    say("normal body sees cancelled: {cancelled()}")
     return 1
 
-export def main() -> Int:
-    say(f"outside a group: {cancelled()}")
+export fn main() Int:
+    say("outside a group: {cancelled()}")
 
-    with let group = TaskGroup[Int]():
-        group.spawn(lambda ch: returns_normally())
+    var group = TaskGroup[Int]()
+    group.spawn(fn ch: returns_normally())
 
-        let _ = group.results()
+    let _ = group.results()
+    group.close().get(none)
 
-    with let group = TaskGroup[Int](timeout: some(nanoseconds(20000000))):
-        group.spawn(lambda ch: sleep_with_reporter())
+    var group2 = TaskGroup[Int](timeout: nanoseconds(20000000))
+    group2.spawn(fn ch: sleep_with_reporter())
 
-        let _ = group.wait()
-
+    let _ = group2.wait()
+    group2.close().get(none)
     return 0

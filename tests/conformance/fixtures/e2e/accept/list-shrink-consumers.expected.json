@@ -3,82 +3,95 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "list-shrink-consumers.ms::Int consumers see the full snapshot while the live list shrinks",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "list-shrink-consumers.ms::Float consumers see the full snapshot while the live list shrinks",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "list-shrink-consumers.ms::String consumers see the full snapshot while the live list shrinks",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "list-shrink-consumers.ms::record consumers keep independent copies after shrink",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "list-shrink-consumers.ms::alternative consumers retain tags and payloads after shrink",
-          "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "list-shrink-consumers.ms::nested list consumers keep independent inner lists after shrink",
-          "status": "passed"
-        },
-        {
-          "index": 6,
-          "name": "list-shrink-consumers.ms::map and folds consume snapshots of the live list",
-          "status": "passed"
-        },
-        {
-          "index": 7,
-          "name": "list-shrink-consumers.ms::interface view consumers dispatch after shrink",
-          "status": "passed"
-        },
-        {
-          "index": 8,
-          "name": "list-shrink-consumers.ms::find returns the value passed to a mutating predicate",
-          "status": "passed"
-        },
-        {
-          "index": 9,
-          "name": "list-shrink-consumers.ms::preferred List mutators and explicit reversed copy iterate snapshots",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 10,
-        "selected": 10,
-        "passed": 10,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN list-shrink-consumers.ms::Int consumers see the full snapshot while the live list shrinks\nPASS list-shrink-consumers.ms::Int consumers see the full snapshot while the live list shrinks\nRUN list-shrink-consumers.ms::Float consumers see the full snapshot while the live list shrinks\nPASS list-shrink-consumers.ms::Float consumers see the full snapshot while the live list shrinks\nRUN list-shrink-consumers.ms::String consumers see the full snapshot while the live list shrinks\nPASS list-shrink-consumers.ms::String consumers see the full snapshot while the live list shrinks\nRUN list-shrink-consumers.ms::record consumers keep independent copies after shrink\nPASS list-shrink-consumers.ms::record consumers keep independent copies after shrink\nRUN list-shrink-consumers.ms::alternative consumers retain tags and payloads after shrink\nPASS list-shrink-consumers.ms::alternative consumers retain tags and payloads after shrink\nRUN list-shrink-consumers.ms::nested list consumers keep independent inner lists after shrink\nPASS list-shrink-consumers.ms::nested list consumers keep independent inner lists after shrink\nRUN list-shrink-consumers.ms::map and folds consume snapshots of the live list\nPASS list-shrink-consumers.ms::map and folds consume snapshots of the live list\nRUN list-shrink-consumers.ms::interface view consumers dispatch after shrink\nPASS list-shrink-consumers.ms::interface view consumers dispatch after shrink\nRUN list-shrink-consumers.ms::find returns the value passed to a mutating predicate\nPASS list-shrink-consumers.ms::find returns the value passed to a mutating predicate\nRUN list-shrink-consumers.ms::preferred List mutators and explicit reversed copy iterate snapshots\nPASS list-shrink-consumers.ms::preferred List mutators and explicit reversed copy iterate snapshots\n10 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "ReadValue is an interface and cannot be constructed; a type with 'impl ReadValue for <Type>:' passes wherever ReadValue is expected, so pass the value directly",
+          "position": {
+            "file": "list-shrink-consumers.ms",
+            "line": 254,
+            "column": 17,
+            "offset": 9161
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "ReadValue is an interface and cannot be constructed; a type with 'impl ReadValue for <Type>:' passes wherever ReadValue is expected, so pass the value directly",
+          "position": {
+            "file": "list-shrink-consumers.ms",
+            "line": 254,
+            "column": 40,
+            "offset": 9184
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "ReadValue is an interface and cannot be constructed; a type with 'impl ReadValue for <Type>:' passes wherever ReadValue is expected, so pass the value directly",
+          "position": {
+            "file": "list-shrink-consumers.ms",
+            "line": 255,
+            "column": 17,
+            "offset": 9223
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "ReadValue is an interface and cannot be constructed; a type with 'impl ReadValue for <Type>:' passes wherever ReadValue is expected, so pass the value directly",
+          "position": {
+            "file": "list-shrink-consumers.ms",
+            "line": 258,
+            "column": 57,
+            "offset": 9363
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "ReadValue is an interface and cannot be constructed; a type with 'impl ReadValue for <Type>:' passes wherever ReadValue is expected, so pass the value directly",
+          "position": {
+            "file": "list-shrink-consumers.ms",
+            "line": 261,
+            "column": 40,
+            "offset": 9480
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -89,11 +102,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

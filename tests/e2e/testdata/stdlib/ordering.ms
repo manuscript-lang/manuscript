@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/math.ms" import min, max
+import expect_equal, expect_false from "@std/test.ms"
+import min, max from "@std/math.ms"
 
 test "min max and clamp on Int and the sized integers":
     try expect_equal((3).min(2), 2)
@@ -39,7 +39,7 @@ test "unsigned integers order, compare and clamp":
     try expect_equal(ordered.sorted(), expected)
 
     let top: UInt32 = 4000000001
-    try expect_equal(ordered.max(), some(top))
+    try expect_equal(ordered.max(), top)
 
 test "min max and clamp on Float order NaN above every value":
     try expect_equal((2.5).min(1.5), 1.5)

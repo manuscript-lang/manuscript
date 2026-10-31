@@ -3,19 +3,19 @@
 # conform: timeout=30
 # A request that arrives on a connection while its handler is parked is served as soon as
 # the handler's response is sent, not after a timeout.
-from "@std/http.ms" import headers, HttpRequest, HttpResponse, buffered
-from "@std/io.ms" import stdout
-from "@std/net.ms" import network
-from "@std/process.ms" import control
-from "@std/time.ms" import nanoseconds, sleep
+import headers, HttpRequest, HttpResponse, buffered from "@std/http.ms"
+import stdout from "@std/io.ms"
+import network from "@std/net.ms"
+import control from "@std/process.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
-def handle(request: HttpRequest) -> HttpResponse:
+fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
         sleep(nanoseconds(200000000))
-    return HttpResponse(200, headers(), f"ok {request.path}\n".to_bytes())
+    return HttpResponse(200, headers(), "ok {request.path}\n".to_bytes())
 
-def exchange(address: String) -> String:
-    if let conn = network().connect(address):
+fn exchange(address: String) String:
+    if var conn = network().connect(address):
         let _first = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
         # The slow handler is parked by now; the second request arrives while it waits.
@@ -26,33 +26,33 @@ def exchange(address: String) -> String:
         )
         var text = ""
 
-        while True:
+        while true:
             if let chunk = conn.read(timeout: nanoseconds(5000000000)):
                 if let data = chunk:
-                    text = f"{text}{data.decode_utf8().get("?")}"
+                    text = "{text}{data.decode_utf8().get("?")}"
                     continue
 
             break
 
-        conn.close()
+        conn.close().get(none)
         return text
 
     return "connect failed"
 
-export def main() -> Int:
+export fn main() Int:
     if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
-        with let server = acquired:
-            let start = control().monotonic_time()
-            let text = exchange(server.address())
-            let elapsed_ms = (control().monotonic_time() - start) / 1000000
-            let _count = stdout().write(
-                f"responses: {text.split("HTTP/1.1 200 OK").length() - 1}\n"
-            )
-            let _order = stdout().write(
-                f"slow first: {text.index_of("ok /slow").get(-1) < text.index_of("ok /fast").get(-1)}\n"
-            )
-            let _prompt = stdout().write(f"prompt: {elapsed_ms < 2000}\n")
-            server.close()
-            return 0
+        var server = acquired
+        let start = control().monotonic_time()
+        let text = exchange(server.address())
+        let elapsed_ms = (control().monotonic_time() - start) / 1000000
+        let _count = stdout().write(
+            "responses: {text.split("HTTP/1.1 200 OK").length() - 1}\n"
+        )
+        let _order = stdout().write(
+            "slow first: {text.index_of("ok /slow").get(-1) < text.index_of("ok /fast").get(-1)}\n"
+        )
+        let _prompt = stdout().write("prompt: {elapsed_ms < 2000}\n")
+        server.close().get(none)
+        return 0
 
     return 1

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def allowed(values: Map[String, Int]) -> Map[String, Float]:\n    return values.map(lambda key, value: value.to_float())\n"
-  }
-}

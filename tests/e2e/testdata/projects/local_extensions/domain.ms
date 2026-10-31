@@ -1,24 +1,24 @@
-from "@std/collections.ms" import ListBuilder
-from "./contracts.ms" import Read
+import Shared from "@std/shared.ms"
+import Read from "./contracts.ms"
 
 export interface Original:
-    def original() -> Int
+    fn original() Int
 
 export type Item:
     value: Int
 
 impl Original for Item:
-    def original() -> Int:
+    fn original() Int:
         return self.value
 
-export type Box[T]:
+export type Box[T: Clonable]:
     value: T
 
 export type Holder[T: Read[Int]]:
     value: T
 
 impl Read[Int] for Holder[T]:
-    def get() -> Int:
+    fn get() Int:
         return self.value.get()
 
 export type Choice:
@@ -26,4 +26,4 @@ export type Choice:
     case Empty
 
 export type Resource:
-    events: ListBuilder[Int]
+    events: Shared[List[Int]]

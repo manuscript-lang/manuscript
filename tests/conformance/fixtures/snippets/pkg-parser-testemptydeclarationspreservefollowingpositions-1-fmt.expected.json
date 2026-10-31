@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Empty: ...\n\ndef empty() -> Unit: ...\n\ndef kept() -> Int:\n    return 3\n"
-  }
-}

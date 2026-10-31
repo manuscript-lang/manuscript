@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn identity[T](value: T) T: value\n\nfn first() String: identity(1)\n\nfn second() Int: identity(2)\n"
+  }
+}

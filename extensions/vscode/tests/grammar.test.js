@@ -2,12 +2,9 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const grammar = require('../syntaxes/manuscript.tmLanguage.json');
 
-test('plain strings have no interpolation; f-strings scope escapes and nest interpolation', () => {
-  const string = grammar.repository.fstring;
+test('strings scope escapes and nest interpolation with nested strings', () => {
+  const string = grammar.repository.string;
   assert.equal(grammar.patterns.filter(p => p.include === '#string').length, 1);
-  assert.equal(grammar.patterns.filter(p => p.include === '#fstring').length, 1);
-  assert.ok(!grammar.repository.string.patterns.some(p => p.name === 'meta.interpolation.manuscript'));
-  assert.equal(string.begin, '\\bf"');
   const escape = new RegExp(string.patterns.find(p => p.name === 'constant.character.escape.manuscript').match);
   for (const ok of ['\\n', '\\"', '\\{', '\\}', '\\u{41}', '\\u{10FFFF}']) assert.ok(escape.test(ok), ok);
   for (const bad of ['\\q', '\\u41']) assert.ok(!escape.test(bad), bad);
@@ -17,4 +14,11 @@ test('plain strings have no interpolation; f-strings scope escapes and nest inte
   assert.equal(interpolation.begin, '\\{');
   assert.equal(interpolation.end, '\\}');
   assert.ok(interpolation.patterns.some(p => p.include === '$self'));
+});
+
+test('opaque is a keyword only before type', () => {
+  const rule = grammar.patterns.find(p => p.name === 'keyword.control.manuscript' && p.match.startsWith('\\bopaque'));
+  const opaque = new RegExp(rule.match);
+  assert.ok(opaque.test('export opaque type Token:'));
+  assert.ok(!opaque.test('fn opaque(x: Int) Int:'));
 });

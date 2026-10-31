@@ -1,8 +1,8 @@
-def divide(value: Int = 1 / "".byte_length()) -> Int:
+fn divide(value: Int = 1 / "".byte_length()) Int:
     return value
 
-def outer(value: Int = divide()) -> Int:
+fn outer(value: Int = divide()) Int:
     return value
 
-export def main() -> Int:
+export fn main() Int:
     return outer()

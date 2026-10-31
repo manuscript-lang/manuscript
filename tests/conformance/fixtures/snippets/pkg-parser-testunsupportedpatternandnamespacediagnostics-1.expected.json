@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def f(command: String) -> Int:\n    match command:\n        case \"réport\": return 1\n\n    return 0\n"
-  }
-}

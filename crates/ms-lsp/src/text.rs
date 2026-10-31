@@ -307,6 +307,34 @@ pub fn diagnostic_range(source: &str, offset: usize) -> Range {
     Range { start, end }
 }
 
+/// Token and line indexes shared by one document's diagnostic publication.
+pub struct DiagnosticRanges<'a> {
+    positions: SourcePositions<'a>,
+    tokens: Vec<EditorToken<'a>>,
+}
+
+impl<'a> DiagnosticRanges<'a> {
+    /// Indexes the original snapshot once, including malformed text.
+    pub fn new(source: &'a str) -> Self {
+        Self {
+            positions: SourcePositions::new(source),
+            tokens: editor_tokens(source),
+        }
+    }
+
+    /// The containing token's range, or an empty range for whitespace/EOF.
+    pub fn range(&self, offset: usize) -> Range {
+        let start = self.positions.position(offset);
+        let index = self.tokens.partition_point(|token| token.end <= offset);
+        let end = self
+            .tokens
+            .get(index)
+            .filter(|token| token.start <= offset && offset < token.end)
+            .map_or(start, |token| self.positions.position(token.end));
+        Range { start, end }
+    }
+}
+
 /// The byte range of 0-based `line`, including its newline.
 pub fn line_span(source: &str, line: usize) -> (usize, usize) {
     let bytes = source.as_bytes();
@@ -327,6 +355,53 @@ pub fn line_span(source: &str, line: usize) -> (usize, usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn diagnostic_index_preserves_all_original_byte_ranges() {
+        for source in [
+            "",
+            "a",
+            "\n\r\n",
+            "\t日本😀e\u{301} + wrong\r\n# note\r\n",
+            "let x = \"unfinished\n",
+            "let x = [\n1,\n",
+            "a # comment\nnext",
+        ] {
+            let index = DiagnosticRanges::new(source);
+            for offset in (0..=source.len() + 2).rev().chain([usize::MAX]) {
+                assert_eq!(
+                    index.range(offset),
+                    diagnostic_range(source, offset),
+                    "{source:?} at {offset}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn many_diagnostics_reuse_the_document_indexes() {
+        let source = "let value = )\r\n".repeat(8000);
+        let index = DiagnosticRanges::new(&source);
+        let tokens = index.tokens.as_ptr();
+        for line in (0..8000).rev() {
+            let offset = line * 15 + 12;
+            assert_eq!(
+                index.range(offset),
+                Range {
+                    start: Position {
+                        line,
+                        character: 12
+                    },
+                    end: Position {
+                        line,
+                        character: 13
+                    },
+                }
+            );
+        }
+        assert_eq!(index.tokens.as_ptr(), tokens);
+        assert_eq!(index.positions.starts.len(), 8001);
+    }
 
     #[test]
     fn utf16_columns() {

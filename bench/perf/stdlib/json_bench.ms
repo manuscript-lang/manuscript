@@ -1,29 +1,28 @@
-from "@std/bench.ms" import keep, measure
-from "@std/collections.ms" import range
-from "@std/string.ms" import StringBuilder
-from "@std/json.ms" import parse, stringify, JsonValue
+import keep, measure from "@std/bench.ms"
+import StringBuilder from "@std/string.ms"
+import parse, stringify, JsonValue from "@std/json.ms"
 
-def json_doc(count: Int) -> String:
+fn json_doc(count: Int) String:
     var sb = StringBuilder()
     sb.append("[")
 
-    for i in range(0, count):
+    for i in 0..count:
         if i > 0: sb.append(",")
         sb.append(
-            f"\{\"id\":{i},\"name\":\"user{i}\",\"tags\":[\"a\",\"b\"],\"score\":{i}.5,\"ok\":true\}"
+            "\{\"id\":{i},\"name\":\"user{i}\",\"tags\":[\"a\",\"b\"],\"score\":{i}.5,\"ok\":true\}"
         )
 
     sb.append("]")
     return sb.build()
 
-def encoded_length(value: JsonValue) -> Int:
+fn encoded_length(value: JsonValue) Int:
     if let text = stringify(value):
         return text.length()
 
     return 0
 
 # Reads three nested fields of one row in place, without copying any subtree.
-def row_weight(tree: JsonValue, index: Int) -> Int:
+fn row_weight(tree: JsonValue, index: Int) Int:
     if let row = tree.at(index):
         var weight = 0
         if let id = row.get("id"):
@@ -39,7 +38,7 @@ def row_weight(tree: JsonValue, index: Int) -> Int:
 bench "json.parse":
     let doc = json_doc(5000)
 
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         if parse(doc).is_ok():
             return keep(1)
 
@@ -50,7 +49,7 @@ bench "json.parse":
 bench "json.roundtrip":
     let doc = json_doc(5000)
 
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         if let v = parse(doc):
             return keep(encoded_length(v))
 
@@ -62,9 +61,9 @@ bench "json.navigate":
     let doc = json_doc(5000)
 
     if let tree = parse(doc):
-        def work() -> Result[Unit, Error]:
+        fn work() Result[Unit, Error]:
             var total = 0
-            for i in range(0, 100000):
+            for i in 0..100000:
                 total += row_weight(tree, i % 5000)
             return keep(total)
 

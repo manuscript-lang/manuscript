@@ -1,27 +1,27 @@
-from "@std/collections.ms" import filled, range
-from "@std/core.ms" import panic
+import filled from "@std/collections.ms"
+import panic from "@std/core.ms"
 
-def make_cells() -> List[Int]:
+fn make_cells() List[Int]:
     if let values = filled(0, 16384): return values
 
     return panic("fill failure")
 
-export def main() -> Int:
+export fn main() Int:
     var cells = make_cells()
     var next = make_cells()
 
-    for i in range(0, 16384):
+    for i in 0..16384:
         var value = 0
         if (i * 17 + i / 128 * 13) % 7 < 3: value = 1
         cells.set(i, value)
 
-    for generation in range(0, 50):
-        for y in range(0, 128):
-            for x in range(0, 128):
+    for generation in 0..50:
+        for y in 0..128:
+            for x in 0..128:
                 var neighbors = 0
 
-                for dy in range(-1, 2):
-                    for dx in range(-1, 2):
+                for dy in - 1..2:
+                    for dx in - 1..2:
                         if dx != 0 or dy != 0:
                             let index = (
                                 (
@@ -47,7 +47,7 @@ export def main() -> Int:
         next = old
 
     var sum = 0
-    for i in range(0, 16384):
+    for i in 0..16384:
         sum += cells.get(i)
     if sum != 3914: return panic("life checksum")
 

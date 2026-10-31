@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Add:\n    def add(value: Int) -> Int\n\ntype Offset:\n    value: Int\n\nimpl Add for Offset:\n    def add(value: Int = self.value) -> Int:\n        return value\n\ndef call(value: Add) -> Int:\n    return value.add()\n"
-  }
-}

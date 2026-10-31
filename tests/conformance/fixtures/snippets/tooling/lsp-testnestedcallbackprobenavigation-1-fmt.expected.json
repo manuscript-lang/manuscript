@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn answer() Unit:\n    let offset = 7\n    let _values = [1].map(fn outer: [2].map(fn inner: outer + inner + offset))\n"
+  }
+}

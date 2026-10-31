@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def f(value: Int = 1) -> Int:\n    return value\n\ndef make() -> Callable[[Int], Int]:\n    return f\n\ndef call() -> Int:\n    return make()()\n"
-  }
-}

@@ -33,6 +33,8 @@ const UNLIMITED: usize = usize::MAX;
 const INPUT_HOLD: usize = 256 * 1024;
 /// Request bodies the server skips to reuse a connection.
 pub const DRAIN_LIMIT: usize = 256 * 1024;
+/// Time to receive the peer's FIN after half-closing an HTTP/1 rejection response.
+const REJECTION_DRAIN: Duration = Duration::from_millis(500);
 
 /// How long accepting pauses after the process runs out of descriptors or memory.
 const ACCEPT_BACKOFF: Duration = Duration::from_millis(50);
@@ -93,66 +95,6 @@ pub trait Dispatch {
 pub struct Options {
     pub limits: Limits,
     pub tls: Option<Arc<rustls::ServerConfig>>,
-    /// Share the listening socket with every other server of this process that serves the same
-    /// address text with `shared` set, so isolates on several threads accept from one port.
-    pub shared: bool,
-}
-
-/// Listening sockets shared between the servers (and so the threads) of the process, by address text:
-/// the first server binds, later ones duplicate the descriptor. Duplicating works the same on
-/// Linux, macOS and Windows, where `SO_REUSEPORT` is not available.
-static SHARED_LISTENERS: std::sync::Mutex<Vec<SharedListener>> = std::sync::Mutex::new(Vec::new());
-
-struct SharedListener {
-    address: String,
-    /// Keeps the port bound while any server uses it.
-    socket: socket2::Socket,
-    users: usize,
-}
-
-fn shared_listeners() -> std::sync::MutexGuard<'static, Vec<SharedListener>> {
-    SHARED_LISTENERS.lock().unwrap_or_else(|e| e.into_inner())
-}
-
-/// A duplicate of the shared listener for `address`, bound by `bind` when no server holds it.
-fn shared_listener(
-    address: &str,
-    bind: impl FnOnce() -> Result<socket2::Socket, NetErr>,
-) -> Result<socket2::Socket, NetErr> {
-    let mut all = shared_listeners();
-    if let Some(entry) = all.iter_mut().find(|e| e.address == address) {
-        let copy = entry
-            .socket
-            .try_clone()
-            .map_err(|e| NetErr::failed(e.to_string()))?;
-        entry.users += 1;
-        return Ok(copy);
-    }
-    let socket = bind()?;
-    let copy = socket
-        .try_clone()
-        .map_err(|e| NetErr::failed(e.to_string()))?;
-    all.push(SharedListener {
-        address: address.to_string(),
-        socket,
-        users: 1,
-    });
-    Ok(copy)
-}
-
-/// Drops one user of the shared listener for `address`; true when it was the last, which
-/// owns shutting the port down.
-fn release_shared_listener(address: &str) -> bool {
-    let mut all = shared_listeners();
-    let Some(at) = all.iter().position(|e| e.address == address) else {
-        return true;
-    };
-    all[at].users -= 1;
-    if all[at].users == 0 {
-        all.remove(at);
-        return true;
-    }
-    false
 }
 
 // ---------------------------------------------------------------- connections
@@ -164,6 +106,8 @@ pub(super) enum Phase {
     Queued(Box<Pending>),
     Busy,
     Writing,
+    /// An error response has finished; discard incoming bytes until FIN or the drain deadline.
+    Draining,
     /// An HTTP/2 connection: streams are tracked in [`ConnSt::h2`].
     H2,
     Closed,
@@ -189,6 +133,7 @@ pub(super) struct ConnSt {
     pub out_pos: usize,
     pub phase: Phase,
     pub close_after: bool,
+    pub drain_after: bool,
     pub flush_pending: bool,
     pub eof: bool,
     pub deadline: Option<Instant>,
@@ -643,8 +588,6 @@ pub struct Server {
     /// Dropped on close: macOS keeps queueing connections on a shut-down listener until the
     /// descriptor itself closes.
     listener: RefCell<Option<socket2::Socket>>,
-    /// The address text under which the listener is shared with other servers, if it is.
-    shared_address: Option<String>,
     address: String,
     pub(super) limits: Limits,
     tls: Option<Arc<rustls::ServerConfig>>,
@@ -697,13 +640,32 @@ impl Server {
         if !owner.listen_allowed(address) {
             return Err(NetErr::PermissionDenied);
         }
-        let listener = if options.shared {
-            shared_listener(address, || owner.listen_tcp(address))?
-        } else {
-            owner.listen_tcp(address)?
-        };
+        let listener = owner.listen_tcp(address)?;
+        Self::create(owner, Some(listener), dispatch, options)
+    }
+
+    /// Starts a server without a listener: it serves the connections [`Server::adopt`] hands it,
+    /// accepted elsewhere (another thread's accept loop).
+    pub fn start_adopting(
+        owner: &Rc<Network>,
+        dispatch: Box<dyn Dispatch>,
+        options: Options,
+    ) -> Result<Rc<Server>, NetErr> {
+        if owner.is_closed() {
+            return Err(NetErr::Closed);
+        }
+        Self::create(owner, None, dispatch, options)
+    }
+
+    fn create(
+        owner: &Rc<Network>,
+        listener: Option<socket2::Socket>,
+        dispatch: Box<dyn Dispatch>,
+        options: Options,
+    ) -> Result<Rc<Server>, NetErr> {
         let local = listener
-            .local_addr()
+            .as_ref()
+            .and_then(|l| l.local_addr().ok())
             .map(|a| crate::conn::socket_addr_text(&a))
             .unwrap_or_default();
         let reactor = Reactor::get();
@@ -718,8 +680,7 @@ impl Server {
             id,
             me: me.clone(),
             owner: owner.clone(),
-            listener: RefCell::new(Some(listener)),
-            shared_address: options.shared.then(|| address.to_string()),
+            listener: RefCell::new(listener),
             address: local,
             limits: options.limits,
             tls: options.tls,
@@ -744,7 +705,7 @@ impl Server {
             .listener
             .borrow()
             .as_ref()
-            .is_some_and(|l| reactor.add(l.as_sock(), token, Ev::IN));
+            .is_none_or(|l| reactor.add(l.as_sock(), token, Ev::IN));
         if !watched {
             reactor.targets.borrow_mut().remove(&token);
             return Err(NetErr::failed("cannot watch listener"));
@@ -756,6 +717,20 @@ impl Server {
             return Err(NetErr::Closed);
         }
         Ok(server)
+    }
+
+    /// Serves a connection accepted elsewhere. `raw` comes from `Listener::accept_raw` and is
+    /// consumed here; a closing server drops (closes) it, and a number that is not an outstanding
+    /// handle is ignored. Call it on the thread that owns the server.
+    pub fn adopt(&self, raw: i64) {
+        let Some(sock) = crate::conn::take_raw_handle(raw) else {
+            return;
+        };
+        if self.st.borrow().closing || sock.set_nonblocking(true).is_err() {
+            return;
+        }
+        let _ = sock.set_tcp_nodelay(true);
+        self.add_conn(sock, &Reactor::get());
     }
 
     pub fn id(&self) -> usize {
@@ -818,14 +793,7 @@ impl Server {
         }
         if let Some(listener) = self.listener.borrow_mut().take() {
             reactor.delete(listener.as_sock());
-            // Other servers still accept on a shared port: shut it down with the last one.
-            let last = self
-                .shared_address
-                .as_deref()
-                .is_none_or(release_shared_listener);
-            if last {
-                let _ = listener.shutdown(std::net::Shutdown::Both);
-            }
+            let _ = listener.shutdown(std::net::Shutdown::Both);
         }
         reactor.targets.borrow_mut().remove(&self.token);
         // Idle connections close now; the others after their current response.
@@ -989,6 +957,7 @@ impl Server {
                 out_pos: 0,
                 phase,
                 close_after: false,
+                drain_after: false,
                 flush_pending: false,
                 eof: false,
                 deadline: self.limits.timeout.map(|t| Instant::now() + t),
@@ -1162,6 +1131,10 @@ impl Server {
     }
 
     fn on_ready(&self, conn: &Rc<Conn>, flags: Ev, reactor: &Reactor) {
+        if matches!(conn.st.borrow().phase, Phase::Draining) {
+            self.drain_rejected_input(conn, reactor);
+            return;
+        }
         if matches!(conn.st.borrow().phase, Phase::Handshake) {
             self.drive_handshake(conn, reactor);
             return;
@@ -1191,6 +1164,10 @@ impl Server {
 
     /// Reads whatever is available, then parses.
     fn read_in(&self, conn: &Rc<Conn>, reactor: &Reactor) {
+        if matches!(conn.st.borrow().phase, Phase::Draining) {
+            self.drain_rejected_input(conn, reactor);
+            return;
+        }
         let mut more = false;
         {
             let mut scratch = reactor.scratch.borrow_mut();
@@ -1322,7 +1299,65 @@ impl Server {
         }
         out.extend_from_slice(b"\r\n");
         out.extend_from_slice(body.as_bytes());
+        conn.st.borrow_mut().drain_after = close;
         self.queue_output(conn, reactor, out, close);
+    }
+
+    /// Deliver the rejection and FIN before closing a socket whose peer may still be uploading.
+    /// Closing both halves immediately can reset the connection and erase the response on Windows.
+    fn start_rejection_drain(&self, conn: &Rc<Conn>, reactor: &Reactor) {
+        let started = {
+            let mut st = conn.st.borrow_mut();
+            let Some(io) = &st.io else { return };
+            if st.eof || io.shutdown_write().is_err() {
+                false
+            } else {
+                st.inbuf = Vec::new();
+                st.pos = 0;
+                st.phase = Phase::Draining;
+                st.deadline = Some(Instant::now() + REJECTION_DRAIN);
+                reactor.note_deadline(st.deadline);
+                true
+            }
+        };
+        if !started {
+            self.close_conn(conn, reactor);
+            return;
+        }
+        self.set_interest(conn, reactor, Ev::IN);
+        self.drain_rejected_input(conn, reactor);
+    }
+
+    /// Discard without buffering or parsing, with bounded work per turn and a fixed deadline.
+    fn drain_rejected_input(&self, conn: &Rc<Conn>, reactor: &Reactor) {
+        let close = {
+            let mut scratch = reactor.scratch.borrow_mut();
+            let st = conn.st.borrow();
+            let Some(io) = &st.io else { return };
+            let mut total = 0;
+            loop {
+                if st.deadline.is_some_and(|at| at <= Instant::now()) {
+                    break true;
+                }
+                match io.read(&mut scratch) {
+                    Step::Done(n) => {
+                        total += n;
+                        if total >= 1 << 20 {
+                            reactor.retry.borrow_mut().push(conn.clone());
+                            break false;
+                        }
+                    }
+                    Step::WantRead | Step::WantWrite => {
+                        reactor.poller.consumed(io.fd(), Ev::IN);
+                        break false;
+                    }
+                    Step::Eof | Step::Err(_) => break true,
+                }
+            }
+        };
+        if close {
+            self.close_conn(conn, reactor);
+        }
     }
 
     /// Returns whether the head phase made progress (a request was taken).
@@ -1396,6 +1431,9 @@ impl Server {
         }
         let framing = h1::request_framing(&head).map_err(|b| (b.status, b.reason))?;
         let target = target::parse(&head.target).map_err(|e| (400, e.0))?;
+        if target.path == "*" && head.method != "OPTIONS" {
+            return Err((400, "asterisk-form target needs OPTIONS"));
+        }
         if !head.fields.iter().all(|(n, v)| {
             std::str::from_utf8(n.as_bytes()).is_ok() && std::str::from_utf8(v).is_ok()
         }) {
@@ -1540,7 +1578,11 @@ impl Server {
                     return;
                 }
                 if close || self.st.borrow().closing {
-                    self.close_conn(conn, reactor);
+                    if conn.st.borrow().drain_after {
+                        self.start_rejection_drain(conn, reactor);
+                    } else {
+                        self.close_conn(conn, reactor);
+                    }
                     return;
                 }
                 {
@@ -1716,11 +1758,7 @@ pub(crate) mod tests {
     }
 
     pub fn opts(limits: Limits) -> Options {
-        Options {
-            limits,
-            tls: None,
-            shared: false,
-        }
+        Options { limits, tls: None }
     }
 
     fn get(path: &str) -> Vec<u8> {
@@ -1738,6 +1776,45 @@ pub(crate) mod tests {
         assert!(text.contains("Connection: close\r\n"));
         assert!(text.contains("Date: "));
         assert!(text.ends_with("\r\n\r\nGET|/hello|x=1|HTTP/1.1"), "{text}");
+    }
+
+    #[test]
+    fn serves_connections_accepted_elsewhere() {
+        let net = Network::new_root();
+        let server =
+            Server::start_adopting(&net, Box::new(Buffered(App)), opts(Limits::default())).unwrap();
+        assert_eq!(server.address(), "");
+        let listener = crate::conn::Listener::new(
+            net.clone(),
+            net.listen_tcp("127.0.0.1:0").unwrap(),
+            None,
+            None,
+            None,
+        );
+        let addr = listener.address().to_string();
+        let client = std::thread::spawn(move || exchange(&addr, &get("/handed")));
+        let raw = listener.accept_raw(Some(5_000_000_000)).unwrap();
+        // A plain listener hands the socket over; the server answers on it from here.
+        server.adopt(raw);
+        while !client.is_finished() {
+            crate::wait::sleep(Duration::from_millis(2));
+        }
+        let text = client.join().unwrap();
+        assert!(text.starts_with("HTTP/1.1 200 OK\r\n"), "{text}");
+        assert!(text.ends_with("GET|/handed||HTTP/1.1"), "{text}");
+        // An invented or reused number is ignored, not closed as a descriptor.
+        server.adopt(-1);
+        server.adopt(raw);
+        // A closed adopting server closes what it is handed.
+        server.close().unwrap();
+        let addr = listener.address().to_string();
+        let client = std::thread::spawn(move || exchange(&addr, &get("/late")));
+        let raw = listener.accept_raw(Some(5_000_000_000)).unwrap();
+        server.adopt(raw);
+        while !client.is_finished() {
+            crate::wait::sleep(Duration::from_millis(2));
+        }
+        assert_eq!(client.join().unwrap(), "");
     }
 
     #[test]
@@ -1841,6 +1918,71 @@ pub(crate) mod tests {
             run(b"GET /badstatus HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
                 .starts_with("HTTP/1.1 500")
         );
+    }
+
+    #[test]
+    fn oversized_header_response_drains_before_closing() {
+        let (_net, server) = start(opts(Limits {
+            header: h1::DEFAULT_HEAD_LIMIT,
+            ..Limits::default()
+        }));
+        let addr = server.address().to_string();
+        let (client, text) = with_client(move || {
+            let mut client = TcpStream::connect(addr).unwrap();
+            client
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            client
+                .set_write_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            let raw = format!(
+                "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\nX: {}\r\n\r\n",
+                "a".repeat(2_000_000)
+            );
+            // Rejection can start while the upload is still in flight.
+            let _ = client.write_all(raw.as_bytes());
+            let mut out = String::new();
+            client.read_to_string(&mut out).unwrap();
+            (client, out)
+        });
+        assert!(text.starts_with("HTTP/1.1 431"), "{text}");
+        assert!(
+            text.ends_with("\r\n\r\nRequest Header Fields Too Large\n"),
+            "{text}"
+        );
+        drop(client);
+        let until = Instant::now() + Duration::from_secs(2);
+        while !server.st.borrow().conns.is_empty() && Instant::now() < until {
+            crate::wait::sleep(Duration::from_millis(2));
+        }
+        assert!(server.st.borrow().conns.is_empty());
+    }
+
+    #[test]
+    fn rejection_drain_expires_when_peer_keeps_its_write_half_open() {
+        let (_net, server) = start(opts(Limits {
+            header: 32,
+            ..Limits::default()
+        }));
+        let addr = server.address().to_string();
+        let (_client, text) = with_client(move || {
+            let mut client = TcpStream::connect(addr).unwrap();
+            client
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            client
+                .write_all(&get("/too-long-for-the-header-budget"))
+                .unwrap();
+            let mut out = String::new();
+            client.read_to_string(&mut out).unwrap();
+            (client, out)
+        });
+        assert!(text.starts_with("HTTP/1.1 431"), "{text}");
+        let until = Instant::now() + Duration::from_secs(2);
+        while !server.st.borrow().conns.is_empty() && Instant::now() < until {
+            crate::wait::sleep(Duration::from_millis(2));
+        }
+        assert!(server.st.borrow().conns.is_empty());
     }
 
     #[test]

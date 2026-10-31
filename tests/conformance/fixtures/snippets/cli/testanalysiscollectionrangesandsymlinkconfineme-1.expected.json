@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2003",
+        "phase": "resolution",
+        "message": "redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly",
+        "position": {
+          "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
+          "line": 5,
+          "column": 8,
+          "offset": 208
+        },
+        "end": {
+          "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
+          "line": 5,
+          "column": 17,
+          "offset": 217
+        },
+        "fix": {
+          "position": {
+            "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
+            "line": 5,
+            "column": 8,
+            "offset": 208
+          },
+          "end": {
+            "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
+            "line": 5,
+            "column": 19,
+            "offset": 219
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS2003",
+        "phase": "resolution",
+        "message": "redundant prelude import List; remove List from this import and use its prelude declaration directly",
+        "position": {
+          "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
+          "line": 5,
+          "column": 19,
+          "offset": 219
+        },
+        "end": {
+          "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
+          "line": 5,
+          "column": 23,
+          "offset": 223
+        },
+        "fix": {
+          "position": {
+            "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
+            "line": 5,
+            "column": 17,
+            "offset": 217
+          },
+          "end": {
+            "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
+            "line": 5,
+            "column": 24,
+            "offset": 224
+          },
+          "replacement": ""
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testanalysiscollectionrangesandsymlinkconfineme-1.ms:5:8: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 5 | import ListEntry, List from \"@std/collections.ms\"\n   |        ^^^^^^^^^\n<DIR>/testanalysiscollectionrangesandsymlinkconfineme-1.ms:5:19: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 5 | import ListEntry, List from \"@std/collections.ms\"\n   |                   ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

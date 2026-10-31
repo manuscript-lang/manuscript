@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"./domain.ms\" import Box\n\ninterface Read:\n    def get() -> Int\n\nimpl Read for Box[T]:\n    def get() -> Int:\n        return self.value.original()\n"
-  }
-}

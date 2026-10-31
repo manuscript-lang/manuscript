@@ -1,14 +1,14 @@
-from "@std/test.ms" import expect_equal, expect_false, fail
-from "@std/math.ms" import parse, from_int, BigInt, BigIntError
+import expect_equal, expect_false, fail from "@std/test.ms"
+import parse, from_int, BigInt, BigIntError from "@std/math.ms"
 
 test "big integers exceed machine range without losing precision":
     let big = try parse("9223372036854775808", 10)
     try expect_false(not big.to_int().is_none())
-    try expect_equal(big.subtract(from_int(1)).to_int(), some(9223372036854775807))
+    try expect_equal(big.subtract(from_int(1)).to_int(), 9223372036854775807)
     try expect_equal(from_int(7).multiply(from_int(6)).to_string_radix(10), "42")
-    try expect_equal((try from_int(-7).divide(from_int(3))).to_int(), some(-2))
-    try expect_equal((try from_int(-7).remainder(from_int(3))).to_int(), some(-1))
-    try expect_equal(from_int(5).bit_xor(from_int(3)).to_int(), some(6))
+    try expect_equal((try from_int(-7).divide(from_int(3))).to_int(), -2)
+    try expect_equal((try from_int(-7).remainder(from_int(3))).to_int(), -1)
+    try expect_equal(from_int(5).bit_xor(from_int(3)).to_int(), 6)
 
 test "big integers validate digits budgets and zero divisors":
     let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
@@ -24,6 +24,6 @@ test "big integer budgets exclude at most one leading sign before validation":
 
     for text in ["+-1", "-+1", "++1", "--1"]:
         if parse(text, 10, 1) != limited: return fail(
-            f"second sign must count toward budget: {text}"
+            "second sign must count toward budget: \{text\}"
         )
         

@@ -1,13 +1,13 @@
 # conform: tags=control-flow,faults,formatter,interpolation,maps,match,modules,mutation,optional,parser,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/string-keyed-map-calls-keep-semantics.ms
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
-def lookup(m: Map[String, Int], key: String) -> Int:
+fn lookup(m: Map[String, Int], key: String) Int:
     match m.get(key: key):
-        case some(v):
+        v:
             return v
-        case none:
+        none:
             return -1
 
 test "string map":
@@ -25,7 +25,7 @@ test "string map":
     var seen = 0
 
     for entry in m.clone():
-        m.add(key: f"x{seen}", value: seen)
+        m.add(key: "x{seen}", value: seen)
         seen = seen + 1
 
     try expect_true((seen == 3 and m.length() == 6))

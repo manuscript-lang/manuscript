@@ -6,8 +6,8 @@ type CustomerKey:
     label: String
 
 impl Equal for CustomerKey:
-    def equals(other: CustomerKey) -> Bool:
+    fn equals(other: CustomerKey) Bool:
         return self.id == other.id
 
 impl Hashable for CustomerKey:
-    def hash() -> Int: self.id
+    fn hash() Int: self.id

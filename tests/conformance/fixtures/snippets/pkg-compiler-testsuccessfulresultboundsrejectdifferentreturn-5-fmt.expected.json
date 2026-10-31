@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def affine(n: Int) -> Result[Int, Cause]:\n    if n < 0:\n        return error(\n            Cause(\n                match some(n):\n                    case some(value):\n                        return ok(9223372036854775807)\n                    case none: \"negative\"\n            )\n        )\n\n    return ok(n + 1)\n"
-  }
-}

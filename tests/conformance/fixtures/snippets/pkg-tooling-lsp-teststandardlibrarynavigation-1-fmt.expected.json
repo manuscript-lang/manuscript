@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/collections.ms\" import ListBuilder\nfrom \"@std/process.ms\" import system\n\ndef length(values: List[Int]) -> Int:\n    return values.length()\n\ndef os_name() -> String:\n    return system().info().os\n"
-  }
-}

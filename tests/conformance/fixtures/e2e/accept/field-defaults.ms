@@ -1,12 +1,12 @@
 # conform: tags=closures,control-flow,faults,generics,interfaces,lists,modules,optional,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/field-defaults.ms
-from "@std/test.ms" import expect_equal, expect_false, expect_true
+import expect_equal, expect_false, expect_true from "@std/test.ms"
 
 type Counter:
     value: Int = 0
 
-def mark(var counter: Counter, value: Int) -> Int:
+fn mark(var counter: Counter, value: Int) Int:
     counter.value = counter.value * 10 + value
     return value
 
@@ -19,8 +19,8 @@ type Ordered:
 type Data:
     number: Int = 5
     values: List[Int] = [number]
-    callback: Callable[[], Int] = (
-        lambda:
+    callback: fn() Int = (
+        fn:
             return number
     )
 
@@ -28,13 +28,13 @@ type Box[T]:
     value: T
     copy: T = value
 
-def unit_default(var calls: List[Int]) -> Unit:
+fn unit_default(var calls: List[Int]) Unit:
     calls.append(1)
 
 type Explicit:
     calls: List[Int]
     nothing: Unit = unit_default(calls)
-    option: Optional[Int] = some(9)
+    option: Int? = 9
 
 test "record defaults and explicit overrides":
     let data = Data()
@@ -44,7 +44,7 @@ test "record defaults and explicit overrides":
     ((changed.number != 0 or changed.values.get(0) != 0 or changed.callback() != 0)) | try expect_false
 
     let calls: List[Int] = []
-    let explicit = Explicit(calls: calls.clone(), nothing: (), option: none)
+    let explicit = Explicit(calls: calls.clone(), nothing: unit, option: none)
     calls.is_empty() | try expect_true
     (explicit.option.is_none()) | try expect_true
 
@@ -79,18 +79,18 @@ test "mutable defaults have fresh storage":
     (first.values.length() != 2 or second.values.length() != 1) | try expect_false
 
 interface ReadWithDefault:
-    def get(fallback: Optional[Int] = none) -> Int
+    fn get(fallback: Int?) Int
 
 type Reader:
     number: Int = 5
 
 impl ReadWithDefault for Reader:
-    def get(fallback: Optional[Int]) -> Int:
+    fn get(fallback: Int?) Int:
         return fallback.get(self.number)
 
 type Marker: ...
 
-def no_op() -> Unit: ...
+fn no_op() Unit: ...
 
 test "ordinary empty declarations and interface omission":
     no_op()

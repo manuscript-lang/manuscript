@@ -1,15 +1,15 @@
 # conform: tags=control-flow,modules,optional,stdlib-queues,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/queues.ms
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/queue.ms" import PriorityQueue, Queue
+import expect_equal, expect_false from "@std/test.ms"
+import PriorityQueue, Queue from "@std/queue.ms"
 
 test "FIFO capacity empty reads draining and reuse":
     var queue = Queue[Int](2)
     try expect_false(not queue.is_empty() or not queue.peek().is_none())
     try expect_false((not queue.enqueue(1) or not queue.enqueue(2) or queue.enqueue(3)))
-    try expect_false(queue.peek() != some(1) or queue.length() != 2)
-    try expect_false(queue.dequeue() != some(1) or queue.dequeue() != some(2))
+    try expect_false(queue.peek() != 1 or queue.length() != 2)
+    try expect_false(queue.dequeue() != 1 or queue.dequeue() != 2)
     try expect_false(not queue.dequeue().is_none() or not queue.enqueue(4))
 
 test "priority queue orders values and honors capacity":
@@ -18,9 +18,9 @@ test "priority queue orders values and honors capacity":
     queue.enqueue(1)
     queue.enqueue(2)
     try expect_false(queue.enqueue(0))
-    try expect_equal(queue.peek(), some(1))
+    try expect_equal(queue.peek(), 1)
     for expected in [1, 2, 3]:
-        try expect_equal(queue.dequeue(), some(expected))
+        try expect_equal(queue.dequeue(), expected)
     try expect_false(not queue.is_empty())
 
 test "priority queue sorts many values and copies are independent":
@@ -29,7 +29,7 @@ test "priority queue sorts many values and copies are independent":
         queue.enqueue((index * 37) % 101)
 
     var copy = queue.clone()
-    try expect_equal(copy.dequeue(), some(0))
+    try expect_equal(copy.dequeue(), 0)
     try expect_equal(queue.length(), 200)
 
     var previous = -1

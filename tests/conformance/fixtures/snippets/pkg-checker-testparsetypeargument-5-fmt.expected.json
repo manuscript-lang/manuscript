@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Request:\n    model: String\n\ndef f(text: String) -> Result[Request, JsonError]:\n    let request: Request = try parse(text)\n    return ok(request)\n"
-  }
-}

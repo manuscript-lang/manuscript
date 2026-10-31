@@ -1,5 +1,0 @@
-# conform: tags=diagnostics,tier-core
-# conform: phase=check
-# conform: origin=pkg/tooling/lsp/index_tokens_test.go:41 TestPinnedIndexTokensRequireExactInput
-export def changed() -> Int:
-    return 7

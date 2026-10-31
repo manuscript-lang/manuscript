@@ -1,88 +1,85 @@
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal, expect_false
+import TextError from "@std/core.ms"
+import expect_equal, expect_false from "@std/test.ms"
 
-def apply[T, U](value: T, transform: Callable[[T], U]) -> U: transform(value)
+fn apply[T, U](value: T, transform: fn(T) U) U: transform(value)
 
-def choose[T](first: Callable[[], T], second: Callable[[], T]) -> T: first()
+fn choose[T](first: fn() T, second: fn() T) T: first()
 
-def optional[T, U](value: T, transform: Optional[Callable[[T], U]]) -> U:
+fn optional[T, U](value: T, transform: (fn(T) U)?) U:
     return transform.get()(value)
 
-def with_result[T](
-    transform: Callable[[], Result[T, TextError]]
-) -> Result[T, TextError]: transform()
+fn with_result[T](transform: fn() T!TextError) T!TextError: transform()
 
 type Callback[T, U]:
-    transform: Callable[[T], U]
+    transform: fn(T) U
 
 type Failure[T]:
     detail: T
 
 impl Error for Failure[T]:
-    def message() -> String: self.detail.to_string()
+    fn message() String: self.detail.to_string()
 
 test "callback inference retains captures and contextual metadata":
     let offset = 7
     let values = [1, 2].map(
-        lambda outer: [3, 4].map(lambda inner: return outer + inner + offset)
+        fn outer: [3, 4].map(fn inner: return outer + inner + offset)
     )
     try expect_equal(values, [[11, 12], [12, 13]])
 
-    let callable: Callable[[Int], Callable[[Int], Int]] = apply(
-        value: 1, transform: lambda base: lambda item: lambda extra: item + extra + base
+    let callable: fn(Int) fn(Int) Int = apply(
+        value: 1, transform: fn base: fn item: fn extra: item + extra + base
     )
     try expect_equal(callable(3)(4), 8)
 
-    let callback = Callback(lambda (item: Int = 4): item + offset)
+    let callback = Callback(fn(item: Int = 4): item + offset)
     try expect_equal(callback.transform(3), 10)
-    try expect_equal(optional(value: 5, transform: lambda item: item + offset), 12)
+    try expect_equal(optional(value: 5, transform: fn item: item + offset), 12)
 
-    let missing = choose(first: lambda: none, second: lambda: some(3))
+    let missing = choose(first: fn: none, second: fn() Int?: 3)
     try expect_false(not missing.is_none())
 
     let failure = with_result(
-        lambda:
-            if True: return error(TextError("expected"))
+        fn:
+            if true: return error(TextError("expected"))
 
             return ok(4)
     )
 
     try expect_equal(failure, Result[Int, TextError].error(TextError("expected")))
 
-    let failed: Result[Int, Error] = apply(
-        value: 9, transform: lambda item: error(Failure(item))
-    )
+    let failed: Int! = apply(value: 9, transform: fn item: error(Failure(item)))
     try expect_false(failed.is_ok())
     try expect_equal(failed.err().message(), "9")
 
-def absent[T]() -> Optional[T]: none
+fn absent[T]() T?: none
 
-def from_callback[T](factory: Callable[[], T]) -> T: factory()
+fn from_callback[T](factory: fn() T) T: factory()
 
 test "later returns repair incomplete and convertible evidence":
     let value = from_callback(
-        lambda:
-            if True: return absent()
+        fn:
+            if true: return absent()
 
-            return some(1)
+            let one: Int? = 1
+            return one
     )
 
     try expect_false(not value.is_none())
 
     let cause = from_callback(
-        lambda:
-            if False: return Failure(1)
+        fn:
+            if false: return Failure(1)
 
             return Failure(2)
     )
 
     try expect_equal(cause.message(), "2")
 
-def operation() -> Result[Int, TextError]: ok(4)
+fn operation() Int!TextError: ok(4)
 
 test "try rechecks the inferred enclosing result":
     let value = from_callback(
-        lambda:
+        fn:
             let number = try operation()
             return Result[Int, TextError].ok(number)
     )

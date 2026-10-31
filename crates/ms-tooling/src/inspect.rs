@@ -36,7 +36,7 @@ pub struct Source {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entity {
     pub id: String,
-    pub go_id: String,
+    pub checker_id: String,
     pub kind: String,
     pub name: String,
     pub ty: String,
@@ -58,7 +58,7 @@ pub struct CallSite {
 /// A local binding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Local {
-    pub go_id: String,
+    pub checker_id: String,
     pub name: String,
     pub ty: String,
     pub span: Span,
@@ -148,7 +148,9 @@ pub fn inspect(program: &Program) -> Inspection {
     for (module, ends) in &modules {
         locals(module, ends, &mut result);
     }
-    result.locals.sort_by(|a, b| a.go_id.cmp(&b.go_id));
+    result
+        .locals
+        .sort_by(|a, b| a.checker_id.cmp(&b.checker_id));
 
     let mut symbol_ids: HashMap<usize, String> = HashMap::new();
     for (module, _) in &modules {
@@ -199,7 +201,7 @@ pub fn inspect(program: &Program) -> Inspection {
             let file = module.file.as_str();
             let mut entity = Entity {
                 id: format!("{file}#{kind}#{}", decl.name().as_str()),
-                go_id: String::new(),
+                checker_id: String::new(),
                 kind: kind.to_string(),
                 name: name.clone(),
                 ty: String::new(),
@@ -214,7 +216,7 @@ pub fn inspect(program: &Program) -> Inspection {
             if let Some(symbol) = symbol_of(program, module, decl.decl_name_for_symbol().as_str())
                 && symbol.decl.as_ref().is_some_and(|d| d.same(decl))
             {
-                entity.go_id = symbol.id.as_str().to_string();
+                entity.checker_id = symbol.id.as_str().to_string();
                 entity.ty = show(&symbol.value_type());
                 entity.effects = effects_of(program, symbol.id.as_str());
             }
@@ -247,7 +249,7 @@ pub fn inspect(program: &Program) -> Inspection {
                 let _ = index;
                 result.entities.push(Entity {
                     id: owner.clone(),
-                    go_id: checked.id.as_str().to_string(),
+                    checker_id: checked.id.as_str().to_string(),
                     kind: "method".to_string(),
                     name: format!("{name}.{}", method.func.name.as_str()),
                     ty: checked.ty.to_string(),
@@ -299,7 +301,7 @@ trait DeclSymbolName {
 }
 
 impl DeclSymbolName for DeclRef {
-    /// Tests are looked up by their written name, like Go's `Declaration.Name`.
+    /// Tests are looked up by their written name.
     fn decl_name_for_symbol(&self) -> ms_check::types::Name {
         match &self.decl().kind {
             DeclKind::Test(t) => n(&t.name),
@@ -406,19 +408,17 @@ impl Visitor for Sites<'_> {
     fn stmt(&mut self, s: &Stmt) {
         self.statements
             .push(source_span(self.module, s.pos, self.ends));
-        if let StmtKind::With { .. } = s.kind {
-            let cleanup = self
+        if let StmtKind::Bind { .. } = s.kind
+            && let Some(method) = self
                 .module
                 .facts()
                 .stmts
                 .get(&s.id)
-                .and_then(|f| f.cleanup.clone());
-            let target = match cleanup {
-                None => "indirect.close".to_string(),
-                Some(method) => match self.method_ids.get(method.id.as_str()) {
-                    Some(id) => id.clone(),
-                    None => format!("{}.close", method.receiver),
-                },
+                .and_then(|f| f.cleanup.clone())
+        {
+            let target = match self.method_ids.get(method.id.as_str()) {
+                Some(id) => id.clone(),
+                None => format!("{}.close", method.receiver),
             };
             self.calls.push(CallSite {
                 id: format!("{}#cleanup#{}", self.module.file.as_str(), s.pos.offset),
@@ -436,7 +436,7 @@ impl Visitor for Sites<'_> {
 fn locals(module: &ModuleData, ends: &LineEnds, out: &mut Inspection) {
     let mut add = |binding: &BindingRef, pos: Pos| {
         out.locals.push(Local {
-            go_id: binding.id.as_str().to_string(),
+            checker_id: binding.id.as_str().to_string(),
             name: binding.name.as_str().to_string(),
             ty: binding.ty.to_string(),
             span: source_span(module, pos, ends),
@@ -567,7 +567,7 @@ impl Inspection {
     pub fn to_json(&self) -> Json {
         let locals = self.locals.iter().map(|l| {
             Json::Obj(vec![
-                ("go_id".into(), Json::str(&l.go_id)),
+                ("checker_id".into(), Json::str(&l.checker_id)),
                 ("name".into(), Json::str(&l.name)),
                 ("type".into(), Json::str(&l.ty)),
                 ("span".into(), l.span.to_json()),
@@ -581,8 +581,8 @@ impl Inspection {
         });
         let entities = self.entities.iter().map(|e| {
             let mut fields = vec![("id".to_string(), Json::str(&e.id))];
-            if !e.go_id.is_empty() {
-                fields.push(("go_id".into(), Json::str(&e.go_id)));
+            if !e.checker_id.is_empty() {
+                fields.push(("checker_id".into(), Json::str(&e.checker_id)));
             }
             fields.push(("kind".into(), Json::str(&e.kind)));
             fields.push(("name".into(), Json::str(&e.name)));
@@ -607,7 +607,7 @@ impl Inspection {
         });
         Json::Obj(vec![
             ("locals".to_string(), Json::Arr(locals.collect())),
-            ("format".into(), Json::int(1)),
+            ("format".into(), Json::int(2)),
             ("build_id".into(), Json::str(&self.build_id)),
             ("sources".into(), Json::Arr(sources.collect())),
             ("entities".into(), Json::Arr(entities.collect())),

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def probe(value: Int, flag: Bool) -> Int:\n    var sum = 0\n    if flag:\n        sum = value\n    sum += 1\n    return sum\n"
-  }
-}

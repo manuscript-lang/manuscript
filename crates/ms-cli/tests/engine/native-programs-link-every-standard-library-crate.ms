@@ -1,7 +1,8 @@
-from "@std/semver.ms" import parse, format
+import parse, format from "@std/semver.ms"
 
-export def main() -> Int:
+export fn main() Int:
     let v = parse("1.2.3").get()
     if format(v) == "1.2.3":
         return 0
+
     return 1

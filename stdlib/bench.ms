@@ -1,8 +1,8 @@
-from "@std/math.ms" import sqrt
-from "@std/io.ms" import stdout
-from "@std/process.ms" import control
-from "@std/test.ms" import fail
-from "@std/time.ms" import clock
+import sqrt from "@std/math.ms"
+import stdout from "@std/io.ms"
+import control from "@std/process.ms"
+import fail from "@std/test.ms"
+import clock from "@std/time.ms"
 
 # Measurement driver for `bench` blocks. `ms bench` runs each block in its own process; the block's body is one iteration,
 # and this module repeats it, times it, and reports per-iteration statistics. The entry that `ms bench` builds calls
@@ -21,16 +21,16 @@ type Settings:
     # Fixed iterations per sample; 0 calibrates from the target duration.
     iterations: Int
 
-def max(left: Int, right: Int) -> Int:
-    return left if left > right else right
+fn max(left: Int, right: Int) Int:
+    return if left > right: left else: right
 
-def min(left: Int, right: Int) -> Int:
-    return left if left < right else right
+fn min(left: Int, right: Int) Int:
+    return if left < right: left else: right
 
 # Calibration never runs more iterations than this per sample.
 let max_iterations = 100000000
 
-def settings() -> Settings:
+fn settings() Settings:
     let environment = control().environment().get(Map[String, String]())
     var found = Settings(100 * 1000000, 10, 0)
     if let text = environment.get("MS_BENCH_TIME_MS"):
@@ -42,10 +42,7 @@ def settings() -> Settings:
     return found
 
 # Runs `body` `count` times and returns the elapsed nanoseconds; the first failure stops the run and is returned.
-def time_batch(
-    body: Callable[[], Result[Unit, Error]],
-    count: Int
-) -> Result[Int, Error]:
+fn time_batch(body: fn() Unit!, count: Int) Int!:
     let clk = clock()
     let started = clk.now()
     for unused in 0..count:
@@ -53,7 +50,7 @@ def time_batch(
     return ok(clk.now().difference(started).to_nanoseconds())
 
 # Returns the iteration count whose sample should take about `target` nanoseconds, given that `count` took `elapsed`.
-def next_count(count: Int, elapsed: Int, target: Int) -> Int:
+fn next_count(count: Int, elapsed: Int, target: Int) Int:
     let scaled = count * target / max(elapsed, 1) * 12 / 10
     return min(max(scaled, count + 1), min(count * 100, max_iterations))
 
@@ -61,19 +58,16 @@ def next_count(count: Int, elapsed: Int, target: Int) -> Int:
 # A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
 #   bench "sorts":
 #       let data = ints(100000)
-#       try measure(100000, lambda: keep(data.sorted().length()))
+#       try measure(100000, fn: keep(data.sorted().length()))
 # Everything the body does before `measure` runs once, untimed.
-export def measure(
-    operations: Int,
-    work: Callable[[], Result[Unit, Error]]
-) -> Result[Unit, Error]:
+export fn measure(operations: Int, work: fn() Unit!) Unit!:
     let body = work
     let config = settings()
     var count = max(config.iterations, 1)
 
     if config.iterations == 0:
         # Calibration doubles as the warmup.
-        while True:
+        while true:
             let elapsed = try time_batch(body, count)
             if elapsed >= config.target_nanoseconds or count >= max_iterations:
                 break
@@ -86,41 +80,38 @@ export def measure(
         let elapsed = try time_batch(body, count)
         times.append(elapsed.to_float() / (count * operations).to_float())
 
-    let sorted = times.sorted(lambda a, b: -1 if a < b else (1 if a > b else 0))
+    let sorted = times.sorted(fn a, b: (if a < b: -1 else: (if a > b: 1 else: 0)))
     let n = sorted.length().to_float()
-    let mean = sorted.fold(0.0, lambda total, t: total + t) / n
-    let deviations = sorted.map(lambda t: (t - mean) * (t - mean))
-    let variance = deviations.fold(0.0, lambda total, d: total + d) / n
+    let mean = sorted.fold(0.0, fn total, t: total + t) / n
+    let deviations = sorted.map(fn t: (t - mean) * (t - mean))
+    let variance = deviations.fold(0.0, fn total, d: total + d) / n
     let last = sorted.length() - 1
     let median = (sorted[last / 2] + sorted[(last + 1) / 2]) / 2.0
-    let line = f"MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)}\}\n"
+    let line = "MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)}\}\n"
     stdout().write(line).get()
-    control().set_environment(measured_flag, some("1")).get()
-    return ok(())
+    control().set_environment(measured_flag, "1").get()
+    return ok(unit)
 
 # Set once a body has timed its own work with `measure`.
 let measured_flag = "MS_BENCH_MEASURED"
 
 # The entry `ms bench` builds calls this with each block's body; programs do not. The body runs once first (the
 # warmup); a body that called `measure` has reported already, and any other body is one iteration to repeat and time.
-export def run_bench_block(
-    body: Callable[[], Result[Unit, Error]],
-    operations: Int
-) -> Result[Unit, Error]:
+export fn run_bench_block(body: fn() Unit!, operations: Int) Unit!:
     try body()
 
     let environment = control().environment().get(Map[String, String]())
     if environment.get(measured_flag).get("") == "1":
-        return ok(())
+        return ok(unit)
 
     return measure(operations, body)
 
 # Consumes a bench's result so the work that computed it stays observable; returns an error only for the one value
 # no workload should produce (the smallest Int), so the check cannot be optimized away or tripped by accident.
-export def keep(checksum: Int) -> Result[Unit, Error]:
+export fn keep(checksum: Int) Unit!:
     if checksum == -9223372036854775807 - 1:
         return fail(
             "bench result is the smallest Int; the workload is probably degenerate"
         )
 
-    return ok(())
+    return ok(unit)

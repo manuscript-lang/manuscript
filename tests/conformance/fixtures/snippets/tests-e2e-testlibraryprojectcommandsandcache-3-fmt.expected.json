@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@lib/value.ms\" import value\nfrom \"@std/fs.ms\" import filesystem\nfrom \"@std/test.ms\" import fail\n\ntest \"root\":\n    if value() != 3: return fail(\"bad value\")\n\n    let data = try filesystem().read_file(path: \"golden/input.txt\", max_bytes: 1024)\n    if data.length() != 7: return fail(\"wrong fixture size\")\n"
-  }
-}

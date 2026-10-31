@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal, expect_contains, expect_fault
+import expect_equal, expect_contains, expect_fault from "@std/test.ms"
 
 test "padding returns a plain String":
     try expect_equal("7".pad_start(3, "0"), "007")
@@ -9,6 +9,12 @@ test "padding returns a plain String":
 test "padding counts scalars":
     try expect_equal("é".pad_start(3, "🙂"), "🙂🙂é")
     try expect_equal("x".pad_end(4, "é🙂"), "xé🙂é")
+
+test "repeated fills keep pattern and scalar boundaries":
+    try expect_equal("ab".repeat(17).get(), "ababababababababababababababababab")
+    try expect_equal("é🙂".repeat(5).get(), "é🙂é🙂é🙂é🙂é🙂")
+    try expect_equal("!".pad_start(10, "ab"), "ababababa!")
+    try expect_equal("!".pad_end(6, "é🙂"), "!é🙂é🙂é")
 
 test "a short target, negative target or empty padding leaves the text unchanged":
     try expect_equal("abc".pad_start(2, "-"), "abc")
@@ -23,7 +29,7 @@ test "a table row needs no unwrap":
 
 test "padding beyond the string limit faults":
     let message = try expect_fault(
-        lambda:
+        fn:
             let _huge = "ab".pad_start(9223372036854775807, "xyz")
     )
     message | try expect_contains("limit exceeded")
@@ -37,25 +43,25 @@ test "fixed-digit float formatting returns a plain String":
 
 test "a digit count outside the range faults":
     let fixed = try expect_fault(
-        lambda:
+        fn:
             let _text = 1.0.to_fixed(101)
     )
     fixed | try expect_contains("to_fixed")
 
     let negative = try expect_fault(
-        lambda:
+        fn:
             let _text = 1.0.to_fixed(-1)
     )
     negative | try expect_contains("to_fixed")
 
     let precision = try expect_fault(
-        lambda:
+        fn:
             let _text = 1.0.to_precision(0)
     )
     precision | try expect_contains("to_precision")
 
     let exponential = try expect_fault(
-        lambda:
+        fn:
             let _text = 1.0.to_exponential(101)
     )
     exponential | try expect_contains("to_exponential")

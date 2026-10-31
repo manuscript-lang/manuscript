@@ -1,7 +1,7 @@
 # conform: tags=formatter,generics,lists,modules,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/generic-record-instantiations-keep-semantics.ms
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
 type Box[T]:
     v: T
@@ -11,13 +11,13 @@ type Pair[A, B]:
     first: A
     second: B
 
-def wrap[T](value: T) -> Box[T]:
+fn wrap[T](value: T) Box[T]:
     return Box[T](v: value, n: 1)
 
-def unwrap[T](b: Box[T]) -> ref T:
+fn unwrap[T](b: Box[T]) T:
     return b.v
 
-def bump(b: Box[Int]) -> Int:
+fn bump(b: Box[Int]) Int:
     return b.v + b.n
 
 test "generic records":
@@ -42,5 +42,5 @@ test "generic records":
     try expect_true((Box[Int](v: 4, n: 2) == a))
     try expect_true((not (Box[Int](v: 5, n: 2) == a)))
 
-    let o = Box[Optional[Int]](v: some(3), n: 0)
-    try expect_true((o.v == some(3)))
+    let o = Box[Int?](v: 3, n: 0)
+    try expect_true((o.v == 3))

@@ -1,4 +1,4 @@
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 
 type Counter:
     value: Int
@@ -32,6 +32,6 @@ test "unary plus keeps the operand":
 
 test "floating operations retain binary64 edge behavior":
     let negative_zero = -0.0
-    try expect_equal("{1.0 / negative_zero}", "-Infinity")
+    try expect_equal("\{1.0 / negative_zero\}", "-Infinity")
     let nan = 0.0 / 0.0
     try expe

@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Bucket:
     keys: List[Int] = []
@@ -6,7 +6,7 @@ type Bucket:
     size: Int = 0
 
 impl Bucket:
-    var def add(key: Int, name: String) -> Unit:
+    var fn add(key: Int, name: String) Unit:
         self.keys.append(key)
         self.names.append(name)
         self.size += 1
@@ -19,8 +19,8 @@ type Store:
     shelf: Shelf = Shelf()
 
 impl Store:
-    var def put(at: Int, key: Int) -> Unit:
-        self.shelf.buckets[at].add(key, f"k{key}")
+    var fn put(at: Int, key: Int) Unit:
+        self.shelf.buckets[at].add(key, "k{key}")
 
 test "var method on a list element changes only that element":
     var store = Store()

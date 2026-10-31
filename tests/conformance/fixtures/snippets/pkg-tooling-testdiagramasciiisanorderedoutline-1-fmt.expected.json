@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def one() -> Int:\n    return 1\n\ndef two() -> Int:\n    return one() + one()\n"
-  }
-}

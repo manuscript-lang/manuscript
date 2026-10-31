@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/json.ms\" import JsonError\n\ndef describe(cause: Error) -> String:\n    match cause:\n        case JsonError(json):\n            return json.message()\n        case _:\n            return cause.message()\n"
-  }
-}

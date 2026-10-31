@@ -1,14 +1,14 @@
 # conform: tags=closures,destructuring,formatter,interpolation,modules,mutation,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/binding-groups.ms
-from "@std/test.ms" import expect_equal, expect_false
+import expect_equal, expect_false from "@std/test.ms"
 
 let (
     LOW = 1
     HIGH: Int = LOW + 9
 )
 export let (
-    LABEL = f"range {LOW}..{HIGH}"
+    LABEL = "range {LOW}..{HIGH}"
 )
 
 test "a constant group declares each constant":
@@ -17,7 +17,7 @@ test "a constant group declares each constant":
 test "a var group declares mutable locals":
     var (
         total = 0
-        step = lambda (value: Int) -> Int:
+        step = fn(value: Int) Int:
             return value + 1
     )
     total = step(total)

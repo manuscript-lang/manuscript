@@ -1,19 +1,18 @@
-from "@std/test.ms" import expect_contains, expect_fault, expect_true
-from "@std/string.ms" import StringBuilder
-from "@std/collections.ms" import MapBuilder, SetBuilder
+import expect_contains, expect_fault, expect_true from "@std/test.ms"
+import StringBuilder from "@std/string.ms"
 
 type Folded:
     name: String
 
 impl Equal for Folded:
-    def equals(other: Folded) -> Bool:
-        return True
+    fn equals(other: Folded) Bool:
+        return true
 
 impl Hashable for Folded:
-    def hash() -> Int:
+    fn hash() Int:
         return 1
 
-def replace_first[T](var xs: List[T], value: T) -> List[T]:
+fn replace_first[T](var xs: List[T], value: T) List[T]:
     xs.set(index: 0, value: value)
     return xs.clone()
 
@@ -34,9 +33,7 @@ test "custom equality is kept for bound members":
     a.add(value: Folded(name: "y"))
     (a.length() == 1) | try expect_true
 
-    let mapped = a.map(
-        transform: lambda (value: Folded) -> Folded: return Folded(name: "z")
-    )
+    let mapped = a.map(transform: fn(value: Folded) Folded: return Folded(name: "z"))
     (mapped.length() == 1) | try expect_true
 
 test "builder":
@@ -46,45 +43,18 @@ test "builder":
     append("é")
     (sb.build() == "aé") | try expect_true
 
-test "sealed builder":
-    var sb = StringBuilder()
-    sb.build()
-
-    let message = try expect_fault(lambda: sb.append(""))
-    message | try expect_contains("builder is sealed")
-
-test "sealed map and set builders fault on every add":
-    var map_builder = MapBuilder[String, Int]()
-    let _map_sealed = map_builder.build()
-    (try expect_fault(lambda: map_builder.add("a", 1))) | try expect_contains(
-        "builder is sealed"
-    )
-
-    var set_builder = SetBuilder[Int]()
-    let _set_sealed = set_builder.build()
-    (try expect_fault(lambda: set_builder.add(1))) | try expect_contains(
-        "builder is sealed"
-    )
-
-test "unsealed set builder continues":
-    var builder = SetBuilder[Int]()
-    builder.add(1)
-
-    let frozen = builder.build()
-    (frozen.length() == 1) | try expect_true
-
 test "abs of the minimum overflows":
     let smallest = 0 - 9223372036854775807 - 1
     let message = try expect_fault(
-        lambda:
+        fn:
             let _ignored = smallest.abs()
     )
     message | try expect_contains("Int overflow")
 
 test "negative split cap faults":
     let message = try expect_fault(
-        lambda:
-            let _ignored = "a,b".split(separator: ",", max_parts: some(0 - 1))
+        fn:
+            let _ignored = "a,b".split(separator: ",", max_parts: (0 - 1))
     )
     message | try expect_contains("max_parts must be nonnegative")
 
@@ -106,27 +76,34 @@ test "size and shape methods as values":
     let set_length = s.length
     let set_is_empty = s.is_empty
     (length() == 3) | try expect_true
-    (is_empty() == False) | try expect_true
+    (is_empty() == false) | try expect_true
     (keys().length() == 3) | try expect_true
     (entries().length() == 3) | try expect_true
     (windows(2).length() == 2) | try expect_true
     (chunks(2).length() == 2) | try expect_true
     (map_length() == 1) | try expect_true
-    (map_is_empty() == False) | try expect_true
+    (map_is_empty() == false) | try expect_true
     (map_entries().length() == 1) | try expect_true
     (set_length() == 2) | try expect_true
-    (set_is_empty() == False) | try expect_true
+    (set_is_empty() == false) | try expect_true
 
 test "sorted as a value":
-    let sort = [3, 1, 2].sorted
-    let ordered = sort(compare: lambda a, b: a - b)
+    # `sorted` comes from both `ListCopies` and `ListOrderCopy`, so a value names it through a closure.
+    let sort = fn(compare: fn(Int, Int) Int) List[Int]: [3, 1, 2].sorted(compare)
+    let ordered = sort(compare: fn a, b: a - b)
     (ordered.get(index: 0) == 1) | try expect_true
     (ordered.get(index: 2) == 3) | try expect_true
+
+test "take as a value":
+    let take = [3, 1, 2].take
+    let first = take(2)
+    (first.length() == 2) | try expect_true
+    (first.get(index: 0) == 3) | try expect_true
 
 type EqualProbe:
     n: Int
 
-def same(a: Equal, b: Equal) -> Bool:
+fn same(a: Equal, b: Equal) Bool:
     return a.equals(b)
 
 test "equals on built-in data":
@@ -135,29 +112,29 @@ test "equals on built-in data":
     let other = [9]
     let probe = EqualProbe(n: 1)
     (xs.equals(ys)) | try expect_true
-    (xs.equals(other) == False) | try expect_true
+    (xs.equals(other) == false) | try expect_true
     ("x".equals("x")) | try expect_true
-    (1.equals(2) == False) | try expect_true
+    (1.equals(2) == false) | try expect_true
     (probe.equals(EqualProbe(n: 1))) | try expect_true
 
     let bound = probe.equals
     (bound(EqualProbe(n: 1))) | try expect_true
-    (bound(EqualProbe(n: 2)) == False) | try expect_true
+    (bound(EqualProbe(n: 2)) == false) | try expect_true
 
     let text = "x".equals
     (text("x")) | try expect_true
 
 test "built-in data passes as Equal":
     (same(1, 1)) | try expect_true
-    (same(1, 2) == False) | try expect_true
+    (same(1, 2) == false) | try expect_true
     (same(EqualProbe(n: 1), EqualProbe(n: 1))) | try expect_true
-    (same(EqualProbe(n: 1), 1) == False) | try expect_true
+    (same(EqualProbe(n: 1), 1) == false) | try expect_true
 
 test "list and map literals pass as Equal":
     (same([1, 2], [1, 2])) | try expect_true
-    (same([1, 2], [1]) == False) | try expect_true
+    (same([1, 2], [1]) == false) | try expect_true
     (same({"a": 1}, {"a": 1})) | try expect_true
-    (same({"a": [1]}, {"a": [2]}) == False) | try expect_true
+    (same({"a": [1]}, {"a": [2]}) == false) | try expect_true
 
 test "numeric and optional members as values":
     let n = -7
@@ -177,7 +154,7 @@ test "numeric and optional members as values":
     (to_decimal().to_string() == "-7") | try expect_true
     (narrow().get(default: 0) == -7) | try expect_true
     (float_abs() == 2.5) | try expect_true
-    (is_nan() == False) | try expect_true
+    (is_nan() == false) | try expect_true
     (is_finite()) | try expect_true
     (hash() == n.hash()) | try expect_true
 

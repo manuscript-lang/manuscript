@@ -8,6 +8,7 @@
 
 use crate::syntax::{DeclRef, FuncRef};
 pub use ms_syntax::Symbol as Name;
+use ms_syntax::ast::DeclKind;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Write as _};
@@ -117,19 +118,26 @@ impl fmt::Debug for Type {
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.kind == Kind::Function {
-            f.write_str("Callable[[")?;
+            f.write_str("fn(")?;
             for (i, a) in self.params.iter().enumerate() {
                 if i > 0 {
                     f.write_str(", ")?;
                 }
                 write!(f, "{}", a.ty)?;
             }
-            f.write_str("], ")?;
-            match &self.result {
-                Some(r) => write!(f, "{r}")?,
-                None => f.write_str("<unknown>")?,
-            }
-            return f.write_char(']');
+            f.write_str(") ")?;
+            return match &self.result {
+                Some(r) => write!(f, "{r}"),
+                None => f.write_str("<unknown>"),
+            };
+        }
+        if self.is_std("Optional") && self.args.len() == 1 {
+            let inner = &self.args[0];
+            return if inner.kind == Kind::Function {
+                write!(f, "({inner})?")
+            } else {
+                write!(f, "{inner}?")
+            };
         }
         f.write_str(self.name.as_str())?;
         if !self.args.is_empty() {
@@ -207,6 +215,11 @@ impl Type {
         id.len() == 5 + name.len() && id.starts_with("@std/") && &id[5..] == name
     }
 
+    /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/time.ms`.
+    pub fn is_time(&self, name: &str) -> bool {
+        self.is_source_type("@std/time.ms", name)
+    }
+
     /// Whether this is the type `name` declared by the bundled source module `module`.
     pub fn is_source_type(&self, module: &str, name: &str) -> bool {
         self.name.as_str() == name && self.symbol().is_some_and(|s| s.module.as_str() == module)
@@ -215,6 +228,17 @@ impl Type {
     /// The nominal definition's symbol, if any.
     pub fn symbol(&self) -> Option<SymRef> {
         self.def.as_ref().and_then(|d| d.symbol())
+    }
+
+    /// The declaring file of an `opaque type`, or `None` for any other type.
+    pub fn opaque_module(&self) -> Option<Name> {
+        let symbol = self.symbol()?;
+        let opaque = match &symbol.decl.as_ref()?.decl().kind {
+            DeclKind::Record(r) => r.opaque,
+            DeclKind::Alternative(a) => a.opaque,
+            _ => false,
+        };
+        opaque.then_some(symbol.module)
     }
 }
 
@@ -621,9 +645,23 @@ pub fn standard(name: &str, args: Vec<Ty>) -> Ty {
     with_args(&sym.ty(), args)
 }
 
+/// `Duration`, `Instant` or `Timestamp`, the records of `@std/time.ms`.
+pub fn time_type(name: &str) -> Ty {
+    // The module is checked on first use; its records have no fields before that.
+    crate::stdlib::standard_exports("@std/time.ms");
+    let sym = crate::stdlib::source_type(n("@std/time.ms"), n(name))
+        .unwrap_or_else(|| panic!("standard time type {name}"));
+    sym.ty()
+}
+
 /// `TestOutcome`: the implicit `Result[Unit, Error]` of a test block.
 pub fn test_outcome() -> Ty {
     standard("Result", vec![unit(), standard("Error", vec![])])
+}
+
+/// Whether `t` is `Result[Unit, Error]`, the result of every `close`.
+pub fn is_close_result(t: &Ty) -> bool {
+    t.is_std("Result") && t.args.len() == 2 && t.args[0].id == "Unit" && t.args[1].is_std("Error")
 }
 
 // ------------------------------------------------------------ type algebra
@@ -820,6 +858,12 @@ pub fn fields(t: &Ty) -> Vec<Param> {
             ty: sub(&p.ty, &s),
         })
         .collect()
+}
+
+/// Whether the bound `b` makes a type parameter `Clonable`: `Data` and `Hashable` hold no
+/// resource, so their values can be copied, as `Hashable` implies `Equal`.
+pub fn implies_clonable(b: &Ty) -> bool {
+    b.is_std("Clonable") || b.is_std("Data") || b.is_std("Hashable")
 }
 
 /// One declared record field, freshly substituted with the receiver's type arguments.

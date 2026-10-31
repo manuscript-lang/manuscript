@@ -16,8 +16,19 @@ def document(*cases, diagnostics=()):
 class LibrarySamples(unittest.TestCase):
     def test_reads_operations_and_median_per_case(self):
         rows, identity = parse_sample(document(("a", "passed", 10, 2.5), ("b", "passed", 1, 0)))
-        self.assertEqual(rows, {"a": (10, 2.5), "b": (1, 0)})
-        self.assertEqual(identity, {"a": 10, "b": 1})
+        self.assertEqual(rows, {"m.ms::a": (10, 2.5), "m.ms::b": (1, 0)})
+        self.assertEqual(identity, {"m.ms::a": 10, "m.ms::b": 1})
+
+    def test_qualified_case_identity(self):
+        before = document(("a", "passed", 10, 2))
+        other = before.replace("m.ms::a", "other.ms::a")
+        _, expected = parse_sample(before)
+        with self.assertRaises(ValueError):
+            parse_sample(other, expected)
+        combined = json.loads(before)
+        combined["benches"] += json.loads(other)["benches"]
+        rows, _ = parse_sample(json.dumps(combined))
+        self.assertEqual(set(rows), {"m.ms::a", "other.ms::a"})
 
     def test_rejects_changed_cases_or_operation_counts(self):
         _, expected = parse_sample(document(("a", "passed", 10, 2)))

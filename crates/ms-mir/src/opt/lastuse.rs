@@ -15,7 +15,7 @@
 
 use crate::ir::*;
 use crate::types::TyKind;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// Runs the pass; returns whether any drop moved.
 pub fn run(m: &mut Module) -> bool {
@@ -29,9 +29,7 @@ pub fn run_where(m: &mut Module, select: impl Fn(&Func) -> bool) -> bool {
         if m.funcs[fi].blocks.is_empty() || !select(&m.funcs[fi]) {
             continue;
         }
-        // The stand-in keeps `ret_borrowed`, so a recursive call still reads as lending.
-        let mut stand_in = Func::new("", Vec::new(), crate::types::Ty::UNIT);
-        stand_in.ret_borrowed = m.funcs[fi].ret_borrowed;
+        let stand_in = Func::new("", Vec::new(), crate::types::Ty::UNIT);
         let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
         changed |= function(m, &mut f);
         m.funcs[fi] = f;
@@ -56,6 +54,7 @@ fn plain(m: &Module, t: crate::types::Ty, seen: &mut Vec<crate::types::Ty>) -> b
         | TyKind::Float32
         | TyKind::Str
         | TyKind::Bytes => true,
+        TyKind::Ref(_) => true,
         TyKind::Ptr | TyKind::Fn(..) | TyKind::Iface(_) => false,
         TyKind::List(e) | TyKind::Opt(e) => plain(m, *e, seen),
         TyKind::Obj(n, args) => {
@@ -129,6 +128,8 @@ struct Index {
     removed: Vec<Vec<bool>>,
     /// Drops to insert, per block: (after instruction or block start, value), in emission order.
     pending: Vec<Vec<(Option<usize>, Value)>>,
+    /// Blocks holding a pending drop of each value.
+    pending_blocks: HashMap<Value, Vec<usize>>,
 }
 
 impl Index {
@@ -144,6 +145,7 @@ impl Index {
                 .map(|b| vec![false; b.insts.len()])
                 .collect(),
             pending: vec![Vec::new(); f.blocks.len()],
+            pending_blocks: HashMap::new(),
         };
         for (bi, b) in f.blocks.iter().enumerate() {
             for (ii, i) in b.insts.iter().enumerate() {
@@ -196,6 +198,10 @@ impl Index {
             group[pos.after - 1] + 1
         };
         self.pending[bi].insert(at, (pos.idx, v));
+        let blocks = self.pending_blocks.entry(v).or_default();
+        if !blocks.contains(&bi) {
+            blocks.push(bi);
+        }
     }
 
     /// Writes the recorded removals and insertions into the function.
@@ -214,7 +220,12 @@ impl Index {
             };
             let old = std::mem::take(&mut b.insts);
             let mut out = Vec::with_capacity(old.len() + pending.len());
-            for (_, v) in pending.iter().filter(|(anchor, _)| anchor.is_none()) {
+            // Group by anchor once so a block costs its instructions plus its pending drops.
+            let mut by_anchor: HashMap<Option<usize>, Vec<Value>> = HashMap::new();
+            for (anchor, v) in pending {
+                by_anchor.entry(*anchor).or_default().push(*v);
+            }
+            for v in by_anchor.get(&None).into_iter().flatten() {
                 out.push(drop_inst(*v, b.term_loc));
             }
             for (k, inst) in old.into_iter().enumerate() {
@@ -222,7 +233,7 @@ impl Index {
                 if !self.removed[bi][k] {
                     out.push(inst);
                 }
-                for (_, v) in pending.iter().filter(|(anchor, _)| *anchor == Some(k)) {
+                for v in by_anchor.get(&Some(k)).into_iter().flatten() {
                     out.push(drop_inst(*v, loc));
                 }
             }
@@ -308,7 +319,10 @@ fn family(m: &Module, f: &Func, ix: &Index, v: Value) -> HashSet<Value> {
                     // A lending function's result is a borrow of its arguments.
                     let lent = m.result_mode(f, i) == Some(Mode::Borrow)
                         && matches!(i.op, Op::Call | Op::CallMethod);
-                    if (i.op == Op::CallRt && !fresh || lent)
+                    // A result holding a view of an argument points into it too.
+                    let viewing = matches!(i.op, Op::Call | Op::CallMethod)
+                        && i.res.is_some_and(|r| m.holds_view(f.ty(r)));
+                    if (i.op == Op::CallRt && !fresh || lent || viewing)
                         && let Some(r) = i.res
                         && !is_scalar(m, f.ty(r))
                     {
@@ -370,21 +384,58 @@ fn candidate(
             }
         }
     }
-    let nb = f.blocks.len();
     // Where the original drop of `v` sits in each block: nothing after it counts, `v` was gone then.
-    let mut drop_at: Vec<Option<usize>> = vec![None; nb];
+    let mut drop_at: HashMap<usize, usize> = HashMap::new();
     let mut existing: Vec<(usize, usize)> = Vec::new();
+    // Earliest real consumption of `v` (not its drops) per block.
+    let mut consume_at: HashMap<usize, usize> = HashMap::new();
     for &(bi, ii) in &ix.uses[v.index()] {
-        if ix.live(bi, ii) && f.blocks[bi].insts[ii].op == Op::Drop {
+        if !ix.live(bi, ii) {
+            continue;
+        }
+        let i = &f.blocks[bi].insts[ii];
+        if i.op == Op::Drop {
             existing.push((bi, ii));
-            if drop_at[bi].is_none_or(|k| ii < k) {
-                drop_at[bi] = Some(ii);
-            }
+            let e = drop_at.entry(bi).or_insert(ii);
+            *e = (*e).min(ii);
+            continue;
+        }
+        let modes = crate::verify::arg_modes(m, i);
+        if i.args
+            .iter()
+            .zip(modes)
+            .any(|(a, md)| *a == v && md == Mode::Own)
+        {
+            let e = consume_at.entry(bi).or_insert(ii);
+            *e = (*e).min(ii);
         }
     }
     if existing.is_empty() {
         return false;
     }
+    // The region the analysis needs: blocks reachable from the definition, not past a block that
+    // holds the original drop (liveness ends there and `v` is not owned beyond it). Everything
+    // below is indexed by position in `order`, so a candidate costs its region, not the function.
+    let mut order: Vec<usize> = vec![db];
+    {
+        let mut seen: HashSet<usize> = HashSet::from([db]);
+        let mut work = vec![db];
+        while let Some(b) = work.pop() {
+            if drop_at.contains_key(&b) {
+                continue;
+            }
+            for s in f.blocks[b].term.successors() {
+                if seen.insert(s.index()) {
+                    order.push(s.index());
+                    work.push(s.index());
+                }
+            }
+        }
+    }
+    order.sort_unstable();
+    let nb = order.len();
+    let lid: HashMap<usize, usize> = order.iter().enumerate().map(|(l, &b)| (b, l)).collect();
+    let dl = lid[&db];
     // Uses per block: positions of family operands (other than the drops of `v`), including
     // drops of family members already placed by this pass.
     let mut uses: Vec<Vec<Pos>> = vec![Vec::new(); nb];
@@ -393,18 +444,21 @@ fn candidate(
             if !ix.live(bi, ii) {
                 continue;
             }
+            let Some(&l) = lid.get(&bi) else { continue };
             let i = &f.blocks[bi].insts[ii];
             if i.op == Op::Drop && i.args[0] == v {
                 continue;
             }
-            uses[bi].push(Pos::at(ii));
+            uses[l].push(Pos::at(ii));
         }
-        for (bi, block_uses) in uses.iter_mut().enumerate() {
-            block_uses.extend(ix.pending_drops(bi, w));
+        for &bi in ix.pending_blocks.get(&w).into_iter().flatten() {
+            if let Some(&l) = lid.get(&bi) {
+                uses[l].extend(ix.pending_drops(bi, w));
+            }
         }
     }
-    let end = |bi: usize| drop_at[bi].map_or(Pos::END, Pos::at);
-    let uses_in = |bi: usize| uses[bi].iter().copied().filter(move |p| *p < end(bi));
+    let end = |l: usize| drop_at.get(&order[l]).map_or(Pos::END, |&k| Pos::at(k));
+    let uses_in = |l: usize| uses[l].iter().copied().filter(move |p| *p < end(l));
     // Blocks whose terminator passes a family member on (the drop must follow the edge).
     let passes = |bi: usize| -> bool {
         let mut hit = false;
@@ -413,25 +467,31 @@ fn candidate(
             .for_each_target(|t| hit |= t.args.iter().any(|a| fam.contains(a)));
         hit
     };
-    let succs: Vec<Vec<Block>> = f.blocks.iter().map(|b| b.term.successors()).collect();
+    let succs: Vec<Vec<Block>> = order
+        .iter()
+        .map(|&b| f.blocks[b].term.successors())
+        .collect();
     // Backward liveness of the family.
     let mut live_in = vec![false; nb];
     let mut live_out = vec![false; nb];
     let mut has_use = vec![false; nb];
-    for (bi, slot) in has_use.iter_mut().enumerate() {
-        *slot = uses_in(bi).next().is_some()
-            || matches!(&f.blocks[bi].term, Term::Ret(Some(x)) if *x == v);
+    for (l, slot) in has_use.iter_mut().enumerate() {
+        *slot = uses_in(l).next().is_some()
+            || matches!(&f.blocks[order[l]].term, Term::Ret(Some(x)) if *x == v);
     }
     loop {
         let mut again = false;
-        for bi in (0..nb).rev() {
-            let out = drop_at[bi].is_none()
-                && (passes(bi) || succs[bi].iter().any(|s| live_in[s.index()]));
+        for l in (0..nb).rev() {
+            let out = !drop_at.contains_key(&order[l])
+                && (passes(order[l])
+                    || succs[l]
+                        .iter()
+                        .any(|s| lid.get(&s.index()).is_some_and(|&sl| live_in[sl])));
             // Nothing of the family is live before `v` is defined.
-            let inn = bi != db && (out || has_use[bi]);
-            if out != live_out[bi] || inn != live_in[bi] {
-                live_out[bi] = out;
-                live_in[bi] = inn;
+            let inn = l != dl && (out || has_use[l]);
+            if out != live_out[l] || inn != live_in[l] {
+                live_out[l] = out;
+                live_in[l] = inn;
                 again = true;
             }
         }
@@ -439,25 +499,6 @@ fn candidate(
             break;
         }
     }
-    // Real consumption of `v` (not its drops) per block, with the instruction index.
-    let consume_at = |bi: usize| -> Option<usize> {
-        ix.uses[v.index()]
-            .iter()
-            .filter(|(b, ii)| *b == bi && ix.live(*b, *ii))
-            .filter_map(|&(_, ii)| {
-                let i = &f.blocks[bi].insts[ii];
-                if i.op == Op::Drop {
-                    return None;
-                }
-                let modes = crate::verify::arg_modes(m, i);
-                i.args
-                    .iter()
-                    .zip(modes)
-                    .any(|(a, md)| *a == v && md == Mode::Own)
-                    .then_some(ii)
-            })
-            .min()
-    };
     // Whether the `slot`-th edge of `bi` hands `v` to an owning block parameter.
     let edge_consumes = |bi: usize, slot: usize| -> bool {
         let mut n = 0usize;
@@ -478,28 +519,31 @@ fn candidate(
     // Forward: blocks where `v` is owned on entry and not consumed.
     let mut owned_in = vec![false; nb];
     let mut owned_out = vec![false; nb];
-    let consumed: Vec<bool> = (0..nb)
-        .map(|bi| consume_at(bi).is_some() || ret_consumes(bi))
+    let consumed: Vec<bool> = order
+        .iter()
+        .map(|&bi| consume_at.contains_key(&bi) || ret_consumes(bi))
         .collect();
-    owned_out[db] = !consumed[db] && drop_at[db].is_none();
+    owned_out[dl] = !consumed[dl] && !drop_at.contains_key(&db);
     // Incoming edges per block as (predecessor, successor slot), so a pass costs the edge count.
     let mut preds: Vec<Vec<(usize, usize)>> = vec![Vec::new(); nb];
     for (p, ss) in succs.iter().enumerate() {
         for (si, s) in ss.iter().enumerate() {
-            preds[s.index()].push((p, si));
+            if let Some(&sl) = lid.get(&s.index()) {
+                preds[sl].push((p, si));
+            }
         }
     }
     loop {
         let mut again = false;
-        for bi in 0..nb {
-            let inn = bi != db
-                && preds[bi]
+        for l in 0..nb {
+            let inn = l != dl
+                && preds[l]
                     .iter()
-                    .any(|&(p, si)| owned_out[p] && !edge_consumes(p, si));
-            let out = (inn || bi == db) && !consumed[bi] && drop_at[bi].is_none();
-            if inn != owned_in[bi] || out != owned_out[bi] {
-                owned_in[bi] = inn;
-                owned_out[bi] = out;
+                    .any(|&(p, si)| owned_out[p] && !edge_consumes(order[p], si));
+            let out = (inn || l == dl) && !consumed[l] && !drop_at.contains_key(&order[l]);
+            if inn != owned_in[l] || out != owned_out[l] {
+                owned_in[l] = inn;
+                owned_out[l] = out;
                 again = true;
             }
         }
@@ -511,22 +555,24 @@ fn candidate(
     // Placements: (block, position the drop follows) and edges.
     let mut after_uses: Vec<(usize, Pos)> = Vec::new();
     let mut edges: Vec<(usize, usize)> = Vec::new(); // (pred, succ-slot index in successors())
-    for bi in 0..nb {
-        let in_region = if bi == db {
+    for l in 0..nb {
+        let bi = order[l];
+        let in_region = if l == dl {
             true
         } else {
-            owned_in[bi] && live_in[bi]
+            owned_in[l] && live_in[l]
         };
-        if !in_region || consumed[bi] {
+        if !in_region || consumed[l] {
             continue;
         }
+        // Another candidate's drop may already sit at the start of a block, ahead of instruction 0.
         let lo = if bi == db {
             Pos::at(di.map(|d| d + 1).unwrap_or(0))
         } else {
-            Pos::at(0)
+            Pos::START
         };
-        let last = uses_in(bi).filter(|p| *p >= lo).max();
-        let out = live_out[bi];
+        let last = uses_in(l).filter(|p| *p >= lo).max();
+        let out = live_out[l];
         if !out {
             if matches!(f.blocks[bi].term, Term::Fault(_) | Term::Unreachable) {
                 continue;
@@ -548,8 +594,9 @@ fn candidate(
             };
             after_uses.push((bi, pos));
         } else {
-            for (si, s) in succs[bi].iter().enumerate() {
-                if !live_in[s.index()] && !edge_consumes(bi, si) {
+            for (si, s) in succs[l].iter().enumerate() {
+                let sl = lid[&s.index()];
+                if !live_in[sl] && !edge_consumes(bi, si) {
                     edges.push((bi, si));
                 }
             }

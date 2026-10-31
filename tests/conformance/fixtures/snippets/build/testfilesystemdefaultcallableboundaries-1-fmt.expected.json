@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import filesystem, FileSystemError from \"@std/fs.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\nfn forward[T](item: T) T: item\n"
+  }
+}

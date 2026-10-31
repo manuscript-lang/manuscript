@@ -24,6 +24,10 @@ impl Var {
 struct VarInfo {
     ty: Ty,
     mode: Mode,
+    /// Defined exactly once, where every use it has is dominated by the definition: reads need no
+    /// search for the reaching definition or block parameters.
+    single: Option<Value>,
+    is_single: bool,
 }
 
 /// Builds one function inside a module.
@@ -217,7 +221,7 @@ impl<'m> FuncBuilder<'m> {
     pub fn conv(&mut self, a: Value, to: Ty) -> Value {
         self.val(Op::Conv, &[a], Imm::None, to)
     }
-    /// `inarrow.opt`: `some(a)` as `Optional[to]` when `a` fits the smaller int type `to`.
+    /// `inarrow.opt`: `some(a)` as `to?` when `a` fits the smaller int type `to`.
     pub fn inarrow_opt(&mut self, a: Value, to: Ty) -> Value {
         let t = self.m.types.opt(to);
         self.val(Op::INarrowOpt, &[a], Imm::None, t)
@@ -339,6 +343,21 @@ impl<'m> FuncBuilder<'m> {
         self.val(Op::ListDropLast, &[l], Imm::None, t)
     }
 
+    // Borrowed views.
+
+    /// `ref.new`: a view of the borrowed `v`; nothing is retained, copied or dropped.
+    pub fn ref_new(&mut self, v: Value) -> Value {
+        let t = self.m.types.view(self.ty(v));
+        self.val(Op::RefNew, &[v], Imm::None, t)
+    }
+    /// `ref.get`: the value a view borrows, as a borrow.
+    pub fn ref_get(&mut self, r: Value) -> Value {
+        let TyKind::Ref(inner) = self.m.types.kind(self.ty(r)).clone() else {
+            panic!("ref.get of a non-view")
+        };
+        self.val(Op::RefGet, &[r], Imm::None, inner)
+    }
+
     // Optionals.
 
     /// `opt.some`.
@@ -363,6 +382,11 @@ impl<'m> FuncBuilder<'m> {
     pub fn opt_get(&mut self, o: Value) -> Value {
         let t = self.m.opt_inner(self.ty(o)).expect("optional operand");
         self.val(Op::OptGet, &[o], Imm::None, t)
+    }
+    /// `opt.unbox`: moves the payload out of an owned present optional, which it consumes.
+    pub fn opt_unbox(&mut self, o: Value) -> Value {
+        let t = self.m.opt_inner(self.ty(o)).expect("optional operand");
+        self.val(Op::OptUnbox, &[o], Imm::None, t)
     }
     /// `opt.unwrap` (faults on none).
     pub fn opt_unwrap(&mut self, o: Value) -> Value {
@@ -403,22 +427,6 @@ impl<'m> FuncBuilder<'m> {
         let mut all = vec![recv];
         all.extend_from_slice(args);
         self.val(Op::CallMethod, &all, Imm::Method(iface, method), ret)
-    }
-    /// `call.method` whose result the caller owns: a lent result is copied.
-    pub fn call_method_owned(
-        &mut self,
-        iface: IfaceId,
-        method: u32,
-        recv: Value,
-        args: &[Value],
-    ) -> Value {
-        let r = self.call_method(iface, method, recv, args);
-        let sig = &self.m.ifaces[iface.index()].methods[method as usize];
-        if !sig.ret_borrowed || !self.m.needs_drop(sig.ret) {
-            return r;
-        }
-        let ret = sig.ret;
-        self.val(Op::Copy, &[r], Imm::None, ret)
     }
     /// `poll`.
     pub fn poll(&mut self) {
@@ -492,7 +500,24 @@ impl<'m> FuncBuilder<'m> {
 
     /// Declares a mutable variable. `mode` is the ownership its block parameters carry.
     pub fn declare_var(&mut self, ty: Ty, mode: Mode) -> Var {
-        self.vars.push(VarInfo { ty, mode });
+        self.vars.push(VarInfo {
+            ty,
+            mode,
+            single: None,
+            is_single: false,
+        });
+        Var(self.vars.len() as u32 - 1)
+    }
+
+    /// Declares a variable that is defined once and only read where that definition dominates
+    /// (an immutable `let`). Reading it never creates block parameters; defining it twice panics.
+    pub fn declare_single(&mut self, ty: Ty, mode: Mode) -> Var {
+        self.vars.push(VarInfo {
+            ty,
+            mode,
+            single: None,
+            is_single: true,
+        });
         Var(self.vars.len() as u32 - 1)
     }
 
@@ -508,6 +533,15 @@ impl<'m> FuncBuilder<'m> {
 
     /// Defines the variable's value at the end of the current block.
     pub fn def_var(&mut self, v: Var, val: Value) {
+        let info = &mut self.vars[v.index()];
+        if info.is_single {
+            assert!(
+                info.single.is_none(),
+                "single-definition variable {v:?} defined twice"
+            );
+            info.single = Some(val);
+            return;
+        }
         self.defs.insert((v, self.cur), val);
     }
 
@@ -529,6 +563,12 @@ impl<'m> FuncBuilder<'m> {
     }
 
     fn read_var(&mut self, v: Var, b: Block) -> Value {
+        if self.vars[v.index()].is_single {
+            let x = self.vars[v.index()]
+                .single
+                .unwrap_or_else(|| panic!("variable {v:?} used before it is defined in b{}", b.0));
+            return self.resolve(x);
+        }
         if let Some(x) = self.defs.get(&(v, b)).copied() {
             return self.resolve(x);
         }
@@ -674,5 +714,49 @@ impl<'m> FuncBuilder<'m> {
             }
         }
         (self.m, self.f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A chain of `n` two-predecessor joins: every variable read after it crosses all of them.
+    fn chain(n: usize, single: bool) -> usize {
+        let mut m = Module::new("t");
+        let mut b = FuncBuilder::new(&mut m, "f", Vec::new(), Ty::INT);
+        let vars: Vec<Var> = (0..n)
+            .map(|k| {
+                let v = if single {
+                    b.declare_single(Ty::INT, Mode::Borrow)
+                } else {
+                    b.declare_var(Ty::INT, Mode::Borrow)
+                };
+                let c = b.iconst(k as i64);
+                b.def_var(v, c);
+                v
+            })
+            .collect();
+        for _ in 0..n {
+            let (then, join) = (b.new_block(), b.new_block());
+            let c = b.bconst(true);
+            b.br_if(c, then, &[], join, &[]);
+            b.seal_block(then);
+            b.switch_to(then);
+            b.br(join, &[]);
+            b.seal_block(join);
+            b.switch_to(join);
+        }
+        for v in vars {
+            b.use_var(v);
+        }
+        b.defs.len()
+    }
+
+    #[test]
+    fn a_single_definition_variable_is_read_without_visiting_joins() {
+        // Each reassignable variable leaves an entry per join; a single-definition one none.
+        assert!(chain(20, false) >= 20 * 20);
+        assert_eq!(chain(20, true), 0);
     }
 }

@@ -74,6 +74,7 @@ pub(super) fn build<L: Lower>(
             return 1;
         }
         let diagnostic = CommandDiagnostic {
+            severity: String::new(),
             code: "MSN001".into(),
             phase: phase.into(),
             message: message.into(),

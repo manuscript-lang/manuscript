@@ -29,20 +29,20 @@
             "file": "terse-data.ms",
             "line": 49,
             "column": 16,
-            "offset": 1754
+            "offset": 1724
           },
           "fix": {
             "position": {
               "file": "terse-data.ms",
               "line": 49,
               "column": 19,
-              "offset": 1757
+              "offset": 1727
             },
             "end": {
               "file": "terse-data.ms",
               "line": 49,
               "column": 19,
-              "offset": 1757
+              "offset": 1727
             },
             "replacement": ".clone()"
           }
@@ -55,20 +55,20 @@
             "file": "terse-data.ms",
             "line": 77,
             "column": 19,
-            "offset": 2504
+            "offset": 2466
           },
           "fix": {
             "position": {
               "file": "terse-data.ms",
               "line": 77,
               "column": 20,
-              "offset": 2505
+              "offset": 2467
             },
             "end": {
               "file": "terse-data.ms",
               "line": 77,
               "column": 20,
-              "offset": 2505
+              "offset": 2467
             },
             "replacement": ".clone()"
           }

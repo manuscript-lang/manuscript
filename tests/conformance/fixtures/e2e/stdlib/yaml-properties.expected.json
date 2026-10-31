@@ -12,16 +12,16 @@
         "message": "cannot find module ./support/generator.ms (looked for support); check the spelling, make sure the file exists, and that the path is relative to the importing file",
         "position": {
           "file": "yaml-properties.ms",
-          "line": 7,
+          "line": 6,
           "column": 1,
-          "offset": 411
+          "offset": 372
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/yaml-properties.ms:7:1: resolution: cannot find module ./support/generator.ms (looked for support); check the spelling, make sure the file exists, and that the path is relative to the importing file\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/yaml-properties.ms:6:1: resolution: cannot find module ./support/generator.ms (looked for support); check the spelling, make sure the file exists, and that the path is relative to the importing file\n   |\n 6 | import Rng, next, text, mutate from \"./support/generator.ms\"\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

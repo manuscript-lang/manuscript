@@ -1,7 +1,7 @@
-from "@std/io.ms" import read_all, read_line, stdin, stdout
+import read_all, read_line, stdin, stdout from "@std/io.ms"
 
 # Each `stdin()` call reads where the previous handle stopped, read-ahead included.
-export def main() -> Int:
+export fn main() Int:
     var n = 0
 
     while n < 3:
@@ -9,9 +9,9 @@ export def main() -> Int:
         if next.is_none():
             return 1
 
-        stdout().write(f"{n}:{next.get()}\n").get()
+        stdout().write("{n}:{next.get()}\n").get()
         n += 1
 
     let rest = read_all(input: stdin()).get()
-    stdout().write(f"rest:{rest.decode_utf8().get("")}").get()
+    stdout().write("rest:{rest.decode_utf8().get("")}").get()
     return 0

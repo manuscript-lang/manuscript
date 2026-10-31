@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
 type Point:
     x: Int
@@ -17,12 +17,12 @@ type Folded:
     n: Int
 
 impl Hashable for Folded:
-    def hash() -> Int:
+    fn hash() Int:
         return 0
 
 impl Equal for Folded:
-    def equals(other: Folded) -> Bool:
-        return True
+    fn equals(other: Folded) Bool:
+        return true
 
 test "plain record keys":
     var m = Map[Point, Int]()
@@ -36,11 +36,11 @@ test "plain record keys":
 
 test "padded and mixed width keys":
     var m = Map[Tagged, Int]()
-    m.add(Tagged(id: 1, ok: True, n: 5), 1)
-    m.add(Tagged(id: 1, ok: False, n: 5), 2)
-    try expect_true(m.get(Tagged(n: 5, ok: True, id: 1)).get(0) == 1)
-    try expect_true(m.get(Tagged(n: 5, ok: False, id: 1)).get(0) == 2)
-    try expect_true(m.get(Tagged(n: 6, ok: False, id: 1)).get(0) == 0)
+    m.add(Tagged(id: 1, ok: true, n: 5), 1)
+    m.add(Tagged(id: 1, ok: false, n: 5), 2)
+    try expect_true(m.get(Tagged(n: 5, ok: true, id: 1)).get(0) == 1)
+    try expect_true(m.get(Tagged(n: 5, ok: false, id: 1)).get(0) == 2)
+    try expect_true(m.get(Tagged(n: 6, ok: false, id: 1)).get(0) == 0)
 
 test "record keys holding strings use the general path":
     var m = Map[Named, Int]()

@@ -1,7 +1,0 @@
-# conform: tags=diagnostics,modules,stdlib-cleanup,stdlib-queues,tier-stdlib
-# conform: phase=check
-# conform: origin=pkg/build/compiler_test.go:676 TestLocalQueueBoundaries
-from "@std/queue.ms" import Queue
-from "@std/core.ms" import Closeable
-
-def invalid() -> Unit: ...

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def count[T](values: List[T]) -> Int:\n    return 0\n\nlet known = count[Int]([])\n# Rejected: the empty list does not determine T.\nlet unknown = count([])\n"
+    "fmt": "fn count[T](values: List[T]) Int:\n    return 0\n\nlet known = count[Int]([])\n# Rejected: the empty list does not determine T.\nlet unknown = count([])\n"
   }
 }

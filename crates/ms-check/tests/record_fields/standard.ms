@@ -1,8 +1,8 @@
-from "@std/collections.ms" import Pair
-from "@std/deque.ms" import Deque
+import Pair from "@std/collections.ms"
+import Deque from "@std/deque.ms"
 
-def pair_value(pair: Pair[Int, String]) -> String:
+fn pair_value(pair: Pair[Int, String]) String:
     return pair.second
 
-def deque_size(deque: Deque[Int]) -> Int:
+fn deque_size(deque: Deque[Int]) Int:
     return deque.size

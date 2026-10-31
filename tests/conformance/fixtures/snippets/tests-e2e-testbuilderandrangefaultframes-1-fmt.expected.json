@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/string.ms\" import StringBuilder\n\ndef probe() -> String:\n    var b = StringBuilder()\n    var i = 0\n\n    while i < 321:\n        b.append(\"x\")\n        i += 1\n\n    return b.build()\n"
-  }
-}

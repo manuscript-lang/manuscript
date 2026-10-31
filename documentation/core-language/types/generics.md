@@ -10,7 +10,7 @@ Generic types take type arguments in brackets.
 ```manuscript
 List[String]
 Map[String, Int]
-Optional[String]
+String?
 Result[Decimal, DiscountError]
 ```
 
@@ -23,10 +23,11 @@ Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Clos
 | `Equal` | Values can be compared by their contents with `==` and `!=` |
 | `Comparable` | Values have an order: `a.compare(b)` is negative, zero, or positive. Int, Float, String, Decimal, BigInt, Duration, Instant, and Timestamp qualify; other types opt in with `impl Comparable` |
 | `Hashable` | Values can be map keys or set elements; also supports equality |
-| `Clonable` | `value.clone()` returns an independent deep copy, so a generic body can keep a value it only borrows. Plain data qualifies; function values, interface views, regular expressions and resource handles do not |
+| `Clonable` | `value.clone()` returns an independent copy, so a generic body can keep a value it only borrows. Every type qualifies except a resource (`Closeable`) and a type holding one; a function value shares its unchangeable captures. Generic code that copies a value of `T` (`xs.take(1)`, `xs.concat(ys)`, keeping a borrowed argument) declares `T: Clonable` |
+| `Data` | Values hold no resource, function, interface value, or runtime handle, so they can cross a byte boundary: `json.parse`, `json.stringify`, and the message types of workers and processes require it. Import it from `@std/core.ms`. Records and alternatives qualify when every part does; `Closeable` types never do; of the collections only `List` qualifies, never `Map` or `Set`; `JsonValue` is declared `Data`, so a JSON object travels as one. A type with a `JsonEncode` implementation qualifies; the codec owns its JSON form |
 | A named operation contract | Type supplies the required operations through an explicit implementation |
 
-Bounds are checked at every application, and `Hashable` implies `Equal`. No sharing bound exists, and sharing adds no synchronization. Contract types gain no equality or hashing.
+Bounds are checked at every application; `Hashable` implies `Equal`, and `Data` and `Hashable` imply `Clonable`. No sharing bound exists, and sharing adds no synchronization. Contract types gain no equality or hashing.
 
 `Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/core.ms`: bounds, parameter types, type arguments, and `impl` targets. Their prelude names cannot be redefined by declarations, imports, or type parameters.
 
@@ -35,13 +36,13 @@ type Key:
     id: Int
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool:
-        return True
+    fn equals(other: Key) Bool:
+        return true
 
-def accepts(value: Equal) -> Unit:
+fn accepts(value: Equal) Unit:
     return
 
-def use_view() -> Unit:
+fn use_view() Unit:
     accepts(Equal(Key(1)))
 ```
 
@@ -51,10 +52,10 @@ def use_view() -> Unit:
 type Box[T]:
     value: T
 
-def identity[T](value: T) -> T:
+fn identity[T](value: T) T:
     return value
 
-def same[T: Equal](left: T, right: T) -> Bool:
+fn same[T: Equal](left: T, right: T) Bool:
     return left == right
 
 let box = Box[Int](1)
@@ -77,7 +78,7 @@ type Pair[A, B = A]:
     first: A
     second: B
 
-def parse[T = String](text: String) -> Optional[T]:
+fn parse[T = String](text: String) T?:
     return none
 
 let same: Pair[Int] = Pair[Int](1, 2)    # Pair[Int, Int]
@@ -91,7 +92,7 @@ Inference runs first; a parameter it leaves undetermined takes its default, for 
 A call may omit type arguments when its arguments and expected result uniquely determine every parameter. Evidence is gathered in order: independently typed arguments, then the expected result, then callbacks with known inputs. Repeated occurrences must agree. Bounds are checked after substitution. No common supertype, union, or numeric widening is inferred.
 
 ```manuscript
-def choose[T](first: T, second: T) -> T:
+fn choose[T](first: T, second: T) T:
     return first
 
 let value = choose(1, 2)  # T = Int
@@ -102,19 +103,19 @@ let mixed = choose(1, 2.0)
 The expected result (return type, annotation, field, argument, or callback) fills missing parameters but never overrides argument evidence or explicit specialization. A parameter in neither arguments nor result needs an explicit type argument.
 
 ```manuscript
-from "@std/core.ms" import TextError
-def fail[T](message: String) -> Result[T, TextError]: error(TextError(message))
+import TextError from "@std/core.ms"
+fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 
-def first() -> Result[Int, TextError]: fail("empty")  # T = Int
+fn first() Result[Int, TextError]: fail("empty")  # T = Int
 let failed: Result[Int, TextError] = fail("empty")
 ```
 
 Matching adds no numeric conversions, interface conversions, or `Optional` wrapping. A domain error implementing `Error` still widens to `Error`, so a `Result[T, Error]` parameter infers `T` from `Result[Int, Failure]`. Success types and other Optional or collection applications must match exactly. Inferred function types lose default-argument omission.
 
-Empty lists, `none`, and similar expressions give no evidence of their own; once other evidence fixes the parameters, the substituted types give them context. For a standard `Optional[T]` parameter, inference first matches an existing optional, then a plain payload ([optional arguments](optionals.md#passing-optional-arguments)). Evaluation order is unchanged.
+Empty lists, `none`, and similar expressions give no evidence of their own; once other evidence fixes the parameters, the substituted types give them context. For a standard `T?` parameter, inference first matches an existing optional, then a plain payload ([optional arguments](optionals.md#passing-optional-arguments)). Evaluation order is unchanged.
 
 ```manuscript
-def count[T](values: List[T]) -> Int:
+fn count[T](values: List[T]) Int:
     return 0
 
 let known = count[Int]([])
@@ -130,7 +131,7 @@ A generic body is checked once against its declared bounds, which expose only th
 
 ```manuscript
 # Rejected at declaration: missing Equal bound.
-def unchecked_same[T](left: T, right: T) -> Bool:
+fn unchecked_same[T](left: T, right: T) Bool:
     return left == right
 
 type Keys[T: Hashable]:
@@ -148,10 +149,10 @@ A generic implementation is likewise checked once under its inherited bounds. Ma
 Generic function calls and specialized function values follow the same rule across the module graph: a recursive cycle must preserve the starting type parameters one-to-one. Nonrecursive calls may use other arguments. Expanding specialization is rejected before code generation, even if unreachable.
 
 ```manuscript
-def repeat[T](value: T) -> Never:
+fn repeat[T](value: T) Never:
     return repeat[T](value)  # Regular specialization; allowed.
 
-def grow[T](value: T) -> Never:
+fn grow[T](value: T) Never:
     return grow[List[T]]([value])  # Rejected: expanding specialization.
 ```
 

@@ -1,12 +1,12 @@
 # conform: tags=control-flow,formatter,modules,parser,stdlib-http,stdlib-io,stdlib-net,stdlib-process,tier-io,try-result
 # conform: phase=parse
 # conform: origin=documentation/learn/common-tasks.md:240
-from "@std/process.ms" import arguments
-from "@std/http.ms" import HttpError, HttpMethod, headers
-from "@std/net.ms" import network
-from "@std/io.ms" import stdout
+import arguments from "@std/process.ms"
+import HttpError, HttpMethod, headers from "@std/http.ms"
+import network from "@std/net.ms"
+import stdout from "@std/io.ms"
 
-def run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     let url = try arguments().first().ok_or(HttpError.InvalidInput)
     let response = try network().request(
         HttpMethod.Get, url, headers(), "", max_response_bytes: 1048576
@@ -18,7 +18,7 @@ def run() -> Result[Unit, Error]:
     try stdout().write(text)
     return stdout().flush()
 
-export def main() -> Int:
+export fn main() Int:
     if run().is_error():
         return 1
 

@@ -1,0 +1,79 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding println; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")",
+        "position": {
+          "file": "testclitestfixtureinterruptcleansup-1.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 208
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding expect_equal; add: import expect_equal from \"@std/test.ms\"",
+        "position": {
+          "file": "testclitestfixtureinterruptcleansup-1.ms",
+          "line": 7,
+          "column": 13,
+          "offset": 253
+        },
+        "fix": {
+          "position": {
+            "file": "testclitestfixtureinterruptcleansup-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "testclitestfixtureinterruptcleansup-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import expect_equal from \"@std/test.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding fail; add: import fail from \"@std/test.ms\"",
+        "position": {
+          "file": "testclitestfixtureinterruptcleansup-1.ms",
+          "line": 10,
+          "column": 9,
+          "offset": 295
+        },
+        "fix": {
+          "position": {
+            "file": "testclitestfixtureinterruptcleansup-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "testclitestfixtureinterruptcleansup-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import fail from \"@std/test.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testclitestfixtureinterruptcleansup-1.ms:5:5: resolution: unknown binding println; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")\n   |\n 5 |     println(\"READY\")\n   |     ^\n<DIR>/testclitestfixtureinterruptcleansup-1.ms:7:13: resolution: unknown binding expect_equal; add: import expect_equal from \"@std/test.ms\"\n   |\n 7 |         try expect_equal(1, 1)\n   |             ^\n<DIR>/testclitestfixtureinterruptcleansup-1.ms:10:9: resolution: unknown binding fail; add: import fail from \"@std/test.ms\"\n    |\n 10 |     try fail(\"must not run\")\n    |         ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

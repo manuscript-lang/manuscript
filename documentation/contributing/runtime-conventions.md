@@ -9,7 +9,7 @@ weight = 22
 
 ## The contract comes from declarations
 
-`stdlib/*.ms` holds the `@std` declarations and `stdlib/bindings.json` the native identities (opaque types, function and contract-method overrides). They are the signature authority and the Rust implementation embeds them unchanged. `ms-lower` reads them to emit native calls; the layouts and symbol catalogue are in `crates/ms-rt/ABI.md`, and the compiler reads layout constants from `ms-rt-abi` so the two cannot drift. A wrong-looking signature is a declaration or lowering issue, not something to patch in the runtime.
+`stdlib/*.ms` holds the `@std` declarations, with `extern type` for opaque types and `extern fn` for native symbols. They are the signature authority and the Rust implementation embeds them unchanged. `ms-lower` reads them to emit native calls; the layouts and symbol catalogue are in `crates/ms-rt/ABI.md`, and the compiler reads layout constants from `ms-rt-abi` so the two cannot drift. A wrong-looking signature is a declaration or lowering issue, not something to patch in the runtime.
 
 ## Naming and shape
 
@@ -28,7 +28,7 @@ Values have one owner and are dropped deterministically; records, lists, maps, s
 
 Cleanup waits for work to end. The runtime cannot terminate work that ignores cancellation, so such work can block cleanup forever. Escalation is the host's last resort: it ends the process and never reports stuck work as joined.
 
-Each host runs one watchdog, started when the host begins shutdown or gets a stop request (SIGINT, SIGTERM, server shutdown), not by ordinary timeouts. It covers `with` cleanup and resource close.
+Each host runs one watchdog, started when the host begins shutdown or gets a stop request (SIGINT, SIGTERM, server shutdown), not by ordinary timeouts. It covers scope-end cleanup and resource close.
 
 | Setting | Default |
 | --- | --- |

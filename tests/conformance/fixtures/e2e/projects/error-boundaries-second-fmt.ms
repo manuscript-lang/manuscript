@@ -1,14 +1,14 @@
 # conform: tags=control-flow,formatter,interfaces,interpolation,modules,parser,strings,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/error_boundaries/second.ms
-from "./domain.ms" import DomainFailure
+import DomainFailure from "./domain.ms"
 
 impl Error for DomainFailure:
-    def message() -> String:
-        return f"second {self.code}"
+    fn message() String:
+        return "second {self.code}"
 
-export def second_error(cause: DomainFailure) -> Error:
+export fn second_error(cause: DomainFailure) Error:
     return cause
 
-export def relay(cause: Error) -> Result[Unit, Error]:
+export fn relay(cause: Error) Unit!:
     return error(cause)

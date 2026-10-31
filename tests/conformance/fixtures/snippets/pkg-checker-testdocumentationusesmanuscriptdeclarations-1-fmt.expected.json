@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface DatagramSocket:\n    def address() -> String\n    def close() -> Unit\n    def receive(\n        max_bytes: Optional[Int] = none,\n        timeout: Optional[Duration] = none\n    ) -> Result[Datagram, NetworkError]\n    def send(\n        data: String,\n        address: String,\n        timeout: Optional[Duration] = none\n    ) -> Result[Unit, NetworkError]\n    def send_bytes(\n        data: Bytes,\n        address: String,\n        timeout: Optional[Duration] = none\n    ) -> Result[Unit, NetworkError]\n"
-  }
-}

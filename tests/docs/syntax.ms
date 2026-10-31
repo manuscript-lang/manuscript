@@ -1,10 +1,10 @@
 # Parser fixture: lexical forms, independent of name resolution.
-from "@std/io.ms" import (stdout, IoError)
-from "./support.ms" import Sample
+import stdout, IoError from "@std/io.ms"
+import Sample from "./support.ms"
 
 extern type Native
 
-extern def native_call(value: Int) -> Int
+extern fn native_call(value: Int) Int
 
 export type Box[T: Equal & Hashable = Int]:
     value: T
@@ -14,20 +14,20 @@ type State:
     case Data(value: Int)
 
 interface Reader:
-    def text() -> ref String
+    fn text() String
 
 type Document:
     value: String
 
 impl Reader for Document:
-    def text() -> ref String:
+    fn text() String:
         return self.value
 
 impl Document:
-    var def replace(value: String) -> Unit:
+    var fn replace(value: String) Unit:
         self.value = value
 
-export def identity[T](value: T) -> T:
+export fn identity[T](value: T) T:
     return value
 
 let (
@@ -38,21 +38,21 @@ let (
     PRICE = 1_000.50_25E+2d
 )
 
-def syntax(var items: List[Int], doc: Document, state: State) -> Int:
+fn syntax(var items: List[Int], doc: Document, state: State) Int:
     let from = 1
     let as = from
     let borrowed = doc.value
     var exclusive = items[0]
     let [first, second] = [1, 2]
     let {value: label} = doc
-    let callback = lambda value: value + 1
-    let typed: Callable[[Int], Int] = lambda (value: Int) -> Int: value * 2
+    let callback = fn value: value + 1
+    let typed: fn(Int) Int = fn(value: Int) Int: value * 2
     let specialized = identity[List[Int]](items)
     let mapping = {"count": COUNT, "ratio": RATIO}
-    let plain = "Literal {braces}, # text, \"quote\", \\, \t, \r, \n, \u{1F642}"
-    let message = f"\{escaped\} {mapping.get("count")} {f"{callback(1)}"} \u{41}"
+    let plain = "Literal \{braces\}, # text, \"quote\", \\, \t, \r, \n, \u{1F642}"
+    let message = "\{escaped\} {mapping.get("count")} {"{callback(1)}"} \u{41}"
 
-    let selected = first if True and not False or as == 0 else second
+    let selected = if true and not false or as == 0: first else: second
 
     var total = 0
     total += 1
@@ -64,7 +64,7 @@ def syntax(var items: List[Int], doc: Document, state: State) -> Int:
     for item in 0..10:
         if item != selected:
             continue
-        elif item >= 2:
+        else if item >= 2:
             break
         else:
             total = item
@@ -73,17 +73,21 @@ def syntax(var items: List[Int], doc: Document, state: State) -> Int:
         total = total + 1
     if let value = items.first():
         total = value
-    if var value = items.first():
+    if var value = items[0]?:
         value += 1
-    with let resource = acquire():
-        resource.read()
-    with var guard = lock():
-        guard.value = total
+
+    var resource = acquire()
+    resource.read()
+    resource.close()
+
+    var guard = lock()
+    guard.value = total
+    guard.close()
 
     let result = match state:
-        case Ready: 0
-        case Data(value): value
-        case _: -1
+        Ready: 0
+        Data(value): value
+        _: -1
 
     let parsed = "42" | try parse | normalize
     return result + parsed
@@ -91,7 +95,7 @@ def syntax(var items: List[Int], doc: Document, state: State) -> Int:
 test "fixture and unit":
     fixture.setup()
 
-    let empty = ()
+    let empty = unit
     check(empty)
 
-def runtime_bound() -> Unit: ...
+fn runtime_bound() Unit: ...

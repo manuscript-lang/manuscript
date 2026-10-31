@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/json.ms\" import JsonError\nfrom \"@std/encoding.ms\" import hex_decode\n\ndef general(cause: JsonError) -> Error:\n    return cause\n\ndef failed() -> Result[Unit, JsonError]:\n    return error(cause: JsonError.InvalidData)\n\ndef forwarded() -> Result[Unit, Error]:\n    return failed()\n\ndef propagated() -> Result[Unit, Error]:\n    let bytes = try hex_decode(text: \"zz\")\n    return ok(value: ())\n\ndef constructed() -> Result[Unit, Error]:\n    return error(cause: JsonError.InvalidData)\n"
-  }
-}

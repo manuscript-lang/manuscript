@@ -1,4 +1,4 @@
-extern def labs(value: Int = 1) -> Int
+extern fn labs(value: Int = 1) Int
 
-export def main() -> Int:
+export fn main() Int:
     return labs()

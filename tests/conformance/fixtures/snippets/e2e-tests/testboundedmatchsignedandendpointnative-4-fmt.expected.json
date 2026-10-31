@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "export fn main() Int:\n    let shapes = [Shape.Circle(2)]\n    if area(shapes.get(2, Shape.Tri(7))) != 7: return 1\n\n    return 0\n"
+  }
+}

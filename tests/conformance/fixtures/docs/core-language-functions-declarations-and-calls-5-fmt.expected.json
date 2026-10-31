@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/core.ms\" import panic\n\ndef check_positive(value: Int) -> Unit:\n    if not (value > 0):\n        return panic(message: \"check failed\")\n\ndef missing_value() -> Int:\n    return panic(message: \"Required value is missing\")\n"
+    "fmt": "import panic from \"@std/core.ms\"\n\nfn check_positive(value: Int) Unit:\n    if not (value > 0):\n        return panic(message: \"check failed\")\n\nfn missing_value() Int:\n    return panic(message: \"Required value is missing\")\n"
   }
 }

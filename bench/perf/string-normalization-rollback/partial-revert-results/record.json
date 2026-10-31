@@ -1,0 +1,229 @@
+{
+  "compiler_sha256": "23f2e89aafe312160062cda12010ce4511366ee8131e87847a00bbce36806c89",
+  "native_context_main": "db975ce2f01ddf8da108ec9045ecaf66a63ab22c",
+  "variants": {
+    "baseline": {
+      "libms_native.a": "42f47bd3db22793b355c74e4cc46ef6e94277d4d1a78eb5fe36ccc1df38c5012",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+      "string.rs": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e"
+    },
+    "lazy": {
+      "libms_native.a": "0c194ee1fb81530d2c4ca235f1b2b0f0efd95089d91b231ecd28558a9303f289",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+      "string.rs": "1c27ec3227e0d6cd7a3db5e209301df571df81c7c9c57359ce11d0e0b0d719d0"
+    },
+    "candidate": {
+      "libms_native.a": "7e102752b7870a1eb1c6b4852f89caf225f2d40d4dc5ea96fce51d2631affe59",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+      "string.rs": "52876dd9c97746ce820e97c1f6eb5c287474513273a634bff6c53bce903715c3"
+    }
+  },
+  "builds": {
+    "baseline/full": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/normalization-partial-revert/performance/baseline/full",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "program_sha256": "277eaa2ba0d40932ee395172d3a01bfa1f07740a283d282790b89d098b6e0a08",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "baseline/budget": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "/tmp/string-round2/integration-controls/normalize-budget-confirmation-formatted.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/normalization-partial-revert/performance/baseline/budget",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "1027fb09cf38831da47425b97f4946222091d137b1352165b695c2420fbb6ef6",
+      "program_sha256": "42980d9953688098e3a470c8c396f5e7caa54e72b92c3e6b17d83f460f38f602",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "lazy/full": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/normalization-partial-revert/performance/lazy/full",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "program_sha256": "1c9006b4caca3a0004267f0a5ed886f976e7d33b45607589c76d130576bdd9d9",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "lazy/budget": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "/tmp/string-round2/integration-controls/normalize-budget-confirmation-formatted.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/normalization-partial-revert/performance/lazy/budget",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "1027fb09cf38831da47425b97f4946222091d137b1352165b695c2420fbb6ef6",
+      "program_sha256": "b6d853cbe7c9274666a826413ac29593ad968f6d966008fa2d0702285fbdd7d5",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "candidate/full": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/normalization-partial-revert/performance/candidate/full",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "program_sha256": "21b713bcf556b1684ff7358aadf3f6d9e14aa9185301b8de502c9fdf123cdd17",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "candidate/budget": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "/tmp/string-round2/integration-controls/normalize-budget-confirmation-formatted.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/normalization-partial-revert/performance/candidate/budget",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "1027fb09cf38831da47425b97f4946222091d137b1352165b695c2420fbb6ef6",
+      "program_sha256": "16d56fe83386019873262a0290779802ee4bdf998fb75fee5ad9c9efeb63ffae",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    }
+  },
+  "comparisons": {
+    "full-vs-baseline": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/normalization-partial-revert/performance/baseline/full",
+        "/tmp/string-round2/normalization-partial-revert/performance/candidate/full",
+        "/tmp/string-round2/normalization-partial-revert/performance/full-vs-baseline-samples.csv",
+        "--pairs",
+        "7",
+        "--identity-file",
+        "bench/perf/string-normalize-ascii/identities.json"
+      ],
+      "exit_code": 0,
+      "cases": 100,
+      "identities_sha256": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348"
+    },
+    "full-vs-lazy": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/normalization-partial-revert/performance/lazy/full",
+        "/tmp/string-round2/normalization-partial-revert/performance/candidate/full",
+        "/tmp/string-round2/normalization-partial-revert/performance/full-vs-lazy-samples.csv",
+        "--pairs",
+        "7",
+        "--identity-file",
+        "bench/perf/string-normalize-ascii/identities.json"
+      ],
+      "exit_code": 0,
+      "cases": 100,
+      "identities_sha256": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348"
+    },
+    "budget-vs-baseline": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/normalization-partial-revert/performance/baseline/budget",
+        "/tmp/string-round2/normalization-partial-revert/performance/candidate/budget",
+        "/tmp/string-round2/normalization-partial-revert/performance/budget-vs-baseline-samples.csv",
+        "--pairs",
+        "9",
+        "--identity-file",
+        "/tmp/string-round2/integration-controls/normalize-budget-confirmation-identities.json"
+      ],
+      "exit_code": 0,
+      "cases": 72,
+      "identities_sha256": "c21f72b4380cf6b2784d2dfafd939ff4e15438895d42b7c97128caa019d408dc"
+    },
+    "budget-vs-lazy": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/normalization-partial-revert/performance/lazy/budget",
+        "/tmp/string-round2/normalization-partial-revert/performance/candidate/budget",
+        "/tmp/string-round2/normalization-partial-revert/performance/budget-vs-lazy-samples.csv",
+        "--pairs",
+        "9",
+        "--identity-file",
+        "/tmp/string-round2/integration-controls/normalize-budget-confirmation-identities.json"
+      ],
+      "exit_code": 0,
+      "cases": 72,
+      "identities_sha256": "c21f72b4380cf6b2784d2dfafd939ff4e15438895d42b7c97128caa019d408dc"
+    }
+  },
+  "started_unix": 1793300436.74899,
+  "finished_unix": 1793301217.2542756
+}

@@ -21,10 +21,10 @@ fn ms(dir: &Path, args: &[&str]) -> Output {
 #[test]
 fn mixed_inputs_keep_successes_and_report_each_failure_once() {
     let dir = scratch("mixed");
-    std::fs::write(dir.join("good.ms"), "def value() -> Int:\n    return 1\n").unwrap();
+    std::fs::write(dir.join("good.ms"), "fn value() Int:\n    return 1\n").unwrap();
     std::fs::write(
         dir.join("bad.ms"),
-        "def value() -> Int:\n    return \"wrong\"\n",
+        "fn value() Int:\n    return \"wrong\"\n",
     )
     .unwrap();
     let args = ["check", "good.ms", "missing.ms", "bad.ms", "./good.ms"];
@@ -71,22 +71,29 @@ fn lint_deduplicates_shared_imports_and_keeps_findings_from_valid_inputs() {
     for name in ["a.ms", "b.ms"] {
         std::fs::write(
             dir.join(name),
-            "from \"./shared.ms\" import value\n\ndef use_value() -> Int:\n    return value()\n",
+            "import value from \"./shared.ms\"\n\nfn use_value() Int:\n    return value()\n",
         )
         .unwrap();
     }
     let output = ms(&dir, &["lint", "a.ms", "b.ms"]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(0), "an unused import only warns");
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert_eq!(stderr.matches("MSL102").count(), 1, "{stderr}");
+    assert!(stderr.contains("1 warning;"), "{stderr}");
     assert!(!stderr.contains("fix them and re-run"), "{stderr}");
+    let output = ms(&dir, &["lint", "a.ms", "b.ms", "--deny-warnings"]);
+    assert_eq!(output.status.code(), Some(1));
+    let output = ms(&dir, &["lint", "a.ms", "b.ms", "--json"]);
+    assert_eq!(output.status.code(), Some(0));
+    let document = ms_json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+    let diagnostics = document.get("diagnostics").unwrap().as_array().unwrap();
+    assert_eq!(
+        diagnostics[0].get("severity").unwrap().as_str().unwrap(),
+        "warning"
+    );
 
-    std::fs::write(
-        dir.join("bad.ms"),
-        "def invalid() -> Int:\n    return False\n",
-    )
-    .unwrap();
+    std::fs::write(dir.join("bad.ms"), "fn invalid() Int:\n    return false\n").unwrap();
     let output = ms(&dir, &["lint", "b.ms", "bad.ms", "a.ms", "--json"]);
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stderr.is_empty());
@@ -102,4 +109,16 @@ fn lint_deduplicates_shared_imports_and_keeps_findings_from_valid_inputs() {
         "MSL102"
     );
     let _ = std::fs::remove_dir_all(dir);
+}
+
+/// A directory without sources says so rather than succeeding silently.
+#[test]
+fn directories_without_sources_report_none() {
+    let dir = scratch("empty");
+    for command in ["check", "lint", "fmt"] {
+        let out = ms(&dir, &[command, "."]);
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(out.status.success(), "{command}: {stderr}");
+        assert!(stderr.contains("no .ms files found"), "{command}: {stderr}");
+    }
 }

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Result[T, E]:\n    case ok(value: T)\n    case error(cause: E)\n\ndef wrong(value: Result[Int, String]) -> Optional[Int]: value.to_optional()\n"
-  }
-}

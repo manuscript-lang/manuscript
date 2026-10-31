@@ -1,8 +1,8 @@
-from "@std/core.ms" import TextError
-from "@std/test.ms" import fail
-from "@std/bytes.ms" import Bytes
-from "@std/decimal.ms" import Decimal
-from "@std/queue.ms" import Queue
+import TextError from "@std/core.ms"
+import fail from "@std/test.ms"
+import Bytes from "@std/bytes.ms"
+import Decimal from "@std/decimal.ms"
+import Queue from "@std/queue.ms"
 
 type Person:
     name: String
@@ -13,42 +13,42 @@ type Outcome:
     case Waiting
 
 interface Named:
-    def name() -> ref String
+    fn name() String
 
 impl Named for Person:
-    def name() -> ref String:
-        return self.name
+    fn name() String:
+        return self.name.clone()
 
-def stringify[T](value: T) -> String:
+fn stringify[T](value: T) String:
     return value.to_string()
 
-def interpolate[T](value: T) -> String:
-    return f"{value}"
+fn interpolate[T](value: T) String:
+    return "{value}"
 
-def bound_stringify[T: Named](value: T) -> String:
+fn bound_stringify[T: Named](value: T) String:
     return value.to_string()
 
-def check(value: String, expected: String) -> Result[Unit, Error]:
-    if value != expected: return fail(message: f"expected {expected}, received {value}")
+fn check(value: String, expected: String) Unit!:
+    if value != expected: return fail(message: "expected {expected}, received {value}")
 
-    return ok(())
+    return ok(unit)
 
-def answer() -> Int:
+fn answer() Int:
     return 42
 
 type Counter:
     value: Int
 
-def next(var state: Counter) -> Person:
+fn next(var state: Counter) Person:
     let value = state.value
     state.value = value + 1
     return Person(name: "Ada", age: value)
 
 test "every scalar has to_string":
     (try check(value: "hello".to_string(), expected: "hello"))
-    (try check(value: True.to_string(), expected: "true"))
-    (try check(value: False.to_string(), expected: "false"))
-    (try check(value: ().to_string(), expected: "unit"))
+    (try check(value: true.to_string(), expected: "true"))
+    (try check(value: false.to_string(), expected: "false"))
+    (try check(value: unit.to_string(), expected: "unit"))
     (try check(value: (42).to_string(), expected: "42"))
     (try check(value: (-7).to_string(), expected: "-7"))
     (try check(value: (1.5).to_string(), expected: "1.5"))
@@ -60,7 +60,7 @@ test "every scalar has to_string":
 test "records alternatives and collections convert":
     let person = Person(name: "Ada", age: 37)
     (try check(value: person.to_string(), expected: "Person(age: 37, name: Ada)"))
-    (try check(value: f"{person}", expected: person.to_string()))
+    (try check(value: "{person}", expected: person.to_string()))
     (
         try check(
             value: Outcome.Ready(person).to_string(),
@@ -69,9 +69,9 @@ test "records alternatives and collections convert":
     )
     (try check(value: Outcome.Waiting.to_string(), expected: "Outcome.Waiting"))
 
-    let absent: Optional[Int] = none
-    let present: Optional[Int] = some(3)
-    let result: Result[Int, TextError] = error(TextError("failed"))
+    let absent: Int? = none
+    let present: Int? = 3
+    let result: Int!TextError = error(TextError("failed"))
     (try check(value: absent.to_string(), expected: "Optional.none"))
     (try check(value: present.to_string(), expected: "Optional.some(3)"))
     (
@@ -97,7 +97,7 @@ test "records alternatives and collections convert":
     (try check(value: bytes.to_string(), expected: "Bytes(0, 65, 255)"))
     (
         try check(
-            value: f"{map}|{set}|{bytes}",
+            value: "{map}|{set}|{bytes}",
             expected: "Map(b: 2, a: 1)|Set(2, 1)|Bytes(0, 65, 255)"
         )
     )
@@ -110,12 +110,12 @@ test "generics views bound methods functions and resources":
 
     let view: Named = person.clone()
     (try check(value: view.to_string(), expected: person.to_string()))
-    (try check(value: f"{view}", expected: person.to_string()))
+    (try check(value: "{view}", expected: person.to_string()))
 
-    let convert: Callable[[], String] = view.to_string
+    let convert: fn() String = view.to_string
     (try check(value: convert(), expected: person.to_string()))
     (try check(value: answer.to_string(), expected: "[function]"))
-    (try check(value: f"{answer}", expected: "[function]"))
+    (try check(value: "{answer}", expected: "[function]"))
 
     let queue = Queue[Int](1)
     (
@@ -129,7 +129,7 @@ test "interpolation and bound conversion evaluate each receiver once":
     var state = Counter(value: 1)
     (
         try check(
-            value: f"{next(var state)}|{next(var state)}",
+            value: "{next(var state)}|{next(var state)}",
             expected: "Person(age: 1, name: Ada)|Person(age: 2, name: Ada)"
         )
     )

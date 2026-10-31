@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def read(values: List[Int]) -> Int:\n    let result = match values.first():\n        case some(number):\n            let doubled = number * 2\n            doubled\n        case none: return 0\n\n    return result\n"
-  }
-}

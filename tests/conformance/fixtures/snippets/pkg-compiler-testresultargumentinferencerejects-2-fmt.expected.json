@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def domain[T](r: Result[T, E2]) -> Unit: return\n\ndef first() -> Unit: domain(f())\n"
-  }
-}

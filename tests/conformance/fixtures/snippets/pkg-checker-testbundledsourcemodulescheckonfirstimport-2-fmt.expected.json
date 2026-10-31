@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/toml.ms\" import TomlValue\n\ndef one() -> Int:\n    return 1\n"
-  }
-}

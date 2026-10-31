@@ -86,10 +86,6 @@ impl Scan<'_> {
             // A loop may run zero times, so only an exit inside it counts.
             StmtKind::While { cond, body } => self.looped(cond, body),
             StmtKind::For { iter, body, .. } => self.looped(iter, body),
-            StmtKind::With { value, body, .. } => match self.value(value, false) {
-                Outcome::Continues => self.block(body),
-                done => done,
-            },
         }
     }
 

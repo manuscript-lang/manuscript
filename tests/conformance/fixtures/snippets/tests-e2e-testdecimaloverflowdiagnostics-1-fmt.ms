@@ -1,4 +1,0 @@
-# conform: tags=decimal,formatter,modules,parser,stdlib-decimal,tier-stdlib
-# conform: phase=parse
-# conform: origin=tests/e2e/decimal_overflow_diagnostics_test.go:20 TestDecimalOverflowDiagnostics
-from "@std/decimal.ms" import Decimal

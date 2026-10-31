@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "export fn main() Int:\n    let crash = fn() Int:\n        return 1 / \"\".byte_length()\n    return crash()\n"
+  }
+}

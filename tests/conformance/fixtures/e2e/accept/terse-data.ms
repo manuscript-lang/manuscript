@@ -1,17 +1,17 @@
 # conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,interpolation,lists,maps,match,modules,optional,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/terse-data.ms
-from "@std/test.ms" import expect_equal, expect_false
+import expect_equal, expect_false from "@std/test.ms"
 
-def subtract(amount: Int, deduction: Int = 1) -> Int: amount - deduction
+fn subtract(amount: Int, deduction: Int = 1) Int: amount - deduction
 
-def first[T](left: T, right: T) -> T: left
+fn first[T](left: T, right: T) T: left
 
-def size(values: Map[String, Int]) -> Int: values.length()
+fn size(values: Map[String, Int]) Int: values.length()
 
-def optional_size(values: Optional[Map[String, Int]]) -> Int: (values.get().length())
+fn optional_size(values: Map[String, Int]?) Int: (values.get().length())
 
-def mark(var log: List[Int], value: Int) -> Int:
+fn mark(var log: List[Int], value: Int) Int:
     log.append(value)
     return value
 
@@ -26,7 +26,7 @@ test "map literals and positional identifier arguments":
     let right = 8
     try expect_equal(first(left, right), 4)
 
-    let stored: Callable[[Int, Int], Int] = subtract
+    let stored: fn(Int, Int) Int = subtract
     try expect_equal(stored(amount, deduction), 7)
 
     var values = {"a": 1, "b": 2, "a": 3}
@@ -41,7 +41,7 @@ test "map literals and positional identifier arguments":
     let nested: Map[String, Map[String, Int]] = {"a": {}, "b": {"c": 1}}
     try expect_equal(nested.get("b").get().get("c").get(), 1)
 
-    let optional: Map[String, Optional[Int]] = {"a": none, "b": some(2)}
+    let optional: Map[String, Int?] = {"a": none, "b": 2}
     try expect_false(not optional.get("a").get().is_none())
 
     let key = "c"
@@ -65,11 +65,11 @@ type Key:
     label: String
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool:
+    fn equals(other: Key) Bool:
         return self.id == other.id
 
 impl Hashable for Key:
-    def hash() -> Int: self.id
+    fn hash() Int: self.id
 
 test "map literal uses custom key equality":
     let a = Key(1, "first")

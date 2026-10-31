@@ -1,29 +1,29 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Box:
     n: Int
 
-def describe(n: Int) -> String:
+fn describe(n: Int) String:
     return match n:
-        case 0: "zero"
-        case - 1: "minus"
-        case _: "other"
+        0: "zero"
+        -1: "minus"
+        _: "other"
 
-def pick(flag: Bool) -> Int:
-    return (1 if flag else 2)
+fn pick(flag: Bool) Int:
+    return (if flag: 1 else: 2)
 
-def maybe(n: Int) -> Optional[Int]:
+fn maybe(n: Int) Int?:
     return n
 
-def first_or(m: Optional[Int]) -> Int:
+fn first_or(m: Int?) Int:
     if let v = m:
         return v
 
     return 0
 
 test "if expression":
-    try expect_equal(pick(True), 1)
-    try expect_equal(pick(False), 2)
+    try expect_equal(pick(true), 1)
+    try expect_equal(pick(false), 2)
 
 test "literal match":
     try expect_equal(describe(0), "zero")
@@ -37,7 +37,7 @@ test "indexed assignment":
     try expect_equal(xs, [1, 9, 4])
 
 test "optional wrap":
-    let m: Optional[Int] = 5
+    let m: Int? = 5
     try expect_equal(first_or(m), 5)
     try expect_equal(first_or(maybe(3)), 3)
 
@@ -45,7 +45,7 @@ test "closure mutates capture":
     var total = 0
     var box = Box(n: 1)
 
-    let add = lambda (x: Int) -> Unit:
+    let add = fn(x: Int) Unit:
         total += x
         box.n += x
 

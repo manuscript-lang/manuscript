@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def divide(value: Int, divisor: Int) -> Int:\n    return value / divisor\n\ntest \"fault\":\n    let impossible = divide(value: 3, divisor: 0)\n"
-  }
-}

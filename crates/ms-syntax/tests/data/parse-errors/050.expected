@@ -1,1 +1,1 @@
-error parse 9:1:184 "unexpected source character '?'; Manuscript has no ? operator, so use 'if let' for Optional values, or 'try' for Result"
+error parse 10:5:207 "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it"

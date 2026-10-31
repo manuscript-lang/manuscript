@@ -1,7 +1,7 @@
 # Configuration-oriented YAML 1.2 parser implemented in Manuscript.
-from "@std/bytes.ms" import Bytes
-from "@std/math.ms" import parse_int
-from "@std/string.ms" import from_scalars, StringBuilder
+import Bytes from "@std/bytes.ms"
+import parse_int from "@std/math.ms"
+import from_scalars, StringBuilder from "@std/string.ms"
 
 # A YAML value represented as null, boolean, number text, string, array, or object.
 export type YamlValue:
@@ -60,20 +60,20 @@ export type YamlError:
 # Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 values; pass a `YamlLimits` to change that.
 export type YamlLimits:
     # Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
-    max_bytes: Optional[Int] = none
+    max_bytes: Int?
     # Maximum value depth, including scalar leaves, with the root at one.
-    max_depth: Optional[Int] = none
+    max_depth: Int?
     # Maximum containers and leaves, excluding keys; aliases count at each checked occurrence.
-    max_values: Optional[Int] = none
+    max_values: Int?
 
 impl Error for YamlError:
     # Formats parser positions and reason text; match the typed fields for programmatic handling.
-    def message() -> String:
+    fn message() String:
         match self:
-            case InvalidInput: return "invalid YAML input"
-            case InvalidData(line, column, reason): return f"YAML {line}:{column}: {reason}"
-            case UnsupportedFeature(line, reason): return f"YAML {line}: {reason}"
-            case LimitExceeded: return "YAML limit exceeded"
+            InvalidInput: return "invalid YAML input"
+            InvalidData(line, column, reason): return "YAML {line}:{column}: {reason}"
+            UnsupportedFeature(line, reason): return "YAML {line}: {reason}"
+            LimitExceeded: return "YAML limit exceeded"
 
 type Context:
     lines: List[String]
@@ -100,46 +100,73 @@ type Flow:
     context: Context
     delimited: Bool
 
+# YAML separates tokens with only space and tab; Unicode spaces such as U+00A0 are scalar content.
+fn blank(code: Int) Bool:
+    return code == 32 or code == 9
+
+# `text` without leading spaces and tabs.
+fn blank_trim_start(text: String) String:
+    let count = text.scalar_length()
+    var from = 0
+    while from < count and blank(text.scalar_at(from, default: 0)):
+        from += 1
+    if from == 0: return text.clone()
+
+    return text.slice_scalars(from, count).get("")
+
+# `text` without trailing spaces and tabs.
+fn blank_trim_end(text: String) String:
+    var end = text.scalar_length()
+    while end > 0 and blank(text.scalar_at(end - 1, default: 0)):
+        end -= 1
+    if end == text.scalar_length(): return text.clone()
+
+    return text.slice_scalars(0, end).get("")
+
+# `text` without leading and trailing spaces and tabs.
+fn blank_trim(text: String) String:
+    return blank_trim_end(blank_trim_start(text))
+
 # Limits applied when `parse` is called without any: deep nesting and alias expansion are
 # the usual resource attacks. Pass a `YamlLimits` (even an empty one) to lift or change them.
-def default_limits() -> YamlLimits:
+fn default_limits() YamlLimits:
     return YamlLimits(max_depth: 10000, max_values: 1000000)
 
-def within(value: Int, limit: Optional[Int]) -> Bool:
+fn within(value: Int, limit: Int?) Bool:
     if let maximum = limit:
         return value <= maximum
 
-    return True
+    return true
 
 # Number of containers and leaves in a value, excluding keys.
-def tree_size(value: YamlValue) -> Int:
+fn tree_size(value: YamlValue) Int:
     var total = 1
 
     match value:
-        case ArrayValue(values):
+        ArrayValue(values):
             for item in values: total += tree_size(item)
-        case ObjectValue(values):
+        ObjectValue(values):
             for entry in values: total += tree_size(entry.value.clone())
-        case _: ()
+        _: unit
 
     return total
 
 # Records an anchor and the size of its value so aliases can be charged before they are copied.
-def define_anchor(var context: Context, name: String, value: YamlValue) -> Unit:
+fn define_anchor(var context: Context, name: String, value: YamlValue) Unit:
     context.anchors.add(name.clone(), value.clone())
     context.sizes.add(name, tree_size(value))
 
 # Counts an alias expansion against the value budget before the aliased value is copied, so
 # nested aliases cannot grow exponentially ahead of the limit.
-def charge(var context: Context, size: Int) -> Result[Unit, YamlError]:
+fn charge(var context: Context, size: Int) Unit!YamlError:
     context.values += size
     if not within(context.values, context.limits.max_values): return error(
         YamlError.LimitExceeded
     )
 
-    return ok(())
+    return ok(unit)
 
-def count(var context: Context, depth: Int) -> Result[Unit, YamlError]:
+fn count(var context: Context, depth: Int) Unit!YamlError:
     if not within(depth, context.limits.max_depth): return error(
         YamlError.LimitExceeded
     )
@@ -149,44 +176,44 @@ def count(var context: Context, depth: Int) -> Result[Unit, YamlError]:
         YamlError.LimitExceeded
     )
 
-    return ok(())
+    return ok(unit)
 
-def invalid(context: Context, reason: String) -> YamlError:
+fn invalid(context: Context, reason: String) YamlError:
     return YamlError.InvalidData(line: context.index + 1, column: 1, reason: reason)
 
-def peek(flow: Flow) -> String:
+fn peek(flow: Flow) String:
     return flow.chars.get(flow.pos, default: "").clone()
 
-def advance(var flow: Flow) -> String:
+fn advance(var flow: Flow) String:
     let c = peek(flow)
     if c != "": flow.pos += 1
     return c.clone()
 
 # The scalar value at the cursor, or 0 at the end; `codes` is empty for flows that only read quoted text.
-def cur(flow: Flow) -> Int:
+fn cur(flow: Flow) Int:
     return flow.codes.get(flow.pos, default: 0)
 
-def step(var flow: Flow) -> Int:
+fn step(var flow: Flow) Int:
     let code = cur(flow)
     if code != 0: flow.pos += 1
     return code
 
-def flow_space(var flow: Flow) -> Unit:
-    while True:
+fn flow_space(var flow: Flow) Unit:
+    while true:
         let code = cur(flow)
         if code != 32 and code != 9 and code != 10: break
 
         flow.pos += 1
 
-def flow_invalid(flow: Flow, reason: String) -> YamlError:
+fn flow_invalid(flow: Flow, reason: String) YamlError:
     return YamlError.InvalidData(line: flow.line, column: flow.pos + 1, reason: reason)
 
 # The first physical break folds to a space, or is removed before empty lines.
 # An escaped first break is removed even when no empty lines follow it.
-def folded_break(var flow: Flow, escaped: Bool) -> String:
+fn folded_break(var flow: Flow, escaped: Bool) String:
     var result = ""
 
-    while True:
+    while true:
         while peek(flow) == " " or peek(flow) == "\t": advance(var flow)
         if peek(flow) != "\n": break
 
@@ -197,14 +224,14 @@ def folded_break(var flow: Flow, escaped: Bool) -> String:
 
     return result
 
-def quoted(var flow: Flow) -> Result[String, YamlError]:
+fn quoted(var flow: Flow) String!YamlError:
     let quote = advance(var flow)
 
     # Append through a builder: per-character concatenation is quadratic on long strings.
     var result = StringBuilder()
     var whitespace = StringBuilder()
 
-    while True:
+    while true:
         let c = advance(var flow)
         if c == "": return error(flow_invalid(flow, "unterminated string"))
 
@@ -221,7 +248,7 @@ def quoted(var flow: Flow) -> Result[String, YamlError]:
 
         if c == "\n":
             whitespace = StringBuilder()
-            result.append(folded_break(var flow, escaped: False))
+            result.append(folded_break(var flow, escaped: false))
             continue
 
         if c == " " or c == "\t":
@@ -238,24 +265,24 @@ def quoted(var flow: Flow) -> Result[String, YamlError]:
         let escaped = advance(var flow)
 
         if escaped == "\n":
-            result.append(folded_break(var flow, escaped: True))
-        elif escaped == "0": result.append(f"\u{0}")
-        elif escaped == "a": result.append(f"\u{7}")
-        elif escaped == "b": result.append(f"\u{8}")
-        elif escaped == "t" or escaped == "\t": result.append("\t")
-        elif escaped == "n": result.append("\n")
-        elif escaped == "v": result.append(f"\u{b}")
-        elif escaped == "f": result.append(f"\u{c}")
-        elif escaped == "r": result.append("\r")
-        elif escaped == "e": result.append(f"\u{1b}")
-        elif (escaped == " " or escaped == "\"" or escaped == "/" or escaped == "\\"): result.append(
+            result.append(folded_break(var flow, escaped: true))
+        else if escaped == "0": result.append("\u{0}")
+        else if escaped == "a": result.append("\u{7}")
+        else if escaped == "b": result.append("\u{8}")
+        else if escaped == "t" or escaped == "\t": result.append("\t")
+        else if escaped == "n": result.append("\n")
+        else if escaped == "v": result.append("\u{b}")
+        else if escaped == "f": result.append("\u{c}")
+        else if escaped == "r": result.append("\r")
+        else if escaped == "e": result.append("\u{1b}")
+        else if (escaped == " " or escaped == "\"" or escaped == "/" or escaped == "\\"): result.append(
             escaped
         )
-        elif escaped == "N": result.append(f"\u{85}")
-        elif escaped == "_": result.append(f"\u{a0}")
-        elif escaped == "L": result.append(f"\u{2028}")
-        elif escaped == "P": result.append(f"\u{2029}")
-        elif (escaped == "x" or escaped == "u" or escaped == "U"):
+        else if escaped == "N": result.append("\u{85}")
+        else if escaped == "_": result.append("\u{a0}")
+        else if escaped == "L": result.append("\u{2028}")
+        else if escaped == "P": result.append("\u{2029}")
+        else if (escaped == "x" or escaped == "u" or escaped == "U"):
             var count = 2
             if escaped == "u": count = 4
             if escaped == "U": count = 8
@@ -283,95 +310,95 @@ def quoted(var flow: Flow) -> Result[String, YamlError]:
         else:
             return error(flow_invalid(flow, "invalid string escape"))
 
-def digit_text(text: String) -> Bool:
-    if text == "": return False
+fn digit_text(text: String) Bool:
+    if text == "": return false
 
     for code in text.scalar_values():
-        if code < 48 or code > 57: return False
-    return True
+        if code < 48 or code > 57: return false
+    return true
 
-def numeric(text: String) -> Bool:
+fn numeric(text: String) Bool:
     let first = text.scalar_at(0, default: 0)
-    if not (first == 43 or first == 45 or first == 46 or (first >= 48 and first <= 57)): return False
+    if not (first == 43 or first == 45 or first == 46 or (first >= 48 and first <= 57)): return false
 
     var clean = text.clone()
     if clean.starts_with("+") or clean.starts_with("-"): clean = clean.slice(
         1, clean.scalar_length()
     ).get("")
-    if (clean == ".inf" or clean == ".Inf" or clean == ".INF"): return True
-    if (text == ".nan" or text == ".NaN" or text == ".NAN"): return True
+    if (clean == ".inf" or clean == ".Inf" or clean == ".INF"): return true
+    if (text == ".nan" or text == ".NaN" or text == ".NAN"): return true
 
     if clean.starts_with("0x") or clean.starts_with("0o"):
-        if clean != text: return False
+        if clean != text: return false
 
         var alphabet = "01234567"
         if clean.starts_with("0x"): alphabet = "0123456789abcdefABCDEF"
 
         let digits = clean.slice(2, clean.scalar_length()).get("")
-        if digits == "": return False
+        if digits == "": return false
 
         for c in digits.split(""):
-            if not alphabet.contains(c): return False
-        return True
+            if not alphabet.contains(c): return false
+        return true
 
     let exponent = clean.lower().split("e")
-    if exponent.length() > 2: return False
+    if exponent.length() > 2: return false
 
     if exponent.length() == 2:
         var power = exponent.last().get()
         if power.starts_with("+") or power.starts_with("-"): power = power.slice(
             1, power.scalar_length()
         ).get("")
-        if not digit_text(power): return False
+        if not digit_text(power): return false
 
     let mantissa = exponent.first().get().split(".")
-    if mantissa.length() > 2: return False
+    if mantissa.length() > 2: return false
     if mantissa.length() == 1: return digit_text(mantissa.first().get())
 
     let whole = mantissa.first().get()
     let fraction = mantissa.last().get()
-    if whole == "" and fraction == "": return False
+    if whole == "" and fraction == "": return false
 
     return (
         (whole == "" or digit_text(whole))
         and (fraction == "" or digit_text(fraction))
     )
 
-def plain(text: String) -> YamlValue:
+fn plain(text: String) YamlValue:
     if (text == "" or text == "~" or text == "null" or text == "Null" or text == "NULL"): return YamlValue.Null
     if (text == "true" or text == "True" or text == "TRUE"): return YamlValue.BoolValue(
-        True
+        true
     )
     if (text == "false" or text == "False" or text == "FALSE"): return YamlValue.BoolValue(
-        False
+        false
     )
     if numeric(text.clone()): return YamlValue.NumberValue(text)
 
     return YamlValue.StringValue(text)
 
-def anchor_name(var flow: Flow) -> Result[String, YamlError]:
+fn anchor_name(var flow: Flow) String!YamlError:
     var name = ""
-    while peek(flow) != "" and not " \t\n,[]{}".contains(peek(flow)):
+    while peek(flow) != "" and not " \t\n,[]\{\}".contains(peek(flow)):
         name = name.concat(advance(var flow))
     if name == "": return error(flow_invalid(flow, "empty anchor name"))
 
     return ok(name)
 
-def merge(
+fn merge(
     line: Int,
     column: Int,
     var target: Map[String, YamlValue],
     value: YamlValue
-) -> Result[Unit, YamlError]:
+) Unit!YamlError:
     let values = match value:
-        case ObjectValue(entries):
+        ObjectValue(entries):
             for entry in entries:
                 if not target.contains(entry.key): target.add(
                     entry.key.clone(), entry.value.clone()
                 )
-            return ok(())
-        case ArrayValue(values): values
-        case _: return error(
+            return ok(unit)
+        ArrayValue(values): values
+        _: return error(
             YamlError.InvalidData(
                 line: line, column: column, reason: "merge requires mappings"
             )
@@ -379,34 +406,34 @@ def merge(
 
     for item in values:
         match item:
-            case ObjectValue(_): try merge(
+            ObjectValue(_): try merge(
                 line: line, column: column, target: var target, value: item
             )
-            case _: return error(
+            _: return error(
                 YamlError.InvalidData(
                     line: line, column: column, reason: "merge requires mappings"
                 )
             )
 
-    return ok(())
+    return ok(unit)
 
 # A plain scalar continued across lines folds each break into one space; blank lines stay breaks.
-def fold_plain(text: String) -> String:
+fn fold_plain(text: String) String:
     if not text.contains("\n"): return text
 
     var result = ""
     var blanks = 0
-    var first = True
+    var first = true
 
     for line in text.split("\n"):
-        let trimmed = line.trim()
+        let trimmed = blank_trim(line)
 
         if trimmed == "":
             blanks += 1
             continue
 
         if first: result = trimmed.clone()
-        elif blanks == 0: result = result.concat(" ").concat(trimmed)
+        else if blanks == 0: result = result.concat(" ").concat(trimmed)
         else:
             var breaks = ""
             var remaining = blanks
@@ -418,12 +445,12 @@ def fold_plain(text: String) -> String:
             result = result.concat(breaks).concat(trimmed)
 
         blanks = 0
-        first = False
+        first = false
 
     return result
 
 # A scalar, alias or quoted string at the cursor, whose first code is `c`.
-def flow_leaf(var flow: Flow, c: Int, key: Bool) -> Result[YamlValue, YamlError]:
+fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
     if c == 42:
         advance(var flow)
 
@@ -444,7 +471,7 @@ def flow_leaf(var flow: Flow, c: Int, key: Bool) -> Result[YamlValue, YamlError]
 
     let start = flow.pos
 
-    while True:
+    while true:
         let code = cur(flow)
         if code == 0: break
         if (
@@ -465,7 +492,7 @@ def flow_leaf(var flow: Flow, c: Int, key: Bool) -> Result[YamlValue, YamlError]
         flow.pos += 1
 
     # Slice once: appending each character to a string is quadratic on long scalars.
-    var text = flow.chars.slice(start, flow.pos).get([]).join("").trim()
+    var text = blank_trim(flow.chars.slice(start, flow.pos).get([]).join(""))
     if text.starts_with("?") and (text.length() == 1 or " \t".contains(text.get(1))): return error(
         YamlError.UnsupportedFeature(
             line: flow.line, reason: "explicit mapping keys are unsupported"
@@ -483,10 +510,10 @@ def flow_leaf(var flow: Flow, c: Int, key: Bool) -> Result[YamlValue, YamlError]
     return ok(plain(text))
 
 # Stores a finished mapping value under `name`.
-def flow_entry(
+fn flow_entry(
     var flow: Flow, name: String, quoted_key: Bool, var entries: Map[String, YamlValue],
     var explicit: Set[String], value: YamlValue
-) -> Result[Unit, YamlError]:
+) Unit!YamlError:
     if explicit.contains(name): return error(
         flow_invalid(flow, "duplicate mapping key")
     )
@@ -500,12 +527,12 @@ def flow_entry(
     else:
         entries.add(name.clone(), value)
 
-    return ok(())
+    return ok(unit)
 
 # Parses a flow value. Nested sequences and mappings are parsed with explicit stacks, not by
 # recursion, so the nesting depth is bounded by the depth limit and not by the call stack. Only
 # a mapping key recurses, and a key cannot be a container.
-def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]:
+fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
     # The open containers, innermost last: kind (1 sequence, 2 mapping), depth, anchors, and
     # the entries so far. The innermost one is held in the variables below `parents`.
     var kinds: List[Int] = []
@@ -525,22 +552,22 @@ def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlE
     var entries = Map[String, YamlValue]()
     var explicit = Set[String]()
     var name = ""
-    var quoted_key = False
+    var quoted_key = false
     var phase = 0
     var done = YamlValue.Null
     var child_key = key
 
     # Phase 0 begins a value inside the innermost container, phase 1 hands it a finished value,
     # and phase 2 reads what follows the opening bracket or a comma.
-    while True:
+    while true:
         if phase == 0:
-            let child_depth = depth if kind == 0 else level + 1
+            let child_depth = if kind == 0: depth else: level + 1
 
             var written: List[String] = []
             var is_key = child_key
-            child_key = False
+            child_key = false
 
-            while True:
+            while true:
                 flow_space(var flow)
                 if not is_key:
                     try count(var flow.context, child_depth)
@@ -551,12 +578,12 @@ def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlE
                 let anchor = try anchor_name(var flow)
                 flow.context.values -= 1
                 written.append(anchor)
-                is_key = False
+                is_key = false
 
             let c = cur(flow)
 
             if c == 91 or c == 123:
-                flow.delimited = True
+                flow.delimited = true
                 if is_key: return error(
                     YamlError.UnsupportedFeature(
                         line: flow.line, reason: "complex mapping keys are unsupported"
@@ -574,7 +601,7 @@ def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlE
                 name_stack.append(name)
                 quoted_stack.append(quoted_key)
 
-                kind = 1 if c == 91 else 2
+                kind = if c == 91: 1 else: 2
 
                 level = child_depth
                 anchors = written
@@ -582,7 +609,7 @@ def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlE
                 entries = Map[String, YamlValue]()
                 explicit = Set[String]()
                 name = ""
-                quoted_key = False
+                quoted_key = false
                 phase = 2
                 continue
 
@@ -641,18 +668,18 @@ def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlE
 
                     phase = 0
                     continue
-            elif cur(flow) != 125:
+            else if cur(flow) != 125:
                 if cur(flow) == 0: return error(
                     flow_invalid(flow, "unterminated flow mapping")
                 )
 
                 quoted_key = cur(flow) == 34 or cur(flow) == 39
 
-                let parsed_key = try flow_value(var flow, level, key: True)
+                let parsed_key = try flow_value(var flow, level, key: true)
 
                 match parsed_key:
-                    case StringValue(text): name = text
-                    case _: return error(
+                    StringValue(text): name = text
+                    _: return error(
                         YamlError.UnsupportedFeature(
                             line: flow.line, reason: "mapping keys must be strings"
                         )
@@ -689,13 +716,13 @@ def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlE
         entries = entry_stack.pop().get(Map[String, YamlValue]())
         explicit = explicit_stack.pop().get(Set[String]())
         name = name_stack.pop().get("")
-        quoted_key = quoted_stack.pop().get(False)
+        quoted_key = quoted_stack.pop().get(false)
         phase = 1
 
 # A plain scalar cannot start with a reserved indicator, nor with `-` or `?` followed by a space or the end.
-def plain_may_start(text: String) -> Bool:
+fn plain_may_start(text: String) Bool:
     let first = text.scalar_at(0, default: 0)
-    if first == 0: return True
+    if first == 0: return true
     if (
         first == 93
         or first == 125
@@ -703,30 +730,30 @@ def plain_may_start(text: String) -> Bool:
         or first == 37
         or first == 64
         or first == 96
-    ): return False
+    ): return false
 
     if first == 45 or first == 63:
         let second = text.scalar_at(1, default: 0)
         return not (second == 0 or second == 32 or second == 9)
 
-    return True
+    return true
 
-def quoted_or_nested(text: String) -> Bool:
+fn quoted_or_nested(text: String) Bool:
     return (
         text.contains("\"")
         or text.contains("'")
         or text.contains("[")
-        or text.contains("{")
+        or text.contains("\{")
     )
 
 # boundary for text with no quotes or brackets: the first marker that follows a blank (or ends the text) wins.
-def plain_boundary(text: String, colon: Bool) -> Int:
+fn plain_boundary(text: String, colon: Bool) Int:
     var marker = "#"
     if colon: marker = ":"
 
     var offset = 0
 
-    while True:
+    while true:
         let rest = text.slice_scalars(offset, text.scalar_length()).get("")
         let found = rest.index_of(marker).get(-1)
         if found < 0: return -1
@@ -740,7 +767,7 @@ def plain_boundary(text: String, colon: Bool) -> Int:
         offset = at + 1
 
 # Find a mapping colon or comment outside quoted/flow values.
-def boundary(text: String, colon: Bool) -> Int:
+fn boundary(text: String, colon: Bool) Int:
     # Without the marker nothing can match; without quotes or brackets the first candidate decides.
     if colon and not text.contains(":"): return -1
     if not colon and not text.contains("#"): return -1
@@ -761,22 +788,22 @@ def boundary(text: String, colon: Bool) -> Int:
 
         if quote != "":
             if c == "\\" and quote == "\"": index += 1
-            elif c == quote:
+            else if c == quote:
                 if quote == "'" and chars.get(index + 1, default: "") == "'": index = (
                     index
                     + 1
                 )
                 else: quote = ""
-        elif (
+        else if (
             (c == "\"" or c == "'")
             and (
                 index == 0
-                or " \t\n:[{,".contains((chars.get((index - 1))))
+                or " \t\n:[\{,".contains((chars.get((index - 1))))
             )
         ): quote = c.clone()
-        elif c == "[" or c == "{": depth += 1
-        elif c == "]" or c == "}": depth -= 1
-        elif (
+        else if c == "[" or c == "\{": depth += 1
+        else if c == "]" or c == "\}": depth -= 1
+        else if (
             colon
             and c == ":"
             and depth == 0
@@ -787,7 +814,7 @@ def boundary(text: String, colon: Bool) -> Int:
             )
         ):
             return index
-        elif (
+        else if (
             not colon
             and c == "#"
             and (
@@ -802,23 +829,23 @@ def boundary(text: String, colon: Bool) -> Int:
 
     return -1
 
-def uncomment(text: String) -> String:
-    let index = boundary(text, colon: False)
+fn uncomment(text: String) String:
+    let index = boundary(text, colon: false)
 
     if index < 0:
         if not (text.ends_with(" ") or text.ends_with("\t")): return text.clone()
         if not complete(text): return text.clone()
 
-        return text.trim_end().clone()
+        return blank_trim_end(text).clone()
 
-    return text.slice(0, index).get("").trim_end().clone()
+    return blank_trim_end(text.slice(0, index).get("")).clone()
 
-def indent(text: String) -> Int:
+fn indent(text: String) Int:
     var result = 0
     while text.scalar_at(result, default: 0) == 32: result += 1
     return result
 
-def indentation(context: Context, text: String) -> Result[Int, YamlError]:
+fn indentation(context: Context, text: String) Int!YamlError:
     let spaces = indent(text)
     if text.get(spaces, default: "") == "\t": return error(
         invalid(context, "tabs cannot indent YAML")
@@ -827,7 +854,7 @@ def indentation(context: Context, text: String) -> Result[Int, YamlError]:
     return ok(spaces)
 
 # Fills the per-line facts for `context.lines` from the bytes of the document they were split from.
-def classify(var context: Context, data: Bytes) -> Unit:
+fn classify(var context: Context, data: Bytes) Unit:
     context.simple = []
     context.blank = []
     context.dash = []
@@ -844,13 +871,13 @@ def classify(var context: Context, data: Bytes) -> Unit:
 
         let indent_width = at - pos
         var simple = at < end
-        var dash = False
+        var dash = false
         var colon = -1
 
         if simple:
             let lead = data.get(at)
             dash = lead == 45 and (at + 1 == end or data.get(at + 1) == 32)
-            if lead == 63: simple = False
+            if lead == 63: simple = false
 
         while simple and at < end:
             let b = data.get(at)
@@ -865,15 +892,15 @@ def classify(var context: Context, data: Bytes) -> Unit:
                 or b == 93
                 or b == 123
                 or b == 125
-            ): simple = False
-            elif b == 58 and colon < 0 and (at + 1 == end or data.get(at + 1) == 32): colon = (
+            ): simple = false
+            else if b == 58 and colon < 0 and (at + 1 == end or data.get(at + 1) == 32): colon = (
                 at
                 - pos
             )
 
             at += 1
 
-        if simple and data.get(end - 1) == 32: simple = False
+        if simple and data.get(end - 1) == 32: simple = false
         context.simple.append(simple)
         context.blank.append(indent_width == end - pos)
         context.dash.append(simple and dash)
@@ -881,7 +908,7 @@ def classify(var context: Context, data: Bytes) -> Unit:
         context.col.append(colon)
         pos = end + 1
 
-def skip(var context: Context) -> Unit:
+fn skip(var context: Context) Unit:
     while context.index < context.lines.length():
         if context.blank.get(context.index):
             context.index += 1
@@ -889,15 +916,15 @@ def skip(var context: Context) -> Unit:
 
         if context.simple.get(context.index): break
 
-        let line = context.lines.get(context.index).trim_start()
+        let line = blank_trim_start(context.lines.get(context.index))
         if line != "" and not line.starts_with("#"): break
 
         context.index += 1
 
 # A document start or end marker at column zero ends a plain scalar that would otherwise continue.
-def document_marker(text: String) -> Bool:
+fn document_marker(text: String) Bool:
     let first = text.scalar_at(0, default: 0)
-    if first != 45 and first != 46: return False
+    if first != 45 and first != 46: return false
 
     return (
         text == "---"
@@ -906,14 +933,14 @@ def document_marker(text: String) -> Bool:
         or text.starts_with("... ")
     )
 
-def sequence(text: String) -> Bool:
-    if text.scalar_at(0, default: 0) != 45: return False
+fn sequence(text: String) Bool:
+    if text.scalar_at(0, default: 0) != 45: return false
 
     return (text == "-" or text.starts_with("- ") or text.starts_with("-\t"))
 
 # A flow collection or quoted scalar can continue across physical lines.
-def complete(text: String) -> Bool:
-    if not quoted_or_nested(text): return True
+fn complete(text: String) Bool:
+    if not quoted_or_nested(text): return true
 
     var quote = ""
     var depth = 0
@@ -925,21 +952,21 @@ def complete(text: String) -> Bool:
 
         if quote != "":
             if c == "\\" and quote == "\"": index += 1
-            elif c == quote:
+            else if c == quote:
                 if quote == "'" and chars.get(index + 1, default: "") == "'": index = (
                     index
                     + 1
                 )
                 else: quote = ""
-        elif (
+        else if (
             (c == "\"" or c == "'")
             and (
                 index == 0
-                or " \t\n:[{,".contains((chars.get((index - 1))))
+                or " \t\n:[\{,".contains((chars.get((index - 1))))
             )
         ): quote = c.clone()
-        elif c == "[" or c == "{": depth += 1
-        elif c == "]" or c == "}": depth -= 1
+        else if c == "[" or c == "\{": depth += 1
+        else if c == "]" or c == "\}": depth -= 1
 
         index += 1
 
@@ -947,8 +974,8 @@ def complete(text: String) -> Bool:
 
 # Whether a value starting with this scalar is a flow collection, quote, anchor, alias or tag
 # (or, with `blank`, whitespace) rather than a plain scalar.
-def structured_lead(code: Int, blank: Bool = False) -> Bool:
-    if blank and (code == 32 or code == 9 or code == 10): return True
+fn structured_lead(code: Int, blank: Bool = false) Bool:
+    if blank and (code == 32 or code == 9 or code == 10): return true
 
     return (
         code == 91
@@ -960,24 +987,24 @@ def structured_lead(code: Int, blank: Bool = False) -> Bool:
         or code == 33
     )
 
-def inline_value(var context: Context, text: String, depth: Int) -> Result[
+fn inline_value(var context: Context, text: String, depth: Int) Result[
     YamlValue, YamlError
 ]:
     # A plain scalar needs no character scan: only its trimmed text and a count.
     if (
         text != ""
-        and not structured_lead(text.scalar_at(0, default: 0), blank: True)
+        and not structured_lead(text.scalar_at(0, default: 0), blank: true)
         and not text.contains(": ")
-        and plain_may_start(text.trim())
+        and plain_may_start(blank_trim(text))
     ):
         try count(var context, depth)
-        return ok(plain(text.trim().clone()))
+        return ok(plain(blank_trim(text).clone()))
 
     var joined = text.clone()
     let line = context.index
     let structured = (
         text.starts_with("[")
-        or text.starts_with("{")
+        or text.starts_with("\{")
         or text.starts_with("\"")
         or text.starts_with("'")
         or text.starts_with("&")
@@ -992,7 +1019,7 @@ def inline_value(var context: Context, text: String, depth: Int) -> Result[
 
         # Keep quote state and physical empty lines when removing comments.
         let combined = joined.concat("\n").concat(next)
-        let comment = boundary(combined, colon: False)
+        let comment = boundary(combined, colon: false)
 
         if comment < 0: joined = combined
         else: joined = combined.slice(0, comment).get("")
@@ -1012,9 +1039,9 @@ def inline_value(var context: Context, text: String, depth: Int) -> Result[
             anchors: context.anchors.clone(), sizes: context.sizes.clone(), simple: [],
             blank: [], dash: [], ind: [], col: []
         ),
-        delimited: False
+        delimited: false
     )
-    let result = try flow_value(var flow, depth, key: False)
+    let result = try flow_value(var flow, depth, key: false)
     flow_space(var flow)
     if cur(flow) != 0: return error(flow_invalid(flow, "unexpected trailing text"))
 
@@ -1023,7 +1050,7 @@ def inline_value(var context: Context, text: String, depth: Int) -> Result[
     context.sizes = flow.context.sizes.clone()
     return ok(result)
 
-def block_string(var context: Context, header: String, base: Int) -> Result[
+fn block_string(var context: Context, header: String, base: Int) Result[
     YamlValue, YamlError
 ]:
     var mode = ""
@@ -1043,7 +1070,11 @@ def block_string(var context: Context, header: String, base: Int) -> Result[
         offset += 1
 
         if (c == "+" or c == "-") and mode == "": mode = c
-        elif "123456789".contains(c) and explicit == 0: explicit = c.parse_int().get()
+        else if "123456789".contains(c) and explicit == 0: explicit = (
+            c
+            .parse_int()
+            .get()
+        )
         else: return error(
             YamlError.InvalidData(
                 line: header_line, column: header_column + offset,
@@ -1090,11 +1121,11 @@ def block_string(var context: Context, header: String, base: Int) -> Result[
 
     var builder = StringBuilder()
     var index = 0
-    var content = False
+    var content = false
 
     while index < parts.length():
         let part = parts.get(index)
-        if part != "": content = True
+        if part != "": content = true
         builder.append(part)
 
         var separator = "\n"
@@ -1145,7 +1176,7 @@ def block_string(var context: Context, header: String, base: Int) -> Result[
 
 # Whether a plain scalar may continue on a following line: false when the next non-blank line is
 # already known to sit at or left of `base`.
-def may_continue(context: Context, base: Int) -> Bool:
+fn may_continue(context: Context, base: Int) Bool:
     let first = context.index
     var probe = first
 
@@ -1156,34 +1187,34 @@ def may_continue(context: Context, base: Int) -> Bool:
 
         return not (context.simple.get(probe) and context.ind.get(probe) <= base)
 
-    return False
+    return false
 
-def block_value(
+fn block_value(
     var context: Context, text: String, base: Int, depth: Int, indentless: Bool
-) -> Result[YamlValue, YamlError]:
-    var remainder = text.trim_start().clone()
+) YamlValue!YamlError:
+    var remainder = blank_trim_start(text).clone()
     var anchor = ""
     var lead = remainder.scalar_at(0, default: 0)
 
     if lead == 38:
         var flow = Flow(
             chars: remainder.split(""), codes: [], pos: 1, line: context.index,
-            context: context.clone(), delimited: False
+            context: context.clone(), delimited: false
         )
         anchor = try anchor_name(var flow)
-        remainder = remainder.slice(
-            flow.pos, remainder.scalar_length()
-        ).get("").trim_start()
+        remainder = blank_trim_start(
+            remainder.slice(flow.pos, remainder.scalar_length()).get("")
+        )
         lead = remainder.scalar_at(0, default: 0)
 
     var result = YamlValue.Null
 
     if lead == 124 or lead == 62:
         try count(var context, depth)
-        result = try block_string(var context, remainder.trim_end(), base)
-    elif remainder != "":
+        result = try block_string(var context, blank_trim_end(remainder), base)
+    else if remainder != "":
         if not structured_lead(lead):
-            remainder = remainder.trim_end().clone()
+            remainder = blank_trim_end(remainder).clone()
 
             if may_continue(context, base):
                 var joined = StringBuilder()
@@ -1196,14 +1227,14 @@ def block_value(
                 while probe < context.lines.length():
                     let line = context.lines.get(probe)
 
-                    if line.trim() == "":
+                    if blank_trim(line) == "":
                         blanks += 1
                         probe += 1
                         continue
 
                     let next = uncomment(line.clone())
                     if (
-                        next.trim() == ""
+                        blank_trim(next) == ""
                         or indent(next) <= base
                         or document_marker(next)
                     ): break
@@ -1211,11 +1242,10 @@ def block_value(
                     context.index = probe
 
                     let _indent = try indentation(context, next)
-                    if (boundary(next, colon: True) >= 0 or sequence(next.trim_start())): return error(
-                        invalid(
-                            context, "unexpected indented collection"
-                        )
-                    )
+                    if (
+                        boundary(next, colon: true) >= 0
+                        or sequence(blank_trim_start(next))
+                    ): return error(invalid(context, "unexpected indented collection"))
 
                     var separator = " "
 
@@ -1227,7 +1257,7 @@ def block_value(
                             blanks -= 1
 
                     joined.append(separator)
-                    joined.append(next.trim())
+                    joined.append(blank_trim(next))
                     probe += 1
                     context.index = probe
 
@@ -1246,7 +1276,7 @@ def block_value(
                 or (
                     indentless
                     and next_indent == base
-                    and sequence(line.trim_start())
+                    and sequence(blank_trim_start(line))
                 )
             ):
                 result = try block(var context, next_indent, depth)
@@ -1258,7 +1288,7 @@ def block_value(
     if anchor != "": define_anchor(var context, anchor, result.clone())
     return ok(result)
 
-def pad(width: Int) -> String:
+fn pad(width: Int) String:
     var builder = StringBuilder()
     var spaces = width
 
@@ -1269,7 +1299,7 @@ def pad(width: Int) -> String:
     return builder.build()
 
 # Columns of the nested sequence levels opened by consecutive compact `- ` indicators.
-def nested_columns(line: String, base: Int) -> List[Int]:
+fn nested_columns(line: String, base: Int) List[Int]:
     let chars = line.split("")
     var columns: List[Int] = []
     var marker = base
@@ -1287,9 +1317,9 @@ def nested_columns(line: String, base: Int) -> List[Int]:
 
     return columns
 
-def sequence_items(
+fn sequence_items(
     var context: Context, var values: List[YamlValue], base: Int, depth: Int
-) -> Result[Unit, YamlError]:
+) Unit!YamlError:
     while context.index < context.lines.length():
         skip(var context)
         if context.index >= context.lines.length(): break
@@ -1298,27 +1328,31 @@ def sequence_items(
         var line = ""
         var line_indent = 0
         var item = ""
-        var compact = False
+        var compact = false
 
         if fast:
             line_indent = context.ind.get(context.index)
             if line_indent != base or not context.dash.get(context.index): break
 
             line = context.lines.get(context.index).clone()
-            item = line.slice(
-                line_indent + 1, line.scalar_length()
-            ).get("").trim_start()
+            item = blank_trim_start(
+                line.slice(line_indent + 1, line.scalar_length()).get(
+                    ""
+                )
+            )
             compact = context.col.get(context.index) >= 0 or sequence(item)
         else:
             line = uncomment(context.lines.get(context.index))
             line_indent = try indentation(context, line)
             if line_indent < base: break
-            if line_indent != base or not sequence(line.trim_start()): break
+            if line_indent != base or not sequence(blank_trim_start(line)): break
 
-            item = line.trim_start().slice(
-                1, (line.trim_start().scalar_length())
-            ).get("").trim_start()
-            compact = sequence(item) or boundary(item, colon: True) >= 0
+            item = blank_trim_start(
+                blank_trim_start(line).slice(
+                    1, (blank_trim_start(line).scalar_length())
+                ).get("")
+            )
+            compact = sequence(item) or boundary(item, colon: true) >= 0
 
         var chain: List[Int] = []
         if item.starts_with("-"): chain = nested_columns(line, base)
@@ -1335,7 +1369,7 @@ def sequence_items(
                 frames.append([])
                 level += 1
 
-            context.simple.set(context.index, False)
+            context.simple.set(context.index, false)
             context.lines.set(
                 context.index,
                 pad(innermost).concat(
@@ -1368,11 +1402,11 @@ def sequence_items(
                 level -= 1
 
             values.append(value)
-        elif compact:
+        else if compact:
             # Treat a compact mapping/sequence as a virtual indented first line.
             # Its column follows the indicator, so extra spaces move the nested base.
-            let marker = line.trim_start().slice(
-                1, (line.trim_start().scalar_length())
+            let marker = blank_trim_start(line).slice(
+                1, (blank_trim_start(line).scalar_length())
             ).get("")
             var gap = indent(marker)
             if gap == 0: gap = 1
@@ -1387,7 +1421,7 @@ def sequence_items(
                 context.ind.set(context.index, column)
                 context.dash.set(context.index, sequence(item))
                 if item.scalar_at(0, default: 0) == 63: context.simple.set(
-                    context.index, False
+                    context.index, false
                 )
 
             context.lines.set(context.index, pad(column).concat(item))
@@ -1397,24 +1431,24 @@ def sequence_items(
             values.append(
                 try block_value(
                     context: var context, text: item, base: base, depth: (depth + 1),
-                    indentless: False
+                    indentless: false
                 )
             )
 
-    return ok(())
+    return ok(unit)
 
-def block(var context: Context, base: Int, depth: Int) -> Result[YamlValue, YamlError]:
+fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
     skip(var context)
 
     var first = ""
-    var is_sequence = False
-    var has_colon = False
+    var is_sequence = false
+    var has_colon = false
 
     if context.simple.get(context.index):
         is_sequence = context.dash.get(context.index)
         has_colon = not is_sequence and context.col.get(context.index) >= 0
     else:
-        first = uncomment(context.lines.get(context.index)).trim_start()
+        first = blank_trim_start(uncomment(context.lines.get(context.index)))
         if first.starts_with("?"): return error(
             YamlError.UnsupportedFeature(
                 line: (context.index + 1),
@@ -1423,7 +1457,7 @@ def block(var context: Context, base: Int, depth: Int) -> Result[YamlValue, Yaml
         )
 
         is_sequence = sequence(first)
-        has_colon = not is_sequence and boundary(first, colon: True) >= 0
+        has_colon = not is_sequence and boundary(first, colon: true) >= 0
 
     if is_sequence:
         try count(var context, depth)
@@ -1456,21 +1490,27 @@ def block(var context: Context, base: Int, depth: Int) -> Result[YamlValue, Yaml
                 if colon < 0: break
 
                 let raw = context.lines.get(context.index)
-                name = raw.slice(line_indent, colon).get("").trim()
-                text = raw.slice(colon + 1, raw.scalar_length()).get("").trim_start()
+                name = blank_trim(raw.slice(line_indent, colon).get(""))
+                text = blank_trim_start(
+                    raw.slice(colon + 1, raw.scalar_length()).get(
+                        ""
+                    )
+                )
             else:
                 let line = uncomment(context.lines.get(context.index))
                 line_indent = try indentation(context, line)
-                if line_indent != base or sequence(line.trim_start()): break
+                if line_indent != base or sequence(blank_trim_start(line)): break
 
-                let content = line.trim_start()
-                let colon = boundary(content, colon: True)
+                let content = blank_trim_start(line)
+                let colon = boundary(content, colon: true)
                 if colon < 0: break
 
-                name = content.slice(0, colon).get("").trim()
-                text = content.slice(
-                    colon + 1, content.scalar_length()
-                ).get("").trim_start()
+                name = blank_trim(content.slice(0, colon).get(""))
+                text = blank_trim_start(
+                    content.slice(
+                        colon + 1, content.scalar_length()
+                    ).get("")
+                )
 
             let key_start = name.scalar_at(0, default: 0)
             let quoted_key = key_start == 34 or key_start == 39
@@ -1478,13 +1518,13 @@ def block(var context: Context, base: Int, depth: Int) -> Result[YamlValue, Yaml
             if quoted_key:
                 var flow = Flow(
                     chars: name.split(""), codes: [], pos: 0, line: (context.index + 1),
-                    context: context.clone(), delimited: False
+                    context: context.clone(), delimited: false
                 )
                 name = try quoted(var flow)
                 if flow.pos != flow.chars.length(): return error(
                     invalid(context, "invalid quoted key")
                 )
-            elif (
+            else if (
                 name == ""
                 or key_start == 91
                 or key_start == 123
@@ -1509,7 +1549,7 @@ def block(var context: Context, base: Int, depth: Int) -> Result[YamlValue, Yaml
 
             let value = try block_value(
                 context: var context, text: text, base: base, depth: (depth + 1),
-                indentless: True
+                indentless: true
             )
 
             if name == "<<" and not quoted_key:
@@ -1522,7 +1562,7 @@ def block(var context: Context, base: Int, depth: Int) -> Result[YamlValue, Yaml
 
         return ok(YamlValue.ObjectValue(values))
 
-    if first == "": first = context.lines.get(context.index).trim_start()
+    if first == "": first = blank_trim_start(context.lines.get(context.index))
     context.index += 1
     return block_value(
         context: var context,
@@ -1530,28 +1570,23 @@ def block(var context: Context, base: Int, depth: Int) -> Result[YamlValue, Yaml
         # A scalar or anchor on its own line may continue at the same indentation.
         base: base - 1,
         depth: depth,
-        indentless: False
+        indentless: false
     )
 
-def validate(var context: Context, value: YamlValue, depth: Int) -> Result[
-    Unit, YamlError
-]:
+fn validate(var context: Context, value: YamlValue, depth: Int) Unit!YamlError:
     try count(var context, depth)
 
     match value:
-        case ArrayValue(values):
+        ArrayValue(values):
             for item in values: try validate(var context, item, (depth + 1))
-        case ObjectValue(values):
+        ObjectValue(values):
             for entry in values: try validate(var context, entry.value, (depth + 1))
-        case _: ()
+        _: unit
 
-    return ok(())
+    return ok(unit)
 
 # Parses a YAML document. Unsupported YAML features and invalid input include source locations.
-export def parse(
-    text: String,
-    limits: Optional[YamlLimits] = none
-) -> Result[YamlValue, YamlError]:
+export fn parse(text: String, limits: YamlLimits?) YamlValue!YamlError:
     var options = default_limits()
     if let value = limits:
         options = value
@@ -1563,7 +1598,7 @@ export def parse(
     )
 
     var normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-    if normalized.starts_with(f"\u{feff}"): normalized = normalized.slice(
+    if normalized.starts_with("\u{feff}"): normalized = normalized.slice(
         1, normalized.scalar_length()
     ).get("")
     for code in normalized.scalar_values():
@@ -1614,7 +1649,7 @@ export def parse(
         let line = context.lines.get(context.index)
         let rest = line.slice(4, line.scalar_length()).get("")
 
-        if not rest.trim().starts_with("#"):
+        if not blank_trim(rest).starts_with("#"):
             context.lines.splice(context.index, 1, ["---", rest])
             classify(var context, context.lines.join("\n").to_bytes())
 
@@ -1654,17 +1689,17 @@ export def parse(
     try validate(var context, result, 1)
     return ok(result)
 
-def hex4(code: Int) -> String:
+fn hex4(code: Int) String:
     var digits = code.to_string_radix(16)
     while digits.length() < 4: digits = "0".concat(digits)
     return digits
 
-def quote_text(text: String) -> String:
-    var clean = True
+fn quote_text(text: String) String:
+    var clean = true
 
     for code in text.scalar_values():
         if code < 32 or code == 34 or code == 92 or (code >= 127 and code <= 159):
-            clean = False
+            clean = false
             break
 
     if clean: return "\"".concat(text).concat("\"")
@@ -1676,13 +1711,13 @@ def quote_text(text: String) -> String:
         let code = c.scalar_at(0)
 
         if c == "\"": result.append("\\\"")
-        elif c == "\\": result.append("\\\\")
-        elif c == "\n": result.append("\\n")
-        elif c == "\t": result.append("\\t")
-        elif c == "\r": result.append("\\r")
-        elif code == 8: result.append("\\b")
-        elif code == 12: result.append("\\f")
-        elif code < 32 or (code >= 127 and code <= 159):
+        else if c == "\\": result.append("\\\\")
+        else if c == "\n": result.append("\\n")
+        else if c == "\t": result.append("\\t")
+        else if c == "\r": result.append("\\r")
+        else if code == 8: result.append("\\b")
+        else if code == 12: result.append("\\f")
+        else if code < 32 or (code >= 127 and code <= 159):
             result.append("\\u")
             result.append(hex4(code))
         else: result.append(c)
@@ -1690,9 +1725,9 @@ def quote_text(text: String) -> String:
     result.append("\"")
     return result.build()
 
-def format_key(key: String) -> String:
+fn format_key(key: String) String:
     var plain = key != ""
-    var first = True
+    var first = true
 
     for code in key.scalar_values():
         let word = (
@@ -1701,66 +1736,66 @@ def format_key(key: String) -> String:
             or code == 95
         )
         let digit = code >= 48 and code <= 57
-        if not (word or digit or code == 45): plain = False
-        if first and (digit or code == 45): plain = False
-        first = False
+        if not (word or digit or code == 45): plain = false
+        if first and (digit or code == 45): plain = false
+        first = false
         if not plain: break
 
     if plain and key.length() <= 5:
         if ["null", "true", "false", "yes", "no", "on", "off", "y", "n"].contains(
             key.lower()
-        ): plain = False
+        ): plain = false
     if plain: return key
 
     return quote_text(key)
 
 # A number keeps its original token, so it must resolve back to a number.
-def valid_number(text: String) -> Bool:
+fn valid_number(text: String) Bool:
     # Plain decimal integers resolve to themselves; anything else goes through the parser.
     var integer = text != ""
     var at = 0
 
     for code in text.scalar_values():
         if not (code >= 48 and code <= 57 or (at == 0 and (code == 45 or code == 43))):
-            integer = False
+            integer = false
             break
 
         at += 1
 
-    if integer and at > 1 or (integer and text.scalar_at(0) >= 48): return True
+    if integer and at > 1 or (integer and text.scalar_at(0) >= 48): return true
     if let parsed = parse(text): return parsed == YamlValue.NumberValue(text)
 
-    return False
+    return false
 
-def scalar_text(value: YamlValue) -> Result[String, YamlError]:
+fn scalar_text(value: YamlValue) String!YamlError:
     match value:
-        case Null: return ok("null")
-        case BoolValue(flag): return ok(flag.to_string())
-        case StringValue(text): return ok(quote_text(text))
-        case NumberValue(text):
+        Null: return ok("null")
+        BoolValue(flag): return ok(flag.to_string())
+        StringValue(text): return ok(quote_text(text))
+        NumberValue(text):
             if not valid_number(text.clone()): return error(YamlError.InvalidInput)
 
             return ok(text)
-        case ArrayValue(values):
+        ArrayValue(values):
             if values.is_empty(): return ok("[]")
 
             return ok("")
-        case ObjectValue(values):
-            if values.is_empty(): return ok("{}")
+        ObjectValue(values):
+            if values.is_empty(): return ok("\{\}")
 
             return ok("")
 
-def is_block(value: YamlValue) -> Bool:
+fn is_block(value: YamlValue) Bool:
     match value:
-        case ArrayValue(values): return not values.is_empty()
-        case ObjectValue(values): return not values.is_empty()
-        case _: return False
+        ArrayValue(values): return not values.is_empty()
+        ObjectValue(values): return not values.is_empty()
+        _: return false
 
-def emit_block(var out: StringBuilder, value: YamlValue, indent: String) -> Result[
+fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
     Unit, YamlError
 ]:
     match value:
-        case ArrayValue(values):
+        ArrayValue(values):
             for item in values:
                 out.append(indent)
 
@@ -1773,8 +1808,8 @@ def emit_block(var out: StringBuilder, value: YamlValue, indent: String) -> Resu
                     out.append(text)
                     out.append("\n")
 
-            return ok(())
-        case ObjectValue(values):
+            return ok(unit)
+        ObjectValue(values):
             for entry in values.entries():
                 out.append(indent)
                 out.append(format_key(entry.key.clone()))
@@ -1788,14 +1823,11 @@ def emit_block(var out: StringBuilder, value: YamlValue, indent: String) -> Resu
                     out.append(text)
                     out.append("\n")
 
-            return ok(())
-        case _: return ok(())
+            return ok(unit)
+        _: return ok(unit)
 
 # Serializes a YAML value in block style with double-quoted strings.
-export def stringify(
-    value: YamlValue,
-    max_bytes: Optional[Int] = none
-) -> Result[String, YamlError]:
+export fn stringify(value: YamlValue, max_bytes: Int?) String!YamlError:
     if let limit = max_bytes:
         if limit < 0: return error(YamlError.InvalidInput)
 

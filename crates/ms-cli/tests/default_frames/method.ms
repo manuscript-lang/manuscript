@@ -1,12 +1,12 @@
 interface Divide:
-    def divide(value: Int) -> Int
+    fn divide(value: Int) Int
 
 type Number:
     value: Int
 
 impl Divide for Number:
-    def divide(value: Int = 1 / self.value) -> Int:
+    fn divide(value: Int = 1 / self.value) Int:
         return value
 
-export def main() -> Int:
+export fn main() Int:
     return Number(0).divide()

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def identity(value: Int) -> Int:\n    return value\n\nlet exact: Callable[[Int], Int] = identity\n# Rejected: amount differs from value.\nlet relabeled: Callable[[Int], Int] = identity\n"
+    "fmt": "fn identity(value: Int) Int:\n    return value\n\nlet exact: fn(Int) Int = identity\n# Rejected: amount differs from value.\nlet relabeled: fn(Int) Int = identity\n"
   }
 }

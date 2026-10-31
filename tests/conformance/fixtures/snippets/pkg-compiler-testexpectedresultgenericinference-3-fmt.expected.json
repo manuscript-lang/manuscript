@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def failed[T]() -> Result[T, Failure]: error(Failure(\"empty\"))\n\ndef first() -> Result[Int, Error]: failed()\n"
-  }
-}

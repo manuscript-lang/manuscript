@@ -1,12 +1,5 @@
-from "@std/test.ms" import expect_equal
-from "@std/time.ms" import (
-    nanoseconds,
-    microseconds,
-    milliseconds,
-    seconds,
-    minutes,
-    hours
-)
+import expect_equal from "@std/test.ms"
+import nanoseconds, microseconds, milliseconds, seconds, minutes, hours from "@std/time.ms"
 
 test "unit constructors build exact nanosecond counts":
     try expect_equal(nanoseconds(7).to_nanoseconds(), 7)
@@ -31,14 +24,14 @@ test "unit constructors round trip through to_ readers":
     try expect_equal(seconds(90).add(milliseconds(500)).to_milliseconds(), 90500)
 
 test "durations read as human spans in interpolation and to_string":
-    try expect_equal(f"{seconds(90).add(milliseconds(500))}", "1m30.5s")
-    try expect_equal(f"{milliseconds(250)}", "250ms")
-    try expect_equal(f"{microseconds(1500)}", "1.5ms")
-    try expect_equal(f"{nanoseconds(7)}", "7ns")
-    try expect_equal(f"{hours(2)}", "2h0m0s")
-    try expect_equal(f"{seconds(-2)}", "-2s")
+    try expect_equal("{seconds(90).add(milliseconds(500))}", "1m30.5s")
+    try expect_equal("{milliseconds(250)}", "250ms")
+    try expect_equal("{microseconds(1500)}", "1.5ms")
+    try expect_equal("{nanoseconds(7)}", "7ns")
+    try expect_equal("{hours(2)}", "2h0m0s")
+    try expect_equal("{seconds(-2)}", "-2s")
     try expect_equal(nanoseconds(0).to_string(), "0s")
-    try expect_equal(f"{hours(1).add(seconds(5))}", "1h0m5s")
+    try expect_equal("{hours(1).add(seconds(5))}", "1h0m5s")
 
 test "extreme durations format, including the minimum":
     try expect_equal(
@@ -47,5 +40,5 @@ test "extreme durations format, including the minimum":
     try expect_equal(
         nanoseconds(-9223372036854775807 - 1).to_string(), "-2562047h47m16.854775808s"
     )
-    try expect_equal(f"{nanoseconds(-1500)}", "-1.5µs")
-    try expect_equal(f"{nanoseconds(-999999999)}", "-999.999999ms")
+    try expect_equal("{nanoseconds(-1500)}", "-1.5µs")
+    try expect_equal("{nanoseconds(-999999999)}", "-999.999999ms")

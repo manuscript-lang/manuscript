@@ -9,19 +9,19 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Callable[[String, Bytes, Bool], Result[Unit, FileSystemError]], found Callable[[String, String, Bool], Result[Unit, FileSystemError]] (in the return value)",
+        "message": "expected fn(String, Bytes, Bool) Result[Unit, FileSystemError], found fn(String, String, Bool) Result[Unit, FileSystemError] (in the return value)",
         "position": {
           "file": "lowering-native-defaults.ms",
-          "line": 52,
+          "line": 53,
           "column": 15,
-          "offset": 1906
+          "offset": 1757
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/lowering-native-defaults.ms:52:15: type: expected Callable[[String, Bytes, Bool], Result[Unit, FileSystemError]], found Callable[[String, String, Bool], Result[Unit, FileSystemError]] (in the return value)\n    |\n 52 |     return fs.write_file\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/lowering-native-defaults.ms:53:15: type: expected fn(String, Bytes, Bool) Result[Unit, FileSystemError], found fn(String, String, Bool) Result[Unit, FileSystemError] (in the return value)\n    |\n 53 |     return fs.write_file\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

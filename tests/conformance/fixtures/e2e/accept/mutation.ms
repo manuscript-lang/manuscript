@@ -1,34 +1,34 @@
 # conform: tags=aliasing,alternatives,closures,control-flow,faults,generics,interfaces,lists,maps,match,modules,optional,records,sets,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/mutation.ms
-from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, fail
+import expect_equal, expect_false, expect_not_equal, fail from "@std/test.ms"
 
 interface Counter:
-    def increment() -> Unit
+    fn increment() Unit
 
 type Val:
     val: Int
 
 impl Counter for Val:
-    var def increment() -> Unit:
+    var fn increment() Unit:
         self.val += 1
 
 type Box[T]:
     value: T
     child: Val
 
-def replace[T](var box: Box[T], value: T) -> Unit:
+fn replace[T](var box: Box[T], value: T) Unit:
     box.value = value
 
-def receiver(var log: List[Int], value: Val) -> Val:
+fn receiver(var log: List[Int], value: Val) Val:
     log.append(1)
     return value
 
-def replacement(var log: List[Int]) -> Int:
+fn replacement(var log: List[Int]) Int:
     log.append(2)
     return 7
 
-def bump(var value: Val) -> Unit:
+fn bump(var value: Val) Unit:
     value.val += 1
 
 test "record fields mutate through methods views and var parameters":
@@ -98,7 +98,7 @@ test "for loop iterates a snapshot while the source changes":
 
 test "callbacks over a snapshot leave the source writable":
     var values = [1, 2, 3]
-    let result = values.clone().map(lambda value: return value + 1)
+    let result = values.clone().map(fn value: return value + 1)
     values.fill(9, 0, 3)
     try expect_false(not (result == [2, 3, 4] and values == [9, 9, 9]))
 
@@ -111,12 +111,12 @@ test "list growth and saved clone methods preserve current contents":
     let copy = clone()
     values.append(2048)
     values.set(0, -1)
-    try expect_false(not (values.length() == 2049 and values.last() == some(2048)))
+    try expect_false(not (values.length() == 2049 and values.last() == 2048))
     try expect_false(
         not (
             copy.length() == 2048
-            and copy.first() == some(0)
-            and copy.last() == some(2047)
+            and copy.first() == 0
+            and copy.last() == 2047
         )
     )
 
@@ -192,15 +192,15 @@ test "alternative clones retain tags and payloads":
     let copy = original.clone()
 
     match copy:
-        case Choice.Present(value):
+        Choice.Present(value):
             try expect_equal(value.val, 1)
-        case Choice.Missing:
+        Choice.Missing:
             return fail("clone changed the alternative tag")
 
     match original:
-        case Choice.Present(value):
+        Choice.Present(value):
             try expect_equal(value.val, 1)
-        case Choice.Missing:
+        Choice.Missing:
             return fail("clone changed the original alternative")
 
     let missing = Choice.Missing.clone()

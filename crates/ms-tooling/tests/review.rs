@@ -11,25 +11,7 @@ use ms_tooling::tree::Node;
 use ms_tooling::views::build_view;
 use std::collections::BTreeMap;
 
-const SAMPLE_DIFF: &str = "diff --git a/src/a.ms b/src/a.ms
-index 111..222 100644
---- a/src/a.ms
-+++ b/src/a.ms
-@@ -1,4 +1,5 @@
- def one() -> Int:
--    return 1
-+    let x = 1
-+    return x
- 
- def two() -> Int:
-diff --git a/new.ms b/new.ms
-new file mode 100644
---- /dev/null
-+++ b/new.ms
-@@ -0,0 +1,2 @@
-+def n() -> Int:
-+    return 0
-";
+const SAMPLE_DIFF: &str = "diff --git a/src/a.ms b/src/a.ms\nindex 111..222 100644\n--- a/src/a.ms\n+++ b/src/a.ms\n@@ -1,4 +1,5 @@\n fn one() Int:\n-    return 1\n+    let x = 1\n+    return x\n \n fn two() Int:\ndiff --git a/new.ms b/new.ms\nnew file mode 100644\n--- /dev/null\n+++ b/new.ms\n@@ -0,0 +1,2 @@\n+fn n() Int:\n+    return 0\n";
 
 #[test]
 fn parse_diff_and_reverse_apply() {
@@ -37,12 +19,11 @@ fn parse_diff_and_reverse_apply() {
     assert_eq!(files.len(), 2);
     assert_eq!(files[0].path(), "src/a.ms");
     assert!(files[1].old.is_empty() && files[1].new == "new.ms");
-    let head =
-        "def one() -> Int:\n    let x = 1\n    return x\n\ndef two() -> Int:\n    return 2\n";
+    let head = "fn one() Int:\n    let x = 1\n    return x\n\nfn two() Int:\n    return 2\n";
     let base = reverse_apply(head, &files[0].hunks).unwrap();
     assert_eq!(
         base,
-        "def one() -> Int:\n    return 1\n\ndef two() -> Int:\n    return 2\n"
+        "fn one() Int:\n    return 1\n\nfn two() Int:\n    return 2\n"
     );
     assert_eq!(files[0].touched_lines(), vec![2, 2, 3]);
     let wrong = head.replacen("let x = 1", "let x = 9", 1);
@@ -67,14 +48,13 @@ fn parse_diff_rejects_text_that_is_not_a_diff() {
 
 #[test]
 fn removed_content_is_base_text() {
-    let files = parse_diff(
-        "--- a/gone.ms\n+++ /dev/null\n@@ -1,2 +0,0 @@\n-def a() -> Int:\n-    return 0\n",
-    )
-    .unwrap();
+    let files =
+        parse_diff("--- a/gone.ms\n+++ /dev/null\n@@ -1,2 +0,0 @@\n-fn a() Int:\n-    return 0\n")
+            .unwrap();
     assert!(files[0].new.is_empty());
     assert_eq!(
         removed_content(&files[0].hunks),
-        "def a() -> Int:\n    return 0\n"
+        "fn a() Int:\n    return 0\n"
     );
 }
 
@@ -183,7 +163,7 @@ fn review_reach_counts_distinct_callers_across_cycles() {
     head.entities
         .get_mut(&fact_key("r.ms", "fn", "left"))
         .unwrap()
-        .withs = 1;
+        .scopes = 1;
 
     // The right branch has one caller, but a body-only edit gets no reach bonus.
     let findings = compare_facts(&base, &head, &input(&[6]));
@@ -421,8 +401,8 @@ fn flow_view_expands_calls_and_scope_prunes() {
         ..Node::default()
     };
     let with = Node {
-        kind: "with".into(),
-        label: "with out = stdout()  [closed on exit]".into(),
+        kind: "scope".into(),
+        label: "let out = stdout()  [closed on exit]".into(),
         children: vec![
             Node {
                 kind: "native".into(),
@@ -438,17 +418,17 @@ fn flow_view_expands_calls_and_scope_prunes() {
         ..Node::default()
     };
     main.calls = vec![guarded.key.clone()];
-    guarded.withs = 1;
+    guarded.scopes = 1;
     let mut facts = facts_of(vec![main.clone(), guarded.clone()]);
     facts.flows.insert(main.key.clone(), vec![call]);
     facts.flows.insert(guarded.key.clone(), vec![with]);
     let flow = build_view(&facts, "flow", "main", 2).unwrap().ascii();
-    let want = "FLOW VIEW\n`- main  [fn] r.ms:15\n   `- call guarded\n      `- with out = stdout()  [closed on exit]\n         |- native @std/io.ms#stdout\n         `- try call load\n";
+    let want = "FLOW VIEW\n`- main  [fn] r.ms:15\n   `- call guarded\n      `- let out = stdout()  [closed on exit]\n         |- native @std/io.ms#stdout\n         `- try call load\n";
     assert_eq!(flow, want);
     let scope = build_view(&facts, "scope", "guarded", 0).unwrap().ascii();
     assert_eq!(
         scope,
-        "SCOPE VIEW\n`- guarded  [fn] r.ms:8\n   `- with out = stdout()  [closed on exit]\n      `- try call load\n"
+        "SCOPE VIEW\n`- guarded  [fn] r.ms:8\n   `- let out = stdout()  [closed on exit]\n      `- try call load\n"
     );
     assert!(
         build_view(&facts, "flow", "", 0)
@@ -462,7 +442,7 @@ fn tasks_view_keeps_groups_and_spawned_work() {
     let load = fact("r.ms", "fn", "load", 3);
     let spawn = Node {
         kind: "spawn".into(),
-        label: "spawn  group.spawn(lambda: fetch(1))".into(),
+        label: "spawn  group.spawn(fn: fetch(1))".into(),
         children: vec![Node {
             kind: "call".into(),
             label: "call fetch".into(),
@@ -471,8 +451,8 @@ fn tasks_view_keeps_groups_and_spawned_work() {
         ..Node::default()
     };
     let with = Node {
-        kind: "with".into(),
-        label: "with let group = TaskGroup[Int]()  [closed on exit]".into(),
+        kind: "scope".into(),
+        label: "let group = TaskGroup[Int]()  [closed on exit]".into(),
         children: vec![
             spawn,
             Node {
@@ -493,7 +473,7 @@ fn tasks_view_keeps_groups_and_spawned_work() {
     let tasks = build_view(&facts, "tasks", "load", 0).unwrap().ascii();
     assert_eq!(
         tasks,
-        "TASKS VIEW\n`- load  [fn] r.ms:3\n   `- with let group = TaskGroup[Int]()  [closed on exit]\n      `- spawn  group.spawn(lambda: fetch(1))\n         `- call fetch\n"
+        "TASKS VIEW\n`- load  [fn] r.ms:3\n   `- let group = TaskGroup[Int]()  [closed on exit]\n      `- spawn  group.spawn(fn: fetch(1))\n         `- call fetch\n"
     );
 }
 

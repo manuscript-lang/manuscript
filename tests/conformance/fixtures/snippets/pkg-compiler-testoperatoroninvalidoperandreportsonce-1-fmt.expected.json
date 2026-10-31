@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def f() -> Int:\n    var x: Int = 1\n    x += try 3\n    return x\n"
-  }
-}

@@ -1,1 +1,1 @@
-error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"
+error parse 31:5:595 "only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a function"

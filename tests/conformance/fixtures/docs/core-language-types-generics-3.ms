@@ -4,10 +4,10 @@
 type Box[T]:
     value: T
 
-def identity[T](value: T) -> T:
+fn identity[T](value: T) T:
     return value
 
-def same[T: Equal](left: T, right: T) -> Bool:
+fn same[T: Equal](left: T, right: T) Bool:
     return left == right
 
 let box = Box[Int](1)

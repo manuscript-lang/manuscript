@@ -442,9 +442,8 @@ pub fn tags_for(text: &str, phase: Phase) -> Vec<String> {
         ("match ", "match"),
         ("try ", "try-result"),
         ("Result[", "try-result"),
-        ("Optional[", "optional"),
+        ("?", "optional"),
         ("some(", "optional"),
-        ("with ", "with-cleanup"),
         ("interface ", "interfaces"),
         ("impl ", "interfaces"),
         ("case ", "alternatives"),
@@ -781,13 +780,11 @@ mod tests {
 
     #[test]
     fn imports_and_tiers() {
-        let text = "from \"@std/json.ms\" import a\nfrom \"@std/fs.ms\" import b\n";
+        let text = "import a from \"@std/json.ms\"\nimport b from \"@std/fs.ms\"\n";
         let tags = tags_for(text, Phase::Run);
         assert!(tags.contains(&"stdlib-json".to_string()));
         assert!(tags.contains(&"tier-io".to_string()));
-        assert!(
-            tags_for("def f() -> Int:\n    return 1\n", Phase::Run).contains(&"tier-core".into())
-        );
+        assert!(tags_for("fn f() Int:\n    return 1\n", Phase::Run).contains(&"tier-core".into()));
     }
 
     #[test]

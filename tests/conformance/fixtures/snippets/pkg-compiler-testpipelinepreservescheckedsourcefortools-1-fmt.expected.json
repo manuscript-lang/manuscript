@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def value(flag: Bool = not False) -> Bool:\n    let callback = lambda () -> Bool: return not (False or False)\n    return (not False and callback()) or flag\n"
-  }
-}

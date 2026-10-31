@@ -1,17 +1,17 @@
 # conform: tags=stdlib-bigint,stdlib-testing,testing,tier-stdlib,numbers
 # conform: phase=test
-from "@std/test.ms" import expect_equal, expect_true
-from "@std/math.ms" import from_int, BigInt
+import expect_equal, expect_true from "@std/test.ms"
+import from_int, BigInt from "@std/math.ms"
 
 test "big integer operators agree with the named methods":
     let a = from_int(-7)
     let b = from_int(3)
-    try expect_equal((a + b).to_int(), some(-4))
-    try expect_equal((a - b).to_int(), some(-10))
-    try expect_equal((a * b).to_int(), some(-21))
-    try expect_equal((a / b).to_int(), some(-2))
-    try expect_equal((a % b).to_int(), some(-1))
-    try expect_equal((-a).to_int(), some(7))
+    try expect_equal((a + b).to_int(), -4)
+    try expect_equal((a - b).to_int(), -10)
+    try expect_equal((a * b).to_int(), -21)
+    try expect_equal((a / b).to_int(), -2)
+    try expect_equal((a % b).to_int(), -1)
+    try expect_equal((-a).to_int(), 7)
     try expect_true(a * b == a.multiply(b))
 
 test "big integer operators compare exactly":

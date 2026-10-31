@@ -1,44 +1,44 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Box:
-    f: Callable[[], Int]
+    f: fn() Int
 
 interface Sink:
-    var def put(f: Callable[[], Int]) -> Unit
-    def total() -> Int
+    var fn put(f: fn() Int) Unit
+    fn total() Int
 
 type ListSink:
-    fs: List[Callable[[], Int]]
+    fs: List[fn() Int]
 
 impl Sink for ListSink:
-    var def put(f: Callable[[], Int]) -> Unit:
+    var fn put(f: fn() Int) Unit:
         self.fs.append(f)
 
-    def total() -> Int:
+    fn total() Int:
         var t = 0
         for f in self.fs:
             t += f()
         return t
 
-def mk(f: Callable[[], Int]) -> Box:
+fn mk(f: fn() Int) Box:
     return Box(f: f)
 
-def c1(text: String) -> Int:
+fn c1(text: String) Int:
     var out: List[Box] = []
     for p in text.split(","):
-        out.append(mk(lambda () -> Int: return p.length()))
+        out.append(mk(fn() Int: return p.length()))
 
     var t = 0
     for b in out:
         t += b.f()
     return t
 
-def c2(text: String) -> Int:
-    var m: Map[Int, Callable[[], Int]] = {}
+fn c2(text: String) Int:
+    var m: Map[Int, fn() Int] = {}
     var i = 0
 
     for p in text.split(","):
-        m[i] = lambda () -> Int: return p.length()
+        m[i] = fn() Int: return p.length()
         i += 1
 
     var t = 0
@@ -46,37 +46,37 @@ def c2(text: String) -> Int:
         t += m.get(k).get()()
     return t
 
-def c3(text: String) -> Int:
-    var g: Callable[[], Int] = lambda () -> Int: 0
+fn c3(text: String) Int:
+    var g: fn() Int = fn() Int: 0
     for p in text.split(","):
-        g = lambda () -> Int: return p.length()
+        g = fn() Int: return p.length()
     return g()
 
-def c4(text: String) -> Int:
-    var b = Box(f: lambda () -> Int: 0)
+fn c4(text: String) Int:
+    var b = Box(f: fn() Int: 0)
     for p in text.split(","):
-        b.f = lambda () -> Int: return p.length()
+        b.f = fn() Int: return p.length()
     return b.f()
 
-def c5(text: String) -> Int:
+fn c5(text: String) Int:
     var sink: Sink = ListSink(fs: [])
     for p in text.split(","):
-        sink.put(lambda () -> Int: return p.length())
+        sink.put(fn() Int: return p.length())
     return sink.total()
 
-def outer(text: String) -> Callable[[], Int]:
+fn outer(text: String) fn() Int:
     var held = text.split(",").length()
-    let inner = lambda () -> Int: return held + text.length()
-    return lambda () -> Int: return inner()
+    let inner = fn() Int: return held + text.length()
+    return fn() Int: return inner()
 
-def c6(text: String) -> Int:
+fn c6(text: String) Int:
     return outer(text)()
 
-def c7(text: String) -> Int:
-    var fs: List[Callable[[], Int]] = []
+fn c7(text: String) Int:
+    var fs: List[fn() Int] = []
 
     for p in text.split(","):
-        let f = lambda () -> Int: return p.length()
+        let f = fn() Int: return p.length()
         fs.append(f)
 
     var t = 0
@@ -84,18 +84,18 @@ def c7(text: String) -> Int:
         t += f()
     return t
 
-def maker(text: String) -> Callable[[], Callable[[], Int]]:
-    return lambda () -> Callable[[], Int]:
+fn maker(text: String) fn() fn() Int:
+    return fn() fn() Int:
         let n = text.length()
-        return lambda () -> Int: return n + n
+        return fn() Int: return n + n
 
-def c8(text: String) -> Int:
+fn c8(text: String) Int:
     return maker(text)()()
 
-def c9(text: String) -> Optional[Callable[[], Int]]:
-    var r: Optional[Callable[[], Int]] = none
+fn c9(text: String)(fn() Int)?:
+    var r: (fn() Int)? = none
     for p in text.split(","):
-        r = some(lambda () -> Int: return p.length())
+        r = fn() Int: return p.length()
     return r
 
 test "closures that outlive their statement keep what they captured":

@@ -10,7 +10,7 @@ A record groups named fields into one value. Fields can change through a `var` r
 ```manuscript
 type Customer:
     name: String
-    email: Optional[String]
+    email: String?
 ```
 
 Field types are explicit and names unique. An empty record is `type Marker:`. A field may have a default expression checked against its type.
@@ -51,13 +51,13 @@ Methods come from `impl Type:` or `impl Interface for Type:` ([explicit implemen
 
 ```manuscript
 interface Counter:
-    var def increment() -> Unit
+    var fn increment() Unit
 
 type Val:
     val: Int
 
 impl Counter for Val:
-    var def increment() -> Unit:
+    var fn increment() Unit:
         self.val = self.val + 1
 ```
 
@@ -66,6 +66,55 @@ Field writes keep the declared type; the receiver evaluates once, before the new
 `.clone()` is a deep copy of nested records and collections; changing a clone never affects the original. Resource handles are never copied.
 
 Records, alternatives, `List`, `Map`, `Set`, and `Bytes` have `.clone()`. Files, sockets, queues, synchronization objects, guards, and other service handles do not; a cloned record keeps the same handle.
+
+## Moving a field out
+
+A field of an owned record or parameter moves out at the field's last use, so extracting a large field needs no `.clone()`:
+
+```manuscript
+type Report:
+    title: String
+    rows: List[Int]
+
+fn rows_of(r: Report) List[Int]:
+    return r.rows
+
+fn count_both(r: Report) Int:
+    let n = rows_of_copy(r.rows)
+    return n + r.title.length()
+
+fn rows_of_copy(rows: List[Int]) Int:
+    return rows.length()
+```
+
+- Each function above consumes the record; `r.title` stays usable after `r.rows` moved because fields are tracked separately. Using `r.rows` again, or the whole `r`, after the move is `is moved here but used again`; `r.rows = value` makes the field usable again.
+- It applies to owned fields (strings, lists, records, resources) of a `let` binding or parameter. Elements (`xs[i]`), `ref` fields, borrowed values, `var` bindings and parameters, `for` variables, closure captures, and records that declare `close` still need `.clone()` or a whole-value move.
+- `let x = r.rows` stays a borrow of the field; pass `r.rows` directly to the consuming call or `return` instead.
+- A parameter with a field moved out is consumed: the caller gives the record up (`.clone()` at the call keeps it).
+
+A resource field moves without a copy, and the new owner closes it. The record closes only the fields that were not moved, last declared first, on every way out of the function:
+
+```manuscript
+import Closeable from "@std/core.ms"
+
+type Door:
+    id: Int
+
+impl Closeable for Door:
+    var fn close() Unit!:
+        return ok(unit)
+
+type Room:
+    door: Door
+    spare: Door
+
+fn open_door(r: Room) List[Door]:
+    var doors: List[Door] = []
+    doors.append(r.door)
+    return doors
+```
+
+Here `r.spare` closes when `open_door` returns and `r.door` closes with `doors`' new owner. A place and a part of it (`r.room` and `r.room.door`) cannot both be moved out of one binding.
 
 ## Domain identity
 
@@ -89,7 +138,7 @@ Identity is module, declaration, and type arguments; alternate import paths to o
 
 ## Public data surfaces
 
-Exporting a record exports its constructor and every field; there are no field visibility modifiers or opaque exports. Field types must satisfy [public signature closure](../modules/declarations.md#public-signature-closure), including nested types. Importing a record does not import its field types' names.
+Exporting a record exports its constructor and every field; there are no per-field visibility modifiers; [`export opaque type`](#opaque-types) hides all fields outside the declaring file. Field types must satisfy [public signature closure](../modules/declarations.md#public-signature-closure), including nested types. Importing a record does not import its field types' names.
 
 ## Recursive data
 
@@ -97,16 +146,16 @@ Records and alternatives may refer to themselves or each other directly, with no
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
 
-def evaluate(expr: Expr) -> Int:
+fn evaluate(expr: Expr) Int:
     match expr:
-        case Num(value): return value
-        case Add(left, right): return evaluate(left) + evaluate(right)
+        Num(value): return value
+        Add(left, right): return evaluate(left) + evaluate(right)
 
 test "recursive expression":
     let expr = Expr.Add(Expr.Num(1), Expr.Num(2))
@@ -118,11 +167,11 @@ A linked record ends with an absent successor; a link owns its successor, so a c
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 type Node:
     value: Int
-    next: Optional[Node]
+    next: Node?
 
 test "recursive links":
     var node = Node(value: 1, next: none)
@@ -136,6 +185,28 @@ test "recursive links":
 Constructors still need every required field, and a binding is unavailable in its own initializer, so `let node = Node(value: 1, next: node)` is rejected. `.clone()` copies the whole chain. Recursive shapes derive no `Hashable`; keys need explicit implementations ([equality and hashing](equality-and-hashing.md)).
 
 Generic recursion must preserve type parameters along every cycle; see [finite recursive applications](generics.md#finite-recursive-applications).
+
+## Opaque types
+
+`export opaque type Approved:` hides the fields of a record, or the cases of an alternative, outside the file that declares it. The module exports functions and methods that build and read the value; every other file can hold, pass, copy, and clone it, and call its methods.
+
+```text
+# gate.ms
+export opaque type Approved:
+    entity: String
+    nonce: String
+
+export fn approve(entity: String) Approved: Approved(entity: entity, nonce: "n1")
+
+# agent.ms
+let a = Approved(entity: "u2", nonce: "x")   # error: Approved is opaque outside gate.ms
+let n = approve("u2").nonce                  # error: field nonce is hidden
+let {entity} = approve("u2")                 # error: its fields cannot be destructured here
+```
+
+Outside the declaring file an opaque type allows no construction, field read or write, field pattern, `match` on its cases, and no `impl` (so no new methods or interface implementations). Its text form, in interpolation, `to_string()`, and test output, is only the type name: `"{a}"` is `Approved`. It is never `Data`, so `json.parse`, `json.stringify`, and the message types of processes, workers, tasks, and channels reject it at compile time.
+
+Opaque is visibility, not ownership: an opaque value can still be copied and cloned, so it proves where a value was built, not that it is spent once. Hold a resource or a non-clonable field for single use.
 
 ## Resource fields
 

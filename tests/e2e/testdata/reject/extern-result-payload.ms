@@ -2,11 +2,11 @@ type ReadError:
     case Failed(message: String)
 
 impl Error for ReadError:
-    def message() -> String:
+    fn message() String:
         match self:
-            case Failed(message): return message
+            Failed(message): return message
 
-extern def read_value() -> Result[Int, ReadError]
+extern fn read_value() Int!ReadError
 
-export def main() -> Int:
+export fn main() Int:
     return 0

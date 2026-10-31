@@ -1,4 +1,4 @@
-from "./middle.ms" import middle
+import middle from "./middle.ms"
 
-def main() -> Int:
+fn main() Int:
     return middle(1)

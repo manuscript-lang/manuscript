@@ -1,8 +1,8 @@
 export type Counter:
     count: Int
 
-export def double(n: Int) -> Int:
+export fn double(n: Int) Int:
     return n * 2
 
-def hidden() -> Int:
+fn hidden() Int:
     return 1

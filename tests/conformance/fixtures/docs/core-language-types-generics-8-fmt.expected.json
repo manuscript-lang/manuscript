@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "# Rejected at declaration: missing Equal bound.\ndef unchecked_same[T](left: T, right: T) -> Bool:\n    return left == right\n\ntype Keys[T: Hashable]:\n    values: Set[T]\n"
+    "fmt": "# Rejected at declaration: missing Equal bound.\nfn unchecked_same[T](left: T, right: T) Bool:\n    return left == right\n\ntype Keys[T: Hashable]:\n    values: Set[T]\n"
   }
 }

@@ -2,35 +2,43 @@
 # conform: phase=run
 # conform: timeout=30
 # Leaving a ProcessGroup block stops the children's own children too.
-from "@std/channels.ms" import Channel
-from "@std/fs.ms" import filesystem
-from "@std/io.ms" import stdout
-from "@std/processes.ms" import ProcessGroup
-from "@std/time.ms" import nanoseconds, sleep
+import Channel from "@std/channels.ms"
+import filesystem from "@std/fs.ms"
+import stdout from "@std/io.ms"
+import ProcessGroup from "@std/processes.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
-def marker() -> String:
+fn marker() String:
     let root = filesystem().temporary_root().get("/tmp")
     return root + "/ms_group_grandchild_marker"
 
-def grandchild(ch: Channel[Unit, Unit]) -> Int:
+fn grandchild(ch: Channel[Unit, Unit]) Int:
     sleep(nanoseconds(2000000000))
+
     let _ = filesystem().write_file(marker(), "outlived\n")
     return 0
 
-def child(ch: Channel[Unit, Unit]) -> Int:
-    with let group = ProcessGroup[Int]():
-        var g = group.spawn(grandchild).get()
-        var c = ch
-        let _ = c.send(())
-        g.result().get()
+fn child(ch: Channel[Unit, Unit]) Int:
+    var group = ProcessGroup[Int]()
+    var g = group.spawn(grandchild).get()
+    var c = ch
+    let _ = c.send(unit)
+    g.result().get()
+    group.close().get(none)
     return 0
 
-export def main() -> Int:
+export fn main() Int:
     let _ = filesystem().remove(marker())
-    with let group = ProcessGroup[Int, Unit, Unit]():
-        var c = group.spawn(child).get()
-        let _ = c.channel.receive()
+    var group = ProcessGroup[Int, Unit, Unit]()
+    var c = group.spawn(child).get()
+    let _ = c.channel.receive()
+    group.close().get(none)
     sleep(nanoseconds(3500000000))
-    stdout().write("grandchild survived: " + filesystem().read_file(marker()).is_ok().to_string() + "\n").get()
+    stdout().write(
+        "grandchild survived: " + filesystem().read_file(
+            marker()
+        ).is_ok().to_string() + "\n"
+    ).get()
+
     let _ = filesystem().remove(marker())
     return 0

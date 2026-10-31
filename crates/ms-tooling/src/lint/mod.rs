@@ -7,18 +7,36 @@ mod flush;
 mod matches;
 mod patterns;
 mod recursion;
-mod redundant;
 mod tasks;
 
 use ms_check::{ModuleData, Program};
 use ms_syntax::{DiagnosticFix, Pos};
 use std::sync::Arc;
 
+/// How seriously a finding is taken. Warnings are reported without failing
+/// `ms lint`; errors fail it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Severity {
+    Warning,
+    Error,
+}
+
+impl Severity {
+    pub fn name(self) -> &'static str {
+        match self {
+            Severity::Warning => "warning",
+            Severity::Error => "error",
+        }
+    }
+}
+
 /// One advisory finding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Finding {
     /// Stable rule code, `MSL001`..`MSL114`.
     pub code: &'static str,
+    /// The rule's severity.
+    pub severity: Severity,
     /// Human-readable message.
     pub message: String,
     /// File the position refers to.
@@ -32,6 +50,7 @@ pub struct Finding {
 fn finding(code: &'static str, message: impl Into<String>, file: &Arc<str>, pos: Pos) -> Finding {
     Finding {
         code,
+        severity: explain(code).map_or(Severity::Error, |rule| rule.severity),
         message: message.into(),
         file: file.clone(),
         pos,
@@ -43,6 +62,7 @@ fn finding(code: &'static str, message: impl Into<String>, file: &Arc<str>, pos:
 pub struct Rule {
     pub code: &'static str,
     pub family: &'static str,
+    pub severity: Severity,
     pub repair: &'static str,
 }
 
@@ -51,66 +71,73 @@ pub const RULES: &[Rule] = &[
     Rule {
         code: "MSL001",
         family: "Trailing whitespace",
+        severity: Severity::Warning,
         repair: "delete the spaces or tabs at the end of the line; `ms lint --fix` does it",
     },
     Rule {
         code: "MSL002",
         family: "Missing final newline",
+        severity: Severity::Warning,
         repair: "end the file with a newline; `ms lint --fix` does it",
     },
     Rule {
         code: "MSL102",
         family: "Unused import",
+        severity: Severity::Warning,
         repair: "remove the import or use the name; `ms lint --fix` removes it",
     },
     Rule {
         code: "MSL103",
         family: "Unreachable statement",
+        severity: Severity::Warning,
         repair: "delete the statement or the `return`, `break` or `continue` before it",
     },
     Rule {
         code: "MSL106",
         family: "Match arm binding shadows a type or case",
+        severity: Severity::Error,
         repair: "rename the binding to a lowercase name, or write the case with its payload in a helper",
     },
     Rule {
         code: "MSL107",
         family: "Nested match",
+        severity: Severity::Error,
         repair: "bind the outer payload with an early exit, use compatible `try`, or call a small helper",
     },
     Rule {
         code: "MSL108",
         family: "Optional matched with only some and none",
+        severity: Severity::Warning,
         repair: "use `if let value = ...:` with `else:`, or an Optional method such as `get(default)` or `map`",
     },
     Rule {
         code: "MSL109",
         family: "Result matched with only ok and error",
+        severity: Severity::Warning,
         repair: "use `try`, `if let value = ...:` with `else:`, or a Result method such as `get(default)`, `is_error` or `err`",
     },
     Rule {
         code: "MSL110",
         family: "Optional.get() without a default",
+        severity: Severity::Warning,
         repair: "use `if let value = ...:`, or pass a default to `get(default)`",
     },
     Rule {
         code: "MSL111",
         family: "Loop that never waits or exits",
-        repair: "wait inside the loop (sleep or a channel call), or return once `cancelled()` is True",
+        severity: Severity::Error,
+        repair: "wait inside the loop (sleep or a channel call), or return once `cancelled()` is true",
     },
     Rule {
         code: "MSL112",
         family: "Unconditional recursion",
+        severity: Severity::Error,
         repair: "add a base case that returns before the recursive call",
-    },
-    Rule {
-        code: "MSL113",
-        family: "Redundant some(...)",
-        repair: "pass the plain value where an Optional is expected; `ms lint --fix` removes the wrapper",
     },
     Rule {
         code: "MSL114",
         family: "Resource closed at scope end with an uncalled flush",
+        severity: Severity::Error,
         repair: "call `try name.flush()` (or `sync`, `commit`) before the scope ends, or close the resource explicitly",
     },
 ];
@@ -174,7 +201,6 @@ pub fn lint_program(program: &Program) -> Vec<Finding> {
         patterns::lint(module, &mut findings);
         matches::lint(module, &mut findings);
         tasks::lint(module, &mut findings);
-        redundant::lint(module, &mut findings);
     }
     findings.sort_by(|a, b| {
         (a.file.as_ref(), a.pos.offset, a.code).cmp(&(b.file.as_ref(), b.pos.offset, b.code))

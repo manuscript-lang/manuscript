@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 # `let x = m.get(k)`, `if let x = m.get(k)`, `xs.first()`, `xs.last()`, `m[k]` and
 # `m.get_or(k, d)` read the entry in place (a borrow the checker already enforces) instead of
@@ -15,15 +15,15 @@ type Order:
 
 type Node:
     name: String
-    next: Optional[Node]
+    next: Node?
 
-def order(id: String, n: Int) -> Order:
+fn order(id: String, n: Int) Order:
     var items = List[Item]()
     for i in 0..n:
-        items.append(Item(sku: f"{id}-{i}", qty: i + 1))
+        items.append(Item(sku: "{id}-{i}", qty: i + 1))
     return Order(id: id, items: items, status: "placed")
 
-def by_binding(orders: Map[String, Order], id: String) -> Int:
+fn by_binding(orders: Map[String, Order], id: String) Int:
     let found = orders.get(id)
     if found.is_none():
         return 0
@@ -31,30 +31,30 @@ def by_binding(orders: Map[String, Order], id: String) -> Int:
     let o = found.get()
     return o.items.length() + o.status.length()
 
-def by_if_let(orders: Map[String, Order], id: String) -> Int:
+fn by_if_let(orders: Map[String, Order], id: String) Int:
     if let o = orders.get(id):
         return o.items.length() + o.status.length()
 
     return 0
 
-def by_chain(orders: Map[String, Order], id: String) -> Int:
+fn by_chain(orders: Map[String, Order], id: String) Int:
     if orders.get(id).is_none():
         return 0
 
     let o = orders[id]
     return o.items.length() + o.status.length()
 
-def returned(orders: Map[String, Order], id: String) -> Optional[Order]:
+fn returned(orders: Map[String, Order], id: String) Order?:
     let found = orders.get(id)
     return found.clone()
 
-def take_optional(o: Optional[Order]) -> Int:
+fn take_optional(o: Order?) Int:
     if let v = o:
         return v.items.length()
 
     return -1
 
-def build() -> Map[String, Order]:
+fn build() Map[String, Order]:
     var m = Map[String, Order]()
     m.add("a", order("a", 2))
     m.add("b", order("b", 3))
@@ -82,7 +82,7 @@ test "a lent entry of a local var map ends at its last use":
     if let c = m.get("c"):
         try expect_equal(c.items.first().get().sku, "c-0")
     m.remove("a")
-    try expect_equal(m.get("a").is_none(), True)
+    try expect_equal(m.get("a").is_none(), true)
 
     let o = m["b"]
     try expect_equal(o.items.last().get().qty, 3)
@@ -101,8 +101,8 @@ test "first and last lend the element":
     try expect_equal(xs.last().get(), "four")
 
     let empty = List[String]()
-    try expect_equal(empty.first().is_none(), True)
-    try expect_equal(empty.last().is_none(), True)
+    try expect_equal(empty.first().is_none(), true)
+    try expect_equal(empty.last().is_none(), true)
     if let none_here = empty.first():
         try expect_equal(none_here, "unreachable")
 
@@ -122,7 +122,7 @@ test "get_or reads through the entry":
     names.add(1, "one")
 
     let one = names.get_or(key: 1, fallback: "none")
-    let two = names.get_or(key: 2, fallback: f"{1 + 1}")
+    let two = names.get_or(key: 2, fallback: "{1 + 1}")
     try expect_equal(one, "one")
     try expect_equal(two, "2")
     names.add(2, "two")
@@ -130,7 +130,7 @@ test "get_or reads through the entry":
 
 test "an entry whose optional is boxed is still read correctly":
     var nodes = Map[String, Node]()
-    nodes.add("x", Node(name: "x", next: some(Node(name: "y", next: none))))
+    nodes.add("x", Node(name: "x", next: Node(name: "y", next: none)))
 
     let x = nodes.get("x")
     try expect_equal(x.get().next.get().name, "y")
@@ -148,9 +148,9 @@ test "if let over a borrowed optional lends its payload":
         try expect_equal(o.id, "a")
         try expect_equal(o.items.length(), 2)
 
-    try expect_equal(maybe.is_some(), True)
+    try expect_equal(maybe.is_some(), true)
 
-    let text: Optional[String] = some("hello")
+    let text: String? = "hello"
     if let t = text:
         try expect_equal(t.length(), 5)
     try expect_equal(text.get(), "hello")

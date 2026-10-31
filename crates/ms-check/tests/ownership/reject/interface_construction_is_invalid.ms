@@ -1,15 +1,15 @@
 interface Shape:
-    def label() -> String
+    fn label() String
 
 type Sq:
     name: String
 
 impl Shape for Sq:
-    def label() -> String:
+    fn label() String:
         return self.name.clone()
 
-def describe(s: Shape) -> String:
+fn describe(s: Shape) String:
     return s.label()
 
-def use(q: Sq) -> String:
+fn use(q: Sq) String:
     return describe(Shape(value: q))  # error: cannot be constructed

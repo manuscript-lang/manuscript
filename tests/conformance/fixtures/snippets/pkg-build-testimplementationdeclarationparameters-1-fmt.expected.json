@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Same[V]:\n    def same(other: V) -> Bool\n\ntype Box[T: Equal]:\n    value: T\n\nimpl Same[T] for Box[T]:\n    def same(other: T) -> Bool:\n        return self.value == other\n\ndef compare[T: Equal](value: Box[T], other: T) -> Bool:\n    return value.same(other: other)\n"
-  }
-}

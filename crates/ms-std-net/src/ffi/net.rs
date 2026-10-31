@@ -306,6 +306,17 @@ native! {
         report(c.write(data, opt(has_timeout, timeout)), &err)
     }
 
+    /// `Connection.clone()`.
+    fn msrt_net_connection_clone(
+        c: ObjRef<ConnH>,
+        out: Out<Object<ConnH>>,
+        err: ErrOut,
+    ) -> Result<(), StatusCode> {
+        let d = report(c.duplicate(), &err)?;
+        out.write(Object(ConnH(d)));
+        Ok(())
+    }
+
     /// `Connection.shutdown_write()`.
     fn msrt_net_connection_shutdown_write(c: ObjRef<ConnH>, err: ErrOut) -> Result<(), StatusCode> {
         report(c.shutdown_write(), &err)
@@ -322,6 +333,18 @@ native! {
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         out.write(Object(ConnH(report(l.accept(opt(has_timeout, timeout)), &err)?)));
+        Ok(())
+    }
+
+    /// `Listener.accept_raw(timeout)`: the accepted socket's handle, for `HttpServer.adopt`.
+    fn msrt_net_listener_accept_raw(
+        l: ObjRef<ListenerH>,
+        has_timeout: bool,
+        timeout: i64,
+        out: Out<i64>,
+        err: ErrOut,
+    ) -> Result<(), StatusCode> {
+        out.write(report(l.accept_raw(opt(has_timeout, timeout)), &err)?);
         Ok(())
     }
 

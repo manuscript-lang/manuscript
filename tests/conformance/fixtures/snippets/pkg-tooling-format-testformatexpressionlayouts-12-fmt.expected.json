@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def work() -> Unit:\n    send(\n        payload: incoming_request_payload\n        .normalize_whitespace()\n        .remove_legacy_separators()\n        .trim_whitespace()\n    )\n"
-  }
-}

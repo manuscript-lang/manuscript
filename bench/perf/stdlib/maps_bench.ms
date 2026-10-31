@@ -1,39 +1,38 @@
-from "@std/bench.ms" import keep, measure
-from "@std/collections.ms" import range
-from "./src/harness.ms" import words
+import keep, measure from "@std/bench.ms"
+import words from "./src/harness.ms"
 
 type Cell:
     x: Int
     y: Int
 
 bench "map.int_put_get":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         var m = Map[Int, Int]()
-        for i in range(0, 100000):
+        for i in 0..100000:
             m.add(i, i * 2)
 
         var n = 0
-        for i in range(0, 100000):
+        for i in 0..100000:
             n += m.get_or(i, 0)
         return keep(n)
 
     try measure(200000, work)
 
 bench "map.record_key_get":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         var m = Map[Cell, Int]()
-        for i in range(0, 100000):
+        for i in 0..100000:
             m.add(Cell(x: i, y: i * 2), i)
 
         var n = 0
-        for i in range(0, 100000):
+        for i in 0..100000:
             n += m.get_or(Cell(x: i, y: i * 2), 0)
         return keep(n)
 
     try measure(200000, work)
 
 bench "map.string_put_get":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         let keys = words(50000)
         var m = Map[String, Int]()
         for k in keys:
@@ -47,7 +46,7 @@ bench "map.string_put_get":
     try measure(100000, work)
 
 bench "map.get_let":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         let keys = words(50000)
         var m = Map[String, String]()
         for k in keys:
@@ -65,7 +64,7 @@ bench "map.get_let":
     try measure(100000, work)
 
 bench "map.get_if_let":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         let keys = words(50000)
         var m = Map[String, String]()
         for k in keys:
@@ -80,7 +79,7 @@ bench "map.get_if_let":
     try measure(100000, work)
 
 bench "map.get_chain":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         let keys = words(50000)
         var m = Map[String, String]()
         for k in keys:
@@ -94,7 +93,7 @@ bench "map.get_chain":
     try measure(100000, work)
 
 bench "map.get_or":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         let keys = words(50000)
         var m = Map[String, String]()
         for k in keys:
@@ -108,9 +107,9 @@ bench "map.get_or":
     try measure(100000, work)
 
 bench "map.iterate_entries":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         var m = Map[Int, Int]()
-        for i in range(0, 100000):
+        for i in 0..100000:
             m.add(i, i)
 
         var n = 0
@@ -121,13 +120,13 @@ bench "map.iterate_entries":
     try measure(100000, work)
 
 bench "set.add_contains":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         var s = Set[Int]()
-        for i in range(0, 100000):
+        for i in 0..100000:
             s.add(i)
 
         var n = 0
-        for i in range(0, 100000):
+        for i in 0..100000:
             if s.contains(i): n += 1
         return keep(n)
 

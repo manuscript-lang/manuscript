@@ -392,10 +392,8 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                         params.push(parse_ty(&mut c, &mut m)?);
                         c.eat_p(',');
                     }
-                    let mut ret_borrowed = false;
                     let ret = if c.peek() == Some(&Tok::Arrow) {
                         c.next();
-                        ret_borrowed = c.eat_ident("ref");
                         parse_ty(&mut c, &mut m)?
                     } else {
                         Ty::UNIT
@@ -404,7 +402,6 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                         name: mname,
                         params,
                         ret,
-                        ret_borrowed,
                         self_params: Vec::new(),
                     });
                     c.eat_p(',');
@@ -643,14 +640,14 @@ fn parse_ty(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
         "str" => Ty::STR,
         "bytes" => Ty::BYTES,
         "ptr" => Ty::PTR,
-        "list" | "opt" => {
+        "list" | "opt" | "ref" => {
             c.expect_p('<')?;
             let inner = parse_ty(c, m)?;
             c.expect_p('>')?;
-            if name == "list" {
-                m.types.list(inner)
-            } else {
-                m.types.opt(inner)
+            match name.as_str() {
+                "list" => m.types.list(inner),
+                "opt" => m.types.opt(inner),
+                _ => m.types.view(inner),
             }
         }
         "fn" => {
@@ -1180,6 +1177,27 @@ fn parse_line(
                 mask |= 1 << fi;
             }
             Imm::AltMask(aid, ci as u32, mask)
+        }
+        ImmKind::RecMask => {
+            let n = c.ident()?;
+            let parts: Vec<&str> = n.split('.').collect();
+            let rid = m.record_by_name(parts[0]).ok_or_else(|| ParseError {
+                line: c.line,
+                message: format!("unknown record {}", parts[0]),
+            })?;
+            let mut mask = 0u32;
+            for name in &parts[1..] {
+                let fi = m.records[rid.index()]
+                    .fields
+                    .iter()
+                    .position(|x| x.0 == *name)
+                    .ok_or_else(|| ParseError {
+                        line: c.line,
+                        message: format!("unknown field {n}"),
+                    })?;
+                mask |= 1 << fi;
+            }
+            Imm::RecMask(rid, mask)
         }
         ImmKind::Method => {
             let n = c.ident()?;

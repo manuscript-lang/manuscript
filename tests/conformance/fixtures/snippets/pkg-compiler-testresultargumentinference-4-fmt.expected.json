@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def both[T, E: Error](cause: E, r: Result[T, E]) -> Unit: return\n\ndef first(cause: Error) -> Unit: both[Int, Error](cause: cause, r: f())\n"
-  }
-}

@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected end of statement, found text \"n={n}\"; there is no f-string prefix: text interpolates by default, so write \"...{value}...\" and escape literal braces as \\{ and \\}",
+        "position": {
+          "file": "foreign-fstring.ms",
+          "line": 6,
+          "column": 13,
+          "offset": 154
+        },
+        "end": {
+          "file": "foreign-fstring.ms",
+          "line": 6,
+          "column": 20,
+          "offset": 161
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

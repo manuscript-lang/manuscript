@@ -5,7 +5,7 @@ export type Item:
     price: Int
     quantity: Int
 
-export def total(items: List[Item]) -> Int:
+export fn total(items: List[Item]) Int:
     var result = 0
     for item in items:
         result += item.price * item.quantity

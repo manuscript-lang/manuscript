@@ -1,0 +1,18 @@
+import hashlib,json,statistics,subprocess
+from pathlib import Path
+root=Path('/workspace/manuscript/.artifacts/codecs-pass2');folder=root/'json-failure';rows=[]
+cases=[(size,300000 if size<=16 else 20000 if size==1024 else 1000 if size==65536 else 500,shape) for shape in ['plain','escaped','typed-plain','typed-escaped'] for size in [0,16,1024,65536,1048576]]
+cases += [(size,100000 if size<=16 else 10000,shape) for shape in ['valid','typed-valid'] for size in [0,16,1024]]
+for size,rounds,shape in cases:
+ selected=[]
+ for repeat in range(-1,9):
+  for label in (['before','after'] if repeat%2==0 else ['after','before']):
+   p=subprocess.run([str(folder/label),str(size),str(rounds),shape],text=True,capture_output=True,check=True)
+   fields=p.stdout.split();assert len(fields)==6 and fields[:4]==[str(size),str(rounds),shape,str(rounds)] and int(fields[4])>0 and int(fields[5])>0,(p.stdout,p.stderr)
+   r=dict(size=size,rounds=rounds,shape=shape,repeat=repeat,label=label,checksum=int(fields[3]),wall_ns=int(fields[4])/rounds,cpu_ns=int(fields[5])/rounds);selected.append(r);rows.append(r)
+ for key in ['wall_ns','cpu_ns']:
+  b=[r[key] for r in selected if r['repeat']>=0 and r['label']=='before'];a=[r[key] for r in selected if r['repeat']>=0 and r['label']=='after'];pairs=[next(r[key] for r in selected if r['repeat']==i and r['label']=='after')/next(r[key] for r in selected if r['repeat']==i and r['label']=='before') for i in range(9)]
+  print(size,rounds,shape,key,'before',round(statistics.median(b),3),'after',round(statistics.median(a),3),'ratio',round(statistics.median(a)/statistics.median(b),5),'paired',round(statistics.median(pairs),5),'range',tuple(round(x,3) for x in [min(b),max(b),min(a),max(a)]),flush=True)
+ (folder/'samples.json').write_text(json.dumps(rows,indent=2)+'\n')
+paths=[folder/'before',folder/'after',folder/'main.ms',folder/'compare.py',root/'cpu.c',root/'cpu.o',root/'runtime-before.a',root/'runtime-json-failure.a',root/'ms-baseline']
+(folder/'identities.json').write_text(json.dumps({str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths},indent=2)+'\n')

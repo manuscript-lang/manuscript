@@ -56,9 +56,9 @@ pub(crate) fn programs(source: &str) -> usize {
 fn is_program(text: &str) -> bool {
     let lines = text.lines().count();
     lines >= 4
-        && (text.contains("export def ")
-            || text.contains("def main(")
-            || (lines >= 6 && text.contains("from \"@std/")))
+        && (text.contains("export fn ")
+            || text.contains("fn main(")
+            || (lines >= 6 && text.contains(" from \"@std/")))
 }
 
 /// The unescaped contents of every string literal outside comments.
@@ -154,11 +154,12 @@ mod tests {
 
     #[test]
     fn counts_multi_line_programs_only() {
-        let program = "let a = \"export def main() -> Int:\\n    let x = 1\\n    let y = 2\\n    return 0\\n\";";
+        let program =
+            "let a = \"export fn main() Int:\\n    let x = 1\\n    let y = 2\\n    return 0\\n\";";
         assert_eq!(programs(program), 1);
-        let raw = "const P: &str = r#\"export def main() -> Int:\n    a\n    b\n    return 0\n\"#;";
+        let raw = "const P: &str = r#\"export fn main() Int:\n    a\n    b\n    return 0\n\"#;";
         assert_eq!(programs(raw), 1);
-        assert_eq!(programs("let s = \"export def main() -> Int: 0\";"), 0);
-        assert_eq!(programs("// \"export def\\n\\n\\n\\n\"\nlet c = '\"';"), 0);
+        assert_eq!(programs("let s = \"export fn main() Int: 0\";"), 0);
+        assert_eq!(programs("// \"export fn\\n\\n\\n\\n\"\nlet c = '\"';"), 0);
     }
 }

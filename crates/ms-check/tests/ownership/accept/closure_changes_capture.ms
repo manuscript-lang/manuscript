@@ -1,6 +1,6 @@
-def main() -> Int:
+fn main() Int:
     var total = 0
-    let add = lambda (x: Int) -> Unit:
+    let add = fn(x: Int) Unit:
         total += x
     add(1)
     return total

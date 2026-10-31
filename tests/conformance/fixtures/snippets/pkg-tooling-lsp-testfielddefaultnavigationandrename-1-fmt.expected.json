@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Options:\n    first: Int = 3\n    second: Int = first + 1\n\ndef read() -> Int: return Options().first\n"
-  }
-}

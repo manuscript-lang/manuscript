@@ -15,13 +15,14 @@ pub fn run(m: &mut Module) -> bool {
     let mut changed = false;
     for fi in 0..m.funcs.len() {
         changed |= run_func(m, fi);
-        changed |= move_dead_sources(&mut m.funcs[fi]);
+        changed |= move_dead_sources(m, fi);
         changed |= move_dead_sources_across_blocks(m, fi);
         changed |= borrow_local_copies(m, fi);
         changed |= borrow_str_copies_across_blocks(m, fi);
         changed |= borrow_str_phis(m, fi);
         changed |= unbox_dead_sources(m, fi);
         changed |= unbox_dead_options(&mut m.funcs[fi]);
+        changed |= borrow_opt_str_reads(m, fi);
     }
     changed
 }
@@ -78,7 +79,9 @@ impl BlockUses {
 /// Turns `c = copy v; ...; drop v` into a move when `v` is not touched in between: the copy
 /// and the drop cancel, and `c` is `v`. This is the shape of `l = More(l)` in a loop, which
 /// would otherwise deep-copy the old value on every iteration.
-fn move_dead_sources(f: &mut Func) -> bool {
+fn move_dead_sources(m: &mut Module, fi: usize) -> bool {
+    let borrows_of = borrows_of(m, fi);
+    let f = &mut m.funcs[fi];
     let mut rename: Vec<Option<Value>> = vec![None; f.values.len()];
     let mut touched = vec![false; f.values.len()];
     let mut dead: Vec<(usize, usize)> = Vec::new();
@@ -97,6 +100,21 @@ fn move_dead_sources(f: &mut Func) -> bool {
                 continue;
             };
             if jb != bi || b.insts[j].op != Op::Drop {
+                continue;
+            }
+            // What was borrowed out of `v` before the copy (a projection another pass merged
+            // into an earlier one) must not be read once the copy's drop frees `v`.
+            let mut held = vec![false; f.values.len()];
+            let mut stack = vec![v];
+            while let Some(x) = stack.pop() {
+                if !std::mem::replace(&mut held[x.index()], true) {
+                    stack.extend(borrows_of[x.index()].iter().copied());
+                }
+            }
+            if b.insts[i + 1..j]
+                .iter()
+                .any(|n| n.args.iter().any(|a| *a != v && held[a.index()]))
+            {
                 continue;
             }
             touched[c.index()] = true;
@@ -125,6 +143,21 @@ fn move_dead_sources(f: &mut Func) -> bool {
         });
     }
     true
+}
+
+/// The values each value of function `fi` lends out: results that borrow from their operands.
+fn borrows_of(m: &Module, fi: usize) -> Vec<Vec<Value>> {
+    let f = &m.funcs[fi];
+    let mut borrows_of: Vec<Vec<Value>> = vec![Vec::new(); f.values.len()];
+    for b in &f.blocks {
+        for inst in &b.insts {
+            let Some(r) = inst.res else { continue };
+            if !matches!(m.result_mode(f, inst), Some(Mode::Own) | None) {
+                inst.args.iter().for_each(|a| borrows_of[a.index()].push(r));
+            }
+        }
+    }
+    borrows_of
 }
 
 /// Turns `c = copy v` into a move when every path from the copy reaches `v` again only to drop
@@ -703,6 +736,207 @@ fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
     true
 }
 
+/// Removes `c = copy v; ... opt.unbox c ...; drop s` for an optional string `v` read out of a
+/// list when the copy only feeds `opt.is_some`, one `opt.unbox` whose string is only borrowed
+/// before its drop, and drops of `c` on the other paths: the payload is viewed in place instead.
+/// This is the shape of `if let item = container.at(index)` over a list of optionals, which
+/// would otherwise retain and release every element it visits. No instruction that can run while
+/// the copy is alive may write memory, adjust counts or call out, so the list cannot change.
+fn borrow_opt_str_reads(m: &mut Module, fi: usize) -> bool {
+    let f = &m.funcs[fi];
+    let nb = f.blocks.len();
+    let mut defs: Vec<Option<(usize, usize)>> = vec![None; f.values.len()];
+    // Operand uses of each value as (block, index); terminator uses are counted apart.
+    let mut at: Vec<Vec<(usize, usize)>> = vec![Vec::new(); f.values.len()];
+    let mut term_uses = vec![0u32; f.values.len()];
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (ii, inst) in b.insts.iter().enumerate() {
+            if let Some(r) = inst.res {
+                defs[r.index()] = Some((bi, ii));
+            }
+            for a in &inst.args {
+                at[a.index()].push((bi, ii));
+            }
+        }
+        b.term.for_each_use(|v| term_uses[v.index()] += 1);
+    }
+    let is_opt_str = |t| match m.types.kind(t) {
+        TyKind::Opt(inner) => matches!(m.types.kind(*inner), TyKind::Str),
+        _ => false,
+    };
+    let mut dead: Vec<(usize, usize)> = Vec::new();
+    let mut unboxed: Vec<(usize, usize, Value)> = Vec::new();
+    let mut alias: Vec<Option<Value>> = vec![None; f.values.len()];
+    'copies: for (bc, b) in f.blocks.iter().enumerate() {
+        for (i, inst) in b.insts.iter().enumerate() {
+            let (Op::Copy, Some(c)) = (inst.op, inst.res) else {
+                continue;
+            };
+            let v = inst.args[0];
+            if !is_opt_str(f.ty(v)) || alias[v.index()].is_some() || term_uses[c.index()] != 0 {
+                continue;
+            }
+            let Some((db, di)) = defs[v.index()] else {
+                continue;
+            };
+            let def = &f.blocks[db].insts[di];
+            if !matches!(def.op, Op::ListGet | Op::ListGetU | Op::ListGetNn) {
+                continue;
+            }
+            let root = def.args[0];
+            // The uses of the copy: tests, one unbox, and drops.
+            let mut unbox = None;
+            let mut releases: Vec<(usize, usize)> = Vec::new();
+            for &(ub, uk) in &at[c.index()] {
+                match f.blocks[ub].insts[uk].op {
+                    Op::OptIsSome => {}
+                    Op::OptUnbox if unbox.is_none() => unbox = Some((ub, uk)),
+                    Op::Drop => releases.push((ub, uk)),
+                    _ => continue 'copies,
+                }
+            }
+            let Some((bu, iu)) = unbox else { continue };
+            let s = f.blocks[bu].insts[iu].res.unwrap_or(c);
+            if s == c || term_uses[s.index()] != 0 {
+                continue;
+            }
+            // The string is borrowed until its one drop, later in the unbox's block.
+            let mut s_drop = None;
+            for &(sb, sk) in &at[s.index()] {
+                let n = &f.blocks[sb].insts[sk];
+                if n.op == Op::Drop && s_drop.is_none() && sb == bu && sk > iu {
+                    s_drop = Some(sk);
+                    continue;
+                }
+                let borrowed = n
+                    .args
+                    .iter()
+                    .zip(arg_modes(m, n))
+                    .all(|(a, mode)| *a != s || mode == Mode::Borrow);
+                if sb != bu || sk < iu || !borrowed {
+                    continue 'copies;
+                }
+            }
+            let Some(sd) = s_drop else { continue };
+            if releases.is_empty() {
+                continue;
+            }
+            // Where the copy dies: the unbox's block (up to the string's drop) and the drop blocks.
+            let mut ends: Vec<(usize, usize)> = releases.clone();
+            ends.push((bu, sd));
+            if ends.iter().any(|&(eb, _)| eb == bc) {
+                continue;
+            }
+            // Blocks the copy can reach before dying; reaching the copy again or leaving the
+            // function alive is not allowed.
+            let stop: Vec<bool> = (0..nb)
+                .map(|x| ends.iter().any(|&(eb, _)| eb == x))
+                .collect();
+            let mut seen = vec![false; nb];
+            let mut stack: Vec<usize> = Vec::new();
+            f.blocks[bc]
+                .term
+                .for_each_target(|t| stack.push(t.block.index()));
+            let mut ok = true;
+            while let Some(x) = stack.pop() {
+                if x == bc {
+                    ok = false;
+                    break;
+                }
+                if seen[x] {
+                    continue;
+                }
+                seen[x] = true;
+                if stop[x] {
+                    continue;
+                }
+                if matches!(f.blocks[x].term, crate::ir::Term::Ret(_)) {
+                    ok = false;
+                    break;
+                }
+                f.blocks[x]
+                    .term
+                    .for_each_target(|t| stack.push(t.block.index()));
+            }
+            if !ok || !stop.iter().zip(&seen).all(|(st, sn)| !*st || *sn) {
+                continue;
+            }
+            // Instructions that may run while the copy is alive.
+            let quiet = |n: &Inst| -> bool {
+                let e = n.op.info().effects;
+                let own = n.args.contains(&c) || n.args.contains(&s);
+                if own {
+                    return matches!(n.op, Op::OptIsSome | Op::OptUnbox | Op::Drop | Op::StrLen)
+                        || arg_modes(m, n)
+                            .iter()
+                            .zip(&n.args)
+                            .all(|(mode, a)| (*a != c && *a != s) || *mode == Mode::Borrow);
+                }
+                if (n.args.contains(&v) || n.args.contains(&root))
+                    && arg_modes(m, n)
+                        .iter()
+                        .zip(&n.args)
+                        .any(|(mode, a)| (*a == v || *a == root) && *mode != Mode::Borrow)
+                {
+                    return false;
+                }
+                !(e.writes || e.rc || e.io)
+            };
+            let mut span_ok = f.blocks[bc].insts[i + 1..].iter().all(&quiet);
+            for x in (0..nb).filter(|&x| seen[x]) {
+                let upto = ends
+                    .iter()
+                    .filter(|&&(eb, _)| eb == x)
+                    .map(|&(_, ek)| ek)
+                    .max()
+                    .unwrap_or(f.blocks[x].insts.len());
+                span_ok &= f.blocks[x].insts[..upto.min(f.blocks[x].insts.len())]
+                    .iter()
+                    .all(&quiet);
+                let mut term_bad = false;
+                f.blocks[x].term.for_each_use(|a| {
+                    term_bad |= a == c || a == s || a == v || a == root;
+                });
+                span_ok &= !term_bad;
+            }
+            let mut bc_term_bad = false;
+            f.blocks[bc].term.for_each_use(|a| {
+                bc_term_bad |= a == c || a == s || a == v || a == root;
+            });
+            if !span_ok || bc_term_bad {
+                continue;
+            }
+            alias[c.index()] = Some(v);
+            dead.push((bc, i));
+            dead.push((bu, sd));
+            for &(rb, rk) in &releases {
+                dead.push((rb, rk));
+            }
+            unboxed.push((bu, iu, v));
+        }
+    }
+    if dead.is_empty() {
+        return false;
+    }
+    let f = &mut m.funcs[fi];
+    for (bu, iu, v) in unboxed {
+        let n = &mut f.blocks[bu].insts[iu];
+        n.op = Op::OptGet;
+        n.args = vec![v];
+    }
+    remove_insts(f, &dead);
+    for b in &mut f.blocks {
+        for i in &mut b.insts {
+            for a in &mut i.args {
+                if let Some(t) = alias[a.index()] {
+                    *a = t;
+                }
+            }
+        }
+    }
+    true
+}
+
 /// What a string copy of `v` may borrow instead of copying: `Some(None)` when `v` is a
 /// parameter or a literal, `Some(Some(list))` when `v` is an element read out of `list`,
 /// which stays valid while the list is only borrowed, `None` for any other source.
@@ -912,8 +1146,113 @@ pub fn run_takes(m: &mut Module) -> bool {
     let mut changed = false;
     for fi in 0..m.funcs.len() {
         changed |= take_dead_sources(m, fi);
+        while take_record_fields(m, fi) {
+            changed = true;
+        }
     }
     changed
+}
+
+/// Turns `p = rec.get f v; c = copy p; ...; drop v` into `c = rec.get f v` plus drops of the
+/// other droppable fields of `v`, when `v` is only read through `rec.get`s until its drop. The
+/// field moves out of the dying record instead of being deep-copied and then freed with it, so
+/// `w.inner.clone()` on a record that is dead afterwards costs no allocation. Nothing that can
+/// fault or unwind may sit between the first load and the drop, so no cleanup sees the field
+/// both moved and still owned by the record.
+fn take_record_fields(m: &mut Module, fi: usize) -> bool {
+    let f = &m.funcs[fi];
+    let mut uses = vec![0u32; f.values.len()];
+    for b in &f.blocks {
+        for i in &b.insts {
+            for a in &i.args {
+                uses[a.index()] += 1;
+            }
+        }
+        b.term.for_each_use(|v| uses[v.index()] += 1);
+    }
+    let nd: Vec<bool> = f.values.iter().map(|v| m.needs_drop(*v)).collect();
+    // (block, copy index, record drop index, moved field values) of the first site found.
+    let mut site = None;
+    'find: for (bi, b) in f.blocks.iter().enumerate() {
+        let idx = BlockUses::new(&b.insts);
+        for (di, drop) in b.insts.iter().enumerate() {
+            let v = drop.args.first().copied();
+            let (Op::Drop, Some(v)) = (drop.op, v) else {
+                continue;
+            };
+            let TyKind::Rec(_) = m.types.kind(f.ty(v)) else {
+                continue;
+            };
+            if idx.after(v, di).next().is_some() {
+                continue;
+            }
+            let mut gets: Vec<usize> = Vec::new();
+            let mut ok = true;
+            for k in 0..di {
+                if !b.insts[k].args.contains(&v) {
+                    continue;
+                }
+                if b.insts[k].op == Op::RecGet {
+                    gets.push(k);
+                } else {
+                    ok = false;
+                    break;
+                }
+            }
+            let Some(&first) = gets.first() else { continue };
+            if !ok {
+                continue;
+            }
+            // Between the first load and the drop there is nothing that can fault or unwind.
+            if b.insts[first..di]
+                .iter()
+                .any(|n| !matches!(n.op, Op::RecGet | Op::Copy))
+            {
+                continue;
+            }
+            let field_of = |k: usize| match b.insts[k].imm {
+                Imm::Field(_, i) => i,
+                _ => u32::MAX,
+            };
+            let mut taken: Vec<(usize, usize, u32)> = Vec::new();
+            for &gi in &gets {
+                let Some(p) = b.insts[gi].res else { continue };
+                if uses[p.index()] != 1 || !nd[p.index()] {
+                    continue;
+                }
+                let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Copy) else {
+                    continue;
+                };
+                let fld = field_of(gi);
+                // A field taken once must not also be read through another `rec.get`.
+                if ci < di && gets.iter().filter(|&&g| field_of(g) == fld).count() == 1 {
+                    taken.push((gi, ci, fld));
+                }
+            }
+            if taken.is_empty() {
+                continue;
+            }
+            site = Some((bi, di, taken));
+            break 'find;
+        }
+    }
+    let Some((bi, di, taken)) = site else {
+        return false;
+    };
+    let f = &mut m.funcs[fi];
+    let Imm::Field(rec, _) = f.blocks[bi].insts[taken[0].0].imm else {
+        return false;
+    };
+    // The copy becomes a move out of the dying record; the release drops the other fields.
+    let mut mask = 0u32;
+    for &(_, ci, fld) in &taken {
+        f.blocks[bi].insts[ci].op = Op::MoveOut;
+        mask |= 1 << fld;
+    }
+    let release = &mut f.blocks[bi].insts[di];
+    release.op = Op::RecRelease;
+    release.imm = Imm::RecMask(rec, mask);
+    true
 }
 
 fn take_dead_sources(m: &mut Module, fi: usize) -> bool {

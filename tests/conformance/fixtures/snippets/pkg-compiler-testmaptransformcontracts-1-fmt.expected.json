@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def wrong(values: Map[String, Int]) -> Unit:\n    let mapped = values.map_keys(lambda k, v: v.to_float())\n"
-  }
-}

@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
         "position": {
           "file": "core-language-errors-results-4.ms",
           "line": 6,
-          "column": 38,
-          "offset": 255
+          "column": 37,
+          "offset": 254
         },
         "fix": {
           "position": {
@@ -29,18 +29,18 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
+          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
         "position": {
           "file": "core-language-errors-results-4.ms",
           "line": 6,
-          "column": 71,
-          "offset": 288
+          "column": 58,
+          "offset": 275
         },
         "fix": {
           "position": {
@@ -55,14 +55,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
+          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-results-4.ms:6:38: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n   |\n 6 | def successful_price(outcome: Result[Decimal, TextError]) -> Optional[Decimal]:\n   |                                      ^\n<DIR>/core-language-errors-results-4.ms:6:71: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n   |\n 6 | def successful_price(outcome: Result[Decimal, TextError]) -> Optional[Decimal]:\n   |                                                                       ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-results-4.ms:6:37: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n   |\n 6 | fn successful_price(outcome: Result[Decimal, TextError]) Decimal?:\n   |                                     ^\n<DIR>/core-language-errors-results-4.ms:6:58: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n   |\n 6 | fn successful_price(outcome: Result[Decimal, TextError]) Decimal?:\n   |                                                          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

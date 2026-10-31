@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def label(value: Int) -> String:\n    return f\"{value}\"\n\ntest \"methods\":\n    let labels = [1].map(transform: label)\n    let convert = [2].map[String]\n    let text = \" hello \".trim()\n"
-  }
-}

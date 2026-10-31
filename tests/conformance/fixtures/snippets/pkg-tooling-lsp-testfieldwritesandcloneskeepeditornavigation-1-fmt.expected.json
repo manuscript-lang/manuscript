@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Val:\n    val: Int\n\ndef work(var value: Val) -> Unit:\n    let callback = lambda () -> Unit:\n        value.val = value.val + 1\n    callback()\n\n    let copy = value.clone()\n    let list = [copy]\n    list.clone().append(value)\n"
-  }
-}

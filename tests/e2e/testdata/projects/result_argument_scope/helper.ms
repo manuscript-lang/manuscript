@@ -1,3 +1,3 @@
-export def erase[T](r: Result[T, Error]) -> Result[T, Error]: r
+export fn erase[T](r: T!) T!: r
 
-export def forward[T, E: Error](r: Result[T, E]) -> Result[T, Error]: erase(r)
+export fn forward[T, E: Error](r: T!E) T!: erase(r)

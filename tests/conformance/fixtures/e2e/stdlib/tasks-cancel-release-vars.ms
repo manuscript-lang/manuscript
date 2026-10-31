@@ -1,11 +1,11 @@
-# conform: tags=with-cleanup,stdlib-tasks,tier-io
+# conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
 # Cancelling a task must drop every owned value its frames hold, whatever shape holds it.
 # CI runs this program against the counting runtime (scripts/leak-check.sh): any live block fails.
-from "@std/io.ms" import stdout
-from "@std/tasks.ms" import TaskGroup
-from "@std/time.ms" import nanoseconds, sleep
-from "@std/channels.ms" import Channel
+import stdout from "@std/io.ms"
+import TaskGroup from "@std/tasks.ms"
+import nanoseconds, sleep from "@std/time.ms"
+import Channel from "@std/channels.ms"
 
 type Box:
     name: String
@@ -15,10 +15,10 @@ type Pair:
     a: Box
     b: Map[String, List[Int]]
 
-def nap() -> Unit:
+fn nap() Unit:
     sleep(nanoseconds(10000000000))
 
-def t_record() -> Int:
+fn t_record() Int:
     var b = Box(
         name: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
         items: ["a", "b"]
@@ -27,63 +27,63 @@ def t_record() -> Int:
     nap()
     return b.items.length()
 
-def t_field_move() -> Int:
+fn t_field_move() Int:
     var p = Pair(a: Box(name: "n", items: ["q"]), b: {"k": [1, 2]})
     let taken = p.a
     nap()
     return taken.items.length()
 
-def t_map_loop() -> Int:
+fn t_map_loop() Int:
     var m = Map[String, List[Int]]()
 
     for i in 0..100:
-        m.add(f"key{i}", [i, i])
+        m.add("key{i}", [i, i])
         if i == 50:
             nap()
 
     return m.length()
 
-def t_consume_in_loop() -> Int:
+fn t_consume_in_loop() Int:
     var acc = List[String]()
     var total = 0
 
     for i in 0..10:
-        let s = f"v{i}"
+        let s = "v{i}"
         acc.append(s.clone())
         nap()
         total += s.length()
 
     return total
 
-def t_optional() -> Int:
-    let o: Optional[List[String]] = some(["a", "b"])
+fn t_optional() Int:
+    let o: List[String]? = ["a", "b"]
     nap()
     return o.get([]).length()
 
-def t_closure() -> Int:
+fn t_closure() Int:
     let words = ["a", "b", "c"]
-    let f = lambda: words.length()
+    let f = fn: words.length()
     nap()
     return f()
 
-def t_match() -> Int:
-    let r: Optional[List[Int]] = some([1, 2, 3])
+fn t_match() Int:
+    let r: List[Int]? = [1, 2, 3]
 
     match r:
-        case some(v):
+        v:
             nap()
             return v.length()
-        case none:
+        none:
             return 0
 
-def t_chan(ch: Channel[Unit, Unit]) -> Int:
+fn t_chan(ch: Channel[Unit, Unit]) Int:
     var c = ch
     let held = ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
     let _got = c.receive()
     return held.length()
 
-def t_nested(depth: Int) -> Int:
-    let s = f"depth-{depth}-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+fn t_nested(depth: Int) Int:
+    let s = "depth-{depth}-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
     if depth == 0:
         nap()
@@ -91,16 +91,16 @@ def t_nested(depth: Int) -> Int:
 
     return t_nested(depth - 1) + s.length()
 
-def t_var_reassign() -> Int:
+fn t_var_reassign() Int:
     var s = "start-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
     for i in 0..3:
-        s = f"{s}-{i}"
+        s = "{s}-{i}"
         nap()
 
     return s.length()
 
-def t_var_list_swap() -> Int:
+fn t_var_list_swap() Int:
     var a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     var b = [4, 5]
     let tmp = a
@@ -109,7 +109,7 @@ def t_var_list_swap() -> Int:
     nap()
     return a.length() + b.length()
 
-def t_partial() -> Int:
+fn t_partial() Int:
     var p = Pair(
         a: Box(
             name: "namexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
@@ -122,7 +122,7 @@ def t_partial() -> Int:
     p.a.name = nm
     return p.b.length()
 
-def t_conditional(flag: Bool) -> Int:
+fn t_conditional(flag: Bool) Int:
     var keep = ["kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"]
 
     if flag:
@@ -133,7 +133,7 @@ def t_conditional(flag: Bool) -> Int:
     nap()
     return keep.length()
 
-def t_loop_break() -> Int:
+fn t_loop_break() Int:
     var out = List[List[Int]]()
 
     for i in 0..10:
@@ -145,32 +145,33 @@ def t_loop_break() -> Int:
 
     return out.length()
 
-def t_while_sleep() -> Int:
+fn t_while_sleep() Int:
     var n = 0
     var _buf = "bufxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-    while True:
+    while true:
         n += 1
-        _buf = f"{_buf}{n}"
+        _buf = "{_buf}{n}"
         nap()
 
     return n
 
-def run_one(which: Int) -> Unit:
-    with let group = TaskGroup[Int](timeout: some(nanoseconds(1000000))):
-        if which == 0: group.spawn(lambda ch: t_var_reassign())
-        elif which == 1: group.spawn(lambda ch: t_var_list_swap())
-        elif which == 2: group.spawn(lambda ch: t_partial())
-        elif which == 3: group.spawn(lambda ch: t_conditional(True))
-        elif which == 4: group.spawn(lambda ch: t_conditional(False))
-        elif which == 5: group.spawn(lambda ch: t_loop_break())
-        else: group.spawn(lambda ch: t_while_sleep())
+fn run_one(which: Int) Unit:
+    let group = TaskGroup[Int](timeout: nanoseconds(1000000))
 
-        let _ = group.wait()
+    if which == 0: group.spawn(fn ch: t_var_reassign())
+    else if which == 1: group.spawn(fn ch: t_var_list_swap())
+    else if which == 2: group.spawn(fn ch: t_partial())
+    else if which == 3: group.spawn(fn ch: t_conditional(true))
+    else if which == 4: group.spawn(fn ch: t_conditional(false))
+    else if which == 5: group.spawn(fn ch: t_loop_break())
+    else: group.spawn(fn ch: t_while_sleep())
 
-export def main() -> Int:
+    let _ = group.wait()
+
+export fn main() Int:
     for which in 0..7:
         run_one(which)
-        stdout().write(f"case {which} released\n").get()
+        stdout().write("case {which} released\n").get()
 
     return 0

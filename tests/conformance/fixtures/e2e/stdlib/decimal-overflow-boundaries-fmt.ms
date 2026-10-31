@@ -1,8 +1,8 @@
 # conform: tags=decimal,formatter,modules,parser,stdlib-decimal,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/decimal-overflow-boundaries.ms
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/decimal.ms" import Decimal
+import expect_equal, expect_false from "@std/test.ms"
+import Decimal from "@std/decimal.ms"
 
 test "Decimal magnitude rounding and underflow boundaries remain unchanged":
     let maximum = 9.999999999999999999999999999999999e6144d

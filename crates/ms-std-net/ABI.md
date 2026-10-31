@@ -16,12 +16,12 @@ release, cancellation) and never the other way around.
   declaration index` of the error case in the `.ms` error type. Tables below.
   `Failed(message)` stores its text through the trailing `err: *mut StrVal`
   (owned string; the pointer may be null when the caller does not need it).
-- **Results.** An ok value is written through `out` (before `err`). An `Optional[T]` in a
-  `Result` answers `STATUS_NONE` (16) for none; a bare `Optional[T]` answers whether it is
+- **Results.** An ok value is written through `out` (before `err`). An `T?` in a
+  `Result` answers `STATUS_NONE` (16) for none; a bare `T?` answers whether it is
   present. Native handles are `*mut Obj`. Wire structs are passed by address and have the
   leaves of the language record (lists inline as `VecVal`).
-- **Optional parameters** flatten to `has: u8, value: i64` (`Optional[Int]`,
-  `Optional[Duration]`; a `Duration` is nanoseconds). A negative limit or timeout is
+- **Optional parameters** flatten to `has: u8, value: i64` (`Int?`,
+  `Duration?`; a `Duration` is nanoseconds). A negative limit or timeout is
   `InvalidInput`, as in Go.
 - **Handles.** `Network`, `Connection`, `Listener`, `DatagramSocket`, `IpAddress`,
   `Cidr` (and later `HttpHeaders`, clients, servers, sockets) are runtime objects: an
@@ -139,7 +139,7 @@ Behavior notes:
 
 ## http
 
-`HttpHeaders` is a handle. `append(name, values)` validates tokens and values and
+`HttpHeaders` is an owned handle (moved, never copied implicitly); exchange and response accessors return fresh copies. `append(name, values)` validates tokens and values and
 returns `HttpError` status; `values(name)` returns an **owned copy** of the list (lists
 are values in the ownership model; Go shares them) and `present`; `text(name)` joins with
 `, `. Methods arrive as token strings; an invalid method is `InvalidInput`.

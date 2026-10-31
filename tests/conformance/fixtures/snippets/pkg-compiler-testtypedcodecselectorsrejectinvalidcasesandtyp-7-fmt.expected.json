@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/crypto.ms\" import HashAlgorithm\nfrom \"@std/archive.ms\" import CompressionFormat\n\ndef choose(algorithm: HashAlgorithm) -> Unit:\n    return ()\n\ndef wrong() -> Unit:\n    choose(CompressionFormat.Gzip)\n"
-  }
-}

@@ -1,5 +1,5 @@
-export def main() -> Int:
-    var o: Optional[List[String]] = some(["a"])
+export fn main() Int:
+    var o: List[String]? = ["a"]
     var n = 0
     if var l = o:
         l.append("q")

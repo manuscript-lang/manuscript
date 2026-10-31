@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def work() -> Int:\n    return apply(\n        value: 3,\n        transform: lambda (value: Int) -> Int:\n            if value == 0: return 0\n\n            let next = value + 1\n            return next\n    )\n"
-  }
-}

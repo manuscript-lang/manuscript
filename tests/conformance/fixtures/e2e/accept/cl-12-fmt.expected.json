@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/test.ms\" import expect_equal\n\ndef map_total(values: Map[String, Int]) -> Int:\n    var total = 0\n\n    for entry in values:\n        let {value} = entry\n        total += value\n\n    return total\n\ndef set_total(values: Set[Int]) -> Int:\n    var total = 0\n    for value in values:\n        total += value\n    return total\n\ntest \"map entry type\":\n    let entry = MapEntry[String, Int](\"a\", 3)\n    try expect_equal(entry.key, \"a\")\n    try expect_equal(entry.value, 3)\n"
+    "fmt": "import expect_equal from \"@std/test.ms\"\n\nfn map_total(values: Map[String, Int]) Int:\n    var total = 0\n\n    for entry in values:\n        let {value} = entry\n        total += value\n\n    return total\n\nfn set_total(values: Set[Int]) Int:\n    var total = 0\n    for value in values:\n        total += value\n    return total\n\ntest \"map entry type\":\n    let entry = MapEntry[String, Int](\"a\", 3)\n    try expect_equal(entry.key, \"a\")\n    try expect_equal(entry.value, 3)\n"
   }
 }

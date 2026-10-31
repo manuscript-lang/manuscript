@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def broken(value: Missing) -> Unit: return\n\ndef empty[T]() -> Optional[T]: none\n\ndef first() -> Unit:\n    let value = empty()\n"
-  }
-}

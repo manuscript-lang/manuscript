@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def stringify(value: Int) -> String:\n    return f\"{value}\"\n\ndef wrong_label(item: Int) -> String:\n    return f\"{item}\"\n\ndef callback() -> Unit:\n    return ()\n"
-  }
-}

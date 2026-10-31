@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "impl TestHooks for State:\n    def before_each() -> Unit:\n        self.value = self.value + 1\n\ndef make_fixture() -> State:\n    return State(value: 1)\n\ntest \"closure captures fixture\":\n    let read = lambda () -> Int: fixture.value\n    let value: Int = read()\n"
-  }
-}

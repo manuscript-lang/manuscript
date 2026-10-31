@@ -68,7 +68,11 @@ pub fn members(program: &crate::Program, receiver: &Ty, module: Option<Name>) ->
     }
     let mut result: Vec<Member> = Vec::new();
     let mut field_names: HashSet<Name> = HashSet::new();
-    if receiver.kind == Kind::Record {
+    // An opaque record's fields are visible only in its declaring file.
+    let hidden = receiver
+        .opaque_module()
+        .is_some_and(|declaring| module != Some(declaring));
+    if receiver.kind == Kind::Record && !hidden {
         for field in fields(receiver) {
             if field.name == n("to_string") {
                 continue;
@@ -87,7 +91,7 @@ pub fn members(program: &crate::Program, receiver: &Ty, module: Option<Name>) ->
             result.push(Member {
                 name: n(unit),
                 kind: MemberKind::Field,
-                ty: standard("Duration", Vec::new()),
+                ty: time_type("Duration"),
                 declaration: None,
             });
         }

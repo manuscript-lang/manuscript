@@ -21,7 +21,7 @@ fn diagnostics(source: &str) -> Vec<String> {
 fn negative_zero_repeats_zero() {
     for second in ["-0", "-0x0", "-0b0", "0x0"] {
         let source = format!(
-            "def classify(x: Int) -> Int:\n    match x:\n        case 0: return 1\n        case {second}: return 2\n        case _: return 3\n"
+            "fn classify(x: Int) Int:\n    match x:\n        0: return 1\n        {second}: return 2\n        _: return 3\n"
         );
         let got = diagnostics(&source);
         assert!(
@@ -35,7 +35,7 @@ fn negative_zero_repeats_zero() {
 #[test]
 fn negative_and_positive_values_stay_distinct() {
     let got = diagnostics(
-        "def classify(x: Int) -> Int:\n    match x:\n        case 1: return 1\n        case -1: return 2\n        case -0x1: return 3\n        case _: return 4\n",
+        "fn classify(x: Int) Int:\n    match x:\n        1: return 1\n        -1: return 2\n        -0x1: return 3\n        _: return 4\n",
     );
     assert_eq!(got.len(), 1, "{got:?}");
     assert!(
@@ -56,9 +56,21 @@ fn explicit_qualifier_must_be_the_matched_application() {
         ("[T]", "Choice[Int, Int]", "Choice[T, T]", false),
     ] {
         let source = format!(
-            "{CHOICE}def classify{params}(x: {scrutinee}) -> Int:\n    match x:\n        case {qualifier}.Value(_): return 1\n        case {qualifier}.Missing: return 0\n"
+            "{CHOICE}fn classify{params}(x: {scrutinee}) Int:\n    match x:\n        {qualifier}.Value(_): return 1\n        {qualifier}.Missing: return 0\n"
         );
         let got = diagnostics(&source);
         assert_eq!(got.is_empty(), ok, "{qualifier} on {scrutinee}: {got:?}");
     }
+}
+
+#[test]
+fn failed_chain_link_does_not_add_an_inference_error() {
+    let got = diagnostics(
+        "type R:\n    name: String\n\nfn use(o: R?) Int:\n    let n = o?.name.length().get(0)\n    return n.get(0)\n",
+    );
+    assert_eq!(got.len(), 1, "{got:?}");
+    assert!(
+        got[0].contains("unknown or ambiguous member get"),
+        "{got:?}"
+    );
 }

@@ -54,6 +54,11 @@ fn write_ty(m: &Module, t: Ty, out: &mut String) {
             write_ty(m, *e, out);
             out.push('>');
         }
+        TyKind::Ref(e) => {
+            out.push_str("ref<");
+            write_ty(m, *e, out);
+            out.push('>');
+        }
         TyKind::Obj(n, args) => {
             if args.is_empty() {
                 out.push_str("obj ");
@@ -156,13 +161,7 @@ pub fn print_module(m: &Module) -> String {
             .iter()
             .map(|s| {
                 let ps: Vec<String> = s.params.iter().map(|t| ty_str(m, *t)).collect();
-                format!(
-                    "{}({}) -> {}{}",
-                    s.name,
-                    ps.join(", "),
-                    if s.ret_borrowed { "ref " } else { "" },
-                    ty_str(m, s.ret)
-                )
+                format!("{}({}) -> {}", s.name, ps.join(", "), ty_str(m, s.ret))
             })
             .collect();
         let _ = writeln!(o, "iface {} {{ {} }}", i.name, ms.join(", "));
@@ -364,6 +363,16 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
             let case = &m.alts[a.index()].cases[c as usize];
             let mut s = format!("{}.{}", m.alts[a.index()].name, case.name);
             for (i, (name, _)) in case.fields.iter().enumerate() {
+                if mask >> i & 1 == 1 {
+                    s.push('.');
+                    s.push_str(name);
+                }
+            }
+            s
+        }
+        Imm::RecMask(r, mask) => {
+            let mut s = m.records[r.index()].name.clone();
+            for (i, (name, _)) in m.records[r.index()].fields.iter().enumerate() {
                 if mask >> i & 1 == 1 {
                     s.push('.');
                     s.push_str(name);

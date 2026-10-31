@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn affine(n: Int) Int!Cause:\n    if n < 0: return ok(9223372036854775807)\n\n    return ok(n + 1)\n"
+  }
+}

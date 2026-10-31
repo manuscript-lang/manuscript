@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Selection:\n    values: Set[Int]\n\ndef keep[T: Hashable](var values: Set[T], value: T) -> Set[T]:\n    values.add(value)\n    return values.clone()\n\ndef use() -> Set[Int]:\n    var values: Set[Int] = Set[Int]()\n    var nested: List[Set[Int]] = [values]\n    return keep(var nested[0], 1)\n"
-  }
-}

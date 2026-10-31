@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 # A closure that does not outlive its maker reads what it captures in place; one that is
 # returned or stored owns a copy and keeps the value it was made with.
@@ -6,65 +6,65 @@ type Matrix:
     data: List[Int]
     label: String
 
-def total(m: Matrix, f: Callable[[Int], Int]) -> Int:
+fn total(m: Matrix, f: fn(Int) Int) Int:
     var sum = 0
     for x in m.data:
         sum += f(x)
     return sum
 
-def scaled(m: Matrix) -> Int:
-    return total(m, lambda x: x + m.data.length())
+fn scaled(m: Matrix) Int:
+    return total(m, fn x: x + m.data.length())
 
-def nested(m: Matrix, names: List[String]) -> Int:
-    let outer = lambda (x: Int) -> Int:
-        let inner = lambda (y: Int) -> Int:
+fn nested(m: Matrix, names: List[String]) Int:
+    let outer = fn(x: Int) Int:
+        let inner = fn(y: Int) Int:
             return y + m.data.length() + names.length()
         return inner(x)
 
     return total(m, outer)
 
-def push(var out: List[Int], n: Int) -> Unit:
+fn push(var out: List[Int], n: Int) Unit:
     out.append(n)
 
-def each(f: Callable[[Int], Unit]) -> Unit:
+fn each(f: fn(Int) Unit) Unit:
     f(1)
     f(2)
     f(3)
 
-def collect() -> List[Int]:
+fn collect() List[Int]:
     var out: List[Int] = []
-    each(lambda i: push(var out, i))
+    each(fn i: push(var out, i))
     return out
 
-def make_reader() -> Callable[[], Int]:
+fn make_reader() fn() Int:
     var tags = ["a"]
     tags.append("b")
-    return lambda: tags.length()
+    return fn: tags.length()
 
 type Box:
-    f: Callable[[], Int]
+    f: fn() Int
 
-def lit(text: String) -> Int:
+fn lit(text: String) Int:
     var t = 0
 
     for p in text.split(","):
-        let fs = [lambda () -> Int: return p.length()]
+        let fs = [fn() Int: return p.length()]
         t += fs[0]()
 
     return t
 
-def keep_rec(text: String) -> List[Box]:
+fn keep_rec(text: String) List[Box]:
     var out: List[Box] = []
     for p in text.split(","):
-        out.append(Box(f: lambda () -> Int: return p.length()))
+        out.append(Box(f: fn() Int: return p.length()))
     return out
 
-def keep_map(text: String) -> Int:
-    var m: Map[Int, Callable[[], Int]] = {}
+fn keep_map(text: String) Int:
+    var m: Map[Int, fn() Int] = {}
     var i = 0
 
     for p in text.split(","):
-        m.add(i, lambda () -> Int: return p.length())
+        m.add(i, fn() Int: return p.length())
         i += 1
 
     var t = 0
@@ -72,30 +72,30 @@ def keep_map(text: String) -> Int:
         t += m.get(k).get()()
     return t
 
-def keep_opt(text: String) -> Int:
-    var os: List[Optional[Callable[[], Int]]] = []
+fn keep_opt(text: String) Int:
+    var os: List[(fn() Int)?] = []
     for p in text.split(","):
-        os.append(some(lambda () -> Int: return p.length()))
+        os.append((fn() Int: return p.length()))
 
     var t = 0
     for o in os:
         t += o.get()()
     return t
 
-def store(var fs: List[Callable[[], Int]], f: Callable[[], Int]) -> Unit:
+fn store(var fs: List[fn() Int], f: fn() Int) Unit:
     fs.append(f)
 
-def keep_user(text: String) -> Int:
-    var fs: List[Callable[[], Int]] = []
+fn keep_user(text: String) Int:
+    var fs: List[fn() Int] = []
     for p in text.split(","):
-        store(var fs, lambda () -> Int: return p.length())
+        store(var fs, fn() Int: return p.length())
 
     var t = 0
     for f in fs:
         t += f()
     return t
 
-def stored_total(text: String) -> Int:
+fn stored_total(text: String) Int:
     var t = lit(text)
     for b in keep_rec(text):
         t += b.f()
@@ -117,7 +117,7 @@ test "closure made in a loop sees each iteration":
         for unused in 0..i:
             names.append("n")
 
-        let count = lambda: names.length()
+        let count = fn: names.length()
         results.append(count())
 
     try expect_equal(results, [1, 2, 3])

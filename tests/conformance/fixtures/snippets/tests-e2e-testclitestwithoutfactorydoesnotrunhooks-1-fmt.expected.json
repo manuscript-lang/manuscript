@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/test.ms\" import TestHooks, expect_equal\nfrom \"@std/io.ms\" import stdout\n\ntype UnusedFixture:\n    value: Int\n\nimpl TestHooks for UnusedFixture:\n    def before_all() -> Unit:\n        let written = stdout().write(\"UNUSED before_all\").get()\n\n    def before_each() -> Unit:\n        let written = stdout().write(\"UNUSED before_each\").get()\n\n    def after_each() -> Unit:\n        let written = stdout().write(\"UNUSED after_each\").get()\n\n    def after_all() -> Unit:\n        let written = stdout().write(\"UNUSED after_all\").get()\n\ntest \"plain test\":\n    try expect_equal(1 + 1, 2)\n"
-  }
-}

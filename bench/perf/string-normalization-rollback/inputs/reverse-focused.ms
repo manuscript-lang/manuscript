@@ -1,0 +1,102 @@
+import stdout from "@std/io.ms"
+import clock from "@std/time.ms"
+
+type Pattern:
+    name: String
+    forward: String
+    backward: String
+
+fn iterations_for(size: Int) Int:
+    if size <= 32: return 2000000
+    if size >= 65536: return 64
+    if size >= 4096: return 8192
+
+    return 100000
+
+fn reverse_sum(text: String, expected: String) Int:
+    let output = text.reverse()
+    if output != expected: return -1
+
+    return output.byte_length() + 17
+
+fn measure(name: String, text: String, expected: String) Int:
+    if (
+        name != "ascii_mixed_n0"
+        and name != "ascii_mixed_n1"
+        and name != "ascii_mixed_n2"
+        and name != "ascii_mixed_n1048576"
+        and name != "ascii_controls_n0"
+        and name != "ascii_controls_n1"
+        and name != "ascii_controls_n2"
+        and name != "ascii_controls_n1048576"
+        and name != "combining_copies1"
+        and name != "combining_copies2"
+        and name != "combining_copies65536"
+        and name != "replacement_copies1"
+        and name != "replacement_copies2"
+        and name != "replacement_copies65536"
+        and name != "late_unicode_4096"
+        and name != "early_unicode_4096"
+        and name != "late_unicode_1048576"
+        and name != "early_unicode_1048576"
+    ): return 0
+
+    let expected_sum = expected.byte_length() + 17
+    if reverse_sum(text, expected) != expected_sum: return 1
+
+    let iterations = iterations_for(text.byte_length())
+    var checksum = 0
+    let started = clock().now()
+    for iteration in 0..iterations:
+        checksum += reverse_sum(text, expected)
+
+    let elapsed = clock().now().difference(started).to_nanoseconds()
+    if checksum != expected_sum * iterations: return 1
+
+    let _written = stdout().write(
+        "{name},{text.byte_length()},{iterations},{elapsed},{checksum}\n"
+    )
+    return 0
+
+export fn main() Int:
+    let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
+
+    for pattern in [
+        Pattern("ascii_mixed", "abcDE09_", "_90EDcba"),
+        Pattern("ascii_controls", "a\u{0}b\tc\nd!", "!d\nc\tb\u{0}a")
+    ]:
+        for length in [0, 1, 2, 7, 8, 15, 16, 17, 31, 32, 63, 64, 128, 4096, 1048576]:
+            let copies = length / 8
+            let tail = length % 8
+            let text = (
+                pattern.forward.repeat(copies).get()
+                + pattern.forward.slice_scalars(0, tail).get()
+            )
+            let expected = (
+                pattern.backward.slice_scalars(8 - tail, 8).get()
+                + pattern.backward.repeat(copies).get()
+            )
+            if measure("{pattern.name}_n{length}", text, expected) != 0: return 1
+
+    for pattern in [
+        Pattern("two_byte", "éΩüß", "ßüΩé"),
+        Pattern("three_byte", "日漢€☃", "☃€漢日"),
+        Pattern("four_byte", "😀🙂🚀🌍", "🌍🚀🙂😀"),
+        Pattern(
+            "mixed", "aé日😀\u{0}e\u{301}\u{fffd}", "\u{fffd}\u{301}e\u{0}😀日éa"
+        ),
+        Pattern("combining", "e\u{301}a\u{308}", "\u{308}a\u{301}e"),
+        Pattern("zwj", "👩\u{200d}🚀", "🚀\u{200d}👩"),
+        Pattern("replacement", "\u{fffd}", "\u{fffd}")
+    ]:
+        for copies in [1, 2, 8, 32, 256, 4096, 65536]:
+            let text = pattern.forward.repeat(copies).get()
+            let expected = pattern.backward.repeat(copies).get()
+            if measure("{pattern.name}_copies{copies}", text, expected) != 0: return 1
+
+    for length in [4096, 1048576]:
+        let ascii = "x".repeat(length).get()
+        if measure("late_unicode_{length}", ascii + "é日😀", "😀日é" + ascii) != 0: return 1
+        if measure("early_unicode_{length}", "é日😀" + ascii, ascii + "😀日é") != 0: return 1
+
+    return 0

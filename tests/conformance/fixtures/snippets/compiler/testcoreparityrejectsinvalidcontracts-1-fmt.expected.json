@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn wrong(value: Set[Int]) Unit:\n    let output = value.map(fn n: n.to_float())\n"
+  }
+}

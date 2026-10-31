@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn combine(first: Int = 3, second: Int = first) Int:\n    return first + second\n"
+  }
+}

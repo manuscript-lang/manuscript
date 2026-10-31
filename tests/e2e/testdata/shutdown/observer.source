@@ -1,22 +1,22 @@
-from "@std/io.ms" import stdout
-from "@std/process.ms" import control
-from "@std/time.ms" import sleep
+import stdout from "@std/io.ms"
+import control from "@std/process.ms"
+import sleep from "@std/time.ms"
 
-def say(text: String) -> Unit:
+fn say(text: String) Unit:
     let _written = stdout().write(text)
 
     # Piped stdout is buffered until exit; flush so a parent sees each line when it is printed.
     let _flushed = stdout().flush()
 
-export def main() -> Int:
+export fn main() Int:
     if let watched = control().watch_signals([2, 15]):
-        with let signals = watched:
-            say("waiting\n")
+        let signals = watched
+        say("waiting\n")
 
-            let _observed = signals.next()
-            say("got signal\n")
-            sleep(100.milliseconds)
-            say("after sleep\n")
-            return 0
+        let _observed = signals.next()
+        say("got signal\n")
+        sleep(100.milliseconds)
+        say("after sleep\n")
+        return 0
     else:
         return 1

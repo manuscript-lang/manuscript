@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2003",
+        "phase": "resolution",
+        "message": "redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly",
+        "position": {
+          "file": "testnamedimports-3.ms",
+          "line": 4,
+          "column": 8,
+          "offset": 162
+        },
+        "end": {
+          "file": "testnamedimports-3.ms",
+          "line": 4,
+          "column": 17,
+          "offset": 171
+        },
+        "fix": {
+          "position": {
+            "file": "testnamedimports-3.ms",
+            "line": 4,
+            "column": 8,
+            "offset": 162
+          },
+          "end": {
+            "file": "testnamedimports-3.ms",
+            "line": 4,
+            "column": 19,
+            "offset": 173
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS2003",
+        "phase": "resolution",
+        "message": "redundant prelude import MapEntry; remove MapEntry from this import and use its prelude declaration directly",
+        "position": {
+          "file": "testnamedimports-3.ms",
+          "line": 4,
+          "column": 19,
+          "offset": 173
+        },
+        "end": {
+          "file": "testnamedimports-3.ms",
+          "line": 4,
+          "column": 27,
+          "offset": 181
+        },
+        "fix": {
+          "position": {
+            "file": "testnamedimports-3.ms",
+            "line": 4,
+            "column": 17,
+            "offset": 171
+          },
+          "end": {
+            "file": "testnamedimports-3.ms",
+            "line": 4,
+            "column": 28,
+            "offset": 182
+          },
+          "replacement": ""
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testnamedimports-3.ms:4:8: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry, MapEntry from \"@std/collections.ms\"\n   |        ^^^^^^^^^\n<DIR>/testnamedimports-3.ms:4:19: resolution: redundant prelude import MapEntry; remove MapEntry from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry, MapEntry from \"@std/collections.ms\"\n   |                   ^^^^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,9 +1,9 @@
-# conform: tags=aliasing,closures,control-flow,formatter,generics,interfaces,interpolation,match,modules,mutation,optional,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=aliasing,closures,control-flow,formatter,generics,interfaces,interpolation,match,modules,mutation,optional,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/scalar-lowering.ms
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal, expect_false, expect_not_equal
-from "@std/core.ms" import Closeable
+import TextError from "@std/core.ms"
+import expect_equal, expect_false, expect_not_equal from "@std/test.ms"
+import Closeable from "@std/core.ms"
 
 type Counter:
     value: Int = 0
@@ -12,19 +12,20 @@ type Resource:
     counter: Counter
 
 impl Closeable for Resource:
-    var def close() -> Unit:
+    var fn close() Unit!:
         self.counter.value += 1
+        return ok(unit)
 
-def mark(var counter: Counter, digit: Int) -> Int:
+fn mark(var counter: Counter, digit: Int) Int:
     counter.value = counter.value * 10 + digit
     return digit
 
-def generic[T: Equal](left: T, right: T) -> Bool: left == right
+fn generic[T: Equal](left: T, right: T) Bool: left == right
 
-def returning_match() -> Bool:
-    return True == match some(1):
-        case some(_): return False
-        case none: False
+fn returning_match() Bool:
+    return true == match 1:
+        _value: return false
+        none: false
 
 test "primitive equality captures operands once in order":
     var counter = Counter()
@@ -32,98 +33,103 @@ test "primitive equality captures operands once in order":
     try expect_equal(counter.value, 12)
 
     var original = 1
-    let captured = original == match some(1):
-        case some(value):
+    let captured = original == match 1:
+        value:
             original = 2
             value
-        case none: 0
+        none: 0
     try expect_false(not captured or original != 2)
 
-    let skipped = False and mark(var counter, 3) == 3
-    let skipped_again = True or mark(var counter, 4) == 4
+    let skipped = false and mark(var counter, 3) == 3
+    let skipped_again = true or mark(var counter, 4) == 4
     try expect_false((skipped or not skipped_again or counter.value != 12))
-    try expect_false("é" == f"e\u{0301}" or "λ🙂" != "λ🙂")
-    try expect_false(not generic(left: True, right: True))
+    try expect_false("é" == "e\u{0301}" or "λ🙂" != "λ🙂")
+    try expect_false(not generic(left: true, right: true))
     try expect_false(returning_match())
 
-def conditional(counter: Counter, take: Bool) -> Int:
+fn conditional(counter: Counter, take: Bool) Int:
     if take:
-        with let resource = Resource(counter): return 7
+        let _resource = Resource(counter)
+        return 7
+
     return 8
 
-def matched(counter: Counter) -> Int:
-    return match some(1):
-        case some(value):
-            with let resource = Resource(counter): return value
+fn matched(counter: Counter) Int:
+    return match 1:
+        value:
+            var _resource = Resource(counter)
+            return value
             0
-        case none: 0
+        none: 0
 
-def defaulted(
+fn defaulted(
     counter: Counter,
-    value: Int = match some(2):
-        case some(number):
-            with let resource = Resource(counter):
-                let _used = ()
+    value: Int = match 2:
+        number:
+            var _resource = Resource(counter)
+            let _used = unit
+            _resource.close().get(none)
             number
-        case none: 0
-) -> Int: value
+        none: 0
+) Int: value
 
-def nested(counter: Counter) -> Unit:
-    let callback = lambda () -> Unit:
-        with let resource = Resource(counter): return
+fn nested(counter: Counter) Unit:
+    let callback = fn() Unit:
+        let _resource = Resource(counter)
+        return
+
     callback()
 
-def failed() -> Result[Int, TextError]: error(TextError("expected"))
+fn failed() Int!TextError: error(TextError("expected"))
 
-def propagate(counter: Counter) -> Result[Int, TextError]:
-    with let resource = Resource(counter):
-        let value = try failed()
-        return ok(value)
-
+fn propagate(counter: Counter) Int!TextError:
+    var _resource = Resource(counter)
+    let value = try failed()
+    return ok(value)
     return ok(0)
 
-def bare_propagate() -> Result[Int, TextError]:
+fn bare_propagate() Int!TextError:
     let value = try failed()
     return ok(value)
 
-def equality_propagate() -> Result[Bool, TextError]:
+fn equality_propagate() Bool!TextError:
     let matches = (try failed()) == 0
     return ok(matches)
 
-def bool_failed() -> Result[Bool, TextError]: error(TextError("expected"))
+fn bool_failed() Bool!TextError: error(TextError("expected"))
 
-def nested_results(counter: Counter) -> Result[Int, TextError]:
-    let child = lambda () -> Result[Bool, TextError]:
-        with let resource = Resource(counter):
-            let value = try bool_failed()
-            return ok(value)
-
-        return ok(False)
+fn nested_results(counter: Counter) Int!TextError:
+    let child = fn() Bool!TextError:
+        var _resource = Resource(counter)
+        let value = try bool_failed()
+        return ok(value)
+        return ok(false)
 
     let _ignored = child()
     let value = try failed()
     return ok(value)
 
-def statement_match_try(counter: Counter) -> Result[Int, TextError]:
-    match some(1):
-        case some(_):
-            with let resource = Resource(counter):
-                let value = try failed()
-                return ok(value)
-        case none: return ok(0)
+fn statement_match_try(counter: Counter) Int!TextError:
+    match present(1):
+        _value:
+            let _resource = Resource(counter)
+            let value = try failed()
+            return ok(value)
+        none: return ok(0)
 
     return ok(-1)
 
-def value_match_loop_try(counter: Counter) -> Result[Int, TextError]:
+fn value_match_loop_try(counter: Counter) Int!TextError:
     var index = 0
 
     while index < 2:
-        let _selected = match some(index):
-            case some(number):
-                with let resource = Resource(counter):
-                    let _value = try failed()
+        let _selected = match index:
+            number:
+                var _resource = Resource(counter)
+                let _value = try failed()
+                try _resource.close()
                 number
-            case none: 0
+            none: 0
 
         index += 1
 
@@ -158,8 +164,8 @@ test "combined lowering retains callable state and try boundaries":
 
 test "cleanup remains owned by its source callable":
     let counter = Counter()
-    try expect_false(conditional(counter, take: False) != 8 or counter.value != 0)
-    try expect_false(conditional(counter, take: True) != 7 or counter.value != 1)
+    try expect_false(conditional(counter, take: false) != 8 or counter.value != 0)
+    try expect_false(conditional(counter, take: true) != 7 or counter.value != 1)
     try expect_false(matched(counter) != 1 or counter.value != 2)
     try expect_false(defaulted(counter) != 2 or counter.value != 3)
     try expect_false(defaulted(counter, 9) != 9 or counter.value != 3)
@@ -185,8 +191,11 @@ test "cleanup remains owned by its source callable":
     while index < 3:
         index += 1
 
-        with let resource = Resource(counter):
-            if index == 1: continue
-            if index == 2: break
+        let _resource = Resource(counter)
+        if index == 1: continue
+        if index == 2: break
 
     try expect_equal(counter.value, 7)
+
+fn present[T](value: T) T?:
+    return value

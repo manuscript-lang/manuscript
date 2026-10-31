@@ -68,7 +68,7 @@ pub struct Module {
     pub node_count: u32,
 }
 
-/// One imported symbol binding: `import { A, B } from "path"` yields two.
+/// One imported symbol binding: `import A, B from "path"` yields two.
 #[derive(Debug, Clone)]
 pub struct Import {
     /// Node id.
@@ -129,8 +129,6 @@ pub struct Func {
     pub params: Vec<Param>,
     /// Declared result type (mandatory in source).
     pub result: TypeRef,
-    /// Written `ref T`: the result lends part of a borrowed parameter or receiver.
-    pub result_ref: bool,
     /// Body statements; may be empty for an empty declaration suite.
     pub body: Vec<Stmt>,
     /// `extern fn`: a native symbol with no body, named after the function.
@@ -170,6 +168,8 @@ pub struct RecordDecl {
     pub fields: Vec<Param>,
     /// `extern type Name`: an opaque value whose layout the runtime owns (bundled modules only).
     pub external: bool,
+    /// `opaque type`: fields are visible only in the declaring file.
+    pub opaque: bool,
 }
 
 /// `type Name[T]:` with `case` lines.
@@ -181,6 +181,8 @@ pub struct AlternativeDecl {
     pub type_params: Vec<TypeParam>,
     /// Cases in declaration order.
     pub cases: Vec<Case>,
+    /// `opaque type`: cases are visible only in the declaring file.
+    pub opaque: bool,
 }
 
 /// `interface Name[T]:` with operation signatures.
@@ -382,6 +384,9 @@ pub enum ExprKind {
         /// Index expression.
         index: Box<Expr>,
     },
+    /// `left[index]?`: the entry of a map or list when it exists, as an `Optional`. Only
+    /// `if var` accepts it, where the present entry is borrowed in place.
+    Probe(Box<Expr>),
     /// `[a, b]`.
     List(Vec<Expr>),
     /// `{k: v, ...}`.
@@ -429,14 +434,16 @@ impl Expr {
             | ExprKind::Apply { left, .. }
             | ExprKind::Index { left, .. }
             | ExprKind::Binary { left, .. } => left.start(),
+            ExprKind::Probe(target) => target.start(),
             ExprKind::Call { callee, .. } => callee.start(),
             _ => self.pos,
         }
     }
 
-    /// A written `match`, not the Bool match an `if` expression stands for.
+    /// A written `match`, not the Bool match an `if` expression stands for or
+    /// the match an optional chain `a?.b` stands for.
     pub fn is_written_match(&self) -> bool {
-        matches!(&self.kind, ExprKind::Match { arms, .. } if !arms.first().is_some_and(|a| a.from_if))
+        matches!(&self.kind, ExprKind::Match { arms, .. } if !arms.first().is_some_and(|a| a.from_if || a.chain))
     }
 }
 
@@ -593,6 +600,13 @@ pub struct Arm {
     pub value: Option<Expr>,
     /// The arm is a branch of an `if` expression written `if c: a else: b`.
     pub from_if: bool,
+    /// The arm belongs to the match an optional chain `a?.b` stands for: the
+    /// result is the present arm's type made optional (not wrapped again when
+    /// it already is), and the `none` arm yields `none`.
+    pub chain: bool,
+    /// The arm was written as a lone lowercase name, which binds an Optional's
+    /// payload; the parser spells it as the `some` case with that binding.
+    pub bare: bool,
 }
 
 /// A payload binding in a match arm.
@@ -718,17 +732,6 @@ pub enum StmtKind {
         name: Symbol,
         /// Iterated value.
         iter: Expr,
-        /// Body.
-        body: Vec<Stmt>,
-    },
-    /// `with let name = resource:` or `with var name = resource:`
-    With {
-        /// Bound name.
-        name: Symbol,
-        /// Written `var`: the block may change the binding, and the close runs on its final value.
-        mutable: bool,
-        /// Resource expression.
-        value: Expr,
         /// Body.
         body: Vec<Stmt>,
     },

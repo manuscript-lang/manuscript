@@ -1,9 +1,9 @@
 # conform: tags=stdlib-time,stdlib-math,testing
 # conform: phase=test
-from "@std/test.ms" import expect_equal
-from "@std/time.ms" import seconds, parse_timestamp
-from "@std/math.ms" import from_int
-from "@std/decimal.ms" import Decimal
+import expect_equal from "@std/test.ms"
+import seconds, parse_timestamp from "@std/time.ms"
+import from_int from "@std/math.ms"
+import Decimal from "@std/decimal.ms"
 
 test "Duration orders with min, max and clamp":
     try expect_equal(seconds(3).min(seconds(5)), seconds(3))

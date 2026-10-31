@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Other:\n    detail: String\n\ndef wrong(cause: Error) -> String:\n    match cause:\n        case Other(value):\n            return value.detail\n        case _:\n            return cause.message()\n"
-  }
-}

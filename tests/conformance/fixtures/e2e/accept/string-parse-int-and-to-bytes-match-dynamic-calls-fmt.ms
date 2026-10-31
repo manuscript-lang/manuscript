@@ -1,13 +1,13 @@
 # conform: tags=formatter,match,modules,optional,parser,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/string-parse-int-and-to-bytes-match-dynamic-calls.ms
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
-def parsed(text: String) -> Int:
+fn parsed(text: String) Int:
     match text.parse_int():
-        case some(v):
+        v:
             return v
-        case none:
+        none:
             return 0 - 1
 
 test "parse_int":

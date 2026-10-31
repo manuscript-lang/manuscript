@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/string.ms\" import StringBuilder\n\ndef fragment() -> String: return \"x\"\n\ndef probe(flag: Bool) -> String:\n    let b = StringBuilder()\n"
-  }
-}

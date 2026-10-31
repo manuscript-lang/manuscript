@@ -1,6 +1,6 @@
-def core(line: String) -> ref String:
+fn core(line: String) String:
     return line.trim()
 
-def use_it(line: String) -> Int:
+fn use_it(line: String) Int:
     let t = core(line)
     return t.length()

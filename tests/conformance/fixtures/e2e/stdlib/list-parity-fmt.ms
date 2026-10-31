@@ -1,14 +1,14 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interpolation,lists,modules,mutation,optional,parser,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/list-parity.ms
-from "@std/test.ms" import expect_equal, expect_false
+import expect_equal, expect_false from "@std/test.ms"
 
 test "List count calls the predicate once per element":
     let values = [1, 2, 3, 4]
     var seen: List[Int] = []
 
     let even = values.count(
-        lambda (value: Int) -> Bool:
+        fn(value: Int) Bool:
             seen.append(value)
             return value % 2 == 0
     )
@@ -16,7 +16,7 @@ test "List count calls the predicate once per element":
     try expect_false(even != 2 or seen != values)
 
     let empty: List[Int] = []
-    try expect_equal(empty.count(lambda (value: Int) -> Bool: True), 0)
+    try expect_equal(empty.count(fn(value: Int) Bool: true), 0)
 
 test "List insert mutates in place":
     var values = [1, 3]
@@ -39,7 +39,7 @@ test "List insert mutates in place":
 test "List pop removes and returns the last element":
     var values = [1, 2, 3]
     let last = values.pop()
-    try expect_false((last != some(3) or values != [1, 2]))
+    try expect_false((last != 3 or values != [1, 2]))
     values.pop()
     values.pop()
     try expect_false(values.pop().is_some() or not (values.is_empty()))
@@ -77,7 +77,7 @@ test "List distinct keeps the first equal element in order":
     copy.append(1)
     try expect_false(not (empty.is_empty()))
 
-def unique_count[T: Equal](values: List[T]) -> Int:
+fn unique_count[T: Equal](values: List[T]) Int:
     return values.distinct().length()
 
 test "List parity operations support generic and bound use":
@@ -85,12 +85,10 @@ test "List parity operations support generic and bound use":
 
     var values = [1, 2]
     let insert = values.insert
-    let pop: Callable[[], Optional[Int]] = values.pop
+    let pop: fn() Int? = values.pop
     let count = values.count
     insert(2, 3)
-    try expect_false(
-        pop() != some(3) or count(lambda (value: Int) -> Bool: value > 0) != 2
-    )
+    try expect_false(pop() != 3 or count(fn(value: Int) Bool: value > 0) != 2)
 
 test "List distinct handles large Int and String lists":
     var numbers: List[Int] = []
@@ -98,14 +96,14 @@ test "List distinct handles large Int and String lists":
 
     for index in 0..60000:
         numbers.append(index % 30000)
-        words.append(f"w{index % 20000}")
+        words.append("w{index % 20000}")
 
     let unique = numbers.distinct()
     try expect_false(
         (
             unique.length() != 30000
-            or unique.first() != some(0)
-            or unique.last() != some(29999)
+            or unique.first() != 0
+            or unique.last() != 29999
         )
     )
 

@@ -1,0 +1,22 @@
+import Closeable from "@std/core.ms"
+
+type Door:
+    id: Int
+
+impl Closeable for Door:
+    var fn close() Unit!:
+        return ok(unit)
+
+type Room:
+    door: Door
+    tag: String
+
+fn keep(d: Door) List[Door]:
+    var xs: List[Door] = []
+    xs.append(d)
+    return xs
+
+fn captured(r: Room) Int:
+    let f = fn() List[Door]:
+        return keep(r.door)  # error: cannot move the resource
+    return f().length()

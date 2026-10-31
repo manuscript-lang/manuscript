@@ -10,14 +10,14 @@ weight = 3
 `match` is an expression: it can initialize a binding, be an argument, or stand alone with its result discarded. The scrutinee evaluates once and only the selected arm runs. This handles the `Payment` type from [alternatives](../types/alternatives.md):
 
 ```manuscript
-def describe(payment: Payment) -> String:
+fn describe(payment: Payment) String:
     match payment:
-        case Paid(receipt):
-            return f"Paid: {receipt}"
-        case Declined(reason):
-            return f"Declined: {reason}"
-        case Pending(reference):
-            return f"Pending: {reference}"
+        Paid(receipt):
+            return "Paid: {receipt}"
+        Declined(reason):
+            return "Declined: {reason}"
+        Pending(reference):
+            return "Pending: {reference}"
 ```
 
 ## Keep match flow flat
@@ -25,46 +25,46 @@ def describe(payment: Payment) -> String:
 Nested `match` is an anti-pattern. Bind the outer payload with an early exit, propagate with `try`, use Optional methods, or call a small helper (the contract handler below shows a helper).
 
 - `ms lint` reports **MSL107** at each inner match, including inside inline callbacks. Helpers and sequential matches are fine. The checker still accepts nesting; this is style only.
-- A two-arm `some`/`none` match on an `Optional` is **MSL108**. Use [`if let`](conditionals.md#unwrapping-an-optional-or-result), `get(default)`, or `map`.
+- An `Optional` has no `some` pattern: the present arm is a bare lowercase name beside `none:` (`v:` binds the payload). A two-arm payload/`none` match is **MSL108**. Use [`if let`](conditionals.md#unwrapping-an-optional-or-result), `get(default)`, or `map`.
 
 Matching a `Result` with only `ok` and `error` arms is flagged the same way as advisory **MSL109**. Use `try`, `if let value = result:` with `else:`, or a Result method such as `get(default)`, `is_error`, or `err`.
 
 ## Matching literals
 
-A `match` on an `Int`, `String`, or `Bool` takes literal arms: number literals (with an optional `-`), plain text literals, `True`, and `False`. Arms are tested in order; each value may appear once. A final `_` is required unless `True` and `False` are both covered. Arms bind nothing.
+A `match` on an `Int`, `String`, or `Bool` takes literal arms: number literals (with an optional `-`), plain text literals, `true`, and `false`. Arms are tested in order; each value may appear once. A final `_` is required unless `true` and `false` are both covered. Arms bind nothing.
 
 ```manuscript
-def name(count: Int) -> String:
+fn name(count: Int) String:
     match count:
-        case 0: return "none"
-        case 1: return "one"
-        case _: return "many"
+        0: return "none"
+        1: return "one"
+        _: return "many"
 ```
 
-Computed values, interpolated text, ranges, and `Float` scrutinees are not literal patterns; use `if` and `elif`.
+Computed values, interpolated text, ranges, and `Float` scrutinees are not literal patterns; use `if` and `else if`.
 
 ## Arm values
 
 An arm may hold statements then a final expression, which is its value; ending in a statement gives `Unit`. Value-producing arms must share a compatible type, taken from the annotation or expected type, or else from the arms themselves. Arms that exit via `return`, `break`, `continue`, or `Never` contribute no value.
 
 ```manuscript
-from "@std/core.ms" import TextError
+import TextError from "@std/core.ms"
 type Cents:
     case Valid(amount: Int)
     case Invalid
 
-def total(cents: Cents) -> Result[Int, TextError]:
+fn total(cents: Cents) Result[Int, TextError]:
     let amount = match cents:
-        case Valid(value):
+        Valid(value):
             value
-        case Invalid:
+        Invalid:
             return error(TextError("Invalid amount"))
     return ok(amount)
 ```
 
 `return` exits the enclosing function even from inside another expression, running cleanup; `break` and `continue` target the enclosing loop; an anonymous function has its own return boundary.
 
-Short arms put the value after the colon (`case none: 0`). End an effect-only arm with `()` if its last call returns something else. A standalone match discards its result, so arms need not agree; a used result needs every arm to produce it. An empty arm is `()`; there is no `pass`.
+Short arms put the value after the colon (`none: 0`). End an effect-only arm with `unit` if its last call returns something else. A standalone match discards its result, so arms need not agree; a used result needs every arm to produce it. An empty arm or block is `unit`; there is no `pass`.
 
 ## Payload patterns
 
@@ -75,11 +75,11 @@ type Position:
     case Point(x: Int, y: Int)
     case Unknown
 
-def horizontal(position: Position) -> Int:
+fn horizontal(position: Position) Int:
     match position:
-        case Position.Point(horizontal_value, _):
+        Position.Point(horizontal_value, _):
             return horizontal_value
-        case Position.Unknown:
+        Position.Unknown:
             return 0
 ```
 
@@ -95,12 +95,12 @@ def horizontal(position: Position) -> Int:
 Arms never fall through, and a missing case is a compile error. `_:` is the wildcard: allowed once, last, binds nothing, and covers the remaining cases. Rejected: duplicate or unknown cases (qualified and unqualified spellings of one case are duplicates), an arm after the wildcard, and a wildcard after every case is covered.
 
 ```manuscript
-def paid(payment: Payment) -> Bool:
+fn paid(payment: Payment) Bool:
     match payment:
-        case Paid(_):
-            return True
-        case _:
-            return False
+        Paid(_):
+            return true
+        _:
+            return false
 ```
 
 Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return completeness follows the [function return rules](../functions/declarations-and-calls.md#unit-and-never).
@@ -114,19 +114,19 @@ Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return c
 A contract view keeps its concrete receiver. `ConcreteType(receiver)` recovers it for a particular implementation, and `_:` handles the rest. This is not a constructor call.
 
 ```text
-from "@std/json.ms" import JsonError
+import JsonError from "@std/json.ms"
 
-def describe(cause: Error) -> String:
+fn describe(cause: Error) String:
     match cause:
-        case JsonError(json): return describe_json(json)
-        case _:
+        JsonError(json): return describe_json(json)
+        _:
             return cause.message()
 
-def describe_json(cause: JsonError) -> String:
+fn describe_json(cause: JsonError) String:
     match cause:
-        case InvalidInput: return "Invalid JSON limits"
-        case InvalidData: return "Malformed JSON"
-        case LimitExceeded: return "JSON limit exceeded"
+        InvalidInput: return "Invalid JSON limits"
+        InvalidData: return "Malformed JSON"
+        LimitExceeded: return "JSON limit exceeded"
 ```
 
 - The type is a local or imported nominal record or alternative with an explicit implementation of the scrutinee's exact contract.

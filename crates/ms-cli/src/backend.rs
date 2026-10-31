@@ -80,6 +80,8 @@ pub struct AnalysisRequest {
     pub watch: bool,
     /// Apply machine-applicable fixes before reporting what remains.
     pub fix: bool,
+    /// `ms lint --deny-warnings`: warnings fail the command like errors.
+    pub deny_warnings: bool,
 }
 
 /// `ms build <input> [-o output]`. `output` is empty for the default

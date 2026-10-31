@@ -1,16 +1,16 @@
 # conform: tags=control-flow,interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=documentation/learn/testing.md:96
-from "@std/test.ms" import TestHooks, expect_equal
+import TestHooks, expect_equal from "@std/test.ms"
 
 type Counter:
     count: Int
 
-def make_fixture() -> Counter:
+fn make_fixture() Counter:
     return Counter(0)
 
 impl TestHooks for Counter:
-    var def before_each() -> Unit:
+    var fn before_each() Unit:
         self.count = 0
 
 test "increments":

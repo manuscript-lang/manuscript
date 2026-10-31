@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def peek() -> Missing:\n    return 0\n\ndef f() -> Int:\n    match peek():\n        case some(x):\n            return x\n        case none:\n            return 0\n"
-  }
-}

@@ -1,16 +1,16 @@
-from "@std/test.ms" import expect_equal, expect_true
-from "@std/math.ms" import infinity, parse_float
+import expect_equal, expect_true from "@std/test.ms"
+import infinity, parse_float from "@std/math.ms"
 
 test "parse_float reads integers decimals and exponents":
-    "42".parse_float() | try expect_equal(some(42.0))
-    "-0.5".parse_float() | try expect_equal(some(-0.5))
-    "+3.25".parse_float() | try expect_equal(some(3.25))
-    "-1.25e2".parse_float() | try expect_equal(some(-125.0))
-    "5E-1".parse_float() | try expect_equal(some(0.5))
+    "42".parse_float() | try expect_equal(42.0)
+    "-0.5".parse_float() | try expect_equal(-0.5)
+    "+3.25".parse_float() | try expect_equal(3.25)
+    "-1.25e2".parse_float() | try expect_equal(-125.0)
+    "5E-1".parse_float() | try expect_equal(0.5)
 
 test "parse_float accepts the special spellings of math.parse_float":
-    "Infinity".parse_float() | try expect_equal(some(infinity()))
-    "-Infinity".parse_float() | try expect_equal(some(-infinity()))
+    "Infinity".parse_float() | try expect_equal(infinity())
+    "-Infinity".parse_float() | try expect_equal(-infinity())
     try expect_true("NaN".parse_float().get().is_nan())
 
 test "parse_float returns none for invalid or out-of-range text":

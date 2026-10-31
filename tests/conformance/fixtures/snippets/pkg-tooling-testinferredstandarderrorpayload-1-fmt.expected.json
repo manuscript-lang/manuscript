@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/fs.ms\" import filesystem\n\ndef classify(path: String) -> String:\n    match filesystem().stat(path: path, follow_links: True):\n        case error(NotFound): return \"missing\"\n        case ok(_): return \"exists\"\n"
-  }
-}

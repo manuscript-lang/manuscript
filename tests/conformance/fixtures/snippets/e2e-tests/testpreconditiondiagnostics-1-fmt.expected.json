@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import Bytes, BytesBuilder from \"@std/bytes.ms\"\nimport PriorityQueue, Queue from \"@std/queue.ms\"\nimport from_int from \"@std/math.ms\"\n\nfn compare(left: Int, right: Int) Int: left - right\n"
+  }
+}

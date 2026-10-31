@@ -1,5 +1,5 @@
 // Read stdin, write stdout. See TASK.md.
-import { readFileSync } from 'node:fs';
+import readFileSync from 'node:fs';
 
 function solve(input: string): string {
   const lines = input.split('\n');

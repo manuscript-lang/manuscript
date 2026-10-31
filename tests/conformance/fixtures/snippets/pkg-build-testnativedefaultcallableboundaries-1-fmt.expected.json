@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/encoding.ms\" import base64_encode, base64_decode\nfrom \"@std/csv.ms\" import parse, CsvOptions\nfrom \"@std/process.ms\" import commands, Commands, CommandOutput, CommandError\nfrom \"@std/bytes.ms\" import Bytes\nfrom \"@std/time.ms\" import Duration\n\ndef forward[T](item: T) -> T: item\n"
-  }
-}

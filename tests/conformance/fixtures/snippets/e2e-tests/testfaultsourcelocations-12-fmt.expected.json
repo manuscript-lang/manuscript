@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import TextError from \"@std/core.ms\"\n\nfn crash(cause: TextError) Int:\n    return 1 / \"\".byte_length()\n\nexport fn main() Int:\n    let value: Int!TextError = error(TextError(\"expected failure\"))\n    return value.get_or_else(crash)\n"
+  }
+}

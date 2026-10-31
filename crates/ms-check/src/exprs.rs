@@ -127,7 +127,7 @@ fn int_literal_fits(text: &str, negated: bool, t: &Ty) -> bool {
 fn is_time_operand(types: &[&Ty]) -> bool {
     types
         .iter()
-        .any(|t| t.is_std("Duration") || t.is_std("Instant"))
+        .any(|t| t.is_time("Duration") || t.is_time("Instant"))
 }
 
 const TIME_ARITHMETIC: [(BinaryOp, &str, &str, &str); 5] = [
@@ -170,6 +170,18 @@ impl Checker {
                 info.wrap_some = Some(w);
                 self.set_info(e, info.clone());
             }
+            return info;
+        }
+        if let Some(x) = expected
+            && x.is_std("Optional")
+            && x.args.len() == 1
+            && matches!(e.kind, ExprKind::Lambda(_))
+        {
+            // A function literal checks against the payload signature and wraps like any plain value.
+            let payload = x.args[0].clone();
+            let mut info = self.expression(e, Some(&payload));
+            info.wrap_some = Some(x.clone());
+            self.set_info(e, info.clone());
             return info;
         }
         let context = self.mismatch_context.take();
@@ -257,6 +269,7 @@ impl Checker {
                     child(self, left);
                     child(self, index);
                 }
+                ExprKind::Probe(target) => child(self, target),
                 ExprKind::Unary { operand, .. } => child(self, operand),
                 ExprKind::Binary { left, right, .. } => {
                     child(self, left);
@@ -314,6 +327,7 @@ impl Checker {
             ExprKind::Text(parts) => return self.infer_text(parts, i),
             ExprKind::Name(name) => return self.infer_name(e, *name, expected, i),
             ExprKind::Index { left, index } => return self.index(e, left, index),
+            ExprKind::Probe(target) => return self.probe(e, target),
             ExprKind::Match { .. } => return self.match_expression(e, expected, false),
             ExprKind::Apply { left, types, value } => {
                 return self.infer_apply(e, left, types, value.as_deref(), expected, i);
@@ -352,7 +366,7 @@ impl Checker {
                 self.res_error_name(
                     e.pos,
                     text.len(),
-                    "Decimal literal requires the canonical Decimal import; add: from \"@std/decimal.ms\" import Decimal".to_string(),
+                    "Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"".to_string(),
                 );
             }
             i.ty = Some(standard("Decimal", vec![]));
@@ -476,7 +490,7 @@ impl Checker {
                     self.type_error(
                         e.pos,
                         format!(
-                            "{name} has a var parameter, so it cannot be a function value: calls through a function value cannot mark an argument var; take the parameter by value (var copy = param inside the body) or call {name} from a lambda"
+                            "{name} has a var parameter, so it cannot be a function value: calls through a function value cannot mark an argument var; take the parameter by value (var copy = param inside the body) or call {name} from a closure"
                         ),
                     );
                     i.ty = Some(invalid());
@@ -577,7 +591,16 @@ impl Checker {
                 self.res_error(e.pos, msg);
                 return i;
             }
+            if typ.is_std("Optional") {
+                self.res_error(
+                    e.pos,
+                    "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. let x: Int? = none",
+                );
+                i.ty = Some(invalid());
+                return i;
+            }
             if let Some(cs) = case_of(&typ, name).filter(|c| c.fields.is_empty()) {
+                self.opaque_denied(e.pos, &typ, &format!("case {name} cannot be built here"));
                 let constructor = self.instantiate(&typ, &[], &[], expected, e.pos);
                 i.ty = Some(constructor.clone());
                 i.constructor = Some(constructor);
@@ -609,11 +632,12 @@ impl Checker {
             && name != "to_string"
             && let Some(f) = field_of(&rt, name)
         {
+            self.opaque_denied(e.pos, &rt, &format!("field {name} is hidden"));
             i.ty = Some(f.ty);
             return i;
         }
         if rt.id == "Int" && matches!(name.as_str(), "seconds" | "milliseconds" | "minutes") {
-            i.ty = Some(standard("Duration", vec![]));
+            i.ty = Some(time_type("Duration"));
             i.native = Some(name);
             return i;
         }
@@ -1028,7 +1052,7 @@ impl Checker {
             if !invalid_ty(&other.t()) {
                 self.type_error(
                     e.pos,
-                    "none has no type of its own here; test absence with is_none() or is_some() (or compare with some(value))",
+                    "none has no type of its own here; test absence with is_none() or is_some(), or compare with the plain value, e.g. x == 3",
                 );
             }
             i.ty = Some(bool_());
@@ -1057,7 +1081,16 @@ impl Checker {
         } else {
             let a = self.expression(left, None);
             let at = a.t();
-            (a, self.expression(right, literal_hint(right, &at)))
+            // `opt == 3` compares as `opt == Int?`; the plain side wraps without `some`.
+            let wraps = matches!(op, BinaryOp::Eq | BinaryOp::Ne)
+                && at.is_std("Optional")
+                && at.args.len() == 1;
+            let hint = if wraps {
+                Some(&at)
+            } else {
+                literal_hint(right, &at)
+            };
+            (a, self.expression(right, hint))
         };
         let (at, bt) = (a.t(), b.t());
         let logical = matches!(op, BinaryOp::And | BinaryOp::Or);
@@ -1090,9 +1123,13 @@ impl Checker {
             i.ty = Some(if comparison { bool_() } else { invalid() });
             return i;
         }
+        let wrapped_operand = matches!(op, BinaryOp::Eq | BinaryOp::Ne)
+            && common.is_std("Optional")
+            && common.args.len() == 1
+            && compatible(&Some(bt.clone()), &common.args[0]);
         if common.id == "Never"
             || !compatible(&Some(at.clone()), &common)
-            || !compatible(&Some(bt.clone()), &common)
+            || !(wrapped_operand || compatible(&Some(bt.clone()), &common))
         {
             let mut hint = optional_use_hint(&at, &bt);
             if hint.is_empty() {
@@ -1108,7 +1145,7 @@ impl Checker {
                 hint = int_float_mix_hint(&at, &bt);
             }
             if hint.is_empty() {
-                hint = "convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert between Int and Float)".to_string();
+                hint = "convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)".to_string();
             }
             let source = self.m().source.clone();
             let fix = match (at.id.as_str(), bt.id.as_str()) {
@@ -1142,8 +1179,8 @@ impl Checker {
                 i.ty = Some(bool_());
                 if !numeric(&common)
                     && common.id != "String"
-                    && !common.is_std("Duration")
-                    && !common.is_std("Instant")
+                    && !common.is_time("Duration")
+                    && !common.is_time("Instant")
                 {
                     self.type_error(
                         e.pos,
@@ -1156,7 +1193,7 @@ impl Checker {
                 if common.id != "<invalid>"
                     && !numeric(&common)
                     && !(common.id == "String" && op == BinaryOp::Add)
-                    && !(common.is_std("Duration") && matches!(op, BinaryOp::Add | BinaryOp::Sub))
+                    && !(common.is_time("Duration") && matches!(op, BinaryOp::Add | BinaryOp::Sub))
                 {
                     self.type_error(e.pos, "arithmetic requires numeric operands");
                 }
@@ -1183,10 +1220,10 @@ impl Checker {
         let mut matches = 0;
         for (row_op, l, r, result) in TIME_ARITHMETIC {
             if row_op == op
-                && compatible(&Some(left.clone()), &standard(l, vec![]))
-                && compatible(&Some(right.clone()), &standard(r, vec![]))
+                && compatible(&Some(left.clone()), &time_type(l))
+                && compatible(&Some(right.clone()), &time_type(r))
             {
-                i.ty = Some(standard(result, vec![]));
+                i.ty = Some(time_type(result));
                 matches += 1;
             }
         }

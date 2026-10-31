@@ -1,14 +1,14 @@
 # conform: tags=control-flow,stdlib-system,stdlib-testing,testing,tier-io,try-result
 # conform: phase=test
-from "@std/test.ms" import expect_equal, expect_false, expect_true
-from "@std/process.ms" import system
-from "@std/net.ms" import IpFamily
+import expect_equal, expect_false, expect_true from "@std/test.ms"
+import system from "@std/process.ms"
+import IpFamily from "@std/net.ms"
 
 test "network interfaces describe each address and include a loopback":
     let found = system().network_interfaces()
 
     if let items = found:
-        var loopback = False
+        var loopback = false
 
         for item in items:
             try expect_false(item.name.byte_length() == 0)
@@ -18,7 +18,7 @@ test "network interfaces describe each address and include a loopback":
             try expect_equal(item.family == IpFamily.IPv6, item.address.contains(":"))
 
             if item.internal:
-                loopback = True
+                loopback = true
                 try expect_equal(item.mac, "")
 
         try expect_true(loopback)

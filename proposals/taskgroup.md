@@ -6,7 +6,7 @@ Worker threads and processes are a separate proposal (`WorkerGroup`); nothing he
 
 ## Problem
 
-User code cannot run two things at once. The runtime already has stackful coroutines (`crates/ms-rt/src/task.rs`), but only the standard-library I/O uses them. `crates/DESIGN.md` decision 4 said the language has no `spawn`; this proposal reverses that for scoped tasks only, and DESIGN.md, VISION.md and `.experts/runtime.md` say so.
+User code cannot run two things at once. The runtime already has stackful coroutines (`crates/ms-rt/src/task.rs`), but only the standard-library I/O uses them. `crates/DESIGN.md` decision 4 said the language has no `spawn`; this proposal reverses that for scoped tasks only, and DESIGN.md, VISION.md and `wiki/runtime/index.md` say so.
 
 ## What is included
 
@@ -37,11 +37,11 @@ User code cannot run two things at once. The runtime already has stackful corout
 **Surface.**
 
 ```manuscript
-from "@std/tasks.ms" import TaskGroup
+import TaskGroup from "@std/tasks.ms"
 
-def fetch_all(urls: List[String]) -> Result[List[Int], TaskError]:
+fn fetch_all(urls: List[String]) Result[List[Int], TaskError]:
     with let group = TaskGroup[Int](timeout: some(duration(5000000000))):
-        let tasks = urls.map(lambda url: group.spawn(lambda: fetch_size(url.clone())))
+        let tasks = urls.map(fn url: group.spawn(fn: fetch_size(url.clone())))
         var sizes = List[Int]()
         for task in tasks:
             if let size = task.result():

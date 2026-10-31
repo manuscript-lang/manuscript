@@ -13,8 +13,8 @@
         "position": {
           "file": "core-language-types-compatibility-1.ms",
           "line": 7,
-          "column": 35,
-          "offset": 227
+          "column": 26,
+          "offset": 214
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "core-language-types-compatibility-1.ms",
           "line": 9,
-          "column": 39,
-          "offset": 313
+          "column": 30,
+          "offset": 291
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-compatibility-1.ms:7:35: type: a constant can refer only to other constants, but identity is a function; compute the value in a function\n   |\n 7 | let exact: Callable[[Int], Int] = identity\n   |                                   ^\n<DIR>/core-language-types-compatibility-1.ms:9:39: type: a constant can refer only to other constants, but identity is a function; compute the value in a function\n   |\n 9 | let relabeled: Callable[[Int], Int] = identity\n   |                                       ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-compatibility-1.ms:7:26: type: a constant can refer only to other constants, but identity is a function; compute the value in a function\n   |\n 7 | let exact: fn(Int) Int = identity\n   |                          ^\n<DIR>/core-language-types-compatibility-1.ms:9:30: type: a constant can refer only to other constants, but identity is a function; compute the value in a function\n   |\n 9 | let relabeled: fn(Int) Int = identity\n   |                              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

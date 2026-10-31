@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3080",
+        "phase": "type",
+        "message": "cannot infer callback parameter x; provide a type or a known function context",
+        "position": {
+          "file": "diag-shadows-enclosing-lambda-parameter.ms",
+          "line": 6,
+          "column": 16,
+          "offset": 170
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'",
+        "position": {
+          "file": "diag-shadows-enclosing-lambda-parameter.ms",
+          "line": 6,
+          "column": 16,
+          "offset": 170
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-shadows-enclosing-lambda-parameter.ms:6:16: type: cannot infer callback parameter x; provide a type or a known function context\n   |\n 6 |     let f = fn x: return x + 1\n   |                ^\n<DIR>/diag-shadows-enclosing-lambda-parameter.ms:6:16: type: binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'\n   |\n 6 |     let f = fn x: return x + 1\n   |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

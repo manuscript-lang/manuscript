@@ -1,29 +1,29 @@
-from "./key.ms" import Key
-from "./generic.ms" import remove_generic
+import Key from "./key.ms"
+import remove_generic from "./generic.ms"
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool:
+    fn equals(other: Key) Bool:
         return self.id == other.id
 
 impl Hashable for Key:
-    def hash() -> Int: self.id
+    fn hash() Int: self.id
 
-export def id_map() -> Map[Key, Int]:
+export fn id_map() Map[Key, Int]:
     var values = Map[Key, Int]()
     values.add(Key(1, "one"), 10)
     values.add(Key(2, "two"), 20)
     values.add(Key(3, "three"), 30)
     return values
 
-export def id_direct(var values: Map[Key, Int], key: Key) -> Unit:
+export fn id_direct(var values: Map[Key, Int], key: Key) Unit:
     values.remove(key)
 
-export def id_bound(var values: Map[Key, Int], key: Key) -> Unit:
+export fn id_bound(var values: Map[Key, Int], key: Key) Unit:
     let remove = values.remove
     remove(key)
 
-export def id_generic(var values: Map[Key, Int], key: Key) -> Unit:
+export fn id_generic(var values: Map[Key, Int], key: Key) Unit:
     remove_generic(var values, key)
 
-export def id_empty() -> Map[Key, Int]:
+export fn id_empty() Map[Key, Int]:
     return Map[Key, Int]()

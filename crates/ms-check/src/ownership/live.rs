@@ -3,8 +3,12 @@
 //! The ownership walk asks this oracle whether a move is the final use of a
 //! binding. A use is **last** when no later use of the same value can run:
 //! reassigning a binding ends the old value's life, a loop keeps reads alive
-//! until the final iteration, and a `with` resource and a closure's captured
+//! until the final iteration, and a scope-closed resource and a closure's captured
 //! variables stay live to the end of their scope.
+//!
+//! Liveness is kept per place: a binding and a path of fields (`b`, `b.items`). `uses` answers for
+//! the whole binding (is any part of it used later), and `places` answers for the place a
+//! field-path read names (is it, a prefix of it or an extension of it used later).
 
 use crate::hir::*;
 use crate::types::*;
@@ -25,14 +29,58 @@ pub struct UseLive {
 pub struct Liveness {
     /// Name uses, and lambda creations for captures.
     pub uses: HashMap<(NodeId, usize), UseLive>,
+    /// Field-path reads (`b.f.g`, by the outermost member expression and the root binding): no
+    /// later use of the place, a prefix of it or an extension of it can run.
+    pub places: HashMap<(NodeId, usize), UseLive>,
 }
 
-/// Bindings live after a point, each with its earliest later use.
-type Live = HashMap<usize, NodeId>;
+/// A live place: a binding identity and the fields below it.
+type Key = (usize, Vec<Name>);
+
+/// Places live after a point, each with its earliest later use.
+type Live = HashMap<Key, NodeId>;
+
+/// Whether one path is a prefix of the other.
+fn related(a: &[Name], b: &[Name]) -> bool {
+    a.iter().zip(b).all(|(x, y)| x == y)
+}
+
+/// Marks the last step of a key as a store: the place is overwritten there, not read.
+fn store_step() -> Name {
+    n("=")
+}
+
+/// The earliest later use of `uid` at a place related to `path`. A store counts for the whole
+/// binding (`path` empty: assigning a field uses the binding) but not for a place: overwriting
+/// `b.f` does not read the `b.f` an earlier move took.
+fn next_use(live: &Live, uid: usize, path: &[Name]) -> Option<NodeId> {
+    let store = store_step();
+    live.iter()
+        .filter(|((u, p), _)| {
+            *u == uid && related(p, path) && (path.is_empty() || p.last() != Some(&store))
+        })
+        .map(|(_, n)| *n)
+        .min()
+}
+
+/// The binding and fields a chain of member reads names, with the root name's node.
+fn field_chain<'a>(m: &ModuleHir, e: &'a Expr) -> Option<(&'a Expr, BindingRef, Vec<Name>)> {
+    let mut path = Vec::new();
+    let mut at = e;
+    while let ExprKind::Member { left, name } = &at.kind {
+        path.push(*name);
+        at = left;
+    }
+    path.reverse();
+    match (&at.kind, m.resolution(at)) {
+        (ExprKind::Name(_), Resolution::Local(b)) if !path.is_empty() => Some((at, b, path)),
+        _ => None,
+    }
+}
 
 fn join(into: &mut Live, from: &Live) {
     for (k, v) in from {
-        into.entry(*k)
+        into.entry(k.clone())
             .and_modify(|n| {
                 if v.0 < n.0 {
                     *n = *v;
@@ -65,14 +113,27 @@ struct Pass<'a> {
     out: Liveness,
     breaks: Vec<Live>,
     continues: Vec<Live>,
-    /// Live at `return`: resources of enclosing `with` blocks, and the captured
+    /// Live at `return`: resources of enclosing scopes, and the captured
     /// variables inside a lambda.
     exit: Live,
 }
 
 impl Pass<'_> {
     fn record(&mut self, node: NodeId, b: &BindingRef, live: &mut Live) {
-        let next = live.get(&b.uid).copied();
+        self.record_at(node, node, b, Vec::new(), live);
+    }
+
+    /// A use of the place `path` below `b`, named by the expression `node` (the root name for the
+    /// binding's own table, `place_node` for the place table).
+    fn record_at(
+        &mut self,
+        node: NodeId,
+        place_node: NodeId,
+        b: &BindingRef,
+        path: Vec<Name>,
+        live: &mut Live,
+    ) {
+        let next = next_use(live, b.uid, &[]);
         self.out.uses.insert(
             (node, b.uid),
             UseLive {
@@ -80,7 +141,20 @@ impl Pass<'_> {
                 next,
             },
         );
-        live.insert(b.uid, node);
+        let near = next_use(live, b.uid, &path);
+        self.out.places.insert(
+            (place_node, b.uid),
+            UseLive {
+                last: near.is_none(),
+                next: near,
+            },
+        );
+        live.insert((b.uid, path), node);
+    }
+
+    /// The store to `uid` ends the life of the old value of the whole binding.
+    fn kill(live: &mut Live, uid: usize) {
+        live.retain(|(u, _), _| *u != uid);
     }
 
     fn block(&mut self, body: &[Stmt], mut live: Live) -> Live {
@@ -101,10 +175,20 @@ impl Pass<'_> {
                     AssignTarget::Name(_) => {
                         if let Some(b) = self.m.assigned(value) {
                             // The store ends the old value's life.
-                            live.remove(&b.uid);
+                            Self::kill(&mut live, b.uid);
                         }
                     }
-                    AssignTarget::Member(t) => self.expr(t, &mut live),
+                    AssignTarget::Member(t) => {
+                        if let Some((root, b, mut path)) = field_chain(self.m, t) {
+                            // The store ends the life of what the place held, and of the parts
+                            // below it; the binding itself is used.
+                            live.retain(|(u, p), _| *u != b.uid || !p.starts_with(&path));
+                            path.push(store_step());
+                            self.record_at(root.id, t.id, &b, path, &mut live);
+                        } else {
+                            self.expr(t, &mut live);
+                        }
+                    }
                 }
                 self.expr(value, &mut live);
             }
@@ -143,22 +227,6 @@ impl Pass<'_> {
                 let variable = self.m.stmt(s).loop_binding;
                 live = self.looping(None, Some(iter), variable.map(|b| b.uid), body, live);
             }
-            StmtKind::With { value, body, .. } => {
-                let resource = self.m.stmt(s).loop_binding;
-                let mut inner = live;
-                let saved = self.exit.clone();
-                if let Some(b) = &resource {
-                    // Cleanup at scope exit is the resource's final use.
-                    inner.insert(b.uid, s.id);
-                    self.exit.insert(b.uid, s.id);
-                }
-                live = self.block(body, inner);
-                self.exit = saved;
-                if let Some(b) = &resource {
-                    live.remove(&b.uid);
-                }
-                self.expr(value, &mut live);
-            }
         }
         live
     }
@@ -167,7 +235,7 @@ impl Pass<'_> {
         match &p.kind {
             PatternKind::Name(_) => {
                 if let Some(b) = self.m.pattern_binding(p) {
-                    live.remove(&b.uid);
+                    Self::kill(live, b.uid);
                 }
             }
             PatternKind::List(items) => items.iter().for_each(|i| self.define_pattern(i, live)),
@@ -195,7 +263,7 @@ impl Pass<'_> {
             self.breaks.pop();
             // The loop variable is defined per iteration, inside the loop.
             if let Some(uid) = defined {
-                entry.remove(&uid);
+                Self::kill(&mut entry, uid);
             }
             join(&mut entry, &after);
             if let Some(c) = cond {
@@ -230,7 +298,13 @@ impl Pass<'_> {
                     self.record(e.id, &b, live);
                 }
             }
-            ExprKind::Member { left, .. } => self.expr(left, live),
+            ExprKind::Member { left, .. } => {
+                if let Some((root, b, path)) = field_chain(self.m, e) {
+                    self.record_at(root.id, e.id, &b, path, live);
+                } else {
+                    self.expr(left, live);
+                }
+            }
             ExprKind::Apply { left, value, .. } => {
                 if let Some(v) = value {
                     self.expr(v, live);
@@ -241,6 +315,7 @@ impl Pass<'_> {
                 self.expr(index, live);
                 self.expr(left, live);
             }
+            ExprKind::Probe(target) => self.expr(target, live),
             ExprKind::List(items) => items.iter().rev().for_each(|i| self.expr(i, live)),
             ExprKind::Map(entries) => {
                 for entry in entries.iter().rev() {
@@ -277,7 +352,7 @@ impl Pass<'_> {
                     }
                     arm_live = self.block(&arm.body, arm_live);
                     for b in self.m.arm(arm).bindings.iter().flatten() {
-                        arm_live.remove(&b.uid);
+                        Self::kill(&mut arm_live, b.uid);
                     }
                     join(&mut joined, &arm_live);
                 }
@@ -290,7 +365,10 @@ impl Pass<'_> {
     fn lambda(&mut self, e: &Expr, l: &Lambda, live: &mut Live) {
         let captures = self.m.captures(e);
         // The closure may run again, so its captured variables never die in its body.
-        let captured: Live = captures.iter().map(|b| (b.uid, e.id)).collect();
+        let captured: Live = captures
+            .iter()
+            .map(|b| ((b.uid, Vec::new()), e.id))
+            .collect();
         let saved = (
             std::mem::replace(&mut self.exit, captured.clone()),
             std::mem::take(&mut self.breaks),

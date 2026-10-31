@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import PriorityQueue from \"@std/queue.ms\"\n\nfn f() Int:\n    var q = PriorityQueue(\n        compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0\n    )\n    return 0\n"
+  }
+}

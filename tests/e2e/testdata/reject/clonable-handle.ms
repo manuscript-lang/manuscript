@@ -1,10 +1,10 @@
-from "@std/fs.ms" import FileHandle
+import FileHandle from "@std/fs.ms"
 
-def twice[T: Clonable](value: T) -> List[T]:
+fn twice[T: Clonable](value: T) List[T]:
     return [value.clone(), value]
 
-def keep(handle: FileHandle) -> Int:
+fn keep(handle: FileHandle) Int:
     return twice(handle).length()
 
-export def main() -> Int:
+export fn main() Int:
     return 0

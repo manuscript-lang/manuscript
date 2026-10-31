@@ -1,0 +1,8 @@
+diff --git a/crates/ms-std-json/src/lib.rs b/crates/ms-std-json/src/lib.rs
+index 1e54fd14e..5211bb85a 100644
+--- a/crates/ms-std-json/src/lib.rs
++++ b/crates/ms-std-json/src/lib.rs
+@@ -854,0 +855,3 @@ fn failure(text: &str, limit_hit: bool) -> Fail {
++    if !limit_hit {
++        return Fail::InvalidData;
++    }

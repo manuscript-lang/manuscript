@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding this; there is no 'this'; inside an impl method the receiver is 'self'",
+        "position": {
+          "file": "foreign-this.ms",
+          "line": 5,
+          "column": 13,
+          "offset": 138
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/foreign-this.ms:5:13: resolution: unknown binding this; there is no 'this'; inside an impl method the receiver is 'self'\n   |\n 5 |     let a = this\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,12 +1,14 @@
 //! `textDocument/codeAction`: quick fixes, import organization and the
 //! format-all action.
 
-use crate::analysis::{Analysis, Document};
+use crate::analysis::{Analysis, Document, Documents};
 use crate::json::{Json, obj};
 use crate::lint::Lint;
 use crate::text::{self, Position, Range};
 use crate::uri;
+use crate::workspace;
 use ms_check::syntax::ModRef;
+use ms_driver::project::pathops;
 use ms_syntax::token::Tok;
 use std::sync::Arc;
 
@@ -96,11 +98,81 @@ pub fn format_actions(d: &Document) -> Vec<Json> {
     ])]
 }
 
+/// `(name, "./relative/path.ms")` for each top-level `export` declaration in
+/// the other `.ms` files of `d`'s project, found without running the checker.
+fn project_exports(d: &Document, docs: &Documents) -> Vec<(String, String)> {
+    let Ok(files) = workspace::workspace_documents(d, docs, true, None) else {
+        return Vec::new();
+    };
+    let here = d.path();
+    let dir = pathops::dir(&here);
+    let mut found = Vec::new();
+    for file in files {
+        let path = file.path();
+        if path == here {
+            continue;
+        }
+        let Some(import) = ms_driver::imports::import_path(&dir, &path) else {
+            continue;
+        };
+        for name in ms_driver::imports::exported_names(&file.text) {
+            found.push((name, import.clone()));
+        }
+    }
+    found.sort();
+    found.dedup();
+    found
+}
+
+/// Where `statement` goes: after the leading run of imports, else at the top.
+fn import_insertion(source: &str, statement: &str) -> (Position, String) {
+    let newline = if source.contains("\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    let lines: Vec<&str> = source.split_inclusive('\n').collect();
+    let mut at = 0;
+    let mut last = None;
+    while at < lines.len() {
+        let line = lines[at].trim();
+        if line.starts_with("import ") {
+            let mut open = line.contains('{') && !line.contains('}');
+            at += 1;
+            while open && at < lines.len() {
+                open = !lines[at].contains(')');
+                at += 1;
+            }
+            last = Some(at - 1);
+        } else if line.is_empty() || line.starts_with('#') {
+            at += 1;
+        } else {
+            break;
+        }
+    }
+    match last {
+        Some(line) => {
+            let end = line_range(source, line).end;
+            let missing = !lines[line].ends_with('\n');
+            let prefix = if missing { newline } else { "" };
+            (end, format!("{prefix}{statement}{newline}"))
+        }
+        None => (
+            Position {
+                line: 0,
+                character: 0,
+            },
+            format!("{statement}{newline}"),
+        ),
+    }
+}
+
 /// Code actions for `requested`, restricted to the kinds in `only` when given.
 pub fn editor_actions(
     d: &Document,
     checked: &Analysis,
     lint: &dyn Lint,
+    docs: &Documents,
     requested: Range,
     only: &[String],
 ) -> Vec<Json> {
@@ -138,6 +210,56 @@ pub fn editor_actions(
                 vec![edit(fix_range, &fix.replacement)],
                 vec![diagnostic],
             ));
+        }
+    }
+    let mut project: Option<Vec<(String, String)>> = None;
+    for issue in &checked.diagnostics {
+        let Some(m) = &module else { break };
+        if issue.file.as_ref() != m.file.as_str() {
+            continue;
+        }
+        let Some(name) = ms_driver::imports::unresolved_name(&issue.message) else {
+            continue;
+        };
+        // The diagnostic covers the unresolved name.
+        let start = issue.pos.offset as usize;
+        let r = Range {
+            start: text::position(&d.text, start),
+            end: text::position(&d.text, start + name.len()),
+        };
+        if !eligible(r) {
+            continue;
+        }
+        let exports = project.get_or_insert_with(|| project_exports(d, docs));
+        let mut statements: Vec<String> = exports
+            .iter()
+            .filter(|(exported, _)| exported == name)
+            .map(|(_, path)| format!("import {name} from \"{path}\""))
+            .collect();
+        // A project declaration is preferred over a standard-library one.
+        let standard = ms_check::hints::import_hint(name);
+        if let Some((_, statement)) = standard.split_once("; add: ") {
+            statements.push(statement.to_string());
+        }
+        for (i, statement) in statements.iter().enumerate() {
+            let (at, text) = import_insertion(&d.text, statement);
+            let diagnostic = obj([
+                ("range", r.json()),
+                ("message", issue.message.clone().into()),
+                ("code", issue.code().into()),
+                ("source", "manuscript".into()),
+            ]);
+            let mut action = action_for(
+                d,
+                &format!("Add `{statement}`"),
+                "quickfix",
+                vec![edit(Range::at(at), &text)],
+                vec![diagnostic],
+            );
+            if i > 0 {
+                action.set("isPreferred", false.into());
+            }
+            result.push(action);
         }
     }
     for issue in lint.source(&uri::filename(&d.uri), &d.text) {
@@ -199,7 +321,7 @@ pub fn editor_actions(
     let lines: Vec<&str> = d.text.split_inclusive('\n').collect();
     let mut edits = Vec::new();
     let mut at = 0;
-    let is_import = |line: &str| line.trim().starts_with("from \"");
+    let is_import = |line: &str| line.trim().starts_with("import ");
     while at < lines.len() {
         if !is_import(lines[at]) {
             at += 1;
@@ -220,7 +342,11 @@ pub fn editor_actions(
             block.push(declaration);
         }
         let before = block.concat();
-        block.sort();
+        // Group by module path, the part of the statement after `from`.
+        block.sort_by_key(|statement| {
+            let path = statement.rsplit_once(" from ").map_or("", |(_, path)| path);
+            (path.trim().to_string(), statement.clone())
+        });
         let after = block.concat();
         if before != after {
             let range = Range {
@@ -279,15 +405,12 @@ fn unused_import_edits(d: &Document, module: &ModRef, offset: usize) -> (Vec<Jso
         .filter(|i| i.pos.offset == selected.pos.offset)
         .count();
     if count == 1 {
-        // The declaration ends at the name, or at the `)` closing a group.
         let mut end_line = selected.name_pos.line;
-        let after = tokens
-            .iter()
-            .position(|t| t.pos.offset as usize == offset)
-            .map_or(tokens.len(), |at| at + 1);
-        let mut rest = tokens[after..].iter().filter(|t| t.kind != Tok::Comma);
-        if let Some(close) = rest.next().filter(|t| t.kind == Tok::RParen) {
-            end_line = close.pos.line;
+        for token in &tokens {
+            if token.pos.offset >= selected.pos.offset && token.kind == Tok::String {
+                end_line = token.pos.line;
+                break;
+            }
         }
         let r = Range {
             start: line_range(&d.text, selected.pos.line as usize - 1).start,

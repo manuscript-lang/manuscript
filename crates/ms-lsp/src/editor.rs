@@ -31,10 +31,6 @@ pub struct CursorContext {
     pub member: bool,
     /// The `(` of the enclosing call.
     pub call_open: Option<usize>,
-    /// Start of the enclosing call's callee.
-    pub callee_start: usize,
-    /// End of the enclosing call's callee.
-    pub callee_end: usize,
     /// The cursor is at the start of an argument (a label position).
     pub argument: bool,
     /// The cursor is in type syntax.
@@ -56,8 +52,6 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
         prefix: String::new(),
         member: false,
         call_open: None,
-        callee_start: 0,
-        callee_end: 0,
         argument: false,
         type_context: false,
         literal: false,
@@ -70,7 +64,7 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
         c.end += 1;
     }
     c.prefix = String::from_utf8_lossy(&bytes[c.start..offset]).into_owned();
-    // Inside an f-string interpolation the cursor is in an ordinary expression:
+    // Inside a text interpolation the cursor is in an ordinary expression:
     // scan from that expression so the surrounding literal does not hide it.
     let interpolation = interpolation_start(&d.text, offset);
     let tokens: Vec<EditorToken> = match interpolation {
@@ -127,36 +121,8 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
             continue;
         }
         c.call_open = Some(t.start);
-        c.callee_end = previous.end;
-        c.callee_start = previous.start;
-        // Include chained receivers and generic specialization in the callee span.
-        let mut depth = 0;
-        for j in (0..at).rev() {
-            let v = before[j];
-            if v.is(b')') || v.is(b']') {
-                depth += 1;
-            }
-            if v.is(b'(') || v.is(b'[') {
-                if depth == 0 {
-                    break;
-                }
-                depth -= 1;
-            }
-            if depth == 0
-                && (v.is(b'\n')
-                    || v.is(b',')
-                    || v.is(b':')
-                    || v.is(b'=')
-                    || v.text == "return"
-                    || v.text == "let"
-                    || v.text == "var")
-            {
-                break;
-            }
-            c.callee_start = v.start;
-        }
         let mut segment = t.end;
-        depth = 0;
+        let mut depth = 0;
         for v in &before[at + 1..] {
             if v.is(b'(') || v.is(b'[') || v.is(b'{') {
                 depth += 1;
@@ -175,7 +141,7 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
         .map_or(0, |at| at + 1);
     let line = String::from_utf8_lossy(&bytes[line_start..c.start]);
     let line = line.trim();
-    let function_header = line.starts_with("def ") || line.starts_with("export def ");
+    let function_header = line.starts_with("fn ") || line.starts_with("export fn ");
     c.type_context = (function_header && line.ends_with(')'))
         || ((line.contains("let ") || line.contains("var "))
             && line.contains(':')
@@ -207,15 +173,14 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
     Ok(c)
 }
 
-/// The offset where the f-string interpolation containing `offset` begins
+/// The offset where the text interpolation containing `offset` begins
 /// (just after its `{`), or `None` when the cursor is outside every
 /// interpolation. Literals sit on one line, so only the cursor's line is read.
-fn interpolation_start(source: &str, offset: usize) -> Option<usize> {
+pub(crate) fn interpolation_start(source: &str, offset: usize) -> Option<usize> {
     #[derive(PartialEq)]
     enum State {
         Code,
         Text,
-        FText,
         Expr,
         ExprText,
     }
@@ -231,26 +196,15 @@ fn interpolation_start(source: &str, offset: usize) -> Option<usize> {
         match state {
             State::Code => match b {
                 b'#' => return None,
-                b'"' => {
-                    let prefixed = at > line
-                        && bytes[at - 1] == b'f'
-                        && (at - 1 == line || !text::identifier(bytes[at - 2]));
-                    state = if prefixed { State::FText } else { State::Text };
-                }
+                b'"' => state = State::Text,
                 _ => {}
             },
-            State::Text | State::ExprText => match b {
+            State::ExprText => match b {
                 b'\\' => at += 1,
-                b'"' => {
-                    state = if state == State::Text {
-                        State::Code
-                    } else {
-                        State::Expr
-                    };
-                }
+                b'"' => state = State::Expr,
                 _ => {}
             },
-            State::FText => match b {
+            State::Text => match b {
                 b'\\' => at += 1,
                 b'"' => state = State::Code,
                 b'{' => {
@@ -261,7 +215,7 @@ fn interpolation_start(source: &str, offset: usize) -> Option<usize> {
             State::Expr => match b {
                 b'"' => state = State::ExprText,
                 b'{' => depth += 1,
-                b'}' if depth == 0 => state = State::FText,
+                b'}' if depth == 0 => state = State::Text,
                 b'}' => depth -= 1,
                 _ => {}
             },
@@ -279,7 +233,7 @@ fn text_between(source: &str, from: usize, to: usize) -> String {
 }
 
 fn function_parameters_at(tokens: &[EditorToken], at: usize) -> bool {
-    if at > 0 && matches!(tokens[at - 1].text, "def" | "lambda") {
+    if at > 0 && tokens[at - 1].text == "fn" {
         return true;
     }
     let mut previous = at as isize - 1;
@@ -298,7 +252,7 @@ fn function_parameters_at(tokens: &[EditorToken], at: usize) -> bool {
     }
     previous > 0
         && tokens[previous as usize].kind == EditorKind::Name
-        && tokens[previous as usize - 1].text == "def"
+        && tokens[previous as usize - 1].text == "fn"
 }
 
 /// Closes the delimiters still open at the end of the cursor's line, for a

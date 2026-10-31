@@ -406,9 +406,9 @@ impl FnLower<'_> {
             return Ok(());
         }
         // Standard value types read from their JSON text.
-        let parsed = if t.is_std("Duration") {
+        let parsed = if t.is_time("Duration") {
             Some((KIND_NUMBER, "msrt_json_dec_int", false))
-        } else if t.is_std("Timestamp") {
+        } else if t.is_time("Timestamp") {
             Some((KIND_STRING, "msstd_time_parse_timestamp", false))
         } else if t.is_std("Bytes") {
             Some((KIND_STRING, "msrt_encoding_base64_decode", true))
@@ -474,7 +474,7 @@ impl FnLower<'_> {
         if t.is_std("Map") {
             let key = &t.args[0];
             let readable = matches!(key.id.as_str(), "String" | "Int" | "Bool")
-                || key.is_std("Duration")
+                || key.is_time("Duration")
                 || jkey_alt(key);
             if !readable {
                 // Other key types are never readable.
@@ -614,14 +614,18 @@ impl FnLower<'_> {
         if key.id.as_str() == "String" {
             return Ok(name);
         }
-        if key.id.as_str() == "Int" || key.is_std("Duration") {
+        if key.id.as_str() == "Int" || key.is_time("Duration") {
             let slot = self.jslot(MTy::INT);
             let st = self.status_code("msrt_json_dec_int", &[name, slot])?;
             self.drop_value(name);
             let z = self.b.iconst(0);
             let ok = self.b.icmp(Cc::Eq, st, z);
             self.jrequire(ok, &[], &[acc]);
-            return Ok(self.take_slot(slot, MTy::INT));
+            let nanos = self.take_slot(slot, MTy::INT);
+            if key.is_time("Duration") {
+                return self.duration_of(nanos);
+            }
+            return Ok(nanos);
         }
         if key.id.as_str() == "Bool" {
             let (t, f) = (self.b.str_lit("true"), self.b.str_lit("false"));
@@ -1019,8 +1023,9 @@ impl FnLower<'_> {
         if t.is_std("Map") {
             return self.jencode_map(&t.args[0], &t.args[1], w, value);
         }
-        if t.is_std("Duration") {
-            self.jw("msrt_json_w_int", &[w, value])?;
+        if t.is_time("Duration") {
+            let nanos = self.duration_nanos(value)?;
+            self.jw("msrt_json_w_int", &[w, nanos])?;
             return Ok(self.jwritten());
         }
         if let Some(c) = self.json_encode_impl(t) {
@@ -1032,7 +1037,7 @@ impl FnLower<'_> {
             self.drop_value(tree);
             return Ok(written);
         }
-        if t.is_std("Timestamp") || t.is_std("Decimal") {
+        if t.is_time("Timestamp") || t.is_std("Decimal") {
             let text = self.format_value(Val {
                 v: value,
                 own: false,
@@ -1225,6 +1230,12 @@ impl FnLower<'_> {
             return self.jw("msrt_json_w_key", &[w, k]);
         }
         if !jplain_alt(key) {
+            // A duration key is its count of nanoseconds.
+            let k = if key.is_time("Duration") {
+                self.duration_nanos(k)?
+            } else {
+                k
+            };
             let name = self.format_value(Val { v: k, own: false })?;
             self.jw("msrt_json_w_key", &[w, name.v])?;
             if name.own {
@@ -1273,8 +1284,8 @@ impl FnLower<'_> {
         value: Value,
     ) -> Result<Value, Error> {
         let keyable = matches!(key.id.as_str(), "String" | "Int" | "Bool" | "Float")
-            || key.is_std("Duration")
-            || key.is_std("Timestamp")
+            || key.is_time("Duration")
+            || key.is_time("Timestamp")
             || key.is_std("Decimal")
             || jplain_alt(key);
         if !keyable {

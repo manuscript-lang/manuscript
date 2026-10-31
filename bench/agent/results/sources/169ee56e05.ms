@@ -1,13 +1,13 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
-from "@std/collections.ms" import range
+import stdin, stdout from "@std/io.ms"
+import read_lines from "@std/streams.ms"
+import range from "@std/collections.ms"
 
 let UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 let LOWER = "abcdefghijklmnopqrstuvwxyz"
 let DIGITS = "0123456789"
 
 # Returns the alphabet index (0 through 25) of an ASCII letter, or -1 for any other text.
-def letter_index(c: String) -> Int:
+fn letter_index(c: String) Int:
     let code = c.to_bytes().get(0, -1)
     if code >= 65 and code <= 90:
         return code - 65
@@ -17,7 +17,7 @@ def letter_index(c: String) -> Int:
     return -1
 
 # Shifts one character by `shift` places, keeping its case; other characters are returned unchanged.
-def shift_char(c: String, shift: Int) -> String:
+fn shift_char(c: String, shift: Int) String:
     let index = letter_index(c)
     if index < 0:
         return c
@@ -28,21 +28,21 @@ def shift_char(c: String, shift: Int) -> String:
 
     return UPPER.slice(wrapped, wrapped + 1).get()
 
-def is_blank(line: String) -> Bool:
+fn is_blank(line: String) Bool:
     for c in line.chars():
         if c != " ":
-            return False
-    return True
+            return false
+    return true
 
 # Returns the caesar shift for a key, or none when the key is not an integer of at most 7 digits.
-def caesar_shift(key: String) -> Optional[Int]:
+fn caesar_shift(key: String) Optional[Int]:
     var digits = 0
     var sign = 0
 
     for c in key.chars():
         if c == "-" and digits == 0 and sign == 0:
             sign = 1
-        elif DIGITS.contains(c):
+        else if DIGITS.contains(c):
             digits += 1
         else:
             return none
@@ -53,7 +53,7 @@ def caesar_shift(key: String) -> Optional[Int]:
     return key.parse_int()
 
 # Returns the shift of each key letter, or none when the key is empty or has a non-letter.
-def vigenere_shifts(key: String) -> Optional[List[Int]]:
+fn vigenere_shifts(key: String) Optional[List[Int]]:
     var shifts: List[Int] = []
 
     for c in key.chars():
@@ -68,12 +68,7 @@ def vigenere_shifts(key: String) -> Optional[List[Int]]:
 
     return shifts
 
-def transform(
-    text: String,
-    cipher: String,
-    decrypt: Bool,
-    key: String
-) -> Optional[String]:
+fn transform(text: String, cipher: String, decrypt: Bool, key: String) Optional[String]:
     var out = ""
 
     if cipher == "caesar":
@@ -105,7 +100,7 @@ def transform(
 
     return none
 
-def process(line: String) -> String:
+fn process(line: String) String:
     let parts = line.split(" ")
     if parts.length() < 4:
         return "error: bad command"
@@ -132,11 +127,11 @@ def process(line: String) -> String:
 
     return "error: bad key"
 
-export def main() -> Int:
+export fn main() Int:
     for line in read_lines(stdin()).get():
         if is_blank(line):
             continue
 
-        stdout().write(f"{process(line)}\n").get()
+        stdout().write("{process(line)}\n").get()
 
     return 0

@@ -1,0 +1,43 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "result types follow the parameter list without an arrow; remove '->', e.g. fn f() Unit:",
+        "position": {
+          "file": "foreign-arrow-result.ms",
+          "line": 4,
+          "column": 8,
+          "offset": 120
+        },
+        "end": {
+          "file": "foreign-arrow-result.ms",
+          "line": 4,
+          "column": 10,
+          "offset": 122
+        },
+        "fix": {
+          "position": {
+            "file": "foreign-arrow-result.ms",
+            "line": 4,
+            "column": 8,
+            "offset": 120
+          },
+          "end": {
+            "file": "foreign-arrow-result.ms",
+            "line": 4,
+            "column": 10,
+            "offset": 122
+          },
+          "replacement": ""
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

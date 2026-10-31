@@ -1,7 +1,7 @@
 # conform: tags=optional,stdlib-deque,stdlib-testing,testing,tier-stdlib
 # conform: phase=test
-from "@std/test.ms" import expect_equal, expect_true
-from "@std/deque.ms" import Deque
+import expect_equal, expect_true from "@std/test.ms"
+import Deque from "@std/deque.ms"
 
 test "both ends push and pop":
     var d = Deque[Int]()
@@ -13,10 +13,10 @@ test "both ends push and pop":
     d.push_front(1)
     d.push_front(0)
     try expect_equal(d.to_list(), [0, 1, 2, 3])
-    try expect_equal(d.front(), some(0))
-    try expect_equal(d.back(), some(3))
-    try expect_equal(d.pop_front(), some(0))
-    try expect_equal(d.pop_back(), some(3))
+    try expect_equal(d.front(), 0)
+    try expect_equal(d.back(), 3)
+    try expect_equal(d.pop_front(), 0)
+    try expect_equal(d.pop_back(), 3)
     try expect_equal(d.length(), 2)
 
 test "indexed reads follow the front":
@@ -24,8 +24,8 @@ test "indexed reads follow the front":
     for name in ["b", "c", "d"]:
         d.push_back(name)
     d.push_front("a")
-    try expect_equal(d.at(0), some("a"))
-    try expect_equal(d.at(3), some("d"))
+    try expect_equal(d.at(0), "a")
+    try expect_equal(d.at(3), "d")
     try expect_equal(d.at(4), none)
     try expect_equal(d.at(-1), none)
 
@@ -40,9 +40,9 @@ test "wraps around and grows past the first buffer":
         expected.prepend(-i)
 
         if i % 3 == 0:
-            try expect_equal(d.pop_front(), some(expected.get(0)))
+            try expect_equal(d.pop_front(), expected.get(0))
             expected = expected.drop(1)
-            try expect_equal(d.pop_back(), some(expected.pop().get()))
+            try expect_equal(d.pop_back(), expected.pop().get())
 
     try expect_equal(d.to_list(), expected)
 
@@ -60,8 +60,9 @@ test "a copy is independent and clear empties":
     try expect_equal(e.to_list(), [7])
 
 test "optional elements keep none distinct from absent":
-    var d = Deque[Optional[Int]]()
+    var d = Deque[Int?]()
     d.push_back(none)
     try expect_equal(d.length(), 1)
-    try expect_equal(d.pop_front(), some(none))
+    let present_none: Int? = none
+    try expect_equal(d.pop_front(), present_none)
     try expect_equal(d.pop_front(), none)

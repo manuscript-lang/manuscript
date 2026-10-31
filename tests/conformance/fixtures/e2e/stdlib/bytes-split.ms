@@ -1,8 +1,8 @@
 # conform: tags=closures,faults,generics,lists,modules,mutation,optional,stdlib-bytes,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/bytes-split.ms
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/bytes.ms" import Bytes
+import expect_equal, expect_false from "@std/test.ms"
+import Bytes from "@std/bytes.ms"
 
 test "Bytes split is binary safe":
     let data = Bytes([255, 0, 1, 0, 254])
@@ -46,7 +46,7 @@ test "Bytes split optional limits truncate parts":
             or data.split(separator, none) != expected
         )
     )
-    try expect_equal(data.split(separator, some(2)), [Bytes([1]), Bytes([2])])
+    try expect_equal(data.split(separator, 2), [Bytes([1]), Bytes([2])])
     try expect_equal(data.split(separator, 1), [Bytes([1])])
     try expect_false(
         (
@@ -57,20 +57,16 @@ test "Bytes split optional limits truncate parts":
     try expect_equal(data.split(separator, 9999999), expected)
     try expect_equal(data.split(Bytes([]), 2), [Bytes([1]), Bytes([0])])
 
-def split_then[T](
-    data: Bytes,
-    separator: Bytes,
-    transform: Callable[[List[Bytes]], T]
-) -> T:
+fn split_then[T](data: Bytes, separator: Bytes, transform: fn(List[Bytes]) T) T:
     return data.split(separator) | transform
 
-def call_split(operation: Callable[[Bytes, Optional[Int]], List[Bytes]]) -> List[Bytes]:
-    return operation(Bytes([0]), some(2))
+fn call_split(operation: fn(Bytes, Int?) List[Bytes]) List[Bytes]:
+    return operation(Bytes([0]), 2)
 
 test "Bytes split bound methods and generic forwarding retain contracts":
     var data = Bytes([1, 0, 2])
     let split = data.split
-    let typed: Callable[[Bytes, Optional[Int]], List[Bytes]] = data.split
+    let typed: fn(Bytes, Int?) List[Bytes] = data.split
     data = Bytes([9])
     try expect_equal(split(Bytes([0])), [Bytes([1]), Bytes([2])])
     try expect_equal(split(max_parts: 1, Bytes([0])), [Bytes([1])])
@@ -78,8 +74,8 @@ test "Bytes split bound methods and generic forwarding retain contracts":
     try expect_false(
         (
             split_then[Bool](
-                Bytes([1, 0, 2]), Bytes([0]), lambda value: value.length() == 2
-            ) != True
+                Bytes([1, 0, 2]), Bytes([0]), fn value: value.length() == 2
+            ) != true
         )
     )
 

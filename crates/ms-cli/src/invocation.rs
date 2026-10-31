@@ -56,6 +56,9 @@ pub const JSON_COMMANDS: &[&str] = &[
     "search_symbol",
 ];
 
+/// Commands that execute a program and can forward its arguments after `--`.
+const PROGRAM_ARGUMENT_COMMANDS: &[&str] = &["run", "test", "bench", "profile"];
+
 #[derive(Debug, Default)]
 pub struct Invocation {
     pub command: String,
@@ -70,6 +73,8 @@ pub struct Invocation {
     pub structured: bool,
     pub watch: bool,
     pub fix: bool,
+    /// `--deny-warnings`: lint warnings fail the command.
+    pub deny_warnings: bool,
     pub build_type_name: String,
     pub test_timeout: String,
     pub test_filter: String,
@@ -173,6 +178,7 @@ fn parse_options(
             }
             "--watch" => inv.watch = true,
             "--fix" => inv.fix = true,
+            "--deny-warnings" => inv.deny_warnings = true,
             "--check" => inv.format_check = true,
             "--json" => inv.structured = true,
             "--build-type" => {
@@ -345,18 +351,28 @@ fn parse_options(
                         i += 1;
                         continue;
                     }
+                    let fix = if inv.is_one_of(PROGRAM_ARGUMENT_COMMANDS) {
+                        "arguments for the program go after --"
+                    } else {
+                        "remove the extra argument"
+                    };
                     return Err(usage_error(
                         io,
                         format!(
-                            "unexpected extra argument {} (ms {} takes one file; arguments for the program go after --)",
+                            "unexpected extra argument {} (ms {} takes one file; {fix})",
                             args[i], inv.command
                         ),
                     ));
                 }
+                let arguments_hint = if inv.is_one_of(PROGRAM_ARGUMENT_COMMANDS) {
+                    " (arguments for the program go after --)"
+                } else {
+                    ""
+                };
                 return Err(usage_error(
                     io,
                     format!(
-                        "unknown option {} for ms {}; run 'ms help {}' for its options (arguments for the program go after --)",
+                        "unknown option {} for ms {}; run 'ms help {}' for its options{arguments_hint}",
                         args[i], inv.command, inv.command
                     ),
                 ));
@@ -424,6 +440,12 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
     ]) {
         crate::unknown_command(io, &command);
         return Err(2);
+    }
+    if !inv.arguments.is_empty() && !inv.is_one_of(PROGRAM_ARGUMENT_COMMANDS) {
+        return Err(usage_error(
+            io,
+            format!("ms {command} does not run a program; remove the arguments after --"),
+        ));
     }
     if !inv.format.is_empty() && command != "diagram" {
         return Err(usage_error(
@@ -567,6 +589,14 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             ),
         ));
     }
+    if inv.deny_warnings && command != "lint" {
+        return Err(usage_error(
+            io,
+            format!(
+                "--deny-warnings requires lint, not {command}; use ms lint <file> --deny-warnings"
+            ),
+        ));
+    }
     if inv.watch && !inv.is_one_of(&["check", "lint", "run", "test"]) {
         return Err(usage_error(
             io,
@@ -630,6 +660,40 @@ pub fn requests_help(args: &[String]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_executing_commands_accept_program_arguments() {
+        for command in [
+            "run", "test", "bench", "profile", "build", "emit", "inspect", "diagram",
+        ] {
+            let args = [command, "main.ms", "--", "--help", ""].map(String::from);
+            let (mut stdin, mut stdout, mut stderr) = (std::io::empty(), Vec::new(), Vec::new());
+            let mut io = Io {
+                stdin: &mut stdin,
+                stdout: &mut stdout,
+                stderr: &mut stderr,
+            };
+            let result = parse_invocation(&args, &mut io).and_then(|mut inv| {
+                validate(&mut inv, &mut io)?;
+                Ok(inv)
+            });
+            assert!(stdout.is_empty(), "{command}: {stdout:?}");
+            if matches!(command, "run" | "test" | "bench" | "profile") {
+                let inv = result.expect(command);
+                let expected = if matches!(command, "test" | "bench") {
+                    vec!["--", "--help", ""]
+                } else {
+                    vec!["--help", ""]
+                };
+                assert_eq!(inv.arguments, expected, "{command}");
+                assert!(stderr.is_empty(), "{command}: {stderr:?}");
+            } else {
+                assert_eq!(result.unwrap_err(), 2, "{command}");
+                let stderr = String::from_utf8(stderr).unwrap();
+                assert!(stderr.contains("remove the arguments after --"), "{stderr}");
+            }
+        }
+    }
 
     #[test]
     fn help_scanning_respects_option_values_and_the_separator() {

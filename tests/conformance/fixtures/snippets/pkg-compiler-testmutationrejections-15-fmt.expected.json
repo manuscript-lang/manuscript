@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/net.ms\" import Connection\n\ndef f(socket: Connection) -> Unit:\n    socket.clone()\n"
-  }
-}

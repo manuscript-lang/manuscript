@@ -1,14 +1,14 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Bag:
     items: List[Int]
 
 interface Picker[T]:
-    def pick[K: Comparable](key: Callable[[T], K]) -> Optional[T]
-    def mapped[U](transform: Callable[[T], U]) -> List[U]
+    fn pick[K: Comparable](key: fn(T) K) T?
+    fn mapped[U](transform: fn(T) U) List[U]
 
 impl Picker[Int] for Bag:
-    def pick[K: Comparable](key: Callable[[Int], K]) -> Optional[Int]:
+    fn pick[K: Comparable](key: fn(Int) K) Int?:
         if self.items.length() == 0:
             return none
 
@@ -22,41 +22,41 @@ impl Picker[Int] for Bag:
                 at = i
                 best = k
 
-        return some(self.items[at])
+        return self.items[at]
 
-    def mapped[U](transform: Callable[[Int], U]) -> List[U]:
+    fn mapped[U](transform: fn(Int) U) List[U]:
         var out: List[U] = []
         for x in self.items:
             out.append(transform(x))
         return out
 
 impl Bag:
-    def paired[U: Clonable](other: U) -> List[U]:
+    fn paired[U: Clonable](other: U) List[U]:
         var out: List[U] = []
         for item in self.items:
             out.append(other.clone())
         return out
 
-def pick_with[B: Picker[Int]](bag: B) -> Optional[Int]:
-    return bag.pick(lambda (x: Int) -> Int: 0 - x)
+fn pick_with[B: Picker[Int]](bag: B) Int?:
+    return bag.pick(fn(x: Int) Int: 0 - x)
 
 test "an interface operation takes type parameters of its own":
     let bag = Bag(items: [3, 1, 2])
-    bag.pick(lambda (x: Int) -> Int: x) | try expect_equal(some(3))
-    bag.pick(lambda (x: Int) -> String: "{x}") | try expect_equal(some(3))
-    bag.mapped(lambda (x: Int) -> String: "n") | try expect_equal(["n", "n", "n"])
+    bag.pick(fn(x: Int) Int: x) | try expect_equal(3)
+    bag.pick(fn(x: Int) String: "\{x\}") | try expect_equal(3)
+    bag.mapped(fn(x: Int) String: "n") | try expect_equal(["n", "n", "n"])
 
 test "a bounded type parameter calls a generic operation":
-    pick_with(Bag(items: [3, 1, 2])) | try expect_equal(some(1))
+    pick_with(Bag(items: [3, 1, 2])) | try expect_equal(1)
 
 test "an inherent method takes type parameters of its own":
     Bag(items: [1, 2]).paired("a") | try expect_equal(["a", "a"])
-    Bag(items: [1, 2]).paired(True) | try expect_equal([True, True])
+    Bag(items: [1, 2]).paired(true) | try expect_equal([true, true])
 
 test "List max_by and min_by are source methods":
     let words = ["bb", "a", "ccc", "dd"]
-    words.max_by(lambda (w: String) -> Int: w.length()) | try expect_equal(some("ccc"))
-    words.min_by(lambda (w: String) -> Int: w.length()) | try expect_equal(some("a"))
+    words.max_by(fn(w: String) Int: w.length()) | try expect_equal("ccc")
+    words.min_by(fn(w: String) Int: w.length()) | try expect_equal("a")
 
-export def main() -> Int:
+export fn main() Int:
     return 0

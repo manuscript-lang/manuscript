@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def work() -> Unit:\n    send_message(\n        condition: account_is_active and payment_is_allowed and remaining_balance > 0\n    )\n"
-  }
-}

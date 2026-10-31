@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@types\" import List, Set, ListEntry\nfrom \"@domain/types.ms\" import Map, MapEntry, CollectionError\n\ndef get() -> Int: (\n    List(1).value\n    + Set(2).value\n    + Map[String, Int](3).value\n    + ListEntry(4).value\n    + MapEntry[String, Int](5).value\n)\n\ndef cause() -> CollectionError: CollectionError(\"local\")\n\nexport def main() -> Int: get() - 15\n"
-  }
-}

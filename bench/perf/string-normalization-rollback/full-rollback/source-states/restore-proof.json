@@ -1,0 +1,19 @@
+{
+  "baseline_commit": "db975ce2f01ddf8da108ec9045ecaf66a63ab22c",
+  "current_main": "85cfb96b889ec4176cfe71a42d74acfd091cbe60",
+  "production_path": "crates/ms-rt/src/string.rs",
+  "baseline_snapshot": "../../source-states/baseline.rs.txt",
+  "before_snapshot": "before.rs.txt",
+  "after_snapshot": "after.rs.txt",
+  "baseline_normalize_kind_equals_after_byte_exact": true,
+  "normalize_kind_sha256": "c0c6293d7f1923ec913b54915d5c804c849c3a708c5c9369ab5f51ac115da813",
+  "before_source_sha256": "1c27ec3227e0d6cd7a3db5e209301df571df81c7c9c57359ce11d0e0b0d719d0",
+  "after_source_sha256": "d9124ee3a902263ee12b9daa6668dab4e6609044e40e72c5074c167e1be4a2c0",
+  "production_diff": {
+    "added": 5,
+    "deleted": 18,
+    "total": 23
+  },
+  "outside_normalize_kind_equal": true,
+  "scope": "Read-only source comparison; no source/runtime/build mutation."
+}

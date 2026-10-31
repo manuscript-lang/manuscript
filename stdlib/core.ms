@@ -2,7 +2,7 @@
 # A contract for expected failures that can provide a human-readable message.
 export interface Error:
     # Returns a human-readable description of this expected error.
-    def message() -> String
+    fn message() String
 
 # An error that carries only intentional text, for callers that have no domain error to return.
 export type TextError:
@@ -11,7 +11,7 @@ export type TextError:
 
 impl Error for TextError:
     # Returns the wrapped text verbatim.
-    def message() -> String: ...
+    fn message() String: ...
 
 # The error `Optional.ok_or()` returns when no cause is given. Its message names the source file and line of the call.
 export type MissingValue:
@@ -23,7 +23,7 @@ export type MissingValue:
 
 impl Error for MissingValue:
     # Returns "missing value at" followed by the recorded source position.
-    def message() -> String: ...
+    fn message() String: ...
 
 # Portable categories for shared standard error cases. Domain errors retain their types and payloads.
 export type ErrorCategory:
@@ -52,26 +52,34 @@ export type ErrorCategory:
 # Recognized standard cases use their same-name category.
 # Custom errors and domain-specific cases (including Failed, Full, OutputLimit, OutOfRange,
 # AuthenticationFailed and wrapped LogError causes) return none. Messages are never parsed.
-export def category(cause: Error) -> Optional[ErrorCategory]: ...
+export fn category(cause: Error) ErrorCategory?: ...
 
 # Raises a programming fault with the supplied message and stops the current operation.
-export def panic(message: String) -> Never: ...
+export fn panic(message: String) Never: ...
 
-# A resource that can be closed. `with` closes a bound resource on every exit.
+# A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
+# The implicit close behaves like `try value.close()`: a failed close becomes the function's error, after the
+# other bindings of the scopes it leaves have closed. Where the function cannot return an `Error`, or the
+# close happens inside a holder (a record, list or temporary), a failed close is a fault. If the scope is
+# already returning an error, that error is kept and the close error is dropped. Call `close()` yourself to
+# handle the failure; the binding is then consumed.
 export interface Closeable:
     # Releases the implementation's resource state; with calls this on every scope exit.
-    # Cleanup runs during return, expected errors, faults, and cancellation too.
-    var def close() -> Unit
+    # Cleanup runs during return, expected errors, faults, and cancellation too. A type whose release cannot
+    # fail returns `ok(unit)`.
+    var fn close() Unit!
 
 # A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
 # `for item in source:` calls `next` until `none`; a variable or field path advances in place and
 # keeps its final state, while any other expression is held by the loop alone. `next` should keep
-# returning `none` after the end.
+# returning `none` after the end. The item is a borrow: it stays valid, and the iterator
+# unchanged, until the loop body ends; clone it to keep it.
 export interface Iterator[T]:
-    # Returns the next item, or none when no items remain.
-    var def next() -> Optional[T]
+    # Returns the next item, or none when no items remain. The item borrows from the iterator
+    # (an iterator over a container borrows from the container instead).
+    var fn next() T?
 
-# Represents a value that may be absent: `some(value)` or `none`.
+# Represents a value that may be absent: a `T` or `none`; a plain `T` converts where a `T?` is expected.
 export type Optional[T]:
     # A present payload, retained by reference when T is mutable.
     case some(
@@ -81,35 +89,35 @@ export type Optional[T]:
     # An absent value with no payload; no T needs to be constructed.
     case none
 
-impl Optional[T]:
-    # Returns True for some(value), and False for none.
-    def is_some() -> Bool: ...
+impl T?:
+    # Returns True when a value is present, and False for none.
+    fn is_some() Bool: ...
 
     # Reports whether this value is absent.
-    def is_none() -> Bool: ...
+    fn is_none() Bool: ...
 
     # Returns the payload, or `default` when this is `none`; pass a default or unwrap with `if let value = optional:` unless absence is a bug.
     # Without a default, `none` raises a fault.
-    def get(default: Optional[T] = none) -> ref T: ...
+    fn get(default: T?) T: ...
 
     # Transforms a present payload; none remains absent.
-    def map[U](transform: Callable[[T], U]) -> Optional[U]: ...
+    fn map[U](transform: fn(T) U) U?: ...
 
     # Calls transform only when present, returning its Optional unchanged.
-    def and_then[U](transform: Callable[[T], Optional[U]]) -> Optional[U]: ...
+    fn and_then[U](transform: fn(T) U?) U?: ...
 
     # Returns the payload, or calls create once and returns its value only when absent.
-    def get_or_else(create: Callable[[], T]) -> T: ...
+    fn get_or_else(create: fn() T) T: ...
 
     # Calls create once only when absent, returning its Optional unchanged.
-    def or_else(create: Callable[[], Optional[T]]) -> Optional[T]: ...
+    fn or_else(create: fn() T?) T?: ...
 
     # Returns ok with the original payload, or error with the eager cause.
     # Without a cause, E is MissingValue and the error names the calling source file and line.
-    def ok_or[E: Error = MissingValue](cause: Optional[E] = none) -> Result[T, E]: ...
+    fn ok_or[E: Error = MissingValue](cause: E?) T!E: ...
 
     # Constructs an error once only for none; present payloads remain unchanged.
-    def ok_or_else[E: Error](create: Callable[[], E]) -> Result[T, E]: ...
+    fn ok_or_else[E: Error](create: fn() E) T!E: ...
 
 # Holds either a successful value (`ok`) or an expected failure (`error`).
 export type Result[T, E: Error]:
@@ -124,56 +132,69 @@ export type Result[T, E: Error]:
         cause: E
     )
 
-impl Result[T, E]:
+impl T!E:
     # Reports whether this result contains a successful value.
-    def is_ok() -> Bool: ...
+    fn is_ok() Bool: ...
 
     # Reports whether this result contains an expected error.
-    def is_error() -> Bool: ...
+    fn is_error() Bool: ...
 
     # Returns the successful payload, or `default` when this is an error; pass a default or propagate with `try` unless failure is a bug.
     # Without a default, an error raises a fault.
-    def get(default: Optional[T] = none) -> ref T: ...
+    fn get(default: T?) T: ...
 
     # Returns the error payload; check `is_error()` first, because a successful result raises a fault.
-    def err() -> ref E: ...
+    fn err() E: ...
 
     # Returns the successful payload, or calls create once with the original error and returns its value.
-    def get_or_else(create: Callable[[E], T]) -> T: ...
+    fn get_or_else(create: fn(E) T) T: ...
 
     # Calls create once with the original error only when this is an error, returning its Result.
-    def or_else(create: Callable[[E], Result[T, E]]) -> Result[T, E]: ...
+    fn or_else(create: fn(E) T!E) T!E: ...
 
     # Transforms only an error, preserving a successful payload unchanged.
-    def map_error[F: Error](transform: Callable[[E], F]) -> Result[T, F]: ...
+    fn map_error[F: Error](transform: fn(E) F) T!F: ...
 
     # Transforms only a successful payload, preserving an error unchanged.
-    def map[U](transform: Callable[[T], U]) -> Result[U, E]: ...
+    fn map[U](transform: fn(T) U) U!E: ...
 
     # Calls transform only on success. Its result keeps the same error type.
-    def and_then[U](transform: Callable[[T], Result[U, E]]) -> Result[U, E]: ...
+    fn and_then[U](transform: fn(T) U!E) U!E: ...
 
     # Returns some with the original success payload, or none for an error.
-    def to_optional() -> Optional[T]: ...
+    fn to_optional() T?: ...
 
 # Equality and hashing are ordinary operation interfaces. Built-in data retains
 # its value semantics; an explicit implementation selects domain identity.
 export interface Equal:
     # Compares this value with another value of the same type.
-    def equals(other: Self) -> Bool
+    fn equals(other: Self) Bool
 
 # A type with a total order; `compare` agrees with `equals` when both are implemented.
 export interface Comparable:
     # Orders this value against another of the same type: negative when it sorts before, zero when neither sorts first, positive when it sorts after.
-    def compare(other: Self) -> Int
+    fn compare(other: Self) Int
 
-# A type whose values can be duplicated. Plain data is Clonable; functions and resource handles are not.
+# A type whose values can be duplicated. Plain data is Clonable; functions, interface values and resource handles are not.
 # There is nothing to implement: the bound `T: Clonable` makes `value.clone()` available on a type parameter.
 export interface Clonable:
     # Returns an independent deep copy of this value.
-    def clone() -> Self
+    fn clone() Self
+
+# A type whose values are plain data: no resource, function, interface value, or runtime handle
+# anywhere inside. Bytes cross a boundary only as data, so `json.parse`, `json.stringify`, and the
+# message types of processes, workers, tasks and channels require `T: Data`.
+# There is nothing to implement. Records and alternatives are `Data` when every field is; among the collections
+# only `List` is, when its element is. A `Map` or `Set` is never `Data`, nor is a `Closeable` type or an `opaque type`; `JsonValue`
+# is `Data` by declaration, so a JSON object travels as a `JsonValue`.
+export interface Data: ...
+
+# A type whose values are plain words in the runtime, so passing one duplicates it with a bit copy and
+# the original stays usable. Only an extern type in the standard library declares it, with `impl Copy for T:`;
+# records and alternatives are copied when every field is, and every other native moves.
+export interface Copy: ...
 
 # A type with a stable hash consistent with its `Equal` implementation.
 export interface Hashable:
     # Returns a stable hash consistent with `equals` for the same value.
-    def hash() -> Int
+    fn hash() Int

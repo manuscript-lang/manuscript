@@ -117,12 +117,17 @@ pub struct Program {
     pub borrows: Rc<HashMap<usize, crate::ownership::BorrowKind>>,
     /// Resource bindings closed implicitly when their scope ends. Filled together with `borrows`.
     pub implicit_closes: Rc<HashSet<usize>>,
+    /// Closed resource bindings that also have an explicit `.close()` call.
+    pub explicit_closes: Rc<HashSet<usize>>,
+    /// The name expressions that move a closed resource binding, by binding.
+    pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
+    /// Payload bindings of a consumed match scrutinee that some path moves out.
+    pub moved_payloads: Rc<HashSet<usize>>,
+    /// Resource fields moved out of an owned binding, by binding and member node.
+    pub resource_moves: Rc<HashMap<usize, HashMap<NodeId, Vec<Name>>>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
-    /// `ref` functions that return a borrow on every path, by module file and node, for lowering.
-    /// Filled together with `borrows`.
-    pub lenders: Rc<HashSet<(Name, NodeId)>>,
     /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
     /// identity. Filled together with `borrows`.
     pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
@@ -207,8 +212,8 @@ pub struct Checker {
     pub(crate) function: usize,
     pub(crate) serial: usize,
     pub(crate) loops: usize,
-    /// `(function, place)` of each `lock` guard whose `with` block is being checked.
-    pub(crate) held_locks: Vec<(usize, String)>,
+    /// `(function, place)` of each `lock` guard that is still held.
+    pub(crate) held_locks: Vec<(usize, String, Name)>,
     pub(crate) test_function: usize,
     pub(crate) rejected_names: HashSet<Name>,
     pub(crate) unknown_type: bool,
@@ -218,6 +223,8 @@ pub struct Checker {
     pub(crate) reported_bounds: HashSet<String>,
     pub(crate) in_declaration_checks: bool,
     pub(crate) label_mismatch: bool,
+    /// Arguments whose generic-inference conflict is already reported, so the final argument check stays quiet.
+    pub(crate) conflicted_arguments: HashSet<ms_syntax::ast::NodeId>,
     pub(crate) call_name: String,
     pub(crate) call_pos: Option<Pos>,
     pub(crate) captures: HashMap<usize, HashMap<usize, BindingRef>>,
@@ -261,6 +268,7 @@ impl Checker {
             reported_bounds: HashSet::new(),
             in_declaration_checks: false,
             label_mismatch: false,
+            conflicted_arguments: HashSet::new(),
             call_name: String::new(),
             call_pos: None,
             captures: HashMap::new(),
@@ -299,14 +307,13 @@ impl Checker {
     // ------------------------------------------------------------ diagnostics
 
     fn import_reported(&self, name: &str, pos: Pos) -> bool {
-        let suffix = format!(" import {name}");
+        let hint = format!("; add: import {name} from ");
         let file = self.current_file();
         let _ = pos;
-        self.p.diagnostics.iter().any(|d| {
-            d.file.as_ref() == file.as_str()
-                && d.message.contains("; add: from ")
-                && d.message.ends_with(&suffix)
-        })
+        self.p
+            .diagnostics
+            .iter()
+            .any(|d| d.file.as_ref() == file.as_str() && d.message.contains(&hint))
     }
 
     /// Reports a diagnostic, applying the checker's suppression rules.
@@ -358,6 +365,18 @@ impl Checker {
     /// A type-phase diagnostic.
     pub(crate) fn type_error(&mut self, pos: Pos, message: impl Into<String>) {
         self.error(pos, Phase::Type, message);
+    }
+
+    /// Reports `what` when `t` is an `opaque type` declared in another file; true when it did.
+    pub(crate) fn opaque_denied(&mut self, pos: Pos, t: &Ty, what: &str) -> bool {
+        let Some(module) = t.opaque_module().filter(|m| *m != self.current_file()) else {
+            return false;
+        };
+        self.type_error(
+            pos,
+            format!("{t} is opaque outside {module}: {what}; use the functions {module} exports"),
+        );
+        true
     }
 
     /// A resolution-phase diagnostic.
@@ -664,10 +683,15 @@ impl Checker {
                     stdlib::standard_module_symbol(pn, item.name)
                 }
             } else {
-                self.imports
-                    .get(module.file, item.id)
-                    .and_then(|target| self.p.symbols.get(&target).cloned())
-                    .and_then(|names| names.borrow().get(&item.name).cloned())
+                self.imports.get(module.file, item.id).and_then(|target| {
+                    self.p.symbols.get(&target).and_then(|names| {
+                        names
+                            .borrow()
+                            .get(&item.name)
+                            .filter(|symbol| symbol.module == target)
+                            .cloned()
+                    })
+                })
             };
             let usable = found.as_ref().filter(|f| f.export).cloned();
             let Some(found) = usable else {
@@ -942,6 +966,12 @@ impl Checker {
                 self.check_field_defaults(d, &s);
             }
             if let DeclKind::Interface(i) = &d.decl().kind {
+                if i.methods.is_empty() && !stdlib::is_source_module(module) {
+                    self.type_error(
+                        d.pos(),
+                        "an interface declares at least one operation; only the standard library declares a property without operations, like `Data`",
+                    );
+                }
                 for method in &i.methods {
                     for param in method.func.params.iter().filter(|p| p.mutable) {
                         self.type_error(
@@ -954,7 +984,14 @@ impl Checker {
                             continue;
                         };
                         let old = self.scope.clone();
-                        let vars = self.sym(i.name).map(|s| s.variables()).unwrap_or_default();
+                        let mut vars = self.sym(i.name).map(|s| s.variables()).unwrap_or_default();
+                        if let Some(symbol) = self.sym(i.name) {
+                            vars.extend(stdlib::operation_variables(&format!(
+                                "{}/{}",
+                                symbol.ty().id,
+                                method.func.name
+                            )));
+                        }
                         self.scope = self.variable_scope(&vars);
                         let typ = self.resolve(param.ty.as_ref());
                         self.expression(default, Some(&typ));
@@ -1100,6 +1137,18 @@ impl Checker {
         }
         for (i, p) in params.iter().enumerate() {
             for b in &p.bounds {
+                // A declaration's own parameters are not registered yet, so resolving it here would misreport its arity.
+                if let TypeKind::Named { name, .. } = &b.kind
+                    && !self.scope.types.borrow().contains_key(name)
+                    && let Some(s) = self.sym(*name).filter(|s| s.kind == SymKind::Type)
+                    && !matches!(s.ty().kind, Kind::Contract | Kind::Variable)
+                {
+                    self.type_error(
+                        b.pos,
+                        "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'",
+                    );
+                    continue;
+                }
                 let t = self.resolve(Some(b));
                 if t.kind != Kind::Contract {
                     if t.kind == Kind::Variable {
@@ -1219,7 +1268,7 @@ impl Checker {
         if name.starts_with("msrt_") || name.starts_with("msstd_") {
             self.type_error(
                 pos,
-                format!("extern def {name} names a runtime-internal symbol; msrt_ and msstd_ natives are reserved for bundled standard modules, so call the standard library instead"),
+                format!("extern fn {name} names a runtime-internal symbol; msrt_ and msstd_ natives are reserved for bundled standard modules, so call the standard library instead"),
             );
         }
         if !f.type_params.is_empty() {
@@ -1444,6 +1493,7 @@ impl Checker {
             }
             let mutable = params.get(i).is_some_and(|a| a.mutable);
             let b = self.bind_reporting(p.name, &p.ty, mutable, pos, !repeated);
+            self.record_cleanup(&b);
             self.m()
                 .facts_mut()
                 .decls
@@ -1488,7 +1538,7 @@ impl Checker {
         {
             self.type_error(
                 decl.pos(),
-                "make_fixture must be a nongeneric zero-argument function; declare def make_fixture() -> ConcreteFixture",
+                "make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture",
             );
             return;
         }

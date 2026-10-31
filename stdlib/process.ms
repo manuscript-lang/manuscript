@@ -1,26 +1,27 @@
-from "@std/bytes.ms" import Bytes
-from "@std/time.ms" import Duration
-from "@std/net.ms" import IpFamily
-from "@std/io.ms" import ReadStream
-from "@std/io.ms" import WriteStream
+import Closeable from "@std/core.ms"
+import Bytes from "@std/bytes.ms"
+import Duration from "@std/time.ms"
+import IpFamily from "@std/net.ms"
+import ReadStream from "@std/io.ms"
+import WriteStream from "@std/io.ms"
 
-extern def msstd_process_commands() -> Commands
+extern fn msstd_process_commands() Commands
 
-extern def msrt_args() -> List[String]
+extern fn msrt_args() List[String]
 
-extern def msstd_process_control() -> ProcessControl
+extern fn msstd_process_control() ProcessControl
 
-extern def msstd_system_endianness() -> String
+extern fn msstd_system_endianness() String
 
-extern def msstd_system_end_of_line() -> String
+extern fn msstd_system_end_of_line() String
 
-extern def msstd_system_dev_null() -> String
+extern fn msstd_system_dev_null() String
 
-extern def msstd_system_os_type() -> String
+extern fn msstd_system_os_type() String
 
-extern def msstd_system_constants() -> Map[String, Int]
+extern fn msstd_system_constants() Map[String, Int]
 
-extern def msstd_process_system() -> System
+extern fn msstd_process_system() System
 
 # Errors returned when a process cannot start, times out, or exceeds an output bound.
 export type CommandError:
@@ -61,123 +62,154 @@ export type Stdio:
 export interface Commands:
     # Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
     # Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
-    def run(
+    fn run(
         program: String,
         arguments: List[String],
         input: Bytes = "".to_bytes(),
-        max_output_bytes: Optional[Int] = none,
-        timeout: Optional[Duration] = none
-    ) -> Result[CommandOutput, CommandError]
-    # Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess for use with `with`. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
-    def spawn(
+        max_output_bytes: Int?,
+        timeout: Duration?
+    ) CommandOutput!CommandError
+    # Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
+    fn spawn(
         program: String,
         arguments: List[String],
         stdin: Stdio = Stdio.Pipe,
         stdout: Stdio = Stdio.Pipe,
         stderr: Stdio = Stdio.Pipe
-    ) -> Result[Subprocess, CommandError]
+    ) Subprocess!CommandError
+
+# The runtime handle behind a `Subprocess`.
+export extern type NativeSubprocess
+
+extern fn msstd_process_subprocess_stdin(handle: NativeSubprocess) WriteStream
+
+extern fn msstd_process_subprocess_stream(
+    handle: NativeSubprocess,
+    which: Int
+) ReadStream
+
+extern fn msstd_process_subprocess_wait(
+    handle: NativeSubprocess,
+    timeout: Duration?
+) Int!CommandError
+
+extern fn msstd_process_subprocess_terminate(handle: NativeSubprocess) Unit
+
+extern fn msstd_process_subprocess_kill(handle: NativeSubprocess) Unit
+
+extern fn msstd_process_subprocess_close(handle: NativeSubprocess) Unit
 
 # A long-lived child process with live stdin, stdout, and stderr streams. Closing it
 # kills the child's process group, joins it, and closes all three streams.
 # A stream spawned as Stdio.Inherit or Stdio.Null has no pipe: it is already closed, so reads and writes return Closed.
-export interface Subprocess:
+export type Subprocess:
+    # The runtime handle; it is released by `close` and owned by this value.
+    native: NativeSubprocess
+
+impl Closeable for Subprocess:
+    # Kills the process group, joins the child, kills leftover group members, and closes all three streams. Idempotent; scope exit calls it.
+    var fn close() Unit!:
+        msstd_process_subprocess_close(self.native)
+        return ok(unit)
+
+impl Subprocess:
     # The child's standard input as a WriteStream; writes block when the pipe is full. Closing the stream delivers end-of-input to the child.
-    def stdin() -> WriteStream
+    fn stdin() WriteStream:
+        return msstd_process_subprocess_stdin(self.native)
+
     # The child's standard output as a ReadStream over the OS pipe; reads block until output or end-of-file, and nothing is buffered without bound.
-    def stdout() -> ReadStream
+    fn stdout() ReadStream:
+        return msstd_process_subprocess_stream(self.native, 1)
+
     # The child's standard error as a ReadStream over the OS pipe, with the same blocking and backpressure behavior as stdout.
-    def stderr() -> ReadStream
+    fn stderr() ReadStream:
+        return msstd_process_subprocess_stream(self.native, 2)
+
     # Waits for the child to exit and returns its exit status. Returns Timeout if `timeout` elapses first, leaving the child running.
-    def wait(timeout: Optional[Duration] = none) -> Result[Int, CommandError]
+    fn wait(timeout: Duration?) Int!CommandError:
+        return msstd_process_subprocess_wait(self.native, timeout)
+
     # Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it kills the direct process. Does not wait.
-    def terminate() -> Unit
+    fn terminate() Unit:
+        return msstd_process_subprocess_terminate(self.native)
+
     # Sends SIGKILL to the child's process group. Does not wait.
-    def kill() -> Unit
-    # Kills the process group, joins the child, kills leftover group members, and closes all three streams. Idempotent; `with` calls it on scope exit.
-    def close() -> Unit
+    fn kill() Unit:
+        return msstd_process_subprocess_kill(self.native)
 
 # Process and operating-system controls for the current process.
 # `watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.
-# `next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup
+# `next()` and code following it have no shutdown guarantee. Register `Closeable` cleanup
 # and finish shutdown work directly in the shielded close call after joining cancelled workers.
 export interface ProcessControl:
     # Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
     # This is not Unix time or a Clock Instant; prefer clock().now().difference(start) for timing.
-    def monotonic_time() -> Int
+    fn monotonic_time() Int
     # Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
     # Capacity must be 1..1048576; omission/none uses 128 buffered signals.
     # Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
     # Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
-    def watch_signals(
-        signals: List[Int],
-        capacity: Optional[Int] = none
-    ) -> Result[SignalStream, ControlError]
+    fn watch_signals(signals: List[Int], capacity: Int?) SignalStream!ControlError
     # Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0 when no limit applies or the platform has no such limit.
-    def constrained_memory() -> Result[Int, ControlError]
+    fn constrained_memory() Int!ControlError
     # Returns bytes available to new allocations: the host's available memory, reduced to the remaining headroom when a Linux cgroup memory limit applies.
-    def available_memory() -> Result[Int, ControlError]
+    fn available_memory() Int!ControlError
     # Returns the current process title.
     # Platforms that cannot read it return Unsupported.
-    def title() -> Result[String, ControlError]
+    fn title() String!ControlError
     # Sets the process title shown by tools such as `ps`.
     # A title with NUL or newline returns InvalidInput, and platforms that cannot rename a process return Unsupported.
-    def set_title(title: String) -> Result[Unit, ControlError]
+    fn set_title(title: String) Unit!ControlError
     # Replaces the supplementary group list with the groups of `username` from the account database plus `gid` first. Requires privilege.
     # A failed user lookup returns Failed, a `gid` outside 0 through 2147483647 returns InvalidInput, and a lack of privilege returns PermissionDenied.
-    def initialize_groups(username: String, gid: Int) -> Result[Unit, ControlError]
+    fn initialize_groups(username: String, gid: Int) Unit!ControlError
     # Replaces the running process image with `program` using exactly the given `arguments` as argv, where `arguments[0]` is the program name, and exactly the given `environment`. On success it never returns.
     # `program` is a path, not a PATH lookup. An empty program, an empty argument list, or NUL bytes return InvalidInput, and exec failures return NotFound, PermissionDenied, or Failed. Unsupported on Windows.
-    def replace(
+    fn replace(
         program: String,
         arguments: List[String],
         environment: Map[String, String]
-    ) -> Result[Unit, ControlError]
+    ) Unit!ControlError
     # Returns the process id, parent id, executable path, arguments, platform, and real and effective user and group ids.
     # Text that is not valid UTF-8 returns Unsupported.
-    def info() -> Result[ProcessInfo, ControlError]
+    fn info() ProcessInfo!ControlError
     # Returns heap and resident memory statistics for this process, in bytes.
-    def memory_usage() -> Result[MemoryUsage, ControlError]
+    fn memory_usage() MemoryUsage!ControlError
     # Returns cumulative user and kernel CPU time consumed by this process in microseconds.
     # Platforms without resource accounting return Unsupported.
-    def cpu_usage() -> Result[CpuUsage, ControlError]
+    fn cpu_usage() CpuUsage!ControlError
     # Returns elapsed Duration since runtime initialization, rather than host boot.
-    def uptime() -> Result[Duration, ControlError]
+    fn uptime() Duration!ControlError
     # Reads a fresh live process environment map; non-UTF-8 entries return Unsupported.
-    def environment() -> Result[Map[String, String], ControlError]
+    fn environment()(Map[String, String])!ControlError
     # Sets environment variable `name` for this process to `value`, or removes it when `value` is none.
     # An empty name, or a name or value with `=` or NUL, returns InvalidInput. The change is visible to child processes started afterwards.
-    def set_environment(
-        name: String,
-        value: Optional[String]
-    ) -> Result[Unit, ControlError]
+    fn set_environment(name: String, value: String?) Unit!ControlError
     # Reads `KEY=value` lines from the file at `path` and sets each variable that is not already present in the environment. Existing variables keep their values.
     # Blank lines, `#` comments, an `export ` prefix, and single-, double-, or backtick-quoted values spanning lines are accepted. The whole file is validated first, so a malformed or non-UTF-8 file returns InvalidData and changes nothing. A file larger than `max_bytes` returns LimitExceeded.
-    def load_environment(
-        path: String,
-        max_bytes: Optional[Int] = none
-    ) -> Result[Unit, ControlError]
+    fn load_environment(path: String, max_bytes: Int?) Unit!ControlError
     # Reads the live process directory, preserving OS failures as ControlError.
-    def working_directory() -> Result[String, ControlError]
+    fn working_directory() String!ControlError
     # Changes the working directory of the whole process, affecting relative paths everywhere.
     # A missing path returns NotFound, a path containing NUL returns InvalidInput, and a denied path returns PermissionDenied.
-    def change_directory(path: String) -> Result[Unit, ControlError]
+    fn change_directory(path: String) Unit!ControlError
     # Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.
     # Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination.
-    def send_signal(pid: Int, signal: Int) -> Result[Unit, ControlError]
+    fn send_signal(pid: Int, signal: Int) Unit!ControlError
     # Returns the numeric ids of the supplementary groups of the process.
     # Windows returns Unsupported.
-    def groups() -> Result[List[Int], ControlError]
+    fn groups() List[Int]!ControlError
     # Returns kernel resource counters for this process: CPU times, peak resident size, page faults, block I/O, and context switches.
     # Platforms without them return Unsupported.
-    def resource_usage() -> Result[ResourceUsage, ControlError]
+    fn resource_usage() ResourceUsage!ControlError
     # Sets mask 0..511 (0777) and returns the previous mask; Unsupported on Windows.
-    def umask(mask: Int) -> Result[Int, ControlError]
+    fn umask(mask: Int) Int!ControlError
     # Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return InvalidInput.
     # Identity changes require OS permission and are Unsupported on Windows.
-    def set_identity(kind: String, id: Int) -> Result[Unit, ControlError]
+    fn set_identity(kind: String, id: Int) Unit!ControlError
     # Replaces the supplementary group list with the given numeric ids, each 0 through 2147483647. Requires privilege.
     # Invalid ids return InvalidInput, a lack of privilege returns PermissionDenied, and Windows returns Unsupported.
-    def set_groups(groups: List[Int]) -> Result[Unit, ControlError]
+    fn set_groups(groups: List[Int]) Unit!ControlError
 
 # Identity and invocation details for the current process.
 export type ProcessInfo:
@@ -248,14 +280,14 @@ export type ResourceUsage:
 
 # A cancellable observer of operating-system signals selected by `watch_signals`.
 # SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.
-# `next()` and following code have no shutdown guarantee; use registered `with`/`Closeable` cleanup.
+# `next()` and following code have no shutdown guarantee; use registered `Closeable` cleanup.
 export interface SignalStream:
     # Stops observing signals, wakes a pending `next` with Closed, and waits for it.
     # Safe to call repeatedly.
-    def close() -> Unit
+    fn close() Unit
     # Waits for the next observed signal and returns its number. Signals arriving while no call waits are buffered up to the stream's capacity.
     # Returns Closed after `close`. Cancelling the waiting task unwinds it.
-    def next() -> Result[Int, ControlError]
+    fn next() Int!ControlError
 
 # Errors returned by process-control operations.
 export type ControlError:
@@ -283,80 +315,80 @@ export type ControlError:
 
 impl Error for ControlError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `process: <reason>`.
-    def message() -> String:
+    fn message() String:
         match self:
-            case InvalidInput: return "process: invalid input"
-            case InvalidData: return "process: invalid data"
-            case LimitExceeded: return "process: limit exceeded"
-            case NotFound: return "process: not found"
-            case AlreadyExists: return "process: already exists"
-            case PermissionDenied: return "process: permission denied"
-            case Unsupported: return "process: operation not supported"
-            case Closed: return "process: resource is closed"
-            case Failed(message): return message.clone()
+            InvalidInput: return "process: invalid input"
+            InvalidData: return "process: invalid data"
+            LimitExceeded: return "process: limit exceeded"
+            NotFound: return "process: not found"
+            AlreadyExists: return "process: already exists"
+            PermissionDenied: return "process: permission denied"
+            Unsupported: return "process: operation not supported"
+            Closed: return "process: resource is closed"
+            Failed(message): return message.clone()
 
 impl Error for CommandError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `command: <reason>`, such as `command: operation timed out`.
-    def message() -> String:
+    fn message() String:
         match self:
-            case InvalidInput: return "command: invalid input"
-            case Unavailable: return "command: service unavailable"
-            case Timeout: return "command: operation timed out"
-            case OutputLimit: return "command: output limit exceeded"
-            case Failed(message): return message.clone()
+            InvalidInput: return "command: invalid input"
+            Unavailable: return "command: service unavailable"
+            Timeout: return "command: operation timed out"
+            OutputLimit: return "command: output limit exceeded"
+            Failed(message): return message.clone()
 
 # Returns child-process operations for the current host.
-export def commands() -> Commands:
+export fn commands() Commands:
     return msstd_process_commands()
 
 # Returns the host-supplied startup arguments, excluding the executable path.
 # Each call returns an owned list; mutations do not change later calls or native argv.
-export def arguments() -> List[String]:
+export fn arguments() List[String]:
     return msrt_args()
 
 # Returns controls and process information for the current process.
-export def control() -> ProcessControl:
+export fn control() ProcessControl:
     return msstd_process_control()
 
 # Canonical standard-library declarations. Implementations are native.
 # Read-only host details and selected controls for the current operating system.
 export interface System:
     # Returns the operating system name, processor architecture, and logical CPU count for this host.
-    def info() -> SystemInfo
+    fn info() SystemInfo
     # Reads the live native directory; an OS query failure faults because this API has no Result.
     # A host service constructed with an explicit directory retains that base.
-    def working_directory() -> String
+    fn working_directory() String
     # Returns the host's name as reported by the operating system.
     # A name that is not valid UTF-8 returns Unsupported.
-    def hostname() -> Result[String, SystemError]
+    fn hostname() String!SystemError
     # Returns the current user's home directory path, from the host's environment or account database.
     # A path that is not valid UTF-8 returns Unsupported.
-    def home_directory() -> Result[String, SystemError]
+    fn home_directory() String!SystemError
     # Returns the current user's name, numeric ids, home directory, and login shell.
     # The shell is empty when the host does not record one, and text that is not valid UTF-8 returns Unsupported.
-    def user_info() -> Result[UserInfo, SystemError]
+    fn user_info() UserInfo!SystemError
     # Returns one NetworkInterface for every address on every interface, including loopback.
     # An interface name that is not valid UTF-8 returns Unsupported.
-    def network_interfaces() -> Result[List[NetworkInterface], SystemError]
+    fn network_interfaces() List[NetworkInterface]!SystemError
     # Returns one CpuInfo per logical CPU with its model, clock speed, and cumulative time counters.
-    def cpus() -> Result[List[CpuInfo], SystemError]
+    fn cpus() List[CpuInfo]!SystemError
     # Returns memory sizes in bytes, host uptime, load averages, and available parallelism in one snapshot.
     # A host query failure returns the matching SystemError.
-    def metrics() -> Result[SystemMetrics, SystemError]
+    fn metrics() SystemMetrics!SystemError
     # Returns the kernel release string, such as `6.1.0-18-amd64`, with surrounding whitespace removed.
     # Returns Unsupported where the host does not expose it.
-    def os_release() -> Result[String, SystemError]
+    fn os_release() String!SystemError
     # Returns the kernel build or version string, such as `#1 SMP Debian`, with surrounding whitespace removed.
     # Returns Unsupported where the host does not expose it.
-    def os_version() -> Result[String, SystemError]
+    fn os_version() String!SystemError
     # Returns the hardware architecture in `uname -m` style, such as `x86_64`, `aarch64`, or `i686`; other architectures use the target's architecture name.
-    def machine() -> Result[String, SystemError]
+    fn machine() String!SystemError
     # Returns the scheduling priority of process `pid` (0 means the calling process) as a nice-style value, from -20 for highest to 19 for lowest. Windows maps its priority classes onto this range.
     # A pid outside 0 through 2147483647 returns InvalidInput, and platforms without priorities return Unsupported.
-    def get_priority(pid: Int) -> Result[Int, SystemError]
+    fn get_priority(pid: Int) Int!SystemError
     # Accepts pid 0..2147483647 and priority -20..19 (lower is higher priority).
     # Unix uses nice values; Windows maps ranges to native priority classes.
-    def set_priority(pid: Int, priority: Int) -> Result[Unit, SystemError]
+    fn set_priority(pid: Int, priority: Int) Unit!SystemError
 
 # Operating system and processor architecture for the current host.
 export type SystemInfo:
@@ -432,24 +464,24 @@ export type SystemMetrics:
     available_parallelism: Int
 
 # Returns exactly `LE` or `BE` for the host's native byte order.
-export def endianness() -> String:
+export fn endianness() String:
     return msstd_system_endianness()
 
 # Returns the host's line-ending sequence.
-export def end_of_line() -> String:
+export fn end_of_line() String:
     return msstd_system_end_of_line()
 
 # Returns the conventional null-device path for the host.
-export def dev_null() -> String:
+export fn dev_null() String:
     return msstd_system_dev_null()
 
 # Returns Linux, Darwin, or Windows_NT on the supported hosts; other hosts use their operating system name.
-export def os_type() -> String:
+export fn os_type() String:
     return msstd_system_os_type()
 
 # Returns native signal/error/loader/priority constants by name.
 # Names and values vary by host; missing entries do not imply a portable numeric default.
-export def constants() -> Map[String, Int]:
+export fn constants() Map[String, Int]:
     return msstd_system_constants()
 
 # Errors returned when a requested host operation is unavailable or denied.
@@ -478,18 +510,18 @@ export type SystemError:
 
 impl Error for SystemError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `system: <reason>`.
-    def message() -> String:
+    fn message() String:
         match self:
-            case InvalidInput: return "system: invalid input"
-            case InvalidData: return "system: invalid data"
-            case LimitExceeded: return "system: limit exceeded"
-            case NotFound: return "system: not found"
-            case AlreadyExists: return "system: already exists"
-            case PermissionDenied: return "system: permission denied"
-            case Unsupported: return "system: operation not supported"
-            case Closed: return "system: resource is closed"
-            case Failed(message): return message.clone()
+            InvalidInput: return "system: invalid input"
+            InvalidData: return "system: invalid data"
+            LimitExceeded: return "system: limit exceeded"
+            NotFound: return "system: not found"
+            AlreadyExists: return "system: already exists"
+            PermissionDenied: return "system: permission denied"
+            Unsupported: return "system: operation not supported"
+            Closed: return "system: resource is closed"
+            Failed(message): return message.clone()
 
 # Returns system information and controls for the current host.
-export def system() -> System:
+export fn system() System:
     return msstd_process_system()

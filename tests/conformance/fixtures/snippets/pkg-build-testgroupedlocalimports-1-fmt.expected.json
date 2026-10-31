@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "export type Value:\n    value: Int\n\nexport def read(value: Value) -> Int:\n    return value.value\n\ndef hidden() -> Int:\n    return 1\n"
-  }
-}

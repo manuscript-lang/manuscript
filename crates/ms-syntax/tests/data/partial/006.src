@@ -1,7 +1,7 @@
-import {expect_not_equal, fail} from "@std/test.ms"
+import expect_not_equal, fail from "@std/test.ms"
 import range from "@std/collections.ms"
-import {parse, stringify, YamlValue} from "@std/yaml.ms"
-import {Rng, next, text, mutate} from "./support/generator.ms"
+import parse, stringify, YamlValue from "@std/yaml.ms"
+import Rng, next, text, mutate from "./support/generator.ms"
 
 fn generated(rng: Rng, depth: Int) YamlValue:
     var choices = 6
@@ -9,7 +9,7 @@ fn generated(rng: Rng, depth: Int) YamlValue:
     let kind = next(rng, choices)
     if kind == 0: return YamlValue.Null
     if kind == 1: return YamlValue.BoolValue(next(rng, 2) == 0)
-    if kind == 2: return YamlValue.NumberValue("{next(rng, 2000) - 1000}")
+    if kind == 2: return YamlValue.NumberValue("\{next(rng, 2000) - 1000\}")
     if kind == 3: return YamlValue.StringValue(text(rng))
 
     if kind == 4:

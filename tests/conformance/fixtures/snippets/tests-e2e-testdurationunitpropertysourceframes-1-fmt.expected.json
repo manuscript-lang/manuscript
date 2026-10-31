@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "test \"positive unit overflow\":\n    let impossible = (153722868).minutes\n\ntest \"negative unit overflow\":\n    let impossible = (-153722868).minutes\n\ntest \"receiver fault comes first\":\n    let impossible = (1 / 0).minutes\n\ntest \"continues with valid units\":\n    let valid = (1).seconds\n"
-  }
-}

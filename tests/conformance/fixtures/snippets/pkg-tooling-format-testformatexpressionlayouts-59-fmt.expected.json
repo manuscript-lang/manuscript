@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def work() -> Bool:\n    return (\n        [[1, 2], [3]].flat_map(\n            transform: lambda (value: List[Int]) -> List[Int]: return value\n        ) == [1, 2, 3]\n    )\n"
-  }
-}

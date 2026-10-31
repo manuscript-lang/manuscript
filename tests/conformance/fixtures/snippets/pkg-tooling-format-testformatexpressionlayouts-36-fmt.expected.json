@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def work() -> Int:\n    var total = 1\n    total += 2\n    total *= 3\n    box.count -= total\n    return total\n"
-  }
-}

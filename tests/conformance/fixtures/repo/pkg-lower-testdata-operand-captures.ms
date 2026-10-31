@@ -1,16 +1,16 @@
 # conform: tags=control-flow,faults,lists,match,modules,mutation,optional,records,stdlib-faults,testing,tier-stdlib
 # conform: phase=test
 # conform: origin=pkg/lower/testdata/operand-captures.ms
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 type Counter:
     value: Int
 
-def advance(var counter: Counter) -> Int:
+fn advance(var counter: Counter) Int:
     counter.value += 1
     return counter.value
 
-def mixed(var counter: Counter) -> List[Int]:
+fn mixed(var counter: Counter) List[Int]:
     var value = 1
     return [
         value,
@@ -18,11 +18,11 @@ def mixed(var counter: Counter) -> List[Int]:
         counter.value,
         advance(var counter),
         value,
-        match some(2):
-            case some(number):
+        match present(2):
+            number:
                 value = number
                 advance(var counter)
-            case none: 0
+            none: 0
         ,
         value,
         counter.value,
@@ -48,3 +48,6 @@ test "pending captures grow beyond the small buffer":
     let separate = [copy.value, advance(var copy), copy.value]
     if separate != [1, 2, 2]: return panic("copy lost its own mutations")
     if counter.value != 1: return panic("copy changed the original")
+
+fn present[T](value: T) T?:
+    return value

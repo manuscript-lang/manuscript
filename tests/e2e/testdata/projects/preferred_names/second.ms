@@ -1,14 +1,14 @@
-from "./domain.ms" import Key
-from "./helpers.ms" import add_generic, remove_generic
+import Key from "./domain.ms"
+import add_generic, remove_generic from "./helpers.ms"
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool:
+    fn equals(other: Key) Bool:
         return self.label == other.label
 
 impl Hashable for Key:
-    def hash() -> Int: self.label.scalar_length()
+    fn hash() Int: self.label.scalar_length()
 
-export def second_run() -> Set[Key]:
+export fn second_run() Set[Key]:
     var items = Set[Key]([Key(1, "original")])
     items.add(Key(1, "duplicate"))
     add_generic(var items, Key(2, "original"))

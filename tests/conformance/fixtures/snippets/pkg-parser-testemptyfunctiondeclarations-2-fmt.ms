@@ -1,9 +1,0 @@
-# conform: tags=closures,formatter,generics,interfaces,lists,parser,records,tier-core
-# conform: phase=parse
-# conform: origin=pkg/parser/empty_declarations_test.go:12 TestEmptyFunctionDeclarations
-type List[T]: ...
-
-impl List[T]:
-    def map[U](transform: Callable[[T], U]) -> List[U]: ...
-
-    def length() -> Int: ...

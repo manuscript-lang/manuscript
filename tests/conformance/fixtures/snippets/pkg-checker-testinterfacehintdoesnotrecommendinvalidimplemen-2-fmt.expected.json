@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface A:\n    def a() -> Int\n\ninterface B:\n    def b() -> Int\n\ndef f(value: A) -> B: value\n"
-  }
-}

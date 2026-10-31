@@ -1,37 +1,16 @@
 # conform: tags=faults,formatter,modules,optional,parser,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/services.ms
-from "@std/test.ms" import expect_equal
-from "@std/collections.ms" import ListBuilder
-from "@std/collections.ms" import MapBuilder
-from "@std/collections.ms" import SetBuilder
-from "@std/bytes.ms" import BytesBuilder
-from "@std/string.ms" import StringBuilder
+import expect_equal from "@std/test.ms"
+import BytesBuilder from "@std/bytes.ms"
+import StringBuilder from "@std/string.ms"
 
-test "sealed builders":
-    var list = ListBuilder[Int]()
-    list.append(1)
-    list.append(2)
-    try expect_equal(list.build(), [1, 2])
-    try expect_equal(list.build(), [1, 2])
-
-    var map = MapBuilder[String, Int]()
-    map.add("a", 1)
-    map.add("a", 2)
-
-    let expected: Optional[Int] = some(2)
-    try expect_equal(map.build().get("a"), expected)
-
-    var set = SetBuilder[Int]()
-    set.add(3)
-    set.add(3)
-    try expect_equal(set.build().length(), 1)
-
+test "builders":
     var bytes = BytesBuilder()
     bytes.append(65)
     bytes.append_bytes("B".to_bytes())
 
-    let expected_text: Optional[String] = some("AB")
+    let expected_text: String? = "AB"
     try expect_equal(bytes.build().decode_utf8(), expected_text)
 
     var text = StringBuilder()

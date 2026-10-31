@@ -1,0 +1,43 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "match arms are written without 'case', e.g. Paid(receipt): or Missing:; 'case' only declares the cases of a type",
+        "position": {
+          "file": "foreign-case-arm.ms",
+          "line": 9,
+          "column": 9,
+          "offset": 170
+        },
+        "end": {
+          "file": "foreign-case-arm.ms",
+          "line": 9,
+          "column": 13,
+          "offset": 174
+        },
+        "fix": {
+          "position": {
+            "file": "foreign-case-arm.ms",
+            "line": 9,
+            "column": 9,
+            "offset": 170
+          },
+          "end": {
+            "file": "foreign-case-arm.ms",
+            "line": 9,
+            "column": 13,
+            "offset": 174
+          },
+          "replacement": ""
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

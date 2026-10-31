@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import Queue from \"@std/queue.ms\"\n\nfn f(q: Queue[Int]) Int:\n    q.capacity = 5\n    return q.capacity\n"
+  }
+}

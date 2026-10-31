@@ -1,35 +1,35 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 interface ReadValue[T]:
-    def get() -> ref T
+    fn get() T
 
-type Box[T]:
+type Box[T: Clonable]:
     value: T
 
 type ReaderHolder:
     reader: ReadValue[Int]
 
 type CallbackReader:
-    read_value: Callable[[], Int]
+    read_value: fn() Int
 
 impl ReadValue[T] for Box[T]:
-    def get() -> ref T:
-        return self.value
+    fn get() T:
+        return self.value.clone()
 
 impl ReadValue[Int] for CallbackReader:
-    def get() -> Int:
+    fn get() Int:
         return self.read_value()
 
-def seven() -> Int:
+fn seven() Int:
     return 7
 
-def make_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
+fn make_view[T: ReadValue[Int]](source: T) ReadValue[Int]:
     return source
 
-def forward_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
+fn forward_view[T: ReadValue[Int]](source: T) ReadValue[Int]:
     return source
 
-def consume[T: ReadValue[Int]](source: T) -> Int:
+fn consume[T: ReadValue[Int]](source: T) Int:
     return source.get()
 
 test "contract views and callbacks":
@@ -39,7 +39,7 @@ test "contract views and callbacks":
     let copied: ReadValue[Int] = forward_view(box)
     let holder = ReaderHolder(identity)
     let _readers: List[ReadValue[Int]] = [forward_view(box)]
-    let _optional: Optional[ReadValue[Int]] = some(forward_view(box))
+    let _optional: ReadValue[Int]? = forward_view(box)
     let callback = CallbackReader(seven)
     let callback_view: ReadValue[Int] = callback
     try expect_equal(first.get(), 7)

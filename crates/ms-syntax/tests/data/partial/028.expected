@@ -1,4 +1,6 @@
 diag parse 3:5:159 end=- fix=- "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it"
-diag parse 15:5:765 end=15:7:767 fix=- "a type has only fields or cases; an interface has only operation signatures; declare fields as 'name: Type' in a type, and put method bodies in an 'impl' block"
-omitted ["Equal" "Hashable" ]
-recovered []
+diag parse 5:5:252 end=- fix=- "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it"
+(decl 8:8:376 interface "Comparable" true false 0:0:0 false [] [] [] [(decl 10:8:557 fn "compare" false false 0:0:0 false [] [] [] [] [(param 10:16:565 "other" (type 10:23:572 "Comparable" [] [] nil) nil) ] (type 10:35:584 "Int" [] [] nil) nil nil []) ] [] nil nil nil [])
+(decl 13:8:668 interface "Hashable" true false 0:0:0 false [] [] [] [(decl 15:8:768 fn "hash" false false 0:0:0 false [] [] [] [] [] (type 15:15:775 "Int" [] [] nil) nil nil []) ] [] nil nil nil [])
+omitted []
+recovered [0-661 ]

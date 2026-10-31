@@ -15,7 +15,7 @@ Proposal, 2026-10-25, checked against `bf26f78c`. Direction (Chinmay, 2026-10-25
 
 Verified with `ms check` on `bf26f78c`:
 
-- `m["a"]`: `type: indexing requires List[T]; read a Map entry with m.get(key)`. `m["b"] = 2`: `resolution: unknown or ambiguous member set on Map[String, Int]; 'm[key] = value' assigns only into a List`. `data[i]` on Bytes: `indexing requires List[T]; use the receiver's lookup method for other types`. `.experts/language.md` ("indexing returns the element") records `[]` for List, String and Bytes.
+- `m["a"]`: `type: indexing requires List[T]; read a Map entry with m.get(key)`. `m["b"] = 2`: `resolution: unknown or ambiguous member set on Map[String, Int]; 'm[key] = value' assigns only into a List`. `data[i]` on Bytes: `indexing requires List[T]; use the receiver's lookup method for other types`. `wiki/language/index.md` ("indexing returns the element") records `[]` for List, String and Bytes.
 - `[3, 1, 2].sorted()`: `missing argument compare: Callable[[Int, Int], Int]`. `xs.sum()`, `xs.max()`: unknown member. `math.max_of` needs `Comparable & Clonable` and is a free function (taste: methods first).
 - `String.replace(old, new, max_replacements)` replaces the first occurrence and is documented as a "transitional compatibility name"; `replace_first`, `replace_n`, `replace_all` are three more spellings. Python's `replace` replaces all, so agent code such as `line.replace(",", "")` handles one comma.
 - `Result.or_else(create: Callable[[E], T]) -> T` returns a payload; `Optional.or_else(create: Callable[[], Optional[T]]) -> Optional[T]` returns an alternative. `Result.map_error` does not exist (`unknown or ambiguous member map_error`).
@@ -69,14 +69,14 @@ In `stdlib/json.ms`, written in Manuscript:
 
 ```manuscript
 impl JsonValue:
-    def get(key: String) -> Optional[JsonValue]      # ObjectValue member, else none
-    def at(index: Int) -> Optional[JsonValue]        # ArrayValue element, else none
-    def as_string() -> Optional[String]
-    def as_int() -> Optional[Int]                    # NumberValue text that parses as Int
-    def as_float() -> Optional[Float]
-    def as_bool() -> Optional[Bool]
-    def as_list() -> Optional[List[JsonValue]]
-    def as_map() -> Optional[Map[String, JsonValue]]
+    fn get(key: String) Optional[JsonValue]      # ObjectValue member, else none
+    fn at(index: Int) Optional[JsonValue]        # ArrayValue element, else none
+    fn as_string() Optional[String]
+    fn as_int() Optional[Int]                    # NumberValue text that parses as Int
+    fn as_float() Optional[Float]
+    fn as_bool() Optional[Bool]
+    fn as_list() Optional[List[JsonValue]]
+    fn as_map() Optional[Map[String, JsonValue]]
 ```
 
 `doc.get("user").and_then(lambda u: u.get("name")).and_then(lambda n: n.as_string()).get("")` replaces three nested matches. Results borrow where the payload is a String, List or Map (`-> ref Optional[...]`) if the checker allows it for alternative payloads; otherwise they clone and the doc comment says so.
@@ -96,13 +96,13 @@ impl JsonValue:
 | `stdlib/collections.ms`, `intrinsics.ms`, `core.ms`, `math.ms`, `json.ms`, `string.ms`, `bindings.json` | declarations above | `tests/e2e/testdata/stdlib/*.ms` |
 | formatter, LSP | unchanged (no new syntax) | existing |
 | `documentation/core-language/types/collections.md`, `basics/text-and-bytes.md`, `errors/results.md`, `types/optionals.md` | rules | `make docs-check`, `make book-check` |
-| `.experts/language.md`, `stdlib-design.md` | indexing and `or_else` entries updated | reference check |
+| `wiki/language/index.md`, `stdlib-design.md` | indexing and `or_else` entries updated | reference check |
 | `bench/agent/challenges/*/solutions/ms/main.ms.ref`, `tests/conformance` | `replace` migration | `make conform`, workloads run |
 
 ## Alternatives
 
 - Do nothing: agents keep writing `m.get(k).get()` and `line.replace(...)` with Python's meaning; the audit's three string-heavy workloads stay the slowest because the convenient spellings copy.
-- `m[k]` returning `Optional[V]`: rejected before for List (`at` removal, `.experts/language.md`); `[]` faults, `get` does not, one rule for every receiver.
+- `m[k]` returning `Optional[V]`: rejected before for List (`at` removal, `wiki/language/index.md`); `[]` faults, `get` does not, one rule for every receiver.
 - Keep `replace_all` as the all-occurrences name and remove `replace`: leaves the Python footgun's opposite (a missing method) and two names for the common case.
 - A `sum` free function in `math`: taste says methods first; `max_of` is the precedent being removed.
 
@@ -120,4 +120,4 @@ Each stage is one PR with auto-merge and a regression fixture.
 
 ## Open questions
 
-None: the owner approved the indexing and `replace` changes by card and delegated the remaining naming decisions (2026-10-25). The `Result.or_else` rename supersedes the `unwrap_or_else` entry in `.experts/stdlib-design.md`, which the implementing PR updates.
+None: the owner approved the indexing and `replace` changes by card and delegated the remaining naming decisions (2026-10-25). The `Result.or_else` rename supersedes the `unwrap_or_else` entry in `wiki/stdlib-design/index.md`, which the implementing PR updates.

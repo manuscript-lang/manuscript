@@ -20,7 +20,7 @@ export type Version:
 
 # Compares two versions by SemVer precedence, returning -1, 0 or 1.
 # Build metadata is ignored, and a pre-release sorts before its release.
-export def compare(left: Version, right: Version) -> Int:
+export fn compare(left: Version, right: Version) Int:
     let core = compare_ints(left.major, right.major)
     if core != 0: return core
 
@@ -49,21 +49,21 @@ export def compare(left: Version, right: Version) -> Int:
     return shared
 
 # Formats a version as `major.minor.patch[-prerelease][+build]`.
-export def format(version: Version) -> String:
-    var text = f"{version.major}.{version.minor}.{version.patch}"
-    if not version.prerelease.is_empty(): text = f"{text}-{version.prerelease.join(".")}"
-    if not version.build.is_empty(): text = f"{text}+{version.build.join(".")}"
+export fn format(version: Version) String:
+    var text = "{version.major}.{version.minor}.{version.patch}"
+    if not version.prerelease.is_empty(): text = "{text}-{version.prerelease.join(".")}"
+    if not version.build.is_empty(): text = "{text}+{version.build.join(".")}"
     return text
 
 # Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are rejected.
-export def parse(text: String) -> Result[Version, SemverError]:
+export fn parse(text: String) Version!SemverError:
     let build_parts = split_first(text, "+")
     let core_and_pre = split_first(build_parts[0].clone(), "-")
     let numbers = core_and_pre[0].split(".")
     if numbers.length() != 3: return error(SemverError.InvalidData)
 
     var values = List[Int]()
-    var out_of_range = False
+    var out_of_range = false
 
     for part in numbers:
         let scalars = part.scalar_values()
@@ -73,7 +73,7 @@ export def parse(text: String) -> Result[Version, SemverError]:
 
         if let value = part.parse_int(): values.append(value)
         else:
-            out_of_range = True
+            out_of_range = true
             values.append(0)
 
     var prerelease = List[String]()
@@ -110,42 +110,42 @@ export def parse(text: String) -> Result[Version, SemverError]:
     )
 
 # Splits at the first separator only; `String.split` with a part cap drops the rest instead of keeping it.
-def split_first(text: String, separator: String) -> List[String]:
+fn split_first(text: String, separator: String) List[String]:
     if let at = text.index_of(separator): return [text.take(at), text.drop(at + 1)]
 
     return [text.clone()]
 
-def compare_ints(left: Int, right: Int) -> Int:
+fn compare_ints(left: Int, right: Int) Int:
     if left < right: return -1
     if left > right: return 1
 
     return 0
 
 # Digits only, at least one; the caller has already rejected non-ASCII through scalar values.
-def all_digits(scalars: List[Int]) -> Bool:
-    if scalars.is_empty(): return False
+fn all_digits(scalars: List[Int]) Bool:
+    if scalars.is_empty(): return false
 
     for scalar in scalars:
-        if scalar < 48 or scalar > 57: return False
-    return True
+        if scalar < 48 or scalar > 57: return false
+    return true
 
-def has_leading_zero(scalars: List[Int]) -> Bool:
+fn has_leading_zero(scalars: List[Int]) Bool:
     return scalars.length() > 1 and scalars[0] == 48
 
 # ASCII letters, digits and hyphen, at least one.
-def valid_identifier(scalars: List[Int]) -> Bool:
-    if scalars.is_empty(): return False
+fn valid_identifier(scalars: List[Int]) Bool:
+    if scalars.is_empty(): return false
 
     for scalar in scalars:
         let digit = scalar >= 48 and scalar <= 57
         let upper = scalar >= 65 and scalar <= 90
         let lower = scalar >= 97 and scalar <= 122
-        if not (digit or upper or lower or scalar == 45): return False
+        if not (digit or upper or lower or scalar == 45): return false
 
-    return True
+    return true
 
 # Numeric identifiers sort numerically and before alphanumeric ones; others sort bytewise.
-def compare_identifier(left: String, right: String) -> Int:
+fn compare_identifier(left: String, right: String) Int:
     let left_numeric = all_digits(left.scalar_values())
     let right_numeric = all_digits(right.scalar_values())
 
@@ -162,7 +162,7 @@ def compare_identifier(left: String, right: String) -> Int:
 
 impl Error for SemverError:
     # Returns a semver-prefixed diagnostic without echoing the input text.
-    def message() -> String:
+    fn message() String:
         match self:
-            case InvalidData: return "semver: invalid data"
-            case OutOfRange: return "semver: value out of range"
+            InvalidData: return "semver: invalid data"
+            OutOfRange: return "semver: value out of range"

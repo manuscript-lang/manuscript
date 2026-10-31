@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def first() -> Callable[[Int], Int]:\n    let callback = lambda (item: Int): item\n    return identity(callback)\n"
-  }
-}

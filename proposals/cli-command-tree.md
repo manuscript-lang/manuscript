@@ -27,10 +27,10 @@ type ServeOptions:
     root: String
     verbose: Bool
 
-def serve(options: ServeOptions) -> Result[Int, Error]:
+fn serve(options: ServeOptions) Result[Int, Error]:
     ...
 
-def main() -> Int:
+fn main() Int:
     let serve_command = command[ServeOptions](
         name: "serve",
         about: "Run the server",
@@ -39,9 +39,9 @@ def main() -> Int:
             Flag("mode", FlagKind.String, default: "dev", choices: ["dev", "prod"])
         ],
         args: [Arg("root", "Directory to serve")],
-        run: lambda options: serve(options)
+        run: fn options: serve(options)
     )
-    let flags = [Flag("verbose", FlagKind.Bool, "v", persistent: True)]
+    let flags = [Flag("verbose", FlagKind.Bool, "v", persistent: true)]
     return Command(name: "tool", flags: flags, children: [serve_command]).execute(arguments())
 ```
 
@@ -55,7 +55,7 @@ Surface (`stdlib/cli.ms`, fixture `tests/e2e/testdata/stdlib/cli.ms`, recipe in 
 - `execute` writes help to stdout (0), usage errors plus a hint to stderr (2), and handler errors to stderr (1). `main() -> Int` returns it.
 - Flags: `--name value`, `--name=value`, `-p value`, `--no-name`, `--`. Persistent flags apply to descendants. Clustered shorts and suggestions are deferred.
 - `parse` validates the schema first (`CliError.InvalidSchema`): duplicates, reserved `help`/`-h`, misplaced `rest`/required args, defaults that do not fit their kind.
-- `.experts/stdlib-design.md` records that an old `cli` module was merged into `process` (#659). That module only returned argv, which stays `process.arguments()`; `@std/cli.ms` parses a list it is given.
+- `wiki/stdlib-design/index.md` records that an old `cli` module was merged into `process` (#659). That module only returned argv, which stays `process.arguments()`; `@std/cli.ms` parses a list it is given.
 
 ## Components touched
 

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn nested[T](r: T!!) Unit: return\n\nfn first(r: Int!E1!E2) Unit: nested(r)\n"
+  }
+}

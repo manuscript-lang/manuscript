@@ -1,18 +1,20 @@
-from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse
-from "@std/net.ms" import network
-from "@std/io.ms" import stdout
-from "@std/time.ms" import sleep, nanoseconds
+import buffered, headers, HttpRequest, HttpResponse from "@std/http.ms"
+import network from "@std/net.ms"
+import stdout from "@std/io.ms"
+import sleep, nanoseconds from "@std/time.ms"
 
-def handle(request: HttpRequest) -> HttpResponse:
+fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
         sleep(nanoseconds(500000000))
     return HttpResponse(200, headers(), request.path.to_bytes())
 
-export def main() -> Int:
+export fn main() Int:
     if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
-        with let server = acquired:
-            stdout().write(f"{server.address()}\n").get()
-            stdout().flush().get()
-            let _ignored = server.wait()
-            return 0
+        let server = acquired
+        stdout().write("{server.address()}\n").get()
+        stdout().flush().get()
+
+        let _ignored = server.wait()
+        return 0
+
     return 1

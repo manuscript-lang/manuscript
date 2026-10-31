@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def convert[T, U](values: List[T], transform: Callable[[T], U]) -> List[U]:\n    return values.map(transform: transform)\n"
-  }
-}

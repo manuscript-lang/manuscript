@@ -1,19 +1,19 @@
 # conform: tags=lists,records,strings,stdlib-testing,testing,tier-core
 # conform: phase=test
 # conform: origin=perf thread: List.sorted is a stable n log n sort
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Entry:
     key: Int
     label: String
 
-def by_key(left: Entry, right: Entry) -> Int:
+fn by_key(left: Entry, right: Entry) Int:
     return left.key - right.key
 
-def ascending(left: Int, right: Int) -> Int:
+fn ascending(left: Int, right: Int) Int:
     return left - right
 
-def alphabetical(left: String, right: String) -> Int:
+fn alphabetical(left: String, right: String) Int:
     if left < right: return -1
     if left > right: return 1
 
@@ -27,13 +27,13 @@ test "sorting a large list is ordered and leaves the source unchanged":
     let sorted = values.sorted(ascending)
     try expect_equal(sorted.length(), 20000)
     for i in 1..20000:
-        try expect_equal(sorted.get(i - 1) <= sorted.get(i), True)
+        try expect_equal(sorted.get(i - 1) <= sorted.get(i), true)
     try expect_equal(values.get(1), 7919)
 
 test "sorting is stable for equal keys":
     var entries: List[Entry] = []
     for i in 0..1000:
-        entries.append(Entry(i % 7, f"e{i}"))
+        entries.append(Entry(i % 7, "e{i}"))
 
     let sorted = entries.sorted(by_key)
     var previous = sorted.get(0).clone()
@@ -41,7 +41,7 @@ test "sorting is stable for equal keys":
     for i in 1..1000:
         let current = sorted.get(i)
         if current.key == previous.key:
-            try expect_equal(previous.label.length() <= current.label.length(), True)
+            try expect_equal(previous.label.length() <= current.label.length(), true)
         previous = current.clone()
 
     try expect_equal(sorted.get(0).label, "e0")

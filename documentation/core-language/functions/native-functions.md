@@ -5,15 +5,15 @@ weight = 3
 
 # Native functions
 
-`extern def` declares a function whose body is native code linked into the program. The Manuscript name is the symbol name, so `extern def llabs(value: Int) -> Int` calls the native symbol `llabs`. To use another Manuscript name, wrap the extern in an ordinary function.
+`extern fn` declares a function whose body is native code linked into the program. The Manuscript name is the symbol name, so `extern fn llabs(value: Int) Int` calls the native symbol `llabs`. To use another Manuscript name, wrap the extern in an ordinary function.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-extern def llabs(value: Int) -> Int
+extern fn llabs(value: Int) Int
 
-def magnitude(value: Int) -> Int:
+fn magnitude(value: Int) Int:
     return llabs(value)
 
 test "an extern calls the native symbol":
@@ -44,7 +44,7 @@ Arguments are borrowed: a native reads them and does not keep the pointer after 
 
 ## Extern types
 
-`extern type Name` declares an opaque value whose layout the runtime owns, such as `Decimal`. Only the standard library may declare one; user modules get a diagnostic. A bundled module pairs it with private `extern def` declarations and ordinary wrapper methods in an `impl` block, so the public API is plain Manuscript over the native symbols.
+`extern type Name` declares an opaque value whose layout the runtime owns, such as `Decimal`. Only the standard library may declare one; user modules get a diagnostic. A bundled module pairs it with private `extern fn` declarations and ordinary wrapper methods in an `impl` block, so the public API is plain Manuscript over the native symbols.
 
 ## Linking the native code
 

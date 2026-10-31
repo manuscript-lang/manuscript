@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface I:\n    def m() -> Int\n\nimpl I for Missing:\n    def m() -> Int: return 1\n"
-  }
-}

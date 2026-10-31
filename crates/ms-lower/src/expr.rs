@@ -45,18 +45,6 @@ impl<'a> FnLower<'a> {
         self.converting = saved;
         let x = x?;
         let x = match self.hir.info(e).wrap_some {
-            Some(_)
-                if !self.dead
-                    && self.lent_return
-                    && !x.own
-                    && self.lent_expr == Some(e as *const Expr as usize) =>
-            {
-                // A lending function wraps a borrow as a borrow, as `some(value)` does.
-                Val {
-                    v: self.b.opt_view(x.v),
-                    own: false,
-                }
-            }
             Some(_) if !self.dead => {
                 let o = self.owned(x);
                 Val {
@@ -69,6 +57,23 @@ impl<'a> FnLower<'a> {
         match self.hir.info(e).error_source {
             Some(src) if !self.dead => {
                 let want = self.emty(e)?;
+                // An owned resource converted to an interface without `close` is only read (the
+                // checker rejects owning positions), so it stays a temporary of the statement,
+                // which closes it; the interface value reads a copy and never closes. An
+                // interface with `close` takes the duty over with the value.
+                let target = self.hir.ty(e);
+                let hands_on = target.def.as_ref().is_some_and(|d| {
+                    d.operations
+                        .borrow()
+                        .iter()
+                        .any(|o| o.name.as_str() == "close")
+                });
+                let x = if x.own && !hands_on && self.is_resource(self.ty_of(x.v)) {
+                    self.temps.push(x.v);
+                    Val { v: x.v, own: false }
+                } else {
+                    x
+                };
                 let saved = self.scope_override;
                 self.scope_override = self.evidence_of(std::slice::from_ref(&src));
                 let out = self.fit_ty(x, &ct::sub(&src, &self.subst), want);
@@ -98,6 +103,7 @@ impl<'a> FnLower<'a> {
             ExprKind::Name(_) => self.name(e),
             ExprKind::Member { left, name } => self.member(e, left, name.as_str()),
             ExprKind::Index { left, index } => self.index(e, left, index),
+            ExprKind::Probe(_) => Err(Error::new("`place[key]?` is only lowered by `if var`")),
             ExprKind::Apply { value, .. } => match value {
                 Some(v) if self.is_index_apply(e) => {
                     let ExprKind::Apply { left, .. } = &e.kind else {
@@ -260,6 +266,7 @@ impl<'a> FnLower<'a> {
         match self.hir.resolution(e) {
             Resolution::Local(b) => {
                 let x = self.read_local(&b)?;
+                self.moved_closer(b.uid, e);
                 self.fit_function_value(e, x)
             }
             Resolution::Constant(_) => self.call_expr(e),
@@ -334,12 +341,7 @@ impl<'a> FnLower<'a> {
             if self.dead {
                 return Ok(n);
             }
-            let arg = self.borrow(n);
-            let sym = format!("msstd_time_int_{name}");
-            return Ok(Val {
-                v: self.call_runtime(&sym, &[arg], MTy::INT)?,
-                own: false,
-            });
+            return self.duration_unit(name, n);
         }
         if lt.kind != Kind::Record {
             return Err(Error::new(format!("unsupported member access .{name}")));
@@ -357,17 +359,45 @@ impl<'a> FnLower<'a> {
             .iter()
             .position(|f| f.0 == name)
             .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
-        let f = self.b.rec_get(rid, idx, obj.v);
+        let mut f = self.b.rec_get(rid, idx, obj.v);
+        // A `ref` field holds a view; reading it borrows what it views.
+        if matches!(self.b.m.types.kind(self.ty_of(f)), TyKind::Ref(_)) {
+            f = self.b.ref_get(f);
+        }
+        if let Some((uid, names)) = self.resource_move_of(e) {
+            let o = self.moved_field(uid, &names, f)?;
+            return Ok(Val { v: o, own: true });
+        }
+        if obj.own && self.is_resource(self.ty_of(obj.v)) {
+            // A resource is read in place and closed whole with the statement's temporaries:
+            // copying the part out would make a second owner of it.
+            self.temps.push(obj.v);
+            return Ok(Val { v: f, own: false });
+        }
         if obj.own {
             // Take a copy out of the temporary, then release the temporary.
             let o = self.owned(Val { v: f, own: false });
+            self.close_temp(obj.v);
             self.drop_value(obj.v);
             return Ok(Val {
                 v: o,
-                own: self.needs_drop(self.ty_of(o)),
+                own: self.holds(self.ty_of(o)),
             });
         }
         Ok(Val { v: f, own: false })
+    }
+
+    /// The binding and field path when the member `e` moves a resource field out of a binding.
+    fn resource_move_of(&self, e: &Expr) -> Option<(usize, Vec<ct::Name>)> {
+        let mut at = e;
+        while let ExprKind::Member { left, .. } = &at.kind {
+            at = left;
+        }
+        let Resolution::Local(b) = self.hir.resolution(at) else {
+            return None;
+        };
+        let names = self.cx.resource_moves.get(&b.uid)?.get(&e.id)?;
+        Some((b.uid, names.clone()))
     }
 
     fn index(&mut self, e: &Expr, left: &Expr, index: &Expr) -> Result<Val, Error> {
@@ -396,12 +426,18 @@ impl<'a> FnLower<'a> {
         match self.b.m.types.kind(lt).clone() {
             TyKind::List(_) => {
                 let got = self.b.list_get(l.v, i.v);
+                if l.own && self.is_resource(lt) {
+                    // A list of resources is read in place and closed whole with the statement's
+                    // temporaries: copying the element out would make a second owner of it.
+                    self.temps.push(l.v);
+                    return Ok(Val { v: got, own: false });
+                }
                 if l.own {
                     let o = self.owned(Val { v: got, own: false });
                     self.drop_value(l.v);
                     return Ok(Val {
                         v: o,
-                        own: self.needs_drop(self.ty_of(o)),
+                        own: self.holds(self.ty_of(o)),
                     });
                 }
                 Ok(Val { v: got, own: false })
@@ -593,12 +629,29 @@ impl<'a> FnLower<'a> {
         if self.is_instant(t) && matches!(op, BinaryOp::Add | BinaryOp::Sub) {
             let (a, b) = (self.borrow(l), self.borrow(r));
             // `instant - instant` is the elapsed duration; a duration moves the instant.
-            let (sym, out) = match (op, self.ty_of(b) == t) {
-                (BinaryOp::Sub, true) => ("msstd_time_instant_difference", MTy::INT),
-                (BinaryOp::Sub, false) => ("msstd_time_instant_unshift", t),
-                _ => ("msstd_time_instant_shift", t),
+            if op == BinaryOp::Sub && self.ty_of(b) == t {
+                let nanos =
+                    self.call_runtime("msstd_time_instant_difference", &[a, b], MTy::INT)?;
+                return self.duration_of(nanos);
+            }
+            let b = self.duration_nanos(b)?;
+            let sym = if op == BinaryOp::Sub {
+                "msstd_time_instant_unshift"
+            } else {
+                "msstd_time_instant_shift"
             };
-            return self.call_runtime(sym, &[a, b], out);
+            return self.call_runtime(sym, &[a, b], t);
+        }
+        if self.is_duration(t) && matches!(op, BinaryOp::Add | BinaryOp::Sub) {
+            let (a, b) = (self.borrow(l), self.borrow(r));
+            let (a, b) = (self.duration_nanos(a)?, self.duration_nanos(b)?);
+            let sym = if op == BinaryOp::Add {
+                "msstd_time_duration_add"
+            } else {
+                "msstd_time_duration_subtract"
+            };
+            let nanos = self.call_runtime(sym, &[a, b], MTy::INT)?;
+            return self.duration_of(nanos);
         }
         Err(Error::new(format!(
             "arithmetic on {} is not supported yet",
@@ -619,6 +672,11 @@ impl<'a> FnLower<'a> {
             let c = self.call_runtime("msrt_string_compare", &[a, b], MTy::INT)?;
             let zero = self.b.iconst(0);
             return Ok(self.b.icmp(cc, c, zero));
+        }
+        if self.is_duration(t) {
+            let (a, b) = (self.borrow(l), self.borrow(r));
+            let (a, b) = (self.duration_nanos(a)?, self.duration_nanos(b)?);
+            return Ok(self.b.icmp(cc, a, b));
         }
         let sym = if self.is_bigint(t) {
             Some("msstd_bigint_compare")
@@ -646,6 +704,11 @@ impl<'a> FnLower<'a> {
             "Decimal" => Some("msstd_decimal_compare"),
             _ => None,
         }
+    }
+
+    /// Whether `t` is the `Duration` record.
+    pub(crate) fn is_duration(&self, t: MTy) -> bool {
+        matches!(self.b.m.types.kind(t), TyKind::Rec(rid) if self.b.m.records[rid.index()].name == "Duration")
     }
 
     /// Whether `t` is the `Instant` record.

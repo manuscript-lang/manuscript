@@ -263,8 +263,6 @@ pub struct Info {
     pub optional_argument: Option<Ty>,
     /// Wraps this value once into this Optional where a binding, return, field or element expects it.
     pub wrap_some: Option<Ty>,
-    /// A written `some(x)` where a plain `x` would be wrapped to the same Optional.
-    pub redundant_some: bool,
     /// A compile-time Bool constant.
     pub folded: bool,
     /// Its value.
@@ -298,9 +296,9 @@ impl Info {
 /// Statement facts.
 #[derive(Clone, Default)]
 pub struct StmtFacts {
-    /// Loop or `with` variable.
+    /// Loop variable.
     pub loop_binding: Option<BindingRef>,
-    /// Cleanup method of a `with`.
+    /// Cleanup method the binding's scope runs.
     pub cleanup: Option<MethodRef>,
     /// Whether control can fall through.
     pub falls_through: Option<bool>,
@@ -354,6 +352,8 @@ pub struct Facts {
     pub decls: HashMap<NodeId, DeclFacts>,
     /// Binding pattern variables.
     pub patterns: HashMap<NodeId, BindingRef>,
+    /// The close operation of a parameter or loop variable (by binding), chosen in this module.
+    pub cleanups: HashMap<usize, MethodRef>,
     /// Resolved written types.
     pub type_refs: HashMap<NodeId, Ty>,
     /// Name expressions that stand for a constant's initializer call.

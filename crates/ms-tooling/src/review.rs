@@ -280,10 +280,10 @@ fn compare(h: &Fact, b: &Fact, s: &mut Scorer) {
             5,
         );
     }
-    if h.withs != b.withs {
+    if h.scopes != b.scopes {
         s.add(
             TIER_RESOURCE,
-            format!("with scopes: {} -> {}", b.withs, h.withs),
+            format!("resource scopes: {} -> {}", b.scopes, h.scopes),
             "resource",
             4,
         );

@@ -10,7 +10,7 @@ use std::fs::{File, Metadata, OpenOptions};
 use std::io::{self, Read, Write};
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::fs::OpenOptionsExt;
-use std::os::windows::io::{AsRawHandle, RawHandle};
+use std::os::windows::io::{AsRawHandle, IntoRawHandle, RawHandle};
 use std::path::{Component, Path};
 use windows_sys::Win32::Foundation::WAIT_OBJECT_0;
 use windows_sys::Win32::Storage::FileSystem::{
@@ -19,7 +19,9 @@ use windows_sys::Win32::Storage::FileSystem::{
     FILE_TYPE_PIPE, GetDiskFreeSpaceExW, GetDiskFreeSpaceW, GetFileInformationByHandle,
     GetFileType,
 };
-use windows_sys::Win32::System::Console::GetConsoleMode;
+use windows_sys::Win32::System::Console::{
+    GetConsoleMode, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, SetStdHandle,
+};
 use windows_sys::Win32::System::Pipes::PeekNamedPipe;
 use windows_sys::Win32::System::Threading::WaitForSingleObject;
 
@@ -202,6 +204,23 @@ pub fn standard(which: i64) -> Fd {
         _ => io::stderr().as_raw_handle(),
     };
     handle as Fd
+}
+
+/// Points standard stream `which` (0 input, 1 output, 2 error) at `NUL`; the handle stays open
+/// for the life of the process, as the standard handle it now is.
+pub fn redirect_standard_to_null(which: i64) -> io::Result<()> {
+    let slot = match which {
+        0 => STD_INPUT_HANDLE,
+        1 => STD_OUTPUT_HANDLE,
+        _ => STD_ERROR_HANDLE,
+    };
+    let null = OpenOptions::new().read(true).write(true).open("NUL")?;
+    let handle = null.into_raw_handle();
+    // SAFETY: `handle` is an open handle this process now owns for good.
+    if unsafe { SetStdHandle(slot, handle) } == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(())
 }
 
 fn is_standard(fd: Fd, which: i64) -> bool {

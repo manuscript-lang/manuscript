@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def operation() -> Result[Int, Error]: ok(1)\n\ndef f() -> Result[Int, Error]:\n    try operation()\n    return ok(1)\n"
-  }
-}

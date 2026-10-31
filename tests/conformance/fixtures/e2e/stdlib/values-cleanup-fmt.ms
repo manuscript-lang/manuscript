@@ -1,22 +1,22 @@
-# conform: tags=aliasing,closures,control-flow,faults,formatter,interfaces,lists,maps,match,modules,optional,parser,records,stdlib-cleanup,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=aliasing,closures,control-flow,faults,formatter,interfaces,lists,maps,match,modules,optional,parser,records,stdlib-cleanup,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/values-cleanup.ms
-from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, expect_ok, fail
-from "@std/core.ms" import Closeable
-from "@std/json.ms" import JsonError
-from "@std/fs.ms" import filesystem
-from "@std/bytes.ms" import Bytes
+import expect_equal, expect_false, expect_not_equal, expect_ok, fail from "@std/test.ms"
+import Closeable from "@std/core.ms"
+import JsonError from "@std/json.ms"
+import filesystem from "@std/fs.ms"
+import Bytes from "@std/bytes.ms"
 
 type Key:
     id: Int
     label: String
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool:
+    fn equals(other: Key) Bool:
         return self.id == other.id
 
 impl Hashable for Key:
-    def hash() -> Int: self.id
+    fn hash() Int: self.id
 
 type Resource:
     dir: String
@@ -25,45 +25,46 @@ type Resource:
 # Resources own their state, so close records order through the filesystem:
 # resource 1 notes whether resource 2 had already closed.
 impl Closeable for Resource:
-    var def close() -> Unit:
+    var fn close() Unit!:
         let fs = filesystem()
-        let inner_closed = fs.read_file(f"{self.dir}/2").is_ok()
-        let _ = fs.write_file(f"{self.dir}/{self.id}", f"{inner_closed}", True)
+        let inner_closed = fs.read_file("{self.dir}/2").is_ok()
+        let _ = fs.write_file("{self.dir}/{self.id}", "{inner_closed}", true)
+        return ok(unit)
 
-def leave(dir: String) -> Int:
-    with let outer = Resource(dir, 1):
-        with let inner = Resource(dir, 2):
-            return 42
+fn leave(dir: String) Int:
+    let _outer = Resource(dir, 1)
+    let _inner = Resource(dir, 2)
+    return 42
 
-def propagate(result: Result[Int, JsonError]) -> Result[Int, JsonError]:
+fn propagate(result: Int!JsonError) Int!JsonError:
     let found = try result
     return ok(found + 1)
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
-    let create = lambda: some(42)
-    let present: Optional[Int] = some(0)
-    let missing: Optional[Int] = none
+    let create = fn: 42
+    let present: Int? = 0
+    let missing: Int? = none
     try expect_equal(present.or_else(create).get(), 0)
     try expect_equal(missing.or_else(create).get(), 42)
 
-    let nested: Optional[Optional[Int]] = some(missing)
+    let nested: Int?? = missing
     try expect_false(not nested.is_some() or not nested.get().is_none())
 
 test "Result propagation and Error views preserve concrete causes":
-    let failed: Result[Int, JsonError] = error(JsonError.InvalidData)
+    let failed: Int!JsonError = error(JsonError.InvalidData)
     try expect_equal(propagate(failed), failed)
 
-    let success: Result[Int, JsonError] = ok(3)
-    let expected: Result[Int, JsonError] = ok(4)
+    let success: Int!JsonError = ok(3)
+    let expected: Int!JsonError = ok(4)
     try expect_equal(propagate(success), expected)
 
     let view = Error(JsonError.InvalidData)
     try expect_not_equal(view.message().byte_length(), 0)
 
     match view:
-        case JsonError(cause):
+        JsonError(cause):
             try expect_equal(cause, JsonError.InvalidData)
-        case _: return fail("error receiver erased")
+        _: return fail("error receiver erased")
 
 test "custom equality and hashing define map key identity":
     let first = Key(1, "first")
@@ -73,15 +74,12 @@ test "custom equality and hashing define map key identity":
     var map = Map[Key, String]()
     map.add(first, "a")
     map.add(second, "b")
-    try expect_false(map.length() != 1 or map.get(first) != some("b"))
+    try expect_false(map.length() != 1 or map.get(first) != "b")
 
 test "Closeable cleanup runs in reverse order before return delivery":
     let fs = filesystem()
-
-    with let temporary = (fs.temporary("manuscript-cleanup-") | try expect_ok):
-        let dir = temporary.path()
-        try expect_equal(leave(dir), 42)
-        try expect_equal((try fs.read_file(f"{dir}/1")), Bytes([116, 114, 117, 101]))
-        try expect_equal(
-            (try fs.read_file(f"{dir}/2")), Bytes([102, 97, 108, 115, 101])
-        )
+    let temporary = fs.temporary("manuscript-cleanup-") | try expect_ok
+    let dir = temporary.path()
+    try expect_equal(leave(dir), 42)
+    try expect_equal((try fs.read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
+    try expect_equal((try fs.read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))

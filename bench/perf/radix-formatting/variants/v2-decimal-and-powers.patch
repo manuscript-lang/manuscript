@@ -1,0 +1,152 @@
+--- a/crates/ms-rt/src/num.rs
++++ b/crates/ms-rt/src/num.rs
+@@ -44,16 +44,34 @@
+ 
+ /// Lowercase radix formatting (`radix` in 2..=36).
+ pub fn format_radix(v: i64, radix: u32, out: &mut Vec<u8>) {
++    if radix == 10 {
++        push_i64(out, v);
++        return;
++    }
+     let mut tmp = [0u8; 65];
+     let mut i = tmp.len();
+     let mut n = v.unsigned_abs();
+-    loop {
+-        i -= 1;
+-        let d = (n % radix as u64) as u8;
+-        tmp[i] = if d < 10 { b'0' + d } else { b'a' + d - 10 };
+-        n /= radix as u64;
+-        if n == 0 {
+-            break;
++    if radix.is_power_of_two() {
++        let shift = radix.trailing_zeros();
++        let mask = u64::from(radix - 1);
++        loop {
++            i -= 1;
++            let d = (n & mask) as u8;
++            tmp[i] = if d < 10 { b'0' + d } else { b'a' + d - 10 };
++            n >>= shift;
++            if n == 0 {
++                break;
++            }
++        }
++    } else {
++        loop {
++            i -= 1;
++            let d = (n % radix as u64) as u8;
++            tmp[i] = if d < 10 { b'0' + d } else { b'a' + d - 10 };
++            n /= radix as u64;
++            if n == 0 {
++                break;
++            }
+         }
+     }
+     if v < 0 {
+@@ -602,16 +620,34 @@
+ 
+ /// `UInt64.to_string_radix`.
+ pub fn format_radix_u64(v: u64, radix: u32, out: &mut Vec<u8>) {
++    if radix == 10 {
++        out.extend_from_slice(format_u64(v, &mut [0; 20]));
++        return;
++    }
+     let mut tmp = [0u8; 64];
+     let mut i = tmp.len();
+     let mut n = v;
+-    loop {
+-        i -= 1;
+-        let d = (n % radix as u64) as u8;
+-        tmp[i] = if d < 10 { b'0' + d } else { b'a' + d - 10 };
+-        n /= radix as u64;
+-        if n == 0 {
+-            break;
++    if radix.is_power_of_two() {
++        let shift = radix.trailing_zeros();
++        let mask = u64::from(radix - 1);
++        loop {
++            i -= 1;
++            let d = (n & mask) as u8;
++            tmp[i] = if d < 10 { b'0' + d } else { b'a' + d - 10 };
++            n >>= shift;
++            if n == 0 {
++                break;
++            }
++        }
++    } else {
++        loop {
++            i -= 1;
++            let d = (n % radix as u64) as u8;
++            tmp[i] = if d < 10 { b'0' + d } else { b'a' + d - 10 };
++            n /= radix as u64;
++            if n == 0 {
++                break;
++            }
+         }
+     }
+     out.extend_from_slice(&tmp[i..]);
+@@ -624,6 +660,65 @@
+ 
+     fn s(b: Vec<u8>) -> String {
+         String::from_utf8(b.as_slice().to_vec()).unwrap()
++    }
++
++    #[test]
++    fn radix_formatting_matches_division_for_every_supported_base() {
++        fn previous(mut value: u64, radix: u32) -> Vec<u8> {
++            let mut reversed = Vec::new();
++            loop {
++                let digit = (value % u64::from(radix)) as usize;
++                reversed.push(b"0123456789abcdefghijklmnopqrstuvwxyz"[digit]);
++                value /= u64::from(radix);
++                if value == 0 {
++                    break;
++                }
++            }
++            reversed.reverse();
++            reversed
++        }
++
++        let mut values = vec![
++            0,
++            1,
++            9,
++            10,
++            31,
++            32,
++            35,
++            36,
++            i64::MAX as u64,
++            1 << 63,
++            u64::MAX,
++        ];
++        for bit in 1..64 {
++            values.extend([(1 << bit) - 1, 1 << bit, (1 << bit) + 1]);
++        }
++        let mut bits = 0x1234_5678_9abc_def0u64;
++        for _ in 0..4096 {
++            bits ^= bits << 13;
++            bits ^= bits >> 7;
++            bits ^= bits << 17;
++            values.push(bits);
++        }
++        for radix in 2..=36 {
++            for &value in &values {
++                let mut unsigned = b"prefix:".to_vec();
++                format_radix_u64(value, radix, &mut unsigned);
++                assert_eq!(&unsigned[7..], previous(value, radix));
++                assert_eq!(&unsigned[..7], b"prefix:");
++
++                let signed_value = value as i64;
++                let mut expected = b"prefix:".to_vec();
++                if signed_value < 0 {
++                    expected.push(b'-');
++                }
++                expected.extend(previous(signed_value.unsigned_abs(), radix));
++                let mut signed = b"prefix:".to_vec();
++                format_radix(signed_value, radix, &mut signed);
++                assert_eq!(signed, expected, "value={signed_value} radix={radix}");
++            }
++        }
+     }
+ 
+     #[test]

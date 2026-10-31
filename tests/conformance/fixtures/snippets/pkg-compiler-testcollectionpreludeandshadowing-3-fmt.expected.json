@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def use() -> Set[Int]:\n    var values: Set[Int] = Set()\n    values.add(1)\n    return values\n"
-  }
-}

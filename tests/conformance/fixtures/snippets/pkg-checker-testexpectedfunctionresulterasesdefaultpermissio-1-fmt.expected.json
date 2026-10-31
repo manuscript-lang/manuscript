@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def from_callback[T](factory: Callable[[], T]) -> T: factory()\n\ndef first() -> Unit:\n    let callback: Callable[[Int], Int] = from_callback(\n        lambda: lambda (value: Int = 4): value\n    )\n"
-  }
-}

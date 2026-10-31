@@ -1,6 +1,6 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def scaled(x: Int8) -> Int8:
+fn scaled(x: Int8) Int8:
     return (1 + 2) * x
 
 test "arithmetic over literals takes the expected sized type":

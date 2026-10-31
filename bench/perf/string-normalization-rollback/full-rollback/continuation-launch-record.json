@@ -1,0 +1,52 @@
+{
+  "kind": "After-run root tool transcript handoff; not producer-generated execution status",
+  "continuation_tool_cell": 61939,
+  "actual_exit_code": 0,
+  "observed_output": [
+    "conform 0 hashes_match True"
+  ],
+  "source": "Root confirmed completed continuation exec61939 actual exit0 in handoff to evidence packager. Packager did not independently observe that tool session.",
+  "original_tool_session": 14649,
+  "original_overall_exit_status": "unavailable after context transition; not established",
+  "completed_step_exits": "Final record.json records each completed step exit0; original completed builds/timing not rerun or overwritten.",
+  "conformance_summary": {
+    "total": 2394,
+    "pass": 2394,
+    "fail": 0,
+    "expected_fail": 0,
+    "unexpected_pass": 0,
+    "unrecorded": 0,
+    "pass_rate": 100.0
+  },
+  "conformance_by_phase": {
+    "check": {
+      "total": 1603,
+      "pass": 1603,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.0
+    },
+    "run": {
+      "total": 532,
+      "pass": 532,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.0
+    },
+    "test": {
+      "total": 259,
+      "pass": 259,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.0
+    }
+  },
+  "hashes_match": true,
+  "handoff_recorded_at_utc": "2026-10-29T19:34:27.354947+00:00"
+}

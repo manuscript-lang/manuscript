@@ -5,8 +5,8 @@ use ms_driver::project::pathops;
 
 use crate::backend::Io;
 
-const MAIN: &str = "from \"@std/process.ms\" import arguments\nfrom \"@std/io.ms\" import stdout\n\nexport def main() -> Int:\n    let message = f\"Arguments: {arguments().length()}\\n\"\n    if stdout().write(message).is_error():\n        return 1\n\n    return 0\n";
-const TEST: &str = "from \"@std/core.ms\" import panic\n\ntest \"arithmetic\":\n    if not (2 + 3 == 5):\n        return panic(message: \"arithmetic failed\")\n";
+const MAIN: &str = "import arguments from \"@std/process.ms\"\nimport stdout from \"@std/io.ms\"\n\nexport fn main() Int:\n    let message = \"Arguments: {arguments().length()}\\n\"\n    if stdout().write(message).is_error():\n        return 1\n\n    return 0\n";
+const TEST: &str = "import panic from \"@std/core.ms\"\n\ntest \"arithmetic\":\n    if not (2 + 3 == 5):\n        return panic(message: \"arithmetic failed\")\n";
 const IGNORE: &str = ".ms-cache/\n";
 
 pub fn run_init(args: &[String], io: &mut Io) -> i32 {

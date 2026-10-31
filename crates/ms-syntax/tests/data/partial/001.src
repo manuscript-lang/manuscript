@@ -1,17 +1,17 @@
-from "./domain.ms" import Key
-from "./helper.ms" import insert, insert_bound
-from "@std/test.ms" import expect_equal
+import Key from "./domain.ms"
+import insert, insert_bound from "./helper.ms"
+import expect_equal from "@std/test.ms"
 
 impl Equal for Key:
-    def equals(other: Equal) -> Bool:
+    fn equals(other: Equal) Bool:
         match other:
-            case Key(other): return (self.code == other.code or self.code == -other.code)
-            case _: return False
+            Key(other): return (self.code == other.code or self.code == -other.code)
+            _: return false
 
 impl Hashable for Key:
-    def hash() -> Int: 0
+    fn hash() Int: 0
 
-export def first() -> Result[Int, Error]:
+export fn first() Result[Int, Error]:
     let m = Map[Key, Int]()
     let original = Key(1.0)
     m.add(original, 1)

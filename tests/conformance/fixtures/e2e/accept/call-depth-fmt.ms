@@ -1,26 +1,26 @@
 # conform: tags=closures,control-flow,formatter,interfaces,modules,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/call-depth.ms
-from "@std/test.ms" import expect_contains, expect_equal, expect_fault
+import expect_contains, expect_equal, expect_fault from "@std/test.ms"
 
 type Walker:
     step: Int
     limit: Int
 
 interface Walk:
-    def walk(n: Int) -> Int
+    fn walk(n: Int) Int
 
 impl Walk for Walker:
-    def walk(n: Int) -> Int:
+    fn walk(n: Int) Int:
         if n == self.limit:
             return 0
 
         return 1 + self.walk(n: n + self.step)
 
-def runaway(n: Int) -> Int:
+fn runaway(n: Int) Int:
     return 1 + runaway(n + 1)
 
-def bounded(n: Int, limit: Int) -> Int:
+fn bounded(n: Int, limit: Int) Int:
     if n == limit:
         return 0
 
@@ -28,7 +28,7 @@ def bounded(n: Int, limit: Int) -> Int:
 
 test "runaway recursion is a fault":
     let message = try expect_fault(
-        lambda:
+        fn:
             let _ignored = runaway(0)
     )
     message | try expect_contains("call depth limit exceeded")
@@ -36,7 +36,7 @@ test "runaway recursion is a fault":
 test "runaway method recursion faults like function recursion":
     let walker = Walker(step: 1, limit: -1)
     let message = try expect_fault(
-        lambda:
+        fn:
             let _ignored = walker.walk(n: 0)
     )
     message | try expect_contains("call depth limit exceeded")

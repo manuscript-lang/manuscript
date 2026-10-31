@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module",
+        "position": {
+          "file": "format-testformatparagraphs-15.ms",
+          "line": 11,
+          "column": 9,
+          "offset": 303
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/format-testformatparagraphs-15.ms:11:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module\n    |\n 11 |         run(second)\n    |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

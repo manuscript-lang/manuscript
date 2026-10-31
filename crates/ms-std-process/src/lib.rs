@@ -394,6 +394,11 @@ native! {
         Ok(Object(Child { proc: p, streams }))
     }
 
+    /// The child's piped standard input; closed unless spawned with `Stdio.Pipe`.
+    fn msstd_process_subprocess_stdin(h: ObjRef<Child>) -> ObjShare<Stream> {
+        h.streams[0].share()
+    }
+
     /// `which`: 0 stdin, 1 stdout, 2 stderr. Returns a new reference to the stream.
     fn msstd_process_subprocess_stream(h: ObjRef<Child>, which: i64) -> ObjShare<Stream> {
         h.streams[which.clamp(0, 2) as usize].share()

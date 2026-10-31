@@ -852,6 +852,9 @@ fn scanner(text: &str, max_depth: usize, max_values: usize, doc: Doc) -> Scanner
 
 /// The failure of a parse that did not succeed.
 fn failure(text: &str, limit_hit: bool) -> Fail {
+    if !limit_hit {
+        return Fail::InvalidData;
+    }
     // Go's decoder would replace what the escape scan rejects, which outranks a limit.
     if text.as_bytes().contains(&b'\\') && !unicode_valid(text.as_bytes()) {
         Fail::InvalidData

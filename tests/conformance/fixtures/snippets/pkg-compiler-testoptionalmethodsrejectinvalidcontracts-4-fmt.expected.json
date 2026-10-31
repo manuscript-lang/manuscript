@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Optional[T]:\n    case some(value: T)\n    case none\n\ndef wrong(value: Optional[Int]) -> Int:\n    return value.get()\n"
-  }
-}

@@ -1,50 +1,52 @@
-# conform: tags=control-flow,generics,interfaces,lists,modules,records,stdlib-cleanup,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=control-flow,generics,interfaces,lists,modules,records,stdlib-cleanup,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cleanup-dispatch.ms
-from "@std/test.ms" import expect_equal, expect_fault
-from "@std/core.ms" import panic
-from "@std/core.ms" import Closeable
+import expect_equal, expect_fault from "@std/test.ms"
+import panic from "@std/core.ms"
+import Closeable from "@std/core.ms"
 
 interface OtherClose:
-    var def close(flag: Bool) -> Int
+    var fn close(flag: Bool) Int
 
 interface Disposable:
-    var def close() -> Unit
+    var fn close() Unit
 
 type Resource:
     closed: Int
 
 impl OtherClose for Resource:
-    var def close(flag: Bool) -> Int:
+    var fn close(flag: Bool) Int:
         panic("other")
         return 0
 
 impl Closeable for Resource:
-    var def close() -> Unit:
+    var fn close() Unit!:
         panic("closeable")
+        return ok(unit)
 
 impl Disposable for Resource:
-    var def close() -> Unit:
+    var fn close() Unit:
         panic("disposable")
 
-def bound_cleanup[T: Disposable](resource: T) -> Unit:
-    with let item = resource:
-        let _completed = ()
+fn bound_cleanup[T: Disposable](resource: T) Unit:
+    var item = resource
+    item.close()
 
-def canonical_cleanup[T: Closeable](resource: T) -> Unit:
-    with let item = resource:
-        let _completed = ()
+fn canonical_cleanup[T: Closeable](resource: T) Unit:
+    let _item = resource
+    let _completed = unit
 
 test "cleanup uses the selected contract":
     let direct = try expect_fault(
-        lambda:
-            with let resource = Resource(0):
-                let _completed = ()
+        fn:
+            let _resource = Resource(0)
+            let _completed = unit
     )
+
     try expect_equal(direct, "closeable")
 
-    let bound = try expect_fault(lambda: bound_cleanup(resource: Resource(0)))
+    let bound = try expect_fault(fn: bound_cleanup(resource: Resource(0)))
     try expect_equal(bound, "disposable")
 
-    let canonical = try expect_fault(lambda: canonical_cleanup(resource: Resource(0)))
+    let canonical = try expect_fault(fn: canonical_cleanup(resource: Resource(0)))
     try expect_equal(canonical, "closeable")

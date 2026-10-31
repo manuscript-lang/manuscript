@@ -2,4 +2,4 @@
 # conform: phase=parse
 # conform: origin=documentation/core-language/types/contracts.md:10
 interface Payments:
-    def charge(amount: Money) -> Result[Receipt, PaymentError]
+    fn charge(amount: Money) Result[Receipt, PaymentError]

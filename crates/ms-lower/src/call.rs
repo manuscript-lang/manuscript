@@ -80,7 +80,15 @@ impl<'a> FnLower<'a> {
             Resolution::Method(_) if self.receiver_expr(e).is_none() => {
                 self.call_value(e, &view)?
             }
-            Resolution::Method(m) => self.method_call(e, &view, m)?,
+            Resolution::Method(m) => {
+                let out = self.method_call(e, &view, m)?;
+                if m.name().is_some_and(|n| n.as_str() == "close")
+                    && let Some(recv) = self.receiver_expr(e)
+                {
+                    self.note_explicit_close(recv);
+                }
+                out
+            }
             Resolution::Constructor { ty, case } => self.construct(e, &view, ty, *case)?,
             Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
             _ => return Err(Error::new("unsupported call target")),
@@ -346,15 +354,8 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
-        // A `ref` function the checker proved lends on every path hands back a borrow of its
-        // argument instead of a copy.
-        let lent = self.cx.lenders.contains(&(c.module.file, c.id()))
-            && c.func.func().is_some_and(|f| !f.body.is_empty());
-        let owned_mask = if lent { None } else { self.cx.owned_mask(c) };
-        let fid = if lent {
-            let scope = self.evidence();
-            self.cx.function_lent(self.b.m, c, subst, scope)?
-        } else if owned_mask.is_some() {
+        let owned_mask = self.cx.owned_mask(c);
+        let fid = if owned_mask.is_some() {
             let scope = self.evidence();
             self.cx.function_owned(self.b.m, c, subst, scope)?
         } else {
@@ -402,7 +403,7 @@ impl<'a> FnLower<'a> {
             if vars.len() == 1
                 && !a.own
                 && let Some(place) = args.places.get(i).cloned().flatten()
-                && !matches!(place.kind, ExprKind::Name(_))
+                && (!matches!(place.kind, ExprKind::Name(_)) || self.is_alias_name(&place))
                 && self.is_place(&place)
                 && self.place_is_owned(&place)
             {
@@ -473,7 +474,12 @@ impl<'a> FnLower<'a> {
                 _ => self.drop_value(new),
             }
         }
-        Ok(self.val(v, !lent))
+        Ok(self.val(v, true))
+    }
+
+    /// Whether `e` names an exclusive borrow of another place (`if var x = ...`, `c?.f()`).
+    fn is_alias_name(&self, e: &Expr) -> bool {
+        matches!(self.hir.resolution(e), ms_check::hir::Resolution::Local(b) if self.aliases.contains_key(&b.uid))
     }
 
     // ------------------------------------------------------------- methods
@@ -513,20 +519,14 @@ impl<'a> FnLower<'a> {
             .name()
             .map(|n| n.to_string())
             .unwrap_or_else(|| native.rsplit('/').next().unwrap_or(native).to_string());
-        if crate::sharedbuilder::builder_kind(&m.receiver).is_some() {
-            return self.builder_method(e, view, m, recv_expr, &method);
+        if ms_check::effects::is_text_builder(&m.receiver) && method == "build" {
+            return self.text_builder_build(e, recv_expr);
         }
         if m.receiver.is_std("Shared") {
             return self.shared_method(e, view, recv_expr, &method);
         }
         if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
-        }
-        if let Some(v) = self.lent_result(e)? {
-            return Ok(v);
-        }
-        if let Some(v) = self.list_end_lent(e, recv_expr, &method)? {
-            return Ok(v);
         }
         if let Some(v) = self.map_get_chain(e, view, recv_expr, &method)? {
             return Ok(v);
@@ -548,50 +548,6 @@ impl<'a> FnLower<'a> {
             return Ok(self.trim_view(sym, recv));
         }
         self.native_method(e, view, m, recv_expr, recv)
-    }
-
-    /// `xs.first()` or `xs.last()` lent by a `ref` function: a view of the element, not a copy.
-    fn list_end_lent(
-        &mut self,
-        e: &Expr,
-        recv_expr: &Expr,
-        name: &str,
-    ) -> Result<Option<Val>, Error> {
-        if !matches!(name, "first" | "last")
-            || !self.lent_return
-            || self.lent_expr != Some(e as *const Expr as usize)
-            || !self.ety(recv_expr).is_std("List")
-        {
-            return Ok(None);
-        }
-        let opt_ty = self.emty(e)?;
-        let lv = self.expr(recv_expr)?;
-        if self.dead {
-            return Ok(Some(lv));
-        }
-        let lv = self.borrow(lv);
-        let len = self.b.list_len(lv);
-        let zero = self.b.iconst(0);
-        let empty = self.b.icmp(ms_mir::ir::Cc::Eq, len, zero);
-        let out = self.b.declare_var(opt_ty, ms_mir::ir::Mode::Borrow);
-        let (absent, present, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br_if(empty, absent, &[], present, &[]);
-        self.b.seal_block(absent);
-        self.b.seal_block(present);
-        self.enter(absent);
-        let none = self.b.opt_none(opt_ty);
-        self.b.def_var(out, none);
-        self.b.br(join, &[]);
-        self.enter(present);
-        let at = self.b.iconst(if name == "first" { 0 } else { -1 });
-        let elem = self.b.list_get(lv, at);
-        let some = self.b.opt_view(elem);
-        self.b.def_var(out, some);
-        self.b.br(join, &[]);
-        self.b.seal_block(join);
-        self.enter(join);
-        let v = self.b.use_var(out);
-        Ok(Some(Val { v, own: false }))
     }
 
     /// `text.trim()` (or `trim_start`, `trim_end`) on a string that stays where it is: a view into it, nothing allocated. The
@@ -729,6 +685,23 @@ impl<'a> FnLower<'a> {
                     }
                     return self.derived_hash(recv);
                 }
+                // Equality is derived for every type that has no implementation of its own.
+                if m.name().is_some_and(|n| n.as_str() == "equals")
+                    && contract.is_std("Equal")
+                    && let [other] = view.arguments.as_slice()
+                {
+                    let recv = self.expr(recv_expr)?;
+                    if self.dead {
+                        return Ok(recv);
+                    }
+                    let raw = self.expr_value(other.expr)?;
+                    if self.dead {
+                        return Ok(raw);
+                    }
+                    let t = self.ty_of(recv.v);
+                    let v = self.equal(t, recv, raw)?;
+                    return Ok(Val { v, own: false });
+                }
                 // Built-in scalars order themselves against another of their own type.
                 if m.name().is_some_and(|n| n.as_str() == "compare")
                     && contract.is_std("Comparable")
@@ -746,6 +719,31 @@ impl<'a> FnLower<'a> {
                     let b = self.borrow(raw);
                     let r = self.order(want, &static_ty, a, b)?;
                     return Ok(Val { v: r, own: false });
+                }
+                // A resource closed through its parts (a record holding one) has no `close` of
+                // its own: closing it closes what it holds.
+                if m.name().is_some_and(|n| n.as_str() == "close")
+                    && contract.is_std("Closeable")
+                    && let Some(kind) = self.part_closer(&static_ty)?
+                {
+                    let recv = self.expr(recv_expr)?;
+                    if self.dead {
+                        return Ok(recv);
+                    }
+                    self.close_with(&kind, recv.v, want);
+                    // The call is checked as `Unit!`: it succeeds, since a part that fails faults.
+                    let result = self.mty(&ms_check::types::test_outcome())?;
+                    let TyKind::Alt(alt) = self.b.m.types.kind(result).clone() else {
+                        return Err(Error::new("a close returns a Result"));
+                    };
+                    let ok = self.b.m.alts[alt.index()]
+                        .cases
+                        .iter()
+                        .position(|c| c.name == "ok")
+                        .ok_or_else(|| Error::new("a close returns a Result"))?;
+                    let unit = self.b.unit();
+                    let v = self.b.alt_new(alt, ok as u32, &[unit]);
+                    return Ok(Val { v, own: true });
                 }
                 return Err(Error::new(format!(
                     "{static_ty} has no implementation of {}",
@@ -827,8 +825,7 @@ impl<'a> FnLower<'a> {
         let r = self.borrow(recv);
         self.at(e.pos);
         let v = self.b.call_method(iface, k as u32, r, &args);
-        // A `ref` operation lends: the result is a borrow of the receiver or an argument.
-        Ok(self.val(v, !sig.ret_borrowed))
+        Ok(self.val(v, true))
     }
 
     /// The contract operation an implementation method fulfils: its parameters without a
@@ -884,12 +881,10 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let t = ct::sub(ty, &self.subst);
         let mt = self.cx.lower_ty(self.b.m, &t)?;
-        if crate::sharedbuilder::builder_kind(&t).is_some() {
-            return self.construct_builder(mt);
-        }
         if crate::mapset::is_map_or_set(self.b.m, mt)
             || matches!(self.b.m.types.kind(mt), TyKind::List(_))
             || t.is_std("Bytes")
+            || ms_check::effects::is_text_builder(&t)
         {
             return self.construct_collection(view, mt);
         }
@@ -901,19 +896,10 @@ impl<'a> FnLower<'a> {
             None => ct::fields(&t),
         };
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
-        // `return some(part)` of a lending function wraps the borrow itself.
-        let view_only = self.lent_return
-            && self.lent_expr == Some(e as *const Expr as usize)
-            && matches!(self.b.m.types.kind(mt), TyKind::Opt(_))
-            && view.arguments.len() == 1;
         for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(x);
-            }
-            if view_only && a.wrap_optional.is_none() && !x.own {
-                let v = self.b.opt_view(x.v);
-                return Ok(Val { v, own: false });
             }
             let later_try = view.arguments[n + 1..]
                 .iter()
@@ -933,7 +919,7 @@ impl<'a> FnLower<'a> {
                 let v = self.owned(x);
                 Val {
                     v,
-                    own: self.needs_drop(self.ty_of(v)),
+                    own: self.holds(self.ty_of(v)),
                 }
             };
             let idx = params

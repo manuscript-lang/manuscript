@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/fs.ms\" import filesystem\n\ndef explicit() -> Unit:\n    let fs = filesystem()\n    fs.write_file(\"\", \"\", False)\n    fs.copy_file(\"\", \"\", True)\n    fs.copy_tree(\"\", \"\", False, max_entries: none, max_bytes: 3)\n    fs.create_directory(\"\", True)\n    fs.remove(\"\", False)\n"
-  }
-}

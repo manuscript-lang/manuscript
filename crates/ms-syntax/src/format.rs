@@ -188,12 +188,22 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
     if current == Tok::Dot && matches!(previous, Tok::Pipe | Tok::Try) {
         return true;
     }
+    if previous == Tok::Bang && current == Tok::Name && tokens[at].lo == tokens[at - 1].hi {
+        return false;
+    }
     if current == Tok::DotDot || previous == Tok::DotDot {
         return false;
     }
     if matches!(
         current,
-        Tok::RParen | Tok::RBracket | Tok::RBrace | Tok::Comma | Tok::Dot | Tok::Colon
+        Tok::RParen
+            | Tok::RBracket
+            | Tok::RBrace
+            | Tok::Comma
+            | Tok::Dot
+            | Tok::Colon
+            | Tok::Question
+            | Tok::Bang
     ) {
         return false;
     }
@@ -213,7 +223,9 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
         // The two tokens of a compound assignment such as +=.
         return false;
     }
-    if current == Tok::LParen && matches!(previous, Tok::Name | Tok::RParen | Tok::RBracket) {
+    if current == Tok::LParen
+        && matches!(previous, Tok::Name | Tok::RParen | Tok::RBracket | Tok::Fn)
+    {
         return false;
     }
     if current == Tok::LBracket && matches!(previous, Tok::Name | Tok::SelfKw | Tok::RBracket) {
@@ -375,9 +387,7 @@ fn guard_statement(s: &Stmt) -> bool {
 /// The statement's value expression.
 fn statement_value(s: &Stmt) -> Option<&Expr> {
     match &s.kind {
-        StmtKind::Bind { value, .. }
-        | StmtKind::Assign { value, .. }
-        | StmtKind::With { value, .. } => Some(value),
+        StmtKind::Bind { value, .. } | StmtKind::Assign { value, .. } => Some(value),
         StmtKind::Call(e) => Some(e),
         StmtKind::Return(e) => e.as_ref(),
         StmtKind::If { cond, .. } | StmtKind::While { cond, .. } => Some(cond),
@@ -410,7 +420,7 @@ fn paragraph_block(s: &Stmt) -> bool {
                     || !else_body.is_empty()
                     || (body.len() == 1 && paragraph_block(&body[0])))
         }
-        StmtKind::While { body, .. } | StmtKind::For { body, .. } | StmtKind::With { body, .. } => {
+        StmtKind::While { body, .. } | StmtKind::For { body, .. } => {
             body.len() > 1 || (body.len() == 1 && paragraph_block(&body[0]))
         }
         _ => false,
@@ -762,7 +772,7 @@ impl<'a> Layout<'a> {
                 if code.len() > 1
                     && matches!(
                         code[code.len() - 2].kind,
-                        Tok::Name | Tok::RParen | Tok::RBracket | Tok::Lambda
+                        Tok::Name | Tok::RParen | Tok::RBracket | Tok::Fn
                     )
                 {
                     items = true;
@@ -949,10 +959,7 @@ impl<'a> Layout<'a> {
     fn layout_operators(&self, nodes: &[Node]) -> (Option<Tok>, usize) {
         let (mut selected, mut level, mut count) = (None, 7, 0);
         for node in nodes {
-            if node.tok.kind == Tok::Newline
-                || node.tok.kind == Tok::Lambda
-                || node.tok.kind == Tok::Def
-            {
+            if node.tok.kind == Tok::Newline || node.tok.kind == Tok::Fn {
                 return (None, 0); // Operators here belong to a callable body or type.
             }
             if node.group.is_some() {
@@ -1350,7 +1357,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     k if is_open(k) => depth += 1,
                     Tok::RParen | Tok::RBracket | Tok::RBrace => depth -= 1,
                     Tok::Dot if depth == 0 => dots += 1,
-                    Tok::Newline | Tok::Indent | Tok::Dedent | Tok::Lambda | Tok::Def => return,
+                    Tok::Newline | Tok::Indent | Tok::Dedent | Tok::Fn => return,
                     Tok::If | Tok::Else => return,
                     k if depth == 0
                         && (matches!(k, Tok::And | Tok::Or) || is_comparison(k) || is_arith(k)) =>
@@ -1376,14 +1383,14 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             }
         }
 
-        fn wrap(&mut self, start: usize) {
+        fn wrap(&mut self, start: usize, limit: u32) {
             if self.strip {
                 return;
             }
             let tokens = self.tokens;
             let (mut end, mut booleans, mut dots, mut operators) = (start, 0, 0, 0);
             let mut calls: Vec<(usize, usize)> = Vec::new();
-            while end < tokens.len() {
+            while end < tokens.len() && tokens[end].pos.offset < limit {
                 if let Some(&close) = self.pairs.get(&end) {
                     // A call with a trivial argument gains nothing from breaking.
                     if tokens[end].kind == Tok::LParen && close > end + 3 {
@@ -1393,13 +1400,9 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     continue;
                 }
                 let kind = tokens[end].kind;
-                if layout_token(kind)
-                    || matches!(
-                        kind,
-                        Tok::Colon | Tok::Comma | Tok::RParen | Tok::RBracket | Tok::RBrace
-                    )
-                {
-                    break;
+                if layout_token(kind) {
+                    // An indented suite cannot be wrapped as a partial value.
+                    return;
                 }
                 match kind {
                     Tok::And | Tok::Or => booleans += 1,
@@ -1470,7 +1473,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                 return;
             };
             let tokens = self.tokens;
-            if matches!(tokens[start].kind, Tok::String | Tok::Def) {
+            if matches!(tokens[start].kind, Tok::String | Tok::Fn) {
                 return;
             }
             let mut start = start;
@@ -1491,10 +1494,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                         start += 1;
                     }
                 }
-                StmtKind::Bind { .. }
-                | StmtKind::Assign { .. }
-                | StmtKind::For { .. }
-                | StmtKind::With { .. } => {
+                StmtKind::Bind { .. } | StmtKind::Assign { .. } | StmtKind::For { .. } => {
                     let target = if matches!(s.kind, StmtKind::For { .. }) {
                         Tok::In
                     } else {
@@ -1510,7 +1510,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                 }
                 _ => {}
             }
-            self.wrap(start);
+            self.wrap(start, value.end.offset);
         }
     }
     let mut g = G {
@@ -1534,7 +1534,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             && !suite_expression(&c.value)
             && let Some(&start) = g.starts.get(&c.init_pos.offset)
         {
-            g.wrap(start);
+            g.wrap(start, c.value.end.offset);
         }
         visit::walk_decl(&mut g, d);
     }

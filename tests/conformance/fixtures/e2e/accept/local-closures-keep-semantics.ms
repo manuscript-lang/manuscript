@@ -1,20 +1,20 @@
 # conform: tags=closures,control-flow,faults,interpolation,lists,match,modules,mutation,optional,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/local-closures-keep-semantics.ms
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_true
+import TextError from "@std/core.ms"
+import expect_true from "@std/test.ms"
 
-def bump(factor: Int) -> Int:
+fn bump(factor: Int) Int:
     var offset = 10
     offset = 99
 
-    let scale = lambda (value: Int) -> Int: value * factor + offset
+    let scale = fn(value: Int) Int: value * factor + offset
     return scale(value: 2)
 
-def lookup(limit: Int) -> Int:
-    let find = lambda (key: Int) -> Optional[Int]:
+fn lookup(limit: Int) Int:
+    let find = fn(key: Int) Int?:
         if key < limit:
-            return some(key * 2)
+            return (key * 2)
 
         return none
 
@@ -23,17 +23,17 @@ def lookup(limit: Int) -> Int:
 
     while i < 5:
         match find(key: i):
-            case some(found):
+            found:
                 total = total + found
-            case none:
+            none:
                 total = total + 100
 
         i = i + 1
 
     return total
 
-def parse(text: String) -> Result[Int, TextError]:
-    let guard = lambda (number: Int) -> Result[Int, TextError]:
+fn parse(text: String) Int!TextError:
+    let guard = fn(number: Int) Int!TextError:
         if number < 0:
             return Result[Int, TextError].error(TextError("negative"))
 
@@ -42,21 +42,21 @@ def parse(text: String) -> Result[Int, TextError]:
     let checked = try guard(number: text.length())
     return Result[Int, TextError].ok(checked + 1)
 
-def labels(prefix: String) -> String:
-    let join = lambda (left: String, right: String) -> String: f"{prefix}{left}-{right}"
+fn labels(prefix: String) String:
+    let join = fn(left: String, right: String) String: "{prefix}{left}-{right}"
     return join(left: "a", right: "b")
 
-def reordered() -> Int:
-    let subtract = lambda (left: Int, right: Int) -> Int: left - right
+fn reordered() Int:
+    let subtract = fn(left: Int, right: Int) Int: left - right
     return subtract(right: 2, left: 7)
 
-def passed() -> List[Int]:
-    let double = lambda (value: Int) -> Int: value * 2
+fn passed() List[Int]:
+    let double = fn(value: Int) Int: value * 2
     return [1, 2, 3].map(double)
 
-def nested(n: Int) -> Int:
-    let inner = lambda (x: Int) -> Int: x + 1
-    let outer = lambda (y: Int) -> Int: inner(x: y) * 2
+fn nested(n: Int) Int:
+    let inner = fn(x: Int) Int: x + 1
+    let outer = fn(y: Int) Int: inner(x: y) * 2
     return outer(y: n)
 
 test "local closures":

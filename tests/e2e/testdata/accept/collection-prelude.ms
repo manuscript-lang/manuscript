@@ -1,5 +1,5 @@
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal, expect_false, fail
+import TextError from "@std/core.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
 
 type Shape:
     case Circle(radius: Float)
@@ -8,11 +8,11 @@ type Point:
     x: Int
     y: Int
 
-def roll(i: Int) -> Result[Int, TextError]: ok(i)
+fn roll(i: Int) Int!TextError: ok(i)
 
-def count(values: List[String]) -> Int: values.length()
+fn count(values: List[String]) Int: values.length()
 
-def update[K: Hashable, V](var values: Map[K, V], key: K, value: V) -> Map[K, V]:
+fn update[K: Hashable, V](var values: Map[K, V], key: K, value: V) Map[K, V]:
     values.add(key, value)
     return values.clone()
 
@@ -61,14 +61,14 @@ test "map add retains clones and insertion order":
     try expect_equal(payload, [1, 2])
 
 test "map add retains optional wrapping and generic bound calls":
-    var values = Map[Optional[Int], Optional[Int]]()
+    var values = Map[Int?, Int?]()
     values.add(1, 2)
     values.add(value: 3, key: 1)
     values.add(4, 5)
     try expect_equal(values[1].get(), 3)
     try expect_equal(values[4].get(), 5)
 
-    var generic = update[Optional[Int], Optional[Int]](var values, some(6), some(7))
+    var generic = update[Int?, Int?](var values, 6, 7)
     generic.add(8, 9)
     try expect_false(generic[6].get() != 7 or generic[8].get() != 9)
 
@@ -76,11 +76,11 @@ test "map add captures receivers and arguments in written order":
     var original = Map[Int, Int]()
     var visits = 0
     original.add(
-        match some(1):
-            case some(_):
+        match present(1):
+            _value:
                 visits = 1
                 1
-            case none: 0
+            none: 0
         ,
         2
     )
@@ -89,27 +89,30 @@ test "map add captures receivers and arguments in written order":
     var key = 3
     original.add(
         key,
-        match some(1):
-            case some(_):
+        match present(1):
+            _value:
                 key = 4
                 5
-            case none: 0
+            none: 0
     )
     try expect_false(original[3] != 5 or original.contains(4))
 
     var order = 0
     original.add(
-        value: match some(1):
-            case some(_):
+        value: match present(1):
+            _value:
                 order = 1
                 7
-            case none: 0
+            none: 0
         ,
-        key: match some(1):
-            case some(_):
+        key: match present(1):
+            _value:
                 try expect_equal(order, 1)
                 order = 2
                 6
-            case none: 0
+            none: 0
     )
     try expect_false(order != 2 or original[6] != 7)
+
+fn present[T](value: T) T?:
+    return value

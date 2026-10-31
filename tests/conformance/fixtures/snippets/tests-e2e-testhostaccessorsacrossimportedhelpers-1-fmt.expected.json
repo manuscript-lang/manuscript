@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import clock\nfrom \"@std/time.ms\" import Instant\n\nexport def now() -> Instant:\n    return clock().now()\n\nexport def close_output() -> Unit:\n    stdout().close()\n"
-  }
-}

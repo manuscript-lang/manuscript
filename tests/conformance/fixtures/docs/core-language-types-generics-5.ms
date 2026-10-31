@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,generics,tier-core
 # conform: phase=check
 # conform: origin=documentation/core-language/types/generics.md:92
-def choose[T](first: T, second: T) -> T:
+fn choose[T](first: T, second: T) T:
     return first
 
 let value = choose(1, 2)  # T = Int

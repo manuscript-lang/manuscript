@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "# A public contract.\nexport interface Run:\n    def first() -> Int\n    def second() -> Int\n\n# The implementation.\nimpl Run for Runner:\n    def first() -> Int: return 1\n\n    # Explain the second operation.\n    def second() -> Int:\n        let value = 2\n\n        # Handle both outcomes.\n        # Keep these comments together.\n        match value:\n            case one: return 1\n            # Fallback explanation.\n            case _:\n                return 2\n\n# Application entry.\ndef main() -> Int: return 0\n"
-  }
-}

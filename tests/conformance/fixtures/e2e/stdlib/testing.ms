@@ -1,8 +1,8 @@
 # conform: tags=aliasing,closures,control-flow,generics,interfaces,match,modules,optional,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/testing.ms
-from "@std/core.ms" import TextError
-from "@std/test.ms" import (
+import TextError from "@std/core.ms"
+import (
     assert_equal,
     expect_close,
     expect_contains,
@@ -16,14 +16,14 @@ from "@std/test.ms" import (
     expect_some,
     expect_true,
     fail
-)
+) from "@std/test.ms"
 
-def identity[T](value: T) -> T:
+fn identity[T](value: T) T:
     return value
 
 test "testing assertions":
-    True | try expect_true
-    False | try expect_false
+    true | try expect_true
+    false | try expect_false
     identity(3) | try expect_equal(3)
     "hello" | try assert_equal("hello")
     [1, 2] | try expect_equal([1, 2])
@@ -31,13 +31,13 @@ test "testing assertions":
     try expect_close(1.01, 1.0, 0.02)
     "Manuscript" | try expect_contains("script")
 
-    let present: Optional[Int] = some(7)
-    let absent: Optional[Int] = none
+    let present: Int? = 7
+    let absent: Int? = none
     ((present | try expect_some)) | try expect_equal(7)
     absent | try expect_none
 
-    let success: Result[Int, TextError] = ok(9)
-    let failure: Result[Int, TextError] = error(TextError("bad"))
+    let success: Int!TextError = ok(9)
+    let failure: Int!TextError = error(TextError("bad"))
     ((success | try expect_ok)) | try expect_equal(9)
     ((failure | try expect_error)) | try expect_equal(TextError("bad"))
 
@@ -45,7 +45,7 @@ test "testing assertions":
     let mismatch_cause = (mismatch | try expect_error)
     mismatch_cause.message() | try expect_contains("expected 2, got 1")
 
-    let quiet = expect_fault(lambda: ())
+    let quiet = expect_fault(fn: unit)
     let quiet_cause = (quiet | try expect_error)
     quiet_cause.message() | try expect_contains("returned normally")
 
@@ -59,7 +59,7 @@ type Key:
     label: String
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool:
+    fn equals(other: Key) Bool:
         return self.id == other.id
 
 test "assertions preserve domain equality":

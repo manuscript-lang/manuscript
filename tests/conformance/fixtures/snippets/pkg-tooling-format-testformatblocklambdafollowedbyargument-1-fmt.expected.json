@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def apply(transform: Callable[[Int], Int], value: Int) -> Int: transform(value)\n\ndef example() -> Int:\n    return apply(transform: lambda (value: Int) -> Int: return value - 1, value: 3)\n"
-  }
-}

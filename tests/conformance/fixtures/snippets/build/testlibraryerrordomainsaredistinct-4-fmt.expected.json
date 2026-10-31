@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "import hex_decode from \"@std/encoding.ms\"\n\nfn wrong() Unit!JsonError:\n    let bytes = try hex_decode(text: \"ff\", max_bytes: 1)\n    return ok(value: unit)\n"
+  }
+}

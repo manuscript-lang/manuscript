@@ -18,14 +18,14 @@ A literal is delimited by `"` and fits on one source line, interpolations includ
 | `\n` | LF, U+000A |
 | `\r` | CR, U+000D |
 | `\t` | Tab, U+0009 |
-| `\{`, `\}` | Literal opening/closing brace; valid only in f-strings, where plain braces are interpolation |
+| `\{`, `\}` | Literal opening/closing brace; plain `{` opens an interpolation |
 | `\u{H}` | Unicode scalar with one to six hexadecimal digits H |
 
-Hex digits may be either case. Scalars above U+10FFFF, surrogates U+D800 to U+DFFF, unknown escapes, an unescaped closing brace in an f-string, and unterminated literals are compile errors. `\u{0}` is a valid null character.
+Hex digits may be either case. Scalars above U+10FFFF, surrogates U+D800 to U+DFFF, unknown escapes, an unescaped closing brace, and unterminated literals are compile errors. `\u{0}` is a valid null character.
 
 ```manuscript
 let quote = "She said \"hello\"."
-let template = "Literal braces: {name}"
+let template = "Literal braces: \{name\}"
 let lines = "first\nsecond"
 let symbol = "\u{1F642}"
 ```
@@ -34,31 +34,31 @@ Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values. [Equa
 
 ## Interpolation
 
-A plain `"..."` literal has no interpolation: braces are ordinary characters. An f-string `f"..."` is the same literal with a prefix, and an unescaped `{` in it opens an embedded [expression](expressions.md) closed by its matching `}`. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Escape both braces for JSON-like text: `f"\{\"a\": 1\}"`, or use a plain literal, which needs no escape: `"{\"a\": 1}"`.
+Every `"..."` literal interpolates: an unescaped `{` opens an embedded [expression](expressions.md) closed by its matching `}`, and there is no `f` prefix. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Escape both braces for JSON-like text: `"\{\"a\": 1\}"`.
 
 ```manuscript
 let name = "Ada"
 let count = 3
-let greeting = f"Welcome, {name}!"
-let calculated = f"Next: {count + 1}"
+let greeting = "Welcome, {name}!"
+let calculated = "Next: {count + 1}"
 ```
 
 Embedded expressions evaluate once, left to right, each formatted before the next. Propagation or a fault stops the rest. Every value is formattable using the same conversion as `to_string()`; interpolation adds no implicit conversions elsewhere.
 
 ## Converting values to String
 
-Every value has a built-in `to_string() -> String`, needing no import or bound. A bound method keeps its receiver:
+Every value has a built-in `to_string() String`, needing no import or bound. A bound method keeps its receiver:
 
 ```manuscript
-def text[T](value: T) -> String:
+fn text[T](value: T) String:
     return value.to_string()
 
 test "string conversion":
     let count = 3
-    let convert: Callable[[], String] = count.to_string
+    let convert: fn() String = count.to_string
     let _direct = count.to_string()
     let _bound = convert()
-    let _embedded = f"{count}"
+    let _embedded = "{count}"
 ```
 
 Each conversion produces `"3"`. Passing an Int to a String parameter still needs `.to_string()`.
@@ -107,11 +107,11 @@ The removed spellings migrate as follows.
 
 | Receiver or constructor | Signature/result |
 | --- | --- |
-| `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]`; `parse_float() -> Optional[Float]` |
+| `String` | `byte_length() Int`; `to_bytes() Bytes`; `parse_int() Int?`; `parse_float() Float?` |
 | `Bytes(values: List[UInt8])` | Immutable bytes; `Bytes([104, 105])` types its literals as `UInt8`, so a value outside 0–255 is a compile error |
-| `Bytes` | `length() -> Int`; `get(index: Int, default: Optional[UInt8] = none) -> UInt8`; `[index] UInt8`; `concat(values: Bytes) -> Bytes` |
-| `Bytes` | `to_string() -> Optional[String]` |
-| `Bytes` | `values() -> List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
+| `Bytes` | `length() Int`; `get(index: Int, default: UInt8?) UInt8`; `[index] UInt8`; `concat(values: Bytes) Bytes` |
+| `Bytes` | `to_string() String?` |
+| `Bytes` | `values() List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
 
 `to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` and `data[index]` return the byte as `UInt8`; convert with `to_int()` for arithmetic; negative indexes count from the end, and `[]` faults out of range where `get` takes a default. Bytes are immutable, so `data[i] = v` is rejected.
 
@@ -120,19 +120,19 @@ The removed spellings migrate as follows.
 `parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`. `parse_float` takes an optional sign, digits, an optional fraction with digits on both sides of the point, an optional exponent, or `NaN`, `Infinity` and `-Infinity`; anything else, or a finite-looking value beyond the Float range, gives `none`. Use `math.parse_float` and `math.parse_int(text, radix)` when the failure cause or a radix is needed. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations are unsupported.
 
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
-from "@std/bytes.ms" import Bytes
+import Bytes from "@std/bytes.ms"
 
 test "explicit byte conversion":
     if not ("é".byte_length() == 2):
         return panic("check failed")
-    if not ("é".to_bytes().decode_utf8() == some("é")):
+    if not ("é".to_bytes().decode_utf8() == "é"):
         return panic("check failed")
-    let invalid: Optional[String] = none
+    let invalid: String? = none
     if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")
-    if not ("-007".parse_int() == some(-7)):
+    if not ("-007".parse_int() == -7):
         return panic("check failed")
 ```
 
@@ -141,9 +141,9 @@ test "explicit byte conversion":
 `pad_start(target_length, padding)` and `pad_end` return a `String`. The text grows to `target_length` scalars by repeating `padding` (the last copy is cut to fit); a shorter or negative target or empty padding returns the text unchanged. An output beyond the string limit faults, as `concat` does, so a table row needs no unwrapping. `Float.to_fixed(digits)`, `to_precision(precision)` and `to_exponential(digits)` also return a `String`; a count outside their range (0 to 100, or 1 to 100 for `to_precision`) is a programming fault.
 
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
-def row(name: String, amount: Float) -> String:
+fn row(name: String, amount: Float) String:
     return name.pad_end(8, " ") + amount.to_fixed(2).pad_start(8, " ")
 
 test "padding and fixed digits":
@@ -156,8 +156,8 @@ test "padding and fixed digits":
 `Bytes` reads fixed-width numbers at an absolute offset: `int8`, `uint8`, and for each of `int16`, `int32`, `int64`, `uint16`, `uint32`, `float32`, `float64` a `_le` and `_be` spelling, such as `data.int32_le(at: 2)`. Each returns `Result[T, BinaryError]`; bytes that are not all there give `BinaryError.OutOfRange`. Signed reads return `Int8`, `Int16`, `Int32` and `Int` (64-bit); `uint8`, `uint16` and `uint32` reads return `UInt8`, `UInt16` and `UInt32`; `float32` returns `Float32` and `float64` returns `Float`. `BytesBuilder` writes with matching `append_int32_le(value)` and siblings; `append` adds one byte and `append_bytes` adds many.
 
 ```manuscript
-from "@std/bytes.ms" import BytesBuilder
-from "@std/core.ms" import panic
+import BytesBuilder from "@std/bytes.ms"
+import panic from "@std/core.ms"
 
 test "binary codecs":
     var out = BytesBuilder()
@@ -177,14 +177,14 @@ Formatting never depends on locale or host settings.
 | Type | Formatting |
 | --- | --- |
 | String | Contents unchanged; inserted braces/quotes are ordinary output characters and are not parsed again |
-| Bool | `True` or `False` |
-| Unit | `()` |
+| Bool | `true` or `false` |
+| Unit | `unit` |
 | Int | Base-ten digits, optional leading minus, no separators or leading zeros |
 | Float | Shortest round-trip decimal under the rule below; signed zero retains its sign |
 | Decimal | Exact numerical decimal value, normalized as below; no significance/scale padding |
 | Record | `Type(field: value, ...)`, with fields sorted by name and values recursively converted |
 | Alternative | `Type.Case` for a nullary case; `Type.Case(value, ...)` for payloads in declaration order |
-| Optional | `Optional.some(value)` or `Optional.none`; for example, `some(42)` formats as `Optional.some(42)` |
+| Optional | `Optional.some(value)` or `Optional.none`; for example, an `Int?` holding 42 formats as `Optional.some(42)` |
 | Result | `Result.ok(value)` or `Result.error(cause)`; for example, `ok(42)` formats as `Result.ok(42)` |
 | List | `[value, ...]` in element order |
 | Map | `Map(key: value, ...)` in insertion order |

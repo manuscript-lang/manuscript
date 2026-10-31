@@ -1,27 +1,27 @@
 # conform: tags=control-flow,formatter,generics,interfaces,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/result-error-widening-inference.ms
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Failure:
     code: Int
 
 impl Error for Failure:
-    def message() -> String:
+    fn message() String:
         return "failure " + self.code.to_string()
 
-def failing() -> Result[Int, Failure]:
+fn failing() Int!Failure:
     return error(Failure(7))
 
-def succeeding() -> Result[Int, Failure]:
+fn succeeding() Int!Failure:
     return ok(3)
 
-def describe[T](r: Result[T, Error]) -> String:
+fn describe[T](r: T!) String:
     if r.is_error():
         return r.err().message()
 
     return "ok"
 
-test "a generic Result[T, Error] parameter infers T and widens a domain error":
+test "a generic T! parameter infers T and widens a domain error":
     try expect_equal(describe(failing()), "failure 7")
     try expect_equal(describe(succeeding()), "ok")

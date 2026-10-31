@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/collections.ms\" import ListBuilder\nfrom \"./contracts.ms\" import Read\n\nexport interface Original:\n    def original() -> Int\n\nexport type Item:\n    value: Int\n\nimpl Original for Item:\n    def original() -> Int:\n        return self.value\n\nexport type Box[T]:\n    value: T\n\nexport type Holder[T: Read[Int]]:\n    value: T\n\nimpl Read[Int] for Holder[T]:\n    def get() -> Int:\n        return self.value.get()\n\nexport type Choice:\n    case Some(value: Int)\n    case Empty\n\nexport type Resource:\n    events: ListBuilder[Int]\n"
+    "fmt": "import Shared from \"@std/shared.ms\"\nimport Read from \"./contracts.ms\"\n\nexport interface Original:\n    fn original() Int\n\nexport type Item:\n    value: Int\n\nimpl Original for Item:\n    fn original() Int:\n        return self.value\n\nexport type Box[T]:\n    value: T\n\nexport type Holder[T: Read[Int]]:\n    value: T\n\nimpl Read[Int] for Holder[T]:\n    fn get() Int:\n        return self.value.get()\n\nexport type Choice:\n    case Some(value: Int)\n    case Empty\n\nexport type Resource:\n    events: Shared[List[Int]]\n"
   }
 }

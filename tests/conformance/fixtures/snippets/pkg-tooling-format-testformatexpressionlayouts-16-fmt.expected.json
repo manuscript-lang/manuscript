@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def work() -> Int:\n    if let value = (\n        [2, 5, 3, (-6), (-9), 1, 2, 3, 4]\n        .clone()\n        .sorted(lambda (l: Int, r: Int) -> Int: (l - r))\n        .first()\n    ):\n        return value\n\n    return 0\n"
-  }
-}

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def make_headline() -> Callable[[], String]:\n    var subject = \"Weekly update\"\n    let headline = lambda:\n        return subject\n    subject = \"Launch announcement\"\n    return headline\n# make_headline()() returns \"Weekly update\".\n"
+    "fmt": "fn make_headline() fn() String:\n    var subject = \"Weekly update\"\n    let headline = fn:\n        return subject.clone()\n    subject = \"Launch announcement\"\n    return headline\n# make_headline()() returns \"Weekly update\".\n"
   }
 }

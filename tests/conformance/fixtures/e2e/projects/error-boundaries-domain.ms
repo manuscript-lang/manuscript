@@ -8,5 +8,5 @@ export type BoxFailure[T: Error]:
     cause: T
 
 impl Error for BoxFailure[T]:
-    def message() -> String:
+    fn message() String:
         return self.cause.message()

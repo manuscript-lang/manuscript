@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 use ms_rt::ffi::{Fail, OptInt, RecList, Str, abi_record, native};
 
 abi_record! {
-    /// `Url` record: `scheme, host, port: Optional[Int], path, query, fragment`.
+    /// `Url` record: `scheme, host, port: Int?, path, query, fragment`.
     pub struct UrlRec {
         pub scheme: Str,
         pub host: Str,

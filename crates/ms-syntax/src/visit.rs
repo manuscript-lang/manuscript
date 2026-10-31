@@ -104,10 +104,6 @@ pub fn walk_stmt<V: Visitor>(v: &mut V, s: &Stmt) {
             walk_expr(v, iter);
             walk_block(v, body);
         }
-        StmtKind::With { value, body, .. } => {
-            walk_expr(v, value);
-            walk_block(v, body);
-        }
     }
 }
 
@@ -134,6 +130,7 @@ pub fn walk_expr<V: Visitor>(v: &mut V, e: &Expr) {
             walk_expr(v, left);
             walk_expr(v, index);
         }
+        ExprKind::Probe(target) => walk_expr(v, target),
         ExprKind::List(items) => items.iter().for_each(|x| walk_expr(v, x)),
         ExprKind::Map(entries) => entries.iter().for_each(|en| {
             walk_expr(v, &en.key);

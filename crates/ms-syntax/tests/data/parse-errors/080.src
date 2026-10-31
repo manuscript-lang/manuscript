@@ -1,1 +1,1 @@
-from "./lib.ms" import make as build
+import make as build from "./lib.ms"

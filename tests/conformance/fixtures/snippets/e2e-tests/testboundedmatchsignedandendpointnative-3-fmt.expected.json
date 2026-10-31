@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "export fn main() Int:\n    let shapes = [\n        Shape.Square(3037000499), Shape.Square(-3037000499), Shape.Circle(-3037000499)\n    ]\n    if area(shapes.get(0)) != 9223372030926249001: return 1\n    if area(shapes.get(1)) != 9223372030926249001: return 2\n    if area(shapes.get(2)) != -9111001497: return 3\n\n    return 0\n"
+  }
+}

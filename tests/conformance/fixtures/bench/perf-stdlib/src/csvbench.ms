@@ -1,17 +1,17 @@
-from "./harness.ms" import bench
-from "@std/csv.ms" import parse, stringify
+import bench from "./harness.ms"
+import parse, stringify from "@std/csv.ms"
 
-export def bench_csv() -> Unit:
+export fn bench_csv() Unit:
     var rows: List[List[String]] = []
     for i in 0..5000:
-        rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
+        rows.append(["{i}", "name {i}", "a,b", "quote\"d"])
 
     let csv_text = stringify(rows).get("")
 
     bench(
         "csv.stringify",
         5000,
-        lambda () -> Int:
+        fn() Int:
             if let s = stringify(rows):
                 return s.length()
 
@@ -21,7 +21,7 @@ export def bench_csv() -> Unit:
     bench(
         "csv.parse",
         5000,
-        lambda () -> Int:
+        fn() Int:
             if let r = parse(csv_text):
                 return r.length()
 

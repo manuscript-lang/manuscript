@@ -1,4 +1,4 @@
-from "@std/math.ms" import abs_int
+import abs_int from "@std/math.ms"
 
-export def main() -> Int:
+export fn main() Int:
     return abs_int(-3)

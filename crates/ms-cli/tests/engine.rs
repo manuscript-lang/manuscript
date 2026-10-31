@@ -55,7 +55,7 @@ fn write(dir: &Path, name: &str, text: &str) -> String {
     path.to_string_lossy().into_owned()
 }
 
-const MAIN: &str = "export def main() -> Int:\n    return 0\n";
+const MAIN: &str = "export fn main() Int:\n    return 0\n";
 
 #[test]
 fn run_returns_the_program_status() {
@@ -174,11 +174,7 @@ fn build_fails_when_its_metadata_cannot_be_written() {
 #[test]
 fn checker_diagnostics_stop_before_lowering() {
     let dir = scratch("diagnostics");
-    let source = write(
-        &dir,
-        "main.ms",
-        "export def main() -> Int:\n    return \"x\"\n",
-    );
+    let source = write(&dir, "main.ms", "export fn main() Int:\n    return \"x\"\n");
     let backend = Engine::new(Fixed(EXIT_SEVEN));
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!(status, 1);
@@ -196,23 +192,20 @@ fn entry_must_be_an_exported_main() {
     let dir = scratch("entry");
     let backend = Engine::new(Fixed(EXIT_SEVEN));
     for (text, expected) in [
-        ("def main() -> Int:\n    return 0\n", "main is not exported"),
+        ("fn main() Int:\n    return 0\n", "main is not exported"),
         (
-            "export def other() -> Int:\n    return 0\n",
+            "export fn other() Int:\n    return 0\n",
             "no main function is declared",
         ),
         (
-            "export def main(x: Int) -> Int:\n    return x\n",
+            "export fn main(x: Int) Int:\n    return x\n",
             "main takes no parameters",
         ),
     ] {
         let source = write(&dir, "main.ms", text);
         let (status, _, err) = ms(&backend, &["run", &source]);
         assert_eq!(status, 1, "{text}");
-        assert!(
-            err.contains("entry must export def main() -> Int; "),
-            "{err}"
-        );
+        assert!(err.contains("entry must export fn main() Int; "), "{err}");
         assert!(err.contains(expected), "{expected} missing in {err}");
     }
 }
@@ -220,11 +213,11 @@ fn entry_must_be_an_exported_main() {
 #[test]
 fn imports_load_in_dependency_order() {
     let dir = scratch("imports");
-    write(&dir, "lib.ms", "export def one() -> Int:\n    return 1\n");
+    write(&dir, "lib.ms", "export fn one() Int:\n    return 1\n");
     let source = write(
         &dir,
         "main.ms",
-        "from \"./lib.ms\" import one\n\nexport def main() -> Int:\n    return one()\n",
+        "import one from \"./lib.ms\"\n\nexport fn main() Int:\n    return one()\n",
     );
     let backend = Engine::new(Fixed(EXIT_SEVEN));
     assert_eq!(ms(&backend, &["run", &source]).0, 7);
@@ -232,7 +225,7 @@ fn imports_load_in_dependency_order() {
     let missing = write(
         &dir,
         "main.ms",
-        "from \"./nope.ms\" import one\n\nexport def main() -> Int:\n    return 0\n",
+        "import one from \"./nope.ms\"\n\nexport fn main() Int:\n    return 0\n",
     );
     let (status, _, err) = ms(&backend, &["run", &missing]);
     assert_eq!(status, 1);
@@ -277,7 +270,7 @@ fn library_projects_have_no_executable_entry() {
     write(
         &dir.join("src"),
         "lib.ms",
-        "export def one() -> Int:\n    return 1\n",
+        "export fn one() Int:\n    return 1\n",
     );
     let backend = Engine::new(Fixed(EXIT_SEVEN));
     let manifest = dir.join("ms.toml");
@@ -298,7 +291,7 @@ fn native_lowering_runs_real_programs() {
     let source = write(
         &dir,
         "main.ms",
-        "export def main() -> Int:\n    return 6 * 7 - 40\n",
+        "export fn main() Int:\n    return 6 * 7 - 40\n",
     );
     let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);
@@ -435,7 +428,7 @@ fn runtime_fault_is_reported_as_json() {
     let source = write(
         &dir,
         "boom.ms",
-        "def div(a: Int, b: Int) -> Int: a / b\n\nexport def main() -> Int:\n    return div(1, 0)\n\ntest \"boom\":\n    let _x = div(1, 0)\n",
+        "fn div(a: Int, b: Int) Int: a / b\n\nexport fn main() Int:\n    return div(1, 0)\n\ntest \"boom\":\n    let _x = div(1, 0)\n",
     );
     let backend = Engine::new(Native);
     let (status, json, err) = ms(&backend, &["run", &source, "--json"]);
@@ -515,7 +508,7 @@ fn emit_json_reports_source_diagnostics_and_preserves_output() {
     let source = write(
         &dir,
         "main.ms",
-        "export def main() -> Int:\n    return \"bad\"\n",
+        "export fn main() Int:\n    return \"bad\"\n",
     );
     let output = write(&dir, "main.mir", "previous MIR\n");
     let backend = Engine::new(Native);
@@ -872,4 +865,16 @@ fn native_sigterm_lets_in_flight_requests_finish_within_grace() {
     assert!(reply.starts_with("HTTP/1.1 200"), "{reply}");
     assert!(reply.ends_with("done"), "{reply}");
     assert_eq!(status.code(), Some(143), "{status:?} {:?}", status.signal());
+}
+
+/// A module without `bench` blocks says so instead of failing to lower the bench driver.
+#[test]
+fn bench_without_bench_blocks_reports_none() {
+    let dir = scratch("native-no-bench");
+    let source = write(&dir, "plain.ms", include_str!("engine/no-benches.ms"));
+    let backend = Engine::new(Native);
+    let (status, stdout, err) = ms(&backend, &["bench", &source]);
+    assert_eq!(status, 0, "{err}");
+    assert!(stdout.contains("no bench blocks found"), "{stdout}");
+    assert!(!err.contains("bench driver"), "{err}");
 }

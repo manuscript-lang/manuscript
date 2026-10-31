@@ -27,11 +27,11 @@ Cost is not measured yet. For `PriorityQueue[String]` each sift level allocates 
 
 ```manuscript
 # Prelude, from @std/core.ms
-def replace[T](var place: T, value: T) -> T: ...
-def swap[T](var a: T, var b: T) -> Unit: ...
+fn replace[T](var place: T, value: T) T: ...
+fn swap[T](var a: T, var b: T) Unit: ...
 
 impl List[T]:
-    var def swap(i: Int, j: Int) -> Unit: ...
+    var fn swap(i: Int, j: Int) Unit: ...
 ```
 
 - `replace(var xs[i], none)` takes an `Optional` slot. `replace(var self.head, next)` moves a field. Both accept any place a `var` argument accepts today (`shift(var pts[i], dx)` is already in `lowering-element-places.ms`).
@@ -43,7 +43,7 @@ impl List[T]:
 Queue with the primitives (no clones):
 
 ```manuscript
-var def dequeue() -> Optional[T]:
+var fn dequeue() Optional[T]:
     if self.head >= self.items.length():
         return none
 

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Counter:\n    def bump(by: Int) -> Int\n\ntype Cell:\n    total: Int\n\nimpl Counter for Cell:\n    def bump(by: Int) -> Int:\n        self.total += by\n        return self.total\n\ndef probe() -> Int:\n    var sum = 0\n"
-  }
-}

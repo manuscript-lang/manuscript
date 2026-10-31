@@ -2,8 +2,8 @@ type Counter:
     count: Int
     tags: List[String]
 
-def bump(var m: Map[String, Counter]) -> Int:
-    if var c = m.get("a"):
+fn bump(var m: Map[String, Counter]) Int:
+    if var c = m["a"]?:
         c.count = c.count + 1
         c.tags.append("x")
 

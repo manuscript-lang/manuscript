@@ -1,4 +1,4 @@
-def f(rows: List[List[Int]]) -> Int:
+fn f(rows: List[List[Int]]) Int:
     if let r = rows.first():
         return r.length()
 

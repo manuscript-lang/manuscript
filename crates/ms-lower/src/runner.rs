@@ -13,7 +13,7 @@ pub const FAILURE_MARKER: &str = "\u{1}FAIL\u{1}";
 pub const SKIP_MARKER: &str = "\u{1}SKIP\u{1}";
 
 /// One entry per bench that calls `driver(closure over the bench, operations per iteration)`. The
-/// driver takes the body as a `Callable[[], Result[Unit, Error]]` and returns that `Result`, so the
+/// driver takes the body as a `fn() Result[Unit, Error]` and returns that `Result`, so the
 /// entries run as tests do.
 pub(crate) fn bench_entries(
     m: &mut Module,

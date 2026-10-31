@@ -1,54 +1,48 @@
-from "@std/math.ms" import BigInt
-from "@std/bytes.ms" import Bytes
-from "@std/time.ms" import Duration
-from "@std/io.ms" import ReadStream
-from "@std/time.ms" import Timestamp
-from "@std/io.ms" import WriteStream
-from "@std/core.ms" import Closeable
+import BigInt from "@std/math.ms"
+import Bytes from "@std/bytes.ms"
+import Duration from "@std/time.ms"
+import ReadStream from "@std/io.ms"
+import Timestamp from "@std/time.ms"
+import WriteStream from "@std/io.ms"
+import Closeable from "@std/core.ms"
 
-extern def msstd_fs_constants() -> Map[String, Int]
+extern fn msstd_fs_constants() Map[String, Int]
 
-extern def msstd_fs_filesystem() -> FileSystem
+extern fn msstd_fs_filesystem() FileSystem
 
-extern def msrt_path_basename(path: String) -> String
+extern fn msrt_path_basename(path: String) String
 
-extern def msrt_path_dirname(path: String) -> String
+extern fn msrt_path_dirname(path: String) String
 
-extern def msrt_path_extension(path: String) -> String
+extern fn msrt_path_extension(path: String) String
 
-extern def msrt_path_is_absolute(path: String) -> Bool
+extern fn msrt_path_is_absolute(path: String) Bool
 
-extern def msrt_path_join(parts: List[String]) -> String
+extern fn msrt_path_join(parts: List[String]) String
 
-extern def msrt_path_normalize(path: String) -> String
+extern fn msrt_path_normalize(path: String) String
 
-extern def msrt_path_relative(base: String, target: String) -> Result[String, PathError]
+extern fn msrt_path_relative(base: String, target: String) String!PathError
 
-extern def msstd_fs_posix() -> PathOperations
+extern fn msstd_fs_posix() PathOperations
 
-extern def msstd_fs_win32() -> PathOperations
+extern fn msstd_fs_win32() PathOperations
 
-extern def msrt_path_basename_without(path: String, suffix: String) -> String
+extern fn msrt_path_basename_without(path: String, suffix: String) String
 
-extern def msrt_path_resolve(
-    base: String,
-    parts: List[String]
-) -> Result[String, PathError]
+extern fn msrt_path_resolve(base: String, parts: List[String]) String!PathError
 
-extern def msrt_path_parse(path: String) -> PathParts
+extern fn msrt_path_parse(path: String) PathParts
 
-extern def msrt_path_format(parts: PathParts) -> String
+extern fn msrt_path_format(parts: PathParts) String
 
-extern def msrt_path_separator() -> String
+extern fn msrt_path_separator() String
 
-extern def msrt_path_delimiter() -> String
+extern fn msrt_path_delimiter() String
 
-extern def msrt_path_to_namespaced_path(path: String) -> String
+extern fn msrt_path_to_namespaced_path(path: String) String
 
-extern def msrt_path_matches_glob(
-    path: String,
-    pattern: String
-) -> Result[Bool, PathError]
+extern fn msrt_path_matches_glob(path: String, pattern: String) Bool!PathError
 
 # Errors returned by filesystem operations. `Failed` retains the host error text.
 export type FileSystemError:
@@ -106,7 +100,7 @@ export type FileInfo:
     # Only the permission, setuid, setgid, and sticky bits of `mode`, 0 through 4095.
     permissions: Int
     # Birth time of the file, or none when the host or filesystem does not record it.
-    created: Optional[Timestamp]
+    created: Timestamp?
     # Preferred I/O block size in bytes; unavailable fields are zero.
     block_size: Int
     # Allocated 512-byte blocks on POSIX hosts; unavailable fields are zero.
@@ -141,253 +135,214 @@ export type FileInfo:
 export interface FileSystem:
     # Opens a path using host flag bits in 0..2147483647 and permission bits in 0..4095.
     # Use fs.constants() on this host; unknown bits/combinations are left to the OS.
-    def open_flags(
-        path: String,
-        flags: Int,
-        mode: Int
-    ) -> Result[FileHandle, FileSystemError]
+    fn open_flags(path: String, flags: Int, mode: Int) FileHandle!FileSystemError
     # Returns entries matching the supplied include and exclude patterns.
-    def glob_entries(
+    fn glob_entries(
         path: String,
         options: GlobOptions,
-        exclude: Optional[Callable[[PathEntry], Bool]]
-    ) -> Result[List[PathEntry], FileSystemError]
+        exclude: (fn(PathEntry) Bool)?
+    ) List[PathEntry]!FileSystemError
     # Copies a file or tree according to the supplied replacement and size policies.
-    def copy(
+    fn copy(
         source: String,
         destination: String,
         options: CopyOptions,
-        filter: Optional[Callable[[String, String], Bool]]
-    ) -> Result[Unit, FileSystemError]
+        filter: (fn(String, String) Bool)?
+    ) Unit!FileSystemError
     # Watches native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows); overflow is exactly `error` or `ignore` (case-sensitive).
     # Other policies return InvalidInput. `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts and failing with LimitExceeded, the same on every platform; `max_events` bounds queued events.
-    def watch_native(
+    fn watch_native(
         path: String,
         recursive: Bool,
-        max_entries: Optional[Int] = none,
-        max_events: Optional[Int] = none,
+        max_entries: Int?,
+        max_events: Int?,
         overflow: String
-    ) -> Result[FileWatcher, FileSystemError]
+    ) FileWatcher!FileSystemError
     # Resolves symlinks and returns the canonical absolute path.
-    def canonicalize(path: String) -> Result[String, FileSystemError]
+    fn canonicalize(path: String) String!FileSystemError
     # Copies one file; replace defaults to False, refusing an existing destination.
-    def copy_file(
+    fn copy_file(
         source: String,
         destination: String,
-        replace: Bool = False,
-        max_bytes: Optional[Int] = none
-    ) -> Result[Unit, FileSystemError]
+        replace: Bool = false,
+        max_bytes: Int?
+    ) Unit!FileSystemError
     # Creates one directory; recursive defaults to False, requiring its parent to exist.
-    def create_directory(
-        path: String,
-        recursive: Bool = False
-    ) -> Result[Unit, FileSystemError]
+    fn create_directory(path: String, recursive: Bool = false) Unit!FileSystemError
     # Creates a symbolic link at `path` pointing to `target`.
-    def create_link(path: String, target: String) -> Result[Unit, FileSystemError]
+    fn create_link(path: String, target: String) Unit!FileSystemError
     # Lists a directory, optionally limiting the number of returned entries.
     # A name that is not valid UTF-8 is listed with U+FFFD in place of each invalid byte, so it no longer addresses the entry. The same holds for `glob`, `glob_entries`, `stat` names and directory cursors.
-    def list(
-        path: String,
-        max_entries: Optional[Int] = none
-    ) -> Result[List[DirectoryEntry], FileSystemError]
+    fn list(path: String, max_entries: Int?) List[DirectoryEntry]!FileSystemError
     # Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
-    def read_file(
-        path: String,
-        max_bytes: Optional[Int] = none
-    ) -> Result[Bytes, FileSystemError]
+    fn read_file(path: String, max_bytes: Int?) Bytes!FileSystemError
     # Returns the target text stored in the symbolic link at `path`, without resolving it.
     # A path that is not a link returns InvalidInput.
-    def read_link(path: String) -> Result[String, FileSystemError]
+    fn read_link(path: String) String!FileSystemError
     # Removes a file or empty directory; recursive defaults to False, retaining nonempty trees.
     # A missing path returns NotFound, except that a recursive removal of a missing path succeeds.
-    def remove(path: String, recursive: Bool = False) -> Result[Unit, FileSystemError]
+    fn remove(path: String, recursive: Bool = false) Unit!FileSystemError
     # Moves `source` to `destination` using the operating system's rename, applying its rules for replacing an existing destination.
     # It never falls back to copying, so a move across devices returns an error.
-    def rename(source: String, destination: String) -> Result[Unit, FileSystemError]
+    fn rename(source: String, destination: String) Unit!FileSystemError
     # Returns metadata for `path`. `follow_links` True describes the link target and False describes the link itself.
-    def stat(path: String, follow_links: Bool) -> Result[FileInfo, FileSystemError]
+    fn stat(path: String, follow_links: Bool) FileInfo!FileSystemError
     # Queries the host temp root without creating or checking a directory.
-    def temporary_root() -> Result[String, FileSystemError]
+    fn temporary_root() String!FileSystemError
     # Creates a new directory under the host temp root; the caller must remove it.
     # Prefix must be nonempty and contain no slash, backslash, or NUL.
-    def temporary_directory(prefix: String) -> Result[String, FileSystemError]
+    fn temporary_directory(prefix: String) String!FileSystemError
     # Creates a file exclusively; replace defaults to False, retaining an existing file.
-    def write_file(
+    fn write_file(
         path: String,
         data: String,
-        replace: Bool = False
-    ) -> Result[Unit, FileSystemError]
+        replace: Bool = false
+    ) Unit!FileSystemError
     # Creates a file exclusively from raw bytes; replace defaults to False, retaining an existing file.
-    def write_file_bytes(
+    fn write_file_bytes(
         path: String,
         data: Bytes,
-        replace: Bool = False
-    ) -> Result[Unit, FileSystemError]
+        replace: Bool = false
+    ) Unit!FileSystemError
     # Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined bits.
     # Native permissions and Windows access policy still apply.
-    def access(path: String, mode: Int) -> Result[Unit, FileSystemError]
+    fn access(path: String, mode: Int) Unit!FileSystemError
     # Appends `data` to the end of the file, creating it with mode 0600 when absent. Writes every byte or fails, possibly leaving a partial append.
-    def append_file(path: String, data: String) -> Result[Unit, FileSystemError]
+    fn append_file(path: String, data: String) Unit!FileSystemError
     # Appends raw bytes to the end of the file, with the same creation and partial-write rules as append_file.
-    def append_file_bytes(path: String, data: Bytes) -> Result[Unit, FileSystemError]
+    fn append_file_bytes(path: String, data: Bytes) Unit!FileSystemError
     # Changes target permissions with mode 0..4095; follows a final symbolic link.
-    def chmod(path: String, mode: Int) -> Result[Unit, FileSystemError]
+    fn chmod(path: String, mode: Int) Unit!FileSystemError
     # Sets the owning user and group of `path` by numeric id; -1 leaves that id unchanged.
     # `follow_links` chooses the link target (True) or the link itself (False). Usually needs privilege, and Windows returns Unsupported.
-    def chown(
-        path: String,
-        uid: Int,
-        gid: Int,
-        follow_links: Bool
-    ) -> Result[Unit, FileSystemError]
+    fn chown(path: String, uid: Int, gid: Int, follow_links: Bool) Unit!FileSystemError
     # Sets the target size in bytes; follows a final symbolic link.
-    def truncate(path: String, size: Int) -> Result[Unit, FileSystemError]
+    fn truncate(path: String, size: Int) Unit!FileSystemError
     # Sets the access and modification times of `path`.
     # `follow_links` chooses the link target (True) or the link itself (False); no-follow updates return Unsupported where the host lacks them, such as Windows.
-    def set_times(
+    fn set_times(
         path: String,
         accessed: Timestamp,
         modified: Timestamp,
         follow_links: Bool
-    ) -> Result[Unit, FileSystemError]
+    ) Unit!FileSystemError
     # Creates `destination` as another name for the file at `source`.
     # An existing destination returns AlreadyExists; it must be on the same filesystem as `source`.
-    def hard_link(source: String, destination: String) -> Result[Unit, FileSystemError]
+    fn hard_link(source: String, destination: String) Unit!FileSystemError
     # Opens with exactly r, r+, w, wx, w+, wx+, a, ax, a+, or ax+; other strings return InvalidInput.
     # Mode is permission bits in 0..4095, applied on creation subject to umask/OS policy.
-    def open(
-        path: String,
-        flags: String,
-        mode: Int
-    ) -> Result[FileHandle, FileSystemError]
+    fn open(path: String, flags: String, mode: Int) FileHandle!FileSystemError
     # Opens `path` as a directory cursor that yields one child per `read` in native order; close it when done.
     # A path that is not a directory returns InvalidInput.
-    def open_directory(path: String) -> Result[Directory, FileSystemError]
+    fn open_directory(path: String) Directory!FileSystemError
     # Copies a tree; replace defaults to False, refusing existing destinations.
     # Entry and byte limits remain separate and apply cumulatively across the copy.
-    def copy_tree(
+    fn copy_tree(
         source: String,
         destination: String,
-        replace: Bool = False,
-        max_entries: Optional[Int] = none,
-        max_bytes: Optional[Int] = none
-    ) -> Result[Unit, FileSystemError]
+        replace: Bool = false,
+        max_entries: Int?,
+        max_bytes: Int?
+    ) Unit!FileSystemError
     # Returns the sorted relative paths under `path` matching `pattern`, without following directory symlinks.
     # A malformed pattern, or one over 4096 bytes, or a negative `max_entries` returns InvalidInput. Matches beyond `max_entries` return LimitExceeded.
-    def glob(
+    fn glob(
         path: String,
         pattern: String,
-        max_entries: Optional[Int] = none
-    ) -> Result[List[String], FileSystemError]
+        max_entries: Int?
+    ) List[String]!FileSystemError
     # Returns a polling watcher that compares snapshots of `path` every `interval`, which must be positive.
     # `max_entries` bounds the tracked paths; exceeding it returns LimitExceeded. Transient changes between polls can be missed.
-    def watch(
+    fn watch(
         path: String,
         recursive: Bool,
         interval: Duration,
-        max_entries: Optional[Int] = none
-    ) -> Result[FileWatcher, FileSystemError]
+        max_entries: Int?
+    ) FileWatcher!FileSystemError
     # Creates a new temp directory whose contents are removed by scoped close.
     # Prefix has the same validation as temporary_directory; this does not query the temp root.
-    def temporary(prefix: String) -> Result[TemporaryDirectory, FileSystemError]
+    fn temporary(prefix: String) TemporaryDirectory!FileSystemError
     # Returns capacity and free-space statistics for the filesystem containing `path`.
     # Hosts without the query return Unsupported.
-    def stat_filesystem(path: String) -> Result[FileSystemInfo, FileSystemError]
+    fn stat_filesystem(path: String) FileSystemInfo!FileSystemError
     # Changes the link itself without following it; Unsupported on hosts lacking this operation.
-    def chmod_link(path: String, mode: Int) -> Result[Unit, FileSystemError]
+    fn chmod_link(path: String, mode: Int) Unit!FileSystemError
 
 # The runtime handle behind a `FileHandle`.
 export extern type NativeFile
 
-extern def msstd_fs_file_reader(file: NativeFile) -> ReadStream
+extern fn msstd_fs_file_reader(file: NativeFile) ReadStream
 
-extern def msstd_fs_file_writer(file: NativeFile) -> WriteStream
+extern fn msstd_fs_file_writer(file: NativeFile) WriteStream
 
-extern def msstd_io_close(file: NativeFile) -> Unit
+extern fn msstd_io_close(file: NativeFile) Unit
 
-extern def msstd_io_read(
-    file: NativeFile,
-    max_bytes: Optional[Int]
-) -> Result[Optional[Bytes], FileSystemError]
+extern fn msstd_fs_file_clone(file: NativeFile) FileHandle!FileSystemError
 
-extern def msstd_io_write(
-    file: NativeFile,
-    data: String
-) -> Result[Unit, FileSystemError]
+extern fn msstd_io_read(file: NativeFile, max_bytes: Int?) Bytes?!FileSystemError
 
-extern def msstd_io_write_bytes(
-    file: NativeFile,
-    data: Bytes
-) -> Result[Unit, FileSystemError]
+extern fn msstd_io_write(file: NativeFile, data: String) Unit!FileSystemError
 
-extern def msstd_fs_file_read_at(
+extern fn msstd_io_write_bytes(file: NativeFile, data: Bytes) Unit!FileSystemError
+
+extern fn msstd_fs_file_read_at(
     file: NativeFile,
     offset: Int,
-    max_bytes: Optional[Int]
-) -> Result[Bytes, FileSystemError]
+    max_bytes: Int?
+) Bytes!FileSystemError
 
-extern def msstd_fs_file_write_at(
+extern fn msstd_fs_file_write_at(
     file: NativeFile,
     offset: Int,
     data: Bytes
-) -> Result[Unit, FileSystemError]
+) Unit!FileSystemError
 
-extern def msstd_fs_file_read_file(
+extern fn msstd_fs_file_read_file(
     file: NativeFile,
-    max_bytes: Optional[Int]
-) -> Result[Bytes, FileSystemError]
+    max_bytes: Int?
+) Bytes!FileSystemError
 
-extern def msstd_fs_file_read_vectors(
+extern fn msstd_fs_file_read_vectors(
     file: NativeFile,
     sizes: List[Int],
     offset: Int
-) -> Result[List[Bytes], FileSystemError]
+) List[Bytes]!FileSystemError
 
-extern def msstd_fs_file_write_vectors(
+extern fn msstd_fs_file_write_vectors(
     file: NativeFile,
     buffers: List[Bytes],
     offset: Int
-) -> Result[Unit, FileSystemError]
+) Unit!FileSystemError
 
-extern def msstd_fs_file_seek(
+extern fn msstd_fs_file_seek(
     file: NativeFile,
     offset: Int,
     origin: Int
-) -> Result[Int, FileSystemError]
+) Int!FileSystemError
 
-extern def msstd_fs_file_stat(file: NativeFile) -> Result[FileInfo, FileSystemError]
+extern fn msstd_fs_file_stat(file: NativeFile) FileInfo!FileSystemError
 
-extern def msstd_fs_file_truncate(
-    file: NativeFile,
-    size: Int
-) -> Result[Unit, FileSystemError]
+extern fn msstd_fs_file_truncate(file: NativeFile, size: Int) Unit!FileSystemError
 
-extern def msstd_fs_file_sync(file: NativeFile) -> Result[Unit, FileSystemError]
+extern fn msstd_fs_file_sync(file: NativeFile) Unit!FileSystemError
 
-extern def msstd_fs_file_data_sync(file: NativeFile) -> Result[Unit, FileSystemError]
+extern fn msstd_fs_file_data_sync(file: NativeFile) Unit!FileSystemError
 
-extern def msstd_fs_file_chmod(
-    file: NativeFile,
-    mode: Int
-) -> Result[Unit, FileSystemError]
+extern fn msstd_fs_file_chmod(file: NativeFile, mode: Int) Unit!FileSystemError
 
-extern def msstd_fs_file_chown(
-    file: NativeFile,
-    uid: Int,
-    gid: Int
-) -> Result[Unit, FileSystemError]
+extern fn msstd_fs_file_chown(file: NativeFile, uid: Int, gid: Int) Unit!FileSystemError
 
-extern def msstd_fs_file_set_times(
+extern fn msstd_fs_file_set_times(
     file: NativeFile,
     accessed: Timestamp,
     modified: Timestamp
-) -> Result[Unit, FileSystemError]
+) Unit!FileSystemError
 
-extern def msstd_fs_file_read_lines(
+extern fn msstd_fs_file_read_lines(
     file: NativeFile,
-    max_bytes: Optional[Int],
-    max_lines: Optional[Int]
-) -> Result[List[String], FileSystemError]
+    max_bytes: Int?,
+    max_lines: Int?
+) List[String]!FileSystemError
 
 # An open file supporting sequential and positional I/O. It owns its descriptor: `close` it, or let
 # its binding go out of scope.
@@ -398,130 +353,118 @@ export type FileHandle:
 impl Closeable for FileHandle:
     # Closes the file, interrupts calls in progress, and waits for them to stop.
     # Safe to call repeatedly; later operations return Closed.
-    var def close() -> Unit:
+    var fn close() Unit!:
         msstd_io_close(self.native)
+        return ok(unit)
 
 impl FileHandle:
+    # Returns a second handle over a duplicate of the file's descriptor, which closes on its own.
+    # Both share the file position, so a read or write through one moves the other; bytes this handle already read ahead stay with it.
+    # A closed handle returns Closed.
+    fn clone() FileHandle!FileSystemError:
+        return msstd_fs_file_clone(self.native)
+
     # Adapts this handle to IoError/Optional chunk reads; closing either view closes all aliases.
-    def reader() -> ReadStream:
+    fn reader() ReadStream:
         return msstd_fs_file_reader(self.native)
 
     # Adapts complete writes to IoError/Unit; flush synchronizes the file.
-    def writer() -> WriteStream:
+    fn writer() WriteStream:
         return msstd_fs_file_writer(self.native)
 
     # Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
-    def read(
-        max_bytes: Optional[Int] = none
-    ) -> Result[Optional[Bytes], FileSystemError]:
+    fn read(max_bytes: Int?) Bytes?!FileSystemError:
         return msstd_io_read(self.native, max_bytes)
 
     # Writes the UTF-8 text at the current position; errors can leave a prefix. Does not truncate or reposition this handle.
-    def write(data: String) -> Result[Unit, FileSystemError]:
+    fn write(data: String) Unit!FileSystemError:
         return msstd_io_write(self.native, data)
 
     # Writes all bytes at the current position, with the same rules as write.
-    def write_bytes(data: Bytes) -> Result[Unit, FileSystemError]:
+    fn write_bytes(data: Bytes) Unit!FileSystemError:
         return msstd_io_write_bytes(self.native, data)
 
     # Writes text at the current position; appends only when the handle was opened in append mode.
-    def append_file(data: String) -> Result[Unit, FileSystemError]:
+    fn append_file(data: String) Unit!FileSystemError:
         return msstd_io_write(self.native, data)
 
     # Writes bytes at the current position; appends only when the handle was opened in append mode.
-    def append_file_bytes(data: Bytes) -> Result[Unit, FileSystemError]:
+    fn append_file_bytes(data: Bytes) Unit!FileSystemError:
         return msstd_io_write_bytes(self.native, data)
 
     # Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF.
-    def read_at(
-        offset: Int,
-        max_bytes: Optional[Int] = none
-    ) -> Result[Bytes, FileSystemError]:
+    fn read_at(offset: Int, max_bytes: Int?) Bytes!FileSystemError:
         return msstd_fs_file_read_at(self.native, offset, max_bytes)
 
     # Writes the UTF-8 text at a nonnegative offset without moving the position; a handle opened for append returns InvalidInput because the host would ignore the offset; errors can leave a prefix.
-    def write_at(offset: Int, data: String) -> Result[Unit, FileSystemError]:
+    fn write_at(offset: Int, data: String) Unit!FileSystemError:
         return msstd_fs_file_write_at(self.native, offset, data.to_bytes())
 
     # Writes all bytes at a nonnegative offset without moving the position; a handle opened for append returns InvalidInput because the host would ignore the offset; errors can leave a prefix.
-    def write_at_bytes(offset: Int, data: Bytes) -> Result[Unit, FileSystemError]:
+    fn write_at_bytes(offset: Int, data: Bytes) Unit!FileSystemError:
         return msstd_fs_file_write_at(self.native, offset, data)
 
     # Reads remaining bytes from the current position; EOF returns empty Bytes.
-    def read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]:
+    fn read_file(max_bytes: Int?) Bytes!FileSystemError:
         return msstd_fs_file_read_file(self.native, max_bytes)
 
     # Reads consecutive buffers of the given `sizes` in bytes, each up to 65536 and all together up to 16 MiB, and returns the bytes obtained for each.
     # `offset` -1 reads from the current position; other offsets read without moving it. A buffer is shorter than requested at end of file. A negative size or offset below -1 returns InvalidInput.
-    def read_vectors(
-        sizes: List[Int],
-        offset: Int
-    ) -> Result[List[Bytes], FileSystemError]:
+    fn read_vectors(sizes: List[Int], offset: Int) List[Bytes]!FileSystemError:
         return msstd_fs_file_read_vectors(self.native, sizes, offset)
 
     # Writes every buffer; offset -1 uses the current position. A nonnegative offset on a handle opened for append returns InvalidInput.
-    def write_vectors(
-        buffers: List[Bytes],
-        offset: Int
-    ) -> Result[Unit, FileSystemError]:
+    fn write_vectors(buffers: List[Bytes], offset: Int) Unit!FileSystemError:
         return msstd_fs_file_write_vectors(self.native, buffers, offset)
 
     # Seeks in bytes with origin exactly 0 (start), 1 (current), or 2 (end).
     # Other origins return InvalidInput; the OS validates the resulting offset.
-    def seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]:
+    fn seek(offset: Int, origin: Int) Int!FileSystemError:
         return msstd_fs_file_seek(self.native, offset, origin)
 
     # Returns metadata for the open file.
-    def stat() -> Result[FileInfo, FileSystemError]:
+    fn stat() FileInfo!FileSystemError:
         return msstd_fs_file_stat(self.native)
 
     # Sets the file length to `size` bytes, discarding the excess or extending with zero bytes. The current position is not moved.
     # A negative size returns InvalidInput.
-    def truncate(size: Int) -> Result[Unit, FileSystemError]:
+    fn truncate(size: Int) Unit!FileSystemError:
         return msstd_fs_file_truncate(self.native, size)
 
     # Flushes the file's data and metadata to stable storage.
-    def sync() -> Result[Unit, FileSystemError]:
+    fn sync() Unit!FileSystemError:
         return msstd_fs_file_sync(self.native)
 
     # Flushes the file's data to stable storage, skipping metadata that is not needed to read it back where the host allows.
     # Hosts without a separate data sync perform a full sync.
-    def data_sync() -> Result[Unit, FileSystemError]:
+    fn data_sync() Unit!FileSystemError:
         return msstd_fs_file_data_sync(self.native)
 
     # Sets the permission bits of the open file to `mode` (0 through 4095).
-    def chmod(mode: Int) -> Result[Unit, FileSystemError]:
+    fn chmod(mode: Int) Unit!FileSystemError:
         return msstd_fs_file_chmod(self.native, mode)
 
     # Sets the owner and group of the open file by numeric id; -1 leaves that id unchanged. Usually needs privilege.
-    def chown(uid: Int, gid: Int) -> Result[Unit, FileSystemError]:
+    fn chown(uid: Int, gid: Int) Unit!FileSystemError:
         return msstd_fs_file_chown(self.native, uid, gid)
 
     # Sets the access and modification times of the open file. Returns Unsupported on hosts without descriptor timestamps.
-    def set_times(
-        accessed: Timestamp,
-        modified: Timestamp
-    ) -> Result[Unit, FileSystemError]:
+    fn set_times(accessed: Timestamp, modified: Timestamp) Unit!FileSystemError:
         return msstd_fs_file_set_times(self.native, accessed, modified)
 
     # Reads from the current position to the end and returns the lines with their `\n` or `\r\n` terminators removed.
     # Invalid UTF-8 returns InvalidData, and more bytes than `max_bytes` or lines than `max_lines` returns LimitExceeded. A negative `max_bytes` or `max_lines` returns InvalidInput.
-    def read_lines(
-        max_bytes: Optional[Int] = none,
-        max_lines: Optional[Int] = none
-    ) -> Result[List[String], FileSystemError]:
+    fn read_lines(max_bytes: Int?, max_lines: Int?) List[String]!FileSystemError:
         return msstd_fs_file_read_lines(self.native, max_bytes, max_lines)
 
 # The runtime handle behind a `Directory`.
 export extern type NativeDirectory
 
-extern def msstd_fs_directory_read(
-    dir: NativeDirectory
-) -> Result[Optional[DirectoryEntry], FileSystemError]
+extern fn msstd_fs_directory_read(dir: NativeDirectory) DirectoryEntry?!FileSystemError
 
-extern def msstd_fs_directory_path(dir: NativeDirectory) -> String
+extern fn msstd_fs_directory_path(dir: NativeDirectory) String
 
-extern def msstd_fs_directory_close(dir: NativeDirectory) -> Unit
+extern fn msstd_fs_directory_close(dir: NativeDirectory) Unit
 
 # An open directory that yields one child per read and must be closed.
 export type Directory:
@@ -531,27 +474,26 @@ export type Directory:
 impl Closeable for Directory:
     # Releases the directory handle.
     # Safe to call repeatedly; later reads return Closed.
-    var def close() -> Unit:
+    var fn close() Unit!:
         msstd_fs_directory_close(self.native)
+        return ok(unit)
 
 impl Directory:
     # Returns the path this cursor was opened with.
-    def path() -> String:
+    fn path() String:
         return msstd_fs_directory_path(self.native)
 
     # Returns the next child in native directory order, or none after the last one.
     # The order is not sorted.
-    def read() -> Result[Optional[DirectoryEntry], FileSystemError]:
+    fn read() DirectoryEntry?!FileSystemError:
         return msstd_fs_directory_read(self.native)
 
 # The runtime handle behind a `FileWatcher`.
 export extern type NativeWatcher
 
-extern def msstd_fs_watch_next(
-    watcher: NativeWatcher
-) -> Result[List[FileEvent], FileSystemError]
+extern fn msstd_fs_watch_next(watcher: NativeWatcher) List[FileEvent]!FileSystemError
 
-extern def msstd_fs_watch_close(watcher: NativeWatcher) -> Unit
+extern fn msstd_fs_watch_close(watcher: NativeWatcher) Unit
 
 # A change stream returned by a filesystem watch operation.
 export type FileWatcher:
@@ -561,23 +503,22 @@ export type FileWatcher:
 impl Closeable for FileWatcher:
     # Stops the watcher, wakes a pending `next` with Closed, and waits for its worker to stop.
     # Safe to call repeatedly.
-    var def close() -> Unit:
+    var fn close() Unit!:
         msstd_fs_watch_close(self.native)
+        return ok(unit)
 
 impl FileWatcher:
     # Waits for filesystem activity and returns events. A native watcher returns one event per call; a polling watcher returns every difference seen after an interval.
     # Cancelling the waiting task unwinds it, and a closed watcher returns Closed. A native watcher that overflowed with policy `error` returns LimitExceeded.
-    def next() -> Result[List[FileEvent], FileSystemError]:
+    fn next() List[FileEvent]!FileSystemError:
         return msstd_fs_watch_next(self.native)
 
 # The runtime handle behind a `TemporaryDirectory`.
 export extern type NativeTemporary
 
-extern def msstd_fs_temporary_path(temporary: NativeTemporary) -> String
+extern fn msstd_fs_temporary_path(temporary: NativeTemporary) String
 
-extern def msstd_fs_temporary_close(
-    temporary: NativeTemporary
-) -> Result[Unit, FileSystemError]
+extern fn msstd_fs_temporary_close(temporary: NativeTemporary) Unit!FileSystemError
 
 # A temporary directory whose contents are removed when it is closed.
 export type TemporaryDirectory:
@@ -587,12 +528,13 @@ export type TemporaryDirectory:
 impl Closeable for TemporaryDirectory:
     # Removes the directory and everything inside it.
     # Safe to call repeatedly.
-    var def close() -> Unit:
+    var fn close() Unit!:
         let _ = msstd_fs_temporary_close(self.native)
+        return ok(unit)
 
 impl TemporaryDirectory:
     # Returns the absolute path of the directory, created under the host's temporary root.
-    def path() -> String:
+    fn path() String:
         return msstd_fs_temporary_path(self.native)
 
 # One filesystem change and the affected path.
@@ -622,7 +564,7 @@ export type FileSystemInfo:
 
 # Returns this host's filesystem flag, mode, and permission constants by name.
 # Names and values vary by host; absent entries are not supported constants or portable enum cases.
-export def constants() -> Map[String, Int]:
+export fn constants() Map[String, Int]:
     return msstd_fs_constants()
 
 # Policies for recursive copies, including replacement, symlinks, and optional limits.
@@ -643,9 +585,9 @@ export type CopyOptions:
     # try falls back to byte copying; force requires a native clone operation.
     clone: String
     # Most files, directories, and links visited, counting the root. Exceeding it returns LimitExceeded. none sets no limit.
-    max_entries: Optional[Int] = none
+    max_entries: Int?
     # Most file bytes copied in total. Exceeding it returns LimitExceeded. none sets no limit.
-    max_bytes: Optional[Int] = none
+    max_bytes: Int?
 
 # A matched path together with its filesystem entry metadata.
 export type PathEntry:
@@ -663,27 +605,27 @@ export type GlobOptions:
     # When True, symbolic links to directories are traversed, with cycles detected; when False, links are reported but not entered.
     follow_links: Bool
     # Most filesystem entries visited while searching. Exceeding it returns LimitExceeded. none sets no limit.
-    max_entries: Optional[Int] = none
+    max_entries: Int?
     # Most distinct matches returned. Exceeding it returns LimitExceeded. none sets no limit.
-    max_results: Optional[Int] = none
+    max_results: Int?
 
 impl Error for FileSystemError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `filesystem: <reason>`, such as `filesystem: file or directory not found`.
-    def message() -> String:
+    fn message() String:
         match self:
-            case InvalidInput: return "filesystem: invalid input"
-            case InvalidData: return "filesystem: invalid data"
-            case LimitExceeded: return "filesystem: limit exceeded"
-            case NotFound: return "filesystem: file or directory not found"
-            case AlreadyExists: return "filesystem: already exists"
-            case NotEmpty: return "filesystem: directory not empty"
-            case PermissionDenied: return "filesystem: permission denied"
-            case Unsupported: return "filesystem: operation not supported"
-            case Closed: return "filesystem: resource is closed"
-            case Failed(message): return message.clone()
+            InvalidInput: return "filesystem: invalid input"
+            InvalidData: return "filesystem: invalid data"
+            LimitExceeded: return "filesystem: limit exceeded"
+            NotFound: return "filesystem: file or directory not found"
+            AlreadyExists: return "filesystem: already exists"
+            NotEmpty: return "filesystem: directory not empty"
+            PermissionDenied: return "filesystem: permission denied"
+            Unsupported: return "filesystem: operation not supported"
+            Closed: return "filesystem: resource is closed"
+            Failed(message): return message.clone()
 
 # Returns filesystem operations for the current host.
-export def filesystem() -> FileSystem:
+export fn filesystem() FileSystem:
     return msstd_fs_filesystem()
 
 # Errors returned when a path cannot be parsed or resolved.
@@ -692,31 +634,31 @@ export type PathError:
     case InvalidInput
 
 # Returns the final path component, excluding trailing separators.
-export def basename(path: String) -> String:
+export fn basename(path: String) String:
     return msrt_path_basename(path)
 
 # Returns the directory portion of a path.
-export def dirname(path: String) -> String:
+export fn dirname(path: String) String:
     return msrt_path_dirname(path)
 
 # Returns the final extension, including its leading dot, or an empty string.
-export def extension(path: String) -> String:
+export fn extension(path: String) String:
     return msrt_path_extension(path)
 
 # Reports whether a path is absolute according to the host path rules.
-export def is_absolute(path: String) -> Bool:
+export fn is_absolute(path: String) Bool:
     return msrt_path_is_absolute(path)
 
 # Joins path parts using the host separator and normalizes the result.
-export def join(parts: List[String]) -> String:
+export fn join(parts: List[String]) String:
     return msrt_path_join(parts)
 
 # Normalizes separators and dot segments without accessing the filesystem.
-export def normalize(path: String) -> String:
+export fn normalize(path: String) String:
     return msrt_path_normalize(path)
 
 # Computes a relative path from `base` to `target` using host path rules.
-export def relative(base: String, target: String) -> Result[String, PathError]:
+export fn relative(base: String, target: String) String!PathError:
     return msrt_path_relative(base, target)
 
 # Parsed path components using the familiar root, directory, base, extension, and name fields.
@@ -735,79 +677,79 @@ export type PathParts:
 # Path operations using either POSIX or Windows path conventions.
 export interface PathOperations:
     # Returns the last component after ignoring trailing separators under this view's path rules.
-    def basename(path: String) -> String
+    fn basename(path: String) String
     # Removes an exact suffix under basename compatibility rules; it does not strip arbitrary extensions.
-    def basename_without(path: String, suffix: String) -> String
+    fn basename_without(path: String, suffix: String) String
     # Returns the directory component using the selected POSIX or Windows convention.
-    def dirname(path: String) -> String
+    fn dirname(path: String) String
     # Returns the final dot extension, or empty text for extensionless names and simple dotfiles.
-    def extension(path: String) -> String
+    fn extension(path: String) String
     # Tests absolute-root syntax; a Windows drive-relative spelling is not absolute.
-    def is_absolute(path: String) -> Bool
+    fn is_absolute(path: String) Bool
     # Joins nonempty parts and normalizes separators/dot segments without filesystem access.
-    def join(parts: List[String]) -> String
+    fn join(parts: List[String]) String
     # Cleans repeated separators and dot segments lexically; it does not resolve symlinks.
-    def normalize(path: String) -> String
+    fn normalize(path: String) String
     # Computes a lexical relative path from absolute anchors; different roots return the original target.
     # Nonabsolute anchors or invalid NUL input return InvalidInput.
-    def relative(base: String, target: String) -> Result[String, PathError]
+    fn relative(base: String, target: String) String!PathError
     # Resolves parts against an explicit absolute base; no process working directory is consulted.
-    def resolve(base: String, parts: List[String]) -> Result[String, PathError]
+    fn resolve(base: String, parts: List[String]) String!PathError
     # Splits the original spelling into root, directory, base, extension and name without filesystem access.
-    def parse(path: String) -> PathParts
+    fn parse(path: String) PathParts
     # Builds a path with directory preferred over root, and base preferred over name plus extension.
-    def format(parts: PathParts) -> String
+    fn format(parts: PathParts) String
     # Returns slash for POSIX or backslash for Windows path components.
-    def separator() -> String
+    fn separator() String
     # Returns colon for POSIX or semicolon for Windows path-list entries.
-    def delimiter() -> String
+    fn delimiter() String
     # Returns a Windows namespaced absolute path when applicable; POSIX paths are unchanged.
-    def to_namespaced_path(path: String) -> String
+    fn to_namespaced_path(path: String) String
     # Tests one lexical path against the supported glob syntax; malformed patterns return InvalidInput.
-    def matches_glob(path: String, pattern: String) -> Result[Bool, PathError]
+    fn matches_glob(path: String, pattern: String) Bool!PathError
 
 # Returns path operations using POSIX separators and parsing rules.
-export def posix() -> PathOperations:
+export fn posix() PathOperations:
     return msstd_fs_posix()
 
 # Returns path operations using Windows separators and parsing rules.
-export def win32() -> PathOperations:
+export fn win32() PathOperations:
     return msstd_fs_win32()
 
 # Returns the basename with the supplied suffix removed when it matches.
-export def basename_without(path: String, suffix: String) -> String:
+export fn basename_without(path: String, suffix: String) String:
     return msrt_path_basename_without(path, suffix)
 
 # Resolves path parts against a base using host path conventions.
-export def resolve(base: String, parts: List[String]) -> Result[String, PathError]:
+export fn resolve(base: String, parts: List[String]) String!PathError:
     return msrt_path_resolve(base, parts)
 
 # Splits a path into its root, directory, base, extension, and name.
-export def parse(path: String) -> PathParts:
+export fn parse(path: String) PathParts:
     return msrt_path_parse(path)
 
 # Formats parsed path components as a path string.
-export def format(parts: PathParts) -> String:
+export fn format(parts: PathParts) String:
     return msrt_path_format(parts)
 
 # Returns the host's path separator.
-export def separator() -> String:
+export fn separator() String:
     return msrt_path_separator()
 
 # Returns the host's path-list delimiter.
-export def delimiter() -> String:
+export fn delimiter() String:
     return msrt_path_delimiter()
 
 # Converts a path to the host's namespaced representation when applicable.
-export def to_namespaced_path(path: String) -> String:
+export fn to_namespaced_path(path: String) String:
     return msrt_path_to_namespaced_path(path)
 
 # Tests a path against a glob pattern.
-export def matches_glob(path: String, pattern: String) -> Result[Bool, PathError]:
+export fn matches_glob(path: String, pattern: String) Bool!PathError:
     return msrt_path_matches_glob(path, pattern)
 
 impl Error for PathError:
     # Returns a path-prefixed diagnostic without revealing the supplied paths or pattern.
-    def message() -> String:
+    fn message() String:
         match self:
-            case InvalidInput: return "path: invalid input"
+            InvalidInput: return "path: invalid input"

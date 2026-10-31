@@ -20,12 +20,12 @@ Status: proposal, 2026-10-26, checked against `d3bf43dd`. Tracks #1325. No langu
 Measured on `d3bf43dd` with the fixture below (`tests/e2e/testdata/stdlib/http-fault-leak.ms`): 60 faulting requests grew `resident` by 61,308,928 bytes. `heap_used` stays flat, so the fixture reads `resident`.
 
 ```ms
-def faulting(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn faulting(exchange: HttpExchange) Result[Unit, HttpError]:
     let big = "x".repeat(1000000).get("")
     let xs: List[Int] = []
     let n = xs[big.length()]
-    if big.length() + n > 5: return ok(())
-    return ok(())
+    if big.length() + n > 5: return ok(unit)
+    return ok(unit)
 ```
 
 Cause, verified:

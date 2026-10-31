@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding spawn; there is no free spawn: start tasks with a TaskGroup from \"@std/tasks.ms\" bound to a local, e.g. group.spawn(fn ch: work(), timeout: some(nanoseconds(...)))",
+        "position": {
+          "file": "foreign-spawn.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 136
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/foreign-spawn.ms:5:5: resolution: unknown binding spawn; there is no free spawn: start tasks with a TaskGroup from \"@std/tasks.ms\" bound to a local, e.g. group.spawn(fn ch: work(), timeout: some(nanoseconds(...)))\n   |\n 5 |     spawn(fn: 1)\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def absent[T]() -> Optional[T]: none\n\ndef transform[T, U](callback: Callable[[T], U]) -> Callable[[T], U]: callback\n\ndef answer() -> Unit:\n    let empty: Optional[Int] = absent()\n    let callback: Callable[[Int], String] = transform(lambda item: item.to_string())\n"
-  }
-}

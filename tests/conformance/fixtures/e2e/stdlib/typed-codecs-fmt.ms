@@ -1,24 +1,22 @@
 # conform: tags=aliasing,closures,control-flow,formatter,generics,lists,match,modules,optional,parser,stdlib-archive,stdlib-bytes,stdlib-compress,stdlib-crypto,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/typed-codecs.ms
-from "@std/test.ms" import expect_equal
-from "@std/crypto.ms" import HashAlgorithm, sha256, sha384, sha512, CryptoError
-from "@std/archive.ms" import CompressionFormat, compress, decompress, CompressionError
-from "@std/archive.ms" import ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError
-from "@std/bytes.ms" import Bytes
+import expect_equal from "@std/test.ms"
+import HashAlgorithm, sha256, sha384, sha512, CryptoError from "@std/crypto.ms"
+import CompressionFormat, compress, decompress, CompressionError from "@std/archive.ms"
+import ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError from "@std/archive.ms"
+import Bytes from "@std/bytes.ms"
 
-def digest(algorithm: HashAlgorithm, data: Bytes) -> Bytes:
+fn digest(algorithm: HashAlgorithm, data: Bytes) Bytes:
     return algorithm.digest(data)
 
-def call_digest[T](operation: Callable[[Bytes], T], data: Bytes) -> T:
+fn call_digest[T](operation: fn(Bytes) T, data: Bytes) T:
     return operation(data)
 
-def bounded_compression(
-    operation: Callable[
-        [Bytes, Int, Optional[Int]], Result[Bytes, CompressionError]
-    ],
+fn bounded_compression(
+    operation: fn(Bytes, Int, Int?) Bytes!CompressionError,
     data: Bytes
-) -> Result[Bytes, CompressionError]:
+) Bytes!CompressionError:
     return operation(data, 6, 1024)
 
 test "typed SHA selectors match their algorithms and retain bound operations":
@@ -49,9 +47,9 @@ test "typed compression preserves bytes limits errors and optional arguments":
         CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
     ]:
         let name = match format:
-            case Gzip: "gzip"
-            case Zlib: "zlib"
-            case Deflate: "deflate"
+            Gzip: "gzip"
+            Zlib: "zlib"
+            Deflate: "deflate"
 
         for level in [0, 9]:
             let encoded = try format.compress(data, level)
@@ -59,18 +57,18 @@ test "typed compression preserves bytes limits errors and optional arguments":
             try expect_equal((try format.decompress(encoded, none)), data)
             try expect_equal((try format.decompress(encoded, data.length())), data)
 
-            let limited: Result[Bytes, CompressionError] = error(
+            let limited: Bytes!CompressionError = error(
                 CompressionError.LimitExceeded
             )
             try expect_equal(format.decompress(encoded, data.length() - 1), limited)
 
-        let invalid: Result[Bytes, CompressionError] = error(
+        let invalid: Bytes!CompressionError = error(
             CompressionError.InvalidInput
         )
         try expect_equal(format.compress(data, -1), invalid)
         try expect_equal(format.compress(data, 6, -1), invalid)
 
-        let zero: Result[Bytes, CompressionError] = error(
+        let zero: Bytes!CompressionError = error(
             CompressionError.LimitExceeded
         )
         try expect_equal(format.compress(data, 6, 0), zero)
@@ -81,16 +79,16 @@ test "typed compression preserves bytes limits errors and optional arguments":
     try expect_equal((try decoder(encoded)), data)
     try expect_equal((try decompress(encoded, "gzip")), data)
 
-    let malformed: Result[Bytes, CompressionError] = error(CompressionError.InvalidData)
+    let malformed: Bytes!CompressionError = error(CompressionError.InvalidData)
     try expect_equal(CompressionFormat.Gzip.decompress(data), malformed)
 
 test "typed archives retain entry limits validation and existing string calls":
-    let entries = [ArchiveEntry("file.txt", "data".to_bytes(), False)]
+    let entries = [ArchiveEntry("file.txt", "data".to_bytes(), false)]
 
     for format in [ArchiveFormat.Zip, ArchiveFormat.Tar]:
         let name = match format:
-            case Zip: "zip"
-            case Tar: "tar"
+            Zip: "zip"
+            Tar: "tar"
 
         let encoded = try format.pack(entries)
         try expect_equal(encoded, (try pack(entries, name)))
@@ -98,14 +96,14 @@ test "typed archives retain entry limits validation and existing string calls":
         try expect_equal((try format.unpack(encoded, none)), entries)
         try expect_equal((try unpack(encoded, name)), entries)
 
-        let limited: Result[List[ArchiveEntry], ArchiveError] = error(
+        let limited: List[ArchiveEntry]!ArchiveError = error(
             ArchiveError.LimitExceeded
         )
         try expect_equal(format.unpack(encoded, ArchiveLimits(0)), limited)
 
-        let invalid: Result[Bytes, ArchiveError] = error(ArchiveError.InvalidInput)
+        let invalid: Bytes!ArchiveError = error(ArchiveError.InvalidInput)
         try expect_equal(
-            format.pack([ArchiveEntry("../escape", "".to_bytes(), False)]), invalid
+            format.pack([ArchiveEntry("../escape", "".to_bytes(), false)]), invalid
         )
         try expect_equal(format.pack(entries, -1), invalid)
 

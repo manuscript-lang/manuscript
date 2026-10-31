@@ -2,10 +2,10 @@ type Tree:
     case Leaf
     case Node(left: Tree, value: Int)
 
-def f(var t: Tree) -> Int:
+fn f(var t: Tree) Int:
     match t:
-        case Node(l, v):
+        Node(l, v):
             t = Leaf  # error: while `l` borrows it
             return v
-        case Leaf:
+        Leaf:
             return 0

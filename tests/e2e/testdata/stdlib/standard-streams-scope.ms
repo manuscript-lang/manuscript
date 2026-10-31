@@ -1,12 +1,12 @@
-from "@std/io.ms" import stderr, stdout
-from "@std/test.ms" import expect_true
+import stderr, stdout from "@std/io.ms"
+import expect_true from "@std/test.ms"
 
 # The process's standard streams belong to the process: leaving a scope that bound one must not close it.
-def writes_through_a_binding() -> Bool:
+fn writes_through_a_binding() Bool:
     var out = stdout()
     return out.write("").is_ok()
 
-def writes_to_stderr_through_a_binding() -> Bool:
+fn writes_to_stderr_through_a_binding() Bool:
     var err = stderr()
     return err.write("").is_ok()
 

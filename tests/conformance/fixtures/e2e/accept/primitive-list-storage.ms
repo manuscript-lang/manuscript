@@ -1,13 +1,13 @@
 # conform: tags=closures,control-flow,faults,generics,lists,modules,mutation,numbers,optional,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/primitive-list-storage.ms
-from "@std/test.ms" import expect_equal, expect_false, fail
+import expect_equal, expect_false, fail from "@std/test.ms"
 
-def append_value[T](var values: List[T], value: T) -> List[T]:
+fn append_value[T](var values: List[T], value: T) List[T]:
     values.append(value)
     return values.clone()
 
-def forwarded[T](values: List[T]) -> List[T]:
+fn forwarded[T](values: List[T]) List[T]:
     return values.clone()
 
 type Lists:
@@ -16,7 +16,7 @@ type Lists:
 test "primitive storage retains generic record Optional and independent copies":
     var values = [9223372036854775807, -9223372036854775808]
     var record = Lists(values.clone())
-    let wrapped: Optional[List[Int]] = some(values.clone())
+    let wrapped: List[Int]? = values.clone()
     for i in 0..4096:
         append_value(var record.values, i)
     values.append(17)
@@ -30,7 +30,7 @@ test "primitive storage retains generic record Optional and independent copies":
     values.set(0, 42)
     try expect_equal(copy[0], 9223372036854775807)
 
-    let nested: List[Optional[Int]] = [some(7), none]
+    let nested: List[Int?] = [7, none]
     try expect_false(not (nested[0].get() == 7 and nested[1].is_none()))
 
 test "Float Bool and String preserve mutation traversal and width":
@@ -53,19 +53,19 @@ test "Float Bool and String preserve mutation traversal and width":
         )
     )
 
-    var booleans = [True, False, True]
+    var booleans = [true, false, true]
     booleans.remove(0)
-    booleans.prepend(False)
+    booleans.prepend(false)
 
     var strings = ["a", "b", "c"]
     strings.reverse()
     try expect_false(
-        not (booleans == [False, False, True] and strings == ["c", "b", "a"])
+        not (booleans == [false, false, true] and strings == ["c", "b", "a"])
     )
 
 test "stable sort and strict Result slice preserve separate storage":
     let values = [7, 1, 4, 8, 2, 5]
-    var sorted = values.sorted(lambda left, right: return left % 3 - right % 3)
+    var sorted = values.sorted(fn left, right: return left % 3 - right % 3)
     sorted.set(0, 99)
     try expect_equal(values[0], 7)
 

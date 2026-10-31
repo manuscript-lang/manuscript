@@ -1,38 +1,52 @@
-from "@std/test.ms" import expect_equal, expect_true
-from "@std/http.ms" import from_io, headers, json, redirect, reply, text, HttpError, HttpExchange, HttpMethod, HttpRequest, HttpResponse, HttpClientOptions, HttpServerOptions
-from "@std/io.ms" import IoError, read_all
-from "@std/net.ms" import network
-from "@std/log.ms" import create, LogError, Transport
-from "@std/shared.ms" import Shared, share
-from "@std/sync.ms" import lock
-from "@std/bytes.ms" import Bytes
-from "@std/router.ms" import access_log, request_id, RouteParams, Router, RouterError
-from "@std/sse.ms" import body_stream
+import expect_equal, expect_true from "@std/test.ms"
+import (
+    from_io,
+    headers,
+    json,
+    redirect,
+    reply,
+    text,
+    HttpError,
+    HttpExchange,
+    HttpMethod,
+    HttpRequest,
+    HttpResponse,
+    HttpClientOptions,
+    HttpServerOptions
+) from "@std/http.ms"
+import IoError, read_all from "@std/io.ms"
+import network from "@std/net.ms"
+import create, LogError, Transport from "@std/log.ms"
+import Shared, share from "@std/shared.ms"
+import lock from "@std/sync.ms"
+import Bytes from "@std/bytes.ms"
+import access_log, request_id, RouteParams, Router, RouterError, with_request_headers from "@std/router.ms"
+import body_stream from "@std/sse.ms"
 
-def get(path: String) -> HttpRequest:
+fn get(path: String) HttpRequest:
     return request(HttpMethod.Get, path)
 
-def request(method: HttpMethod, path: String) -> HttpRequest:
+fn request(method: HttpMethod, path: String) HttpRequest:
     return HttpRequest(
         method: method, path: path, query: "", headers: headers(), body: "".to_bytes()
     )
 
-def say(label: String) -> Callable[[HttpExchange, RouteParams], Result[Unit, HttpError]]:
-    return lambda exchange, params: reply(exchange, text(200, label.clone()))
+fn say(label: String) fn(HttpExchange, RouteParams) Unit!HttpError:
+    return fn exchange, params: reply(exchange, text(200, label.clone()))
 
-def show(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+fn show(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     let id = params.get_or("id", "-")
     let rest = params.get_or("rest", "-")
-    return reply(exchange, text(200, f"{id}|{rest}"))
+    return reply(exchange, text(200, "{id}|{rest}"))
 
-def body_of(response: HttpResponse) -> String:
+fn body_of(response: HttpResponse) String:
     return response.body.decode_utf8().get("")
 
-def allow_of(response: HttpResponse) -> String:
+fn allow_of(response: HttpResponse) String:
     let values = response.headers.values("Allow")
     return values.join(",")
 
-def router() -> Router:
+fn router() Router:
     var r = Router()
     r.get("/", say("root")).get()
     r.get("/users", say("list")).get()
@@ -80,7 +94,7 @@ test "the first matching route wins":
     r.get("/a/b", say("literal")).get()
     try expect_equal(body_of(try r.call(get("/a/b"))), "param")
 
-def head_reply(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+fn head_reply(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     return reply(exchange, text(202, "head"))
 
 test "explicit HEAD routes take precedence over GET fallback":
@@ -105,22 +119,19 @@ test "invalid and duplicate patterns are rejected":
     try expect_true(r.get("/a/:y", say("y")).is_error())
     r.post("/a/:y", say("y")).get()
 
-def tag(label: String) -> Callable[
-    [HttpExchange, Callable[[HttpExchange], Result[Unit, HttpError]]],
-    Result[Unit, HttpError]
-]:
-    return lambda exchange, next: tagged(label.clone(), exchange, next)
+fn tag(label: String) fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError:
+    return fn exchange, next: tagged(label.clone(), exchange, next)
 
-def tagged(
+fn tagged(
     label: String,
     exchange: HttpExchange,
-    next: Callable[[HttpExchange], Result[Unit, HttpError]]
-) -> Result[Unit, HttpError]:
-    let seen = exchange.headers()
+    next: fn(HttpExchange) Unit!HttpError
+) Unit!HttpError:
+    var seen = exchange.headers()
     try seen.append("X-Trail", label)
-    return next(exchange)
+    return next(with_request_headers(exchange, seen))
 
-def trail(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+fn trail(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     let values = exchange.headers().values("X-Trail")
     return reply(exchange, text(200, values.join(">")))
 
@@ -136,10 +147,7 @@ test "middleware also wraps the 404 answer":
     r.use(tag("a"))
     try expect_equal((try r.call(get("/missing"))).status, 404)
 
-def refuse(
-    exchange: HttpExchange,
-    next: Callable[[HttpExchange], Result[Unit, HttpError]]
-) -> Result[Unit, HttpError]:
+fn refuse(exchange: HttpExchange, next: fn(HttpExchange) Unit!HttpError) Unit!HttpError:
     return reply(exchange, text(401, "no"))
 
 test "middleware may answer without calling the rest":
@@ -150,7 +158,7 @@ test "middleware may answer without calling the rest":
     let response = try r.call(get("/t"))
     try expect_equal(response.status, 401)
 
-def fail(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+fn fail(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     return error(HttpError.Failed("boom"))
 
 test "a handler error comes back from call":
@@ -160,14 +168,11 @@ test "a handler error comes back from call":
 
 test "a handler that sends nothing answers 204":
     var r = Router()
-    r.get("/n", lambda exchange, params: ok(())).get()
+    r.get("/n", fn exchange, params: ok(unit)).get()
     try expect_equal((try r.call(get("/n"))).status, 204)
 
-def whole_response(
-    exchange: HttpExchange,
-    params: RouteParams
-) -> Result[Unit, HttpError]:
-    let body = "" if exchange.path() == "/empty" else "done"
+fn whole_response(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+    let body = if exchange.path() == "/empty": "" else: "done"
 
     try reply(exchange, text(200, body))
 
@@ -178,7 +183,7 @@ def whole_response(
             HttpError.Failed("wrong write error")
         )
 
-    return ok(())
+    return ok(unit)
 
 test "a whole in-process response rejects subsequent writes":
     var r = Router()
@@ -187,13 +192,13 @@ test "a whole in-process response rejects subsequent writes":
     try expect_equal(body_of(try r.call(get("/done"))), "done")
     try expect_equal(body_of(try r.call(get("/empty"))), "")
 
-def small_reads(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
-    let first = try exchange.read(some(1)).map_error(from_io)
-    let second = try exchange.read(some(2)).map_error(from_io)
-    let end = try exchange.read(some(1)).map_error(from_io)
+fn small_reads(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+    let first = try exchange.read(1).map_error(from_io)
+    let second = try exchange.read(2).map_error(from_io)
+    let end = try exchange.read(1).map_error(from_io)
     let a = first.get(Bytes([])).decode_utf8().get("")
     let b = second.get(Bytes([])).decode_utf8().get("")
-    return reply(exchange, text(200, f"{a}|{b}|{end.is_none()}"))
+    return reply(exchange, text(200, "{a}|{b}|{end.is_none()}"))
 
 test "in-process reads retain the unread body after a bounded chunk":
     var r = Router()
@@ -207,15 +212,15 @@ test "in-process reads retain the unread body after a bounded chunk":
     )
     try expect_equal(body_of(response), "a|bc|true")
 
-def read_sizes(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
-    let limit = none if params.get_or("mode", "") == "default" else some(100000)
+fn read_sizes(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+    let limit: Int? = if params.get_or("mode", "") == "default": none else: 100000
 
     let first = try exchange.read(limit).map_error(from_io)
     let second = try exchange.read(limit).map_error(from_io)
     let end = try exchange.read(limit).map_error(from_io)
     let a = first.get(Bytes([])).length()
     let b = second.get(Bytes([])).length()
-    return reply(exchange, text(200, f"{a}|{b}|{end.is_none()}"))
+    return reply(exchange, text(200, "{a}|{b}|{end.is_none()}"))
 
 test "in-process reads cap default and explicit chunks at 65536 bytes":
     var r = Router()
@@ -224,28 +229,25 @@ test "in-process reads cap default and explicit chunks at 65536 bytes":
     for mode in ["default", "explicit"]:
         let response = try r.call(
             HttpRequest(
-                method: HttpMethod.Post, path: f"/{mode}", query: "",
-                headers: headers(), body: "x".repeat(65537).get("").to_bytes()
+                method: HttpMethod.Post, path: "/{mode}", query: "", headers: headers(),
+                body: "x".repeat(65537).get("").to_bytes()
             )
         )
         try expect_equal(body_of(response), "65536|1|true")
 
-def read_empty(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+fn read_empty(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     let first = try exchange.read().map_error(from_io)
     let second = try exchange.read().map_error(from_io)
-    return reply(exchange, text(200, f"{first.is_none()}|{second.is_none()}"))
+    return reply(exchange, text(200, "{first.is_none()}|{second.is_none()}"))
 
 test "in-process reads report EOF immediately for an empty body":
     var r = Router()
     try r.get("/", read_empty)
     try expect_equal(body_of(try r.call(get("/"))), "true|true")
 
-def invalid_reads(
-    exchange: HttpExchange,
-    params: RouteParams
-) -> Result[Unit, HttpError]:
+fn invalid_reads(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     for limit in [0, -1]:
-        let read = exchange.read(some(limit))
+        let read = exchange.read(limit)
         if read.is_ok(): return error(HttpError.Failed("invalid read size accepted"))
         if read.err() != IoError.InvalidInput: return error(
             HttpError.Failed("wrong read error")
@@ -267,21 +269,20 @@ test "in-process reads reject nonpositive sizes without consuming input":
 
 test "the router serves over a socket":
     let handler = router().handler()
+    let server = try network().serve("127.0.0.1:0", handler, HttpServerOptions())
+    let client = try network().http_client(HttpClientOptions())
+    let response = try client.request(
+        HttpMethod.Get, "http://{server.address()}/users/9", headers()
+    )
+    try expect_equal(response.metadata().status, 200)
 
-    with let server = try network().serve("127.0.0.1:0", handler, HttpServerOptions()):
-        with let client = try network().http_client(HttpClientOptions()):
-            let response = try client.request(
-                HttpMethod.Get, f"http://{server.address()}/users/9", headers()
-            )
-            try expect_equal(response.metadata().status, 200)
+    let body = try read_all(body_stream(response))
+    try expect_equal(body.decode_utf8().get(""), "9|-")
 
-            let body = try read_all(body_stream(response))
-            try expect_equal(body.decode_utf8().get(""), "9|-")
-
-            let missing = try client.request(
-                HttpMethod.Delete, f"http://{server.address()}/users", headers()
-            )
-            try expect_equal(missing.metadata().status, 405)
+    let missing = try client.request(
+        HttpMethod.Delete, "http://{server.address()}/users", headers()
+    )
+    try expect_equal(missing.metadata().status, 405)
 
 test "mount places a router under a prefix with its own middleware":
     var api = Router()
@@ -313,10 +314,10 @@ type Answer:
     name: String
     count: Int
 
-def answer(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+fn answer(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     return reply(exchange, try json(201, Answer(name: "ok", count: 2)))
 
-def moved(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+fn moved(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     return reply(exchange, try redirect("/elsewhere"))
 
 test "json and redirect build responses":
@@ -326,18 +327,18 @@ test "json and redirect build responses":
 
     let sent = try r.call(get("/j"))
     try expect_equal(sent.status, 201)
-    try expect_equal(body_of(sent), "{\"name\":\"ok\",\"count\":2}")
+    try expect_equal(body_of(sent), "\{\"name\":\"ok\",\"count\":2\}")
     try expect_equal(sent.headers.values("Content-Type").join(","), "application/json")
 
     let moved_to = try r.call(get("/m"))
     try expect_equal(moved_to.status, 303)
     try expect_equal(moved_to.headers.values("Location").join(","), "/elsewhere")
 
-def echo_id(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+fn echo_id(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     let seen = exchange.headers().values("X-Request-Id")
     return reply(exchange, text(200, seen.join(",")))
 
-def id_of(response: HttpResponse) -> String:
+fn id_of(response: HttpResponse) String:
     return response.headers.values("X-Request-Id").join(",")
 
 test "request_id keeps a usable id and makes one otherwise":
@@ -349,14 +350,14 @@ test "request_id keeps a usable id and makes one otherwise":
     try expect_equal(id_of(fresh).length(), 36)
     try expect_equal(body_of(fresh), id_of(fresh))
 
-    let incoming = get("/i")
+    var incoming = get("/i")
     incoming.headers.append("X-Request-Id", "abc-123").get()
 
     let kept = try r.call(incoming)
     try expect_equal(id_of(kept), "abc-123")
     try expect_equal(body_of(kept), "abc-123")
 
-    let bad = get("/i")
+    var bad = get("/i")
     bad.headers.append("X-Request-Id", "has space").get()
     try expect_equal(id_of(try r.call(bad)).length(), 36)
     try expect_equal(id_of(try r.call(get("/missing"))).length(), 36)
@@ -365,27 +366,28 @@ type Sink:
     lines: Shared[List[String]]
 
 impl Transport for Sink:
-    var def write(data: String) -> Result[Unit, LogError]:
-        with var guard = lock(self.lines):
-            guard.value.append(data.clone())
-        return ok(())
+    var fn write(data: String) Unit!LogError:
+        var guard = lock(self.lines)
+        guard.value.append(data.clone())
+        guard.close().get(none)
+        return ok(unit)
 
-    var def write_bytes(data: Bytes) -> Result[Unit, LogError]:
+    var fn write_bytes(data: Bytes) Unit!LogError:
         return self.write(data.decode_utf8().get(""))
 
-    var def flush() -> Result[Unit, LogError]:
-        return ok(())
+    var fn flush() Unit!LogError:
+        return ok(unit)
 
-    var def close() -> Unit:
-        return ()
+    var fn close() Unit:
+        return unit
 
-def logged(lines: Shared[List[String]]) -> String:
-    with var guard = lock(lines):
-        return guard.value.join("")
+fn logged(lines: Shared[List[String]]) String:
+    var guard = lock(lines)
+    return guard.value.join("")
 
 test "access_log writes one record per request":
     let lines = share(List[String]())
-    let logger = (create(Sink(lines: lines), timestamp: some(False))).get()
+    let logger = (create(Sink(lines: lines), timestamp: false)).get()
     var r = Router()
     r.use(access_log(logger))
     r.get("/a", say("hello")).get()

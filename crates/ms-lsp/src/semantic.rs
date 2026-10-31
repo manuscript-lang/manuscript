@@ -45,6 +45,21 @@ struct Token {
 }
 
 fn lexer_tokens(d: &Document) -> Vec<Token> {
+    let mut tokens = scanned_tokens(d);
+    // `opaque` is contextual: a keyword only in front of `type`.
+    for i in 1..tokens.len() {
+        if tokens[i - 1].kind == Lex::Name
+            && tokens[i - 1].text == "opaque"
+            && tokens[i].kind == Lex::Keyword
+            && tokens[i].text == "type"
+        {
+            tokens[i - 1].kind = Lex::Keyword;
+        }
+    }
+    tokens
+}
+
+fn scanned_tokens(d: &Document) -> Vec<Token> {
     let file: Arc<str> = Arc::from(d.path().as_str());
     if let Ok(lexed) = ms_syntax::lexer::lex(&file, &d.text) {
         let mut tokens = Vec::with_capacity(lexed.tokens.len());
@@ -66,7 +81,7 @@ fn lexer_tokens(d: &Document) -> Vec<Token> {
             };
             tokens.push(Token {
                 kind,
-                previous_fn: previous == Tok::Def,
+                previous_fn: previous == Tok::Fn,
                 previous_type: previous == Tok::Type,
                 text: lexed.source[t.lo as usize..t.hi as usize].to_string(),
                 offset: t.pos.offset as usize,
@@ -95,7 +110,7 @@ fn lexer_tokens(d: &Document) -> Vec<Token> {
         };
         tokens.push(Token {
             kind,
-            previous_fn: previous == "def",
+            previous_fn: previous == "fn",
             previous_type: previous == "type",
             text: t.text.to_string(),
             offset: t.start,

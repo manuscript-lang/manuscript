@@ -1,0 +1,98 @@
+{
+  "regex.cardinality.whole.0": {
+    "ops": 1,
+    "before": 32.897685690445165,
+    "after": 34.108305502733536,
+    "ratio": 1.0367995433988837
+  },
+  "regex.cardinality.whole.1": {
+    "ops": 1,
+    "before": 402.48346481927217,
+    "after": 240.1816440747934,
+    "ratio": 0.5967490967179051
+  },
+  "regex.cardinality.whole.128": {
+    "ops": 1,
+    "before": 40965.59799482536,
+    "after": 24561.40363498675,
+    "ratio": 0.5995617014571414
+  },
+  "regex.cardinality.whole.2000": {
+    "ops": 1,
+    "before": 611165.143678161,
+    "after": 352151.6573208723,
+    "ratio": 0.5761972209369242
+  },
+  "regex.cardinality.grouped.1": {
+    "ops": 1,
+    "before": 602.4732062545996,
+    "after": 571.11009827977,
+    "ratio": 0.9479427339685279
+  },
+  "regex.cardinality.grouped.2000": {
+    "ops": 1,
+    "before": 887815.5220588235,
+    "after": 846603.1214285714,
+    "ratio": 0.9535799953861118
+  },
+  "regex.cardinality.whole.long": {
+    "ops": 1,
+    "before": 778224.8979591837,
+    "after": 392509.4383954155,
+    "ratio": 0.5043650484901369
+  },
+  "regex.cardinality.whole.empty_matches": {
+    "ops": 1,
+    "before": 779.6289045138257,
+    "after": 544.7893369425817,
+    "ratio": 0.698780322007572
+  },
+  "regex.cardinality.whole.over_limit": {
+    "ops": 1,
+    "before": 283.23253960983857,
+    "after": 245.22492582197273,
+    "ratio": 0.8658077428524897
+  },
+  "regex.cardinality.first.whole.hit": {
+    "ops": 1,
+    "before": 275.8614781285278,
+    "after": 190.02367435036913,
+    "ratio": 0.6888372948608447
+  },
+  "regex.cardinality.first.whole.miss": {
+    "ops": 1,
+    "before": 51.99993939161492,
+    "after": 29.618987126456645,
+    "ratio": 0.5695965701689405
+  },
+  "regex.cardinality.first.grouped.hit": {
+    "ops": 1,
+    "before": 387.4809156358261,
+    "after": 381.7374458061653,
+    "ratio": 0.9851774123630419
+  },
+  "regex.cardinality.first.whole.long": {
+    "ops": 1,
+    "before": 394703.6401384083,
+    "after": 398804.4454022989,
+    "ratio": 1.0103895805532794
+  },
+  "regex.cardinality.named.whole.hit": {
+    "ops": 1,
+    "before": 213.57856006623447,
+    "after": 40.88721118519599,
+    "ratio": 0.19143874353547538
+  },
+  "regex.cardinality.named.whole.long_miss": {
+    "ops": 1,
+    "before": 171050.81623931625,
+    "after": 36.64515336615637,
+    "ratio": 0.00021423547792304214
+  },
+  "regex.cardinality.named.named.hit": {
+    "ops": 1,
+    "before": 417.93282847778863,
+    "after": 414.71012705591437,
+    "ratio": 0.9922889488399078
+  }
+}

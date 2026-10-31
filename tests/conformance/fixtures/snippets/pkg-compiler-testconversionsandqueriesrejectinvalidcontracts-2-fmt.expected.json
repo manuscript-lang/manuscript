@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def check(value: Int, key: String) -> Bool: True\n\ndef wrong(value: Map[String, Int]) -> Bool: value.every(check)\n"
-  }
-}

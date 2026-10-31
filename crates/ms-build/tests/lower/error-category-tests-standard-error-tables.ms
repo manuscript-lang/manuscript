@@ -1,10 +1,10 @@
 # Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
 # expect-mir: "iface.is"
 
-from "@std/core.ms" import category
-from "@std/io.ms" import IoError
+import category from "@std/core.ms"
+import IoError from "@std/io.ms"
 
-export def main() -> Int:
+export fn main() Int:
     let cause: Error = IoError.Closed
     let _c = category(cause)
     return 0

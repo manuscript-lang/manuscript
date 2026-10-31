@@ -34,17 +34,17 @@
 ```manuscript
 # @std/channels.ms
 interface Transport[In, Out]:
-    var def send(value: In) -> Result[Unit, ChannelError]
-    var def receive() -> Result[Optional[Out], ChannelError]   # ok(none): closed and drained
-    var def close() -> Unit
+    var fn send(value: In) Result[Unit, ChannelError]
+    var fn receive() Result[Optional[Out], ChannelError]   # ok(none): closed and drained
+    var fn close() Unit
 
 type Channel[In, Out]:
     transport: Transport[In, Out]
 
 impl Channel[In, Out]:                           # thin delegation, same names
-    var def send(value: In) -> Result[Unit, ChannelError]: self.transport.send(value)
-    var def receive() -> Result[Optional[Out], ChannelError]: self.transport.receive()
-    var def close() -> Unit: self.transport.close()
+    var fn send(value: In) Result[Unit, ChannelError]: self.transport.send(value)
+    var fn receive() Result[Optional[Out], ChannelError]: self.transport.receive()
+    var fn close() Unit: self.transport.close()
 
 type ChannelError:
     case Closed                                  # send after the other end closed
@@ -55,30 +55,30 @@ Groups (one form for all three): the group carries the channel types, like it ca
 
 ```manuscript
 type TaskGroup[T, In = Unit, Out = Unit]          # WorkerGroup / ProcessGroup likewise
-def spawn(entry: Callable[[Channel[Out, In]], T]) -> Task[T, In, Out]   # handle.channel: Channel[In, Out]
+fn spawn(entry: fn(Channel[Out, In]) T) Task[T, In, Out]   # handle.channel: Channel[In, Out]
 ```
 
 - Source methods cannot declare their own type parameters (`crates/ms-check/src/passes.rs:131`; inherent methods become a synthetic contract and contracts have no per-operation generics), so `In`/`Out` live on the group. Every child of one group then has the same channel types, as it has the same `T`.
 - Because the entry type is concrete, an untyped lambda infers: `group.spawn(lambda ch: fetch(url.clone()))` works for fan-out (built and run with `ms build`, 2026-10-24).
 
 ```manuscript
-def square_all(ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
+fn square_all(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     var c = ch                       # issue #1191: a var parameter cannot be a Callable today
-    var open = True
+    var open = true
     while open:
         if let n = try c.receive():
             try c.send(n * n)
         else:
-            open = False
-    return ok(())
+            open = false
+    return ok(unit)
 
-def fetch_all(urls: List[String]) -> Result[List[Int], TaskError]:
+fn fetch_all(urls: List[String]) Result[List[Int], TaskError]:
     with let group = TaskGroup[Int]():                 # no messages: Channel[Unit, Unit]
         for url in urls:
-            group.spawn(lambda ch: fetch_size(url.clone()))
+            group.spawn(fn ch: fetch_size(url.clone()))
         return group.results()
 
-def main() -> Int:
+fn main() Int:
     with let group = WorkerGroup[Result[Unit, ChannelError], Int, Int]():   # or TaskGroup / ProcessGroup
         var worker = group.spawn(square_all)
         if worker.channel.send(3).is_error():

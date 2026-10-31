@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@lib/value.ms\" import value\n\nexport def main() -> Int: return value() - 3\n"
-  }
-}

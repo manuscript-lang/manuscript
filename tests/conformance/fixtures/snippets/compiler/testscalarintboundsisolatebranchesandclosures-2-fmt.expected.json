@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn probe(value: Int) Int:\n    var sum = 0\n    sum = value\n\n    let callback = fn() Int:\n        return sum + value\n    return callback()\n"
+  }
+}

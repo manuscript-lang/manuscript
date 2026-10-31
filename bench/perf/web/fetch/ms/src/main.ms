@@ -1,12 +1,11 @@
-from "@std/collections.ms" import range
-from "@std/fetch.ms" import fetcher, FetchOptions
-from "@std/io.ms" import stdout
-from "@std/process.ms" import arguments
-from "@std/tasks.ms" import TaskGroup
-from "@std/time.ms" import clock, nanoseconds
-from "@std/workers.ms" import Worker, WorkerGroup, worker_channel
+import fetcher, FetchOptions from "@std/fetch.ms"
+import stdout from "@std/io.ms"
+import arguments from "@std/process.ms"
+import TaskGroup from "@std/tasks.ms"
+import clock, nanoseconds from "@std/time.ms"
+import Worker, WorkerGroup, worker_channel from "@std/workers.ms"
 
-def worker(url: String, nanos: Int) -> Int:
+fn worker(url: String, nanos: Int) Int:
     var f = fetcher().get()
     let started = clock().now()
     var n = 0
@@ -18,12 +17,12 @@ def worker(url: String, nanos: Int) -> Int:
         else:
             return -1000000
 
-    f.close()
+    f.close().get(none)
     return n
 
 # One thread of a multi-threaded run: it receives "url connections seconds", runs that many fetching
 # tasks, and sends back its request count.
-def fetch_thread() -> Unit:
+fn fetch_thread() Unit:
     var ch = worker_channel[Int, String]()
 
     if let job = ch.receive().get(none):
@@ -31,36 +30,36 @@ def fetch_thread() -> Unit:
         let conns = parts.get(1).parse_int().get(1)
         let nanos = parts.get(2).parse_int().get(1) * 1000000000
         var total = 0
+        var group = TaskGroup[Int]()
 
-        with let group = TaskGroup[Int]():
-            for i in range(0, conns):
-                let u = parts.get(0).clone()
-                group.spawn(lambda task: worker(u, nanos))
+        for i in 0..conns:
+            let u = parts.get(0).clone()
+            group.spawn(fn task: worker(u, nanos))
 
-            for r in group.results().get():
-                total += r
+        for r in group.results().get():
+            total += r
+        group.close().get(none)
 
         let _ = ch.send(total)
 
 # Spreads `conns` connections over `threads` worker threads and sums their requests.
-def run_threads(url: String, conns: Int, secs: Int, threads: Int) -> Int:
+fn run_threads(url: String, conns: Int, secs: Int, threads: Int) Int:
     var total = 0
+    var group = WorkerGroup[String, Int]()
+    var workers: List[Worker[String, Int]] = []
 
-    with let group = WorkerGroup[String, Int]():
-        var workers: List[Worker[String, Int]] = []
+    for i in 0..threads:
+        var worker = group.spawn(fetch_thread).get(none)
+        let _ = worker.channel.send("{url} {conns / threads} {secs}")
+        workers.append(worker)
 
-        for i in range(0, threads):
-            var worker = group.spawn(fetch_thread).get(none)
-            let _ = worker.channel.send(f"{url} {conns / threads} {secs}")
-            workers.append(worker)
-
-        for i in range(0, threads):
-            if let n = workers[i].channel.receive().get(none):
-                total += n
-
+    for i in 0..threads:
+        if let n = workers[i].channel.receive().get(none):
+            total += n
+    group.close().get(none)
     return total
 
-export def main() -> Int:
+export fn main() Int:
     let args = arguments()
     let url = args.get(0)
     let conns = args.get(1).parse_int().get()
@@ -74,19 +73,21 @@ export def main() -> Int:
             (
                 stdout()
                 .write(
-                    f"req/s {run_threads(url, conns, secs, threads) / secs}\n"
+                    "req/s {run_threads(url, conns, secs, threads) / secs}\n"
                 )
                 .get()
             )
             return 0
 
-    with let group = TaskGroup[Int]():
-        for i in range(0, conns):
-            let u = url.clone()
-            group.spawn(lambda ch: worker(u, secs * 1000000000))
+    var group = TaskGroup[Int]()
 
-        for r in group.results().get():
-            total += r
+    for i in 0..conns:
+        let u = url.clone()
+        group.spawn(fn ch: worker(u, secs * 1000000000))
 
-    let _ = stdout().write(f"req/s {total / secs}\n")
+    for r in group.results().get():
+        total += r
+    group.close().get(none)
+
+    let _ = stdout().write("req/s {total / secs}\n")
     return 0

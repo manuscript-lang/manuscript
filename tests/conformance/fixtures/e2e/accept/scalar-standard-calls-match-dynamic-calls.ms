@@ -1,21 +1,10 @@
 # conform: tags=closures,control-flow,modules,mutation,numbers,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/scalar-standard-calls-match-dynamic-calls.ms
-from "@std/test.ms" import expect_true
-from "@std/math.ms" import (
-    atan2,
-    ceil,
-    floor,
-    max,
-    min,
-    pow,
-    remainder,
-    round,
-    sqrt,
-    truncate
-)
+import expect_true from "@std/test.ms"
+import atan2, ceil, floor, max, min, pow, remainder, round, sqrt, truncate from "@std/math.ms"
 
-def viaValue(f: Callable[[Float], Float], x: Float) -> Float: f(x)
+fn viaValue(f: fn(Float) Float, x: Float) Float: f(x)
 
 test "typed math":
     try expect_true((sqrt(value: 9.0) == 3.0))

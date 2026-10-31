@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def first(values: List[Int]) -> Result[Int, MissingValue]: values.first().ok_or()\n\ndef message(values: List[Int]) -> String: first(values).err().message()\n\ndef widen(cause: MissingValue) -> Error: cause\n"
-  }
-}

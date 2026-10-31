@@ -178,13 +178,11 @@ impl Checker {
                 );
                 return i;
             }
+            self.opaque_denied(e.pos, &typ, "it cannot be constructed here");
             let mut fields = constructor_signature(&typ).params.clone();
             if [
                 "BigInt",
                 "Regex",
-                "Timestamp",
-                "Instant",
-                "Duration",
                 "Decimal",
                 "HttpHeaders",
                 "IpAddress",
@@ -243,6 +241,13 @@ impl Checker {
                     self.res_error(e.pos, msg);
                     return i;
                 }
+                if alt.is_std("Optional") {
+                    self.res_error(
+                        e.pos,
+                        "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. let x: Int? = none",
+                    );
+                    return i;
+                }
                 cs = case_of(alt, *name);
                 if cs.is_none() {
                     self.res_error(
@@ -269,6 +274,19 @@ impl Checker {
             cs = case;
         }
         if let (Some(alt), Some(cs)) = (alternative, cs) {
+            if alt.is_std("Optional") && cs.name == "some" {
+                self.type_error(
+                    e.pos,
+                    "there is no some(...); a plain value converts where a T? is expected, so pass it directly, or annotate the binding, e.g. let x: Int? = 5",
+                );
+                i.ty = Some(invalid());
+                return i;
+            }
+            self.opaque_denied(
+                e.pos,
+                &alt,
+                &format!("case {} cannot be built here", cs.name),
+            );
             if cs.fields.is_empty() {
                 let fix =
                     suggestions::drop_case_parens(&self.m().source, callee.pos, cs.name.as_str());
@@ -434,7 +452,7 @@ impl Checker {
         if !named {
             self.type_error(
                 entry.value.pos,
-                "process entry must name a top-level def: it runs again in another process, which cannot carry a lambda or the values it captures; move the work into a def taking the channel".to_string(),
+                "process entry must name a top-level fn: it runs again in another process, which cannot carry a closure or the values it captures; move the work into a fn taking the channel".to_string(),
             );
         }
     }
@@ -462,7 +480,7 @@ impl Checker {
         let resolved = function_arguments(args, &sig.params);
         i.arguments = slots(&resolved);
         self.check_worker_entry(&callable, &resolved);
-        self.check_shared_use(e, callee, &callable, &sig);
+        self.check_shared_use(e, callee, &callable);
         i.no_return = callable.no_return
             || self.arguments_for(
                 &callee_name(callee),
@@ -484,9 +502,9 @@ impl Checker {
     }
 
     /// `Shared` is changed through `lock` from `@std/sync.ms`, which is the one place that may call
-    /// its raw `take`, `put`, `locked` and `id`; and a `Shared` cannot be a worker or process message,
-    /// because the other side would get a silent copy instead of the same box.
-    fn check_shared_use(&mut self, e: &Expr, callee: &Expr, callable: &Info, sig: &Ty) {
+    /// its raw `take`, `put`, `locked` and `id`. A `Shared` is not `Data`, so the `Data` bound on
+    /// worker and process messages already keeps it from crossing as a silent copy.
+    fn check_shared_use(&mut self, e: &Expr, callee: &Expr, callable: &Info) {
         let name = match &callee.kind {
             ExprKind::Member { name, .. } => name.as_str().to_string(),
             _ => callee_name(callee),
@@ -499,66 +517,25 @@ impl Checker {
             self.type_error(
                 e.pos,
                 format!(
-                    "Shared.{name} is internal; change a Shared with `with var guard = lock(box):` from \"@std/sync.ms\" and use guard.value, which puts the payload back when the block ends"
+                    "Shared.{name} is internal; change a Shared with `var guard = lock(box)` from \"@std/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()"
                 ),
-            );
-            return;
-        }
-        let messages: Vec<Ty> = match callable.method.as_ref() {
-            Some(m)
-                if name == "spawn"
-                    && m.receiver.is_source_type("@std/workers.ms", "WorkerGroup") =>
-            {
-                m.receiver.args.clone()
-            }
-            Some(m)
-                if name == "spawn"
-                    && m.receiver
-                        .is_source_type("@std/processes.ms", "ProcessGroup") =>
-            {
-                m.receiver.args.iter().skip(1).cloned().collect()
-            }
-            None if name == "worker_channel" => sig.result_ty().args.clone(),
-            _ => return,
-        };
-        for t in &messages {
-            let custom = |t: &Ty| {
-                self.p.methods.iter().any(|m| {
-                    m.contract
-                        .as_ref()
-                        .is_some_and(|c| c.is_source_type("@std/json.ms", "JsonEncode"))
-                        && type_key(&m.receiver) == type_key(t)
-                })
-            };
-            if let Some(bad) = without_json_form(t, &custom, &mut Vec::new()) {
-                self.type_error(
-                    e.pos,
-                    format!(
-                        "a worker or process message crosses as JSON, and {} has no JSON form, so it would be dropped silently; send plain data (numbers, text, lists, maps, records) instead",
-                        show(&Some(bad.clone()))
-                    ),
-                );
-                break;
-            }
-        }
-        if messages.iter().any(|t| mentions_shared(t, &mut Vec::new())) {
-            self.type_error(
-                e.pos,
-                "a worker or process message cannot contain a Shared: the other side would get a silent copy, not the same box; send the value, not a handle to it".to_string(),
             );
         }
     }
 
     /// A worker runs on another thread with memory of its own, so its entry cannot be a closure
-    /// that captured anything: `WorkerGroup.spawn` takes the name of a top-level `def`.
+    /// that captured anything: `WorkerGroup.spawn` and `spawn_many` take the name of a top-level `def`.
     fn check_worker_entry(&mut self, callable: &Info, args: &[Arg]) {
         let is_spawn = callable.method.as_ref().is_some_and(|m| {
             m.receiver.is_source_type("@std/workers.ms", "WorkerGroup")
                 && m.decl
                     .as_ref()
-                    .is_some_and(|d| d.name().as_str() == "spawn")
+                    .is_some_and(|d| matches!(d.name().as_str(), "spawn" | "spawn_many" | "start"))
+        }) && !matches!(self.m().file.as_str(), "@std/workers.ms" | "@std/net.ms");
+        let is_serve_cores = callable.symbol.as_ref().is_some_and(|s| {
+            s.module.as_str() == "@std/net.ms" && s.name.as_str() == "serve_cores"
         });
-        if !is_spawn {
+        if !is_spawn && !is_serve_cores {
             return;
         }
         let Some(entry) = args.iter().find(|a| a.name.as_str() == "entry") else {
@@ -567,7 +544,7 @@ impl Checker {
         if self.function_symbol(entry.value).is_none() {
             self.type_error(
                 entry.value.pos,
-                "a worker entry must be the name of a top-level def; lambdas, local functions and captured values cannot run on another thread, so move the work into a def and send what it needs through the worker's channel",
+                "a worker entry must be the name of a top-level fn; closures, local functions and captured values cannot run on another thread, so move the work into a fn and send what it needs through the worker's channel",
             );
         }
     }
@@ -646,8 +623,23 @@ impl Checker {
             if expected.is_some() && !call_name.is_empty() {
                 self.mismatch_context = Some(format!("argument '{}' of {call_name}", arg.name));
             }
+            let checkpoint = self.p.diagnostics.len();
             let v = self.argument_expression(arg.value, expected.as_ref());
             self.mismatch_context = None;
+            if self.conflicted_arguments.remove(&arg.value.id) {
+                // The argument check names both types and may carry a fix; it replaces the generic conflict note.
+                let at = arg.pos;
+                let explained = self.p.diagnostics[checkpoint..]
+                    .iter()
+                    .any(|d| d.pos == at && d.message.starts_with("expected "));
+                if explained
+                    && let Some(i) = self.p.diagnostics[..checkpoint]
+                        .iter()
+                        .rposition(|d| d.pos == at && d.message == CONFLICTING_INFERENCE)
+                {
+                    self.p.diagnostics.remove(i);
+                }
+            }
             if let (Some(want), Some(have)) = (&expected, &v.error_source)
                 && arg.mutable
                 && want.kind == Kind::Contract
@@ -904,15 +896,7 @@ impl Checker {
         };
         let actual = info.ty.clone();
         if compatible(&actual, expected_optional) {
-            let redundant = is_written_some(e)
-                && matches!(&e.kind, ExprKind::Call { args, .. }
-                    if self.info_of(&args[0].value).and_then(|i| i.ty).is_some_and(|t| !t.is_std("Optional") && same(&t, &payload)));
-            let mut info = self.check_expression(e, info, expected);
-            if redundant {
-                info.redundant_some = true;
-                self.set_info(e, info.clone());
-            }
-            return info;
+            return self.check_expression(e, info, expected);
         }
         let payload_ok = compatible(&actual, &payload)
             || actual
@@ -943,106 +927,6 @@ impl Checker {
         self.p.diagnostics.extend(diagnostics);
         info
     }
-}
-
-/// Whether a value of type `t` holds a `Shared` anywhere in its type arguments or fields.
-fn mentions_shared(t: &Ty, visiting: &mut Vec<Name>) -> bool {
-    if t.is_std("Shared") {
-        return true;
-    }
-    if visiting.contains(&t.id) {
-        return false;
-    }
-    visiting.push(t.id);
-    let mut found = t.args.iter().any(|a| mentions_shared(a, visiting));
-    if !found && matches!(t.kind, Kind::Record | Kind::Alternative) {
-        found = fields(t).iter().any(|f| mentions_shared(&f.ty, visiting));
-        if let Some(def) = &t.def {
-            let s = substitution(t);
-            found = found
-                || def.cases.borrow().iter().any(|case| {
-                    case.fields
-                        .iter()
-                        .any(|f| mentions_shared(&sub(&f.ty, &s), visiting))
-                });
-        }
-    }
-    visiting.pop();
-    found
-}
-
-/// The first type inside `t` that the JSON codec cannot write or read: a function, an interface or
-/// a resource handle, or a map whose key has no JSON text. Such a field would be omitted on the
-/// way across, so a worker message may not hold one. A type with a `JsonEncode` implementation
-/// chooses its own form.
-fn without_json_form(t: &Ty, custom: &dyn Fn(&Ty) -> bool, visiting: &mut Vec<Name>) -> Option<Ty> {
-    // `Shared` has its own, clearer diagnostic.
-    if t.kind == Kind::Variable
-        || t.is_std("Shared")
-        || t.is_source_type("@std/json.ms", "JsonValue")
-        || custom(t)
-    {
-        return None;
-    }
-    if matches!(t.kind, Kind::Function | Kind::Contract) {
-        return Some(t.clone());
-    }
-    let container = ["List", "Set", "Map", "Optional"];
-    if t.kind == Kind::Native && !container.iter().any(|n| t.is_std(n)) {
-        let known = ["Bytes", "BigInt", "Timestamp", "Decimal", "Duration"];
-        let net = ["Url", "IpAddress", "Cidr"];
-        let ok = known.iter().any(|n| t.is_std(n))
-            || net.iter().any(|n| t.is_source_type("@std/net.ms", n));
-        return if ok { None } else { Some(t.clone()) };
-    }
-    if t.is_std("Map") {
-        let key = &t.args[0];
-        let keyable = matches!(key.id.as_str(), "String" | "Int" | "Bool" | "Float")
-            || key.is_std("Duration")
-            || key.is_std("Timestamp")
-            || key.is_std("Decimal")
-            || (key.kind == Kind::Alternative
-                && !key.is_std("Optional")
-                && !cases(key).is_empty()
-                && cases(key).iter().all(|c| c.fields.is_empty()));
-        if !keyable {
-            return Some(key.clone());
-        }
-    }
-    if visiting.contains(&t.id) {
-        return None;
-    }
-    visiting.push(t.id);
-    let mut found = t
-        .args
-        .iter()
-        .find_map(|a| without_json_form(a, custom, visiting));
-    if found.is_none() && matches!(t.kind, Kind::Record | Kind::Alternative) {
-        found = fields(t)
-            .iter()
-            .find_map(|f| without_json_form(&f.ty, custom, visiting));
-        if found.is_none()
-            && let Some(def) = &t.def
-        {
-            let s = substitution(t);
-            found = def.cases.borrow().iter().find_map(|case| {
-                case.fields
-                    .iter()
-                    .find_map(|f| without_json_form(&sub(&f.ty, &s), custom, visiting))
-            });
-        }
-    }
-    visiting.pop();
-    found
-}
-
-/// A call written `some(x)` or `some(value: x)` through the prelude name.
-fn is_written_some(e: &Expr) -> bool {
-    let ExprKind::Call { callee, args } = &e.kind else {
-        return false;
-    };
-    matches!(&callee.kind, ExprKind::Name(n) if n.as_str() == "some")
-        && matches!(args.as_slice(), [a] if a.name.is_none_or(|n| n.as_str() == "value"))
 }
 
 #[cfg(test)]

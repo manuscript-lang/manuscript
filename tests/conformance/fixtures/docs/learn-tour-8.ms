@@ -1,31 +1,31 @@
 # conform: tags=alternatives,interpolation,match,modules,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=documentation/learn/tour.md:137
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Todo:
     title: String
-    completed: Bool = False
+    completed: Bool = false
 
 type Status:
     case Draft
     case Published(url: String)
 
-def status_label(status: Status) -> String:
+fn status_label(status: Status) String:
     match status:
-        case Draft:
+        Draft:
             return "Not published"
-        case Published(url):
-            return f"Published at {url}"
+        Published(url):
+            return "Published at {url}"
 
 test "publish a help page":
     var todo = Todo("Update the help page")
-    todo.completed = True
+    todo.completed = true
 
     let backup = todo.clone()
     todo.title = "Update the contact page"
 
     let label = status_label(Status.Published("/help"))
     try expect_equal(backup.title, "Update the help page")
-    try expect_equal(backup.completed, True)
+    try expect_equal(backup.completed, true)
     try expect_equal(label, "Published at /help")

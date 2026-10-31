@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,optional,strings,tier-core
 # conform: phase=check
 # conform: origin=documentation/core-language/types/optionals.md:95
-def display_name(name: Optional[String]) -> String:
+fn display_name(name: String?) String:
     if let value = name:
         return value
 

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn make[T, U = Int]() T?: none\n\nfn use() Unit:\n    let x = make()\n"
+  }
+}

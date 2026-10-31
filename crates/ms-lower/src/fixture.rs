@@ -2,11 +2,11 @@
 //!
 //! Every test runs in its own process, so the factory and `before_all` run once per test
 //! and `after_all` follows `after_each`. The `after_*` hooks are also entries on the runtime
-//! cleanup stack, so a skip or a fault runs them like the close of a `with` block.
+//! cleanup stack, so a skip or a fault runs them like the scope-end close of a binding.
 
 use crate::Error;
+use crate::close::CloseKind;
 use crate::func::FnLower;
-use crate::with::CloseKind;
 use ms_check::hir::Callable;
 use ms_check::types::{self as ct, BindingRef, Subst};
 use ms_mir::ir::{Imm, Op, Value};
@@ -50,6 +50,8 @@ impl FnLower<'_> {
         if after_each.is_some() || after_all.is_some() {
             self.slotted.insert(binding.uid);
         }
+        // Tests change the fixture's fields in place, which stores the local again.
+        self.redefined.insert(binding.uid);
         self.bind_local(binding, crate::func::Val { v: made, own: true });
         self.fixture = Some(Hooks {
             binding: binding.clone(),

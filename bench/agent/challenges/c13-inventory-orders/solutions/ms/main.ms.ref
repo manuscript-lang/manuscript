@@ -1,4 +1,4 @@
-from "@std/io.ms" import stdin, stdout, read_line
+import stdin, stdout, read_line from "@std/io.ms"
 
 type Item:
     sku: String
@@ -14,41 +14,41 @@ type Warehouse:
     price: Map[String, Int]
     orders: Map[String, Order]
 
-def money(c: Int) -> String:
+fn money(c: Int) String:
     let cents = c % 100
     if cents < 10:
-        return f"{c / 100}.0{cents}"
+        return "{c / 100}.0{cents}"
 
-    return f"{c / 100}.{cents}"
+    return "{c / 100}.{cents}"
 
-def is_sku_char(c: Int) -> Bool:
+fn is_sku_char(c: Int) Bool:
     return (c >= 65 and c <= 90) or (c >= 48 and c <= 57) or c == 45
 
-def is_oid_char(c: Int) -> Bool:
+fn is_oid_char(c: Int) Bool:
     return (c >= 97 and c <= 122) or (c >= 48 and c <= 57) or c == 45
 
-def valid_sku(s: String) -> Bool:
+fn valid_sku(s: String) Bool:
     let codes = s.scalar_values()
     if codes.is_empty():
-        return False
+        return false
 
     for c in codes:
         if not is_sku_char(c):
-            return False
-    return True
+            return false
+    return true
 
-def valid_oid(s: String) -> Bool:
+fn valid_oid(s: String) Bool:
     let codes = s.scalar_values()
     if codes.is_empty():
-        return False
+        return false
 
     for c in codes:
         if not is_oid_char(c):
-            return False
-    return True
+            return false
+    return true
 
 # 1 to 7 ASCII digits.
-def number(s: String) -> Optional[Int]:
+fn number(s: String) Int?:
     let codes = s.scalar_values()
     if codes.length() < 1 or codes.length() > 7:
         return none
@@ -63,14 +63,14 @@ def number(s: String) -> Optional[Int]:
 
     return some(n)
 
-def quantity(s: String) -> Optional[Int]:
+fn quantity(s: String) Int?:
     let n = number(s)
     if n.is_none() or n.get() < 1 or n.get() > 100000:
         return none
 
     return n
 
-def arity(name: String) -> Int:
+fn arity(name: String) Int:
     if name == "stock" or name == "price":
         return 3
     if name == "cancel" or name == "ship":
@@ -80,12 +80,12 @@ def arity(name: String) -> Int:
 
     return 0
 
-def place_order(var w: Warehouse, t: List[String]) -> List[String]:
+fn place_order(var w: Warehouse, t: List[String]) List[String]:
     let id = t.get(1)
     if not valid_oid(id):
         return ["error: bad order id"]
     if w.orders.contains(id):
-        return [f"error: order {id} already exists"]
+        return ["error: order {id} already exists"]
 
     var items = List[Item]()
     var i = 2
@@ -96,11 +96,11 @@ def place_order(var w: Warehouse, t: List[String]) -> List[String]:
 
         let p = token.split(":")
         if p.length() != 2 or not valid_sku(p.get(0)):
-            return [f"error: bad item {token}"]
+            return ["error: bad item {token}"]
 
         let q = quantity(p.get(1))
         if q.is_none():
-            return [f"error: bad item {token}"]
+            return ["error: bad item {token}"]
 
         items.append(Item(sku: p.get(0).clone(), qty: q.get()))
 
@@ -108,14 +108,14 @@ def place_order(var w: Warehouse, t: List[String]) -> List[String]:
 
     for it in items:
         if seen.contains(it.sku):
-            return [f"error: duplicate sku {it.sku}"]
+            return ["error: duplicate sku {it.sku}"]
 
         let have = w.stock.get(it.sku)
         if have.is_none():
-            return [f"error: unknown sku {it.sku}"]
+            return ["error: unknown sku {it.sku}"]
         if it.qty > have.get():
             return [
-                f"error: insufficient stock for {it.sku} (have {have.get()}, need {it.qty})"
+                "error: insufficient stock for {it.sku} (have {have.get()}, need {it.qty})"
             ]
 
         seen.add(it.sku.clone())
@@ -138,9 +138,9 @@ def place_order(var w: Warehouse, t: List[String]) -> List[String]:
             key: id.clone(), value: Order(items: items, status: "placed", total: total)
         )
     )
-    return [f"ok {id} total={money(total)}"]
+    return ["ok {id} total={money(total)}"]
 
-def report(w: Warehouse) -> List[String]:
+fn report(w: Warehouse) List[String]:
     var reserved = Map[String, Int]()
     var placed = 0
     var shipped = 0
@@ -158,7 +158,7 @@ def report(w: Warehouse) -> List[String]:
                     n += it.qty
                 else:
                     reserved.add(key: it.sku.clone(), value: it.qty)
-        elif o.status == "shipped":
+        else if o.status == "shipped":
             shipped = shipped + 1
             revenue = revenue + o.total
         else:
@@ -170,20 +170,20 @@ def report(w: Warehouse) -> List[String]:
         .stock
         .keys()
         .sorted(
-            compare: lambda (left: String, right: String) -> Int: return left.compare(
+            compare: fn(left: String, right: String) Int: return left.compare(
                 right
             )
         )
     )
     for sku in skus:
         out.append(
-            f"{sku} stock={w.stock.get(sku).get()} price={money(w.price.get(sku).get())} reserved={reserved.get_or(key: sku, fallback: 0)}"
+            "{sku} stock={w.stock.get(sku).get()} price={money(w.price.get(sku).get())} reserved={reserved.get_or(key: sku, fallback: 0)}"
         )
-    out.append(f"orders placed={placed} shipped={shipped} cancelled={cancelled}")
-    out.append(f"revenue={money(revenue)}")
+    out.append("orders placed={placed} shipped={shipped} cancelled={cancelled}")
+    out.append("revenue={money(revenue)}")
     return out
 
-def run_command(var w: Warehouse, line: String) -> List[String]:
+fn run_command(var w: Warehouse, line: String) List[String]:
     let t = line.split(" ")
     let name = t.get(0)
     let want = arity(name)
@@ -204,7 +204,7 @@ def run_command(var w: Warehouse, line: String) -> List[String]:
         let now = w.stock.get_or(key: sku, fallback: 0) + q.get()
         w.stock.add(key: sku.clone(), value: now)
         w.price.add_default(key: sku.clone(), value: 0)
-        return [f"ok {sku} stock={now}"]
+        return ["ok {sku} stock={now}"]
 
     if name == "price":
         let p = number(t.get(2))
@@ -213,7 +213,7 @@ def run_command(var w: Warehouse, line: String) -> List[String]:
 
         let sku = t.get(1)
         if not w.stock.contains(sku):
-            return [f"error: unknown sku {sku}"]
+            return ["error: unknown sku {sku}"]
 
         w.price.add(key: sku.clone(), value: p.get())
         return ["ok"]
@@ -226,13 +226,13 @@ def run_command(var w: Warehouse, line: String) -> List[String]:
     let id = t.get(1)
     let found = w.orders.get(id)
     if found.is_none():
-        return [f"error: unknown order {id}"]
+        return ["error: unknown order {id}"]
 
     let o = found.get()
 
     if name == "cancel":
         if o.status != "placed":
-            return [f"error: order {id} already {o.status}"]
+            return ["error: order {id} already {o.status}"]
 
         for it in o.items:
             if var n = w.stock.get(it.sku):
@@ -242,21 +242,21 @@ def run_command(var w: Warehouse, line: String) -> List[String]:
         return ["ok"]
 
     if o.status == "shipped":
-        return [f"error: order {id} already shipped"]
+        return ["error: order {id} already shipped"]
     if o.status == "cancelled":
-        return [f"error: order {id} is cancelled"]
+        return ["error: order {id} is cancelled"]
 
     if var u = w.orders.get(id):
         u.status = "shipped"
     return ["ok"]
 
-def run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     var w = Warehouse(
         stock: Map[String, Int](), price: Map[String, Int](),
         orders: Map[String, Order]()
     )
 
-    while True:
+    while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
         if next.is_none():
             break
@@ -266,11 +266,11 @@ def run() -> Result[Unit, Error]:
             continue
 
         for out in run_command(var w, line):
-            try stdout().write(f"{out}\n")
+            try stdout().write("{out}\n")
 
     return stdout().flush()
 
-export def main() -> Int:
+export fn main() Int:
     match run():
-        case ok(_): return 0
-        case error(_): return 1
+        ok(_): return 0
+        error(_): return 1

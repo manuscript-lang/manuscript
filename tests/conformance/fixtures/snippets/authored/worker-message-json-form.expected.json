@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Job does not satisfy Data; field run is fn(Int) Int, a function; send the data the function would compute",
+        "position": {
+          "file": "worker-message-json-form.ms",
+          "line": 11,
+          "column": 14,
+          "offset": 231
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "ReadStream does not satisfy Data; it is an interface value; send the plain data behind it",
+        "position": {
+          "file": "worker-message-json-form.ms",
+          "line": 15,
+          "column": 14,
+          "offset": 317
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Map[Int, List[String]] does not satisfy Data; it is a Map or Set, which has no portable form; send a List, or a JsonValue object",
+        "position": {
+          "file": "worker-message-json-form.ms",
+          "line": 19,
+          "column": 14,
+          "offset": 409
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/worker-message-json-form.ms:11:14: type: Job does not satisfy Data; field run is fn(Int) Int, a function; send the data the function would compute\n    |\n 11 |     var ch = worker_channel[Int, Job]()\n    |              ^\n<DIR>/worker-message-json-form.ms:15:14: type: ReadStream does not satisfy Data; it is an interface value; send the plain data behind it\n    |\n 15 |     var ch = worker_channel[ReadStream, Int]()\n    |              ^\n<DIR>/worker-message-json-form.ms:19:14: type: Map[Int, List[String]] does not satisfy Data; it is a Map or Set, which has no portable form; send a List, or a JsonValue object\n    |\n 19 |     var ch = worker_channel[Map[Int, List[String]], Float?]()\n    |              ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

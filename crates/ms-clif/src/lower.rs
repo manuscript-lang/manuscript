@@ -189,7 +189,7 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     fn zeros(&mut self, ty: Ty) -> Vs {
         if self.g.lay.is_str_like(ty) && !matches!(self.g.m.types.kind(ty), TyKind::Str) {
-            // An absent `Optional[String]`: static, so dropping and copying it do nothing.
+            // An absent `String?`: static, so dropping and copying it do nothing.
             return vec![self.iconst(0), self.iconst(STR_STATIC as i64)];
         }
         self.g
@@ -484,11 +484,18 @@ impl<'a, 'm> Lower<'a, 'm> {
                     ms_mir::ir::FuncKind::Closure { captures } => captures.clone(),
                     _ => Vec::new(),
                 };
+                let closers = self.g.m.funcs[f as usize].capture_closers.clone();
                 let mut off = CLOSURE_CAPTURES as i64;
-                for c in caps {
+                for (k, c) in caps.into_iter().enumerate() {
                     let leaves = self.g.lay.leaves(c);
                     let lay = mem_layout(&leaves);
                     off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
+                    if let Some((_, close)) = closers.iter().find(|(i, _)| *i as usize == k) {
+                        // A resource the environment owns is closed before it is released.
+                        let vs = self.load_leaves(obj, off, &leaves);
+                        let fid = self.g.funcs[close.index()];
+                        self.call_id(fid, &vs);
+                    }
                     if self.g.m.needs_drop(c) {
                         let vs = self.load_leaves(obj, off, &leaves);
                         self.drop_value(c, &vs);
@@ -520,6 +527,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Glue::SharedDrop => {
                 let obj = params[0];
+                if let Some(&(_, close)) = self.g.m.shared_close.iter().find(|(t, _)| *t == ty) {
+                    // The last holder is gone: close the payload before it is dropped.
+                    let at = self.add_imm(obj, SHARED_VALUE);
+                    let id = self.g.funcs[close.index()];
+                    self.call_id(id, &[at]);
+                }
                 if self.g.m.needs_drop(ty) {
                     let leaves = self.g.lay.leaves(ty);
                     let vs = self.load_leaves(obj, SHARED_VALUE, &leaves);
@@ -1952,6 +1965,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     .collect()
             }
             Op::RecNew => (0..inst.args.len()).flat_map(|i| self.a(inst, i)).collect(),
+            Op::RefNew | Op::RefGet => self.a(inst, 0),
             Op::RecGet => {
                 let Imm::Field(_, i) = inst.imm else {
                     unreachable!()
@@ -2009,6 +2023,20 @@ impl<'a, 'm> Lower<'a, 'm> {
                     }
                     _ => idx.iter().map(|k| v[*k]).collect(),
                 }
+            }
+            Op::RecRelease => {
+                let Imm::RecMask(_, mask) = inst.imm else {
+                    unreachable!()
+                };
+                let ty = f.ty(inst.args[0]);
+                let v = self.a(inst, 0);
+                // Drop the fields that were not moved out; a record owns no block of its own.
+                for (k, (fty, at, w)) in self.fields_of(ty).into_iter().enumerate() {
+                    if mask >> k & 1 == 0 {
+                        self.drop_value(fty, &v[at..at + w]);
+                    }
+                }
+                vec![]
             }
             Op::AltRelease => {
                 let Imm::AltMask(a, c, mask) = inst.imm else {

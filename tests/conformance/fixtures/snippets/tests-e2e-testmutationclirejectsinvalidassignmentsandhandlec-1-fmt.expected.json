@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/io.ms\" import File\nfrom \"@std/net.ms\" import Connection\n\ntype Val:\n    val: Int\n"
-  }
-}

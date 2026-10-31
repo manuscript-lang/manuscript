@@ -1,15 +1,15 @@
-from "@std/shared.ms" import share, Shared
+import share, Shared from "@std/shared.ms"
 
 type Holder:
     items: Shared[List[String]]
 
-def child(holder: Holder) -> Holder:
+fn child(holder: Holder) Holder:
     return Holder(holder.items)
 
-def count(items: Shared[List[String]]) -> Int:
+fn count(items: Shared[List[String]]) Int:
     return items.get().length()
 
-def f() -> Int:
+fn f() Int:
     let items = share(["a", "b"])
     let copy = items
     let holder = Holder(items)

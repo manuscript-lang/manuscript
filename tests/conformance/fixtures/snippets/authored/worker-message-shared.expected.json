@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Box does not satisfy Data; field held is Shared[List[Int]], a runtime handle; send plain data instead",
+        "position": {
+          "file": "worker-message-shared.ms",
+          "line": 10,
+          "column": 14,
+          "offset": 246
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Box does not satisfy Data; field held is Shared[List[Int]], a runtime handle; send plain data instead",
+        "position": {
+          "file": "worker-message-shared.ms",
+          "line": 14,
+          "column": 17,
+          "offset": 339
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member spawn on WorkerGroup[Box, Int]; spawn requires Box to be Data; Box does not satisfy Data; field held is Shared[List[Int]], a runtime handle; send plain data instead",
+        "position": {
+          "file": "worker-message-shared.ms",
+          "line": 15,
+          "column": 19,
+          "offset": 381
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member close on WorkerGroup[Box, Int]; close requires Box to be Data; Box does not satisfy Data; field held is Shared[List[Int]], a runtime handle; send plain data instead",
+        "position": {
+          "file": "worker-message-shared.ms",
+          "line": 17,
+          "column": 11,
+          "offset": 462
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/worker-message-shared.ms:10:14: type: Box does not satisfy Data; field held is Shared[List[Int]], a runtime handle; send plain data instead\n    |\n 10 |     var ch = worker_channel[Int, Box]()\n    |              ^\n<DIR>/worker-message-shared.ms:14:17: type: Box does not satisfy Data; field held is Shared[List[Int]], a runtime handle; send plain data instead\n    |\n 14 |     var group = WorkerGroup[Box, Int]()\n    |                 ^\n<DIR>/worker-message-shared.ms:15:19: resolution: unknown or ambiguous member spawn on WorkerGroup[Box, Int]; spawn requires Box to be Data; Box does not satisfy Data; field held is Shared[List[Int]], a runtime handle; send plain data instead\n    |\n 15 |     var w = group.spawn(sink).get()\n    |                   ^\n<DIR>/worker-message-shared.ms:17:11: resolution: unknown or ambiguous member close on WorkerGroup[Box, Int]; close requires Box to be Data; Box does not satisfy Data; field held is Shared[List[Int]], a runtime handle; send plain data instead\n    |\n 17 |     group.close()\n    |           ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

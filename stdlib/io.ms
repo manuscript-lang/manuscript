@@ -1,46 +1,42 @@
-from "@std/core.ms" import Iterator
-from "@std/bytes.ms" import Bytes
-from "@std/time.ms" import Duration
+import Closeable, Iterator from "@std/core.ms"
+import Bytes from "@std/bytes.ms"
+import Duration from "@std/time.ms"
 
-extern def msstd_io_copy(
+extern fn msstd_io_copy(
     input: ReadStream,
     output: WriteStream,
-    max_bytes: Optional[Int]
-) -> Result[Int, IoError]
+    max_bytes: Int?
+) Int!IoError
 
-extern def msstd_io_read_all(
-    input: ReadStream,
-    max_bytes: Optional[Int]
-) -> Result[Bytes, IoError]
+extern fn msstd_io_read_all(input: ReadStream, max_bytes: Int?) Bytes!IoError
 
-extern def msstd_io_read_line(
-    input: ReadStream,
-    max_bytes: Optional[Int]
-) -> Result[Optional[String], IoError]
+extern fn msstd_io_read_line(input: ReadStream, max_bytes: Int?) String?!IoError
 
-extern def msstd_io_stdin() -> ReadStream
+extern fn msstd_io_redirect_null(which: Int) Unit!IoError
 
-extern def msstd_io_stdout() -> WriteStream
+extern fn msstd_io_stdin() ReadStream
 
-extern def msstd_io_stderr() -> WriteStream
+extern fn msstd_io_stdout() WriteStream
 
-extern def msstd_io_files() -> Files
+extern fn msstd_io_stderr() WriteStream
 
-extern def msstd_io_terminal() -> Terminal
+extern fn msstd_io_files() Files
+
+extern fn msstd_io_terminal() Terminal
 
 # A file-like byte stream that returns `none` at end of input.
 export interface File:
     # Releases the file resource; retained aliases do not extend its open lifetime.
-    def close() -> Unit
+    fn close() Unit
     # Returns a byte chunk or none at EOF; max_bytes is a positive chunk size, not a total budget.
     # Omission/none uses the native 64 KiB chunk; source implementations define their own buffering.
-    def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    fn read(max_bytes: Int?) Bytes?!IoError
 
 # Opens read-only file resources using the current host's default filesystem.
 # Native open failures (including missing paths and permission denial) become IoError.Unavailable.
 export interface Files:
     # Opens path for read-only access; native missing, denied, and other open failures become Unavailable.
-    def open(path: String) -> Result[File, IoError]
+    fn open(path: String) File!IoError
 
 # Errors returned while reading, writing, or closing an I/O resource.
 export type IoError:
@@ -63,46 +59,36 @@ export type IoError:
 # A readable byte stream. Each read returns a chunk or `none` at end of stream.
 export interface ReadStream:
     # Releases this implementation's read resource; ownership of underlying handles is implementation-defined.
-    var def close() -> Unit
+    var fn close() Unit
     # Returns a chunk or none at EOF; a final nonempty chunk can precede EOF.
     # A supplied positive max_bytes requests a chunk size; native omission/none uses 64 KiB.
-    var def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    var fn read(max_bytes: Int? = none) Bytes?!IoError
 
 # A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
 # Buffering/flush depends on the implementation: native stderr is unbuffered and native stdout is buffered when not a terminal (flush drains it),
 # while FileHandle.writer().flush synchronizes the file. Success does not acknowledge peer processing.
 export interface WriteStream:
     # Releases this implementation's write resource; close does not imply a successful flush.
-    var def close() -> Unit
+    var fn close() Unit
     # Completes implementation-specific buffering or synchronization; native stdout drains its buffer and stderr has none.
     # File-handle writers synchronize the file, and failures retain IoError identity.
-    var def flush() -> Result[Unit, IoError]
+    var fn flush() Unit!IoError
     # Accepts the complete input on success; a source implementation may buffer until flush.
-    var def write(data: String) -> Result[Unit, IoError]
+    var fn write(data: String) Unit!IoError
     # Accepts the complete bytes on success, with the buffering rules of write.
-    var def write_bytes(data: Bytes) -> Result[Unit, IoError]
+    var fn write_bytes(data: Bytes) Unit!IoError
 
-# Copies bytes until end of input or the supplied byte limit; returns bytes copied.
-export def copy(
-    input: ReadStream,
-    output: WriteStream,
-    max_bytes: Optional[Int] = none
-) -> Result[Int, IoError]:
+# Copies bytes until end of input and returns the count. Input beyond `max_bytes` returns LimitExceeded.
+export fn copy(input: ReadStream, output: WriteStream, max_bytes: Int?) Int!IoError:
     return msstd_io_copy(input, output, max_bytes)
 
 # Reads a stream completely into memory. Supply a limit for untrusted streams.
-export def read_all(
-    input: ReadStream,
-    max_bytes: Optional[Int] = none
-) -> Result[Bytes, IoError]:
+export fn read_all(input: ReadStream, max_bytes: Int?) Bytes!IoError:
     return msstd_io_read_all(input, max_bytes)
 
 # Reads one line from a stream such as `stdin()`, omitting its line ending; returns `none` at end of stream.
 # `max_bytes` counts the terminator: a newline-ended line must be shorter than it, an unterminated last line may equal it. To read every line, iterate `lines(input)`.
-export def read_line(
-    input: ReadStream,
-    max_bytes: Optional[Int] = none
-) -> Result[Optional[String], IoError]:
+export fn read_line(input: ReadStream, max_bytes: Int?) String?!IoError:
     return msstd_io_read_line(input, max_bytes)
 
 # Lines of a stream, read on demand. `for line in reader:` walks the lines without their
@@ -115,19 +101,19 @@ export type LineReader:
     # The stream being read.
     input: ReadStream
     # Per-line byte limit, or none for no limit.
-    max_bytes: Optional[Int]
+    max_bytes: Int?
     # The error that ended iteration, if any.
-    failure: Optional[IoError]
+    failure: IoError?
 
 impl LineReader:
     # Returns the I/O error that ended iteration, or none after a clean end of input
     # (and while lines remain). A line over the limit reports `LimitExceeded`.
-    def error() -> Optional[IoError]:
+    fn error() IoError?:
         return self.failure.clone()
 
 impl Iterator[String] for LineReader:
     # Returns the next line, or none at end of input or after an error (see `error()`).
-    var def next() -> Optional[String]:
+    var fn next() String?:
         if self.failure.is_some():
             return none
 
@@ -137,38 +123,63 @@ impl Iterator[String] for LineReader:
             self.failure = line.err().clone()
             return none
 
-        return line.get().clone()
+        let text = line.get()
+        if text.is_none():
+            return none
+
+        return text.get().clone()
 
 # Returns a reader over the lines of `input`, for `for line in reader:`. `max_bytes` bounds each
 # line, as in `read_line`.
-export def lines(input: ReadStream, max_bytes: Optional[Int] = none) -> LineReader:
+export fn lines(input: ReadStream, max_bytes: Int?) LineReader:
     return LineReader(input, max_bytes, none)
 
 impl Error for IoError:
     # Returns original Failed text, or an I/O-prefixed diagnostic for the other cases.
-    def message() -> String:
+    fn message() String:
         match self:
-            case Closed: return "I/O: resource is closed"
-            case InvalidInput: return "I/O: invalid input"
-            case Unavailable: return "I/O: service unavailable"
-            case InvalidData: return "I/O: invalid data"
-            case LimitExceeded: return "I/O: limit exceeded"
-            case Failed(message): return message.clone()
+            Closed: return "I/O: resource is closed"
+            InvalidInput: return "I/O: invalid input"
+            Unavailable: return "I/O: service unavailable"
+            InvalidData: return "I/O: invalid data"
+            LimitExceeded: return "I/O: limit exceeded"
+            Failed(message): return message.clone()
 
 # Returns the process standard-input stream.
-export def stdin() -> ReadStream:
+export fn stdin() ReadStream:
     return msstd_io_stdin()
 
 # Returns the process standard-output stream.
-export def stdout() -> WriteStream:
+export fn stdout() WriteStream:
     return msstd_io_stdout()
 
 # Returns the process standard-error stream.
-export def stderr() -> WriteStream:
+export fn stderr() WriteStream:
     return msstd_io_stderr()
 
+# One of this process's three standard streams.
+export type StdStream:
+    # Standard input; once redirected it reads as end of file.
+    case Input
+    # Standard output; once redirected its writes are discarded.
+    case Output
+    # Standard error; once redirected its writes are discarded.
+    case Error
+
+# Points the process's own standard stream at the null device (`/dev/null`, or `NUL` on Windows): input reads as end of file and output is discarded.
+# This replaces the descriptor itself, so it also affects children started afterwards that inherit it. Buffered standard output is written first. The change cannot be undone.
+export fn redirect_to_null(stream: StdStream) Unit!IoError:
+    var which = 2
+
+    match stream:
+        Input: which = 0
+        Output: which = 1
+        Error: which = 2
+
+    return msstd_io_redirect_null(which)
+
 # Returns file operations for the current host.
-export def files() -> Files:
+export fn files() Files:
     return msstd_io_files()
 
 # Errors returned by terminal queries and raw-mode operations.
@@ -257,43 +268,134 @@ export type EraseRegion:
 # Queries the terminal and enters raw input mode.
 export interface Terminal:
     # Reports terminal availability and color support without changing terminal state.
-    def capabilities() -> TerminalCapabilities
+    fn capabilities() TerminalCapabilities
     # Returns the terminal size, or `NotTerminal` when output is redirected.
-    def size() -> Result[TerminalSize, TerminalError]
+    fn size() TerminalSize!TerminalError
     # Acquires raw input with an optional alternate screen; returns `Busy` while another raw terminal is open and `NotTerminal` when streams are redirected.
-    def raw_mode(alternate_screen: Bool) -> Result[RawTerminal, TerminalError]
+    fn raw_mode(alternate_screen: Bool) RawTerminal!TerminalError
 
-# Raw terminal input and cursor control. Closing it, or leaving the `with`
+# The runtime handle behind a `RawTerminal`.
+export extern type NativeRawTerminal
+
+extern fn msstd_terminal_raw_terminal_close(handle: NativeRawTerminal) Unit
+
+extern fn msstd_terminal_raw_terminal_next_event(
+    handle: NativeRawTerminal,
+    timeout: Duration?
+) Unit?!TerminalError
+
+extern fn msstd_terminal_event_kind() Int
+
+extern fn msstd_terminal_event_text() String
+
+extern fn msstd_terminal_event_ctrl() Bool
+
+extern fn msstd_terminal_event_alt() Bool
+
+extern fn msstd_terminal_event_shift() Bool
+
+extern fn msstd_terminal_event_columns() Int
+
+extern fn msstd_terminal_event_rows() Int
+
+extern fn msstd_terminal_raw_terminal_size_status(
+    handle: NativeRawTerminal
+) Unit!TerminalError
+
+extern fn msstd_terminal_raw_terminal_size_columns(handle: NativeRawTerminal) Int
+
+extern fn msstd_terminal_raw_terminal_size_rows(handle: NativeRawTerminal) Int
+
+extern fn msstd_terminal_raw_terminal_move_cursor(
+    handle: NativeRawTerminal,
+    row: Int,
+    column: Int
+) Unit!TerminalError
+
+extern fn msstd_terminal_raw_terminal_show_cursor(
+    handle: NativeRawTerminal,
+    visible: Bool
+) Unit!TerminalError
+
+extern fn msstd_terminal_raw_terminal_erase(
+    handle: NativeRawTerminal,
+    region: Int
+) Unit!TerminalError
+
+# Raw terminal input and cursor control. Closing it, or leaving the
 # scope that acquired it by return, error, fault, or cancellation, restores the
 # original terminal settings, shows the cursor, and leaves the alternate screen.
 # In raw mode, Ctrl-C arrives as a `c` key with `ctrl` set instead of cancelling.
-export interface RawTerminal:
+export type RawTerminal:
+    # The runtime handle; it is released by `close` and owned by this value.
+    native: NativeRawTerminal
+
+impl Closeable for RawTerminal:
     # Restores the terminal; closing again does nothing.
-    def close() -> Unit
+    var fn close() Unit!:
+        msstd_terminal_raw_terminal_close(self.native)
+        return ok(unit)
+
+impl RawTerminal:
     # Waits for the next event; none means the timeout elapsed. Waits honor cancellation and concurrent callers are serialized.
-    def next_event(
-        timeout: Optional[Duration] = none
-    ) -> Result[Optional[TerminalEvent], TerminalError]
+    fn next_event(timeout: Duration?) TerminalEvent?!TerminalError:
+        let ready = try msstd_terminal_raw_terminal_next_event(self.native, timeout)
+        if ready.is_none(): return ok(none)
+
+        let kind = msstd_terminal_event_kind()
+        if kind == 0: return ok(TerminalEvent.Text(msstd_terminal_event_text()))
+        if kind == 1: return ok(
+            TerminalEvent.Key(
+                msstd_terminal_event_text(), msstd_terminal_event_ctrl(),
+                msstd_terminal_event_alt(), msstd_terminal_event_shift()
+            )
+        )
+
+        return ok(
+            TerminalEvent.Resize(
+                msstd_terminal_event_columns(), msstd_terminal_event_rows()
+            )
+        )
+
     # Returns the current terminal size, or `Closed` after close.
-    def size() -> Result[TerminalSize, TerminalError]
+    fn size() TerminalSize!TerminalError:
+        try msstd_terminal_raw_terminal_size_status(self.native)
+        return ok(
+            TerminalSize(
+                columns: msstd_terminal_raw_terminal_size_columns(
+                    self.native
+                ),
+                rows: msstd_terminal_raw_terminal_size_rows(self.native)
+            )
+        )
+
     # Moves the cursor to a zero-based row and column; negative or very large values return `InvalidInput`.
-    def move_cursor(row: Int, column: Int) -> Result[Unit, TerminalError]
+    fn move_cursor(row: Int, column: Int) Unit!TerminalError:
+        return msstd_terminal_raw_terminal_move_cursor(self.native, row, column)
+
     # Shows or hides the cursor until the terminal is restored on close.
-    def show_cursor(visible: Bool) -> Result[Unit, TerminalError]
+    fn show_cursor(visible: Bool) Unit!TerminalError:
+        return msstd_terminal_raw_terminal_show_cursor(self.native, visible)
+
     # Erases the selected screen region without moving the cursor.
-    def erase(region: EraseRegion) -> Result[Unit, TerminalError]
+    fn erase(region: EraseRegion) Unit!TerminalError:
+        match region:
+            Screen: return msstd_terminal_raw_terminal_erase(self.native, 0)
+            Line: return msstd_terminal_raw_terminal_erase(self.native, 1)
+            LineEnd: return msstd_terminal_raw_terminal_erase(self.native, 2)
+            LineStart: return msstd_terminal_raw_terminal_erase(self.native, 3)
 
 impl Error for TerminalError:
     # Returns a fixed diagnostic, or the host message for `Failed`.
-    def message() -> String:
+    fn message() String:
         match self:
-            case InvalidInput: return "terminal: invalid input"
-            case NotTerminal: return "terminal: standard stream is not a terminal"
-            case Unsupported: return "terminal: operation not supported"
-            case Busy: return "terminal: terminal is already in use"
-            case Closed: return "terminal: resource is closed"
-            case Failed(message): return message.clone()
+            InvalidInput: return "terminal: invalid input"
+            NotTerminal: return "terminal: standard stream is not a terminal"
+            Unsupported: return "terminal: operation not supported"
+            Busy: return "terminal: terminal is already in use"
+            Closed: return "terminal: resource is closed"
+            Failed(message): return message.clone()
 
 # Returns terminal operations for the current process.
-export def terminal() -> Terminal:
+export fn terminal() Terminal:
     return msstd_io_terminal()

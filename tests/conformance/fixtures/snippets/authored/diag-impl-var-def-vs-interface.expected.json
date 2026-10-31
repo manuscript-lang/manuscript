@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "implementation of put is declared var fn but Sink declares it fn; an operation that changes its receiver is declared `var fn` in the interface too",
+        "position": {
+          "file": "diag-impl-var-def-vs-interface.ms",
+          "line": 11,
+          "column": 12,
+          "offset": 219
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-impl-var-def-vs-interface.ms:11:12: type: implementation of put is declared var fn but Sink declares it fn; an operation that changes its receiver is declared `var fn` in the interface too\n    |\n 11 |     var fn put(x: Int) Unit:\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

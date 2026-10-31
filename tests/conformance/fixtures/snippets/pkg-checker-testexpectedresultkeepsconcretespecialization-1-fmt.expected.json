@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Failure:\n    detail: String\n\nimpl Error for Failure:\n    def message() -> String: self.detail.clone()\n\ndef fail_cause[T, E: Error](cause: E) -> Result[T, E]: error(cause)\n\ndef first() -> Result[Int, Error]: fail_cause(Failure(\"empty\"))\n"
-  }
-}

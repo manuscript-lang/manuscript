@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal, expect_fault
-from "@std/math.ms" import (
+import expect_equal, expect_fault from "@std/test.ms"
+import (
     bit_and,
     bit_or,
     bit_xor,
@@ -15,16 +15,16 @@ from "@std/math.ms" import (
     wrapping_add,
     wrapping_subtract,
     wrapping_multiply
-)
-from "@std/math.ms" import max_int, min_int
+) from "@std/math.ms"
+import max_int, min_int from "@std/math.ms"
 
-def shift_too_far() -> Unit:
+fn shift_too_far() Unit:
     let _value = shift_left(1, 64)
-    return ()
+    return unit
 
-def shift_negative() -> Unit:
+fn shift_negative() Unit:
     let _value = shift_right(1, -1)
-    return ()
+    return unit
 
 test "bitwise operators follow two's complement":
     try expect_equal(bit_and(12, 10), 8)

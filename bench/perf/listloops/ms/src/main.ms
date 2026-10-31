@@ -1,54 +1,54 @@
-from "@std/io.ms" import stdout
-from "@std/time.ms" import clock
+import stdout from "@std/io.ms"
+import clock from "@std/time.ms"
 
-def say(text: String) -> Unit:
+fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
-def k_fma(a: List[Float32], b: List[Float32], var out: List[Float32], n: Int) -> Unit:
+fn k_fma(a: List[Float32], b: List[Float32], var out: List[Float32], n: Int) Unit:
     for i in 0..n:
         out[i] = a[i] * b[i] + 1.5
 
-def k_scale64(a: List[Float], var out: List[Float], n: Int) -> Unit:
+fn k_scale64(a: List[Float], var out: List[Float], n: Int) Unit:
     for i in 0..n:
         out[i] = a[i] * 2.0
 
-def k_intadd(a: List[Int], b: List[Int], var out: List[Int], n: Int) -> Unit:
+fn k_intadd(a: List[Int], b: List[Int], var out: List[Int], n: Int) Unit:
     for i in 0..n:
         out[i] = a[i] + b[i]
 
-def k_stencil(a: List[Float32], var out: List[Float32], n: Int) -> Unit:
+fn k_stencil(a: List[Float32], var out: List[Float32], n: Int) Unit:
     for i in 0..n - 1:
         out[i] = a[i] + a[i + 1]
 
-def k_base(
+fn k_base(
     w: List[Float32],
     x: List[Float32],
     var out: List[Float32],
     base: Int,
     n: Int
-) -> Unit:
+) Unit:
     for i in 0..n:
         out[i] = w[base + i] * x[i]
 
-def k_clamp(a: List[Float32], var out: List[Float32], n: Int) -> Unit:
+fn k_clamp(a: List[Float32], var out: List[Float32], n: Int) Unit:
     for i in 0..n:
         let v = a[i]
-        out[i] = 0.0 if v < 0.0 else (1.0 if v > 1.0 else v)
+        out[i] = if v < 0.0: 0.0 else: (if v > 1.0: 1.0 else: v)
 
-def k_conv(a: List[Int], var out: List[Float], n: Int) -> Unit:
+fn k_conv(a: List[Int], var out: List[Float], n: Int) Unit:
     for i in 0..n:
         out[i] = a[i].to_float() * 0.5
 
-def k_dot(a: List[Float32], b: List[Float32], n: Int) -> Float32:
+fn k_dot(a: List[Float32], b: List[Float32], n: Int) Float32:
     var acc: Float32 = 0.0
     for i in 0..n:
         acc = acc + a[i] * b[i]
     return acc
 
-def report(name: String, flops: Int, reps: Int, t: Int) -> Unit:
-    say(f"{name} {(flops * reps).to_float() / t.to_float()}\n")
+fn report(name: String, flops: Int, reps: Int, t: Int) Unit:
+    say("{name} {(flops * reps).to_float() / t.to_float()}\n")
 
-export def main() -> Int:
+export fn main() Int:
     let n = 4096
     var f1 = List[Float32]()
     var f2 = List[Float32]()
@@ -104,5 +104,5 @@ export def main() -> Int:
     for _r in 0..reps:
         s = s + k_dot(f1, f2, n)
     report("dot32", 2 * n, reps, clock().now().difference(t).to_nanoseconds())
-    say(f"check {fo[5]} {d2[5]} {io[5]} {s}\n")
+    say("check {fo[5]} {d2[5]} {io[5]} {s}\n")
     return 0

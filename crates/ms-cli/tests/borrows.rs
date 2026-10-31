@@ -60,23 +60,6 @@ fn touching_the_origin_while_borrowed_is_rejected() {
 }
 
 #[test]
-fn getter_results_borrow_their_argument() {
-    let (status, text) = run_ms(&["run", &fixture("getter_results.ms")]);
-    assert_eq!(status, Some(0), "{text}");
-    assert_eq!(
-        text,
-        "[1, 2] [1, 2] 2 [0] [0, 100] [3] [5, 5, 6] 1 3 [1, 2]\n"
-    );
-}
-
-#[test]
-fn touching_the_parent_of_a_getter_borrow_is_rejected() {
-    let (status, text) = run_ms(&["run", &fixture("rejected_getter_parent.ms")]);
-    assert_eq!(status, Some(1), "{text}");
-    assert!(text.contains("cannot use `b.items` while `xs`"), "{text}");
-}
-
-#[test]
 fn var_of_a_scalar_part_writes_through() {
     let (status, text) = run_ms(&["run", &fixture("scalar_borrows.ms")]);
     assert_eq!(status, Some(0), "{text}");

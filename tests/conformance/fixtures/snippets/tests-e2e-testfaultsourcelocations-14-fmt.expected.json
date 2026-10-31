@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def crash(value: Int) -> Int:\n    return 1 / value\n\nexport def main() -> Int:\n    var value = Set[Int]()\n    value.add(0)\n    return value.map(crash).length()\n"
-  }
-}

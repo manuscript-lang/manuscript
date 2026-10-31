@@ -1,0 +1,8 @@
+{
+  "regex.cardinality.first.whole.long": {
+    "ops": 1,
+    "before": 444390.2580645161,
+    "after": 441778.4781144781,
+    "ratio": 0.9941227785653689
+  }
+}

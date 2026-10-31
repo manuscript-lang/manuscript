@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "imports read: import name, other from \"path.ms\"",
+        "position": {
+          "file": "foreign-from-import.ms",
+          "line": 4,
+          "column": 1,
+          "offset": 113
+        },
+        "end": {
+          "file": "foreign-from-import.ms",
+          "line": 4,
+          "column": 5,
+          "offset": 117
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

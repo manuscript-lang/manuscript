@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1001",
+        "phase": "parse",
+        "message": "leading zeros are not allowed in numeric literals; write the number without them, e.g. 42 instead of 042",
+        "position": {
+          "file": "literal-reject-leading-zero-sep.ms",
+          "line": 5,
+          "column": 14,
+          "offset": 153
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/literal-reject-leading-zero-sep.ms:5:14: parse: leading zeros are not allowed in numeric literals; write the number without them, e.g. 42 instead of 042\n   |\n 5 |     let x = 0_1\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

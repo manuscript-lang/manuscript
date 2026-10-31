@@ -1,0 +1,17 @@
+--- a/crates/ms-rt/src/string.rs
++++ b/crates/ms-rt/src/string.rs
+@@ -1747,7 +1747,13 @@
+         let text = bytes(s);
+         let mut v = EMPTY_VEC;
+         let mut start = 0;
+-        while let Some(p) = text[start..].iter().position(|&c| c == b'\n') {
++        let newline = Needle::Byte(b'\n');
++        while let Some(p) = if text.len() - start < SHORT_HAY {
++            // A tiny remainder usually ends within a few bytes; keep its scalar scan cheap.
++            text[start..].iter().position(|&c| c == b'\n')
++        } else {
++            newline.find(&text[start..])
++        } {
+             let mut end = start + p;
+             if end > start && text[end - 1] == b'\r' {
+                 end -= 1;

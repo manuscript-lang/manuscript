@@ -1,6 +1,6 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
-from "@std/collections.ms" import range
+import stdin, stdout from "@std/io.ms"
+import read_lines from "@std/streams.ms"
+import range from "@std/collections.ms"
 
 type PathStat:
     path: String
@@ -15,13 +15,13 @@ type Record:
     status: Int
     latency: Int
 
-def all_digits(text: String) -> Bool:
+fn all_digits(text: String) Bool:
     for c in text.chars():
         if c.compare("0") < 0 or c.compare("9") > 0:
-            return False
-    return True
+            return false
+    return true
 
-def parse_record(line: String) -> Optional[Record]:
+fn parse_record(line: String) Optional[Record]:
     let fields = line.split(" ")
     if fields.length() != 6:
         return none
@@ -52,13 +52,13 @@ def parse_record(line: String) -> Optional[Record]:
         )
     )
 
-def rank_order(left: PathStat, right: PathStat) -> Int:
+fn rank_order(left: PathStat, right: PathStat) Int:
     if left.count != right.count:
         return right.count - left.count
 
     return left.path.compare(right.path)
 
-export def main() -> Int:
+export fn main() Int:
     let lines = read_lines(stdin()).get()
     var malformed = 0
     var records: List[Record] = []
@@ -89,9 +89,9 @@ export def main() -> Int:
     for record in records:
         if record.level == "DEBUG":
             debug_count += 1
-        elif record.level == "INFO":
+        else if record.level == "INFO":
             info_count += 1
-        elif record.level == "WARN":
+        else if record.level == "WARN":
             warn_count += 1
         else:
             error_count += 1
@@ -100,11 +100,11 @@ export def main() -> Int:
 
         if class == 2:
             class_2xx += 1
-        elif class == 3:
+        else if class == 3:
             class_3xx += 1
-        elif class == 4:
+        else if class == 4:
             class_4xx += 1
-        elif class == 5:
+        else if class == 5:
             class_5xx += 1
         else:
             class_other += 1
@@ -123,21 +123,21 @@ export def main() -> Int:
     var p95 = 0
 
     if latencies.length() > 0:
-        let sorted_latencies = latencies.sorted(lambda (a: Int, b: Int) -> Int: a - b)
+        let sorted_latencies = latencies.sorted(fn(a: Int, b: Int) Int: a - b)
         let rank = (95 * sorted_latencies.length() + 99) / 100
         p95 = sorted_latencies[rank - 1]
 
     var out = ""
-    out += f"valid: {records.length()}\n"
-    out += f"malformed: {malformed}\n"
-    out += f"DEBUG: {debug_count}\n"
-    out += f"INFO: {info_count}\n"
-    out += f"WARN: {warn_count}\n"
-    out += f"ERROR: {error_count}\n"
-    out += f"status: 2xx={class_2xx} 3xx={class_3xx} 4xx={class_4xx} 5xx={class_5xx} other={class_other}\n"
-    out += f"p95: {p95}\n"
+    out += "valid: {records.length()}\n"
+    out += "malformed: {malformed}\n"
+    out += "DEBUG: {debug_count}\n"
+    out += "INFO: {info_count}\n"
+    out += "WARN: {warn_count}\n"
+    out += "ERROR: {error_count}\n"
+    out += "status: 2xx={class_2xx} 3xx={class_3xx} 4xx={class_4xx} 5xx={class_5xx} other={class_other}\n"
+    out += "p95: {p95}\n"
     if let worst = slowest:
-        out += f"slowest: {worst.latency} {worst.method} {worst.path} {worst.timestamp}\n"
+        out += "slowest: {worst.latency} {worst.method} {worst.path} {worst.timestamp}\n"
     out += "top:\n"
 
     var stats: List[PathStat] = []
@@ -155,7 +155,7 @@ export def main() -> Int:
 
     for i in range(0, shown):
         let stat = ranked[i]
-        out += f"{stat.path} {stat.count} avg={stat.total / stat.count}\n"
+        out += "{stat.path} {stat.count} avg={stat.total / stat.count}\n"
 
     stdout().write(out).get()
     return 0

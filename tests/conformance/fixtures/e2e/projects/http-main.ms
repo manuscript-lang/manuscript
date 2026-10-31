@@ -1,14 +1,14 @@
-# conform: tags=control-flow,diagnostics,interpolation,modules,stdlib-http,stdlib-io,stdlib-net,tier-io,with-cleanup
+# conform: tags=control-flow,diagnostics,interpolation,modules,stdlib-http,stdlib-io,stdlib-net,tier-io,scope-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/http/main.ms
-from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions
-from "@std/net.ms" import network
-from "@std/io.ms" import stdout
+import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/http.ms"
+import network from "@std/net.ms"
+import stdout from "@std/io.ms"
 
-def handle(request: HttpRequest) -> HttpResponse:
-    return HttpResponse(200, headers(), f"hello {request.path}".to_bytes())
+fn handle(request: HttpRequest) HttpResponse:
+    return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
 
-export def main() -> Int:
+export fn main() Int:
     let serve = network().serve
     let options = HttpServerOptions(
         max_requests: 2, max_body_bytes: 1024, max_response_bytes: 1024,
@@ -18,11 +18,11 @@ export def main() -> Int:
     if let acquired = serve(
         address: "127.0.0.1:0", handler: buffered(handle), options: options
     ):
-        with let server = acquired:
-            if stdout().write(f"{server.address()}\n").is_error():
-                return 1
+        let server = acquired
+        if stdout().write("{server.address()}\n").is_error():
+            return 1
 
-            let _ignored = server.wait()
-            return 0
+        let _ignored = server.wait()
+        return 0
 
     return 1

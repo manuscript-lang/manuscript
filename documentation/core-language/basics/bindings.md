@@ -20,7 +20,7 @@ remaining -= 1
 ```manuscript
 let (
     name = "Ada"
-    active: Bool = True
+    active: Bool = true
 )
 var (
     attempts = 0
@@ -35,7 +35,7 @@ A group is only a layout: entries are separate bindings with their own scope rul
 Parameters and return types are explicit; local annotations are optional. `let count = 3` and `let count: Int = 3` are the same. Constructors also infer types. This continues the `Customer` and `welcome` declarations in [source files](syntax.md):
 
 ```manuscript
-let customer = Customer(name: "Ada", active: True)
+let customer = Customer(name: "Ada", active: true)
 let greeting = welcome(customer)
 let count: Int = 3
 var remaining = count
@@ -63,7 +63,7 @@ let {name, email: customer_email} = customer
 - Assignment targets a `var` binding or a field reached through mutable storage. `let` is immutable including contents; mutation through a parameter or receiver requires `var`. Collection methods that mutate require a mutable receiver and return Unit.
 
 ```manuscript
-def example() -> Unit:
+fn example() Unit:
     var remaining = 3
     remaining = 2
     remaining = 2.0  # Rejected: Float cannot replace Int.
@@ -79,4 +79,4 @@ A `let` record or collection cannot be mutated. Scalars copy implicitly; strings
 
 `var x = place` is the exception: when the value is a field or element of another `var` (`var n = r.n`, `var xs = r.xs`, `var head = rows[0]`), `x` is a mutable borrow of that part for every type, so `n += 1` changes `r.n` just as `xs.append(1)` changes `r.xs`. To get an independent scalar, bind it with `let` first (`let start = r.n` then `var n = start`); to get an independent collection or record, use `.clone()`. A call result has no place to borrow, so `var n = f()` owns the value.
 
-Assignment does not close the previous resource or invalidate aliases. `with` registers a fixed resource for cleanup using an immutable binding. See [mutation and references](../types/references.md).
+Assignment does not close the previous resource or invalidate aliases. A resource bound with `let` or `var` is closed when its scope ends. See [mutation and references](../types/references.md).

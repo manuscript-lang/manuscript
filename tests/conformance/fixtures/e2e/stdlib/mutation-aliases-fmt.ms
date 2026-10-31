@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,formatter,interfaces,lists,maps,match,modules,mutation,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/mutation-aliases.ms
-from "@std/test.ms" import expect_equal, expect_false
+import expect_equal, expect_false from "@std/test.ms"
 
 test "Map remove direct and bound preserve order and no-op absence":
     var values = Map[Int, String]()
@@ -23,7 +23,7 @@ test "Map remove direct and bound preserve order and no-op absence":
     var empty = Map[Int, String]()
     empty.remove(1)
     empty.add(2, "two")
-    try expect_equal(empty.get(2), some("two"))
+    try expect_equal(empty.get(2), "two")
 
     var legacy = values.clone()
     legacy.remove(4)
@@ -33,29 +33,29 @@ test "Map remove direct and bound preserve order and no-op absence":
     try expect_equal(legacy, preferred)
 
 test "Map remove evaluates its key after choosing the receiver and keeps conversions":
-    var first = Map[Optional[Int], Int]()
+    var first = Map[Int?, Int]()
     first.add(1, 10)
 
-    let trigger = some(1)
+    let trigger: Int? = 1
     first.remove(
         match trigger:
-            case some(key): some(key)
-            case none: some(0)
+            key: key
+            none: 0
     )
     try expect_false(not first.is_empty())
 
 interface MapRemoval:
-    var def remove(key: Int) -> Unit
-    def keys() -> List[Int]
+    var fn remove(key: Int) Unit
+    fn keys() List[Int]
 
 type MapAdapter:
     values: Map[Int, String]
 
 impl MapRemoval for MapAdapter:
-    var def remove(key: Int) -> Unit:
+    var fn remove(key: Int) Unit:
         self.values.remove(key)
 
-    def keys() -> List[Int]: self.values.keys()
+    fn keys() List[Int]: self.values.keys()
 
 test "Map explicit and bound interface views remove through the adapter":
     var values = Map[Int, String]()
@@ -107,22 +107,22 @@ test "List splice moves replacement elements and handles Optional elements":
     values.splice(0, 1, [Item(1)])
     try expect_equal(values[0].value, 1)
 
-    var optional: List[Optional[Int]] = [some(1)]
-    optional.splice(0, 1, [some(2)])
-    try expect_equal(optional[0], some(2))
+    var optional: List[Int?] = [1]
+    optional.splice(0, 1, [2])
+    try expect_equal(optional[0], 2)
 
 interface ListSplicing:
-    var def splice(start: Int, delete_count: Int, replacement: List[Int]) -> Unit
-    def contents() -> List[Int]
+    var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Unit
+    fn contents() List[Int]
 
 type ListAdapter:
     values: List[Int]
 
 impl ListSplicing for ListAdapter:
-    var def splice(start: Int, delete_count: Int, replacement: List[Int]) -> Unit:
+    var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Unit:
         self.values.splice(start, delete_count, replacement)
 
-    def contents() -> List[Int]: self.values.clone()
+    fn contents() List[Int]: self.values.clone()
 
 test "List explicit and bound interface views splice through the adapter":
     var adapter = ListAdapter([1, 2, 3])

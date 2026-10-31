@@ -122,7 +122,7 @@ struct Cx {
     discard: ExtId,
     /// The cleanup that drops a value of a type while a cancellation unwinds.
     closers: HashMap<Ty, FuncId>,
-    /// A `with` close followed by the drop of the value it closed, per close function.
+    /// A scope close followed by the drop of the value it closed, per close function.
     with_closers: HashMap<FuncId, FuncId>,
 }
 
@@ -256,7 +256,7 @@ fn closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
     id
 }
 
-/// The cleanup that runs `close` on a `with` value and then drops it while a cancellation
+/// The cleanup that runs `close` on a scope-closed value and then drops it while a cancellation
 /// unwinds. A cancelled task never reaches the drop after the block, and the per-call drops
 /// leave this value to its close so that nothing closes a freed value.
 fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
@@ -267,6 +267,9 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
     let [param] = callee.params.as_slice() else {
         return None;
     };
+    if let Some(ty) = slot_close_value(m, close) {
+        return slot_with_closer(m, cx, close, ty);
+    }
     // Closing that consumes the value, or yields one that needs a drop, leaves nothing to add.
     if param.mode == Mode::Own || callee.ret != Ty::UNIT {
         return None;
@@ -305,7 +308,63 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
     Some(id)
 }
 
-/// Points every `with` close registered in `f` at its closing-then-dropping variant.
+/// The type of the value a scope close reads from the slot it is registered with, when `close` is
+/// the thunk of a `var` binding that lives in memory: it takes the slot's address and loads first.
+fn slot_close_value(m: &Module, close: FuncId) -> Option<Ty> {
+    let f = m.funcs.get(close.index())?;
+    let [param] = f.params.as_slice() else {
+        return None;
+    };
+    if param.ty != Ty::PTR {
+        return None;
+    }
+    let first = f.blocks.first()?.insts.first()?;
+    match (first.op, first.imm) {
+        (Op::Load, Imm::Ty(ty))
+            if first.args.first().copied() == f.param_values().first().copied()
+                && m.needs_drop(ty) =>
+        {
+            Some(ty)
+        }
+        _ => None,
+    }
+}
+
+/// [`with_closer`] for a slot-held value: runs the thunk, then drops what the slot still holds.
+/// The thunk closes a copy or borrows, so the original is left for this drop.
+fn slot_with_closer(m: &mut Module, cx: &mut Cx, close: FuncId, ty: Ty) -> Option<FuncId> {
+    let gate = m.add_extern(ExternDef {
+        name: "msrt_unwind_drops".into(),
+        params: Vec::new(),
+        ret: Ty::BOOL,
+        noreturn: false,
+        pure_: false,
+        fresh: false,
+    });
+    let mut b = FuncBuilder::new(
+        m,
+        "unwind.close_drop_slot",
+        vec![Param {
+            ty: Ty::PTR,
+            mode: Mode::Borrow,
+        }],
+        Ty::UNIT,
+    );
+    b.func_mut().linkage = Linkage::Internal;
+    let p = b.params()[0];
+    b.call(close, &[p]);
+    let on = b.call_rt(gate, &[]);
+    let held = b.emit(Op::Take, &[p], Imm::Ty(ty), Some(ty)).expect("take");
+    b.emit(Op::DropIf, &[on, held], Imm::None, None);
+    let u = b.unit();
+    b.ret(Some(u));
+    let f = b.into_func();
+    let id = m.add_func(f);
+    cx.with_closers.insert(close, id);
+    Some(id)
+}
+
+/// Points every scope close registered in `f` at its closing-then-dropping variant.
 fn wrap_with_closers(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
     let mut changed = false;
     for bi in 0..f.blocks.len() {
@@ -386,7 +445,7 @@ fn analyze(
             }
             if open > 0 || matches!(inst.op, Op::CleanupPush | Op::CleanupRun) {
                 // A window across a hole would drop a half-emptied owner, and one across a
-                // `with` open or close would discard an entry that is not its own.
+                // scope open or close would discard an entry that is not its own.
                 reach = None;
             } else if !live.is_empty() && exits_at(m, cx, inst) {
                 let drops = coverable(&live, closed_by_with, &hoisted[bi]);
@@ -707,7 +766,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         return false;
     }
     let wrapped = wrap_with_closers(m, cx, f);
-    // Values an existing cleanup entry (a `with` close) uses: it must see them undropped.
+    // Values an existing cleanup entry (a scope close) uses: it must see them undropped.
     let closed_by_with: BTreeSet<u32> = f
         .blocks
         .iter()
@@ -774,7 +833,7 @@ struct Window {
     values: Vec<Value>,
 }
 
-/// The live values a registration may cover: a `with` close sees its own values undropped, and a
+/// The live values a registration may cover: a scope close sees its own values undropped, and a
 /// loop registration already covers its hoisted values.
 fn coverable(
     live: &BTreeSet<u32>,

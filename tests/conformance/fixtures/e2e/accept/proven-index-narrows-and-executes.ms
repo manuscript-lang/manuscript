@@ -1,15 +1,15 @@
 # conform: tags=control-flow,lists,modules,mutation,optional,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/proven-index-narrows-and-executes.ms
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def read(values: List[Int], index: Int) -> Int:
+fn read(values: List[Int], index: Int) Int:
     if index < 0 or index >= values.length():
         return -1
 
     return values[index]
 
-def total(values: List[Int]) -> Int:
+fn total(values: List[Int]) Int:
     var sum = 0
     var i = 0
 
@@ -19,7 +19,7 @@ def total(values: List[Int]) -> Int:
 
     return sum
 
-def nested(values: List[Optional[Int]], index: Int) -> Optional[Int]:
+fn nested(values: List[Int?], index: Int) Int?:
     if index >= 0 and index < values.length():
         return values[index]
 
@@ -30,5 +30,5 @@ test "guarded and looped lookups":
     try expect_equal(read([1, 2, 3], 3), -1)
     try expect_equal(read([1, 2, 3], -1), -1)
     try expect_equal(total([1, 2, 3]), 6)
-    try expect_equal(nested([some(1), none], 1), none)
-    try expect_equal(nested([some(1), none], 0), some(1))
+    try expect_equal(nested([1, none], 1), none)
+    try expect_equal(nested([1, none], 0), 1)

@@ -1,5 +1,5 @@
-from "@std/string.ms" import StringBuilder
-from "@std/bytes.ms" import Bytes
+import StringBuilder from "@std/string.ms"
+import Bytes from "@std/bytes.ms"
 
 # Errors returned for malformed CSV input or configured size limits.
 export type CsvError:
@@ -19,12 +19,12 @@ export type CsvOptions:
 
 # Parses CSV into rows of cells, using fresh default options when omitted.
 # Optional row and cell limits bound large inputs.
-export def parse(
+export fn parse(
     text: String,
     options: CsvOptions = CsvOptions(),
-    max_rows: Optional[Int] = none,
-    max_cells: Optional[Int] = none
-) -> Result[List[List[String]], CsvError]:
+    max_rows: Int?,
+    max_cells: Int?
+) List[List[String]]!CsvError:
     let rows_budget = budget(max_rows)
     let cells_budget = budget(max_cells)
     if rows_budget < 0 or cells_budget < 0: return error(CsvError.InvalidInput)
@@ -43,7 +43,7 @@ export def parse(
     var rows = List[List[String]]()
     var cells = 0
 
-    while True:
+    while true:
         let record = read_record(var reader)
         if record.is_error(): return error(record.err())
 
@@ -61,13 +61,13 @@ export def parse(
     return ok(rows)
 
 # The budget as a count, with no budget as a very large one and a negative budget as -1.
-def budget(limit: Optional[Int]) -> Int:
+fn budget(limit: Int?) Int:
     if let value = limit: return value
 
     return 9223372036854775807
 
 # Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
-def check_options(options: CsvOptions) -> Result[Unit, CsvError]:
+fn check_options(options: CsvOptions) Unit!CsvError:
     let scalars = options.delimiter.scalar_values()
     if scalars.length() != 1: return error(CsvError.InvalidInput)
 
@@ -83,7 +83,7 @@ def check_options(options: CsvOptions) -> Result[Unit, CsvError]:
         CsvError.InvalidInput
     )
 
-    return ok(())
+    return ok(unit)
 
 # The input as bytes with a cursor. The cached offsets are the next quote, delimiter and LF at or
 # after the cursor, or total when there is none; they are searched again only once passed.
@@ -97,31 +97,31 @@ type Reader:
     delimiter_at: Int
     line_at: Int
 
-def next_quote(var reader: Reader, from: Int) -> Int:
+fn next_quote(var reader: Reader, from: Int) Int:
     if reader.quote < from: reader.quote = reader.bytes.index_of_byte(34, from).get(
         reader.total
     )
     return reader.quote
 
-def next_delimiter(var reader: Reader, from: Int) -> Int:
+fn next_delimiter(var reader: Reader, from: Int) Int:
     if reader.delimiter_at < from: reader.delimiter_at = reader.bytes.index_of_byte(
         reader.delimiter, from
     ).get(reader.total)
     return reader.delimiter_at
 
-def next_line(var reader: Reader, from: Int) -> Int:
+fn next_line(var reader: Reader, from: Int) Int:
     if reader.line_at < from: reader.line_at = reader.bytes.index_of_byte(10, from).get(
         reader.total
     )
     return reader.line_at
 
-def text_between(reader: Reader, start: Int, end: Int) -> String:
+fn text_between(reader: Reader, start: Int, end: Int) String:
     if let text = reader.bytes.decode_utf8_range(start, end): return text
 
     return ""
 
 # The offset just past the line ending at the cursor, or the cursor when the cursor is not at one.
-def line_end_after(reader: Reader, at: Int) -> Int:
+fn line_end_after(reader: Reader, at: Int) Int:
     if at >= reader.total: return at
 
     let byte = reader.bytes[at]
@@ -132,8 +132,8 @@ def line_end_after(reader: Reader, at: Int) -> Int:
     return at
 
 # Reads the next record, skipping empty lines; none at end of input.
-def read_record(var reader: Reader) -> Result[Optional[List[String]], CsvError]:
-    while True:
+fn read_record(var reader: Reader) List[String]?!CsvError:
+    while true:
         let skipped = line_end_after(reader, reader.at)
         if skipped == reader.at: break
 
@@ -151,18 +151,18 @@ def read_record(var reader: Reader) -> Result[Optional[List[String]], CsvError]:
         let text = text_between(reader, reader.at, last)
         reader.at = line
         if line < reader.total: reader.at = line + 1
-        return ok(some(text.split(reader.delimiter_text)))
+        return ok(text.split(reader.delimiter_text))
 
     var row = List[String]()
 
-    while True:
+    while true:
         var cell = ""
         var at = reader.at.to_int()
 
         if at < reader.total and reader.bytes[at] == 34:
             at += 1
 
-            while True:
+            while true:
                 let close = next_quote(var reader, at)
                 if close >= reader.total: return error(CsvError.InvalidData)
 
@@ -183,7 +183,7 @@ def read_record(var reader: Reader) -> Result[Optional[List[String]], CsvError]:
             if at >= reader.total or ended > at:
                 row.append(cell)
                 reader.at = ended
-                return ok(some(row))
+                return ok(row)
 
             if reader.bytes[at] != reader.delimiter: return error(CsvError.InvalidData)
 
@@ -204,18 +204,18 @@ def read_record(var reader: Reader) -> Result[Optional[List[String]], CsvError]:
             row.append(text_between(reader, at, last))
             reader.at = end
             if end < reader.total: reader.at = end + 1
-            return ok(some(row))
+            return ok(row)
 
         row.append(text_between(reader, at, end))
         reader.at = end + 1
 
 # Encodes rows as CSV with comma delimiters and LF endings by default.
 # Quotes cells when required by the delimiter or line ending.
-export def stringify(
+export fn stringify(
     rows: List[List[String]],
     options: CsvOptions = CsvOptions(),
-    max_bytes: Optional[Int] = none
-) -> Result[String, CsvError]:
+    max_bytes: Int?
+) String!CsvError:
     let limit = budget(max_bytes)
     if limit < 0: return error(CsvError.InvalidInput)
 
@@ -238,7 +238,7 @@ export def stringify(
                 pieces.append(encode_field(field, delimiter, crlf))
             line = pieces.join(options.delimiter)
 
-        line = f"{line}{options.line_ending}"
+        line = "{line}{options.line_ending}"
 
         let size = line.byte_length()
         if size > limit - used: return error(CsvError.LimitExceeded)
@@ -248,32 +248,32 @@ export def stringify(
 
     return ok(out.build())
 
-def needs_quotes(field: String, delimiter: Int) -> Bool:
+fn needs_quotes(field: String, delimiter: Int) Bool:
     let scalars = field.scalar_values()
-    if scalars.is_empty(): return False
+    if scalars.is_empty(): return false
 
     for scalar in scalars:
-        if scalar == 34 or scalar == 13 or scalar == 10 or scalar == delimiter: return True
+        if scalar == 34 or scalar == 13 or scalar == 10 or scalar == delimiter: return true
 
     let first = scalars[0]
     if first <= 32 or first >= 127: return field.get(0).trim() == ""
 
     return scalars.length() == 2 and first == 92 and scalars[1] == 46
 
-def replaced(text: String, old: String, new: String) -> String:
+fn replaced(text: String, old: String, new: String) String:
     return text.replace(old, new)
 
-def encode_field(field: String, delimiter: Int, crlf: Bool) -> String:
+fn encode_field(field: String, delimiter: Int, crlf: Bool) String:
     if not needs_quotes(field, delimiter): return field.clone()
 
     var quoted = replaced(field, "\"", "\"\"")
     if crlf: quoted = replaced(replaced(quoted, "\r\n", "\n"), "\n", "\r\n")
-    return f"\"{quoted}\""
+    return "\"{quoted}\""
 
 impl Error for CsvError:
     # Returns a CSV-prefixed diagnostic without exposing input cells or parser text.
-    def message() -> String:
+    fn message() String:
         match self:
-            case InvalidInput: return "CSV: invalid input"
-            case InvalidData: return "CSV: invalid data"
-            case LimitExceeded: return "CSV: limit exceeded"
+            InvalidInput: return "CSV: invalid input"
+            InvalidData: return "CSV: invalid data"
+            LimitExceeded: return "CSV: limit exceeded"

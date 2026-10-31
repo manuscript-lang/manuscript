@@ -1,0 +1,9 @@
+# conform: tags=diagnostics,tier-core
+# conform: phase=check
+# conform: origin=pkg/checker/diagnostic_fixes_test.go:28 TestDiagnosticFixes
+fn helper() Int:
+    return 1
+
+fn f() Int:
+    helper = 2
+    return 0

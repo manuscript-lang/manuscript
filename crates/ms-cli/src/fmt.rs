@@ -103,6 +103,7 @@ pub fn run_format(args: &[String], io: &mut Io) -> i32 {
     }
     let mut ordered: Vec<(String, String)> = files.into_iter().collect();
     ordered.sort_by(|a, b| a.1.cmp(&b.1));
+    let none = ordered.is_empty();
     for (path, display) in ordered {
         let file = FormatFile {
             path: path.clone(),
@@ -113,6 +114,13 @@ pub fn run_format(args: &[String], io: &mut Io) -> i32 {
         if let Some(error) = error {
             report(io, &path, error);
         }
+    }
+    if none && status == 0 && !structured {
+        let _ = writeln!(
+            io.stderr,
+            "ms fmt: no .ms files found in {}",
+            targets.join(", ")
+        );
     }
     if structured {
         sort_diagnostics(&mut diagnostics);
@@ -350,6 +358,7 @@ fn format_error(cwd: &str, target: &str, error: FmtError) -> (CommandDiagnostic,
         FmtError::Plain(text) => message = text,
     }
     let diagnostic = CommandDiagnostic {
+        severity: String::new(),
         code: code.to_string(),
         phase: "format".to_string(),
         message: message.clone(),

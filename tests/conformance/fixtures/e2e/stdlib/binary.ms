@@ -1,8 +1,8 @@
 # conform: tags=control-flow,modules,stdlib-binary,stdlib-bytes,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/binary.ms
-from "@std/test.ms" import expect_equal, expect_contains, expect_fault
-from "@std/bytes.ms" import Bytes, BytesBuilder, BinaryError
+import expect_equal, expect_contains, expect_fault from "@std/test.ms"
+import Bytes, BytesBuilder, BinaryError from "@std/bytes.ms"
 
 test "integers round-trip in both byte orders":
     var out = BytesBuilder()
@@ -63,8 +63,8 @@ test "append_bytes appends many and append one":
     try expect_equal(out.build(), Bytes([7, 1, 2, 3, 4]))
 
 test "reads past the end or before the start are out of range":
-    let range_error8: Result[UInt8, BinaryError] = error(BinaryError.OutOfRange)
-    let range_error32: Result[UInt32, BinaryError] = error(BinaryError.OutOfRange)
+    let range_error8: UInt8!BinaryError = error(BinaryError.OutOfRange)
+    let range_error32: UInt32!BinaryError = error(BinaryError.OutOfRange)
     try expect_equal(Bytes([0]).uint8(-1), range_error8)
     try expect_equal(Bytes([0]).uint8(1), range_error8)
     try expect_equal(Bytes([0, 0, 0]).uint32_le(0), range_error32)

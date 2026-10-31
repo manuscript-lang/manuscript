@@ -250,7 +250,7 @@ fn callback_defaults_keep_the_enclosing_function_suite_aligned() {
 fn nesting_limits() {
     big_stack(|| {
         let deep = 200_000;
-        let wrap = |body: String| format!("def f() -> Int:\n    return {body}\n");
+        let wrap = |body: String| format!("fn f() Int:\n    return {body}\n");
         let cases = [
             wrap("(".repeat(deep) + "1" + &")".repeat(deep)),
             wrap("[".repeat(deep) + &"]".repeat(deep)),
@@ -260,7 +260,7 @@ fn nesting_limits() {
             wrap("f\"{".repeat(deep) + "1" + &"}\"".repeat(deep)),
             wrap("x".to_string() + &".a".repeat(deep)),
             format!(
-                "def f(x: {}Int{}) -> Int:\n    return 1\n",
+                "fn f(x: {}Int{}) Int:\n    return 1\n",
                 "(".repeat(deep),
                 ")".repeat(deep)
             ),
@@ -271,7 +271,7 @@ fn nesting_limits() {
             assert!(err.message.contains("exceeds"), "{}", err.message);
         }
         let moderate = format!(
-            "def f() -> Int:\n    return {}1{} {}\n",
+            "fn f() Int:\n    return {}1{} {}\n",
             "(".repeat(500),
             ")".repeat(500),
             "+ 1 ".repeat(5000)
@@ -287,26 +287,23 @@ fn pipe_and_case_paths_obey_the_chain_limit() {
         let long = ms_syntax::parser::MAX_CHAIN + 1;
         let cases = [
             (
-                format!("def f() -> Int:\n    return 1{}\n", " | step".repeat(long)),
+                format!("fn f() Int:\n    return 1{}\n", " | step".repeat(long)),
+                2,
+            ),
+            (
+                format!("fn f() Int:\n    return 1{}\n", " | .member()".repeat(long)),
                 2,
             ),
             (
                 format!(
-                    "def f() -> Int:\n    return 1{}\n",
-                    " | .member()".repeat(long)
-                ),
-                2,
-            ),
-            (
-                format!(
-                    "def f() -> Int:\n    return 1 | step{}\n",
+                    "fn f() Int:\n    return 1 | step{}\n",
                     ".member".repeat(long)
                 ),
                 2,
             ),
             (
                 format!(
-                    "def f() -> Int:\n    return match value:\n        case Case{}: 1\n",
+                    "fn f() Int:\n    return match value:\n        Case{}: 1\n",
                     ".member".repeat(long)
                 ),
                 3,
@@ -327,7 +324,7 @@ fn pipe_and_case_paths_obey_the_chain_limit() {
             assert_eq!(diagnostic.pos.line, line);
             assert!((diagnostic.pos.offset as usize) < source.len());
         }
-        let source = format!("def f() -> Int:\n    return 1{}\n", " | step".repeat(100));
+        let source = format!("fn f() Int:\n    return 1{}\n", " | step".repeat(100));
         ms_syntax::parser::parse(&file, &source).unwrap();
     });
 }

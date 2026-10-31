@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def crash(key: String, value: Int) -> Bool:\n    return 1 / value == 0\n\nexport def main() -> Int:\n    let value: Map[String, Int] = {\"a\": 0}\n    return value.filter(crash).length()\n"
-  }
-}

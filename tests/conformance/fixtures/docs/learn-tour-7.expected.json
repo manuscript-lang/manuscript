@@ -25,14 +25,14 @@
           "file": "learn-tour-7.ms",
           "line": 6,
           "column": 29,
-          "offset": 247
+          "offset": 239
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/learn-tour-7.ms:5:25: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 5 | let discounted = prices.map(lambda (value: Int) -> Int: return value - 2)\n   |                         ^\n<DIR>/learn-tour-7.ms:6:29: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 6 | let affordable = discounted.filter(lambda (value: Int) -> Bool: return value <= 10)\n   |                             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/learn-tour-7.ms:5:25: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 5 | let discounted = prices.map(fn(value: Int) Int: return value - 2)\n   |                         ^\n<DIR>/learn-tour-7.ms:6:29: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 6 | let affordable = discounted.filter(fn(value: Int) Bool: return value <= 10)\n   |                             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

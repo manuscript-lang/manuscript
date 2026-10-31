@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn f() Int:\n    return 0\n\nfn g() Int:\n    let _x = 1\n    return 2\n"
+  }
+}

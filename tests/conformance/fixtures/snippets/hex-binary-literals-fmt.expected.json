@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "export def main() -> Int:\n    return 0xFF_FF + 0b1010 + 1_000\n"
-  }
-}

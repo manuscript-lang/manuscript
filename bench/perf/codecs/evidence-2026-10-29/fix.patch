@@ -1,0 +1,76 @@
+diff --git a/crates/ms-std-encoding/src/lib.rs b/crates/ms-std-encoding/src/lib.rs
+index b8f75a52c..3b914ccb8 100644
+--- a/crates/ms-std-encoding/src/lib.rs
++++ b/crates/ms-std-encoding/src/lib.rs
+@@ -28,0 +29,15 @@ const URL: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012
++// Both alphabets are fixed. Build their decoding tables once at compile time rather than
++// initializing 256 entries and installing the alphabet for every decoded byte string.
++const fn reverse_alphabet(alpha: &[u8; 64]) -> [u8; 256] {
++    let mut reverse = [0xff; 256];
++    let mut i = 0;
++    while i < alpha.len() {
++        reverse[alpha[i] as usize] = i as u8;
++        i += 1;
++    }
++    reverse
++}
++
++static STD_REVERSE: [u8; 256] = reverse_alphabet(STD);
++static URL_REVERSE: [u8; 256] = reverse_alphabet(URL);
++
+@@ -67,5 +82 @@ pub fn base64_decode(text: &str, url_safe: bool, max_bytes: Option<i64>) -> Resu
+-    let alpha = if url_safe { URL } else { STD };
+-    let mut rev = [0xffu8; 256];
+-    for (i, &c) in alpha.iter().enumerate() {
+-        rev[c as usize] = i as u8;
+-    }
++    let rev = if url_safe { &URL_REVERSE } else { &STD_REVERSE };
+@@ -113,0 +125,48 @@ mod tests {
++    #[test]
++    fn base64_alphabets_and_strict_validation() {
++        for url_safe in [false, true] {
++            let alpha = if url_safe { URL } else { STD };
++            for (digit, &byte) in alpha.iter().enumerate() {
++                let encoded = String::from_utf8(alloc::vec![byte, b'A', b'A', b'A']).unwrap();
++                assert_eq!(
++                    base64_decode(&encoded, url_safe, Some(3)).unwrap(),
++                    [(digit as u8) << 2, 0, 0]
++                );
++            }
++            for len in 0..257 {
++                let raw: Vec<u8> = (0..len).map(|i| (i * 73 + 11) as u8).collect();
++                let encoded = base64_encode(&raw, url_safe);
++                assert_eq!(base64_decode(&encoded, url_safe, Some(len)), Ok(raw));
++                if len > 0 {
++                    assert_eq!(
++                        base64_decode(&encoded, url_safe, Some(len - 1)),
++                        Err(Fail::LimitExceeded)
++                    );
++                }
++            }
++            for invalid in [
++                "=AAA", "A=AA", "AA=A", "AA==AAAA", "éAA", "😀", "Zh==", "Zm9=",
++            ] {
++                assert_eq!(
++                    base64_decode(invalid, url_safe, None),
++                    Err(Fail::InvalidData)
++                );
++            }
++            // Syntax whitespace precedes the byte limit; alphabet errors follow it.
++            assert_eq!(
++                base64_decode("AA A", url_safe, Some(0)),
++                Err(Fail::InvalidData)
++            );
++            assert_eq!(
++                base64_decode("!!!!", url_safe, Some(0)),
++                Err(Fail::LimitExceeded)
++            );
++        }
++        for text in ["+AAA", "/AAA"] {
++            assert_eq!(base64_decode(text, true, None), Err(Fail::InvalidData));
++        }
++        for text in ["-AAA", "_AAA"] {
++            assert_eq!(base64_decode(text, false, None), Err(Fail::InvalidData));
++        }
++    }
++

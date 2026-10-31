@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/core.ms\" import TextError\n\ndef crash(value: Int) -> Int:\n    return 1 / value\n\nexport def main() -> Int:\n    let value: Result[Int, TextError] = ok(0)\n    return value.map(crash).get()\n"
-  }
-}

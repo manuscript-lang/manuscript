@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/core.ms\" import panic\n\ntest \"text\":\n    if not (f\"{1}\" == \"1\"):\n        return panic(message: \"check failed\")\n"
-  }
-}

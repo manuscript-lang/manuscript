@@ -1,14 +1,15 @@
-from "@std/io.ms" import stdout
-from "@std/workers.ms" import WorkerGroup, worker_channel
+import stdout from "@std/io.ms"
+import WorkerGroup, worker_channel from "@std/workers.ms"
 
-export def waits() -> Unit:
+export fn waits() Unit:
     var ch = worker_channel[Int, Int]()
     let v = ch.receive()
     ch.send(1)
 
-export def main() -> Int:
-    with let workers = WorkerGroup[Int, Int]():
-        var w = workers.spawn(waits).get()
-        let v = w.channel.receive()
-        stdout().write(f"main got {v.is_ok()}\n").get()
+export fn main() Int:
+    var workers = WorkerGroup[Int, Int]()
+    var w = workers.spawn(waits).get()
+    let v = w.channel.receive()
+    stdout().write("main got {v.is_ok()}\n").get()
+    workers.close()
     return 0

@@ -18,10 +18,10 @@
 //! | `List[T]`, `Bytes` | `ptr, len, cap` |
 //! | `Map`, `Set` | seven `i64` words (`MapVal`) |
 //! | record | the fields' leaves in declaration order |
-//! | `Optional[T]` of a closure or handle object (single-pointer payloads) | nullable `i64` |
-//! | `Optional[String]` | the string's leaves; none is a null `ptr` (tagged static, length 0) |
-//! | `Optional[T]` otherwise | `present: i8`, then `T`'s leaves |
-//! | `Optional[T]` that reaches itself by value | nullable `i64` pointer to a block of `T`'s leaves |
+//! | `T?` of a closure or handle object (single-pointer payloads) | nullable `i64` |
+//! | `String?` | the string's leaves; none is a null `ptr` (tagged static, length 0) |
+//! | `T?` otherwise | `present: i8`, then `T`'s leaves |
+//! | `T?` that reaches itself by value | nullable `i64` pointer to a block of `T`'s leaves |
 //! | alternative | `tag: i64`, then payload slots shared by all cases |
 //! | recursive alternative | `i64` pointer to a heap block `{ tag, payload }` |
 //! | interface | `data, vtable` |
@@ -154,7 +154,7 @@ impl<'m> Layouts<'m> {
         self.boxing.borrow_mut().alt(self.m, a)
     }
 
-    /// Whether `Optional[inner]` contains itself by value (`type Node: next: Optional[Node]`)
+    /// Whether `inner?` contains itself by value (`type Node: next: Node?`)
     /// and therefore holds its payload in a heap block behind a nullable pointer.
     pub fn opt_is_boxed(&self, inner: Ty) -> bool {
         self.boxing.borrow_mut().opt(self.m, inner)
@@ -238,7 +238,7 @@ impl<'m> Layouts<'m> {
         mem_layout(&self.shape(ty).leaves)
     }
 
-    /// Whether `Optional[inner]` is a nullable pointer.
+    /// Whether `inner?` is a nullable pointer.
     pub fn opt_is_nullable(&self, inner: Ty) -> bool {
         self.opt_is_boxed(inner)
             || matches!(self.m.types.kind(inner), TyKind::Fn(..))
@@ -246,7 +246,7 @@ impl<'m> Layouts<'m> {
     }
 
     /// Whether values of `ty` have the string layout and drop and copy like a string: `String`,
-    /// and `Optional[String]`, whose none is a static empty string with a null pointer.
+    /// and `String?`, whose none is a static empty string with a null pointer.
     pub fn is_str_like(&self, ty: Ty) -> bool {
         match self.m.types.kind(ty) {
             TyKind::Str => true,
@@ -297,6 +297,14 @@ impl<'m> Layouts<'m> {
                 }
             }
             TyKind::Alt(a) => self.alt_shape(*a),
+            // A view has the leaves of the value it borrows.
+            TyKind::Ref(inner) => {
+                let s = self.shape(*inner);
+                Shape {
+                    leaves: s.leaves.clone(),
+                    alt: None,
+                }
+            }
         }
     }
 

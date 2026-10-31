@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def unique[T: Hashable](values: List[T]) -> Set[T]:\n    return values.to_set()\n"
-  }
-}

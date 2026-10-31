@@ -1,20 +1,20 @@
 # conform: tags=control-flow,interpolation,match,modules,optional,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/direct-calls-fill-omitted-defaults.ms
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
-def scaled(base: Int, factor: Int = 2, label: String = "x") -> String: f"{label}{base * factor}"
+fn scaled(base: Int, factor: Int = 2, label: String = "x") String: "{label}{base * factor}"
 
-def chained(base: Int, plus: Int = base + 1) -> Int: base + plus
+fn chained(base: Int, plus: Int = base + 1) Int: base + plus
 
-def maybe(value: Int, extra: Optional[Int] = none) -> Int:
+fn maybe(value: Int, extra: Int?) Int:
     match extra:
-        case some(number):
+        number:
             return value + number
-        case none:
+        none:
             return value
 
-def countdown(n: Int, step: Int = 1) -> Int:
+fn countdown(n: Int, step: Int = 1) Int:
     if n <= 0:
         return 0
 
@@ -25,7 +25,7 @@ test "omitted defaults":
     try expect_true((scaled(base: 3, factor: 5) == "x15"))
     try expect_true((scaled(base: 3, factor: 5, label: "y") == "y15"))
     try expect_true((chained(base: 4) == 9 and chained(base: 4, plus: 1) == 5))
-    try expect_true((maybe(value: 1) == 1 and maybe(value: 1, extra: some(4)) == 5))
+    try expect_true((maybe(value: 1) == 1 and maybe(value: 1, extra: 4) == 5))
     try expect_true((countdown(n: 4) == 10 and countdown(n: 4, step: 2) == 6))
 
     let callback = scaled

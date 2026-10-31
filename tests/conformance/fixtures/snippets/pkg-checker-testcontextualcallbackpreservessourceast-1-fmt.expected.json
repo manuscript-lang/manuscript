@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Callback:\n    value: Callable[[Int], Int]\n\ndef example() -> Unit:\n    let callback = Callback(lambda value: value + 1)\n"
-  }
-}

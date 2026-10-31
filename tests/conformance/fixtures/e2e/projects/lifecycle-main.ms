@@ -1,54 +1,55 @@
-# conform: tags=aliasing,closures,control-flow,interfaces,interpolation,lists,match,modules,mutation,records,stdlib-cleanup,stdlib-errors,stdlib-io,stdlib-testing,strings,tier-stdlib,try-result,with-cleanup
+# conform: tags=aliasing,closures,control-flow,interfaces,interpolation,lists,match,modules,mutation,records,stdlib-cleanup,stdlib-errors,stdlib-io,stdlib-testing,strings,tier-stdlib,try-result,scope-cleanup
 # conform: phase=run
 # conform: origin=tests/e2e/testdata/projects/lifecycle/main.ms
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal, fail
-from "@std/io.ms" import stderr
-from "@std/io.ms" import stdout
-from "@std/io.ms" import WriteStream
-from "@std/core.ms" import Closeable
+import TextError from "@std/core.ms"
+import expect_equal, fail from "@std/test.ms"
+import stderr from "@std/io.ms"
+import stdout from "@std/io.ms"
+import WriteStream from "@std/io.ms"
+import Closeable from "@std/core.ms"
 
 type Resource:
     label: String
     output: WriteStream
 
 impl Closeable for Resource:
-    var def close() -> Unit:
-        let _ = self.output.write(data: f"close {self.label}\n")
+    var fn close() Unit!:
+        let _ = self.output.write(data: "close {self.label}\n")
+        return ok(unit)
 
 type Pair:
     first: Int
     second: Int
 
-def report(var output: WriteStream, label: String, value: Int) -> Int:
-    let _ = output.write(data: f"{label}\n")
+fn report(var output: WriteStream, label: String, value: Int) Int:
+    let _ = output.write(data: "{label}\n")
     return value
 
-def combine(first: Int, second: Int) -> Int:
+fn combine(first: Int, second: Int) Int:
     return first + second
 
-def select(var output: WriteStream) -> Callable[[Int, Int], Int]:
+fn select(var output: WriteStream) fn(Int, Int) Int:
     let _ = output.write(data: "callable\n")
     return combine
 
-def early(var output: WriteStream) -> Int:
-    with let outer = Resource(label: "outer", output: stdout()):
-        with let inner = Resource(label: "inner", output: stdout()):
-            return report(output: var output, label: "return value", value: 5)
+fn early(var output: WriteStream) Int:
+    let _outer = Resource(label: "outer", output: stdout())
+    let _inner = Resource(label: "inner", output: stdout())
+    return report(output: var output, label: "return value", value: 5)
 
-def failure() -> Result[Int, TextError]:
+fn failure() Int!TextError:
     return error(TextError("expected"))
 
-def propagate(output: WriteStream) -> Result[Int, TextError]:
-    with let resource = Resource(label: "propagation", output: output):
-        let number = try failure()
-        return ok(number)
+fn propagate(output: WriteStream) Int!TextError:
+    let _resource = Resource(label: "propagation", output: output)
+    let number = try failure()
+    return ok(number)
 
-def iterable(var output: WriteStream) -> List[Int]:
+fn iterable(var output: WriteStream) List[Int]:
     let _ = output.write(data: "iterable\n")
     return [1, 2]
 
-def exercise() -> Result[Int, Error]:
+fn exercise() Int!:
     var chosen = stdout()
     var second_out = stdout()
     var first_out = stdout()
@@ -67,27 +68,30 @@ def exercise() -> Result[Int, Error]:
         first: report(output: var pair_first_out, label: "pair first", value: 1)
     )
     (pair.first + pair.second) | try expect_equal(3)
-    with let resource = Resource(label: "normal", output: stdout()):
-        let completed = ()
+
+    var _resource = Resource(label: "normal", output: stdout())
+    let completed = unit
+    try _resource.close()
 
     let _ = stdout().write(data: "after normal\n")
     var count = 0
 
     while count < 2:
-        with let resource = Resource(label: "iteration", output: stdout()):
-            count = count + 1
-            continue
+        let _resource = Resource(label: "iteration", output: stdout())
+        count = count + 1
+        continue
 
     var iterable_out = stdout()
+
     for value in iterable(output: var iterable_out):
-        with let resource = Resource(label: "break", output: stdout()):
-            break
+        let _resource = Resource(label: "break", output: stdout())
+        break
 
     match propagate(output: stdout()):
-        case ok(_):
+        ok(_):
             try fail(message: "Unexpected case")
-        case error(_):
-            let completed = ()
+        error(_):
+            let completed = unit
 
     var early_out = stdout()
     early(output: var early_out) | try expect_equal(5)
@@ -95,9 +99,9 @@ def exercise() -> Result[Int, Error]:
     let _ = stdout().write(data: "finished\n")
     return ok(0)
 
-export def main() -> Int:
+export fn main() Int:
     match exercise():
-        case ok(status): return status
-        case error(cause):
-            let written = stderr().write(f"{cause.message()}\n")
+        ok(status): return status
+        error(cause):
+            let written = stderr().write("{cause.message()}\n")
             return 1

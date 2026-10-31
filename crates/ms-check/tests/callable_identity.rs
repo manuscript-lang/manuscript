@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 fn diagnostics(body: &str) -> Vec<String> {
     let source = format!(
-        "def first(amount: Int) -> Int: amount + 1\ndef second(value: Int) -> Int: value + 2\ndef choose[T](left: T, right: T) -> T: left\ntype Pair[T]:\n    left: T\n    right: T\ndef exercise() -> Unit:\n{body}\n"
+        "fn first(amount: Int) Int: amount + 1\nfn second(value: Int) Int: value + 2\nfn choose[T](left: T, right: T) T: left\ntype Pair[T]:\n    left: T\n    right: T\nfn exercise() Unit:\n{body}\n"
     );
     let file: Arc<str> = Arc::from("identity.ms");
     let module = ms_syntax::parser::parse(&file, &source).expect("parses");
@@ -49,7 +49,7 @@ fn callable_replacement_ignores_parameter_names() {
 #[test]
 fn callback_results_ignore_callable_parameter_names() {
     let got = diagnostics(
-        "    let factory = lambda (flag: Bool):\n        if flag:\n            return first\n        return second\n    let _answer = factory(False)(3)",
+        "    let factory = fn(flag: Bool):\n        if flag:\n            return first\n        return second\n    let _answer = factory(false)(3)",
     );
     assert!(got.is_empty(), "{got:?}");
 }
@@ -57,14 +57,14 @@ fn callback_results_ignore_callable_parameter_names() {
 #[test]
 fn callable_parameter_and_result_types_remain_invariant() {
     for body in [
-        "    let bad = choose(first, lambda (value: String) -> Int: 1)",
-        "    let bad = choose(first, lambda (value: Int) -> String: \"x\")",
-        "    let bad = choose(first, lambda (value: Int, other: Int) -> Int: value)",
+        "    let bad = choose(first, fn(value: String) Int: 1)",
+        "    let bad = choose(first, fn(value: Int) String: \"x\")",
+        "    let bad = choose(first, fn(value: Int, other: Int) Int: value)",
     ] {
         let got = diagnostics(body);
         assert!(
             got.iter()
-                .any(|d| d.contains("expected Callable") || d.contains("callback mismatch")),
+                .any(|d| d.contains("expected fn(") || d.contains("callback mismatch")),
             "{body}: {got:?}"
         );
     }

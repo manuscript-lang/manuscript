@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/core.ms\" import Closeable\nfrom \"@std/queue.ms\" import Queue\n\ntype Resource:\n    state: Queue[Int]\n\nimpl Closeable for Resource:\n    def close() -> Unit:\n        self.state.dequeue()\n\ndef pure() -> Int:\n    return 1\n\ndef direct(resource: Resource) -> Unit:\n    with resource as item:\n        return\n\ndef transitive(resource: Resource) -> Unit:\n    direct(resource: resource)\n\ndef nested(resource: Resource) -> Unit:\n    let callback = lambda (item: Resource) -> Unit:\n        with item as held:\n            return\n    callback(resource)\n\ndef indirect(callback: Callable[[], Unit]) -> Unit:\n    callback()\n"
-  }
-}

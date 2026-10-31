@@ -291,6 +291,23 @@ impl Checker {
         {
             return;
         }
+        // A `T?` argument after a plain value widens the variable to the optional.
+        if vars.contains(&pattern.id)
+            && actual_ty.is_std("Optional")
+            && actual_ty.args.len() == 1
+            && !substituted.is_std("Optional")
+            && compatible(&Some(substituted.clone()), &actual_ty.args[0])
+        {
+            s.insert(pattern.id, actual_ty.clone());
+            return;
+        }
+        // A plain value beside an inferred `T?` wraps into it, as at a typed binding.
+        if substituted.is_std("Optional")
+            && substituted.args.len() == 1
+            && compatible(&Some(actual_ty.clone()), &substituted.args[0])
+        {
+            return;
+        }
         let hint = if mentions_variable(&pattern, vars) {
             arity_mismatch_hint(&actual_ty, &substituted)
         } else {
@@ -313,7 +330,22 @@ impl Checker {
                 .any(|(p, q)| !mentions_variable(&p.ty, vars) && !same(&p.ty, &q.ty))
                 || (!mentions_variable(&substituted.result_ty(), vars)
                     && !same(&substituted.result_ty(), &actual_ty.result_ty())));
+        if mentions_variable(&pattern, vars)
+            && pattern.kind == Kind::Contract
+            && actual_ty.kind != Kind::Contract
+        {
+            self.type_error(
+                arg.pos,
+                format!(
+                    "cannot infer {pattern} from {actual_ty}; passing a value as an interface adds no inference evidence, so give type arguments explicitly, e.g. f[Int](...)"
+                ),
+            );
+            self.unknown_type = true;
+            self.label_mismatch = true;
+            return;
+        }
         if mentions_variable(&pattern, vars) && !concrete_callback_mismatch {
+            self.conflicted_arguments.insert(arg.value.id);
             self.type_error(arg.pos, CONFLICTING_INFERENCE);
         }
     }

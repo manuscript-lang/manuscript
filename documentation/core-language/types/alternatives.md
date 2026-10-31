@@ -29,7 +29,7 @@ let declined: Payment = Declined("Card rejected")
 ```
 
 - `Type.Case` names a case of that nominal type. It is not a module path: import the type, then qualify its case.
-- A single-payload case may omit its label, such as `some(3)`.
+- A single-payload case may omit its label, such as `ok(3)`.
 - Multi-payload constructors follow the ordinary [call rules](../functions/declarations-and-calls.md#argument-names); every payload field appears exactly once.
 - Payloadless cases are values (`State.Ready`), without `()`. Tags do not convert to integers.
 

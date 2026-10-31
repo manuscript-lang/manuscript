@@ -9,29 +9,23 @@ use ms_syntax::visit::{self, Visitor};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// Whether a standard collection method mutates its receiver: `List`, `Map` and `Set`
-/// methods say so with `var fn` in their `@std` declaration. The builders are shared
-/// handles declared with plain `fn`, so their mutating methods are listed here.
+/// methods say so with `var fn` in their `@std` declaration; so do `StringBuilder` and `BytesBuilder`.
 pub fn collection_mutation(method: &Method) -> bool {
     let receiver = &method.receiver;
-    let name = method.name().map(|n| n.as_str()).unwrap_or_default();
-    if receiver.is_std("StringBuilder") {
-        return matches!(name, "append" | "build");
-    }
-    if receiver.is_std("BytesBuilder") {
-        return name.starts_with("append") || name == "build";
-    }
-    if receiver.is_std("ListBuilder") {
-        return matches!(name, "append" | "build");
-    }
-    if receiver.is_std("MapBuilder") || receiver.is_std("SetBuilder") {
-        return matches!(name, "add" | "build");
-    }
-    (receiver.is_std("List") || receiver.is_std("Map") || receiver.is_std("Set"))
+    (receiver.is_std("List")
+        || receiver.is_std("Map")
+        || receiver.is_std("Set")
+        || is_text_builder(receiver))
         && method
             .decl
             .as_ref()
             .and_then(|d| d.method())
             .is_some_and(|m| m.mutating)
+}
+
+/// `StringBuilder` and `BytesBuilder`: owned values whose `build` consumes them.
+pub fn is_text_builder(t: &Ty) -> bool {
+    t.is_std("StringBuilder") || t.is_std("BytesBuilder")
 }
 
 enum Target {
@@ -82,10 +76,7 @@ impl Scan<'_> {
                 return;
             }
             match s.native.as_str() {
-                "panic" => {}
-                "sleep" => {
-                    self.effects.insert("read");
-                }
+                "core/panic" => {}
                 _ => {
                     self.effects.insert("unknown");
                 }
@@ -153,30 +144,12 @@ impl Scan<'_> {
 
 impl Visitor for Scan<'_> {
     fn stmt(&mut self, s: &Stmt) {
-        match &s.kind {
-            StmtKind::Assign {
-                target: AssignTarget::Member(_),
-                ..
-            } => {
-                self.effects.insert("write");
-            }
-            StmtKind::With { .. } => {
-                let cleanup = self
-                    .module
-                    .facts()
-                    .stmts
-                    .get(&s.id)
-                    .and_then(|f| f.cleanup.clone());
-                match cleanup {
-                    Some(m) if !m.id.as_str().is_empty() => {
-                        self.edges.insert(m.id);
-                    }
-                    _ => {
-                        self.effects.insert("unknown");
-                    }
-                }
-            }
-            _ => {}
+        if let StmtKind::Assign {
+            target: AssignTarget::Member(_),
+            ..
+        } = &s.kind
+        {
+            self.effects.insert("write");
         }
     }
 

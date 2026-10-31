@@ -1,1 +1,1 @@
-error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"
+error parse 9:12:144 "a local fn cannot take type parameters; declare a generic function at module level"

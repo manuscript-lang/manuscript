@@ -1,1 +1,1 @@
-error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"
+error parse 6:18:126 "expected ')', found ':'; close the parenthesis, separating items with commas"

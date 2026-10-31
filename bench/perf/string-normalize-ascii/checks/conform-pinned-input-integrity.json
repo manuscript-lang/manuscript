@@ -1,0 +1,29 @@
+{
+  "replay_exit_code": 0,
+  "selected_fixtures": 2393,
+  "passed_fixtures": 2393,
+  "compiler": {
+    "path": "/tmp/string-round2/ms",
+    "before_sha256": "cd158b8ca24e62776ba38aa8b774e57f4dd1434346d2edc7569211e7b848c0fc",
+    "before_verification": "Pinned baseline build and benchmark build verification before replay; not an immediate replay preflight",
+    "after_sha256": "cd158b8ca24e62776ba38aa8b774e57f4dd1434346d2edc7569211e7b848c0fc"
+  },
+  "runtime_archive": {
+    "path": "/tmp/string-round2/normalize-ascii-after/libms_native.a",
+    "before_sha256": "3b3c1b8bdc8dc97ce207ddf1750ca2e6d1c66e134fba48488bbbdb7baa3b014e",
+    "before_verification": "Rehashed in conform-failed-input.json immediately before authoritative replay",
+    "after_sha256": "3b3c1b8bdc8dc97ce207ddf1750ca2e6d1c66e134fba48488bbbdb7baa3b014e"
+  },
+  "pure_helpers": {
+    "path": "/tmp/string-round2/normalize-ascii-after/ms_rt_hot.ll",
+    "before_sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+    "after_sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+  },
+  "selected_shared_target_archive": false,
+  "writer_coordination": "Duplicate group171828 stopped before replay; other agents prohibited from build/check commands. Selected preserved /tmp archive was never an output of any scheduled build. Reverse native build started only after replay exit0.",
+  "failed_run_preserved": [
+    "conform.log",
+    "conform-failed-report.md",
+    "conform-failed-input.json"
+  ]
+}

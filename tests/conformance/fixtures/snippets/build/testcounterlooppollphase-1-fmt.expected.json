@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn poll_literal_up(var log: List[Int], start: Int) Unit:\n    var i = -137\n\n    while i < 1000:\n        log.append(i)\n        i += 1\n\nfn poll_literal_down(var log: List[Int], start: Int) Unit:\n    var i = 500\n\n    while i > 0:\n        log.append(i)\n        i -= 1\n\nfn poll_literal_nested(var log: List[Int], start: Int) Unit:\n    var outer = 0\n\n    while outer < 3:\n        var i = 0\n\n        while i < 70:\n            log.append(i)\n            i += 1\n\n        outer += 1\n\nfn poll_up(var log: List[Int], start: Int) Unit:\n    var i = start\n\n    while i < 1000:\n        log.append(i)\n        i += 1\n\nfn poll_down(var log: List[Int], start: Int) Unit:\n    var i = start\n\n    while i > 0:\n        log.append(i)\n        i -= 1\n\nfn poll_continue(var log: List[Int], start: Int) Unit:\n    var i = start\n    var skips = 0\n\n    while i < 1000:\n        if skips < 5:\n            skips += 1\n            continue\n\n        log.append(i)\n        i += 1\n\nfn poll_reset(var log: List[Int], start: Int) Unit:\n    var i = start\n\n    while i < 1000:\n        log.append(i)\n        i += 1\n        if i == 5:\n            i = 0\n\nfn poll_nested(var log: List[Int], start: Int) Unit:\n    var outer = 0\n\n    while outer < 3:\n        var i = outer\n\n        while i < 70:\n            log.append(i)\n            i += 1\n\n        outer += 1\n"
+  }
+}

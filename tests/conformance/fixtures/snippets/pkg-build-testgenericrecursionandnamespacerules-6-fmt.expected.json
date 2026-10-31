@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type First:\n    case Ready(value: Int)\n\ntype Second:\n    case Ready(value: Int)\n\ndef wrong() -> First:\n    return Ready(value: 1)\n"
-  }
-}

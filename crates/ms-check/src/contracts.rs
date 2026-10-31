@@ -158,6 +158,73 @@ fn contract_operation(contract: &Ty, name: Name, implementor: &Ty) -> Option<Met
     }))
 }
 
+/// Why a type is not `Data`.
+pub(crate) enum DataReason {
+    Resource,
+    Function,
+    Interface,
+    Handle,
+    Unbounded,
+    Collection,
+    Never,
+    Opaque,
+}
+
+/// The first part of a type that is not `Data`, with the field path that reaches it.
+pub(crate) struct DataBlocker {
+    path: String,
+    ty: Ty,
+    reason: DataReason,
+}
+
+impl DataBlocker {
+    /// The diagnostic for a failed `Data` bound, naming the part and a fix.
+    pub(crate) fn message(&self, t: &Ty) -> String {
+        let (what, fix) = match self.reason {
+            DataReason::Resource => (
+                "a resource (Closeable)".to_string(),
+                "send a path or an id and reopen it on the other side".to_string(),
+            ),
+            DataReason::Function => (
+                "a function".to_string(),
+                "send the data the function would compute".to_string(),
+            ),
+            DataReason::Interface => (
+                "an interface value".to_string(),
+                "send the plain data behind it".to_string(),
+            ),
+            DataReason::Handle => (
+                "a runtime handle".to_string(),
+                "send plain data instead".to_string(),
+            ),
+            DataReason::Unbounded => (
+                "a type parameter with no Data bound".to_string(),
+                format!("add `{}: Data` to the type parameter", self.ty),
+            ),
+            DataReason::Collection => (
+                "a Map or Set, which has no portable form".to_string(),
+                "send a List, or a JsonValue object".to_string(),
+            ),
+            DataReason::Opaque => (
+                "opaque".to_string(),
+                "return a plain value from the module that declares it".to_string(),
+            ),
+            DataReason::Never => (
+                "Never, which has no value".to_string(),
+                "use Unit or a real type".to_string(),
+            ),
+        };
+        if self.path.is_empty() {
+            format!("{t} does not satisfy Data; it is {what}; {fix}")
+        } else {
+            format!(
+                "{t} does not satisfy Data; field {} is {}, {what}; {fix}",
+                self.path, self.ty
+            )
+        }
+    }
+}
+
 /// Standard types whose native compare operation satisfies Comparable without
 /// an impl.
 fn builtin_comparable(t: &Ty) -> bool {
@@ -178,10 +245,9 @@ fn builtin_comparable(t: &Ty) -> bool {
             | "String"
             | "@std/Decimal"
             | "@std/BigInt"
-            | "@std/Duration"
-            | "@std/Instant"
-            | "@std/Timestamp"
-    )
+    ) || ["Duration", "Instant", "Timestamp"]
+        .iter()
+        .any(|name| t.is_time(name))
 }
 
 fn operation_names(ops: &[Operation]) -> Vec<String> {
@@ -236,6 +302,14 @@ impl Checker {
         }
         let mut receiver = self.resolve(Some(&imp.receiver));
         let nominal = receiver.def.as_ref().and_then(|d| d.symbol());
+        if self.opaque_denied(
+            d.pos(),
+            &receiver,
+            "it takes no new methods or interfaces here",
+        ) {
+            self.scope = old;
+            return;
+        }
         // A bundled module may add methods to the `extern type` it declares.
         let own_extern = receiver.kind == Kind::Native
             && nominal
@@ -432,8 +506,18 @@ impl Checker {
                     self.type_error(
                         method.pos,
                         format!(
-                            "implementation operation signature does not match contract; {} must be declared as fn {}{}",
+                            "implementation operation signature does not match contract; {} must be declared as {} {}{}",
                             method.func.name,
+                            if op
+                                .decl
+                                .as_ref()
+                                .and_then(|f| f.decl.methods().get(f.index?))
+                                .is_some_and(|m| m.mutating)
+                            {
+                                "var fn"
+                            } else {
+                                "fn"
+                            },
                             method.func.name,
                             signature_text(&op.ty)
                         ),
@@ -451,11 +535,11 @@ impl Checker {
                 && method.mutating
                 && !contract_mutates
             {
-                let (have, want) = ("var def", "def");
+                let (have, want) = ("var fn", "fn");
                 self.type_error(
                     method.pos,
                     format!(
-                        "implementation of {} is declared {have} but {contract} declares it {want}; an operation that changes its receiver is declared `var def` in the interface too",
+                        "implementation of {} is declared {have} but {contract} declares it {want}; an operation that changes its receiver is declared `var fn` in the interface too",
                         method.func.name
                     ),
                 );
@@ -493,6 +577,30 @@ impl Checker {
             self.add_method(Rc::new(m));
         }
         self.scope.types.borrow_mut().remove(&n("Self"));
+        if ops.is_empty() && imp.methods.is_empty() && contract.kind == Kind::Contract {
+            // A property without operations has no method to carry its evidence, so record the
+            // implementation itself.
+            if contract.is_std("Data") && receiver.kind != Kind::Native && !self.m().is_standard() {
+                self.type_error(
+                    d.pos(),
+                    format!(
+                        "{receiver} is Data when its parts are; only an extern type or the standard library declares Data, so remove this impl"
+                    ),
+                );
+            }
+            let id = self.unique("method");
+            self.add_method(Rc::new(Method {
+                id,
+                module: self.current_file(),
+                local: receiver_module_differs(self, &receiver),
+                receiver: receiver.clone(),
+                contract: Some(contract.clone()),
+                ty: contract.clone(),
+                variables: vars.clone(),
+                decl: None,
+                native: n(""),
+            }));
+        }
         for op in &ops {
             if seen.contains(&op.name) {
                 continue;
@@ -517,7 +625,6 @@ impl Checker {
                                 args: Vec::new(),
                             },
                         },
-                        result_ref: false,
                         body: Vec::new(),
                         external: false,
                     }),
@@ -585,7 +692,11 @@ impl Checker {
         if receiver.id == contract.id {
             return same(receiver, contract);
         }
-        if contract.is_std("Equal") || contract.is_std("Hashable") || contract.is_std("Clonable") {
+        if contract.is_std("Equal")
+            || contract.is_std("Hashable")
+            || contract.is_std("Clonable")
+            || contract.is_std("Data")
+        {
             return self.property(receiver, contract.name.as_str(), None);
         }
         if receiver.kind == Kind::Variable {
@@ -609,30 +720,22 @@ impl Checker {
         contract.is_std("Comparable") && builtin_comparable(receiver)
     }
 
-    /// Whether `.clone()` is available for `t`: plain data is, resource handles and functions are not.
+    /// Whether `.clone()` is available for `t`: every value but a resource, which has one owner.
     fn clonable(&self, t: &Ty, state: &mut PropertyState) -> bool {
         match t.kind {
-            Kind::Variable => return t.bounds().iter().any(|b| b.is_std("Clonable")),
-            Kind::Contract => return false,
+            Kind::Variable => return t.bounds().iter().any(implies_clonable),
+            Kind::Contract => return !t.is_std("Closeable"),
             Kind::Function | Kind::Primitive => return true,
             _ => {}
         }
-        if t.is_std("List") || t.is_std("Map") || t.is_std("Set") {
+        if self.closeable(t) {
+            return false;
+        }
+        if t.kind == Kind::Native {
             return t
                 .args
                 .iter()
                 .all(|a| self.property_in(a, "Clonable", state));
-        }
-        if t.is_std("Regex") {
-            return false;
-        }
-        if t.kind == Kind::Native {
-            return t.is_std("Bytes")
-                || t.is_std("Decimal")
-                || t.is_std("BigInt")
-                || t.is_std("Duration")
-                || t.is_std("Instant")
-                || t.is_std("Timestamp");
         }
         if t.def.is_some() {
             return fields(t)
@@ -664,6 +767,151 @@ impl Checker {
                     .any(|c| c.fields.iter().any(|f| self.shares_state(&f.ty, seen))))
     }
 
+    /// Whether `t` is, or holds, a `Closeable` value. Such a value is an identity to close once,
+    /// not a key to file by hash, and a set or map would drop a duplicate without closing it.
+    fn holds_resource(&self, t: &Ty, seen: &mut Vec<String>) -> bool {
+        let key = type_key(t);
+        if seen.contains(&key) {
+            return false;
+        }
+        seen.push(key);
+        let closeable = self.p.methods.iter().any(|m| {
+            self.method_visible(m)
+                && m.contract.as_ref().is_some_and(|c| c.is_std("Closeable"))
+                && unify(
+                    &m.receiver,
+                    t,
+                    &variable_set(&m.variables),
+                    &mut Subst::new(),
+                )
+        });
+        closeable
+            || t.args.iter().any(|a| self.holds_resource(a, seen))
+            || (t.def.is_some()
+                && (fields(t).iter().any(|f| self.holds_resource(&f.ty, seen))
+                    || cases(t)
+                        .iter()
+                        .any(|c| c.fields.iter().any(|f| self.holds_resource(&f.ty, seen)))))
+    }
+
+    /// Whether an `impl Data for` the type exists.
+    fn declares_data(&self, t: &Ty) -> bool {
+        self.p.methods.iter().any(|m| {
+            self.method_visible(m)
+                && m.decl.is_none()
+                && m.contract.as_ref().is_some_and(|c| c.is_std("Data"))
+                && m.receiver.id == t.id
+        })
+    }
+
+    /// Whether `t` has a visible `JsonEncode` implementation.
+    fn has_json_encoder(&self, t: &Ty) -> bool {
+        self.p.methods.iter().any(|m| {
+            self.method_visible(m)
+                && m.contract
+                    .as_ref()
+                    .is_some_and(|c| c.is_source_type("@std/json.ms", "JsonEncode"))
+                && {
+                    let mut s = Subst::new();
+                    unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
+                }
+        })
+    }
+
+    /// The first part of `t` that keeps it from being `Data`, or `None` when `t` is plain data:
+    /// no resource, behavior, or runtime handle anywhere inside it. `visiting` holds the types
+    /// being checked on the current path, so a recursive type is assumed plain only while its own
+    /// check is open.
+    pub(crate) fn data_blocker(
+        &self,
+        t: &Ty,
+        visiting: &mut Vec<String>,
+        path: &mut Vec<String>,
+    ) -> Option<DataBlocker> {
+        let blocked = |reason: DataReason, path: &[String]| {
+            Some(DataBlocker {
+                path: path.join("."),
+                ty: t.clone(),
+                reason,
+            })
+        };
+        if t.id == "<invalid>" {
+            return None;
+        }
+        match t.kind {
+            Kind::Variable => {
+                return if t.bounds().iter().any(|b| b.is_std("Data")) {
+                    None
+                } else {
+                    blocked(DataReason::Unbounded, path)
+                };
+            }
+            Kind::Primitive if t.id.as_str() == "Never" => return blocked(DataReason::Never, path),
+            Kind::Primitive => return None,
+            Kind::Function => return blocked(DataReason::Function, path),
+            Kind::Contract => return blocked(DataReason::Interface, path),
+            _ => {}
+        }
+        if t.is_std("List") {
+            return t
+                .args
+                .first()
+                .and_then(|a| self.data_blocker(a, visiting, path));
+        }
+        if t.is_std("Map") || t.is_std("Set") {
+            return blocked(DataReason::Collection, path);
+        }
+        if t.kind == Kind::Native {
+            return if self.declares_data(t) {
+                None
+            } else {
+                blocked(DataReason::Handle, path)
+            };
+        }
+        if t.opaque_module().is_some() {
+            return blocked(DataReason::Opaque, path);
+        }
+        if self.closeable(t) {
+            return blocked(DataReason::Resource, path);
+        }
+        if self.declares_data(t) {
+            // The standard library vouches for the type, as for `JsonValue`.
+            return None;
+        }
+        if self.has_json_encoder(t) {
+            // The type's own `JsonEncode` decides its JSON form, whatever its fields hold.
+            return None;
+        }
+        let key = type_key(t);
+        if visiting.contains(&key) {
+            return None;
+        }
+        visiting.push(key);
+        let mut found = None;
+        for f in fields(t) {
+            path.push(f.name.as_str().to_string());
+            found = self.data_blocker(&f.ty, visiting, path);
+            if found.is_some() {
+                break;
+            }
+            path.pop();
+        }
+        if found.is_none() {
+            'cases: for c in cases(t) {
+                for f in &c.fields {
+                    path.push(f.name.as_str().to_string());
+                    found = self.data_blocker(&f.ty, visiting, path);
+                    if found.is_some() {
+                        break 'cases;
+                    }
+                    path.pop();
+                }
+            }
+        }
+        visiting.pop();
+        found
+    }
+
     fn bounds_satisfied(&self, vars: &[Ty], s: &Subst) -> bool {
         for v in vars {
             let Some(a) = s.get(&v.id) else {
@@ -680,7 +928,11 @@ impl Checker {
 
     /// Whether `t` meets `bound`.
     pub(crate) fn satisfies(&self, t: &Ty, bound: &Ty) -> bool {
-        if bound.is_std("Equal") || bound.is_std("Hashable") || bound.is_std("Clonable") {
+        if bound.is_std("Equal")
+            || bound.is_std("Hashable")
+            || bound.is_std("Clonable")
+            || bound.is_std("Data")
+        {
             return self.property(t, bound.name.as_str(), None);
         }
         self.implements(t, bound)
@@ -702,6 +954,19 @@ impl Checker {
     fn property_in(&self, t: &Ty, property: &str, state: &mut PropertyState) -> bool {
         if t.id == "<invalid>" {
             return true;
+        }
+        if property == "Data" {
+            // Not cached: a result computed under an assumed ancestor must not outlive it.
+            return self
+                .data_blocker(t, &mut Vec::new(), &mut Vec::new())
+                .is_none();
+        }
+        // A resource anywhere in the value (a field, an alternative case, a type argument) has
+        // one owner: it is never hashed as a key or duplicated.
+        if (property == "Hashable" || property == "Clonable")
+            && self.holds_resource(t, &mut Vec::new())
+        {
+            return false;
         }
         let key = format!("{}{}", type_key(t), property);
         if let Some(&r) = state.completed.get(&key) {
@@ -740,7 +1005,10 @@ impl Checker {
             if unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
                 && self.bounds_satisfied(&m.variables, &s)
             {
-                if property == "Hashable" && self.shares_state(t, &mut Vec::new()) {
+                if property == "Hashable"
+                    && (self.shares_state(t, &mut Vec::new())
+                        || self.holds_resource(t, &mut Vec::new()))
+                {
                     return false;
                 }
                 return property != "Hashable" || self.property(t, "Equal", None);
@@ -766,7 +1034,8 @@ impl Checker {
             Kind::Primitive => return float_bits(t).is_none() || property != "Hashable",
             _ => {}
         }
-        if t.is_std("Decimal") || t.is_std("Bytes") || t.is_std("Duration") || t.is_std("Instant") {
+        if t.is_std("Decimal") || t.is_std("Bytes") || t.is_time("Duration") || t.is_time("Instant")
+        {
             return true;
         }
         if t.is_std("List") || t.is_std("Map") || t.is_std("Set") {
@@ -775,7 +1044,7 @@ impl Checker {
             }
             return t.args.iter().all(|a| self.property_in(a, property, state));
         }
-        if t.is_std("BigInt") || t.is_std("Regex") || t.is_std("Timestamp") {
+        if t.is_std("BigInt") || t.is_std("Regex") || t.is_time("Timestamp") {
             return property == "Equal" && !t.is_std("Regex");
         }
         if t.kind == Kind::Native {
@@ -829,9 +1098,15 @@ impl Checker {
 
     /// Methods named `name` available on `receiver`.
     pub(crate) fn methods(&self, receiver: &Ty, name: Name) -> Vec<MethodRef> {
-        if let Some(m) = native_method(receiver, name)
-            && self.native_receiver_available(receiver, name)
-        {
+        // A type's own `clone` replaces the structural one: a resource's clone duplicates its
+        // handle and returns a `Result`.
+        if name == "clone" && matches!(receiver.kind, Kind::Record | Kind::Alternative) {
+            let own = self.implemented_methods(receiver, name);
+            if !own.is_empty() {
+                return own;
+            }
+        }
+        if let Some(m) = native_method(receiver, name) {
             return vec![Rc::new(m)];
         }
         if receiver.kind == Kind::Contract
@@ -885,13 +1160,13 @@ impl Checker {
         m.visible_in(self.current_file())
     }
 
-    /// Whether a value of `t` can be bound by `with`.
+    /// Whether a value of `t` is closed when its scope ends.
     pub(crate) fn closeable(&self, t: &Ty) -> bool {
         if t.kind == Kind::Contract || t.kind == Kind::Variable {
             return self
                 .methods(t, n("close"))
                 .iter()
-                .any(|m| m.ty.params.is_empty() && m.ty.result_ty().id == "Unit");
+                .any(|m| m.ty.params.is_empty() && is_close_result(&m.ty.result_ty()));
         }
         self.implements(t, &standard("Closeable", vec![]))
     }
@@ -1026,6 +1301,11 @@ impl Checker {
     /// collection types cannot take one, so they are told what to use instead.
     pub(crate) fn unsatisfied_message(&self, t: &Ty, bound: &Ty, alternative: &str) -> String {
         let prefix = format!("{t} does not satisfy {bound}; ");
+        if bound.is_std("Data")
+            && let Some(blocker) = self.data_blocker(t, &mut Vec::new(), &mut Vec::new())
+        {
+            return blocker.message(t);
+        }
         if bound.is_std("Hashable") && float_bits(t).is_some() {
             return format!(
                 "{t} does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimal"
@@ -1041,6 +1321,16 @@ impl Checker {
                 "{prefix}it holds a Shared handle, and a key changed through another handle stays filed under its old hash; key on a plain value such as an Int id instead"
             );
         }
+        if bound.is_std("Hashable") && self.holds_resource(t, &mut Vec::new()) {
+            return format!(
+                "{prefix}it is or holds a Closeable resource, which is closed once by its owner and cannot be a set element or map key; key on a plain value such as an Int id instead"
+            );
+        }
+        if bound.is_std("Clonable") && t.kind != Kind::Variable {
+            return format!(
+                "{prefix}it is or holds a Closeable resource, which has one owner and closes once, so it cannot be copied; move it, or use it in place"
+            );
+        }
         if matches!(t.kind, Kind::Record | Kind::Alternative)
             && let Some(symbol) = t.symbol()
             && (symbol.native.as_str().is_empty() || self.standard_declarations)
@@ -1048,27 +1338,6 @@ impl Checker {
             return format!("{prefix}add 'impl {bound} for {t}:' or {alternative}");
         }
         format!("{prefix}{alternative}")
-    }
-
-    /// Explains a failed `with` binding. Built-in and wrapper types cannot
-    /// receive an implementation, so they are told to unwrap the value first.
-    pub(crate) fn with_not_closeable_message(&self, t: &Ty) -> String {
-        let name = t.to_string();
-        if t.is_std("Result") || t.is_std("Optional") {
-            return format!(
-                "with needs a Closeable value, but this expression is {name}; unwrap it first with 'try' (inside a function that returns a compatible Result) or 'if let'"
-            );
-        }
-        let nominal = t.symbol().is_some_and(|s| s.native.as_str().is_empty())
-            && matches!(t.kind, Kind::Record | Kind::Alternative);
-        if !nominal {
-            return format!(
-                "with needs a Closeable value, but this expression is {name}, which cannot implement Closeable; bind a source type that has 'impl Closeable' or declares close() Unit"
-            );
-        }
-        format!(
-            "with requires an explicit Closeable implementation or a contract declaring close() -> Unit; {name} has none, so add 'impl Closeable for {name}:' with var def close() -> Unit"
-        )
     }
 
     /// Whether a concrete `actual` converts implicitly to the interface `expected`.

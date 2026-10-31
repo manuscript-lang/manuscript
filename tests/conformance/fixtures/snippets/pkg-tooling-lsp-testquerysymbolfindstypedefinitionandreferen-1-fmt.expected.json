@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def double(value: Int) -> Int:\n    return value * 2\n\nexport def main() -> Int:\n    let x = double(4)\n    return x - 8\n"
-  }
-}

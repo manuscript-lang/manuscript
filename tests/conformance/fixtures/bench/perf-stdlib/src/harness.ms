@@ -1,31 +1,31 @@
-from "@std/io.ms" import stdout
-from "@std/time.ms" import clock
+import stdout from "@std/io.ms"
+import clock from "@std/time.ms"
 
 # Shared helpers for the standard-library micro-benchmarks.
 export type Point:
     x: Int
     y: Int
 
-export def say(text: String) -> Unit:
+export fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
 # Runs `body` once and prints `name<TAB>ops<TAB>ns_per_op`; `body` returns a checksum that keeps its work observable.
-export def bench(name: String, ops: Int, body: Callable[[], Int]) -> Unit:
+export fn bench(name: String, ops: Int, body: fn() Int) Unit:
     let started = clock().now()
     let checksum = body()
     let elapsed = clock().now().difference(started).to_nanoseconds()
-    say(f"{name}\t{ops}\t{elapsed / ops}\n")
-    say(f"# checksum {name} {checksum}\n")
-    say(f"# elapsed {name} {elapsed}\n")
+    say("{name}\t{ops}\t{elapsed / ops}\n")
+    say("# checksum {name} {checksum}\n")
+    say("# elapsed {name} {elapsed}\n")
 
-export def ints(count: Int) -> List[Int]:
+export fn ints(count: Int) List[Int]:
     var out: List[Int] = []
     for i in 0..count:
         out.append((i * 7919) % 10007)
     return out
 
-export def words(count: Int) -> List[String]:
+export fn words(count: Int) List[String]:
     var out: List[String] = []
     for i in 0..count:
-        out.append(f"word{i % 977}")
+        out.append("word{i % 977}")
     return out

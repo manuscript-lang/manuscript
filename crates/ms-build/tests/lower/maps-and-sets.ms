@@ -3,9 +3,10 @@
 # expect-mir: "msrt_list_to_set"
 # expect-mir: "put "
 
-export def main() -> Int:
+export fn main() Int:
     var m = {"a": 1}
     m.add("b", 2)
+
     let s = Set[Int]([1, 2])
     var total = 0
     for e in m:

@@ -1,28 +1,28 @@
 # conform: tags=faults,generics,match,modules,mutation,optional,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/source-call-order.ms
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def pair(a: Int, b: Int) -> Int: a * 10 + b
+fn pair(a: Int, b: Int) Int: a * 10 + b
 
 test "arguments":
     var value = 1
-    let option: Optional[Int] = some(2)
+    let option: Int? = 2
     let result = pair(
         a: value,
         b: match option:
-            case some(i):
+            i:
                 value = 9
                 i
-            case none: 0
+            none: 0
     )
     try expect_equal(result, 12)
 
-def optional(value: Optional[Int]) -> Int: value.get()
+fn optional(value: Int?) Int: value.get()
 
-def defaulted(value: Int = 3) -> Int: value
+fn defaulted(value: Int = 3) Int: value
 
-def identity[T](value: T) -> T: value
+fn identity[T](value: T) T: value
 
 test "source call dispatch contracts":
     try expect_equal(optional(4), 4)

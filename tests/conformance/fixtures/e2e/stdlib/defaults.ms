@@ -1,61 +1,61 @@
 # conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,lists,match,modules,mutation,optional,records,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-process,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/defaults.ms
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/csv.ms" import parse, stringify, CsvOptions, CsvError
-from "@std/encoding.ms" import base64_encode, base64_decode, EncodingError
-from "@std/process.ms" import Commands, Subprocess, CommandOutput, CommandError, commands, Stdio
-from "@std/bytes.ms" import Bytes
+import expect_equal, expect_false from "@std/test.ms"
+import parse, stringify, CsvOptions, CsvError from "@std/csv.ms"
+import base64_encode, base64_decode, EncodingError from "@std/encoding.ms"
+import Commands, Subprocess, CommandOutput, CommandError, commands, Stdio from "@std/process.ms"
+import Bytes from "@std/bytes.ms"
 
-def forward[T](item: T) -> T: item
+fn forward[T](item: T) T: item
 
 type Capture:
     tag: Bytes
 
 impl Commands for Capture:
-    def run(
+    fn run(
         program: String,
         arguments: List[String],
         input: Bytes,
-        max_output_bytes: Optional[Int],
-        timeout: Optional[Duration]
-    ) -> Result[CommandOutput, CommandError]:
+        max_output_bytes: Int?,
+        timeout: Duration?
+    ) CommandOutput!CommandError:
         return ok(CommandOutput(0, input, "".to_bytes()))
 
-    def spawn(
+    fn spawn(
         program: String,
         arguments: List[String],
         stdin: Stdio,
         stdout: Stdio,
         stderr: Stdio
-    ) -> Result[Subprocess, CommandError]:
+    ) Subprocess!CommandError:
         return error(CommandError.Unavailable)
 
-from "@std/time.ms" import Duration
+import Duration from "@std/time.ms"
 
-def generic_run[T: Commands](service: T) -> Result[Bytes, Error]:
+fn generic_run[T: Commands](service: T) Bytes!:
     return ok((try service.run("fake", [])).stdout)
 
 type Override:
     input: Bytes
 
 impl Commands for Override:
-    def run(
+    fn run(
         program: String,
         arguments: List[String],
         input: Bytes = self.input,
-        max_output_bytes: Optional[Int] = none,
-        timeout: Optional[Duration]
-    ) -> Result[CommandOutput, CommandError]:
+        max_output_bytes: Int?,
+        timeout: Duration?
+    ) CommandOutput!CommandError:
         return ok(CommandOutput(0, input, "".to_bytes()))
 
-    def spawn(
+    fn spawn(
         program: String,
         arguments: List[String],
         stdin: Stdio,
         stdout: Stdio,
         stderr: Stdio
-    ) -> Result[Subprocess, CommandError]:
+    ) Subprocess!CommandError:
         return error(CommandError.Unavailable)
 
 test "concrete implementation defaults and interface defaults stay distinct":
@@ -95,7 +95,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
     let typed = forward(stringify)
     try expect_equal((try typed([["a", "b"]], second, none)), "a,b\n")
 
-    let limited: Result[List[List[String]], CsvError] = error(CsvError.LimitExceeded)
+    let limited: List[List[String]]!CsvError = error(CsvError.LimitExceeded)
     try expect_false(
         (
             parse("a,b\n", max_cells: 1) != limited
@@ -103,7 +103,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
         )
     )
 
-    let invalid: Result[String, CsvError] = error(CsvError.InvalidInput)
+    let invalid: String!CsvError = error(CsvError.InvalidInput)
     try expect_equal(stringify([["a"]], CsvOptions("")), invalid)
 
 test "Base64 defaults support stored functions and explicit alphabets":
@@ -111,31 +111,31 @@ test "Base64 defaults support stored functions and explicit alphabets":
     try expect_false(
         (
             base64_encode(bytes) != "/w=="
-            or base64_encode(bytes, False) != "/w=="
+            or base64_encode(bytes, false) != "/w=="
         )
     )
-    try expect_equal(base64_encode(bytes, True), "_w==")
+    try expect_equal(base64_encode(bytes, true), "_w==")
 
     let encode = base64_encode
     let copied = base64_encode
     try expect_equal(copied(bytes), "/w==")
 
-    let typed: Callable[[Bytes, Bool], String] = encode
-    try expect_equal(typed(bytes, False), "/w==")
+    let typed: fn(Bytes, Bool) String = encode
+    try expect_equal(typed(bytes, false), "/w==")
     try expect_false(
         (
             (try base64_decode("/w==")) != bytes
-            or (try base64_decode("_w==", True)) != bytes
+            or (try base64_decode("_w==", true)) != bytes
         )
     )
 
     let decode = base64_decode
     try expect_equal((try decode("/w==", max_bytes: 1)), bytes)
 
-    let invalid: Result[Bytes, EncodingError] = error(EncodingError.InvalidData)
+    let invalid: Bytes!EncodingError = error(EncodingError.InvalidData)
     try expect_equal(base64_decode("_w=="), invalid)
 
-    let limited: Result[Bytes, EncodingError] = error(EncodingError.LimitExceeded)
+    let limited: Bytes!EncodingError = error(EncodingError.LimitExceeded)
     try expect_equal(base64_decode("/w==", max_bytes: 0), limited)
 
 test "Commands defaults cross concrete bound view and generic boundaries":
@@ -156,6 +156,6 @@ test "Commands defaults cross concrete bound view and generic boundaries":
     let forwarded = forward(view.run)
     try expect_equal((try forwarded("fake", [], input, none, none)).stdout.get(0), 42)
 
-    let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
+    let invalid: CommandOutput!CommandError = error(CommandError.InvalidInput)
     let native = commands().run
     try expect_equal(native("", []), invalid)

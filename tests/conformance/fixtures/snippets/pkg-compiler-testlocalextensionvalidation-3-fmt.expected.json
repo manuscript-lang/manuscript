@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "impl Read[Int] for Box[Int]:\n    def get() -> String:\n        return \"wrong\"\n"
-  }
-}

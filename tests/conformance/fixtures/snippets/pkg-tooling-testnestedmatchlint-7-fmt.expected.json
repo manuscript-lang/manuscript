@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def use(value: Optional[Int]) -> Int:\n    let present = match value:\n        case some(n): n\n        case none: return 0\n\n    return match value:\n        case some(n): present + n\n        case none: 0\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def first[T](left: T, right: T) -> T: return left\n\ndef call(left: Int, right: Int) -> Int: return first(right, left)\n"
-  }
-}

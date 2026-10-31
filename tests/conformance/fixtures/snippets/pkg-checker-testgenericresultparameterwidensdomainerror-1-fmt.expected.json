@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Failure:\n    code: Int\n\nimpl Error for Failure:\n    def message() -> String: \"failure\"\n\ndef failing() -> Result[Int, Failure]: error(Failure(code: 1))\n\ndef count[T](r: Result[T, Error]) -> Int: 1\n\ndef use() -> Int: count(r: failing())\n"
-  }
-}

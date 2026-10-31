@@ -190,7 +190,7 @@ fn tier_section(title: &str, tier: &str, findings: &[Finding], options: ReviewOp
     let prefixes: &[&str] = match tier {
         TIER_EFFECT => &["effects:"],
         TIER_ERROR => &["error type:", "try sites:"],
-        TIER_RESOURCE => &["with scopes:"],
+        TIER_RESOURCE => &["resource scopes:"],
         _ => &[],
     };
     let mut lines = Vec::new();
@@ -257,11 +257,11 @@ pub fn project_report(head: &Facts, options: ReviewOptions) -> Report {
         input: "project (no diff)".into(),
         ..Report::default()
     };
-    let (mut exported, mut tests, mut withs) = (0, 0, 0);
+    let (mut exported, mut tests, mut scopes) = (0, 0, 0);
     for f in head.entities.values() {
         exported += usize::from(f.exported);
         tests += usize::from(f.kind == "test");
-        withs += usize::from(f.withs > 0);
+        scopes += usize::from(f.scopes > 0);
     }
     let files: BTreeSet<&String> = head
         .entities
@@ -277,7 +277,7 @@ pub fn project_report(head: &Facts, options: ReviewOptions) -> Report {
             format!("entities              {}", head.entities.len()),
             format!("exported              {exported}"),
             format!("tests                 {tests}"),
-            format!("with scopes           {withs}"),
+            format!("resource scopes       {scopes}"),
         ],
         ..Section::default()
     };
@@ -301,8 +301,8 @@ pub fn project_report(head: &Facts, options: ReviewOptions) -> Report {
                 at.clone(),
             ]);
         }
-        if f.withs > 0 {
-            resources.push(vec![f.name.clone(), f.withs.to_string(), at]);
+        if f.scopes > 0 {
+            resources.push(vec![f.name.clone(), f.scopes.to_string(), at]);
         }
         if !f.error.is_empty() {
             *error_types.entry(&f.error).or_default() += 1;

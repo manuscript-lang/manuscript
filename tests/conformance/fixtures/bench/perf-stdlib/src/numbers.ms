@@ -1,18 +1,18 @@
-from "./harness.ms" import bench
-from "@std/bytes.ms" import Bytes
-from "@std/decimal.ms" import Decimal
-from "@std/math.ms" import from_int
-from "@std/archive.ms" import compress, decompress
-from "@std/time.ms" import parse_timestamp
-from "@std/queue.ms" import PriorityQueue, Queue
+import bench from "./harness.ms"
+import Bytes from "@std/bytes.ms"
+import Decimal from "@std/decimal.ms"
+import from_int from "@std/math.ms"
+import compress, decompress from "@std/archive.ms"
+import parse_timestamp from "@std/time.ms"
+import PriorityQueue, Queue from "@std/queue.ms"
 
-export def bench_numbers() -> Unit:
+export fn bench_numbers() Unit:
     let rate: Decimal = 1.12345d
 
     bench(
         "bigint.factorial_1000",
         1000,
-        lambda () -> Int:
+        fn() Int:
             var acc = from_int(1)
             for i in 1..1001:
                 acc = acc.multiply(from_int(i))
@@ -22,7 +22,7 @@ export def bench_numbers() -> Unit:
     bench(
         "decimal.add_round",
         20000,
-        lambda () -> Int:
+        fn() Int:
             var n = 0
             for i in 0..20000:
                 if let d = (i.to_decimal() + rate).round(2):
@@ -40,7 +40,7 @@ export def bench_numbers() -> Unit:
     bench(
         "compress.gzip",
         blob.length(),
-        lambda () -> Int:
+        fn() Int:
             if let b = compress(blob, "gzip", 6):
                 return b.length()
 
@@ -50,7 +50,7 @@ export def bench_numbers() -> Unit:
     bench(
         "compress.roundtrip",
         blob.length(),
-        lambda () -> Int:
+        fn() Int:
             if let b = compress(blob, "gzip", 6):
                 return unpacked_length(b)
 
@@ -60,7 +60,7 @@ export def bench_numbers() -> Unit:
     bench(
         "time.parse_timestamp",
         20000,
-        lambda () -> Int:
+        fn() Int:
             var n = 0
             for i in 0..20000:
                 if let t = parse_timestamp("2026-03-01T12:30:45.123Z"):
@@ -71,7 +71,7 @@ export def bench_numbers() -> Unit:
     bench(
         "queue.enqueue_dequeue",
         200000,
-        lambda () -> Int:
+        fn() Int:
             var q = Queue[Int]()
             for i in 0..100000:
                 q.enqueue(i)
@@ -85,7 +85,7 @@ export def bench_numbers() -> Unit:
     bench(
         "priority_queue.enqueue_dequeue",
         100000,
-        lambda () -> Int:
+        fn() Int:
             var q = PriorityQueue[Int]()
             for i in 0..50000:
                 q.enqueue((i * 7919) % 10007)
@@ -96,7 +96,7 @@ export def bench_numbers() -> Unit:
             return n
     )
 
-def unpacked_length(data: Bytes) -> Int:
+fn unpacked_length(data: Bytes) Int:
     if let b = decompress(data, "gzip"):
         return b.length()
 

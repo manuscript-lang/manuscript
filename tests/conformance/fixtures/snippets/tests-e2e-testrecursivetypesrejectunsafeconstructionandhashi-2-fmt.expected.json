@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Node:\n    next: Optional[Node]\n\nexport def main() -> Int:\n    let node = Node(none)\n    node.next = some(node)\n    return node.hash()\n"
-  }
-}

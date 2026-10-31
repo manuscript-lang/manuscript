@@ -652,8 +652,8 @@ impl<'a> FnLower<'a> {
         result_ty: MTy,
     ) -> Result<(Value, Option<Val>), Error> {
         let mt = self.ty_of(old);
-        if name == "build" {
-            return self.build_builder(old, result_ty);
+        if name == "drain" {
+            return self.drain_builder(old, result_ty);
         }
         if name == "add_default_from" {
             return self.add_default_from(old, decl, args, copy_result);
@@ -671,6 +671,28 @@ impl<'a> FnLower<'a> {
             _ => crate::rtcall::method_symbol(self.b.m, mt, name)
                 .ok_or_else(|| Error::new(format!("unsupported mutator {name}")))?,
         };
+        // An owned element moves into the list: copying it would leave the caller a second
+        // value to drop, and a resource would close twice.
+        if let ("msrt_list_insert_copy", TyKind::List(elem)) =
+            (sym.as_str(), self.b.m.types.kind(mt).clone())
+            && let Some(value) = args.iter().find(|a| a.name.as_str() == "value")
+            && let Some(index) = args.iter().find(|a| a.name.as_str() == "index")
+            && value.val.own
+            && !value.wrapped
+            && value.val.v != old
+        {
+            let d = self.type_desc(elem);
+            let i = self.borrow(index.val);
+            let element = self.put_slot(value.val.v);
+            let slot = self.put_slot(old);
+            self.call_runtime("msrt_list_insert", &[slot, d, i, element], MTy::UNIT)?;
+            let new = self.take_slot(slot, mt);
+            let result = copy_result.then(|| {
+                let v = self.owned(Val { v: new, own: false });
+                Val { v, own: true }
+            });
+            return Ok((new, result));
+        }
         // An argument that is the receiver itself is copied before the receiver moves out.
         let args: Vec<NArg> = args
             .iter()
@@ -771,17 +793,16 @@ impl<'a> FnLower<'a> {
         Ok((new, result))
     }
 
-    /// `builder.build()`: a copy of the accumulated value; building again yields the same.
-    fn build_builder(&mut self, old: Value, result_ty: MTy) -> Result<(Value, Option<Val>), Error> {
+    /// `builder.drain()`: the accumulated value, leaving the builder empty. The runtime consumes
+    /// the buffer it freezes into text.
+    fn drain_builder(&mut self, old: Value, result_ty: MTy) -> Result<(Value, Option<Val>), Error> {
+        let empty = self.call_runtime("msrt_list_new", &[], MTy::BYTES)?;
         if result_ty == MTy::STR {
-            // The runtime consumes the buffer it builds from: build from a copy.
-            let copy = self.owned(Val { v: old, own: false });
-            let slot = self.put_slot(copy);
+            let slot = self.put_slot(old);
             let text = self.call_runtime("msrt_strbuilder_freeze", &[slot], MTy::STR)?;
-            return Ok((old, Some(Val { v: text, own: true })));
+            return Ok((empty, Some(Val { v: text, own: true })));
         }
-        let copy = self.owned(Val { v: old, own: false });
-        Ok((old, Some(Val { v: copy, own: true })))
+        Ok((empty, Some(Val { v: old, own: true })))
     }
 
     /// `map.get_or(key, fallback)`: the entry is read through its pointer, so a hit copies the

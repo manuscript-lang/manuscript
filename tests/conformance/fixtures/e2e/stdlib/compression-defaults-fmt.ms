@@ -1,17 +1,17 @@
 # conform: tags=aliasing,control-flow,faults,formatter,generics,lists,modules,mutation,parser,stdlib-bytes,stdlib-compress,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/compression-defaults.ms
-from "@std/test.ms" import expect_equal
-from "@std/archive.ms" import compress, decompress, CompressionFormat, CompressionError
-from "@std/bytes.ms" import Bytes
+import expect_equal from "@std/test.ms"
+import compress, decompress, CompressionFormat, CompressionError from "@std/archive.ms"
+import Bytes from "@std/bytes.ms"
 
-def forwarded[T](item: T) -> T: item
+fn forwarded[T](item: T) T: item
 
-def supplied(var log: List[String], data: Bytes) -> Bytes:
+fn supplied(var log: List[String], data: Bytes) Bytes:
     log.append("data")
     return data
 
-def chosen(var log: List[String], format: String) -> String:
+fn chosen(var log: List[String], format: String) String:
     log.append("format")
     return format
 
@@ -54,9 +54,9 @@ test "compression omission equals explicit level six for every format":
 
 test "compression defaults retain invalid levels formats and output budgets":
     let data = "abc".to_bytes()
-    let invalid: Result[Bytes, CompressionError] = error(CompressionError.InvalidInput)
-    let limited: Result[Bytes, CompressionError] = error(CompressionError.LimitExceeded)
-    let unsupported: Result[Bytes, CompressionError] = error(
+    let invalid: Bytes!CompressionError = error(CompressionError.InvalidInput)
+    let limited: Bytes!CompressionError = error(CompressionError.LimitExceeded)
+    let unsupported: Bytes!CompressionError = error(
         CompressionError.Unsupported
     )
 

@@ -1,0 +1,1152 @@
+{
+  "complete": true,
+  "cases": [
+    {
+      "case": [
+        "subset",
+        0,
+        "true",
+        10000
+      ],
+      "before": {
+        "instructions": 335784,
+        "checksum": 10000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/0-before.callgrind",
+        "trace_sha256": "721ae0bcebaf078b827ed617c1fd65ae27869689ecc96fc8ce423ba57caf9f26"
+      },
+      "after": {
+        "instructions": 124615,
+        "checksum": 10000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/0-after.callgrind",
+        "trace_sha256": "ed481eb499118158b5efd01a099a37cb3b32797a0a8e0bf3075bdf45a8c59f75"
+      },
+      "ratio_after_before": 0.37111655111619374
+    },
+    {
+      "case": [
+        "subset",
+        1,
+        "true",
+        10000
+      ],
+      "before": {
+        "instructions": 1554843,
+        "checksum": 10000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/1-before.callgrind",
+        "trace_sha256": "5d61eab784dfbf959c7c28ab393df60e7132dd93af9bc66e080345d640b254f0"
+      },
+      "after": {
+        "instructions": 264777,
+        "checksum": 10000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/1-after.callgrind",
+        "trace_sha256": "d7c2cb4901323a687f2b8fb1136142a4bd4c7f3893a8d7b29271d098ab3ea6b7"
+      },
+      "ratio_after_before": 0.17029179151850057
+    },
+    {
+      "case": [
+        "subset",
+        1,
+        "early",
+        10000
+      ],
+      "before": {
+        "instructions": 1514839,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/2-before.callgrind",
+        "trace_sha256": "22ca02313f6de30076749bdc4fc05e070277d6e9c37dd75d92b00223961be5d4"
+      },
+      "after": {
+        "instructions": 204787,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/2-after.callgrind",
+        "trace_sha256": "222d56acc8162f3a6f66aaa337a85295a5f8587ae055d979e95ab27cc81e38ba"
+      },
+      "ratio_after_before": 0.135187303733268
+    },
+    {
+      "case": [
+        "subset",
+        1,
+        "late",
+        10000
+      ],
+      "before": {
+        "instructions": 1514837,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/3-before.callgrind",
+        "trace_sha256": "27108241ea1a475816177057e0613689d73fc148ffa5928e68dca6596521bad8"
+      },
+      "after": {
+        "instructions": 204771,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/3-after.callgrind",
+        "trace_sha256": "0e6e5467bf9a019091ccff9c9f236bd62eb38bd1c07a065eba2aefcf854515f8"
+      },
+      "ratio_after_before": 0.1351769200250588
+    },
+    {
+      "case": [
+        "subset",
+        8,
+        "true",
+        1000
+      ],
+      "before": {
+        "instructions": 445271,
+        "checksum": 1000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/4-before.callgrind",
+        "trace_sha256": "9d7c30ed312bed2771d60540c65fd04557f6b31672bb655e11abf36046b0702a"
+      },
+      "after": {
+        "instructions": 110218,
+        "checksum": 1000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/4-after.callgrind",
+        "trace_sha256": "56535a9092f63191e1be5dc1516289a6f01464321067d8b9cd09c5988f47b729"
+      },
+      "ratio_after_before": 0.2475301557927644
+    },
+    {
+      "case": [
+        "subset",
+        8,
+        "early",
+        1000
+      ],
+      "before": {
+        "instructions": 406291,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/5-before.callgrind",
+        "trace_sha256": "e0d2f39b2d9fe653841d73b082fb0514f94a7222acc61203e601e5525fa21c5a"
+      },
+      "after": {
+        "instructions": 34230,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/5-after.callgrind",
+        "trace_sha256": "da07d5a6eedd9d63cecfb90aa2b23edb00cc14af720447d9bce0b7f4723484f1"
+      },
+      "ratio_after_before": 0.08424995877339149
+    },
+    {
+      "case": [
+        "subset",
+        8,
+        "late",
+        1000
+      ],
+      "before": {
+        "instructions": 441279,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/6-before.callgrind",
+        "trace_sha256": "bd6170cf71d5872780661f803619ed699668e46725e85fb675993feafc795ca8"
+      },
+      "after": {
+        "instructions": 104226,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/6-after.callgrind",
+        "trace_sha256": "846f848e833c8e265559c808fcb7953b966057df3d24897e32a046b5d2b54a4b"
+      },
+      "ratio_after_before": 0.23619070927916352
+    },
+    {
+      "case": [
+        "subset",
+        1024,
+        "true",
+        10
+      ],
+      "before": {
+        "instructions": 324129,
+        "checksum": 10,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/7-before.callgrind",
+        "trace_sha256": "779f64c30e1b1537d79ceef00764904e198b04e3bef524593ad465d9f94b8ec7"
+      },
+      "after": {
+        "instructions": 147329,
+        "checksum": 10,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/7-after.callgrind",
+        "trace_sha256": "8c771ba1ff160062b06a489d0c1c86328deb4beba5cf76a6112f191e0c706c40"
+      },
+      "ratio_after_before": 0.45453816227489674
+    },
+    {
+      "case": [
+        "subset",
+        1024,
+        "early",
+        10
+      ],
+      "before": {
+        "instructions": 271820,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/8-before.callgrind",
+        "trace_sha256": "7860b262e8dc345fe70a22d160b1f1a3d90e9398b9cbae4217b3d6a66b9ce657"
+      },
+      "after": {
+        "instructions": 45002,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/8-after.callgrind",
+        "trace_sha256": "bfc2b0f8f5e5591907d757f03d2fccc37f36ac42228f5f3d8c08d0003f7eec3f"
+      },
+      "ratio_after_before": 0.16555808991244206
+    },
+    {
+      "case": [
+        "subset",
+        1024,
+        "late",
+        10
+      ],
+      "before": {
+        "instructions": 324112,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/9-before.callgrind",
+        "trace_sha256": "8987494628fe7d2421f5ca79af0b3d60634a94816085fabfa0c12ecfe0227906"
+      },
+      "after": {
+        "instructions": 148438,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/9-after.callgrind",
+        "trace_sha256": "0afaf99a940d16952b52296ffb74ea5130d6e500b8b9f54ce48ae5dbdf330899"
+      },
+      "ratio_after_before": 0.4579836599693933
+    },
+    {
+      "case": [
+        "subset",
+        65536,
+        "true",
+        1
+      ],
+      "before": {
+        "instructions": 2288897,
+        "checksum": 1,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/10-before.callgrind",
+        "trace_sha256": "8ae143fe3be3dea2f7c46d16a9731adc28dd734240cd2a79c2d7e232875b7b84"
+      },
+      "after": {
+        "instructions": 1564470,
+        "checksum": 1,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/10-after.callgrind",
+        "trace_sha256": "fd300d462b55ab55502627e1f13a252a539a76766ce324613f3cabfee9ad0188"
+      },
+      "ratio_after_before": 0.6835038885541813
+    },
+    {
+      "case": [
+        "subset",
+        65536,
+        "early",
+        1
+      ],
+      "before": {
+        "instructions": 1960101,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/11-before.callgrind",
+        "trace_sha256": "1d4b73a77f325e6928790bbf319b1def02ac394dc472a8cae64ee6860e0fdee0"
+      },
+      "after": {
+        "instructions": 908017,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/11-after.callgrind",
+        "trace_sha256": "b17a5e456ba643a7f1f1a4eda675777a5436cccd775da469b31a2caf8cc8c972"
+      },
+      "ratio_after_before": 0.46325010803014743
+    },
+    {
+      "case": [
+        "subset",
+        65536,
+        "late",
+        1
+      ],
+      "before": {
+        "instructions": 2287772,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/12-before.callgrind",
+        "trace_sha256": "0a295627b7cc2a50b924fde4093da13574f7cea4fc50c0fdfc7aee5f8e69ef22"
+      },
+      "after": {
+        "instructions": 1564489,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/12-after.callgrind",
+        "trace_sha256": "33f067aaba41a90a5071e4358521c46029561bb4d1c3e281c72742a461009bcb"
+      },
+      "ratio_after_before": 0.6838483030651655
+    },
+    {
+      "case": [
+        "superset",
+        0,
+        "true",
+        10000
+      ],
+      "before": {
+        "instructions": 374624,
+        "checksum": 10000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/13-before.callgrind",
+        "trace_sha256": "11c076da5e1b50aa43d047e16922e174c489f79989bbb8790185a56776208b9f"
+      },
+      "after": {
+        "instructions": 165769,
+        "checksum": 10000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/13-after.callgrind",
+        "trace_sha256": "566dd16e00f10d9d4b1f5e0486de06e87f72e3e026ed1c0095c292542fba8f0f"
+      },
+      "ratio_after_before": 0.44249434099256857
+    },
+    {
+      "case": [
+        "superset",
+        1,
+        "true",
+        10000
+      ],
+      "before": {
+        "instructions": 1574837,
+        "checksum": 10000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/14-before.callgrind",
+        "trace_sha256": "2e6d8a3bb49e4076755866501420ecd882bfa23565bba72cf917bce2dea0c4ad"
+      },
+      "after": {
+        "instructions": 304785,
+        "checksum": 10000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/14-after.callgrind",
+        "trace_sha256": "b265311cfe42c9ec9768d9a2725ac5cfa30312f832554204a2a5d8a592659c5a"
+      },
+      "ratio_after_before": 0.1935343149798995
+    },
+    {
+      "case": [
+        "superset",
+        1,
+        "early",
+        10000
+      ],
+      "before": {
+        "instructions": 1534847,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/15-before.callgrind",
+        "trace_sha256": "1b1edde638d0cece478aed1161773e69f68c9580f989ba5a292e5819c8457324"
+      },
+      "after": {
+        "instructions": 245927,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/15-after.callgrind",
+        "trace_sha256": "e3166108dd587ea7950ee935b5c2e5881c2186c17749c053175db9fb655218b2"
+      },
+      "ratio_after_before": 0.16022900002410664
+    },
+    {
+      "case": [
+        "superset",
+        1,
+        "late",
+        10000
+      ],
+      "before": {
+        "instructions": 1534831,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/16-before.callgrind",
+        "trace_sha256": "a119e751018265aba70a925a885030eff526d255a60e410d6e57e90864b4063c"
+      },
+      "after": {
+        "instructions": 244779,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/16-after.callgrind",
+        "trace_sha256": "0c7c0226b84861b07e72dd2bb4625609527c5087264525785f1eefb541b7ddcc"
+      },
+      "ratio_after_before": 0.15948270526201255
+    },
+    {
+      "case": [
+        "superset",
+        8,
+        "true",
+        1000
+      ],
+      "before": {
+        "instructions": 447275,
+        "checksum": 1000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/17-before.callgrind",
+        "trace_sha256": "47800005c40da8053669888e93a8f7d1a76b4202ea7d74c660463ad72fa24132"
+      },
+      "after": {
+        "instructions": 114226,
+        "checksum": 1000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/17-after.callgrind",
+        "trace_sha256": "63bd9d2eb5199c32d94825ac5b6624961e5c7ec7e89745bccda61a153e0e2973"
+      },
+      "ratio_after_before": 0.2553820356603879
+    },
+    {
+      "case": [
+        "superset",
+        8,
+        "early",
+        1000
+      ],
+      "before": {
+        "instructions": 408285,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/18-before.callgrind",
+        "trace_sha256": "507d88685d394231d3d3947cd4f59934b6fccaf37388356913938c5b3b216683"
+      },
+      "after": {
+        "instructions": 38236,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/18-after.callgrind",
+        "trace_sha256": "f3cc1d75f0e38a1e4074dadc76d59e0db3423f011c5b400ca45f8003eae85092"
+      },
+      "ratio_after_before": 0.09365026880732821
+    },
+    {
+      "case": [
+        "superset",
+        8,
+        "late",
+        1000
+      ],
+      "before": {
+        "instructions": 443283,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/19-before.callgrind",
+        "trace_sha256": "136a826be5e3ac56dd9bc02b3ab40d7b126b753ea6173313cf47ea7cdfb252e1"
+      },
+      "after": {
+        "instructions": 108234,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/19-after.callgrind",
+        "trace_sha256": "4ba640c5cb285eab5bfd2595ba87e666cd5d868c336e57898b24cfdf93dc4aee"
+      },
+      "ratio_after_before": 0.24416456304437573
+    },
+    {
+      "case": [
+        "superset",
+        1024,
+        "true",
+        10
+      ],
+      "before": {
+        "instructions": 322997,
+        "checksum": 10,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/20-before.callgrind",
+        "trace_sha256": "a945f10d3e74a1c507e55c8398411446c7ae0710c880d8b2850d85b9bd1ad19a"
+      },
+      "after": {
+        "instructions": 147381,
+        "checksum": 10,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/20-after.callgrind",
+        "trace_sha256": "9b88945109e1f4b3cefd17c1149fb7ea07314e4f7b505da71082f7155617a544"
+      },
+      "ratio_after_before": 0.45629216370430686
+    },
+    {
+      "case": [
+        "superset",
+        1024,
+        "early",
+        10
+      ],
+      "before": {
+        "instructions": 271836,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/21-before.callgrind",
+        "trace_sha256": "9fae60626d938250cae9ebb14190d8ef962f4881214911e2d8c060f4b29f3638"
+      },
+      "after": {
+        "instructions": 45048,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/21-after.callgrind",
+        "trace_sha256": "7e5ffad51c26d90cc6f4b514cae08a783339bb07bf3e239c5849a7c1daea8fff"
+      },
+      "ratio_after_before": 0.16571756500242793
+    },
+    {
+      "case": [
+        "superset",
+        1024,
+        "late",
+        10
+      ],
+      "before": {
+        "instructions": 322980,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/22-before.callgrind",
+        "trace_sha256": "e91585bc5d2a0c1357c42220fec6d90a06a8898a2e4000a48c6243dd22c08a9b"
+      },
+      "after": {
+        "instructions": 147344,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/22-after.callgrind",
+        "trace_sha256": "f7b7328b9f83d3de4f5a260a15ee58b4d2c920991c744433f9072a78a7580e55"
+      },
+      "ratio_after_before": 0.4562016223914793
+    },
+    {
+      "case": [
+        "superset",
+        65536,
+        "true",
+        1
+      ],
+      "before": {
+        "instructions": 2287751,
+        "checksum": 1,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/23-before.callgrind",
+        "trace_sha256": "84a980c11fa588ae1a823397b7e1b49575170e6362866fb420fe4cb016bc497e"
+      },
+      "after": {
+        "instructions": 1563342,
+        "checksum": 1,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/23-after.callgrind",
+        "trace_sha256": "a95d56a9681cd67978a33366006349800c06409dd32791e7e67ba86f5fcfc83d"
+      },
+      "ratio_after_before": 0.6833532145762367
+    },
+    {
+      "case": [
+        "superset",
+        65536,
+        "early",
+        1
+      ],
+      "before": {
+        "instructions": 1960099,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/24-before.callgrind",
+        "trace_sha256": "82fcee5acd76426915797e092a6c8d890bd0d5bb8aeafba5abb650b12d2a9fb8"
+      },
+      "after": {
+        "instructions": 908019,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/24-after.callgrind",
+        "trace_sha256": "7a89b6974f2e42eedbd33eb19d5038e098cf68e001b33192d909e23646413972"
+      },
+      "ratio_after_before": 0.46325160106708896
+    },
+    {
+      "case": [
+        "superset",
+        65536,
+        "late",
+        1
+      ],
+      "before": {
+        "instructions": 2287772,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/25-before.callgrind",
+        "trace_sha256": "46aa258e7625df65d9dfdedcb0777549a38628d8150e6c76365e556129cd11b2"
+      },
+      "after": {
+        "instructions": 1563361,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/25-after.callgrind",
+        "trace_sha256": "3016e32dde9e609218653e1f61e48d3779e156bc23a07a5b4ab94ea80694ee11"
+      },
+      "ratio_after_before": 0.6833552469389432
+    },
+    {
+      "case": [
+        "disjoint",
+        0,
+        "true",
+        10000
+      ],
+      "before": {
+        "instructions": 374624,
+        "checksum": 10000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/26-before.callgrind",
+        "trace_sha256": "0e7da241bf6febcebae85a2eb4f2991695286ec2436f508776ac43a3c6db83bb"
+      },
+      "after": {
+        "instructions": 164623,
+        "checksum": 10000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/26-after.callgrind",
+        "trace_sha256": "8a865ff591b7729e1f32a0ad7a32d032ab6ded558d0fe792352abab3e4ae00b9"
+      },
+      "ratio_after_before": 0.4394352737678312
+    },
+    {
+      "case": [
+        "disjoint",
+        1,
+        "true",
+        10000
+      ],
+      "before": {
+        "instructions": 1555983,
+        "checksum": 10000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/27-before.callgrind",
+        "trace_sha256": "2fc4e8fee6b319f99b68eb696072a44bdf824dc8bf2a3e72357f5559a5df6faa"
+      },
+      "after": {
+        "instructions": 264785,
+        "checksum": 10000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/27-after.callgrind",
+        "trace_sha256": "0610a05ec2eff7a5ca70bc17d2b49d4fe5652da57f41aad6d35b6f44126a0ea7"
+      },
+      "ratio_after_before": 0.17017216769077811
+    },
+    {
+      "case": [
+        "disjoint",
+        1,
+        "early",
+        10000
+      ],
+      "before": {
+        "instructions": 1514847,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/28-before.callgrind",
+        "trace_sha256": "175e62c5a14ea867e3422027b2f6672f67c57d53595869113609c705b516a8cb"
+      },
+      "after": {
+        "instructions": 204781,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/28-after.callgrind",
+        "trace_sha256": "ef7f4b8ee493565e493e27f8b5513234081e7bf477dc4b715ea56b42f6517f52"
+      },
+      "ratio_after_before": 0.13518262900477737
+    },
+    {
+      "case": [
+        "disjoint",
+        1,
+        "late",
+        10000
+      ],
+      "before": {
+        "instructions": 1514831,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/29-before.callgrind",
+        "trace_sha256": "5a8430f6176f03b74a36f34f295767deab28a45f00253866dc797b9fe6624979"
+      },
+      "after": {
+        "instructions": 204779,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/29-after.callgrind",
+        "trace_sha256": "31eee4187dfefd0294d121cb9b800055dded901594cb27590e6fe2402ce81833"
+      },
+      "ratio_after_before": 0.1351827365560911
+    },
+    {
+      "case": [
+        "disjoint",
+        8,
+        "true",
+        1000
+      ],
+      "before": {
+        "instructions": 431275,
+        "checksum": 1000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/30-before.callgrind",
+        "trace_sha256": "f0471dc49739bb753f021f490d05b8e6fab511cba565df72a9eb0be3498b68fc"
+      },
+      "after": {
+        "instructions": 82226,
+        "checksum": 1000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/30-after.callgrind",
+        "trace_sha256": "0fa79c3120d3d693957de38de3436fd7b69d995d1e2d506f342c82e00decf824"
+      },
+      "ratio_after_before": 0.19065793287345661
+    },
+    {
+      "case": [
+        "disjoint",
+        8,
+        "early",
+        1000
+      ],
+      "before": {
+        "instructions": 392285,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/31-before.callgrind",
+        "trace_sha256": "9745025e0a0e96da4e6bce5caa1fbc31baef2d0136cf07838f9a31363bb9d92a"
+      },
+      "after": {
+        "instructions": 35382,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/31-after.callgrind",
+        "trace_sha256": "9610b73b744fb916b400c84453769a180ac4c750f70862343c62a195c0f794c8"
+      },
+      "ratio_after_before": 0.09019462890500529
+    },
+    {
+      "case": [
+        "disjoint",
+        8,
+        "late",
+        1000
+      ],
+      "before": {
+        "instructions": 427283,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/32-before.callgrind",
+        "trace_sha256": "01ab939460a4ea16ce80e123d18e5d2028e6f5157b69ed59f2228fecdb32bedf"
+      },
+      "after": {
+        "instructions": 76234,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/32-after.callgrind",
+        "trace_sha256": "703ff787b793ce7dce29ed3f52fbcda7744a05da469bcba55f2d190497d50283"
+      },
+      "ratio_after_before": 0.17841571043079177
+    },
+    {
+      "case": [
+        "disjoint",
+        1024,
+        "true",
+        10
+      ],
+      "before": {
+        "instructions": 302517,
+        "checksum": 10,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/33-before.callgrind",
+        "trace_sha256": "fd1fb79293b9901a7d94f237b41c5801d33025db08a39557ed61cda18fc236ab"
+      },
+      "after": {
+        "instructions": 106421,
+        "checksum": 10,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/33-after.callgrind",
+        "trace_sha256": "ed89abcfb4bc3216cf01ec99b85dcb9ae914f01a00e6a2424dd2f72b20e9196a"
+      },
+      "ratio_after_before": 0.3517851889315311
+    },
+    {
+      "case": [
+        "disjoint",
+        1024,
+        "early",
+        10
+      ],
+      "before": {
+        "instructions": 251356,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/34-before.callgrind",
+        "trace_sha256": "004cb1e09d77f2944dcb026d21d922653bdaa7a2489556993c2c7a40a0026653"
+      },
+      "after": {
+        "instructions": 45008,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/34-after.callgrind",
+        "trace_sha256": "3d926b79c4ee1742ec507a06c2dfb7affe113d765d4cd73c2cc093bfbb8aa30b"
+      },
+      "ratio_after_before": 0.17906077435987205
+    },
+    {
+      "case": [
+        "disjoint",
+        1024,
+        "late",
+        10
+      ],
+      "before": {
+        "instructions": 302500,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/35-before.callgrind",
+        "trace_sha256": "cc09b68f43431038326515d48ed1817489563d1b49df3322c31dcc338c2d6746"
+      },
+      "after": {
+        "instructions": 106384,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/35-after.callgrind",
+        "trace_sha256": "e002fca373ecde3b2e540d940e288525487e8c3ccdd4fd531c1edbdb33819a8d"
+      },
+      "ratio_after_before": 0.3516826446280992
+    },
+    {
+      "case": [
+        "disjoint",
+        65536,
+        "true",
+        1
+      ],
+      "before": {
+        "instructions": 2156679,
+        "checksum": 1,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/36-before.callgrind",
+        "trace_sha256": "b324dac31f3e7c3265de1d68ed0faa2851e07c57283ca59ab312201d021dc165"
+      },
+      "after": {
+        "instructions": 1301198,
+        "checksum": 1,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/36-after.callgrind",
+        "trace_sha256": "f5feea3c252ed18409070446f87fea99c4febbad02303bf92bfd432bf59edcfe"
+      },
+      "ratio_after_before": 0.6033341076720272
+    },
+    {
+      "case": [
+        "disjoint",
+        65536,
+        "early",
+        1
+      ],
+      "before": {
+        "instructions": 1829027,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/37-before.callgrind",
+        "trace_sha256": "f600bbff2a808e53c37e1c0b921b1535da36179a897cb8d69d58d7aeee9f91b2"
+      },
+      "after": {
+        "instructions": 908015,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/37-after.callgrind",
+        "trace_sha256": "bd5adba7b7eabc05e8532cf8b99976a346bf5c6ae38bea41836b428d52705fe4"
+      },
+      "ratio_after_before": 0.49644701800465496
+    },
+    {
+      "case": [
+        "disjoint",
+        65536,
+        "late",
+        1
+      ],
+      "before": {
+        "instructions": 2156700,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/38-before.callgrind",
+        "trace_sha256": "517c07b9dfd6d4f472a30ce4224b61b278b616201a190a74b7965a5f5e91578e"
+      },
+      "after": {
+        "instructions": 1301217,
+        "checksum": 0,
+        "exit_status": 0,
+        "trace": "/workspace/collections-second-artifacts/callgrind-bitset/38-after.callgrind",
+        "trace_sha256": "04401697c47df89b4df581211ed65da221c0092e60b19604bbaa55c493caa559"
+      },
+      "ratio_after_before": 0.6033370427041314
+    }
+  ],
+  "binaries": {
+    "before": {
+      "path": "/workspace/collections-second-artifacts/bitset-before",
+      "sha256": "aec0069b05ad1e503a17a16f5f214c78660b38c62dd1c561e2b10703557833bb"
+    },
+    "after": {
+      "path": "/workspace/collections-second-artifacts/bitset-after",
+      "sha256": "bf833791cbbc69ff78660996db4134ac0180c41f13e0481c75a746543c489640"
+    }
+  },
+  "valgrind": "valgrind-3.24.0",
+  "driver_sha256": "dc8e824a8d497a117b2cc9bcf80cb8f69e61457c33fef40650d0ac88aee3f9ef",
+  "validator_sha256": "474984bbb6af5f3cac94d2929ac7242431d3fd6e9b3804f144c52cf4b55e741d",
+  "expected_cases": [
+    [
+      "subset",
+      0,
+      "true",
+      10000
+    ],
+    [
+      "subset",
+      1,
+      "true",
+      10000
+    ],
+    [
+      "subset",
+      1,
+      "early",
+      10000
+    ],
+    [
+      "subset",
+      1,
+      "late",
+      10000
+    ],
+    [
+      "subset",
+      8,
+      "true",
+      1000
+    ],
+    [
+      "subset",
+      8,
+      "early",
+      1000
+    ],
+    [
+      "subset",
+      8,
+      "late",
+      1000
+    ],
+    [
+      "subset",
+      1024,
+      "true",
+      10
+    ],
+    [
+      "subset",
+      1024,
+      "early",
+      10
+    ],
+    [
+      "subset",
+      1024,
+      "late",
+      10
+    ],
+    [
+      "subset",
+      65536,
+      "true",
+      1
+    ],
+    [
+      "subset",
+      65536,
+      "early",
+      1
+    ],
+    [
+      "subset",
+      65536,
+      "late",
+      1
+    ],
+    [
+      "superset",
+      0,
+      "true",
+      10000
+    ],
+    [
+      "superset",
+      1,
+      "true",
+      10000
+    ],
+    [
+      "superset",
+      1,
+      "early",
+      10000
+    ],
+    [
+      "superset",
+      1,
+      "late",
+      10000
+    ],
+    [
+      "superset",
+      8,
+      "true",
+      1000
+    ],
+    [
+      "superset",
+      8,
+      "early",
+      1000
+    ],
+    [
+      "superset",
+      8,
+      "late",
+      1000
+    ],
+    [
+      "superset",
+      1024,
+      "true",
+      10
+    ],
+    [
+      "superset",
+      1024,
+      "early",
+      10
+    ],
+    [
+      "superset",
+      1024,
+      "late",
+      10
+    ],
+    [
+      "superset",
+      65536,
+      "true",
+      1
+    ],
+    [
+      "superset",
+      65536,
+      "early",
+      1
+    ],
+    [
+      "superset",
+      65536,
+      "late",
+      1
+    ],
+    [
+      "disjoint",
+      0,
+      "true",
+      10000
+    ],
+    [
+      "disjoint",
+      1,
+      "true",
+      10000
+    ],
+    [
+      "disjoint",
+      1,
+      "early",
+      10000
+    ],
+    [
+      "disjoint",
+      1,
+      "late",
+      10000
+    ],
+    [
+      "disjoint",
+      8,
+      "true",
+      1000
+    ],
+    [
+      "disjoint",
+      8,
+      "early",
+      1000
+    ],
+    [
+      "disjoint",
+      8,
+      "late",
+      1000
+    ],
+    [
+      "disjoint",
+      1024,
+      "true",
+      10
+    ],
+    [
+      "disjoint",
+      1024,
+      "early",
+      10
+    ],
+    [
+      "disjoint",
+      1024,
+      "late",
+      10
+    ],
+    [
+      "disjoint",
+      65536,
+      "true",
+      1
+    ],
+    [
+      "disjoint",
+      65536,
+      "early",
+      1
+    ],
+    [
+      "disjoint",
+      65536,
+      "late",
+      1
+    ]
+  ],
+  "source_sha256": "4e2ce4789a05cc3dcacd5b0ec5a3aec754c67929a76a4ab0f836c5a1fcfb3e51"
+}

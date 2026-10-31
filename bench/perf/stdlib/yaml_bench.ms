@@ -1,15 +1,14 @@
-from "@std/bench.ms" import keep, measure
-from "@std/collections.ms" import range
-from "@std/string.ms" import StringBuilder
-from "@std/yaml.ms" import parse, stringify, YamlValue
+import keep, measure from "@std/bench.ms"
+import StringBuilder from "@std/string.ms"
+import parse, stringify, YamlValue from "@std/yaml.ms"
 
-def yaml_doc(count: Int) -> String:
+fn yaml_doc(count: Int) String:
     var sb = StringBuilder()
-    for i in range(0, count):
-        sb.append(f"- id: {i}\n  name: user{i}\n  tags: [a, b]\n  ok: true\n")
+    for i in 0..count:
+        sb.append("- id: {i}\n  name: user{i}\n  tags: [a, b]\n  ok: true\n")
     return sb.build()
 
-def yaml_length(value: YamlValue) -> Int:
+fn yaml_length(value: YamlValue) Int:
     if let text = stringify(value):
         return text.length()
 
@@ -18,7 +17,7 @@ def yaml_length(value: YamlValue) -> Int:
 bench "yaml.parse":
     let yaml = yaml_doc(2000)
 
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         if parse(yaml).is_ok():
             return keep(1)
 
@@ -29,7 +28,7 @@ bench "yaml.parse":
 bench "yaml.roundtrip":
     let yaml = yaml_doc(2000)
 
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         if let v = parse(yaml):
             return keep(yaml_length(v))
 
@@ -40,4 +39,4 @@ bench "yaml.roundtrip":
 bench "yaml.stringify":
     let yaml = yaml_doc(2000)
     if let v = parse(yaml):
-        try measure(2000, lambda: keep(yaml_length(v)))
+        try measure(2000, fn: keep(yaml_length(v)))

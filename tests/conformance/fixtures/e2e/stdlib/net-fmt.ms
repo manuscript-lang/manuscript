@@ -1,8 +1,8 @@
-# conform: tags=aliasing,faults,formatter,modules,parser,stdlib-net,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
+# conform: tags=aliasing,faults,formatter,modules,parser,stdlib-net,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/net.ms
-from "@std/test.ms" import expect_equal, expect_error, expect_false
-from "@std/net.ms" import network, parse_ip, parse_cidr, contains_ip, NetworkError, IpFamily
+import expect_equal, expect_error, expect_false from "@std/test.ms"
+import network, parse_ip, parse_cidr, contains_ip, NetworkError, IpFamily from "@std/net.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -25,45 +25,39 @@ test "IP parsing CIDR normalization and containment":
 
 test "TCP loopback writes reads half close and EOF":
     let net = network()
-
-    with let listener = try net.listen("127.0.0.1:0"):
-        with let client = try net.connect(listener.address(), 2.seconds):
-            with let server = try listener.accept(2.seconds):
-                try client.write("hello", 2.seconds)
-                try expect_equal(
-                    (try server.read(5, 2.seconds)).get(), "hello".to_bytes()
-                )
-                try expect_equal(server.peer_address(), client.local_address())
-                try client.shutdown_write()
-                try expect_false(not (try server.read(5, 2.seconds)).is_none())
+    let listener = try net.listen("127.0.0.1:0")
+    let client = try net.connect(listener.address(), 2.seconds)
+    let server = try listener.accept(2.seconds)
+    try client.write("hello", 2.seconds)
+    try expect_equal((try server.read(5, 2.seconds)).get(), "hello".to_bytes())
+    try expect_equal(server.peer_address(), client.local_address())
+    try client.shutdown_write()
+    try expect_false(not (try server.read(5, 2.seconds)).is_none())
 
 test "UDP loopback preserves datagram data and sender":
     let net = network()
+    let receiver = try net.bind_datagram("127.0.0.1:0")
+    let sender = try net.bind_datagram("127.0.0.1:0")
+    try sender.send("packet", receiver.address(), 2.seconds)
 
-    with let receiver = try net.bind_datagram("127.0.0.1:0"):
-        with let sender = try net.bind_datagram("127.0.0.1:0"):
-            try sender.send("packet", receiver.address(), 2.seconds)
-
-            let packet = try receiver.receive(64, 2.seconds)
-            try expect_false(
-                (
-                    packet.data != "packet".to_bytes()
-                    or packet.sender != sender.address()
-                )
-            )
+    let packet = try receiver.receive(64, 2.seconds)
+    try expect_false(
+        (
+            packet.data != "packet".to_bytes()
+            or packet.sender != sender.address()
+        )
+    )
 
 test "network restriction denies admission and close rejects acquisitions":
-    let restricted = try network().restrict([], [], allow_listen: False)
-    with let scoped = restricted:
-        try expect_false(
+    let restricted = try network().restrict([], [], allow_listen: false)
+    try expect_false(
+        (
             (
-                (
-                    try expect_error(
-                        restricted.listen("127.0.0.1:0")
-                    )
-                ) != NetworkError.PermissionDenied
-            )
+                try expect_error(restricted.listen("127.0.0.1:0"))
+            ) != NetworkError.PermissionDenied
         )
+    )
+    restricted.close()
     try expect_false(
         (
             (
@@ -81,6 +75,6 @@ test "typed addresses preserve normalization and reject zones":
     try expect_ip_error("fe80::1%eth0")
     try expect_false((try contains_ip(try parse_cidr("::ffff:192.0.2.0/120"), ip)))
 
-def expect_ip_error(input: String) -> Result[Unit, Error]:
+fn expect_ip_error(input: String) Unit!:
     try expect_equal((try expect_error(parse_ip(input))), NetworkError.InvalidData)
-    return ok(())
+    return ok(unit)

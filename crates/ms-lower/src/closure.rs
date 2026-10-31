@@ -28,6 +28,7 @@ pub(crate) enum CapturedStep {
     Field(ct::Name),
     Index(usize),
     Key(usize),
+    Some,
 }
 
 impl FnLower<'_> {
@@ -44,6 +45,7 @@ impl FnLower<'_> {
         let mut cap_tys = Vec::new();
         let mut cap_vals = Vec::new();
         let mut saved = Vec::new();
+        let mut closers = Vec::new();
         let changed = lambda_changes(self, lam, &captures);
         // Whether the closure's environment points into this frame.
         let mut scoped = false;
@@ -99,8 +101,15 @@ impl FnLower<'_> {
                 continue;
             }
             let x = self.read_local(b)?;
-            cap_tys.push(self.ty_of(x.v));
+            let cap_ty = self.ty_of(x.v);
+            // A resource the closure takes over is closed when the closure is dropped, no
+            // longer by this scope.
+            if let Some(close) = self.capture_closer(b.uid, e, cap_ty) {
+                closers.push((cap_vals.len() as u32, close));
+            }
+            cap_tys.push(cap_ty);
             cap_vals.push(self.owned(x));
+            self.moved_closer(b.uid, e);
         }
         let mut ps = vec![Param {
             ty: MTy::PTR,
@@ -113,6 +122,7 @@ impl FnLower<'_> {
         let mut f = ms_mir::ir::Func::new("<anonymous>", ps, ret);
         f.kind = FuncKind::Closure { captures: cap_tys };
         f.scoped = scoped;
+        f.capture_closers = closers;
         let id = self.b.m.add_func(f);
         let _ = lam;
         self.cx.queue.push(Job {
@@ -150,6 +160,10 @@ impl FnLower<'_> {
             let (value, is_key) = match step {
                 crate::alias::AStep::Field(name) => {
                     steps.push(CapturedStep::Field(name));
+                    continue;
+                }
+                crate::alias::AStep::Some => {
+                    steps.push(CapturedStep::Some);
                     continue;
                 }
                 crate::alias::AStep::Index(value) => (value, false),
@@ -537,7 +551,7 @@ impl FnLower<'_> {
                         let this = b
                             .emit(Op::Load, &[ptr], Imm::Ty(recv_mty), Some(recv_mty))
                             .expect("load");
-                        let r = b.call_method_owned(iface, k as u32, this, &args[1..]);
+                        let r = b.call_method(iface, k as u32, this, &args[1..]);
                         b.ret(Some(r));
                         let f = b.into_func();
                         let id = self.b.m.add_func(f);
@@ -658,7 +672,7 @@ impl FnLower<'_> {
                     .expect("capture");
                 let rest = &args[1..];
                 let r = match callee {
-                    Err((iface, k)) => b.call_method_owned(iface, k, this, rest),
+                    Err((iface, k)) => b.call_method(iface, k, this, rest),
                     Ok((fid, false)) => {
                         let mut all = vec![this];
                         all.extend_from_slice(rest);
@@ -1148,7 +1162,7 @@ fn lower_iface_thunk(
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
     let vals: Vec<Value> = args.iter().map(|a| fl.borrow(a.val)).collect();
-    let r = fl.b.call_method_owned(job.iface, job.index, this, &vals);
+    let r = fl.b.call_method(job.iface, job.index, this, &vals);
     let out = fl.val(r, true);
     fl.emit_return(Some(out));
     Ok(())
@@ -1363,6 +1377,7 @@ pub(crate) fn build_lambda(
     let mut b = FuncBuilder::new(m, "<anonymous>", proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     b.func_mut().scoped = proto.scoped;
+    b.func_mut().capture_closers = proto.capture_closers.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), job.subst.clone(), file, proto.ret);
     let result = lower_lambda_body(&mut fl, job, &captures);
     let mut f = fl.b.into_func();
@@ -1402,6 +1417,7 @@ pub(crate) fn restore_alias_capture(
         .iter()
         .map(|step| match step {
             CapturedStep::Field(name) => crate::alias::AStep::Field(*name),
+            CapturedStep::Some => crate::alias::AStep::Some,
             CapturedStep::Index(index) => crate::alias::AStep::Index(values[*index]),
             CapturedStep::Key(index) => {
                 let value = values[*index];
@@ -1613,6 +1629,7 @@ fn alias_origin(fl: &FnLower<'_>, e: &Expr) -> Option<usize> {
             Some(b.uid)
         }
         ExprKind::Member { left, .. } => alias_origin(fl, left),
+        ExprKind::Probe(target) => alias_origin(fl, target),
         ExprKind::Call { callee, args } => {
             let source = match (&callee.kind, fl.hir.resolution(e)) {
                 (ExprKind::Member { left, .. }, ms_check::hir::Resolution::Method(_)) => &**left,

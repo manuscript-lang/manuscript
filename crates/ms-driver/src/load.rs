@@ -147,6 +147,7 @@ pub fn load_editor_file(filename: &str, options: LoadOptions, editor: &EditorOpt
         active: HashSet::new(),
         loaded: HashMap::new(),
         failed: HashMap::new(),
+        resolved: HashMap::new(),
     };
     let file: Arc<str> = Arc::from(filename);
     if !config.entry.is_empty() {
@@ -282,6 +283,8 @@ struct Loader<'a> {
     loaded: HashMap<String, Name>,
     // Replay secondary parse diagnostics too, preserving their order and multiplicity.
     failed: HashMap<String, Failure>,
+    // Project and overlay are fixed for this load; relative paths are directory-local.
+    resolved: HashMap<(String, Box<str>), String>,
 }
 
 impl Loader<'_> {
@@ -390,15 +393,22 @@ impl Loader<'_> {
         file: &Arc<str>,
         item: &ms_syntax::Import,
     ) -> Result<Name, Failure> {
-        let target =
-            crate::project::resolve_import(self.config, importer, &item.path, self.overlay)
-                .map_err(|e| {
-                    Failure::diagnostic(Box::new(resolution(
-                        file,
-                        item.pos,
-                        explain_path_error(&e, &item.path),
-                    )))
-                })?;
+        let request = (pathops::dir(importer), item.path.clone());
+        let target = if let Some(target) = self.resolved.get(&request) {
+            target.clone()
+        } else {
+            let target =
+                crate::project::resolve_import(self.config, importer, &item.path, self.overlay)
+                    .map_err(|e| {
+                        Failure::diagnostic(Box::new(resolution(
+                            file,
+                            item.pos,
+                            explain_path_error(&e, &item.path),
+                        )))
+                    })?;
+            self.resolved.insert(request, target.clone());
+            target
+        };
         self.visit(&target).map_err(|failure| match failure {
             failure @ Failure::Diagnostic(..) => failure,
             Failure::CycleDiagnostic(d) => Failure::CycleDiagnostic(d),
@@ -438,6 +448,7 @@ mod tests {
             active: HashSet::new(),
             loaded: HashMap::new(),
             failed: HashMap::new(),
+            resolved: HashMap::new(),
         };
         test(&mut loader, &root);
         std::fs::remove_dir_all(dir).unwrap();
@@ -449,7 +460,7 @@ mod tests {
             for i in 0..64 {
                 std::fs::write(
                     format!("{root}/m{i}.ms"),
-                    format!("from \"./m{}.ms\" import value\n", i + 1),
+                    format!("import value from \"./m{}.ms\"\n", i + 1),
                 )
                 .unwrap();
             }
@@ -479,7 +490,7 @@ mod tests {
             let file = format!("{root}/bad.ms");
             std::fs::write(
                 &file,
-                "def first() -> Int:\n    return +\n\ndef second() -> Int:\n    return +\n",
+                "fn first() Int:\n    return +\n\nfn second() Int:\n    return +\n",
             )
             .unwrap();
             let first = loader.visit(&file).err().unwrap();
@@ -498,8 +509,8 @@ mod tests {
     #[test]
     fn cycle_failures_keep_the_current_closing_edge() {
         with_loader(|loader, root| {
-            std::fs::write(format!("{root}/a.ms"), "from \"./b.ms\" import b\n").unwrap();
-            std::fs::write(format!("{root}/b.ms"), "from \"./a.ms\" import a\n").unwrap();
+            std::fs::write(format!("{root}/a.ms"), "import b from \"./b.ms\"\n").unwrap();
+            std::fs::write(format!("{root}/b.ms"), "import a from \"./a.ms\"\n").unwrap();
             for (entry, closing) in [("a", "b"), ("b", "a")] {
                 let d = loader
                     .visit(&format!("{root}/{entry}.ms"))
@@ -517,10 +528,9 @@ mod tests {
         with_loader(|loader, root| {
             for i in 0..16 {
                 let source = if i == 15 {
-                    "def first() -> Int:\n    return +\n\ndef second() -> Int:\n    return +\n"
-                        .to_string()
+                    "fn first() Int:\n    return +\n\nfn second() Int:\n    return +\n".to_string()
                 } else {
-                    format!("from \"./m{}.ms\" import value\n", i + 1)
+                    format!("import value from \"./m{}.ms\"\n", i + 1)
                 };
                 std::fs::write(format!("{root}/m{i}.ms"), source).unwrap();
             }
@@ -538,6 +548,60 @@ mod tests {
                 };
                 assert!(Arc::ptr_eq(shared, secondary));
             }
+        });
+    }
+
+    fn import(loader: &mut Loader<'_>, importer: &str, path: &str) -> Result<Name, Failure> {
+        let file: Arc<str> = Arc::from(pathops::rel(&loader.config.root, importer).unwrap());
+        let module =
+            ms_syntax::parser::parse(&file, &format!("import value from \"{path}\"\n")).unwrap();
+        loader.import_module(importer, &file, &module.imports[0])
+    }
+
+    #[test]
+    fn repeated_edges_reuse_resolution_but_directories_remain_distinct() {
+        with_loader(|loader, root| {
+            std::fs::create_dir(format!("{root}/nested")).unwrap();
+            for dir in [root.to_string(), format!("{root}/nested")] {
+                std::fs::write(
+                    format!("{dir}/leaf.ms"),
+                    "export fn value() Int: return 1\n",
+                )
+                .unwrap();
+            }
+            let first = import(loader, &format!("{root}/a.ms"), "./leaf.ms")
+                .unwrap_or_else(|e| panic!("{}", e.message()));
+            std::fs::remove_file(format!("{root}/leaf.ms")).unwrap();
+            let second = import(loader, &format!("{root}/b.ms"), "./leaf.ms")
+                .unwrap_or_else(|e| panic!("{}", e.message()));
+            assert_eq!(first, second);
+            assert_eq!(loader.resolved.len(), 1);
+            let nested = import(loader, &format!("{root}/nested/a.ms"), "./leaf.ms")
+                .unwrap_or_else(|e| panic!("{}", e.message()));
+            assert_ne!(first, nested);
+            assert_eq!(loader.resolved.len(), 2);
+            assert_eq!(loader.graph.modules.len(), 2);
+        });
+    }
+
+    #[test]
+    fn resolution_failures_keep_each_import_position_and_are_not_cached() {
+        with_loader(|loader, root| {
+            for name in ["a", "b"] {
+                let failure = import(loader, &format!("{root}/{name}.ms"), "./new.ms")
+                    .err()
+                    .unwrap();
+                let d = failure.into_diagnostic(&Arc::from("unused"), start());
+                assert_eq!(&*d.file, format!("{name}.ms"));
+            }
+            assert!(loader.resolved.is_empty());
+            std::fs::write(
+                format!("{root}/new.ms"),
+                "export fn value() Int: return 1\n",
+            )
+            .unwrap();
+            assert!(import(loader, &format!("{root}/a.ms"), "./new.ms").is_ok());
+            assert_eq!(loader.resolved.len(), 1);
         });
     }
 }

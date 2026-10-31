@@ -105,7 +105,10 @@ impl Dec {
 
     /// Packs a normalized coefficient of at most 34 digits.
     fn pack(coef: &BigInt, exp: i64) -> Dec {
-        let wide = coef.to_i128().unwrap_or(0);
+        Dec::pack_wide(coef.to_i128().unwrap_or(0), exp)
+    }
+
+    fn pack_wide(wide: i128, exp: i64) -> Dec {
         Dec {
             lo: wide as u64,
             hi: (wide >> 64) as i64,
@@ -175,13 +178,24 @@ impl Dec {
     }
 
     pub fn from_int(n: i64) -> Dec {
-        let (coef, exp) = normalize(BigInt::from(n), 0);
-        Dec::pack(&coef, exp)
+        Dec::from_integer(n.unsigned_abs(), n < 0)
     }
 
     pub fn from_uint(n: u64) -> Dec {
-        let (coef, exp) = normalize(BigInt::from(n), 0);
-        Dec::pack(&coef, exp)
+        Dec::from_integer(n, false)
+    }
+
+    fn from_integer(mut magnitude: u64, negative: bool) -> Dec {
+        if magnitude == 0 {
+            return Dec::ZERO;
+        }
+        let mut exp = 0;
+        while magnitude.is_multiple_of(10) {
+            magnitude /= 10;
+            exp += 1;
+        }
+        let coefficient = i128::from(magnitude);
+        Dec::pack_wide(if negative { -coefficient } else { coefficient }, exp)
     }
 
     pub fn is_zero(&self) -> bool {
@@ -217,7 +231,9 @@ impl Dec {
     }
 
     pub fn negate(&self) -> Dec {
-        Dec::pack(&-self.coefficient(), self.exp)
+        // Every valid coefficient has at most 34 decimal digits, so its negation fits i128.
+        let coefficient = (i128::from(self.hi) << 64) | i128::from(self.lo);
+        Dec::pack_wide(-coefficient, self.exp)
     }
 
     /// The exact sum and difference share one alignment.
@@ -278,9 +294,23 @@ impl Dec {
             (Sign::Plus, Sign::NoSign | Sign::Minus) | (Sign::NoSign, Sign::Minus) => return 1,
             _ => {}
         }
-        let exp = self.exp.min(other.exp);
-        let (x, y) = (a * pow10(self.exp - exp), b * pow10(other.exp - exp));
-        match x.cmp(&y) {
+        let ordering = if self.exp == other.exp {
+            a.cmp(&b)
+        } else if (self.exp - other.exp).abs() >= DIGITS {
+            // Nonzero coefficients have 1..=34 digits. Beyond that gap,
+            // the higher quantum has the greater magnitude, regardless of digits.
+            let magnitude = self.exp.cmp(&other.exp);
+            if a.is_negative() {
+                magnitude.reverse()
+            } else {
+                magnitude
+            }
+        } else {
+            let exp = self.exp.min(other.exp);
+            let (x, y) = (a * pow10(self.exp - exp), b * pow10(other.exp - exp));
+            x.cmp(&y)
+        };
+        match ordering {
             core::cmp::Ordering::Less => -1,
             core::cmp::Ordering::Equal => 0,
             core::cmp::Ordering::Greater => 1,
@@ -487,6 +517,53 @@ mod tests {
     }
 
     #[test]
+    fn integer_conversions_match_bigint_normalization() {
+        let check = |signed: i64, unsigned: u64| {
+            let (coefficient, exp) = normalize(BigInt::from(signed), 0);
+            assert_eq!(Dec::from_int(signed), Dec::pack(&coefficient, exp));
+            let (coefficient, exp) = normalize(BigInt::from(unsigned), 0);
+            assert_eq!(Dec::from_uint(unsigned), Dec::pack(&coefficient, exp));
+        };
+        for n in [0, 1, 9, 10, 100, i64::MAX as u64, 1u64 << 63, u64::MAX] {
+            check(n as i64, n);
+        }
+        let mut power = 1u64;
+        for _ in 0..19 {
+            for n in [power - 1, power, power + 1] {
+                check(n as i64, n);
+                check(-(n as i64), n);
+            }
+            power *= 10;
+        }
+        let mut sample = 0x9e3779b97f4a7c15u64;
+        for _ in 0..10000 {
+            sample = sample.wrapping_mul(6364136223846793005).wrapping_add(1);
+            check(sample as i64, sample);
+        }
+    }
+
+    #[test]
+    fn negation_preserves_normalized_coefficients_and_quantum() {
+        for text in [
+            "0",
+            "1",
+            "-1",
+            "1.25",
+            "-1.25",
+            "9223372036854775808",
+            "9999999999999999999999999999999999",
+            "1e-6176",
+            "1e6144",
+            "9.999999999999999999999999999999999e6144",
+        ] {
+            let value = d(text);
+            let expected = Dec::pack(&-value.coefficient(), value.exp);
+            assert_eq!(value.negate(), expected, "{text}");
+            assert_eq!(expected.negate(), value, "{text}");
+        }
+    }
+
+    #[test]
     fn rounding() {
         assert_eq!(d("2.5d").round(0, Mode::HalfEven), Ok(d("2d")));
         assert_eq!(d("2.5d").round(0, Mode::HalfAwayFromZero), Ok(d("3d")));
@@ -501,6 +578,35 @@ mod tests {
         assert_eq!(d("-0.001d").to_fixed(2, Mode::HalfEven).unwrap(), "0.00");
         assert_eq!(d("5d").to_fixed(0, Mode::HalfEven).unwrap(), "5");
         assert_eq!(d("0.5d").to_fixed(3, Mode::HalfEven).unwrap(), "0.500");
+    }
+
+    #[test]
+    fn comparison_matches_exact_alignment_at_precision_boundaries() {
+        let texts = [
+            "0",
+            "1",
+            "-1",
+            "9",
+            "11",
+            "9999999999999999999999999999999999",
+        ];
+        for gap in [0, 1, 32, 33, 34, 35, 6144] {
+            for left in texts {
+                for right in texts {
+                    let a = d(&format!("{left}e{}", gap - 6176));
+                    let b = d(&format!("{right}e-6176"));
+                    let exp = a.exp.min(b.exp);
+                    let expected = (a.coefficient() * pow10(a.exp - exp))
+                        .cmp(&(b.coefficient() * pow10(b.exp - exp)))
+                        as i64;
+                    assert_eq!(a.compare(&b), expected, "{left} {right} {gap}");
+                    assert_eq!(b.compare(&a), -expected);
+                    assert_eq!(a.negate().compare(&b.negate()), -expected);
+                }
+            }
+        }
+        assert_eq!(d("1e6144").compare(&d("1e-6176")), 1);
+        assert_eq!(d("-1e6144").compare(&d("-1e-6176")), -1);
     }
 
     #[test]

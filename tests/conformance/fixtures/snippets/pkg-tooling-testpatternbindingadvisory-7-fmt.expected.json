@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Describe:\n    def describe() -> String\n\ntype State:\n    case Ready\n    case Waiting\n\nimpl Describe for State:\n    def describe() -> String: \"state\"\n\ndef use(value: Describe) -> Int:\n    match value:\n        case State(Ready): return 1\n        case _: return 0\n"
-  }
-}

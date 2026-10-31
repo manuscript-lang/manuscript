@@ -1,10 +1,10 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-extern def labs(value: Int) -> Int
+extern fn labs(value: Int) Int
 
-extern def sqrt(value: Float) -> Float
+extern fn sqrt(value: Float) Float
 
-export extern def fabs(value: Float) -> Float
+export extern fn fabs(value: Float) Float
 
 test "extern functions call the symbol of the same name":
     try expect_equal(labs(-42), 42)

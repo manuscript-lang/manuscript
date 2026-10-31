@@ -1,16 +1,16 @@
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal, expect_false, fail
+import TextError from "@std/core.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
 
 type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
     case Neg(inner: Expr)
 
-def evaluate(expr: Expr) -> Int:
+fn evaluate(expr: Expr) Int:
     match expr:
-        case Num(value): return value
-        case Add(left, right): return evaluate(left) + evaluate(right)
-        case Neg(inner): return -evaluate(inner)
+        Num(value): return value
+        Add(left, right): return evaluate(left) + evaluate(right)
+        Neg(inner): return -evaluate(inner)
 
 type Tree[T]:
     case Leaf(value: T)
@@ -26,22 +26,22 @@ type MutualTree:
 
 type Node:
     value: Int
-    next: Optional[Node]
+    next: Node?
 
 type DefaultNode:
     value: Int
-    next: Optional[DefaultNode] = none
+    next: DefaultNode?
 
 type Link:
     value: Int
-    next: Optional[Link]
+    next: Link?
 
 impl Equal for Link:
-    def equals(other: Link) -> Bool:
+    fn equals(other: Link) Bool:
         return self.value == other.value
 
 impl Hashable for Link:
-    def hash() -> Int: return self.value
+    fn hash() Int: return self.value
 
 test "recursive alternatives construct match compare and clone":
     let expr = Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
@@ -55,20 +55,20 @@ test "recursive alternatives construct match compare and clone":
     let forest = Forest.More(MutualTree(value: 3, rest: Forest.Empty))
 
     match forest:
-        case More(first):
+        More(first):
             ((first.value != 3 or first.rest != Forest.Empty) | try expect_false)
-        case Empty: return fail("lost mutual tree")
+        Empty: return fail("lost mutual tree")
 
 test "recursive records clone into independent storage":
     let child = Node(value: 2, next: none)
-    let root = Node(value: 1, next: some(child.clone()))
+    let root = Node(value: 1, next: child.clone())
     var alias = root.clone()
     var copy = root.clone()
     alias.value = 3
 
     var inner = copy.next.get().clone()
     inner.value = 4
-    copy.next = some(inner)
+    copy.next = inner
     (
         root.value != 1
         or alias.value != 3
@@ -81,26 +81,26 @@ test "recursive records clone into independent storage":
 test "recursive structural equality checks nested and unequal fields":
     var left = Node(value: 1, next: none)
     var right = Node(value: 1, next: none)
-    left.next = some(left.clone())
-    right.next = some(right.clone())
+    left.next = left.clone()
+    right.next = right.clone()
     left.clone() | try expect_equal(right.clone())
 
     var copy = left.clone()
     var inner = copy.next.get().clone()
     inner.value = 2
-    copy.next = some(inner)
+    copy.next = inner
     (left.value != 1 or copy.value != 1 or left == copy or left != right) | try expect_false
 
     var a = Node(value: 1, next: none)
-    let b = Node(value: 1, next: some(a.clone()))
-    a.next = some(b)
+    let b = Node(value: 1, next: a.clone())
+    a.next = b
     (right == a) | try expect_false
 
 test "recursive domain hashing uses explicit implementations":
     var left = Link(value: 7, next: none)
     var right = Link(value: 7, next: none)
-    left.next = some(left.clone())
-    right.next = some(right.clone())
+    left.next = left.clone()
+    right.next = right.clone()
     (left != right or left.hash() != right.hash()) | try expect_false
 
     var values = Map[Link, Int]()
@@ -119,21 +119,21 @@ test "recursive domain hashing uses explicit implementations":
 test "recursive defaults construct independent complete objects":
     var first = DefaultNode(value: 1)
     let second = DefaultNode(value: 2)
-    first.next = some(first.clone())
+    first.next = first.clone()
     (second.next.is_some() or first.next.get().value != 1) | try expect_false
 
 type Entry:
     name: String
-    nickname: Optional[String]
+    nickname: String?
 
 type Person:
-    primary: Optional[Entry]
+    primary: Entry?
 
 type NestedOptional:
-    case Value(value: Optional[Optional[Int]])
+    case Value(value: Int??)
 
 type NestedResult:
-    value: Result[Result[Int, TextError], TextError]
+    value: Int!TextError!TextError
 
 type Box[T]:
     value: T
@@ -143,30 +143,31 @@ type Pair[T, U]:
     second: U
 
 test "finite nested generic composition constructs and extracts values":
-    let person = Person(Entry(name: "Ada", nickname: some("A")))
+    let person = Person(Entry(name: "Ada", nickname: "A"))
     person.primary.get().nickname.get() | try expect_equal("A")
 
-    let optional = NestedOptional.Value(some(some(4)))
+    let four: Int? = 4
+    let nested_four: Int?? = four
+    let optional = NestedOptional.Value(nested_four)
 
     match optional:
-        case Value(value):
+        Value(value):
             try expect_equal(value.get().get(), 4)
 
     let result = NestedResult(ok(ok(5)))
 
     let inner = match result.value:
-        case ok(inner): inner.clone()
-        case error(_): return fail("unexpected outer result error")
+        ok(inner): inner.clone()
+        error(_): return fail("unexpected outer result error")
 
     match inner:
-        case ok(value):
+        ok(value):
             try expect_equal(value, 5)
-        case error(_): return fail("unexpected inner result error")
+        error(_): return fail("unexpected inner result error")
 
     let box = Box(Box(6))
     box.value.value | try expect_equal(6)
 
-    let pair: Pair[Optional[Int], Optional[Optional[String]]] = Pair(
-        first: some(7), second: some(some("nested"))
-    )
+    let inner_text: String? = "nested"
+    let pair: Pair[Int?, String??] = Pair(first: 7, second: inner_text)
     (pair.first.get() != 7 or pair.second.get().get() != "nested") | try expect_false

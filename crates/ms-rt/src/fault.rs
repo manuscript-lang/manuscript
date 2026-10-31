@@ -550,6 +550,39 @@ pub fn find_line(t: &Tables, func: &FuncEntry, pc: usize) -> (u32, u32, u32) {
     (func.line, func.file_off, 0)
 }
 
+/// Like [`find_line`], but skips back over ranges with no position to the nearest earlier one.
+fn find_line_before(t: &Tables, func: &FuncEntry, pc: usize) -> (u32, u32, u32) {
+    if t.lines.is_null() || t.line_count == 0 {
+        return (func.line, func.file_off, 0);
+    }
+    // SAFETY: sorted `line_count` read-only entries.
+    let lines = unsafe { core::slice::from_raw_parts(t.lines, t.line_count) };
+    let probe = pc.wrapping_sub(1);
+    let mut idx = lines.partition_point(|e: &LineEntry| e.pc <= probe);
+    while idx > 0 {
+        let e = &lines[idx - 1];
+        if e.pc < func.addr {
+            break;
+        }
+        if e.line != 0 {
+            let file = if e.file_off == u32::MAX {
+                func.file_off
+            } else {
+                e.file_off
+            };
+            let scope = if t.abi_version >= TABLES_WITH_SCOPES && !t.line_scopes.is_null() {
+                // SAFETY: `line_scopes` parallels `lines`.
+                unsafe { *t.line_scopes.add(idx - 1) }
+            } else {
+                0
+            };
+            return (e.line, file, scope);
+        }
+        idx -= 1;
+    }
+    (func.line, func.file_off, 0)
+}
+
 /// The inlined-callee scope `id` (1-based), if the table has it.
 fn scope_entry(t: &Tables, id: u32) -> Option<ScopeEntry> {
     if t.abi_version < TABLES_WITH_SCOPES
@@ -802,12 +835,19 @@ fn describe_with(out: &mut Vec<u8>, drive: impl FnOnce(&Tables, &mut dyn FnMut(u
     // Identical consecutive frames (deep recursion) collapse into one line and a count.
     let mut last = (u32::MAX, 0u32, u32::MAX);
     let mut repeated = 0usize;
+    let mut innermost = true;
     {
         drive(t, &mut |ret| {
             let Some(func) = find_func(t, ret) else {
                 return true;
             };
             let (mut line, mut file, mut scope) = find_line(t, func, ret);
+            // The frame that raised the fault may sit in a call without a position of its own;
+            // it takes the nearest earlier line.
+            if line == 0 && innermost {
+                (line, file, scope) = find_line_before(t, func, ret);
+            }
+            innermost = false;
             // Compiler-generated glue (function-value thunks) has no source position.
             if line == 0 {
                 return true;
@@ -1216,6 +1256,32 @@ pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
             if stack.pop().is_none() {
                 break;
             }
+        }
+        // Windows trap entry returns once before running its operation. The caller can then
+        // discard transient registrations that were present when the trap saved its base.
+        // Keep only the remaining caller entries protected, so new operation cleanups run.
+        #[cfg(any(windows, test))]
+        for frame in &mut *GUARDS.ptr() {
+            if frame.trap {
+                frame.cleanups = frame.cleanups.min(stack.len());
+            }
+        }
+    }
+}
+
+unsafe extern "C-unwind" fn cleanup_nothing(_: *mut u8) {}
+
+/// Turns the action behind `handle` into one that does nothing, leaving newer actions in place.
+/// The entry stays on the stack until a `msrt_cleanup_discard` of it or of an older one pops it.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_cleanup_cancel(handle: usize) {
+    // SAFETY: single threaded access to the cleanup stack.
+    unsafe {
+        let stack = &mut *CLEANUPS.ptr();
+        if handle > 0
+            && let Some(entry) = stack.get_mut(handle - 1)
+        {
+            *entry = (cleanup_nothing as CleanupFn as usize, 0);
         }
     }
 }
@@ -1931,6 +1997,49 @@ mod tests {
 
     unsafe extern "C-unwind" fn faulting_action(_arg: *mut u8) {
         fault(b"close failed");
+    }
+
+    #[test]
+    fn trap_cleanup_boundary_tracks_discarded_caller_temporaries() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: serialized runtime state; callbacks only append their numeric argument.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(1));
+            let transient = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(2));
+            // Windows trap entry snapshots the stack before the generated caller discards
+            // its per-call registrations. No jump is made from this bookkeeping test.
+            guards_push(GuardFrame {
+                jmp: 0,
+                cleanups: (*CLEANUPS.ptr()).len(),
+                limit: (*cur_hdr()).limit,
+                shield: SHIELD.get(),
+                eq_pairs: crate::desc::eq_len(),
+                trap: true,
+            });
+            msrt_cleanup_discard(transient);
+            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(3));
+        }
+        let message = fault_of(|| fault(b"body fault")).unwrap();
+        // SAFETY: serialized runtime state; pop the synthetic guard before running the parent.
+        let inside = unsafe {
+            let inside = (&*LOG.ptr())[..*LOG_N.ptr()].to_vec();
+            guards_pop();
+            msrt_cleanup_run(1);
+            inside
+        };
+        assert_eq!(message, "body fault");
+        assert_eq!(
+            inside,
+            [3],
+            "run the operation's cleanup, retaining the caller's"
+        );
+        // SAFETY: serialized access to the recorded cleanup order.
+        unsafe {
+            assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[3, 1]);
+        }
+        reset_for_tests();
     }
 
     unsafe extern "C-unwind" fn request(data: *mut u8) {

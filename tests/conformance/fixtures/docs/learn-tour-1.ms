@@ -1,9 +1,9 @@
 # conform: tags=control-flow,modules,stdlib-io,tier-core
 # conform: phase=run
 # conform: origin=documentation/learn/tour.md:15
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-export def main() -> Int:
+export fn main() Int:
     if stdout().write("Hello, Manuscript!\n").is_error():
         return 1
 

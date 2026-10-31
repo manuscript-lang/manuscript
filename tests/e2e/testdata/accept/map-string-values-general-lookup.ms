@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal, expect_true
+import expect_equal, expect_true from "@std/test.ms"
 
 # A `String` value is two words, so `Map[Int, String]` and `Map[String, String]` take the general
 # lookup entry points; the word-layout fast paths read a 24-byte slot and missed the second key.
@@ -25,7 +25,7 @@ test "string keys with string values find every key":
 test "many int keys with string values":
     var m = Map[Int, String]()
     for i in 0..200:
-        m.add(i, f"v{i}")
+        m.add(i, "v{i}")
 
     var hits = 0
     for i in 0..200:

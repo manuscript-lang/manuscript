@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Read[V]:\n    def get() -> V\n\ntype Box[T]:\n    value: T\n\nimpl Read[U] for Box[U]:\n    def get() -> U:\n        return self.value\n"
-  }
-}

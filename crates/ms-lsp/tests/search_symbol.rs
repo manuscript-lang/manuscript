@@ -15,13 +15,13 @@ fn fuzzy_search_keeps_private_function_uses_and_distinct_declarations() {
     for file in ["a.ms", "b.ms"] {
         std::fs::write(
             root.join(file),
-            "def read_file() -> Int:\r\n    return 1\r\n\r\ndef main() -> Int:\r\n    let reader = read_file\r\n    return reader()\r\n",
+            "fn read_file() Int:\r\n    return 1\r\n\r\nfn main() Int:\r\n    let reader = read_file\r\n    return reader()\r\n",
         )
         .unwrap();
     }
     std::fs::write(
         root.join("unrelated.ms"),
-        "# read_file\nlet note = \"read_file\"\ndef main() -> Int:\n    return 0\n",
+        "# read_file\nlet note = \"read_file\"\nfn main() Int:\n    return 0\n",
     )
     .unwrap();
     for query in ["read file", "readFile", "raed_file", "rdf"] {
@@ -30,8 +30,8 @@ fn fuzzy_search_keeps_private_function_uses_and_distinct_declarations() {
         assert_eq!(found.len(), 1);
         let symbol = &found[0];
         assert_eq!(symbol.name, "read_file");
-        assert!(symbol.definition.ends_with("a.ms:1:5"), "{symbol:?}");
-        assert!(symbol.hover.contains("Callable[[], Int]"), "{symbol:?}");
+        assert!(symbol.definition.ends_with("a.ms:1:4"), "{symbol:?}");
+        assert!(symbol.hover.contains("fn() Int"), "{symbol:?}");
         assert_eq!(symbol.references.len(), 2, "{symbol:?}");
         assert!(
             symbol.references.iter().any(|r| r.ends_with("a.ms:5:18")),
@@ -50,11 +50,11 @@ fn workspace_search_keeps_declarations_from_imported_subdirectories() {
     let root = ws.root.join("search");
     std::fs::create_dir_all(root.join("sub")).unwrap();
     let path = root.join("main.ms");
-    let source = "from \"./sub/helper.ms\" import load\n\ndef main() -> Int:\n    return load()\n";
+    let source = "import load from \"./sub/helper.ms\"\n\nfn main() Int:\n    return load()\n";
     std::fs::write(&path, source).unwrap();
     std::fs::write(
         root.join("sub/helper.ms"),
-        "def hidden_reader() -> Int:\n    return 1\n\nexport def load() -> Int:\n    return hidden_reader()\n",
+        "fn hidden_reader() Int:\n    return 1\n\nexport fn load() Int:\n    return hidden_reader()\n",
     )
     .unwrap();
     let d = Document::new(ms_lsp::uri::file_uri(path.to_str().unwrap()), source);
@@ -77,10 +77,7 @@ fn workspace_search_keeps_declarations_from_imported_subdirectories() {
     assert_eq!(total, 1);
     let symbol = &found[0];
     assert!(
-        symbol
-            .references
-            .iter()
-            .any(|r| r.ends_with("main.ms:1:31")),
+        symbol.references.iter().any(|r| r.ends_with("main.ms:1:8")),
         "{symbol:?}"
     );
     assert!(

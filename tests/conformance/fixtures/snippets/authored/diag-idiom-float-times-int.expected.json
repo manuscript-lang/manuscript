@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "operator operands require the same independently known type, found Float * Int; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)",
+        "position": {
+          "file": "diag-idiom-float-times-int.ms",
+          "line": 5,
+          "column": 17,
+          "offset": 150
+        },
+        "fix": {
+          "position": {
+            "file": "diag-idiom-float-times-int.ms",
+            "line": 5,
+            "column": 19,
+            "offset": 152
+          },
+          "end": {
+            "file": "diag-idiom-float-times-int.ms",
+            "line": 5,
+            "column": 20,
+            "offset": 153
+          },
+          "replacement": "2.0"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-idiom-float-times-int.ms:5:17: type: operator operands require the same independently known type, found Float * Int; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)\n   |\n 5 |     let a = 1.0 * 2\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

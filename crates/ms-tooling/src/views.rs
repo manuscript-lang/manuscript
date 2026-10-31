@@ -407,9 +407,9 @@ impl FlowExpander<'_> {
 fn prune_scopes(nodes: &[Node], in_scope: bool) -> Vec<Node> {
     let mut out = Vec::new();
     for n in nodes {
-        let kids = prune_scopes(&n.children, in_scope || n.kind == "with");
+        let kids = prune_scopes(&n.children, in_scope || n.kind == "scope");
         let exit = in_scope && (n.kind == "exit" || n.kind == "try");
-        if n.kind == "with" || exit || !kids.is_empty() {
+        if n.kind == "scope" || exit || !kids.is_empty() {
             out.push(Node {
                 label: n.label.clone(),
                 kind: n.kind.clone(),
@@ -423,7 +423,7 @@ fn prune_scopes(nodes: &[Node], in_scope: bool) -> Vec<Node> {
     out
 }
 
-/// Keeps task groups (`with` scopes holding a spawn) and the work each spawn starts.
+/// Keeps task groups (resource scopes holding a spawn) and the work each spawn starts.
 fn prune_tasks(nodes: &[Node]) -> Vec<Node> {
     let mut out = Vec::new();
     for n in nodes {

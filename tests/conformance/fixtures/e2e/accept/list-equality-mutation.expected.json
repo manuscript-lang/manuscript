@@ -22,58 +22,14 @@
       "stdout": "",
       "diagnostics": [
         {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "this closure outlives the statement, so it takes `side` with it, but `side` is used again at 78:12; capture `side.clone()` to keep the original",
-          "position": {
-            "file": "list-equality-mutation.ms",
-            "line": 28,
-            "column": 17,
-            "offset": 781
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "this closure outlives the statement, so it takes `mutation` with it, but `mutation` is used again at 64:8; capture `mutation.clone()` to keep the original",
-          "position": {
-            "file": "list-equality-mutation.ms",
-            "line": 28,
-            "column": 17,
-            "offset": 781
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "this closure outlives the statement, so it takes `left` with it, but `left` is used again at 61:9; capture `left.clone()` to keep the original",
-          "position": {
-            "file": "list-equality-mutation.ms",
-            "line": 28,
-            "column": 17,
-            "offset": 781
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "this closure outlives the statement, so it takes `right` with it, but `right` is used again at 62:9; capture `right.clone()` to keep the original",
-          "position": {
-            "file": "list-equality-mutation.ms",
-            "line": 28,
-            "column": 17,
-            "offset": 781
-          }
-        },
-        {
           "code": "MS3030",
           "phase": "type",
           "message": "this closure changes captured `calls`, so it cannot be returned, stored or passed to a consuming parameter; keep the closure local, or have it return a new value instead of changing `calls`",
           "position": {
             "file": "list-equality-mutation.ms",
-            "line": 28,
+            "line": 26,
             "column": 17,
-            "offset": 781
+            "offset": 716
           }
         },
         {
@@ -82,22 +38,22 @@
           "message": "cannot move `left` out: it only borrows its value (a variable captured by the closure); use `left.clone()` to get an owned copy",
           "position": {
             "file": "list-equality-mutation.ms",
-            "line": 33,
+            "line": 31,
             "column": 22,
-            "offset": 897
+            "offset": 828
           },
           "fix": {
             "position": {
               "file": "list-equality-mutation.ms",
-              "line": 33,
+              "line": 31,
               "column": 26,
-              "offset": 901
+              "offset": 832
             },
             "end": {
               "file": "list-equality-mutation.ms",
-              "line": 33,
+              "line": 31,
               "column": 26,
-              "offset": 901
+              "offset": 832
             },
             "replacement": ".clone()"
           }
@@ -108,22 +64,22 @@
           "message": "cannot move `right` out: it only borrows its value (a variable captured by the closure); use `right.clone()` to get an owned copy",
           "position": {
             "file": "list-equality-mutation.ms",
-            "line": 35,
+            "line": 33,
             "column": 22,
-            "offset": 951
+            "offset": 882
           },
           "fix": {
             "position": {
               "file": "list-equality-mutation.ms",
-              "line": 35,
+              "line": 33,
               "column": 27,
-              "offset": 956
+              "offset": 887
             },
             "end": {
               "file": "list-equality-mutation.ms",
-              "line": 35,
+              "line": 33,
               "column": 27,
-              "offset": 956
+              "offset": 887
             },
             "replacement": ".clone()"
           }
@@ -131,79 +87,23 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`visit` is moved here but used again at 62:34; a value has one owner, so pass `visit.clone()` to keep the original, or move it only at its last use",
+          "message": "`visit` is moved here but used again at 60:34; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed",
           "position": {
             "file": "list-equality-mutation.ms",
-            "line": 61,
+            "line": 59,
             "column": 33,
-            "offset": 1695
-          },
-          "fix": {
-            "position": {
-              "file": "list-equality-mutation.ms",
-              "line": 61,
-              "column": 38,
-              "offset": 1700
-            },
-            "end": {
-              "file": "list-equality-mutation.ms",
-              "line": 61,
-              "column": 38,
-              "offset": 1700
-            },
-            "replacement": ".clone()"
+            "offset": 1619
           }
         },
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`visit` is moved here but used again at 65:34; a value has one owner, so pass `visit.clone()` to keep the original, or move it only at its last use",
+          "message": "`visit` is moved here but used again at 63:34; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed",
           "position": {
             "file": "list-equality-mutation.ms",
-            "line": 62,
+            "line": 60,
             "column": 34,
-            "offset": 1736
-          },
-          "fix": {
-            "position": {
-              "file": "list-equality-mutation.ms",
-              "line": 62,
-              "column": 39,
-              "offset": 1741
-            },
-            "end": {
-              "file": "list-equality-mutation.ms",
-              "line": 62,
-              "column": 39,
-              "offset": 1741
-            },
-            "replacement": ".clone()"
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "`side` is moved here but used again at 89:33; a value has one owner, so pass `side.clone()` to keep the original, or move it only at its last use",
-          "position": {
-            "file": "list-equality-mutation.ms",
-            "line": 89,
-            "column": 33,
-            "offset": 2588
-          },
-          "fix": {
-            "position": {
-              "file": "list-equality-mutation.ms",
-              "line": 89,
-              "column": 37,
-              "offset": 2592
-            },
-            "end": {
-              "file": "list-equality-mutation.ms",
-              "line": 89,
-              "column": 37,
-              "offset": 2592
-            },
-            "replacement": ".clone()"
+            "offset": 1660
           }
         }
       ]

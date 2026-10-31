@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"./domain.ms\" import invoke\n\ndef use(value: Box[Int]) -> Int:\n    return invoke(value)\n"
-  }
-}

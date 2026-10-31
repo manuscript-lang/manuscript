@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"./library.ms\" import defaulted\nfrom \"@std/test.ms\" import expect_true, fail\n\ndef private_value() -> Int:\n    return 99\n\ntest \"defaults use their declaration module\":\n    let copy = defaulted\n    if defaulted() != 7 or copy() != 7 or defaulted(0) != 0:\n        return fail(\"incorrect default scope\")\n"
-  }
-}

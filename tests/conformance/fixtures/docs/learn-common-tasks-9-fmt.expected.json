@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/process.ms\" import arguments\nfrom \"@std/http.ms\" import HttpError, HttpMethod, headers\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\n\ndef run() -> Result[Unit, Error]:\n    let url = try arguments().first().ok_or(HttpError.InvalidInput)\n    let response = try network().request(\n        HttpMethod.Get, url, headers(), \"\", max_response_bytes: 1048576\n    )\n    if response.metadata().status != 200:\n        return error(HttpError.InvalidData)\n\n    let text = try response.body.decode_utf8().ok_or(HttpError.InvalidData)\n    try stdout().write(text)\n    return stdout().flush()\n\nexport def main() -> Int:\n    if run().is_error():\n        return 1\n\n    return 0\n"
+    "fmt": "import arguments from \"@std/process.ms\"\nimport HttpError, HttpMethod, headers from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\nimport stdout from \"@std/io.ms\"\n\nfn run() Result[Unit, Error]:\n    let url = try arguments().first().ok_or(HttpError.InvalidInput)\n    let response = try network().request(\n        HttpMethod.Get, url, headers(), \"\", max_response_bytes: 1048576\n    )\n    if response.metadata().status != 200:\n        return error(HttpError.InvalidData)\n\n    let text = try response.body.decode_utf8().ok_or(HttpError.InvalidData)\n    try stdout().write(text)\n    return stdout().flush()\n\nexport fn main() Int:\n    if run().is_error():\n        return 1\n\n    return 0\n"
   }
 }

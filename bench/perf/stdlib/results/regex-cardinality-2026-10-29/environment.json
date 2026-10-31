@@ -1,0 +1,137 @@
+{
+  "baseline": "4be5d6d8c2defb9fc6eb75c8c43bd68a5314d192",
+  "backend": "cranelift (MS_BACKEND explicitly set)",
+  "build_type": "Release (ms bench default)",
+  "native_profile": "Rust release; x86_64-unknown-linux-musl",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "machine": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           46 bits physical, 57 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  5\nOn-line CPU(s) list:                     0-4\nVendor ID:                               GenuineIntel\nModel name:                              INTEL(R) XEON(R) PLATINUM 8573C\nCPU family:                              6\nModel:                                   207\nThread(s) per core:                      1\nCore(s) per socket:                      5\nSocket(s):                               1\nStepping:                                2\nBogoMIPS:                                4599.99\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities\nHypervisor vendor:                       KVM\nVirtualization type:                     full\nL1d cache:                               144 KiB (3 instances)\nL1i cache:                               96 KiB (3 instances)\nL2 cache:                                6 MiB (3 instances)\nL3 cache:                                260 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-4\nVulnerability Gather data sampling:      Not affected\nVulnerability Ghostwrite:                Not affected\nVulnerability Indirect target selection: Vulnerable\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Old microcode:             Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Vulnerable\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Vulnerable\nVulnerability Spectre v1:                Vulnerable: __user pointer sanitization and usercopy barriers only; no swapgs barriers\nVulnerability Spectre v2:                Vulnerable; STIBP: disabled; PBRSB-eIBRS: Not affected; BHI: Vulnerable\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected\n",
+  "cgroup_cpu_max": "400000 100000\n",
+  "cgroup_memory_max": "17179869184\n",
+  "input_sha256": {
+    "/workspace/regex-pass2/baseline-runtime.a": "f590440c2f96bad98c706f01c50cb66ff8b6d1f7cdb97806491b24392f5213d0",
+    "/workspace/regex-pass2/cardinality-runtime.a": "516c7f32928a7b782e7243a605c37c38e42302d352a673fe447fae1b83a0781a",
+    "/workspace/regex-pass2/broader-runtime.a": "0cf0fcf028582aabd14a9841f37e24661b9fd2244ad6a4235a1fe8f19ad19afe",
+    "/workspace/regex-pass2/final-runtime.a": "bb48a4edfa5a997cc0095559f4a7f85e4a0232321310160971d32d22f626337c",
+    "/workspace/regex-pass2/before-ms": "3074cbc1c5ae371ed0a1196164412af4de148aa1a935bd9fe39911a579311532",
+    "/workspace/regex-pass2/cardinality-ms": "4bda18f6cbd8e55ab8c45994064d44b84e84295f5ababae67e326698993dea9c",
+    "/workspace/regex-pass2/broader-ms": "802e339e021c1cb4fe723bbc5a9ea8278dbd510b5ccd78efcbb0cb5e49ea414c",
+    "/workspace/regex-pass2/final-ms": "858e7a91bc3e6e895cab16b7b330db281f40aa2254d226142b8b3a55c6d02f31",
+    "/workspace/regex-pass2/primary-bench.ms.txt": "65d733f1fc5938c9f4043c574e1a4e1a9b438a039260b270480baf9ee7dd8ef7",
+    "/workspace/regex-pass2/baseline-lib.rs": "a35fbfdb4b5f4b62d2b220cf14b22713b6afe76f51874026f7a609d2c27d891f",
+    "/workspace/regex-pass2/cardinality-lib.rs": "93267fea698e1810a91f4b0df558e9c5cfda25e6b3485cc79715f5f405266dc5",
+    "/workspace/regex-pass2/named-candidate-lib.rs": "b8f7e82f5989459c3fde9f2e51a6fdda46d797e79e6d769cda26bf011f790be7",
+    "/workspace/regex-bash/target/release/ms": "7ba304fde22ee8b1618d655cdd1cf4fa56e5d89b8dc692b976d05449ee8df00b",
+    "/workspace/regex-bash/crates/ms-std-regex/src/lib.rs": "d9a683acf819b61cc47d4bd52e9386df8b0b8303f8f408093dc08fcaf12c56d1",
+    "/workspace/regex-bash/bench/perf/stdlib/regex_cardinality_bench.ms": "f5d3c2adbdd4acc33213d7dae5846d01955b4012b7123ec52005fc6c47902b1e",
+    "/workspace/regex-pass2/alloc-review/harness.rs": "addd942784f4e3ba98589845469a7127d1ec19265608888daf9da52833c839ac"
+  },
+  "allocation_harness_bytes": "Rust fence with one trailing newline",
+  "timing_runs": {
+    "initial": {
+      "cases": 16,
+      "repeats": 7,
+      "samples": 3,
+      "after": "cardinality-runtime.a"
+    },
+    "rejected-name-scan": {
+      "cases": 7,
+      "repeats": 7,
+      "samples": 3,
+      "before": "cardinality-runtime.a",
+      "after": "broader-runtime.a"
+    },
+    "final": {
+      "cases": 20,
+      "repeats": 7,
+      "samples": 3,
+      "after": "final-runtime.a"
+    },
+    "grouped-focused": {
+      "cases": 2,
+      "repeats": 7,
+      "samples": 5,
+      "after": "final-runtime.a"
+    },
+    "final-recheck": {
+      "cases": 20,
+      "repeats": 7,
+      "samples": 5,
+      "after": "final-runtime.a"
+    }
+  },
+  "timing_cpu_affinity": [
+    0
+  ],
+  "known_skipped_test": "one existing ignored nextest test, unchanged",
+  "inputs_unchanged_after_recheck": true,
+  "inputs_unchanged_after_wrapper_isolations": true,
+  "source_files": {
+    "crates/ms-std-regex/src/lib.rs": "d9a683acf819b61cc47d4bd52e9386df8b0b8303f8f408093dc08fcaf12c56d1",
+    "tests/e2e/testdata/stdlib/regex.ms": "387b9571dc531acfca23abf3c4c42a3a0449e3a9ca4e05e831df845f2053b897",
+    "bench/perf/stdlib/regex_cardinality_bench.ms": "f5d3c2adbdd4acc33213d7dae5846d01955b4012b7123ec52005fc6c47902b1e"
+  },
+  "runs": {
+    "initial": {
+      "source_directory": "paired",
+      "cases": 16,
+      "repeats": 7,
+      "samples": 3
+    },
+    "rejected-name-scan": {
+      "source_directory": "broader-paired",
+      "cases": 7,
+      "repeats": 7,
+      "samples": 3
+    },
+    "full-3samples": {
+      "source_directory": "final-paired",
+      "cases": 20,
+      "repeats": 7,
+      "samples": 3
+    },
+    "grouped-focused": {
+      "source_directory": "grouped-focused",
+      "cases": 2,
+      "repeats": 7,
+      "samples": 5
+    },
+    "full-5samples": {
+      "source_directory": "final-recheck",
+      "cases": 20,
+      "repeats": 7,
+      "samples": 5
+    },
+    "flag-isolation-named": {
+      "source_directory": "flag-isolation-named",
+      "cases": 1,
+      "repeats": 7,
+      "samples": 5,
+      "before": "cardinality-runtime.a",
+      "after": "final-runtime.a"
+    },
+    "flag-isolation-first-long": {
+      "source_directory": "flag-isolation-first-long",
+      "cases": 1,
+      "repeats": 7,
+      "samples": 5,
+      "before": "cardinality-runtime.a",
+      "after": "final-runtime.a"
+    }
+  },
+  "initial_input_sha256": {
+    "/workspace/regex-bash/target/release/ms": "7ba304fde22ee8b1618d655cdd1cf4fa56e5d89b8dc692b976d05449ee8df00b",
+    "/workspace/regex-pass2/baseline-runtime.a": "f590440c2f96bad98c706f01c50cb66ff8b6d1f7cdb97806491b24392f5213d0",
+    "/workspace/regex-pass2/candidate-runtime.a": "516c7f32928a7b782e7243a605c37c38e42302d352a673fe447fae1b83a0781a",
+    "/workspace/regex-pass2/before-ms": "3074cbc1c5ae371ed0a1196164412af4de148aa1a935bd9fe39911a579311532",
+    "/workspace/regex-pass2/after-ms": "dbd757cdf6f3bab2a11a6e13f3bfcf33c5304bedaac857accdc2cfe98be5d1f5",
+    "/workspace/regex-bash/bench/perf/stdlib/regex_cardinality_bench.ms": "65d733f1fc5938c9f4043c574e1a4e1a9b438a039260b270480baf9ee7dd8ef7",
+    "/workspace/regex-bash/bench/perf/stdlib/regex_bench.ms": "91f9f27f7f421a120729310c4653b17a2084905194acb27f535f99f04c0d799b",
+    "/workspace/regex-pass2/baseline-lib.rs": "a35fbfdb4b5f4b62d2b220cf14b22713b6afe76f51874026f7a609d2c27d891f",
+    "/workspace/regex-bash/crates/ms-std-regex/src/lib.rs": "93267fea698e1810a91f4b0df558e9c5cfda25e6b3485cc79715f5f405266dc5"
+  },
+  "hash_capture_phases": {
+    "initial_input_sha256": "Historical narrow32-byte wrapper and16-case source, before cached flag/suite expansion. Original source paths reflect that execution time; initial-lib.rs.txt and initial-bench.ms.txt retain snapshots.",
+    "input_sha256": "Final immutably preserved compiler, native archives, wrappers and source/snapshot files checked again after full recheck and wrapper isolations.",
+    "source_files": "Current final tracked code, called-source test and20-case benchmark."
+  }
+}

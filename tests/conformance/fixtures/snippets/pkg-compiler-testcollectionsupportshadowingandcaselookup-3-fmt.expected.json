@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Other:\n    case OutOfRange\n\ndef get() -> Other: OutOfRange\n"
-  }
-}

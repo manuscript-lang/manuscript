@@ -9,7 +9,7 @@ The compiler checks which names closures capture and which cleanup each scope ru
 
 | Source operation | Required check |
 | --- | --- |
-| `with` initializer | Require the proof defined by [Closeable](../../../core-language/cleanup/closeable.md); register the resolved operation |
+| Binding that holds a resource | Require the proof defined by [Closeable](../../../core-language/cleanup/closeable.md); register the resolved operation |
 | Scope exit | Identify exited cleanup scopes for return, loop exits, errors, faults, cancellation |
 | Closure creation | Identify captured bindings and infer borrowed non-escaping or owned escaping captures |
 | Assignment to captured outer local | Allow mutation only through an exclusive non-escaping capture; escaping captures cannot be mutated |

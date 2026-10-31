@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal, expect_false, expect_true
-from "@std/crypto.ms" import (
+import expect_equal, expect_false, expect_true from "@std/test.ms"
+import (
     sha256,
     sha384,
     sha512,
@@ -28,9 +28,9 @@ from "@std/crypto.ms" import (
     Curve,
     CryptoError,
     HashAlgorithm
-)
-from "@std/encoding.ms" import hex_encode, hex_decode
-from "@std/bytes.ms" import Bytes
+) from "@std/crypto.ms"
+import hex_encode, hex_decode from "@std/encoding.ms"
+import Bytes from "@std/bytes.ms"
 
 test "crypto known SHA256 HMAC and PBKDF2 vectors":
     try expect_false(
@@ -75,10 +75,10 @@ test "authenticated encryption detects wrong associated data":
         (try open(key, nonce, encrypted, "header".to_bytes())), "secret".to_bytes()
     )
 
-    let failed: Result[Bytes, CryptoError] = error(CryptoError.AuthenticationFailed)
+    let failed: Bytes!CryptoError = error(CryptoError.AuthenticationFailed)
     try expect_equal(open(key, nonce, encrypted, "changed".to_bytes()), failed)
 
-    let invalid: Result[Bytes, CryptoError] = error(CryptoError.InvalidInput)
+    let invalid: Bytes!CryptoError = error(CryptoError.InvalidInput)
     try expect_equal(
         seal("short".to_bytes(), nonce, "".to_bytes(), "".to_bytes()), invalid
     )
@@ -127,7 +127,7 @@ test "key derivation supports PBKDF2 and HKDF across hashes":
         "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
     )
 
-    let invalid: Result[Bytes, CryptoError] = error(CryptoError.InvalidInput)
+    let invalid: Bytes!CryptoError = error(CryptoError.InvalidInput)
     try expect_equal(
         HashAlgorithm.Sha256.hkdf(secret, salt, info, 255 * 32 + 1), invalid
     )
@@ -169,7 +169,7 @@ test "AES CTR and CBC round trip":
     try expect_equal(boxed.length(), 32)
     try expect_equal(try aes_cbc_decrypt(key, iv, boxed), message)
 
-    let bad: Result[Bytes, CryptoError] = error(CryptoError.InvalidInput)
+    let bad: Bytes!CryptoError = error(CryptoError.InvalidInput)
     try expect_equal(aes_cbc_decrypt(key, "short".to_bytes(), boxed), bad)
 
 test "ECDSA signs and ECDH agrees":

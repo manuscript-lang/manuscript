@@ -1,9 +1,9 @@
 # conform: tags=control-flow,decimal,diagnostics,faults,modules,stdlib-faults,tier-stdlib
 # conform: phase=check
 # conform: origin=documentation/core-language/errors/faults.md:14
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
-def discount_validated(price: Decimal, percent: Decimal) -> Decimal:
+fn discount_validated(price: Decimal, percent: Decimal) Decimal:
     if price <= 0d:
         return panic("Price must be positive")
     if percent <= 0d or percent >= 100d:

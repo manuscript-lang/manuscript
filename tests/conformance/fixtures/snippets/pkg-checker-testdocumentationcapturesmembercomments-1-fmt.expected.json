@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "# A described record.\nexport type Counter:\n    # Current count in items.\n    # May start at zero.\n    count: Int = 0\n    # Detached description.\n    undocumented: Int = 1\n\nexport type Outcome:\n    # A completed count.\n    case Ready(value: Int)\n    # Work is pending.\n    case Pending\n    # Work failed with source context.\n    case Failed(\n        # Original failure diagnostic.\n        message: String\n    )\n\nexport interface Countable:\n    # Reads the count without mutation.\n    def count() -> Int\n\nimpl Countable for Counter:\n    # Returns the stored count.\n    def count() -> Int:\n        return self.count\n\n# Private declarations stay private.\ntype Hidden:\n    # Hidden member documentation.\n    value: Int\n"
-  }
-}

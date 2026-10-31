@@ -1,22 +1,22 @@
 # conform: tags=control-flow,formatter,interpolation,modules,parser,stdlib-io,tier-core,try-result
 # conform: phase=parse
 # conform: origin=documentation/learn/common-tasks.md:120
-from "@std/io.ms" import stdin, stdout, read_line
+import stdin, stdout, read_line from "@std/io.ms"
 
-def run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     let input = stdin()
 
-    while True:
+    while true:
         let line = try read_line(input, max_bytes: 4096)
 
         if let text = line:
-            try stdout().write(f"{text}\n")
+            try stdout().write("{text}\n")
         else:
             break
 
     return stdout().flush()
 
-export def main() -> Int:
+export fn main() Int:
     if run().is_error():
         return 1
 

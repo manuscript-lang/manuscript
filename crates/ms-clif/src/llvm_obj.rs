@@ -116,6 +116,12 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
     .arg(&bitcode)
     .arg("-o")
     .arg(&obj);
+    if cfg!(target_arch = "x86_64") {
+        // Start every loop on a 32-byte boundary. At the default 16 a small loop may straddle a
+        // 32-byte or cache-line boundary depending on where the linker put the function, which
+        // slowed a five-instruction loop 2x when the runtime grew (#1871).
+        llc.arg("-align-loops=32");
+    }
     run(llc, "llc (LLVM code generator)")?;
     Ok(this)
 }

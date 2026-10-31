@@ -1,13 +1,13 @@
-from "@std/io.ms" import stdin, stdout, read_line
+import stdin, stdout, read_line from "@std/io.ms"
 
-def pad2(n: Int) -> String:
+fn pad2(n: Int) String:
     if n < 10:
-        return f"0{n}"
+        return "0{n}"
 
-    return f"{n}"
+    return "{n}"
 
 # Parses s when it is lo to hi ASCII digits.
-def digits(s: String, lo: Int, hi: Int) -> Optional[Int]:
+fn digits(s: String, lo: Int, hi: Int) Int?:
     let codes = s.scalar_values()
     if codes.length() < lo or codes.length() > hi:
         return none
@@ -22,7 +22,7 @@ def digits(s: String, lo: Int, hi: Int) -> Optional[Int]:
 
     return some(n)
 
-def days_from_civil(year: Int, m: Int, d: Int) -> Int:
+fn days_from_civil(year: Int, m: Int, d: Int) Int:
     var y = year
     if m <= 2:
         y = y - 1
@@ -38,7 +38,7 @@ def days_from_civil(year: Int, m: Int, d: Int) -> Int:
     return era * 146097 + doe - 719468
 
 # Returns [year, month, day].
-def civil_from_days(days: Int) -> List[Int]:
+fn civil_from_days(days: Int) List[Int]:
     let z = days + 719468
     let era = z / 146097
     let doe = z - era * 146097
@@ -54,12 +54,12 @@ def civil_from_days(days: Int) -> List[Int]:
         y = y + 1
     return [y, m, d]
 
-def parse_field(text: String, lo: Int, hi: Int) -> Optional[List[Bool]]:
+fn parse_field(text: String, lo: Int, hi: Int) List[Bool]?:
     var set = List[Bool]()
     var i = 0
 
     while i <= hi:
-        set.append(False)
+        set.append(false)
         i = i + 1
 
     for item in text.split(","):
@@ -84,7 +84,7 @@ def parse_field(text: String, lo: Int, hi: Int) -> Optional[List[Bool]]:
         if body == "*":
             a = lo
             b = hi
-        elif single.is_some():
+        else if single.is_some():
             if parts.length() == 2:
                 return none
 
@@ -109,13 +109,13 @@ def parse_field(text: String, lo: Int, hi: Int) -> Optional[List[Bool]]:
         var v = a
 
         while v <= b:
-            set.set(v, True)
+            set.set(v, true)
             v = v + step
 
     return some(set)
 
 # Returns [day number, minute of day] for a valid START, or an empty list.
-def parse_start(s: String) -> List[Int]:
+fn parse_start(s: String) List[Int]:
     let codes = s.scalar_values()
     let empty = List[Int]()
     if codes.length() != 16:
@@ -162,13 +162,13 @@ def parse_start(s: String) -> List[Int]:
 
     return [days_from_civil(year, month, day), h.get() * 60 + mi.get()]
 
-def run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     let names = ["minute", "hour", "day-of-month", "month", "day-of-week"]
     let lows = [0, 0, 1, 1, 0]
     let highs = [59, 23, 31, 12, 6]
     var n = 0
 
-    while True:
+    while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
         if next.is_none():
             break
@@ -179,23 +179,23 @@ def run() -> Result[Unit, Error]:
         if l.replace(old: " ", new: "").is_empty():
             continue
 
-        let pre = f"line {n}:"
+        let pre = "line {n}:"
         let t = l.split(" ")
 
         if t.length() != 7:
-            try stdout().write(f"{pre} error: bad line\n")
+            try stdout().write("{pre} error: bad line\n")
             continue
 
         let start = parse_start(t.get(0))
 
         if start.is_empty():
-            try stdout().write(f"{pre} error: bad start\n")
+            try stdout().write("{pre} error: bad start\n")
             continue
 
         let count_opt = digits(t.get(1), 1, 2)
 
         if count_opt.is_none() or count_opt.get() < 1 or count_opt.get() > 20:
-            try stdout().write(f"{pre} error: bad count\n")
+            try stdout().write("{pre} error: bad count\n")
             continue
 
         let count = count_opt.get()
@@ -214,7 +214,7 @@ def run() -> Result[Unit, Error]:
             i = i + 1
 
         if not bad.is_empty():
-            try stdout().write(f"{pre} error: bad {bad}\n")
+            try stdout().write("{pre} error: bad {bad}\n")
             continue
 
         let minutes = sets.get(0)
@@ -251,7 +251,7 @@ def run() -> Result[Unit, Error]:
                                 )
                             ):
                                 runs.append(
-                                    f"{ymd.get(0)}-{pad2(ymd.get(1))}-{pad2(ymd.get(2))} {pad2(h)}:{pad2(mn)}"
+                                    "{ymd.get(0)}-{pad2(ymd.get(1))}-{pad2(ymd.get(2))} {pad2(h)}:{pad2(mn)}"
                                 )
                             mn = mn + 1
 
@@ -260,16 +260,16 @@ def run() -> Result[Unit, Error]:
             k = k + 1
 
         if runs.is_empty():
-            try stdout().write(f"{pre} never\n")
+            try stdout().write("{pre} never\n")
             continue
 
-        try stdout().write(f"{pre} {runs.length()} runs\n")
+        try stdout().write("{pre} {runs.length()} runs\n")
         for r in runs:
-            try stdout().write(f"{r}\n")
+            try stdout().write("{r}\n")
 
     return stdout().flush()
 
-export def main() -> Int:
+export fn main() Int:
     match run():
-        case ok(_): return 0
-        case error(_): return 1
+        ok(_): return 0
+        error(_): return 1

@@ -132,7 +132,7 @@ fn specialized_thunk(m: &Module, thunk: FuncId, g: FuncId) -> Option<Func> {
     // A `closure.cap` reads the environment through the function's own capture layout, which
     // the thunk does not have: code that captures is called, not inlined.
     if code.inst_count() <= BASE_THRESHOLD && captures.is_empty() {
-        let ret_own = m.needs_drop(code.ret) && !code.ret_borrowed;
+        let ret_own = m.needs_drop(code.ret);
         inline_at(&mut t, bi, ii, code, ret_own);
     }
     Some(t)
@@ -321,7 +321,7 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
         }
         for (ii, gi) in picks.into_iter().rev() {
             let callee = m.funcs[gi].clone();
-            let ret_own = m.needs_drop(callee.ret) && !callee.ret_borrowed;
+            let ret_own = m.needs_drop(callee.ret);
             let cont = inline_at(&mut m.funcs[fi], bi, ii, &callee, ret_own);
             // Only the call definition is replaced; existing constants keep their IDs when
             // the tail moves. Fresh callee definitions follow the continuation block.
@@ -558,7 +558,7 @@ fn inline_closures_in(m: &mut Module, fi: usize, fields: &HashMap<(RecId, u32), 
                 continue;
             };
             grown += size;
-            let ret_own = m.needs_drop(body.ret) && !body.ret_borrowed;
+            let ret_own = m.needs_drop(body.ret);
             let call = &mut m.funcs[fi].blocks[bi].insts[ii];
             call.op = Op::Call;
             call.imm = Imm::Func(g);
@@ -628,6 +628,7 @@ fn known_closures(m: &Module, fi: usize) -> HashMap<Value, (FuncId, Vec<Value>)>
     for inst in f.blocks.iter().flat_map(|b| b.insts.iter()) {
         if let (Op::ClosureNew, Imm::Func(g), Some(r)) = (inst.op, inst.imm, inst.res)
             && inst.args.iter().all(|a| !m.needs_drop(f.ty(*a)))
+            && m.funcs[g.index()].capture_closers.is_empty()
         {
             known.insert(r, (g, inst.args.clone()));
         }
@@ -1012,6 +1013,7 @@ fn remove_dead(m: &mut Module) -> bool {
             .iter()
             .flat_map(|(_, eq, hash)| [eq.index(), hash.index()]),
     );
+    stack.extend(m.shared_close.iter().map(|(_, f)| f.index()));
     if stack.is_empty() {
         return false;
     }
@@ -1024,6 +1026,7 @@ fn remove_dead(m: &mut Module) -> bool {
                 stack.push(g.index());
             }
         }
+        stack.extend(m.funcs[i].capture_closers.iter().map(|(_, g)| g.index()));
     }
     if live.iter().all(|l| *l) {
         return false;
@@ -1053,12 +1056,22 @@ fn remove_dead(m: &mut Module) -> bool {
             inst.imm = Imm::Func(FuncId(map[g.index()]));
         }
     }
+    for (_, g) in m
+        .funcs
+        .iter_mut()
+        .flat_map(|f| f.capture_closers.iter_mut())
+    {
+        *g = FuncId(map[g.index()]);
+    }
     for g in m.vtables.iter_mut().flat_map(|v| v.methods.iter_mut()) {
         *g = FuncId(map[g.index()]);
     }
     for (_, eq, hash) in &mut m.desc_glue {
         *eq = FuncId(map[eq.index()]);
         *hash = FuncId(map[hash.index()]);
+    }
+    for (_, f) in &mut m.shared_close {
+        *f = FuncId(map[f.index()]);
     }
     m.entry = m.entry.map(|e| FuncId(map[e.index()]));
     true

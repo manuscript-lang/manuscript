@@ -1,12 +1,12 @@
-from "@std/shared.ms" import share
-from "@std/sync.ms" import lock
+import share from "@std/shared.ms"
+import lock from "@std/sync.ms"
 
-export def main() -> Int:
+export fn main() Int:
     let box = share(1)
-
-    with var outer = lock(box):
-        with var inner = lock(box):
-            inner.value += 1
-        outer.value += 1
-
+    var outer = lock(box)
+    var inner = lock(box)
+    inner.value += 1
+    inner.close().get(none)
+    outer.value += 1
+    outer.close().get(none)
     return 0

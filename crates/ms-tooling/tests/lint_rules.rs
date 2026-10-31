@@ -28,3 +28,15 @@ fn every_emitted_code_is_explained() {
         );
     }
 }
+
+#[test]
+fn every_rule_has_a_severity_and_findings_carry_it() {
+    use ms_tooling::lint::{RULES, Severity, explain};
+    assert_eq!(explain("MSL110").unwrap().severity, Severity::Warning);
+    assert_eq!(explain("MSL112").unwrap().severity, Severity::Error);
+    for rule in RULES {
+        let finding = ms_tooling::lint::lint_source(&"a.ms".into(), "x \n");
+        assert!(finding.iter().all(|f| f.severity == Severity::Warning));
+        assert!(!rule.family.is_empty());
+    }
+}

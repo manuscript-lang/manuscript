@@ -70,12 +70,12 @@ recorded here before it is committed.)_
   Clone becomes explicit `msrt_list_copy` / `msrt_slot_copy`. The sections below
   describe v2 only.
 - **v2.1 (implemented runtime, `ABI_VERSION` 2).** Everything below is implemented and tested in `ms-rt`;
-  `SYMBOLS.md` lists every exported symbol with its Rust signature. It is kept by hand; the `runtime_symbol_catalogue_matches_archive` test fails when it and the runtime archive disagree, and `stdlib/bindings.json` (`runtime_symbols`) names the symbol of each native function.
+  `SYMBOLS.md` lists every exported symbol with its Rust signature. It is kept by hand; the `runtime_symbol_catalogue_matches_archive` test fails when it and the runtime archive disagree, and each `extern fn` in `stdlib/*.ms` names its symbol.
   - Strings: owned, immutable, uniquely owned buffers; empty and one-ASCII-byte results are static strings (tag `10`).
     The scalar count of the long string last measured is cached in a one-entry hint with a position for sequential indexing.
-  - Optional/fallible conventions as in section 1: `Optional[Int]` result = `u8` present + `out: *mut i64`; `Optional[String]` = `OptStr { value: StrVal }` (16 bytes; none is a static empty string with a null `ptr`) through `out`, or a `present: u8` result with `out: *mut StrVal`
+  - Optional/fallible conventions as in section 1: `Int?` result = `u8` present + `out: *mut i64`; `String?` = `OptStr { value: StrVal }` (16 bytes; none is a static empty string with a null `ptr`) through `out`, or a `present: u8` result with `out: *mut StrVal`
     (`bytes_decode_utf8`, `split_next`); `Result` = `status: u8` with `out` last; optional **parameters** flatten to `has_x: u8, x`
-    (borrowed `Optional[String]` parameters flatten the same way, `has: u8, value: *const StrVal`, e.g. `msrt_string_get(s, index, has_default, default, out)`).
+    (borrowed `String?` parameters flatten the same way, `has: u8, value: *const StrVal`, e.g. `msrt_string_get(s, index, has_default, default, out)`).
   - Lists: `msrt_list_*` take `(receiver*, desc*, ...)`. Language `drop(count)` is `msrt_list_drop_n` (`msrt_list_drop` releases the value);
     `append` is `msrt_list_push`; `prepend/insert/set` consume the element slot; `fill` borrows and copies its value; `splice` and `extend`
     consume the replacement list; `concat`, `slice`, `take`, `drop_n`, `reversed`, `sorted`, `distinct`, `flatten`, `to_set`, `filled`,
@@ -104,8 +104,8 @@ recorded here before it is committed.)_
   `*const MapVal` = borrowed read; `*mut` = `var` receiver, mutated in place).
   Constructed aggregates are returned through a trailing `out: *mut StrVal|VecVal|MapVal`
   (uninitialised memory in the caller; the callee initialises it; the caller owns it).
-- **Optional parameters.** `Optional[Int|Float|Bool]` is flattened into
-  `has: u8, value: i64|f64|u8`. `Optional[<refcounted object>]` is a nullable pointer.
+- **Optional parameters.** `Int|Float|Bool?` is flattened into
+  `has: u8, value: i64|f64|u8`. `<refcounted object>?` is a nullable pointer.
 - **Optional results.** Scalar payload: return `present: u8`, payload through a
   trailing `out` pointer only when present. `String`: `present: u8` with `out: *mut StrVal`. Generic
   elements: return `present: u8`, element moved/copied into `out: *mut u8`.
@@ -183,7 +183,7 @@ For every kind but inline, `ptr` points at the UTF-8 bytes, a NUL follows them (
 whole `ptr` word, then the low 7 bytes of `tagged`; bytes past the length are zero. Its data
 pointer is therefore the value's own address (`StrVal::data`). `msrt_str_copy` returns an inline
 string when the copy fits, so copying a short string never allocates. A string is owned exactly when
-`tagged < 1 << 62` (unsigned). `Optional[String]` uses the same two words, with None as `{0, STR_STATIC}`;
+`tagged < 1 << 62` (unsigned). `String?` uses the same two words, with None as `{0, STR_STATIC}`;
 presence is `(ptr | (tagged ^ STR_STATIC)) != 0`, because an inline string can have a zero `ptr`
 word. A view is only handed out where the source outlives it
 unchanged: `trim`, `split` lists that the block reads only in place over a read-only parameter
@@ -205,7 +205,6 @@ MapVal { slots, index, len @16, used, cap, mask, desc }     Map[K,V], Set[T]; 56
   `.copy()` is `msrt_list_copy` / `msrt_map_copy` (deep, through `desc.copy`).
 - `Bytes` is a `VecVal` of `u8`; `BytesBuilder` is the same value, `build` is a move.
   `StringBuilder` is a `VecVal` of bytes; `msrt_strbuilder_freeze` copies into a String.
-  `ListBuilder`, `MapBuilder`, `SetBuilder` are the collection values; `build` is a move.
 - Negative indices count from the end where the Go runtime allows it (`get`, `set`,
   `remove`, `insert`, `slice`); `splice`, `fill`, `copy_within` take exact bounds.
 - Iteration: `for x in xs` captures `n = len` at entry, reloads `ptr`/`len` each step
@@ -255,9 +254,9 @@ build record hashes. Generic helpers: `msrt_slot_drop`, `msrt_slot_copy`,
 
 ## 6. Optional, Result, closures, interfaces
 
-- `Optional[T]` of a refcounted pointer: the pointer, null = none. `Optional[Int]`:
-  `OptInt { present u8 @0, value i64 @8 }` (16 bytes), `Optional[Float]` likewise,
-  `Optional[Bool]` `{ present u8 @0, value u8 @1 }`. Optional of aggregates is compiler-defined.
+- `T?` of a refcounted pointer: the pointer, null = none. `Int?`:
+  `OptInt { present u8 @0, value i64 @8 }` (16 bytes), `Float?` likewise,
+  `Bool?` `{ present u8 @0, value u8 @1 }`. Optional of aggregates is compiler-defined.
 - `Result[T, E]`: compiler-defined; the runtime only uses the status/out protocol.
 - Closures: refcounted `Closure { hdr, code @16, captured @24.. }`; `code` is
   `fn(closure, args...)`. The runtime calls closures only via the sort thunk.
@@ -301,7 +300,7 @@ and call `msrt_cancelled() -> !`, which runs cleanups and exits 130 (SIGINT) or 
 (SIGTERM). A second stop request or 30 s later prints `incomplete cleanup: <reason>`
 and exits 67.
 
-**Cleanup stack (`with`).** `msrt_cleanup_push(f: fn(arg: *mut u8), arg: *mut u8) -> usize`
+**Cleanup stack (scope-end closes).** `msrt_cleanup_push(f: fn(arg: *mut u8), arg: *mut u8) -> usize`
 returns a handle; `msrt_cleanup_run(handle)` runs and removes that action (and any
 newer pending ones first, innermost to outermost). On a fault the remaining actions
 run LIFO shielded from cancellation.
@@ -317,7 +316,7 @@ plus `at file:line in fn` frames, no trailing newline) as a new String in `*msg_
 `*msg_out = null`; the cancel flag stays set so the caller should stop soon after.
 Guards nest: a fault leaves only the innermost one. Cleanups registered before entry
 are untouched. Not unwound: values owned by the abandoned frames are only released
-through cleanup actions, so a fault leaks anything not under `with`; the HTTP server's handler thunk registers its request
+through cleanup actions, so a fault leaks anything not registered on the cleanup stack; the HTTP server's handler thunk registers its request
 with the cleanup stack for this reason. Faults still exit
 67 outside any guard. Implementation: `msrt_guard_enter` saves callee-saved registers
 and the stack pointer and calls `code`; a fault jumps back to it (x86_64 and aarch64;
@@ -329,7 +328,7 @@ global stay non-atomic; a task runs until it parks or yields. This is a runtime 
 natives (an HTTP server running handlers concurrently); the language has no concurrency
 surface. Each task has its own stack (default 256 MiB of address space, committed lazily, 64 KiB
 guard), cleanup stack, guard stack, stack limit, equality-cycle state and cancellation request;
-the runtime swaps them on every switch, so faults, `with` cleanups and `msrt_guard_call`
+the runtime swaps them on every switch, so faults, scope-end cleanups and `msrt_guard_call`
 behave per task.
 
 ```text

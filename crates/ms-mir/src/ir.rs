@@ -280,9 +280,11 @@ pub enum Op {
     // Float arithmetic and conversions.
     FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, FFloor, FCeil, FTrunc, I2F, F2IOpt, B2I, Select,
     // Records and alternatives.
-    RecNew, RecGet, RecSet, RecFill, AltNew, AltTag, AltGet, AltUnbox, AltTake, AltRelease,
+    RecNew, RecGet, RecSet, RecFill, AltNew, AltTag, AltGet, AltUnbox, AltTake, AltRelease, RecRelease,
     // Lists.
     ListNew, ListLit, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast,
+    // Borrowed views: `RefNew` wraps a borrowed value, `RefGet` reads it back as a borrow.
+    RefNew, RefGet,
     // Optionals.
     OptSome, OptView, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
     // Strings.
@@ -364,6 +366,8 @@ pub enum ImmKind {
     AltField,
     /// Alternative id, case and the set of payload fields that were moved out.
     AltMask,
+    /// Record id and the set of fields that were moved out.
+    RecMask,
     /// Vtable.
     Vtable,
     /// Global.
@@ -400,9 +404,10 @@ impl Op {
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
         Op::ICmp, Op::UICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
-        Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease,
+        Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
+        Op::RefNew, Op::RefGet,
         Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
         Op::StrLen, Op::StrByte, Op::StrAscii, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData, Op::IfaceIs,
@@ -478,6 +483,7 @@ impl Op {
             Op::AltUnbox => ("alt.unbox", K::AltField, true, effects!(writes, rc)),
             Op::AltTake => ("alt.take", K::AltField, true, effects!(writes, rc)),
             Op::AltRelease => ("alt.release", K::AltMask, false, effects!(writes, rc)),
+            Op::RecRelease => ("rec.release", K::RecMask, false, effects!(writes, rc)),
             Op::ListNew => ("list.new", K::None, true, effects!(alloc)),
             Op::ListLit => ("list.lit", K::None, true, effects!(alloc)),
             Op::ListLen => ("list.len", K::None, true, effects!()),
@@ -490,6 +496,8 @@ impl Op {
             Op::ListFill => ("list.fill", K::None, true, effects!(reads, writes, faults)),
             Op::ListPush => ("list.push", K::None, true, effects!(reads, writes, alloc, faults)),
             Op::ListDropLast => ("list.droplast", K::None, true, effects!(reads, writes, rc)),
+            Op::RefNew => ("ref.new", K::None, true, effects!()),
+            Op::RefGet => ("ref.get", K::None, true, effects!()),
             Op::OptSome => ("opt.some", K::None, true, effects!()),
             Op::OptView => ("opt.view", K::None, true, effects!()),
             Op::OptNone => ("opt.none", K::None, true, effects!()),
@@ -590,6 +598,8 @@ pub enum Imm {
     AltField(AltId, u32, u32),
     /// Alternative id, case and a bit set of payload fields moved out by `alt.take`.
     AltMask(AltId, u32, u32),
+    /// Record id and a bit set of fields moved out before `rec.release`.
+    RecMask(RecId, u32),
     /// A vtable.
     Vtable(VtableId),
     /// A global.
@@ -671,7 +681,7 @@ pub enum Term {
     },
     /// Returns an owned value (or nothing for `Unit` functions).
     Ret(Option<Value>),
-    /// Aborts the program with a fault, running `with` cleanups first.
+    /// Aborts the program with a fault, running scope cleanups first.
     Fault(FaultKind),
     /// Control never reaches here; undefined behavior if it does.
     Unreachable,
@@ -816,11 +826,8 @@ pub struct Func {
     pub name: String,
     /// Parameters; `blocks[0].params` define their values.
     pub params: Vec<Param>,
-    /// Result type; results are owned unless `ret_borrowed` says the function lends one.
+    /// Result type; results are owned.
     pub ret: Ty,
-    /// The result is a borrow of an argument that the caller keeps alive: returned without a
-    /// retain, and not released by the caller.
-    pub ret_borrowed: bool,
     /// Visibility.
     pub linkage: Linkage,
     /// Role of the function.
@@ -845,6 +852,9 @@ pub struct Func {
     /// A cleanup closer that acts only while a cancellation or fault unwinds a guarded task
     /// (see `unwind`). Registering it is skipped when no guard is open, where it would do nothing.
     pub unwind_only: bool,
+    /// A closure function whose environment owns resources: the capture index and the function
+    /// that closes it (taking the captured value by borrow), run when the closure is dropped.
+    pub capture_closers: Vec<(u32, FuncId)>,
 }
 
 impl Func {
@@ -854,7 +864,6 @@ impl Func {
             name: name.to_string(),
             params: params.clone(),
             ret,
-            ret_borrowed: false,
             linkage: Linkage::Internal,
             kind: FuncKind::Normal,
             inline: InlineHint::Auto,
@@ -865,6 +874,7 @@ impl Func {
             noalias: Vec::new(),
             scoped: false,
             unwind_only: false,
+            capture_closers: Vec::new(),
         };
         for p in params {
             let v = f.new_value(p.ty);
@@ -1064,6 +1074,9 @@ pub struct Module {
     /// Equality and hash functions (`fn(ptr, ptr) -> bool`, `fn(ptr) -> int`) that the
     /// descriptor of an aggregate type points to.
     pub desc_glue: Vec<(Ty, FuncId, FuncId)>,
+    /// Closers of `Shared` payloads holding resources: for the payload record type, a function
+    /// `fn(ptr)` over the box's payload that closes the value the last holder's drop releases.
+    pub shared_close: Vec<(Ty, FuncId)>,
 }
 
 impl Default for Module {
@@ -1090,6 +1103,7 @@ impl Module {
             funcs: Vec::new(),
             entry: None,
             desc_glue: Vec::new(),
+            shared_close: Vec::new(),
         }
     }
 
@@ -1219,7 +1233,7 @@ impl Module {
         }
     }
 
-    /// Whether `Optional[inner]` contains itself by value (`type Node: next: Optional[Node]`)
+    /// Whether `inner?` contains itself by value (`type Node: next: Node?`)
     /// and therefore holds its payload in a heap block behind a nullable pointer. Backends
     /// share this rule through [`Boxing`], which memoizes it.
     pub fn opt_is_boxed(&self, inner: Ty) -> bool {
@@ -1247,7 +1261,8 @@ impl Module {
             | TyKind::UInt64
             | TyKind::Float
             | TyKind::Float32
-            | TyKind::Ptr => false,
+            | TyKind::Ptr
+            | TyKind::Ref(_) => false,
             TyKind::Opt(inner) => self.needs_drop_in(*inner, seen),
             TyKind::Rec(r) => {
                 if seen.contains(&ty) {
@@ -1277,21 +1292,49 @@ impl Module {
         }
     }
 
+    /// Whether a value of `ty` holds a borrowed view of another value, directly or in a field,
+    /// payload or element: such a value must not outlive what it borrows.
+    pub fn holds_view(&self, ty: Ty) -> bool {
+        self.holds_view_in(ty, &mut Vec::new())
+    }
+
+    fn holds_view_in(&self, ty: Ty, seen: &mut Vec<Ty>) -> bool {
+        match self.types.kind(ty) {
+            TyKind::Ref(_) => true,
+            TyKind::Opt(inner) | TyKind::List(inner) => self.holds_view_in(*inner, seen),
+            TyKind::Rec(r) => {
+                if seen.contains(&ty) {
+                    return false;
+                }
+                seen.push(ty);
+                let out = self.records[r.index()]
+                    .fields
+                    .iter()
+                    .any(|f| self.holds_view_in(f.1, seen));
+                seen.pop();
+                out
+            }
+            TyKind::Alt(a) => {
+                if seen.contains(&ty) {
+                    return false;
+                }
+                seen.push(ty);
+                let out = self.alts[a.index()]
+                    .cases
+                    .iter()
+                    .any(|c| c.fields.iter().any(|f| self.holds_view_in(f.1, seen)));
+                seen.pop();
+                out
+            }
+            _ => false,
+        }
+    }
+
     /// The ownership mode of the result of `inst` in `f`, if it is reference counted.
     pub fn result_mode(&self, f: &Func, inst: &Inst) -> Option<Mode> {
         let res = inst.res?;
         if !self.needs_drop(f.ty(res)) {
             return None;
-        }
-        if let (Op::Call, Imm::Func(g)) = (inst.op, inst.imm)
-            && self.funcs[g.index()].ret_borrowed
-        {
-            return Some(Mode::Borrow);
-        }
-        if let (Op::CallMethod, Imm::Method(i, k)) = (inst.op, inst.imm)
-            && self.ifaces[i.index()].methods[k as usize].ret_borrowed
-        {
-            return Some(Mode::Borrow);
         }
         Some(match inst.op {
             Op::RecGet
@@ -1306,6 +1349,7 @@ impl Module {
             | Op::StrLit
             | Op::StrAscii
             | Op::OptView
+            | Op::RefGet
             | Op::OptNone => Mode::Borrow,
             _ => Mode::Own,
         })
@@ -1344,7 +1388,7 @@ impl Boxing {
         b
     }
 
-    /// Whether `Optional[inner]` contains itself by value.
+    /// Whether `inner?` contains itself by value.
     pub fn opt(&mut self, m: &Module, inner: Ty) -> bool {
         if let Some(b) = self.opts.get(&inner) {
             return *b;

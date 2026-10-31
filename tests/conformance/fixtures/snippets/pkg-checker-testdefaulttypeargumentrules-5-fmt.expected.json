@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Trio[A, B, C = A]:\n    first: A\n\ndef use(t: Trio[Int]) -> Unit: ()\n"
-  }
-}

@@ -14,7 +14,7 @@
           "file": "core-language-functions-declarations-and-calls-2.ms",
           "line": 7,
           "column": 17,
-          "offset": 241
+          "offset": 237
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "core-language-functions-declarations-and-calls-2.ms",
           "line": 8,
           "column": 26,
-          "offset": 280
+          "offset": 276
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "core-language-functions-declarations-and-calls-2.ms",
           "line": 9,
           "column": 13,
-          "offset": 325
+          "offset": 321
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "core-language-functions-declarations-and-calls-2.ms",
           "line": 12,
           "column": 15,
-          "offset": 398
+          "offset": 394
         }
       }
     ],

@@ -1,11 +1,11 @@
 # conform: tags=decimal,faults,formatter,modules,parser,stdlib-decimal,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/runtime-1.ms
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal
-from "@std/decimal.ms" import Decimal
+import TextError from "@std/core.ms"
+import expect_equal from "@std/test.ms"
+import Decimal from "@std/decimal.ms"
 
-def amount() -> Result[Decimal, TextError]:
+fn amount() Decimal!TextError:
     return ok(12.50d)
 
 test "explicit standard imports":

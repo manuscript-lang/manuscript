@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def choose(value: Choice) -> Int:\n    match value:\n        case first: return 1\n        case second: return 2\n        case third:\n            let result = calculate()\n            return result\n        case _: return 0\n\n    return 3\n"
-  }
-}

@@ -1,15 +1,15 @@
-from "./domain.ms" import Key
-from "./helper.ms" import insert, insert_bound
-from "@std/test.ms" import expect_equal
+import Key from "./domain.ms"
+import insert, insert_bound from "./helper.ms"
+import expect_equal from "@std/test.ms"
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool:
+    fn equals(other: Key) Bool:
         return self.code == other.code
 
 impl Hashable for Key:
-    def hash() -> Int: 0
+    fn hash() Int: 0
 
-export def second() -> Result[Int, Error]:
+export fn second() Int!:
     var m = Map[Key, Int]()
     var original = Key(1.0)
     m.add(original, 1)

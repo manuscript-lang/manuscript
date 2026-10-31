@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def p() -> Result[Int, Error]:\n    return ok(1)\n\ndef f(x: Optional[Int]) -> Result[Unit, Error]:\n    match x:\n        case some(n):\n            try p()\n            return ok(())\n        case none: return ok(())\n"
-  }
-}

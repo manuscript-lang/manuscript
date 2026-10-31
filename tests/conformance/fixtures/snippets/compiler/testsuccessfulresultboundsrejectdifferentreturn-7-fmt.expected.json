@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "type Cause:\n    text: String\n\nimpl Error for Cause:\n    fn message() String: self.text.clone()\n"
+  }
+}

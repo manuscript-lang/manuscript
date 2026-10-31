@@ -1,0 +1,20 @@
+   Compiling cranelift-codegen v0.136.0 (/workspace/manuscript-normalization-revert/vendor/cranelift-codegen)
+   Compiling ms-check v0.0.0 (/workspace/manuscript-normalization-revert/crates/ms-check)
+   Compiling ms-syntax v0.0.0 (/workspace/manuscript-normalization-revert/crates/ms-syntax)
+   Compiling ms-json v0.1.0 (/workspace/manuscript-normalization-revert/crates/ms-json)
+   Compiling ms-lower v0.0.0 (/workspace/manuscript-normalization-revert/crates/ms-lower)
+   Compiling ms-mir v0.0.0 (/workspace/manuscript-normalization-revert/crates/ms-mir)
+   Compiling ms-clif v0.0.0 (/workspace/manuscript-normalization-revert/crates/ms-clif)
+   Compiling ms-std-decimal v0.1.0 (/workspace/manuscript-normalization-revert/crates/ms-std-decimal)
+   Compiling ms-rt-abi v0.1.0 (/workspace/manuscript-normalization-revert/crates/ms-rt-abi)
+   Compiling ms-cli v0.1.0 (/workspace/manuscript-normalization-revert/crates/ms-cli)
+   Compiling cranelift-module v0.136.0
+   Compiling cranelift-object v0.136.0
+   Compiling cranelift-native v0.136.0
+   Compiling cranelift-frontend v0.136.0
+   Compiling ms-driver v0.0.0 (/workspace/manuscript-normalization-revert/crates/ms-driver)
+   Compiling ms-tooling v0.0.0 (/workspace/manuscript-normalization-revert/crates/ms-tooling)
+   Compiling ms-build v0.0.0 (/workspace/manuscript-normalization-revert/crates/ms-build)
+   Compiling ms-lsp v0.0.0 (/workspace/manuscript-normalization-revert/crates/ms-lsp)
+   Compiling ms-conform v0.1.0 (/workspace/manuscript-normalization-revert/crates/ms-conform)
+    Finished `release` profile [optimized + debuginfo] target(s) in 3m 23s

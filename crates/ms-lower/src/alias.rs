@@ -1,4 +1,4 @@
-//! Exclusive (`var`) borrows: `var x = place` and `if var x = accessor(place)`.
+//! Exclusive (`var`) borrows: `var x = place` and `if var x = place[key]?`.
 //!
 //! The ownership checker guarantees that while `x` lives nothing else reads, changes or moves
 //! the origin, so `x` is lowered as a name for the origin's place instead of a value: a read of
@@ -10,7 +10,7 @@ use crate::func::{FnLower, Val};
 use ms_check::hir::Resolution;
 use ms_check::types::{BindingRef, Name};
 use ms_mir::builder::Var;
-use ms_mir::ir::{Imm, Op, Value};
+use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
@@ -25,6 +25,8 @@ pub(crate) enum AStep {
     /// address when the borrow found it in this function: the exclusive borrow keeps the map
     /// from gaining or losing entries, so the address holds until the borrow ends.
     Key(Var, Option<Value>),
+    /// The payload of an `Optional` the match has shown present (`c?.f()`).
+    Some,
 }
 
 /// The place a borrow binding names.
@@ -34,9 +36,9 @@ pub(crate) struct Alias {
     pub steps: Vec<AStep>,
 }
 
-/// How `if var` tests that the place it borrows exists.
+/// How `if` tests the value it binds from.
 pub(crate) enum Found {
-    /// The accessor's `Optional` result.
+    /// An `Optional` result.
     Opt(Val),
     /// A `Bool` computed without reading the value.
     Present(Value),
@@ -96,42 +98,35 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    /// The place `if var name = recv.get(key)` (or `first`, `last`) names, and the test for
-    /// whether it exists.
-    pub(crate) fn alias_accessor(&mut self, cond: &Expr) -> Result<(Alias, Found), Error> {
-        let ExprKind::Call { callee, args } = &cond.kind else {
+    /// The place `if var name = recv[key]?` names, and the test for whether it exists.
+    pub(crate) fn alias_accessor(&mut self, cond: &Expr) -> Result<(Alias, Value), Error> {
+        let ExprKind::Probe(target) = &cond.kind else {
             return Err(Error::new(
-                "`if var` borrows the payload of a call such as `m.get(key)`, `xs.first()` or `xs.last()`",
+                "`if var` borrows an entry written as `place[key]?`",
             ));
         };
-        let ExprKind::Member { left, name } = &callee.kind else {
-            return Err(Error::new("`if var` needs a method call on a place"));
+        let Some((left, index)) = crate::mutation::index_parts(&self.hir, target) else {
+            return Err(Error::new("`?` needs an index of a map or list"));
         };
         let mut a = self.alias_chain(left)?;
         let whole = self.alias_read(&a)?;
         let ty = self.ty_of(whole.v);
-        let mut values = Vec::new();
-        match (self.b.m.types.kind(ty).clone(), name.as_str()) {
-            (TyKind::List(_), "first") => {
-                let zero = self.b.iconst(0);
-                a.steps.push(AStep::Index(zero));
-            }
-            (TyKind::List(_), "last") => {
-                let len = self.b.list_len(whole.v);
-                let one = self.b.iconst(1);
-                let at = self.b.binop(Op::ISub, len, one);
-                a.steps.push(AStep::Index(at));
-            }
-            (TyKind::List(_), "get") if args.len() == 1 => {
-                let i = self.expr(&args[0].value)?;
+        match self.b.m.types.kind(ty).clone() {
+            TyKind::List(_) => {
+                let i = self.expr(index)?;
                 let at = self.borrow(i);
+                let zero = self.b.iconst(0);
+                let len = self.b.list_len(whole.v);
+                let above = self.b.icmp(Cc::Ge, at, zero);
+                let below = self.b.icmp(Cc::Lt, at, len);
+                let found = self.b.binop(Op::And, above, below);
                 a.steps.push(AStep::Index(at));
-                values.push(Val { v: at, own: false });
+                Ok((a, found))
             }
-            (TyKind::Obj(..), "get") if args.len() == 1 => {
+            TyKind::Obj(..) => {
                 // One lookup finds the entry: the test is its address, and the borrow reads
                 // and writes through it.
-                let k = self.expr(&args[0].value)?;
+                let k = self.expr(index)?;
                 let key = self.bind_hidden(k);
                 let ptr = self.map_entry_ptr(whole.v, key)?;
                 let missing = self
@@ -140,33 +135,10 @@ impl<'a> FnLower<'a> {
                     .expect("is_null");
                 let found = self.b.unop(Op::Not, missing);
                 a.steps.push(AStep::Key(key, Some(ptr)));
-                return Ok((a, Found::Present(found)));
+                Ok((a, found))
             }
-            _ => {
-                return Err(Error::new(
-                    "`if var` supports `get` on a map or list and `first` or `last` on a list",
-                ));
-            }
+            _ => Err(Error::new("`?` needs an index of a map or list")),
         }
-        let Resolution::Method(method) = self.hir.resolution(cond) else {
-            return Err(Error::new("`if var` needs a method call on a place"));
-        };
-        let args = method
-            .ty
-            .params
-            .iter()
-            .zip(values)
-            .map(|(p, val)| crate::native::NArg {
-                name: p.name,
-                val,
-                wrapped: false,
-            })
-            .collect::<Vec<_>>();
-        let result = self.emty(cond)?;
-        // Test the same receiver and key the borrow will name. Re-lowering `cond`
-        // would run calls in its receiver path or key a second time.
-        let value = self.bound_native_call(&method, whole, &args, result)?;
-        Ok((a, Found::Opt(value)))
     }
 
     /// The current value of a borrowed place, as a borrow.
@@ -189,6 +161,7 @@ impl<'a> FnLower<'a> {
                         .emit(Op::Load, &[ptr], Imm::Ty(vty), Some(vty))
                         .expect("load")
                 }
+                AStep::Some => self.b.opt_get(cur),
             };
         }
         Ok(Val { v: cur, own: false })
@@ -240,6 +213,13 @@ impl<'a> FnLower<'a> {
                 } else {
                     self.b.list_set(obj, *at, inner)
                 })
+            }
+            AStep::Some => {
+                // The match showed the optional present: its payload moves out, changes, and
+                // moves back in; nothing is copied.
+                let payload = self.b.opt_unbox(obj);
+                let inner = self.update_steps(payload, rest, f)?;
+                Ok(self.b.opt_some(inner))
             }
             AStep::Key(var, at) => {
                 // The entry is changed where it lies: its value is taken out of the slot,

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"./left.ms\" import left\nfrom \"./right.ms\" import right\n\ndef result() -> Int: return left() + right()\n"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def f(o: Optional[Int]) -> Int:\n    match o:\n        case Some(v):\n            return v\n        case None:\n            return 0\n"
-  }
-}

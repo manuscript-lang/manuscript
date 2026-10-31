@@ -70,14 +70,24 @@ impl FnLower<'_> {
         };
         if hidden {
             let ty = self.b.var_ty(sv);
-            self.adopt_hidden(sv, ty);
+            let uid = self.adopt_hidden(sv, ty);
+            // An owned temporary scrutinee (`match make():`) is the match's own: its payloads
+            // are borrowed by the arms, so it closes when the match is left, `return` included.
+            let sty = ms_check::types::sub(&self.hir.ty(scrutinee), &self.subst);
+            let moved = arms.iter().any(|arm| {
+                self.hir
+                    .arm(arm)
+                    .bindings
+                    .iter()
+                    .flatten()
+                    .any(|b| self.cx.moved_payloads.contains(&b.uid))
+            });
+            if !moved && let Some(kind) = self.part_closer(&sty)? {
+                self.hidden_closers.insert(uid, kind);
+            }
         }
         let rty = self.emty(e)?;
-        // The returned expression of a lending function hands back the branch values themselves.
-        let lend_arms = self.lent_return
-            && self.lent_expr == Some(e as *const Expr as usize)
-            && self.ownership_checked();
-        let owned = self.needs_drop(rty) && !lend_arms;
+        let owned = self.needs_drop(rty);
         let res = self
             .b
             .declare_var(rty, if owned { Mode::Own } else { Mode::Borrow });
@@ -180,6 +190,13 @@ impl FnLower<'_> {
             let facts = self.hir.arm(arm);
             for (i, b) in facts.bindings.iter().enumerate() {
                 let Some(b) = b else { continue };
+                if arm.chain && self.cx.exclusive(b.uid) {
+                    // `c?.f()` changing the payload: `?N` names the payload of `c` itself.
+                    let mut alias = self.alias_chain(scrutinee)?;
+                    alias.steps.push(crate::alias::AStep::Some);
+                    self.aliases.insert(b.uid, alias);
+                    continue;
+                }
                 let cur = self.b.use_var(sv);
                 let payload = match (&kind, case) {
                     (TyKind::Iface(_), Some(_)) => {
@@ -218,21 +235,12 @@ impl FnLower<'_> {
             self.stmts(&arm.body)?;
             let mark = self.temps.len();
             if !self.dead {
-                if lend_arms && let Some(v) = &arm.value {
-                    self.lent_expr = Some(v as *const Expr as usize);
-                }
                 let x = match &arm.value {
                     Some(v) => Some(self.expr(v)?),
                     None => None,
                 };
                 if !self.dead {
                     let v = match x {
-                        Some(x) if lend_arms => {
-                            if x.own && self.needs_drop(self.ty_of(x.v)) {
-                                self.lent_violation = true;
-                            }
-                            x.v
-                        }
                         Some(x) => self.owned(x),
                         None => self.b.unit(),
                     };
@@ -300,6 +308,13 @@ impl FnLower<'_> {
         let Some((rv, hidden)) = self.hold(operand)? else {
             return Ok(self.dummy(MTy::UNIT));
         };
+        // `try r` at the last use of a closing binding hands its payload on: the binding no
+        // longer closes it.
+        if let (ExprKind::Name(_), Resolution::Local(b)) =
+            (&operand.kind, self.hir.resolution(operand))
+        {
+            self.moved_closer(b.uid, operand);
+        }
         let r = self.b.use_var(rv);
         let rty = self.ty_of(r);
         let TyKind::Alt(a) = self.b.m.types.kind(rty).clone() else {
@@ -354,13 +369,19 @@ impl FnLower<'_> {
         self.enter(okb);
         let cur = self.b.use_var(rv);
         let payload = self.b.alt_get(a, ok as u32, 0, cur);
+        if !hidden {
+            // A part of a place: a consumer that keeps it takes its own copy, a reader reads
+            // it in place, so a resource payload is never duplicated.
+            return Ok(Val {
+                v: payload,
+                own: false,
+            });
+        }
         let po = self.owned(Val {
             v: payload,
             own: false,
         });
-        if hidden {
-            self.drop_value(cur);
-        }
+        self.drop_value(cur);
         Ok(self.val(po, true))
     }
 }

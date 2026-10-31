@@ -1,61 +1,61 @@
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/json.ms" import JsonLimits
+import expect_equal, expect_false from "@std/test.ms"
+import JsonLimits from "@std/json.ms"
 
 type Counter:
     calls: Int
 
-def fallback(var counter: Counter) -> Int:
+fn fallback(var counter: Counter) Int:
     counter.calls += 1
     return 42
 
-def value_or[T](value: Optional[T], fallback: T) -> T:
+fn value_or[T](value: T?, fallback: T) T:
     if let inner = value:
         return inner
 
     return fallback
 
-def increment(value: Int) -> Int: value + 1
+fn increment(value: Int) Int: value + 1
 
 test "Optional presence and extraction preserve false and zero":
-    let present: Optional[Int] = some(0)
-    let missing: Optional[Int] = none
+    let present: Int? = 0
+    let missing: Int? = none
     try expect_false(not (present.is_some()))
     try expect_false(present.is_none())
     try expect_false(missing.is_some())
     try expect_false(not (missing.is_none()))
     try expect_equal(present.get(), 0)
 
-    let flag: Optional[Bool] = some(False)
+    let flag: Bool? = false
     try expect_false(flag.get())
     try expect_equal(value_or(missing, 7), 7)
     try expect_equal(value_or(present, 7), 0)
     try expect_false(missing.is_some())
 
 test "Optional fallbacks distinguish eager and lazy evaluation":
-    let present: Optional[Int] = some(0)
-    let missing: Optional[Int] = none
+    let present: Int? = 0
+    let missing: Int? = none
     var counter = Counter(0)
     try expect_equal(present.get(fallback(var counter)), 0)
     try expect_equal(counter.calls, 1)
 
-    let create = lambda: some(42)
+    let create = fn() Int?: 42
     try expect_equal(present.or_else(create).get(), 0)
     try expect_equal(missing.or_else(create).get(), 42)
 
 test "Optional methods retain generic payload and receiver identity":
-    let inner: Optional[Int] = none
-    let outer: Optional[Optional[Int]] = some(inner)
+    let inner: Int? = none
+    let outer: Int?? = inner
     try expect_false(not (outer.is_some()))
     try expect_false(not (outer.get().is_none()))
 
     let counter = Counter(3)
-    let record: Optional[Counter] = some(counter.clone())
+    let record: Counter? = counter.clone()
     try expect_equal(record.get().calls, 3)
 
     let extract = record.get
     try expect_equal(extract().calls, 3)
 
-    let callback: Optional[Callable[[Int], Int]] = some(increment)
+    let callback: (fn(Int) Int)? = increment
     try expect_equal(callback.get()(2), 3)
 
     let snapshot = outer.clone()
@@ -63,11 +63,11 @@ test "Optional methods retain generic payload and receiver identity":
 
 test "Optional fallbacks preserve standard option records":
     let limits = JsonLimits(-1)
-    let missing: Optional[JsonLimits] = none
+    let missing: JsonLimits? = none
     var extracted = missing.get(limits).clone()
     try expect_equal(extracted.max_bytes.get(), -1)
     try expect_false(not (extracted.max_depth.is_none()))
-    extracted.max_values = some(7)
+    extracted.max_values = 7
     try expect_equal(extracted.max_values.get(), 7)
 
 test "Optional methods work on inferred library return values":

@@ -1,5 +1,0 @@
-# conform: tags=formatter,parser,tier-core
-# conform: phase=parse
-# conform: origin=pkg/tooling/lsp/features_test.go:453 TestIncrementalEditsClampOutOfRangePositions
-def answer() -> Int:
-    return 42

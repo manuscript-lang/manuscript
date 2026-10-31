@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "type Expr:\n    case Num(value: Int)\n    case Add(left: Expr, right: Expr)\n\ndef tree() -> Expr: return Expr.Add(left: Expr.Num(1), right: Expr.Num(2))\n"
-  }
-}

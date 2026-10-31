@@ -1,1 +1,1 @@
-error parse 1:29:28 "imports cannot be renamed with 'as'; import the name as the module declares it"
+error parse 1:13:12 "imports cannot be renamed with 'as'; import the name as the module declares it"

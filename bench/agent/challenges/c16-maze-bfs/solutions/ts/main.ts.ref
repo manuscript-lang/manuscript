@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import readFileSync from "node:fs";
 
 function solve(rows: string[][]): string {
   for (let r = 0; r < rows.length; r++) {

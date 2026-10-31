@@ -65,12 +65,20 @@ pub fn parse(text: &[u8], radix: i64, max_digits: Option<i64>) -> Result<BigInt,
     {
         return Err(STATUS_INVALID_DATA);
     }
-    let values: alloc::vec::Vec<u8> = digits
+    let mut values: alloc::vec::Vec<u8> = digits
         .iter()
         .map(|&b| digit(b).unwrap_or(0) as u8)
         .collect();
-    let magnitude =
-        num_bigint::BigUint::from_radix_be(&values, radix as u32).ok_or(STATUS_INVALID_DATA)?;
+    let radix = radix as u32;
+    let magnitude = if radix.is_power_of_two() {
+        // The big-endian constructor clones and reverses power-base digits.
+        // This vector is owned scratch, so reverse it in place instead.
+        values.reverse();
+        num_bigint::BigUint::from_radix_le(&values, radix)
+    } else {
+        num_bigint::BigUint::from_radix_be(&values, radix)
+    }
+    .ok_or(STATUS_INVALID_DATA)?;
     let sign = if text.first() == Some(&b'-') {
         Sign::Minus
     } else {
@@ -201,17 +209,24 @@ native! {
         let bits = i64::try_from(n(&a).bits()).unwrap_or(i64::MAX);
         if exponent > 1
             && bits > 1
-            && (exponent > MAX_BITS || bits.saturating_mul(exponent) > MAX_BITS + exponent)
+            && (bits - 1).saturating_mul(exponent) >= MAX_BITS
         {
             return Err(Code(STATUS_LIMIT_EXCEEDED));
         }
         poll_cancel();
-        Ok(make(num_traits::pow::Pow::pow(n(&a), exponent as u64)))
+        let result = num_traits::pow::Pow::pow(n(&a), exponent as u64);
+        if result.bits() > MAX_BITS as u64 {
+            return Err(Code(STATUS_LIMIT_EXCEEDED));
+        }
+        Ok(make(result))
     }
 
     fn msstd_bigint_shift_left(a: ObjRef<Big>, count: i64) -> Result<Object<Big>, Code> {
         if count < 0 {
             return Err(Code(STATUS_INVALID_INPUT));
+        }
+        if n(&a).is_zero() {
+            return Ok(make(BigInt::zero()));
         }
         let bits = i64::try_from(n(&a).bits()).unwrap_or(i64::MAX);
         if count > MAX_BITS || bits.saturating_add(count) > MAX_BITS {
@@ -299,6 +314,122 @@ mod tests {
     }
 
     #[test]
+    fn parsing_all_radices_matches_arithmetic_at_digit_boundaries() {
+        const LENGTHS: &[usize] = &[
+            1, 2, 7, 8, 9, 12, 13, 14, 15, 16, 17, 21, 22, 23, 31, 32, 33, 63, 64, 65, 127, 128,
+            129, 255, 256, 257,
+        ];
+        for radix in 2u32..=36 {
+            for &length in LENGTHS {
+                for zero in [false, true] {
+                    let mut expected = BigInt::zero();
+                    let mut digits = alloc::vec::Vec::with_capacity(length);
+                    for index in 0..length {
+                        let value = if zero {
+                            0
+                        } else {
+                            (index as u32 * 17 + 11) % radix
+                        };
+                        expected *= radix;
+                        expected += value;
+                        digits.push(b"0123456789abcdefghijklmnopqrstuvwxyz"[value as usize]);
+                    }
+                    for uppercase in [false, true] {
+                        for leading_zeros in [0, 3] {
+                            for sign in [b"".as_slice(), b"+", b"-"] {
+                                let mut text = sign.to_vec();
+                                text.extend(core::iter::repeat_n(b'0', leading_zeros));
+                                text.extend(digits.iter().map(|&byte| {
+                                    if uppercase {
+                                        byte.to_ascii_uppercase()
+                                    } else {
+                                        byte
+                                    }
+                                }));
+                                let wanted = if sign == b"-" {
+                                    -expected.clone()
+                                } else {
+                                    expected.clone()
+                                };
+                                let digit_count = (length + leading_zeros) as i64;
+                                assert_eq!(
+                                    parse(&text, i64::from(radix), None),
+                                    Ok(wanted.clone())
+                                );
+                                assert_eq!(
+                                    parse(&text, i64::from(radix), Some(digit_count)),
+                                    Ok(wanted)
+                                );
+                                assert_eq!(
+                                    parse(&text, i64::from(radix), Some(digit_count - 1)),
+                                    Err(STATUS_LIMIT_EXCEEDED)
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn parsing_keeps_strict_data_and_limit_error_precedence() {
+        let malformed: &[&[u8]] = &[
+            b"",
+            b"+",
+            b"-",
+            b"++1",
+            b"+-1",
+            b"--1",
+            b"-+1",
+            b"1-",
+            b"_1",
+            b"1_0",
+            b"1_",
+            b" 1",
+            b"1 ",
+            b"\t0",
+            b"1\n",
+            b"1\0",
+            "é".as_bytes(),
+            "١".as_bytes(),
+        ];
+        for radix in 2..=36 {
+            for &text in malformed {
+                assert_eq!(parse(text, radix, None), Err(STATUS_INVALID_DATA));
+                let signed = matches!(text.first(), Some(b'+' | b'-'));
+                let count = text.len() - usize::from(signed);
+                assert_eq!(
+                    parse(text, radix, Some(count as i64)),
+                    Err(STATUS_INVALID_DATA)
+                );
+                if count > 0 {
+                    assert_eq!(
+                        parse(text, radix, Some(count as i64 - 1)),
+                        Err(STATUS_LIMIT_EXCEEDED)
+                    );
+                }
+                assert_eq!(parse(text, radix, Some(-1)), Err(STATUS_INVALID_INPUT));
+            }
+            let invalid_digit = if radix == 36 {
+                b'!'
+            } else {
+                b"0123456789abcdefghijklmnopqrstuvwxyz"[radix as usize]
+            };
+            assert_eq!(
+                parse(&[invalid_digit], radix, None),
+                Err(STATUS_INVALID_DATA)
+            );
+        }
+        for radix in [i64::MIN, -1, 0, 1, 37, i64::MAX] {
+            for text in [b"".as_slice(), b"0", b"+-1", b"1_0"] {
+                assert_eq!(parse(text, radix, None), Err(STATUS_INVALID_INPUT));
+                assert_eq!(parse(text, radix, Some(-1)), Err(STATUS_INVALID_INPUT));
+            }
+        }
+    }
+
+    #[test]
     fn division_truncates_toward_zero() {
         let (a, b) = (BigInt::from(-7), BigInt::from(3));
         assert_eq!(&a / &b, BigInt::from(-2));
@@ -331,6 +462,43 @@ mod tests {
     }
 
     #[test]
+    fn powers_enforce_the_actual_result_bit_limit() {
+        let mut out: *mut ObjCell<Big> = core::ptr::null_mut();
+        // SAFETY: each input is a live handle and out points to writable storage.
+        unsafe {
+            let two = msstd_bigint_from_int(2);
+            assert_eq!(msstd_bigint_pow(two, MAX_BITS - 1, &mut out), STATUS_OK);
+            assert_eq!(val(out).bits(), MAX_BITS as u64);
+            let oversized = msstd_bigint_multiply(out, two);
+            assert_eq!(
+                msstd_bigint_pow(oversized, 1, &mut out),
+                STATUS_LIMIT_EXCEEDED
+            );
+            assert_eq!(msstd_bigint_pow(oversized, 0, &mut out), STATUS_OK);
+            assert_eq!(val(out), &BigInt::from(1));
+            assert_eq!(
+                msstd_bigint_pow(two, MAX_BITS, &mut out),
+                STATUS_LIMIT_EXCEEDED
+            );
+
+            let one = msstd_bigint_from_int(1);
+            assert_eq!(
+                msstd_bigint_shift_left(one, MAX_BITS / 2, &mut out),
+                STATUS_OK
+            );
+            let large = out;
+            assert_eq!(msstd_bigint_pow(large, 2, &mut out), STATUS_LIMIT_EXCEEDED);
+
+            assert_eq!(
+                msstd_bigint_shift_left(one, MAX_BITS / 3 + 1, &mut out),
+                STATUS_OK
+            );
+            let dense = msstd_bigint_subtract(out, one);
+            assert_eq!(msstd_bigint_pow(dense, 3, &mut out), STATUS_LIMIT_EXCEEDED);
+        }
+    }
+
+    #[test]
     fn conversions() {
         let big_one = big("9223372036854775808");
         assert!(big_one.to_i64().is_none());
@@ -345,5 +513,22 @@ mod tests {
             Some(1180591620717411303424.0)
         );
         assert_eq!(format(&BigInt::from(-255), 16), "-ff");
+    }
+
+    #[test]
+    fn shifting_zero_keeps_the_result_within_the_bit_limit() {
+        let mut out: *mut ObjCell<Big> = core::ptr::null_mut();
+        // SAFETY: zero is a live handle and out points to writable storage.
+        unsafe {
+            let zero = msstd_bigint_from_int(0);
+            for count in [0, MAX_BITS, MAX_BITS + 1, i64::MAX] {
+                assert_eq!(msstd_bigint_shift_left(zero, count, &mut out), STATUS_OK);
+                assert!(val(out).is_zero());
+            }
+            assert_eq!(
+                msstd_bigint_shift_left(zero, -1, &mut out),
+                STATUS_INVALID_INPUT
+            );
+        }
     }
 }

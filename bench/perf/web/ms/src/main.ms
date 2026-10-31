@@ -1,20 +1,18 @@
-# Benchmark server: main <port> <data-dir> [threads]. With threads above 1, that many workers each serve the port from one shared listener. The Go server in ../go answers the same requests.
-from "@std/bytes.ms" import Bytes
-from "@std/fs.ms" import filesystem
-from "@std/collections.ms" import range
-from "@std/http.ms" import headers, HttpRequest, HttpResponse, HttpServerOptions, buffered
-from "@std/net.ms" import network
-from "@std/process.ms" import arguments
-from "@std/workers.ms" import Worker, WorkerGroup, worker_channel
+# Benchmark server: main <port> <data-dir> [threads]. With threads above 1 the main thread accepts and hands each connection, round robin, to one of that many serving workers. The Go server in ../go answers the same requests.
+import Bytes from "@std/bytes.ms"
+import filesystem from "@std/fs.ms"
+import headers, HttpError, HttpExchange, HttpRequest, HttpResponse, buffered from "@std/http.ms"
+import network, serve_core, serve_cores from "@std/net.ms"
+import arguments from "@std/process.ms"
 
-def score(id: Int) -> Int:
+fn score(id: Int) Int:
     return id * 7919 % 1000
 
-def reply(status: Int, text: String) -> HttpResponse:
+fn reply(status: Int, text: String) HttpResponse:
     return HttpResponse(status, headers(), text.to_bytes())
 
 # Next entry after (prev_id, prev_score) in score-descending, id-ascending order.
-def pick_after(prev_id: Int, prev_score: Int) -> Int:
+fn pick_after(prev_id: Int, prev_score: Int) Int:
     var best = -1
     var best_score = -1
     var id = 0
@@ -31,7 +29,7 @@ def pick_after(prev_id: Int, prev_score: Int) -> Int:
 
     return best
 
-def top(k: Int) -> String:
+fn top(k: Int) String:
     var out = "["
     var n = 0
     var prev_id = -1
@@ -40,15 +38,15 @@ def top(k: Int) -> String:
     while n < k:
         let best = pick_after(prev_id, prev_score)
         if n > 0:
-            out = f"{out},"
-        out = f"{out}\{\"id\":{best},\"score\":{score(best)}\}"
+            out = "{out},"
+        out = "{out}\{\"id\":{best},\"score\":{score(best)}\}"
         prev_id = best
         prev_score = score(best)
         n += 1
 
-    return f"{out}]\n"
+    return "{out}]\n"
 
-def top_reply(query: String) -> HttpResponse:
+fn top_reply(query: String) HttpResponse:
     let parts = query.split("=")
     if parts.length() != 2 or parts.get(0) != "n":
         return reply(400, "bad n\n")
@@ -58,7 +56,7 @@ def top_reply(query: String) -> HttpResponse:
             return reply(200, top(k))
     return reply(400, "bad n\n")
 
-def user_reply(path: String) -> HttpResponse:
+fn user_reply(path: String) HttpResponse:
     let parts = path.split("/")
     if parts.length() != 3:
         return reply(404, "not found\n")
@@ -66,39 +64,39 @@ def user_reply(path: String) -> HttpResponse:
     if let id = parts.get(2).parse_int():
         if id >= 0 and id < 1000:
             return reply(
-                200, f"\{\"id\":{id},\"name\":\"user{id}\",\"score\":{score(id)}\}\n"
+                200, "\{\"id\":{id},\"name\":\"user{id}\",\"score\":{score(id)}\}\n"
             )
     return reply(404, "not found\n")
 
 # Resolve localhost, write 1 MiB to the connection's own file, read it back.
-def io_reply(dir: String, slot: String, payload: Bytes) -> HttpResponse:
+fn io_reply(dir: String, slot: String, payload: Bytes) HttpResponse:
     if let addresses = network().lookup("localhost"):
-        let path = f"{dir}/m{slot}.bin"
+        let path = "{dir}/m{slot}.bin"
         if let got = write_and_read(path, payload):
-            return reply(200, f"{addresses.length()} {got.length()}\n")
+            return reply(200, "{addresses.length()} {got.length()}\n")
 
         return reply(500, "file failed\n")
 
     return reply(500, "lookup failed\n")
 
-def write_and_read(path: String, payload: Bytes) -> Result[Bytes, Error]:
+fn write_and_read(path: String, payload: Bytes) Result[Bytes, Error]:
     let fs = filesystem()
-    try fs.write_file_bytes(path, payload, replace: True)
+    try fs.write_file_bytes(path, payload, replace: true)
     return ok(try fs.read_file(path))
 
-# Serves the benchmark endpoints on 127.0.0.1:<port> until the server stops.
-def serve_here(port: String, dir: String, ready: Bool) -> Int:
+# The benchmark endpoints.
+fn make_handler(dir: String) fn(HttpExchange) Result[Unit, HttpError]:
     var text = "0123456789abcdef"
     var i = 0
 
     while i < 16:
-        text = f"{text}{text}"
+        text = "{text}{text}"
         i += 1
 
     let payload = text.to_bytes()
     let dir_copy = dir.clone()
 
-    let handler = lambda (request: HttpRequest) -> HttpResponse:
+    let handler = fn(request: HttpRequest) HttpResponse:
         if request.path == "/health":
             return reply(200, "ok\n")
         if request.path == "/top":
@@ -110,27 +108,31 @@ def serve_here(port: String, dir: String, ready: Bool) -> Int:
 
         return reply(404, "not found\n")
 
-    let options = HttpServerOptions(shared: True)
+    return buffered(handler)
 
+# Serves the benchmark endpoints on 127.0.0.1:<port> until the server stops.
+fn serve_here(port: String, dir: String) Int:
     if let acquired = network().serve(
-        address: f"127.0.0.1:{port}", handler: buffered(handler), options: options
+        address: "127.0.0.1:{port}", handler: make_handler(dir)
     ):
-        with let server = acquired:
-            if ready:
-                var ch = worker_channel[Int, Int]()
-                let _sent = ch.send(1)
-
-            let _ignored = server.wait()
-            return 0
+        let server = acquired
+        let _ignored = server.wait()
+        return 0
 
     return 1
 
-# One serving thread of a multi-threaded run; the starter waits for its signal that the port is open.
-def serve_worker() -> Unit:
+# One serving thread of a multi-threaded run: serves the connections its starter sends.
+fn serve_worker() Unit:
     let args = arguments()
-    let _code = serve_here(args.get(0), args.get(1), True)
+    let _ = serve_core(make_handler(args.get(1)))
 
-export def main() -> Int:
+# Accepts on the main thread and deals the connections to `threads` workers.
+fn serve_threads(port: String, threads: Int) Int:
+    if let bound = network().listen("127.0.0.1:{port}"):
+        let _ = serve_cores(bound, serve_worker, threads)
+    return 1
+
+export fn main() Int:
     let args = arguments()
     if args.length() < 2 or args.length() > 3:
         return 2
@@ -139,16 +141,6 @@ export def main() -> Int:
     if args.length() == 3:
         threads = args.get(2).parse_int().get(1)
     if threads <= 1:
-        return serve_here(args.get(0), args.get(1), False)
+        return serve_here(args.get(0), args.get(1))
 
-    with let group = WorkerGroup[Int, Int]():
-        var workers: List[Worker[Int, Int]] = []
-
-        for i in range(0, threads):
-            var worker = group.spawn(serve_worker).get(none)
-            let _ready = worker.channel.receive()
-            workers.append(worker)
-
-        let _stopped = workers[0].wait()
-
-    return 0
+    return serve_threads(args.get(0), threads)

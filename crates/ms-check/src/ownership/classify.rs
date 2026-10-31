@@ -22,6 +22,8 @@ pub enum Class {
 /// Computes classes, caching nothing: types are small and shared.
 pub struct Classifier {
     closeable: HashSet<Name>,
+    /// Natives declaring `impl Copy`: plain words, so a copy is a bit copy.
+    copyable: HashSet<Name>,
 }
 
 impl Classifier {
@@ -33,7 +35,21 @@ impl Classifier {
             .filter(|m| m.contract.as_ref().is_some_and(|c| c.is_std("Closeable")))
             .map(|m| m.receiver.id)
             .collect();
-        Classifier { closeable }
+        let copyable = p
+            .methods
+            .iter()
+            .filter(|m| m.contract.as_ref().is_some_and(|c| c.is_std("Copy")))
+            .map(|m| m.receiver.id)
+            .collect();
+        Classifier {
+            closeable,
+            copyable,
+        }
+    }
+
+    /// Whether `t` has a `Closeable` implementation of its own, which runs on the whole value.
+    pub fn closes_itself(&self, t: &Ty) -> bool {
+        self.closeable.contains(&t.id)
     }
 
     /// The class of values of `t`.
@@ -41,7 +57,7 @@ impl Classifier {
         self.class_in(t, &mut Vec::new())
     }
 
-    fn class_in(&self, t: &Ty, visiting: &mut Vec<Name>) -> Class {
+    fn class_in(&self, t: &Ty, visiting: &mut Vec<String>) -> Class {
         match t.kind {
             Kind::Primitive if t.id.as_str() == "String" => Class::Move,
             Kind::Primitive => Class::Copy,
@@ -52,36 +68,54 @@ impl Classifier {
                     Class::Move
                 }
             }
+            // A `Closeable` value owns what it was made from and closes it. Other interfaces
+            // with a `close` (a channel's transport) are handles their holders close explicitly.
+            Kind::Contract if t.is_std("Closeable") => Class::Resource,
             Kind::Function | Kind::Contract => Class::Move,
             Kind::Native => self.native(t, visiting),
             Kind::Record | Kind::Alternative => self.nominal(t, visiting),
         }
     }
 
-    fn native(&self, t: &Ty, visiting: &mut Vec<Name>) -> Class {
+    fn native(&self, t: &Ty, visiting: &mut Vec<String>) -> Class {
         if self.closeable.contains(&t.id) {
             Class::Resource
-        } else if t.is_std("Shared") {
-            // Copying shares the box; the payload is closed once the last holder releases it.
+        } else if t.is_std("Shared") || self.copyable.contains(&t.id) {
+            // A declared `Copy` native is plain words. Copying `Shared` shares the box; the payload is closed once the last holder releases it.
             Class::Copy
-        } else if t.is_std("List") || t.is_std("Map") || t.is_std("Set") || t.is_std("Bytes") {
-            Class::Move
+        } else if t.is_std("List") {
+            // An owning collection of resources is itself a resource, closed with its elements.
+            // A `Set` stays `Move`: a resource is not `Hashable`, so it is never an element.
+            self.holds(t.args.first(), visiting)
+        } else if t.is_std("Map") {
+            self.holds(t.args.get(1), visiting)
         } else {
-            // Immutable value natives and shared handles.
-            let _ = visiting;
-            Class::Copy
+            // A native owns its storage; `.clone()` is its explicit duplicate.
+            Class::Move
         }
     }
 
-    fn nominal(&self, t: &Ty, visiting: &mut Vec<Name>) -> Class {
+    /// The class of a collection holding `element`: `Resource` when its elements are, else
+    /// `Move`, so a collection of plain values stays as cheap as before.
+    fn holds(&self, element: Option<&Ty>, visiting: &mut Vec<String>) -> Class {
+        match element.map(|e| self.class_in(e, visiting)) {
+            Some(Class::Resource) => Class::Resource,
+            _ => Class::Move,
+        }
+    }
+
+    fn nominal(&self, t: &Ty, visiting: &mut Vec<String>) -> Class {
         if self.closeable.contains(&t.id) {
             return Class::Resource;
         }
-        if visiting.contains(&t.id) {
+        // Keyed by the instance, so `Door??` looks inside its payload; a
+        // generic type that grows without bound is cut off as boxed.
+        let key = t.to_string();
+        if visiting.contains(&key) || visiting.len() > 64 {
             // A type containing itself is boxed: it cannot be copied implicitly.
             return Class::Move;
         }
-        visiting.push(t.id);
+        visiting.push(key);
         let mut class = Class::Copy;
         for f in fields(t) {
             class = class.max(self.class_in(&f.ty, visiting));
@@ -99,4 +133,14 @@ impl Classifier {
         // returned Move, which max propagates.
         class
     }
+}
+
+/// Whether the interface `t` declares a `close` operation.
+pub(crate) fn declares_close(t: &Ty) -> bool {
+    t.def.as_ref().is_some_and(|d| {
+        d.operations
+            .borrow()
+            .iter()
+            .any(|o| o.name.as_str() == "close")
+    })
 }

@@ -1,6 +1,6 @@
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/string.ms" import from_scalars, StringError, StringBuilder
-from "@std/bytes.ms" import Bytes, BytesBuilder, values
+import expect_equal, expect_false from "@std/test.ms"
+import from_scalars, StringError, StringBuilder from "@std/string.ms"
+import Bytes, BytesBuilder, values from "@std/bytes.ms"
 
 test "Unicode scalar indexing differs from byte length":
     let text = "aé🙂"
@@ -17,7 +17,7 @@ test "strings honor omitted none zero and explicit output limits":
     try expect_equal((try "ab".repeat(2)), "abab")
     try expect_equal((try "ab".repeat(0, 0)), "")
 
-    let limited: Result[String, StringError] = error(StringError.LimitExceeded)
+    let limited: String!StringError = error(StringError.LimitExceeded)
     try expect_equal("é".repeat(2, 3), limited)
     try expect_equal("x".pad_start(3, "ab"), "abx")
     try expect_equal("x".pad_end(3, "ab"), "xab")
@@ -26,22 +26,22 @@ test "strings honor omitted none zero and explicit output limits":
     try expect_equal("a,,b".split(",", 2), ["a", ""])
     try expect_equal(" \té \n".trim(), "é")
 
-    let invalid: Result[String, StringError] = error(StringError.InvalidInput)
+    let invalid: String!StringError = error(StringError.InvalidInput)
     try expect_equal("a".normalize("invalid"), invalid)
 
-    let scalar_error: Result[String, StringError] = error(StringError.InvalidInput)
+    let scalar_error: String!StringError = error(StringError.InvalidInput)
     try expect_equal(from_scalars([55296]), scalar_error)
 
 test "bytes copy slice search and UTF8 validation":
     let data = Bytes([0, 1, 255, 1])
     try expect_equal(data.get(-1), 1)
     try expect_equal(data.get(4, default: 7), 7)
-    try expect_equal(data.index_of(Bytes([1])), some(1))
-    try expect_equal(data.last_index_of(Bytes([1])), some(3))
+    try expect_equal(data.index_of(Bytes([1])), 1)
+    try expect_equal(data.last_index_of(Bytes([1])), 3)
     try expect_equal(data.slice(1, 3).get(), Bytes([1, 255]))
     try expect_equal(data.slice(-3, -1).get(), Bytes([1, 255]))
 
-    let byte_range: Result[Bytes, CollectionError] = error(CollectionError.OutOfRange)
+    let byte_range: Bytes!CollectionError = error(CollectionError.OutOfRange)
     try expect_equal(data.slice(1, 10), byte_range)
     try expect_equal(data.slice(-10, 2), byte_range)
     try expect_equal(data.reversed(), Bytes([1, 255, 1, 0]))
@@ -49,14 +49,14 @@ test "bytes copy slice search and UTF8 validation":
     let copied = data.clone().with_value(0, 42)
     try expect_false(copied.get(0) != 42 or data.get(0) != 0)
     try expect_false(not Bytes([255]).decode_utf8().is_none())
-    try expect_equal("é".to_bytes().decode_utf8(), some("é"))
+    try expect_equal("é".to_bytes().decode_utf8(), "é")
 
 test "Bytes values direct bound and free calls return independent lists":
     var input: List[UInt8] = [0, 1, 255]
     let data = Bytes(input.clone())
     input.set(0, 42)
 
-    let extract: Callable[[], List[UInt8]] = data.values
+    let extract: fn() List[UInt8] = data.values
     try expect_false(data.values() != [0, 1, 255] or extract() != values(data))
 
     var direct = data.values()
@@ -74,16 +74,16 @@ test "Bytes values direct bound and free calls return independent lists":
 
 test "String slice uses Unicode scalars with relative bounds and OutOfRange errors":
     let text = "aé🙂z"
-    let out_of_range: Result[String, StringError] = error(StringError.OutOfRange)
+    let out_of_range: String!StringError = error(StringError.OutOfRange)
     try expect_equal((try text.slice(-2, 4)), "🙂z")
     try expect_equal((try text.slice(0, -1)), "aé🙂")
     try expect_equal((try text.slice(4, 4)), "")
     try expect_equal(text.slice(-2, 10), out_of_range)
     try expect_equal(text.slice(-100, 4), out_of_range)
     try expect_equal(text.slice(3, 1), out_of_range)
-    try expect_false(text.index_of("🙂") != some(2) or text.last_index_of("") != some(4))
+    try expect_false(text.index_of("🙂") != 2 or text.last_index_of("") != 4)
 
-    let invalid: Result[String, StringError] = error(StringError.OutOfRange)
+    let invalid: String!StringError = error(StringError.OutOfRange)
     try expect_equal(text.slice_scalars(-2, 4), invalid)
     try expect_equal(text.slice_scalars(1, 10), invalid)
     try expect_equal(text.slice_scalars(3, 1), invalid)
@@ -109,8 +109,27 @@ test "empty text splits into one part and case mapping is full Unicode":
     try expect_equal("ß".upper(), "SS")
     try expect_equal("ﬁ".upper(), "FI")
     try expect_equal("ΑΣ".lower(), "ας")
-    try expect_equal("İ".lower(), f"i\u{307}")
+    try expect_equal("İ".lower(), "i\u{307}")
     try expect_equal("Maße".upper(), "MASSE")
+
+test "scalar reads alternating between long strings match grouped reads":
+    let a = try "aé€🙂".repeat(300)
+    let b = try "日é".repeat(450)
+    let c = try "🙂x".repeat(450)
+    var alternating = 0
+    for step in 0..900:
+        alternating += a.scalar_at(step) + b.scalar_at(step) + c.scalar_at(899 - step)
+
+    var grouped = 0
+    for step in 0..900:
+        grouped += a.scalar_at(step)
+    for step in 0..900:
+        grouped += b.scalar_at(step)
+    for step in 0..900:
+        grouped += c.scalar_at(899 - step)
+    try expect_equal(alternating, grouped)
+    try expect_equal(a.scalar_at(-1), 128578)
+    try expect_equal(b.scalar_at(-1), 233)
 
 test "indexing and slicing long mixed-width text matches scalar positions":
     let block = "aé€🙂"
@@ -136,7 +155,7 @@ test "indexing and slicing long mixed-width text matches scalar positions":
     try expect_equal((try text.slice_scalars(1199, 1203)), "🙂aé€")
     try expect_equal((try text.slice_scalars(2399, 2400)), "🙂")
 
-    let out_of_range: Result[String, StringError] = error(StringError.OutOfRange)
+    let out_of_range: String!StringError = error(StringError.OutOfRange)
     try expect_equal(text.slice_scalars(2400, 2401), out_of_range)
 
 test "builder appends literals of every short length across growth":
@@ -161,13 +180,13 @@ test "builder appends literals of every short length across growth":
     try expect_equal(sb.build(), want.build())
 
 test "builder appends variable text of every length across growth":
-    let unit = "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz"
+    let base = "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz"
     var sb = StringBuilder()
     var want = 0
 
     for round in 0..3:
         for n in 0..70:
-            let piece = try unit.slice(0, n)
+            let piece = try base.slice(0, n)
             sb.append(piece)
             want += n
 

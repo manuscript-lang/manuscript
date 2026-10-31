@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def example() -> Unit:\n    let names = [1, 2].map(lambda item: missing).join(other_missing)\n    let conflict = apply(value: 1, transform: lambda (item: String): missing_result)\n    let wrong: Int = \"text\"\n    let callback: Callable[[Int], Int] = lambda: missing_too\n"
-  }
-}

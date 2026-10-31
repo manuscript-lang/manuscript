@@ -1,0 +1,11 @@
+{
+  "json-failure/before": "2aa58fff21d55bb5e1436d794d738690b6b6a5c96970c3aeb910d3fad258c693",
+  "json-failure/after": "17a45f828b07bc02a86bc1f4e02556b3ecd661e1aca1cef3601e603371a02520",
+  "json-failure/main.ms": "c584400add6cb5d03e3895b8a86f1b71b540f37c8828e1d89a1482568bb04da4",
+  "json-failure/compare.py": "5387ab1c2f5fdf11e6d566e543ca7bf5d49cd621ea523828e5ab9cc8f9c935ec",
+  "cpu.c": "ebf00b9f1cfd23263e394acc84eb5e9d0d785b53cf33db3c80327f93b7de3a77",
+  "cpu.o": "2190722f29dea8c55ccd52de7323abab5ccfd7dba58dc54685121b572eae0d37",
+  "runtime-before.a": "5bc3aaf79fb3b32d7a3e073b97424bee5d65a07de7643eebd882a3d6e7e5e7bc",
+  "runtime-json-failure.a": "2d9ad91c9e5fd6063a549bb96ba0357518b753182517885c0339a6dac56b8681",
+  "ms-baseline": "dca04bab0a005182fd94d4f00ee8c9330e3cc57e0e3b6f6ad71dd2e53da5eea1"
+}

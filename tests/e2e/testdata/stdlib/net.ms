@@ -1,9 +1,20 @@
-from "@std/test.ms" import expect_equal, expect_error, expect_false
-from "@std/bytes.ms" import Bytes
-from "@std/net.ms" import network, parse_ip, parse_cidr, contains_ip, DatagramSocket, DnsKind, NetworkError, IpFamily, Listener, Connection
-from "@std/shared.ms" import Shared, share
-from "@std/tasks.ms" import TaskGroup
-from "@std/time.ms" import sleep
+import expect_equal, expect_error, expect_false from "@std/test.ms"
+import Bytes from "@std/bytes.ms"
+import (
+    network,
+    parse_ip,
+    parse_cidr,
+    contains_ip,
+    DatagramSocket,
+    DnsKind,
+    NetworkError,
+    IpFamily,
+    Listener,
+    Connection
+) from "@std/net.ms"
+import Shared, share from "@std/shared.ms"
+import TaskGroup from "@std/tasks.ms"
+import sleep from "@std/time.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -26,44 +37,41 @@ test "IP parsing CIDR normalization and containment":
 
 test "TCP loopback writes reads half close and EOF":
     let net = network()
-
-    with let listener = try net.listen("127.0.0.1:0"):
-        with let client = try net.connect(listener.address(), 2.seconds):
-            with let server = try listener.accept(2.seconds):
-                try client.write("hello", 2.seconds)
-                try expect_equal(
-                    (try server.read(5, 2.seconds)).get(), "hello".to_bytes()
-                )
-                try expect_equal(server.peer_address(), client.local_address())
-                try client.shutdown_write()
-                try expect_false(not (try server.read(5, 2.seconds)).is_none())
+    let listener = try net.listen("127.0.0.1:0")
+    let client = try net.connect(listener.address(), 2.seconds)
+    let server = try listener.accept(2.seconds)
+    try client.write("hello", 2.seconds)
+    try expect_equal((try server.read(5, 2.seconds)).get(), "hello".to_bytes())
+    try expect_equal(server.peer_address(), client.local_address())
+    try client.shutdown_write()
+    try expect_false(not (try server.read(5, 2.seconds)).is_none())
 
 test "UDP loopback preserves datagram data and sender":
     let net = network()
+    let receiver = try net.bind_datagram("127.0.0.1:0")
+    let sender = try net.bind_datagram("127.0.0.1:0")
+    try sender.send("packet", receiver.address(), 2.seconds)
 
-    with let receiver = try net.bind_datagram("127.0.0.1:0"):
-        with let sender = try net.bind_datagram("127.0.0.1:0"):
-            try sender.send("packet", receiver.address(), 2.seconds)
-
-            let packet = try receiver.receive(64, 2.seconds)
-            try expect_false(
-                (
-                    packet.data != "packet".to_bytes()
-                    or packet.sender != sender.address()
-                )
-            )
+    let packet = try receiver.receive(64, 2.seconds)
+    try expect_false(
+        (
+            packet.data != "packet".to_bytes()
+            or packet.sender != sender.address()
+        )
+    )
 
 test "network restriction denies admission and close rejects acquisitions":
-    let restricted = try network().restrict([], [], allow_listen: False)
-    var closing = try network().restrict([], [], allow_listen: False)
-    with let scoped = restricted:
-        try expect_false(
+    let restricted = try network().restrict([], [], allow_listen: false)
+    var closing = try network().restrict([], [], allow_listen: false)
+    var scoped = restricted
+    try expect_false(
+        (
             (
-                (
-                    try expect_error(scoped.listen("127.0.0.1:0"))
-                ) != NetworkError.PermissionDenied
-            )
+                try expect_error(scoped.listen("127.0.0.1:0"))
+            ) != NetworkError.PermissionDenied
         )
+    )
+    scoped.close()
     closing.close()
     try expect_false(
         (
@@ -82,15 +90,15 @@ test "typed addresses preserve normalization and reject zones":
     try expect_ip_error("fe80::1%eth0")
     try expect_false((try contains_ip(try parse_cidr("::ffff:192.0.2.0/120"), ip)))
 
-def expect_ip_error(input: String) -> Result[Unit, Error]:
+fn expect_ip_error(input: String) Unit!:
     try expect_equal((try expect_error(parse_ip(input))), NetworkError.InvalidData)
-    return ok(())
+    return ok(unit)
 
-def accept_one(l: Shared[Listener]) -> Int:
+fn accept_one(l: Shared[Listener]) Int:
     let r = l.get().accept(2.seconds)
 
     if r.is_ok():
-        r.get().close()
+        r.get().close().get(none)
         return 1
 
     return 0
@@ -98,26 +106,25 @@ def accept_one(l: Shared[Listener]) -> Int:
 test "two tasks accept on one listener":
     let net = network()
     let shared: Shared[Listener] = share(try net.listen("127.0.0.1:0"))
+    var group = TaskGroup[Int]()
+    let a = shared
+    let b = shared
+    group.spawn(fn ch: accept_one(a))
+    group.spawn(fn ch: accept_one(b))
+    sleep(50.milliseconds)
 
-    with let group = TaskGroup[Int]():
-        let a = shared
-        let b = shared
-        group.spawn(lambda ch: accept_one(a))
-        group.spawn(lambda ch: accept_one(b))
-        sleep(50.milliseconds)
+    var c1 = try net.connect(shared.get().address(), 2.seconds)
+    var c2 = try net.connect(shared.get().address(), 2.seconds)
+    let got = try group.results()
+    try expect_equal(got.length(), 2)
+    try expect_equal(got[0] + got[1], 2)
+    try c1.close()
+    try c2.close()
+    try group.close()
+    try shared.get().close()
 
-        let c1 = try net.connect(shared.get().address(), 2.seconds)
-        let c2 = try net.connect(shared.get().address(), 2.seconds)
-        let got = try group.results()
-        try expect_equal(got.length(), 2)
-        try expect_equal(got[0] + got[1], 2)
-        c1.close()
-        c2.close()
-
-    shared.get().close()
-
-def read_some(c: Shared[Connection]) -> Int:
-    let r = c.get().read(some(1), some(2.seconds))
+fn read_some(c: Shared[Connection]) Int:
+    let r = c.get().read(1, 2.seconds)
     if r.is_ok() and r.get().is_some():
         return 1
 
@@ -125,28 +132,26 @@ def read_some(c: Shared[Connection]) -> Int:
 
 test "two tasks read one connection":
     let net = network()
+    let listener = try net.listen("127.0.0.1:0")
+    var client = try net.connect(listener.address(), 2.seconds)
+    let server = try listener.accept(2.seconds)
+    let shared: Shared[Connection] = share(server)
+    var group = TaskGroup[Int]()
+    let a = shared
+    let b = shared
+    group.spawn(fn ch: read_some(a))
+    group.spawn(fn ch: read_some(b))
+    sleep(50.milliseconds)
+    try client.write("xy", 2.seconds)
 
-    with let listener = try net.listen("127.0.0.1:0"):
-        let client = try net.connect(listener.address(), 2.seconds)
-        let server = try listener.accept(2.seconds)
-        let shared: Shared[Connection] = share(server)
-
-        with let group = TaskGroup[Int]():
-            let a = shared
-            let b = shared
-            group.spawn(lambda ch: read_some(a))
-            group.spawn(lambda ch: read_some(b))
-            sleep(50.milliseconds)
-            try client.write("xy", 2.seconds)
-
-            let got = try group.results()
-            try expect_equal(got[0] + got[1], 2)
-
-        client.close()
-        shared.get().close()
+    let got = try group.results()
+    try expect_equal(got[0] + got[1], 2)
+    try group.close()
+    try client.close()
+    try shared.get().close()
 
 # Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
-def answer_mx(socket: Shared[DatagramSocket]) -> Result[Int, NetworkError]:
+fn answer_mx(socket: Shared[DatagramSocket]) Int!NetworkError:
     let query = try socket.get().receive(512, 2.seconds)
     let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
     let header = Bytes(
@@ -173,31 +178,29 @@ test "resolve returns typed DNS records from the configured resolver":
 
     let server: Shared[DatagramSocket] = share(try net.bind_datagram("127.0.0.1:0"))
     let derived = try net.with_resolver(server.get().address())
+    let group = TaskGroup[Int]()
+    let socket = server
+    group.spawn(fn ch: answer_mx(socket).get(0))
 
-    with let group = TaskGroup[Int]():
-        let socket = server
-        group.spawn(lambda ch: answer_mx(socket).get(0))
+    let mx = try derived.resolve("example.test", DnsKind.MX, none, 2.seconds)
+    try expect_equal(mx.length(), 1)
+    try expect_equal(mx[0].kind.text(), "MX")
+    try expect_equal(mx[0].priority, 10)
+    try expect_equal(mx[0].value, "mail.example.test.")
 
-        let mx = try derived.resolve("example.test", DnsKind.MX, none, 2.seconds)
-        try expect_equal(mx.length(), 1)
-        try expect_equal(mx[0].kind.text(), "MX")
-        try expect_equal(mx[0].priority, 10)
-        try expect_equal(mx[0].value, "mail.example.test.")
-
-        let answered = try group.results()
-        try expect_equal(answered[0], 1)
+    let answered = try group.results()
+    try expect_equal(answered[0], 1)
 
 test "an empty host listens on every interface, with or without IPv6":
     let net = network()
+    var listener = try net.listen(":0")
+    let parts = listener.address().split(":")
+    let port = parts[parts.length() - 1]
+    let client = try net.connect("127.0.0.1:{port}", 2.seconds)
+    let server = try listener.accept(2.seconds)
+    try client.write("hi", 2.seconds)
+    try expect_equal((try server.read(2, 2.seconds)).get(), "hi".to_bytes())
+    try listener.close()
 
-    with let listener = try net.listen(":0"):
-        let parts = listener.address().split(":")
-        let port = parts[parts.length() - 1]
-
-        with let client = try net.connect(f"127.0.0.1:{port}", 2.seconds):
-            with let server = try listener.accept(2.seconds):
-                try client.write("hi", 2.seconds)
-                try expect_equal((try server.read(2, 2.seconds)).get(), "hi".to_bytes())
-
-    with let socket = try net.bind_datagram(":0"):
-        try expect_false(socket.address().is_empty())
+    let socket = try net.bind_datagram(":0")
+    try expect_false(socket.address().is_empty())

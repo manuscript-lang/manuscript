@@ -4,40 +4,40 @@ type Box[T]:
 type Row[A, B]:
     first: A
     middle: List[B]
-    last: Callable[[A], B]
-    nested: Box[Optional[B]]
+    last: fn(A) B
+    nested: Box[B?]
     to_string: Int
 
 impl Row[A, B]:
-    def count() -> Int:
+    fn count() Int:
         return 1
 
-def first(row: Row[Int, String]) -> Int:
+fn first(row: Row[Int, String]) Int:
     return row.first
 
-def middle(row: Row[Int, String]) -> List[String]:
+fn middle(row: Row[Int, String]) List[String]:
     return row.middle
 
-def last(row: Row[Int, String]) -> String:
+fn last(row: Row[Int, String]) String:
     return row.last(1)
 
-def nested(row: Row[Int, String]) -> Optional[String]:
+fn nested(row: Row[Int, String]) String?:
     return row.nested.value
 
-def method(row: Row[Int, String]) -> Int:
+fn method(row: Row[Int, String]) Int:
     return row.count()
 
-def show(row: Row[Int, String]) -> String:
+fn show(row: Row[Int, String]) String:
     return row.to_string()
 
 type Plain:
     first: Int
     last: String
 
-def plain(row: Plain) -> String:
+fn plain(row: Plain) String:
     return row.last
 
 type Empty:
 
-export def main() -> Int:
+export fn main() Int:
     return 0

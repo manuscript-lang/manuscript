@@ -24,27 +24,56 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "cannot move `holder.reader` out of `holder`: only a whole variable can move; take an owned copy with `holder.reader.clone()`",
+          "message": "ReadValue[Int] is an interface and cannot be constructed; a type with 'impl ReadValue[Int] for <Type>:' passes wherever ReadValue[Int] is expected, so pass the value directly",
           "position": {
             "file": "cl-10b.ms",
-            "line": 45,
-            "column": 50,
-            "offset": 1240
-          },
-          "fix": {
-            "position": {
-              "file": "cl-10b.ms",
-              "line": 45,
-              "column": 56,
-              "offset": 1246
-            },
-            "end": {
-              "file": "cl-10b.ms",
-              "line": 45,
-              "column": 56,
-              "offset": 1246
-            },
-            "replacement": ".clone()"
+            "line": 30,
+            "column": 12,
+            "offset": 700
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "ReadValue[Int] is an interface and cannot be constructed; a type with 'impl ReadValue[Int] for <Type>:' passes wherever ReadValue[Int] is expected, so pass the value directly",
+          "position": {
+            "file": "cl-10b.ms",
+            "line": 33,
+            "column": 12,
+            "offset": 797
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "ReadValue[Int] is an interface and cannot be constructed; a type with 'impl ReadValue[Int] for <Type>:' passes wherever ReadValue[Int] is expected, so pass the value directly",
+          "position": {
+            "file": "cl-10b.ms",
+            "line": 42,
+            "column": 20,
+            "offset": 1043
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "ReadValue[Int] is an interface and cannot be constructed; a type with 'impl ReadValue[Int] for <Type>:' passes wherever ReadValue[Int] is expected, so pass the value directly",
+          "position": {
+            "file": "cl-10b.ms",
+            "line": 43,
+            "column": 18,
+            "offset": 1086
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "ReadValue[Int] is an interface and cannot be constructed; a type with 'impl ReadValue[Int] for <Type>:' passes wherever ReadValue[Int] is expected, so pass the value directly",
+          "position": {
+            "file": "cl-10b.ms",
+            "line": 48,
+            "column": 25,
+            "offset": 1335
           }
         }
       ]
@@ -53,18 +82,6 @@
       "completed",
       "diagnostics",
       "diagnostics[].code",
-      "diagnostics[].fix",
-      "diagnostics[].fix.end",
-      "diagnostics[].fix.end.column",
-      "diagnostics[].fix.end.file",
-      "diagnostics[].fix.end.line",
-      "diagnostics[].fix.end.offset",
-      "diagnostics[].fix.position",
-      "diagnostics[].fix.position.column",
-      "diagnostics[].fix.position.file",
-      "diagnostics[].fix.position.line",
-      "diagnostics[].fix.position.offset",
-      "diagnostics[].fix.replacement",
       "diagnostics[].message",
       "diagnostics[].phase",
       "diagnostics[].position",

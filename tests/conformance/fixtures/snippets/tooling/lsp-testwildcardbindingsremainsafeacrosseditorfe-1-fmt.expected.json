@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn answer(value: Int?) Int:\n    match value:\n        _value:\n            return 1\n        none:\n            return 0\n"
+  }
+}

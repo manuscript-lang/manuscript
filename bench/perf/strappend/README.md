@@ -2,6 +2,32 @@
 
 `StringBuilder.append` against Rust's `String::push_str` (glibc, `rustc -C opt-level=3`), building about 1 MB from pieces of 4 B to 8 KiB. Manuscript is the default Release build (LLVM). `MS=ms sh bench/perf/strappend/run.sh 5` prints the best of N runs (each the best of 40 builds) in microseconds. It also builds `List[Int]`s of 10K to 1M items with `append` in a `while` loop against `Vec::push`. The `Platform benchmarks` workflow (run it by hand on a branch) runs the allocator tests and this table on Linux, macOS and Windows.
 
+## 2026-10-31 (Linux): loop-carried slot
+
+Same machine, release build of this branch against `main` (1f30c7157), `run.sh 5`. The `loopslot` pass keeps a loop-carried owned buffer in one slot made at function entry, so an append calls on it directly instead of moving it into a slot and back on every pass. Microseconds, Manuscript only.
+
+| piece | main | loopslot |
+|---|---|---|
+| 4 B | 757-819 | 742 |
+| 16 B | 162 | 137 |
+| 64 B | 53-58 | 44 |
+| 256 B | 26-28 | 25 |
+| 1 KiB, 8 KiB | 22 | 21, 17 |
+
+## 2026-10-30 (Linux): owned builders
+
+Same machine as 2026-10-27, release build of this branch against `main` (b7ee9710), `run.sh 9`, three runs back to back. `StringBuilder` is an owned byte buffer with a consuming `build()` instead of a shared handle, so an append no longer loads a sealed flag or goes through the shared cell. Microseconds, Manuscript only (Rust is unchanged at 22-77 us for these sizes).
+
+| piece | main | owned builder |
+|---|---|---|
+| 4 B | 730-743 | 757-819 |
+| 16 B | 147 | 162 |
+| 64 B | 58-63 | 53-58 |
+| 256 B | 30-31 | 26-28 |
+| 1 KiB, 8 KiB | 22 | 22 |
+
+Faster from 64 B up, parity at 1 KiB and above, and 5-10% slower at 4 B and 16 B. The loop keeps the buffer in a loop-carried value, so each append moves its three words into a stack slot and back (`put`/`take`, about 0.2 ns), where the shared cell was updated in place after `slotfuse`. A pass that keeps a loop-carried buffer in one slot would remove it.
+
 ## 2026-10-27 (Linux)
 
 Linux x86-64, Intel Xeon 2.1 GHz (virtualized), rustc 1.99.1, median of two sets of 5 and 9 runs; differences under about 10% are noise. Ratio is Manuscript over Rust.

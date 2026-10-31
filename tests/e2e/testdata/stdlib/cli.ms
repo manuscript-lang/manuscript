@@ -1,5 +1,5 @@
-from "@std/cli.ms" import Arg, CliError, Command, Flag, FlagKind, Matches, command
-from "@std/test.ms" import expect_contains, expect_equal, expect_error, expect_ok, expect_some, fail
+import Arg, CliError, Command, Flag, FlagKind, Matches, command from "@std/cli.ms"
+import expect_contains, expect_equal, expect_error, expect_ok, expect_some, fail from "@std/test.ms"
 
 type ServeOptions:
     port: Int
@@ -8,18 +8,18 @@ type ServeOptions:
     verbose: Bool
     tags: List[String]
 
-def serve(options: ServeOptions) -> Result[Int, Error]:
+fn serve(options: ServeOptions) Int!:
     return ok(options.port)
 
-def common_flags() -> List[Flag]:
+fn common_flags() List[Flag]:
     return [
         Flag(
-            name: "verbose", kind: FlagKind.Bool, short: "v", persistent: True,
+            name: "verbose", kind: FlagKind.Bool, short: "v", persistent: true,
             help: "Print more"
         )
     ]
 
-def serve_command() -> Command:
+fn serve_command() Command:
     return command[ServeOptions](
         name: "serve",
         about: "Run the server",
@@ -31,48 +31,48 @@ def serve_command() -> Command:
             Flag("tags", FlagKind.List)
         ],
         args: [Arg("root", "Directory to serve")],
-        run: lambda options: serve(options)
+        run: fn options: serve(options)
     )
 
 type AddOptions:
     name: String
-    url: Optional[String]
+    url: String?
     extra: List[String]
     dry_run: Bool
 
-def remote_group() -> Command:
+fn remote_group() Command:
     let add = command[AddOptions](
         name: "add",
         flags: [Flag("dry-run", FlagKind.Bool)],
         args: [
-            Arg("name"), Arg("url", required: False),
-            Arg("extra", required: False, rest: True)
+            Arg("name"), Arg("url", required: false),
+            Arg("extra", required: false, rest: true)
         ],
-        run: lambda options: ok(
-            options.extra.length() + (100 if options.dry_run else 0) + (
-                10 if options
+        run: fn options: ok(
+            options.extra.length() + (if options.dry_run: 100 else: 0) + (
+                if options
                 .url
-                .is_some() else 0
+                .is_some(): 10 else: 0
             )
         )
     )
     return Command(name: "remote", about: "Manage remotes", children: [add])
 
-def app() -> Command:
+fn app() Command:
     return Command(
         name: "tool", about: "Manage projects", flags: common_flags(),
         children: [serve_command(), remote_group()]
     )
 
-def run(argv: List[String]) -> Result[Matches, CliError]:
+fn run(argv: List[String]) Matches!CliError:
     let parsed = app().parse(argv)
     if parsed.is_error(): return error(parsed.err().clone())
 
     match parsed.get():
-        case Run(_, matches): return ok(matches.clone())
-        case Help(text): return ok(Matches(path: [text.clone()]))
+        Run(_, matches): return ok(matches.clone())
+        Help(text): return ok(Matches(path: [text.clone()]))
 
-def failure(argv: List[String]) -> Result[String, Error]:
+fn failure(argv: List[String]) String!:
     let result = app().parse(argv)
     if result.is_ok(): return error(CliError.InvalidSchema("accepted"))
 
@@ -84,7 +84,7 @@ test "nested command resolves path and typed options":
     matches.int("port") | try expect_equal(8080)
     matches.string("mode") | try expect_equal("dev")
     matches.string("root") | try expect_equal("site")
-    matches.bool("verbose") | try expect_equal(False)
+    matches.bool("verbose") | try expect_equal(false)
 
 test "flags take values in every spelling and persistent flags work on both sides":
     let matches = (
@@ -99,10 +99,10 @@ test "flags take values in every spelling and persistent flags work on both side
     matches.string("mode") | try expect_equal("prod")
     matches.list("tags") | try expect_equal(["a", "b"])
     matches.string("root") | try expect_equal("-x")
-    matches.bool("verbose") | try expect_equal(True)
+    matches.bool("verbose") | try expect_equal(true)
 
     let after = (run(["serve", "site", "--verbose", "--no-verbose"]) | try expect_ok)
-    after.bool("verbose") | try expect_equal(False)
+    after.bool("verbose") | try expect_equal(false)
 
 test "optional and rest arguments":
     let matches = (run(["remote", "add", "origin"]) | try expect_ok)
@@ -111,7 +111,7 @@ test "optional and rest arguments":
 
     let full = (run(["remote", "add", "origin", "u", "x", "y"]) | try expect_ok)
     full.list("extra") | try expect_equal(["x", "y"])
-    full.string_or_none("url") | try expect_equal(some("u"))
+    full.string_or_none("url") | try expect_equal("u")
 
 test "usage errors name the problem":
     (try failure(["serve"])) | try expect_equal("cli: missing required root")
@@ -161,7 +161,7 @@ test "float flags reject NaN and infinities":
     let ratio = Command(name: "x", flags: [Flag(name: "ratio", kind: FlagKind.Float)])
     for text in ["NaN", "Infinity", "-Infinity"]:
         (ratio.parse(["--ratio", text.clone()]) | try expect_error).message() | try expect_equal(
-            f"cli: flag ratio: {text} is not a number"
+            "cli: flag ratio: {text} is not a number"
         )
 
     let _ = try expect_ok(ratio.parse(["--ratio", "1e5"]))
@@ -191,14 +191,14 @@ test "schema mistakes are reported before parsing":
     )
 
     let rest_first = Command(
-        name: "x", args: [Arg(name: "a", rest: True), Arg(name: "b")]
+        name: "x", args: [Arg(name: "a", rest: true), Arg(name: "b")]
     )
     (rest_first.parse([]) | try expect_error).message() | try expect_contains(
         "must be last"
     )
 
     let order = Command(
-        name: "x", args: [Arg(name: "a", required: False), Arg(name: "b")]
+        name: "x", args: [Arg(name: "a", required: false), Arg(name: "b")]
     )
     (order.parse([]) | try expect_error).message() | try expect_contains(
         "follows an optional"
@@ -209,13 +209,13 @@ test "schema mistakes are reported before parsing":
         "bad command name help"
     )
 
-def handled(argv: List[String]) -> Result[Int, Error]:
+fn handled(argv: List[String]) Int!:
     let parsed = app().parse(argv)
     if parsed.is_error(): return error(parsed.err().clone())
 
     match parsed.get():
-        case Run(node, matches): return node.exec(matches)
-        case Help(_): return ok(-1)
+        Run(node, matches): return node.exec(matches)
+        Help(_): return ok(-1)
 
 test "handlers receive the decoded options record":
     (handled(["serve", "site", "-p", "9090"]) | try expect_ok) | try expect_equal(9090)
@@ -229,16 +229,16 @@ test "optional, rest and dashed names decode into record fields":
     )
 
 test "a record that does not match the schema is reported when the handler runs":
-    let mismatched = command[ServeOptions](name: "bad", run: lambda options: ok(0))
+    let mismatched = command[ServeOptions](name: "bad", run: fn options: ok(0))
     let result = Command(name: "tool", children: [mismatched]).parse(["bad"])
     let parsed = (result | try expect_ok)
 
     match parsed:
-        case Run(node, matches):
+        Run(node, matches):
             (node.exec(matches) | try expect_error).message() | try expect_contains(
                 "does not match"
             )
-        case Help(_): return fail("help")
+        Help(_): return fail("help")
 
 test "help rows without text carry no trailing spaces":
     let quiet = Command(

@@ -1,0 +1,54 @@
+import stringify from "@std/json.ms"
+import base64_encode from "@std/encoding.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
+import StringBuilder from "@std/string.ms"
+import arguments from "@std/process.ms"
+import stdout from "@std/io.ms"
+import clock from "@std/time.ms"
+
+extern fn codec_bench_cpu_ns() Int
+
+export fn main() Int:
+    let args = arguments()
+    let size = args[0].parse_int().get()
+    let count = args[1].parse_int().get()
+    let rounds = args[2].parse_int().get()
+    var input = BytesBuilder()
+    for i in 0..size: input.append(((i * 73 + 11) % 256).to_uint8().get())
+
+    let data = input.build()
+    let encoded = base64_encode(data)
+    var values = List[Bytes]()
+    var json = StringBuilder()
+    json.append("[")
+
+    for i in 0..count:
+        values.append(data.clone())
+        if i > 0: json.append(",")
+        json.append("\"{encoded}\"")
+
+    json.append("]")
+
+    let expected = json.build()
+    let clk = clock()
+    var checksum = 0
+    let started_cpu = codec_bench_cpu_ns()
+    if started_cpu < 0: return 4
+
+    let start = clk.now()
+
+    for i in 0..rounds:
+        let result = stringify(values)
+        if result.is_error(): return 2
+
+        let actual = result.get()
+        if actual != expected: return 3
+
+        checksum += actual.byte_length()
+
+    let elapsed = clk.now().difference(start).to_nanoseconds()
+    let cpu = codec_bench_cpu_ns() - started_cpu
+    if cpu <= 0: return 5
+
+    stdout().write("{size} {count} {rounds} {checksum} {elapsed} {cpu}\n").get()
+    return 0

@@ -1,0 +1,10 @@
+{
+  "baseline": {
+    "wrapper_size": 32,
+    "wrapper_align": 8
+  },
+  "candidate": {
+    "wrapper_size": 40,
+    "wrapper_align": 8
+  }
+}

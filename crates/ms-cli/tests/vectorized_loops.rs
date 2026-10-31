@@ -132,3 +132,112 @@ fn vectorize_off_keeps_loops_scalar() {
         "per-CPU copies with vectorization off"
     );
 }
+
+/// A search loop that returns early cannot be vectorized, so its function keeps one copy and no
+/// dispatcher; a single-exit sum loop gets both copies.
+#[test]
+fn only_vectorizable_loops_get_per_cpu_copies() {
+    if !ms_clif::llvm_available() {
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("ms-search-loop-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("search.ms"),
+        include_str!("vectorized_loops/search.ms"),
+    )
+    .unwrap();
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .current_dir(&dir)
+        .env("MS_BACKEND", "llvm")
+        .env("MS_KEEP_LL", "1")
+        .args(["build", "search.ms", "-o", "search"])
+        .output()
+        .unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ir = std::fs::read_to_string(dir.join("ms-keep.ll")).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    // Per-CPU copies exist for x86-64 only; the early-return loop has none on any host.
+    assert!(
+        !cfg!(target_arch = "x86_64") || ir.contains("@\"total#2.avx2\""),
+        "the sum loop has no AVX2 copy"
+    );
+    assert!(
+        !ir.contains("@\"find#1.avx2\"") && !ir.contains("@\"find#1.base\""),
+        "a search loop with an early return got per-CPU copies"
+    );
+}
+
+/// On aarch64 the element-wise loops compile to NEON vector instructions. There are no per-CPU
+/// copies there: NEON is part of the baseline.
+#[cfg(target_arch = "aarch64")]
+#[test]
+fn element_wise_list_loops_use_neon() {
+    if !ms_clif::llvm_available() {
+        return;
+    }
+    let tools = ms_clif::link::llvm_tools().unwrap().unwrap();
+    let dir = std::env::temp_dir().join(format!("ms-neon-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("k.ms"), KERNELS).unwrap();
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .current_dir(&dir)
+        .env("MS_BACKEND", "llvm")
+        .env("MS_KEEP_LL", "1")
+        .args(["build", "k.ms", "-o", "k"])
+        .output()
+        .unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ir = std::fs::read_to_string(dir.join("ms-keep.ll")).unwrap();
+    std::fs::write(
+        dir.join("external.ll"),
+        ir.replace("define internal ", "define "),
+    )
+    .unwrap();
+    let exe = |name: &str| tools.join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
+    let opt = Command::new(exe("opt"))
+        .current_dir(&dir)
+        .args(["-passes=default<O3>", "external.ll", "-o", "k.bc"])
+        .output()
+        .unwrap();
+    assert!(
+        opt.status.success(),
+        "{}",
+        String::from_utf8_lossy(&opt.stderr)
+    );
+    let llc = Command::new(exe("llc"))
+        .current_dir(&dir)
+        .args(["-filetype=asm", "k.bc", "-o", "k.s"])
+        .output()
+        .unwrap();
+    assert!(
+        llc.status.success(),
+        "{}",
+        String::from_utf8_lossy(&llc.stderr)
+    );
+    let asm = std::fs::read_to_string(dir.join("k.s")).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    // Packed arithmetic: `.2d` for `scale` (Float; LLVM turns `a * 2.0` into `a + a`), `.4s` for
+    // `fma` (Float32).
+    for lane in [".2d", ".4s"] {
+        assert!(
+            asm.lines().any(|l| {
+                let l = l.trim_start();
+                // ELF prints `fadd\tv0.2d`; Mach-O prints `fadd.2d\tv0`.
+                ["fmul", "fmla", "fadd"].iter().any(|op| {
+                    l.strip_prefix(op)
+                        .is_some_and(|rest| rest.starts_with("\tv") || rest.starts_with('.'))
+                }) && l.contains(lane)
+            }),
+            "no NEON {lane} arithmetic in:\n{asm}"
+        );
+    }
+}

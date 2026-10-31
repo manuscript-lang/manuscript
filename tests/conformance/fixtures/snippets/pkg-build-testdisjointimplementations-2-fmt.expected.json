@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Read:\n    def get() -> Int\n\ntype Box[T]:\n    value: T\n\nimpl Read for Box[Callable[[Int], Int]]:\n    def get() -> Int:\n        return 1\n\nimpl Read for Box[Callable[[Int], Int]]:\n    def get() -> Int:\n        return 2\n"
-  }
-}

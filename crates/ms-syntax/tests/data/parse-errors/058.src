@@ -1,1 +1,1 @@
-import {TextError} from "@std/er
+import TextError from "@std/er

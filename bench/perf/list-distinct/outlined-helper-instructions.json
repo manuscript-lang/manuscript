@@ -1,0 +1,386 @@
+{
+  "complete": true,
+  "cases": [
+    {
+      "case": [
+        "int",
+        100000,
+        1,
+        10
+      ],
+      "before": {
+        "instructions": 91944124,
+        "checksum": 10,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/0-before.callgrind",
+        "trace_sha256": "41be977d9b11287fcf27c7196981b6ee45ed2dad2b38d3f6c9dec822f8b39f1d"
+      },
+      "after": {
+        "instructions": 91943740,
+        "checksum": 10,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/0-after.callgrind",
+        "trace_sha256": "895127203b27ce1b5ed817cadf623c2a35946a032478c17a930c9e9c50849ad5"
+      },
+      "ratio_after_before": 0.999995823550399
+    },
+    {
+      "case": [
+        "int",
+        100000,
+        32,
+        10
+      ],
+      "before": {
+        "instructions": 92610712,
+        "checksum": 5280,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/1-before.callgrind",
+        "trace_sha256": "37fc8b7c6c5c232d6d9960723468247db4f4a8014b46b50bc770daebe96c374f"
+      },
+      "after": {
+        "instructions": 92588362,
+        "checksum": 5280,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/1-after.callgrind",
+        "trace_sha256": "4da66152b339da2d661db21c31cde58b4e9173a6689f934b9014cccef8c6d478"
+      },
+      "ratio_after_before": 0.9997586672263139
+    },
+    {
+      "case": [
+        "int",
+        10000,
+        10000,
+        10
+      ],
+      "before": {
+        "instructions": 47864069,
+        "checksum": 500050000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/2-before.callgrind",
+        "trace_sha256": "c44d55bfd5d226d3ec8cbde48a744ae3d503873adc6ba8fd08bb44e427c53575"
+      },
+      "after": {
+        "instructions": 40306347,
+        "checksum": 500050000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/2-after.callgrind",
+        "trace_sha256": "9a5e776fe3804092053a0037a06082fa590d052718155ab4f4447a6d3ca1ab23"
+      },
+      "ratio_after_before": 0.8421003028388581
+    },
+    {
+      "case": [
+        "string",
+        8,
+        8,
+        2000
+      ],
+      "before": {
+        "instructions": 12255227,
+        "checksum": 576000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/3-before.callgrind",
+        "trace_sha256": "82d1059368748f844f22fcd5620dfdeba758c15ec7a62514d1fa68e9d1e6d3ea"
+      },
+      "after": {
+        "instructions": 12255183,
+        "checksum": 576000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/3-after.callgrind",
+        "trace_sha256": "5bec2a7041ed10f9b14a0fb6501c05ed7ec99d1c6daf0d17a67daaaa1268dc35"
+      },
+      "ratio_after_before": 0.9999964096952264
+    },
+    {
+      "case": [
+        "string",
+        10000,
+        32,
+        10
+      ],
+      "before": {
+        "instructions": 29092311,
+        "checksum": 11740,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/4-before.callgrind",
+        "trace_sha256": "0f565159c9a19e94bab501d885868d8b3b2d46117c2ad1c7b2160a6e142e50b9"
+      },
+      "after": {
+        "instructions": 29048661,
+        "checksum": 11740,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/4-after.callgrind",
+        "trace_sha256": "ee3822ced2d9736c4fac093719d5ac43b6e8ad336c812ce48d84665ac60a2562"
+      },
+      "ratio_after_before": 0.9984996035550424
+    },
+    {
+      "case": [
+        "string",
+        10000,
+        10000,
+        10
+      ],
+      "before": {
+        "instructions": 120861310,
+        "checksum": 3888900,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/5-before.callgrind",
+        "trace_sha256": "e3685efd7b8233e2bf7c7cf886d2431c7eca5e29dc127a6cdfe7bc1b0f25b431"
+      },
+      "after": {
+        "instructions": 106811307,
+        "checksum": 3888900,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/5-after.callgrind",
+        "trace_sha256": "860529d9a6d76a9d97d7f9bd20d409d54d3ca766eef5d15ff1a3ef2fa2e596e6"
+      },
+      "ratio_after_before": 0.8837510283481124
+    },
+    {
+      "case": [
+        "intersection",
+        1024,
+        0,
+        10
+      ],
+      "before": {
+        "instructions": 4963919,
+        "checksum": 5248000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/6-before.callgrind",
+        "trace_sha256": "dc3c4240528f46861a594af1fd92d84c5abc4fac80385ba5ca436d250c165f07"
+      },
+      "after": {
+        "instructions": 4228721,
+        "checksum": 5248000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/6-after.callgrind",
+        "trace_sha256": "8305d0dc227cd08227ca53cef4fa657f198d4b2540b97985b4e7108324f2b7a4"
+      },
+      "ratio_after_before": 0.8518916203104845
+    },
+    {
+      "case": [
+        "difference",
+        1024,
+        1024,
+        10
+      ],
+      "before": {
+        "instructions": 4895266,
+        "checksum": 5248000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/7-before.callgrind",
+        "trace_sha256": "315f86cb69b348cb0b2f5cc6045f88710346fb9d3905dc292bb15f63dfa5bb27"
+      },
+      "after": {
+        "instructions": 4160076,
+        "checksum": 5248000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/7-after.callgrind",
+        "trace_sha256": "86a8f2ad2c6cd64f7ec83568d18aadb921f2b881f40a50b019aa3b033039fdb0"
+      },
+      "ratio_after_before": 0.8498161284800458
+    },
+    {
+      "case": [
+        "difference",
+        100000,
+        100000,
+        2
+      ],
+      "before": {
+        "instructions": 150469923,
+        "checksum": 10000100000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/8-before.callgrind",
+        "trace_sha256": "6013b632cb1c15fac1bdf33b984a720e88bdd61407c15da96a3e70fd5513f4b8"
+      },
+      "after": {
+        "instructions": 136738158,
+        "checksum": 10000100000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/8-after.callgrind",
+        "trace_sha256": "25be7f97657d8c7123f801bcc5853e46c8af9ce529549a1021fd22aa25959617"
+      },
+      "ratio_after_before": 0.9087407986511696
+    },
+    {
+      "case": [
+        "symmetric_difference",
+        1024,
+        1024,
+        10
+      ],
+      "before": {
+        "instructions": 9127667,
+        "checksum": 20981760,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/9-before.callgrind",
+        "trace_sha256": "6d4e2472367cf03bf8a7b083e9eb9ac6935a93987f3def5896dc28660108336f"
+      },
+      "after": {
+        "instructions": 8412941,
+        "checksum": 20981760,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/9-after.callgrind",
+        "trace_sha256": "62caad0358f97360f0a72e4e831ad6968effd3f19f5be8d231ca1c5484e7b0a2"
+      },
+      "ratio_after_before": 0.9216967490159315
+    },
+    {
+      "case": [
+        "union",
+        1024,
+        0,
+        10
+      ],
+      "before": {
+        "instructions": 2631123,
+        "checksum": 5248000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/10-before.callgrind",
+        "trace_sha256": "86b0ed0bba3636fdf9db71a108a913f07d04e0f5ab6b909fa19e55b3a451db24"
+      },
+      "after": {
+        "instructions": 2436541,
+        "checksum": 5248000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/10-after.callgrind",
+        "trace_sha256": "6c35222f0cb9d4d7474d44c2501fda6474d680121237458a75447da56849d0fb"
+      },
+      "ratio_after_before": 0.926046026734592
+    },
+    {
+      "case": [
+        "union",
+        1024,
+        1024,
+        10
+      ],
+      "before": {
+        "instructions": 4832780,
+        "checksum": 20981760,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/11-before.callgrind",
+        "trace_sha256": "c7f9651003b839c454a153fa871ed9dd58db5a986567f4645877f533e54fb4a0"
+      },
+      "after": {
+        "instructions": 4883952,
+        "checksum": 20981760,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/11-after.callgrind",
+        "trace_sha256": "d2e5b3efd55490ab7c2275b02df4052bc2edbbdccbcb0923dc370a77adcf37b0"
+      },
+      "ratio_after_before": 1.0105885225480986
+    },
+    {
+      "case": [
+        "int_set",
+        10000,
+        1,
+        10
+      ],
+      "before": {
+        "instructions": 11430380,
+        "checksum": 10,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/12-before.callgrind",
+        "trace_sha256": "2a0f4de49d8aad67cc8ddb6c4259555d66c2f5f4d51e2defdf53951fa215d3b8"
+      },
+      "after": {
+        "instructions": 9530564,
+        "checksum": 10,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/12-after.callgrind",
+        "trace_sha256": "a809137181bde0b33413f1c72c3d9ab3b58650ba7193da01c15199fc11c5aab1"
+      },
+      "ratio_after_before": 0.8337924023523278
+    },
+    {
+      "case": [
+        "int_set",
+        10000,
+        10000,
+        10
+      ],
+      "before": {
+        "instructions": 35168990,
+        "checksum": 500050000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/13-before.callgrind",
+        "trace_sha256": "f11d984613ba16a87beaa323bc260a475c8201c176d046ae3b46ae5c93dc8074"
+      },
+      "after": {
+        "instructions": 35670108,
+        "checksum": 500050000,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/13-after.callgrind",
+        "trace_sha256": "3cc9508beb72326f856297f86a4dc3872dbc6dd9eca10cb56c98a49b390adb38"
+      },
+      "ratio_after_before": 1.0142488595777133
+    },
+    {
+      "case": [
+        "string_set",
+        10000,
+        32,
+        10
+      ],
+      "before": {
+        "instructions": 31176652,
+        "checksum": 11740,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/14-before.callgrind",
+        "trace_sha256": "8fb9775001a90be99c5d660b067a0f56b1ecc2ec89966750b05a08bfb6447bf7"
+      },
+      "after": {
+        "instructions": 29284322,
+        "checksum": 11740,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/14-after.callgrind",
+        "trace_sha256": "8d13b1d7474ad19d5d5a0da8fd588e65198c9893e424fdcd266e5f238aa719a4"
+      },
+      "ratio_after_before": 0.9393029758294765
+    },
+    {
+      "case": [
+        "string_set",
+        10000,
+        10000,
+        10
+      ],
+      "before": {
+        "instructions": 85500201,
+        "checksum": 3888900,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/15-before.callgrind",
+        "trace_sha256": "8110d06d62f939583fd566cafc1455deb83447507111337b2b5c6e555c9c3e81"
+      },
+      "after": {
+        "instructions": 86000189,
+        "checksum": 3888900,
+        "exit_status": 0,
+        "trace": "/workspace/collections-perf-artifacts/callgrind-outlined/15-after.callgrind",
+        "trace_sha256": "6b18d15e468467d2753b8d9a5d71190f7f6efdfa1d7d9261768041e13dc0d0a4"
+      },
+      "ratio_after_before": 1.0058477991180395
+    }
+  ],
+  "binaries": {
+    "before": {
+      "path": "/workspace/collections-perf-artifacts/before-main/final-program",
+      "sha256": "0f44b8a8c5bd9f81512114e82d810e2a98e102ce4ff5334c683ca1c3fee4373c"
+    },
+    "after": {
+      "path": "/workspace/collections-perf-artifacts/final-program",
+      "sha256": "406c27ddaf245ba56941a883a4ffdb4f52dce86a0f73ea21db1f240be4a3d9d0"
+    }
+  },
+  "valgrind": "valgrind-3.24.0",
+  "driver_sha256": "9e43e118e3e5e0afef60f20fe655f0136f6df1eb90fb71efbfb09cd3166fb28a",
+  "source_sha256": "4893577e15f1d4fc3f263fe826034750568e109d26ad8da477bd5a06e16a28b0"
+}

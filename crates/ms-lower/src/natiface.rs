@@ -55,7 +55,6 @@ const UNIT_DATA: &[(&str, &str)] = &[
 #[derive(Clone, Copy)]
 enum Extra {
     Bool(bool),
-    Int(i64),
 }
 
 /// One row of `METHODS`: module, interface, operation, runtime symbol, constant extras.
@@ -108,13 +107,6 @@ const METHODS: &[MethodRow] = &[
     ),
     (
         "net",
-        "Connection",
-        "tls_info",
-        "msrt_net_connection_tls_info",
-        &[],
-    ),
-    (
-        "net",
         "Network",
         "listen_unix",
         "msrt_net_network_listen_unix",
@@ -138,93 +130,6 @@ const METHODS: &[MethodRow] = &[
     ("net", "Network", "resolve", "msrt_net_network_resolve", &[]),
     (
         "net",
-        "Connection",
-        "close",
-        "msrt_net_connection_close",
-        &[],
-    ),
-    (
-        "net",
-        "Connection",
-        "local_address",
-        "msrt_net_connection_local_address",
-        &[],
-    ),
-    (
-        "net",
-        "Connection",
-        "peer_address",
-        "msrt_net_connection_peer_address",
-        &[],
-    ),
-    ("net", "Connection", "read", "msrt_net_connection_read", &[]),
-    (
-        "net",
-        "Connection",
-        "write",
-        "msrt_net_connection_write",
-        &[],
-    ),
-    (
-        "net",
-        "Connection",
-        "write_bytes",
-        "msrt_net_connection_write_bytes",
-        &[],
-    ),
-    (
-        "net",
-        "Connection",
-        "shutdown_write",
-        "msrt_net_connection_shutdown_write",
-        &[],
-    ),
-    ("net", "Listener", "accept", "msrt_net_listener_accept", &[]),
-    (
-        "net",
-        "Listener",
-        "address",
-        "msrt_net_listener_address",
-        &[],
-    ),
-    ("net", "Listener", "close", "msrt_net_listener_close", &[]),
-    (
-        "net",
-        "DatagramSocket",
-        "address",
-        "msrt_net_datagram_address",
-        &[],
-    ),
-    (
-        "net",
-        "DatagramSocket",
-        "close",
-        "msrt_net_datagram_close",
-        &[],
-    ),
-    (
-        "net",
-        "DatagramSocket",
-        "receive",
-        "msrt_net_datagram_receive",
-        &[],
-    ),
-    (
-        "net",
-        "DatagramSocket",
-        "send",
-        "msrt_net_datagram_send",
-        &[],
-    ),
-    (
-        "net",
-        "DatagramSocket",
-        "send_bytes",
-        "msrt_net_datagram_send_bytes",
-        &[],
-    ),
-    (
-        "net",
         "Network",
         "http_client",
         "msrt_net_network_http_client",
@@ -237,43 +142,6 @@ const METHODS: &[MethodRow] = &[
         "msrt_net_network_web_socket",
         &[],
     ),
-    (
-        "websocket",
-        "WebSocket",
-        "close",
-        "msrt_websocket_close",
-        &[],
-    ),
-    ("websocket", "WebSocket", "ping", "msrt_websocket_ping", &[]),
-    (
-        "websocket",
-        "WebSocket",
-        "ping_bytes",
-        "msrt_websocket_ping_bytes",
-        &[],
-    ),
-    (
-        "websocket",
-        "WebSocket",
-        "receive",
-        "msrt_websocket_receive",
-        &[],
-    ),
-    ("websocket", "WebSocket", "send", "msrt_websocket_send", &[]),
-    (
-        "websocket",
-        "WebSocket",
-        "send_bytes",
-        "msrt_websocket_send_bytes",
-        &[],
-    ),
-    (
-        "websocket",
-        "WebSocket",
-        "subprotocol",
-        "msrt_websocket_subprotocol",
-        &[],
-    ),
     ("net", "Network", "request", "msrt_net_network_request", &[]),
     (
         "net",
@@ -283,51 +151,11 @@ const METHODS: &[MethodRow] = &[
         &[],
     ),
     ("net", "Network", "serve", "msrt_net_network_serve", &[]),
-    ("net", "HttpClient", "close", "msrt_http_client_close", &[]),
     (
         "net",
-        "HttpClient",
-        "request",
-        "msrt_http_client_request",
-        &[],
-    ),
-    (
-        "net",
-        "HttpClient",
-        "request_bytes",
-        "msrt_http_client_request_bytes",
-        &[],
-    ),
-    (
-        "net",
-        "HttpClient",
-        "request_stream",
-        "msrt_http_client_request_stream",
-        &[],
-    ),
-    (
-        "net",
-        "HttpServer",
-        "address",
-        "msrt_http_server_address",
-        &[],
-    ),
-    ("net", "HttpServer", "close", "msrt_http_server_close", &[]),
-    ("net", "HttpServer", "wait", "msrt_http_server_wait", &[]),
-    ("http", "ResponseBody", "close", "msrt_http_body_close", &[]),
-    (
-        "http",
-        "ResponseBody",
-        "metadata",
-        "msrt_http_body_metadata",
-        &[],
-    ),
-    ("http", "ResponseBody", "read", "msrt_http_body_read", &[]),
-    (
-        "http",
-        "ResponseBody",
-        "read_all",
-        "msrt_http_body_read_all",
+        "Network",
+        "serve_connections",
+        "msrt_net_network_serve_connections",
         &[],
     ),
     (
@@ -586,41 +414,6 @@ const METHODS: &[MethodRow] = &[
     ),
     (
         "process",
-        "Subprocess",
-        "stdin",
-        "msstd_process_subprocess_stream",
-        &[("which", Extra::Int(0))],
-    ),
-    (
-        "process",
-        "Subprocess",
-        "stdout",
-        "msstd_process_subprocess_stream",
-        &[("which", Extra::Int(1))],
-    ),
-    (
-        "process",
-        "Subprocess",
-        "stderr",
-        "msstd_process_subprocess_stream",
-        &[("which", Extra::Int(2))],
-    ),
-    (
-        "process",
-        "Subprocess",
-        "wait",
-        "msstd_process_subprocess_wait",
-        &[],
-    ),
-    (
-        "process",
-        "Subprocess",
-        "terminate",
-        "msstd_process_subprocess_terminate",
-        &[],
-    ),
-    (
-        "process",
         "ProcessControl",
         "monotonic_time",
         "msstd_process_monotonic_time",
@@ -862,62 +655,6 @@ const METHODS: &[MethodRow] = &[
         &[],
     ),
     (
-        "terminal",
-        "RawTerminal",
-        "close",
-        "msstd_terminal_raw_terminal_close",
-        &[],
-    ),
-    (
-        "terminal",
-        "RawTerminal",
-        "next_event",
-        "msstd_terminal_raw_terminal_next_event",
-        &[],
-    ),
-    (
-        "terminal",
-        "RawTerminal",
-        "size",
-        "msstd_terminal_raw_terminal_size_record",
-        &[],
-    ),
-    (
-        "terminal",
-        "RawTerminal",
-        "move_cursor",
-        "msstd_terminal_raw_terminal_move_cursor",
-        &[],
-    ),
-    (
-        "terminal",
-        "RawTerminal",
-        "show_cursor",
-        "msstd_terminal_raw_terminal_show_cursor",
-        &[],
-    ),
-    (
-        "terminal",
-        "RawTerminal",
-        "erase",
-        "msstd_terminal_raw_terminal_erase",
-        &[],
-    ),
-    (
-        "process",
-        "Subprocess",
-        "kill",
-        "msstd_process_subprocess_kill",
-        &[],
-    ),
-    (
-        "process",
-        "Subprocess",
-        "close",
-        "msstd_process_subprocess_close",
-        &[],
-    ),
-    (
         "process",
         "ProcessControl",
         "watch_signals",
@@ -1119,24 +856,6 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         v: load_handle(fl, job, args),
         own: false,
     });
-    // Operations whose arguments or result do not fit the generic marshalling.
-    match sym.as_str() {
-        "msstd_terminal_raw_terminal_next_event" => {
-            let h = load_handle(fl, job, args);
-            let r = fl.terminal_next_event(sym, h, args[1], job.ret)?;
-            fl.emit_return(Some(r));
-            return Ok(());
-        }
-        "msstd_terminal_raw_terminal_erase" => {
-            let h = load_handle(fl, job, args);
-            let region = fl.b.alt_tag(args[1]);
-            let code = fl.status_code(sym, &[h, region])?;
-            let r = fl.status_result(sym, code, None, None, job.ret)?;
-            fl.emit_return(Some(r));
-            return Ok(());
-        }
-        _ => {}
-    }
     let mut nargs: Vec<NArg> = job
         .decl
         .iter()
@@ -1153,7 +872,6 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         let name = ct::n(name);
         let (ty, v) = match *extra {
             Extra::Bool(b) => (ct::bool_(), fl.b.bconst(b)),
-            Extra::Int(i) => (ct::int(), fl.b.iconst(i)),
         };
         // The rules flag leads a path entry point's arguments.
         let lead = sym.starts_with("msrt_path_");
@@ -1285,90 +1003,6 @@ impl FnLower<'_> {
             }),
         );
         Ok(lists)
-    }
-
-    /// `RawTerminal.next_event(timeout)`: the runtime answers a status and keeps the event for
-    /// the `msstd_terminal_event_*` getters.
-    fn terminal_next_event(
-        &mut self,
-        sym: &str,
-        handle: ms_mir::ir::Value,
-        timeout: ms_mir::ir::Value,
-        result: MTy,
-    ) -> Result<Val, Error> {
-        let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
-            return Err(Error::new("next_event: not a Result"));
-        };
-        let ok = self.ok_case_index(a)?;
-        let opt = self.b.m.alts[a.index()].cases[ok].fields[0].1;
-        let TyKind::Opt(event) = self.b.m.types.kind(opt).clone() else {
-            return Err(Error::new("next_event: not an optional event"));
-        };
-        let TyKind::Alt(ea) = self.b.m.types.kind(event).clone() else {
-            return Err(Error::new("next_event: not an event alternative"));
-        };
-        let input = crate::rtcall::Input {
-            val: Some(Val {
-                v: timeout,
-                own: false,
-            }),
-            wrapped: false,
-        };
-        let (has, nanos) = self.flatten_optional(input, "i64")?;
-        let code = self.status_code(sym, &[handle, has, nanos])?;
-        self.status_optional_result(sym, code, &mut |s| s.terminal_event(ea), result)
-    }
-
-    /// The `TerminalEvent` the runtime last delivered.
-    fn terminal_event(&mut self, ea: ms_mir::types::AltId) -> Result<ms_mir::ir::Value, Error> {
-        let case = |s: &Self, name: &str| {
-            s.b.m.alts[ea.index()]
-                .cases
-                .iter()
-                .position(|c| c.name == name)
-                .map(|i| i as u32)
-                .ok_or_else(|| Error::new(format!("TerminalEvent has no {name} case")))
-        };
-        let (text_case, key_case, resize_case) = (
-            case(self, "Text")?,
-            case(self, "Key")?,
-            case(self, "Resize")?,
-        );
-        let ty = self.b.m.types.alt(ea);
-        let kind = self.getter_call("msstd_terminal_event_kind", MTy::INT, &[])?;
-        let zero = self.b.iconst(0);
-        let is_text = self.b.icmp(ms_mir::ir::Cc::Eq, kind, zero);
-        let r = self.two_ways(
-            is_text,
-            ty,
-            &mut |s| {
-                let text = s.getter_call("msstd_terminal_event_text", MTy::STR, &[])?;
-                Ok(Some(s.b.alt_new(ea, text_case, &[text])))
-            },
-            &mut |s| {
-                let one = s.b.iconst(1);
-                let is_key = s.b.icmp(ms_mir::ir::Cc::Eq, kind, one);
-                let r = s.two_ways(
-                    is_key,
-                    ty,
-                    &mut |s| {
-                        let name = s.getter_call("msstd_terminal_event_text", MTy::STR, &[])?;
-                        let ctrl = s.getter_call("msstd_terminal_event_ctrl", MTy::BOOL, &[])?;
-                        let alt = s.getter_call("msstd_terminal_event_alt", MTy::BOOL, &[])?;
-                        let shift = s.getter_call("msstd_terminal_event_shift", MTy::BOOL, &[])?;
-                        Ok(Some(s.b.alt_new(ea, key_case, &[name, ctrl, alt, shift])))
-                    },
-                    &mut |s| {
-                        let columns =
-                            s.getter_call("msstd_terminal_event_columns", MTy::INT, &[])?;
-                        let rows = s.getter_call("msstd_terminal_event_rows", MTy::INT, &[])?;
-                        Ok(Some(s.b.alt_new(ea, resize_case, &[columns, rows])))
-                    },
-                )?;
-                Ok(Some(r.v))
-            },
-        )?;
-        Ok(r.v)
     }
 
     /// `stdin()`: an interface value over a runtime handle made by `make(constant)`.
@@ -1617,6 +1251,13 @@ impl FnLower<'_> {
                     list = self.b.list_push(list, x);
                 }
                 Ok(Val { v: list, own: true })
+            }
+            TyKind::Rec(rid) if self.b.m.records[rid.index()].name == "Duration" => {
+                let nanos = self.getter_call(sym, MTy::INT, lead)?;
+                Ok(Val {
+                    v: self.b.rec_new(rid, &[nanos]),
+                    own: true,
+                })
             }
             _ => {
                 let v = self.getter_call(sym, ty, lead)?;

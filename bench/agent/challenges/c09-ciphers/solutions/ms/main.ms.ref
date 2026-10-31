@@ -1,14 +1,14 @@
-from "@std/io.ms" import stdin, stdout, read_line
-from "@std/string.ms" import from_scalars
+import stdin, stdout, read_line from "@std/io.ms"
+import from_scalars from "@std/string.ms"
 
-def is_upper(c: Int) -> Bool:
+fn is_upper(c: Int) Bool:
     return c >= 65 and c <= 90
 
-def is_lower(c: Int) -> Bool:
+fn is_lower(c: Int) Bool:
     return c >= 97 and c <= 122
 
 # Shifts letters by keys[position % keys.length()] * sign; position counts letters only.
-def transform(text: String, keys: List[Int], sign: Int) -> String:
+fn transform(text: String, keys: List[Int], sign: Int) String:
     var out = List[Int]()
     var i = 0
 
@@ -27,13 +27,13 @@ def transform(text: String, keys: List[Int], sign: Int) -> String:
 
     return from_scalars(out).get()
 
-def parse_caesar_key(key: String) -> Optional[Int]:
+fn parse_caesar_key(key: String) Int?:
     let codes = key.scalar_values()
     var start = 0
-    var negative = False
+    var negative = false
 
     if codes.length() > 0 and codes.get(0) == 45:
-        negative = True
+        negative = true
         start = 1
 
     let digits = codes.length() - start
@@ -55,7 +55,7 @@ def parse_caesar_key(key: String) -> Optional[Int]:
         k = 0 - k
     return some(k)
 
-def solve_line(line: String) -> String:
+fn solve_line(line: String) String:
     var parts = List[String]()
     var rest = line
 
@@ -97,15 +97,15 @@ def solve_line(line: String) -> String:
     for c in key.scalar_values():
         if is_upper(c):
             keys.append(c - 65)
-        elif is_lower(c):
+        else if is_lower(c):
             keys.append(c - 97)
         else:
             return "error: bad key"
 
     return transform(rest, keys, sign)
 
-def run() -> Result[Unit, Error]:
-    while True:
+fn run() Result[Unit, Error]:
+    while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
         if next.is_none():
             break
@@ -114,11 +114,11 @@ def run() -> Result[Unit, Error]:
         if line.replace(old: " ", new: "").is_empty():
             continue
 
-        try stdout().write(f"{solve_line(line.clone())}\n")
+        try stdout().write("{solve_line(line.clone())}\n")
 
     return stdout().flush()
 
-export def main() -> Int:
+export fn main() Int:
     match run():
-        case ok(_): return 0
-        case error(_): return 1
+        ok(_): return 0
+        error(_): return 1

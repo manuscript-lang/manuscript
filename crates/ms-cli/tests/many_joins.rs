@@ -7,7 +7,7 @@ use std::process::Command;
 fn many_joins_in_one_function() {
     let n: i64 = 300;
     let mut source = String::from(
-        "from \"@std/io.ms\" import stdout\n\ndef id(x: Int) -> Int: x\n\nexport def main() -> Int:\n",
+        "import stdout from \"@std/io.ms\"\n\nfn id(x: Int) Int: x\n\nexport fn main() Int:\n",
     );
     let value = |i: i64| i * 3 + i % 7;
     for i in 0..n {
@@ -17,10 +17,10 @@ fn many_joins_in_one_function() {
     let mut expected = 0;
     for i in 0..n {
         let j = i * 7 % n;
-        writeln!(source, "    t += v{i} % 11 + (v{j} if v{i} > 10 else 0)").unwrap();
+        writeln!(source, "    t += v{i} % 11 + (if v{i} > 10: v{j} else: 0)").unwrap();
         expected += value(i) % 11 + if value(i) > 10 { value(j) } else { 0 };
     }
-    source.push_str("    stdout().write(f\"{t}\\n\").get()\n    return 0\n");
+    source.push_str("    stdout().write(\"{t}\\n\").get()\n    return 0\n");
     let dir = std::env::temp_dir().join(format!("ms-many-joins-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("main.ms");

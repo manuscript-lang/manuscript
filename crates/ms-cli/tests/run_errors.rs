@@ -7,7 +7,7 @@ fn run_json_reports_temporary_directory_errors() {
     let root = std::env::temp_dir().join(format!("ms-run-json-temp-{}", std::process::id()));
     std::fs::create_dir_all(&root).unwrap();
     let source = root.join("main.ms");
-    std::fs::write(&source, "export def main() -> Int:\n    return 0\n").unwrap();
+    std::fs::write(&source, "export fn main() Int:\n    return 0\n").unwrap();
     let unavailable = root.join("missing");
     let output = Command::new(env!("CARGO_BIN_EXE_ms"))
         .args(["run", source.to_str().unwrap(), "--json"])

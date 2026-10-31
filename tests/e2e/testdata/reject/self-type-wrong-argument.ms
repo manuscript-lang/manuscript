@@ -2,8 +2,8 @@ type Key:
     id: Int
 
 impl Equal for Key:
-    def equals(other: Equal) -> Bool:
-        return True
+    fn equals(other: Equal) Bool:
+        return true
 
-export def main() -> Int:
+export fn main() Int:
     return 0

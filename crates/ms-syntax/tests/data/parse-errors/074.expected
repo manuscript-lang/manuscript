@@ -1,1 +1,1 @@
-error parse 1:1:0 "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'"
+error parse 2:16:30 "expected an expression, found '*'; '/*' does not start a comment; comments start with '#'"

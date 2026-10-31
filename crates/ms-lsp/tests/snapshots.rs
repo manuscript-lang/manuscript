@@ -43,11 +43,11 @@ fn lifecycle_and_diagnostics() {
     let broken = ws.uri("broken.ms");
     s.open(
         &broken,
-        "def broken() -> Int:\n    let x: String = 1\n    return missing\n",
+        "fn broken() Int:\n    let x: String = 1\n    return missing\n",
         1,
     );
     let syntax = ws.uri("syntax.ms");
-    s.open(&syntax, "def (:\n", 1);
+    s.open(&syntax, "fn (:\n", 1);
     s.request("workspace/unknown", obj([]));
     s.notify("workspace/unknown", obj([]));
     s.request(
@@ -151,42 +151,42 @@ fn completion_in_unfinished_code() {
     let cases: &[(&str, &str)] = &[
         (
             "member",
-            "def main() -> Int:\n    let p = Point(x: 1)\n    let q = p.",
+            "fn main() Int:\n    let p = Point(x: 1)\n    let q = p.",
         ),
         (
             "std-member",
-            "from \"@std/io.ms\" import stdout\ndef main() -> Int:\n    let w = stdout().",
+            "import stdout from \"@std/io.ms\"\nfn main() Int:\n    let w = stdout().",
         ),
-        ("list-member", "def main() -> Int:\n    let w = [1]."),
-        ("string-member", "def main() -> Int:\n    let w = \"a\"."),
+        ("list-member", "fn main() Int:\n    let w = [1]."),
+        ("string-member", "fn main() Int:\n    let w = \"a\"."),
         (
             "member-prefix",
-            "def main() -> Int:\n    let p = Point(x: 1)\n    return p.no",
+            "fn main() Int:\n    let p = Point(x: 1)\n    return p.no",
         ),
-        ("call", "def main() -> Int:\n    return add("),
-        ("call-second", "def main() -> Int:\n    return add(1, "),
-        ("call-label", "def main() -> Int:\n    return add(a: 1, b"),
-        ("constructor", "def main() -> Int:\n    let p = Point("),
-        ("case", "def main() -> Int:\n    let s = Shape.C"),
-        ("type", "def main() -> Int:\n    let z: In"),
-        ("param-type", "def run(shape: Sh"),
-        ("import-name", "from \"@std/io.ms\" import st"),
-        ("import-path", "from \"@std/i"),
+        ("call", "fn main() Int:\n    return add("),
+        ("call-second", "fn main() Int:\n    return add(1, "),
+        ("call-label", "fn main() Int:\n    return add(a: 1, b"),
+        ("constructor", "fn main() Int:\n    let p = Point("),
+        ("case", "fn main() Int:\n    let s = Shape.C"),
+        ("type", "fn main() Int:\n    let z: In"),
+        ("param-type", "fn run(shape: Sh"),
+        ("import-name", "import st"),
+        ("import-path", "import stdout from \"@std/i"),
         (
             "import-from",
-            "from \"@std/test.ms\" import (\n    expect_equal,\n    ",
+            "import stdout from \"@std/io.ms\"\nimport  from \"@std/testing.ms\"",
         ),
-        ("import-local", "from \"./"),
-        ("keyword", "def main() -> Int:\n    ret"),
-        ("top-level", "def main() -> Int:\n    return 0\n\nim"),
+        ("import-local", "import x from \"./"),
+        ("keyword", "fn main() Int:\n    ret"),
+        ("top-level", "fn main() Int:\n    return 0\n\nim"),
         (
             "match",
-            "def area(shape: Shape) -> Int:\n    match shape:\n        Ci",
+            "fn area(shape: Shape) Int:\n    match shape:\n        Ci",
         ),
-        ("string", "def main() -> String:\n    return \"abc"),
-        ("comment", "def main() -> Int:\n    # note"),
+        ("string", "fn main() String:\n    return \"abc"),
+        ("comment", "fn main() Int:\n    # note"),
     ];
-    let prelude = "type Point:\n    x: Int\n    y: Int = 0\n\ntype Shape:\n    case Circle(radius: Int)\n    case Empty\n\ndef add(a: Int, b: Int) -> Int:\n    return a + b\n\n";
+    let prelude = "type Point:\n    x: Int\n    y: Int = 0\n\ntype Shape:\n    case Circle(radius: Int)\n    case Empty\n\nfn add(a: Int, b: Int) Int:\n    return a + b\n\n";
     for (index, (name, tail)) in cases.iter().enumerate() {
         let uri = ws.uri(&format!("case{index}.ms"));
         let text = if name.starts_with("import") {
@@ -200,7 +200,7 @@ fn completion_in_unfinished_code() {
         s.at("textDocument/completion", &uri, line, character);
         s.at("textDocument/signatureHelp", &uri, line, character);
         if *name == "import-from" {
-            s.at("textDocument/completion", &uri, 2, 4);
+            s.at("textDocument/completion", &uri, 1, 8);
         }
     }
     compare("unfinished", &s);
@@ -536,13 +536,13 @@ fn broken_documents() {
     let ws = Workspace::new("broken");
     let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
     let sources = [
-        "def broken() -> Int:\n    let x: String = 1\n    return missing\n",
-        "def (:\ndef ok() -> Int:\n    return 1\n",
-        "type T:\n    a: Int\ndef f() -> T:\n    return T(a: \n",
-        "def f(a: Int) -> Int:\n  return a\n",
-        "\u{feff}def f() -> Int:\n    return 1\n",
-        "def f() -> String:\n    return \"héllo 😀 {1 +\n",
-        "from \"./nowhere.ms\" import nothing\ndef f() -> Int:\n    return nothing()\n",
+        "fn broken() Int:\n    let x: String = 1\n    return missing\n",
+        "fn (:\nfn ok() Int:\n    return 1\n",
+        "type T:\n    a: Int\nfn f() T:\n    return T(a: \n",
+        "fn f(a: Int) Int:\n  return a\n",
+        "\u{feff}fn f() Int:\n    return 1\n",
+        "fn f() String:\n    return \"héllo 😀 {1 +\n",
+        "import nothing from \"./nowhere.ms\"\nfn f() Int:\n    return nothing()\n",
         "",
     ];
     for (index, source) in sources.iter().enumerate() {
@@ -578,7 +578,7 @@ fn batched_changes_publish_once() {
     let ws = Workspace::new("batched");
     let main = ws.uri("main.ms");
     let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
-    s.open(&main, "def f() -> Int:\n    return 1\n", 1);
+    s.open(&main, "fn f() Int:\n    return 1\n", 1);
     for version in 2..7 {
         let range = obj([
             (
@@ -615,4 +615,28 @@ fn batched_changes_publish_once() {
     }
     s.at("textDocument/hover", &main, 1, 11);
     compare("batched", &s);
+}
+
+#[test]
+fn hover_omits_unresolved_types() {
+    let ws = Workspace::new("invalid-type-hover");
+    let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
+    let uri = ws.uri("broken.ms");
+    s.open(&uri, include_str!("hover/invalid-type-hover.ms"), 1);
+    s.at("textDocument/hover", &uri, 2, 12);
+    s.at("textDocument/hover", &uri, 1, 8);
+    compare("invalid-type-hover", &s);
+}
+
+#[test]
+fn opaque_is_a_keyword_only_before_type() {
+    let ws = Workspace::new("opaque-tokens");
+    let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
+    let uri = ws.uri("opaque.ms");
+    s.open(&uri, include_str!("semantic/opaque.ms"), 1);
+    s.request(
+        "textDocument/semanticTokens/full",
+        obj([("textDocument", obj([("uri", uri.as_str().into())]))]),
+    );
+    compare("opaque-tokens", &s);
 }

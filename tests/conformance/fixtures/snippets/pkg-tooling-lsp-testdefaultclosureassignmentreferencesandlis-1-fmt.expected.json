@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "def answer(\n    value: Int = (\n        lambda () -> Int:\n            var current = 0\n            current = current + 1\n            return current\n    )()\n) -> Int:\n    let callbacks = [\n        lambda () -> Int:\n            let nested = 1\n            return nested\n    ]\n    return value + callbacks.length()\n"
-  }
-}

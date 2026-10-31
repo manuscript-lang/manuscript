@@ -1,18 +1,18 @@
 # conform: tags=control-flow,match,modules,mutation,optional,stdlib-testing,testing,tier-core,try-result
 # conform: phase=run
 # conform: origin=tests/e2e/testdata/accept/operand-order.ms
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-export def main() -> Int:
+export fn main() Int:
     var number = 1
     let total = (
         number
         + (
-            match some(1):
-                case some(value):
+            match present(1):
+                value:
                     number += 1
                     value
-                case none: 0
+                none: 0
         )
     )
     if total != 2:
@@ -22,3 +22,6 @@ export def main() -> Int:
 
 test "operands retain evaluation order":
     main() | try expect_equal(0)
+
+fn present[T](value: T) T?:
+    return value

@@ -1,9 +1,9 @@
 # conform: tags=modules,numbers,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/record-constructors-with-defaults-match-dynamic-construction.ms
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
-def twice(n: Int) -> Int: n * 2
+fn twice(n: Int) Int: n * 2
 
 type Options:
     count: Int

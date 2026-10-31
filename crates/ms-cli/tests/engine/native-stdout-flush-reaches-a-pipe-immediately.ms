@@ -1,7 +1,7 @@
-from "@std/io.ms" import stdout
-from "@std/time.ms" import sleep, nanoseconds
+import stdout from "@std/io.ms"
+import sleep, nanoseconds from "@std/time.ms"
 
-export def main() -> Int:
+export fn main() Int:
     stdout().write("first\n").get()
     stdout().flush().get()
     sleep(nanoseconds(3000000000))

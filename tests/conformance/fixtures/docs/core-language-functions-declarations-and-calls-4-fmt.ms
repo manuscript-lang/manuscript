@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,lists,mutation,parser,tier-core
 # conform: phase=parse
 # conform: origin=documentation/core-language/functions/declarations-and-calls.md:86
-def sum(values: List[Int]) -> Int:
+fn sum(values: List[Int]) Int:
     var total = 0
     for value in values:
         total += value

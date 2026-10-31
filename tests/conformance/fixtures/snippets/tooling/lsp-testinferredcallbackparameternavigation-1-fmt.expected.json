@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [],
+    "fmt": "fn answer() Unit:\n    let _values = [1, 2].map(fn value: value + 1)\n"
+  }
+}
