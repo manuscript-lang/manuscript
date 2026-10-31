@@ -37,7 +37,7 @@ cargo +1.99.1 build --release --locked \
    --target-dir .artifacts/outline-before-target
 cargo +1.99.1 build --release --locked \
    --manifest-path bench/perf/lsp-outline/Cargo.toml --target-dir .artifacts/outline-after-target
-python3 bench/perf/lsp-outline/compare.py \
+ms run bench/tools/lsp_compare.ms -- outline \
    .artifacts/outline-before-target/release/ms-lsp-outline-perf \
    .artifacts/outline-after-target/release/ms-lsp-outline-perf \
    --out .artifacts/outline-results.csv --samples 10 --cpu 0

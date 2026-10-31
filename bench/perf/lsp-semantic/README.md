@@ -48,7 +48,7 @@ cargo +1.99.1 build --release --locked \
    --target-dir .artifacts/semantic-before-target
 cargo +1.99.1 build --release --locked \
    --manifest-path bench/perf/lsp-semantic/Cargo.toml --target-dir .artifacts/semantic-after-target
-python3 bench/perf/lsp-semantic/compare.py \
+ms run bench/tools/lsp_compare.ms -- semantic \
    .artifacts/semantic-before-target/release/ms-lsp-semantic-perf \
    .artifacts/semantic-after-target/release/ms-lsp-semantic-perf \
    --out .artifacts/semantic-results.csv --samples 10 --cpu 0

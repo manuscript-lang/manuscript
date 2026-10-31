@@ -148,7 +148,7 @@ MS_RT_LIB=PATCHED_ARCHIVE target/release/ms build \
   bench/perf/bytes-index/main.ms --build-type Release -o AFTER
 CARGO_TARGET_DIR=/tmp/bytes-index-rust cargo build --release --locked \
   --manifest-path bench/perf/bytes-index/rust/Cargo.toml
-python3 bench/perf/bytes-index/compare.py BEFORE AFTER \
+ms run bench/tools/bytes_index_compare.ms -- BEFORE AFTER \
   /tmp/bytes-index-rust/release/bytes-index-rust NEW_OUTPUT_DIRECTORY --cpu 0
 ```
 
