@@ -136,3 +136,10 @@ signature control unchanged. The preliminary measurements remain in the task
 workspace; they are not used as causal acceptance evidence.
 
 Repeat after this cache itself merges, and retain both historical runs.
+
+The complete suffix suite was also replayed on actual merged main
+`649ddeb9a`, before adding the cache: 300 balanced samples pass exact syntax
+tree/dump validation. Optional depth 512 improves 65.043 to 0.441 ms (147.45x),
+Result depth 256 improves 22.186 to 0.302 ms (73.53x), and generic optional
+signatures improve 6.7%. Plain signatures are unchanged and the corpus varies
+by less than 1%. Raw evidence is `results-2026-10-31-merged-suffix.json`.
