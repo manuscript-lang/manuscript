@@ -82,11 +82,19 @@ fn base64_digit(byte: Int, url_safe: Bool) Int:
 
     return -1
 
-# One Base64 digit as text.
-fn base64_table(url_safe: Bool) List[String]:
-    if url_safe: return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".chars()
+# ASCII bytes of the selected Base64 alphabet.
+fn base64_table(url_safe: Bool) List[UInt8]:
+    if url_safe: return (
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+        .to_bytes()
+        .values()
+    )
 
-    return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".chars()
+    return (
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+        .to_bytes()
+        .values()
+    )
 
 # The budget as a count, with no budget as a very large one and a negative budget as -1.
 fn budget(max_bytes: Int?) Int:
@@ -97,29 +105,36 @@ fn budget(max_bytes: Int?) Int:
 # Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
 export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
     var out = StringBuilder()
+    var batch = BytesBuilder()
     let table = base64_table(url_safe)
     let bytes = data.values()
     let length = bytes.length()
     var index = 0
 
+    # Batch at most 16 KiB of ASCII before converting it to text.
     while index < length:
-        let remaining = length - index
-        var second = 0
-        var third = 0
-        if remaining > 1: second = bytes[index + 1].to_int()
-        if remaining > 2: third = bytes[index + 2].to_int()
+        let end = if length - index > 12288: index + 12288 else: length
 
-        let value = bytes[index].to_int() * 65536 + second * 256 + third
-        out.append(table[value / 262144 % 64])
-        out.append(table[value / 4096 % 64])
+        while index < end:
+            let remaining = length - index
+            var second = 0
+            var third = 0
+            if remaining > 1: second = bytes[index + 1].to_int()
+            if remaining > 2: third = bytes[index + 2].to_int()
 
-        if remaining > 1: out.append(table[value / 64 % 64])
-        else: out.append("=")
+            let value = bytes[index].to_int() * 65536 + second * 256 + third
+            batch.append(table[value / 262144 % 64])
+            batch.append(table[value / 4096 % 64])
 
-        if remaining > 2: out.append(table[value % 64])
-        else: out.append("=")
+            if remaining > 1: batch.append(table[value / 64 % 64])
+            else: batch.append(61)
 
-        index += 3
+            if remaining > 2: batch.append(table[value % 64])
+            else: batch.append(61)
+
+            index += 3
+
+        out.append(batch.drain().decode_utf8().get(""))
 
     return out.build()
 
