@@ -72,7 +72,7 @@ jobs:
           # Every step still runs on every platform it ran on before; only wall time shrinks.
           matrix=$(echo "{\"include\":[$include]}" | jq -c '{include: [.include[] | . as $leg
             | ["a","b"][] as $part
-            | $leg + {part: $part, unit_part: "a", clif_part: "a", corpus_part: "b", e2e_part: "b",
+            | $leg + {part: $part, part_name: (if $part == "a" then "tests" else "conformance" end), unit_part: "a", clif_part: "a", corpus_part: "b", e2e_part: "b",
                       misc_part: (if $leg.cranelift then "b" else "a" end)}]}')
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
@@ -80,7 +80,7 @@ jobs:
   # slowest part, not the sum of all of them, sets the wall time. Tests also parallelize inside a
   # part: nextest and the corpus runner both use every core.
   rust:
-    name: Rust ${{ matrix.os }}-${{ matrix.arch }} ${{ matrix.part }}
+    name: Rust ${{ matrix.os }}-${{ matrix.arch }} ${{ matrix.part_name }}
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     runs-on: ${{ matrix.runner }}
@@ -281,18 +281,18 @@ jobs:
           cargo test --locked -p ms-clif --test dwarf -- --nocapture
           cargo test --locked -p ms-build --test debug_artifacts -- --nocapture
           cargo test --locked -p ms-build --lib -- --nocapture
-      - name: Rust ms replays the corpus
+      - name: Conformance corpus (LLVM)
         if: matrix.part == matrix.corpus_part && matrix.corpus
         run: sh scripts/conform.sh
-      - name: Rust ms runs the e2e fixtures
+      - name: End-to-end fixtures (LLVM)
         if: matrix.part == matrix.e2e_part && matrix.corpus
         run: sh scripts/e2e.sh
-      - name: Rust ms replays the corpus on Cranelift
+      - name: Conformance corpus (Cranelift)
         if: matrix.part == matrix.clif_part && matrix.cranelift
         env:
           MS_BACKEND: cranelift
         run: sh scripts/conform.sh
-      - name: Rust ms runs the e2e fixtures on Cranelift
+      - name: End-to-end fixtures (Cranelift)
         if: matrix.part == matrix.clif_part && matrix.cranelift
         env:
           MS_BACKEND: cranelift
