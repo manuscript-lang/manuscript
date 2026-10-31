@@ -11,8 +11,8 @@ fn preserve_key[K: Hashable](value: K) K:
     return value
 
 test "derived value equality":
-    let present: Int? = some(1)
-    let same: Int? = some(1)
+    let present: Int? = 1
+    let same: Int? = 1
     let missing: Int? = none
     try expect_equal(present, same)
     try expect_not_equal(present, missing)

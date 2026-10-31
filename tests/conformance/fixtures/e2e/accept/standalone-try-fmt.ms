@@ -18,7 +18,7 @@ impl Error for Failure:
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for State:
     var fn close() Unit:
-        let written = filesystem().write_file(self.marker, "closed", true)
+        let _written = filesystem().write_file(self.marker, "closed", true)
 
 fn operation(var state: State, fail: Bool) Result[Unit, Failure]:
     state.calls += 1
@@ -44,7 +44,7 @@ test "standalone try evaluates once and continues on Unit success":
     let fs = filesystem()
     let temporary = fs.temporary("manuscript-try-") | try expect_ok
     let marker = "{temporary.path()}/marker"
-    let value = try exact(State(0, marker), fail: false)
+    let value = try exact(State(0, marker.clone()), fail: false)
     try expect_equal(value, "done 11")
     try expect_true(closed(marker))
 
@@ -52,7 +52,7 @@ test "standalone try propagates and cleans up before returning":
     let fs = filesystem()
     let temporary = fs.temporary("manuscript-try-") | try expect_ok
     let marker = "{temporary.path()}/marker"
-    let failed = exact(State(0, marker), fail: true)
+    let failed = exact(State(0, marker.clone()), fail: true)
     try expect_false(failed.is_ok())
     try expect_equal(failed.err().code, 42)
     try expect_true(closed(marker))

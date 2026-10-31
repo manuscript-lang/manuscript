@@ -56,25 +56,25 @@ test "max_by and min_by pick the first of ties and call key once per element":
     )
 
     try expect_equal(calls, 4)
-    try expect_equal(oldest.map(fn(p: Person) String: p.name.clone()), some("ann"))
+    try expect_equal(oldest.map(fn(p: Person) String: p.name.clone()), "ann")
 
     let youngest = people().min_by(fn(p: Person) Int: p.age)
-    try expect_equal(youngest.map(fn(p: Person) String: p.name.clone()), some("bob"))
+    try expect_equal(youngest.map(fn(p: Person) String: p.name.clone()), "bob")
 
 test "max_by supports owned String keys":
     let words = ["pear", "fig", "banana", "kiwi"]
-    try expect_equal(words.max_by(fn(w: String) String: w.clone()), some("pear"))
-    try expect_equal(words.min_by(fn(w: String) String: w.clone()), some("banana"))
+    try expect_equal(words.max_by(fn(w: String) String: w.clone()), "pear")
+    try expect_equal(words.min_by(fn(w: String) String: w.clone()), "banana")
 
 test "max_by and min_by with extreme Int and Float keys":
     let ints = [3, -9223372036854775807 - 1, 3]
-    try expect_equal(ints.max_by(fn(x: Int) Int: x), some(3))
-    try expect_equal(ints.min_by(fn(x: Int) Int: x), some(-9223372036854775807 - 1))
+    try expect_equal(ints.max_by(fn(x: Int) Int: x), 3)
+    try expect_equal(ints.min_by(fn(x: Int) Int: x), (-9223372036854775807 - 1))
 
     let floats = [1.5, -2.5, 1.5]
-    try expect_equal(floats.max_by(fn(x: Float) Float: x), some(1.5))
-    try expect_equal(floats.min_by(fn(x: Float) Float: x), some(-2.5))
+    try expect_equal(floats.max_by(fn(x: Float) Float: x), 1.5)
+    try expect_equal(floats.min_by(fn(x: Float) Float: x), -2.5)
 
     let ties = ["b", "a", "c"]
-    try expect_equal(ties.max_by(fn(w: String) Int: 0), some("b"))
-    try expect_equal(ties.min_by(fn(w: String) Int: 0), some("b"))
+    try expect_equal(ties.max_by(fn(w: String) Int: 0), "b")
+    try expect_equal(ties.min_by(fn(w: String) Int: 0), "b")

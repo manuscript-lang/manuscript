@@ -36,7 +36,7 @@ test "List insert mutates in place":
 test "List pop removes and returns the last element":
     var values = [1, 2, 3]
     let last = values.pop()
-    try expect_false((last != some(3) or values != [1, 2]))
+    try expect_false((last != 3 or values != [1, 2]))
     values.pop()
     values.pop()
     try expect_false(values.pop().is_some() or not (values.is_empty()))
@@ -87,7 +87,7 @@ test "List parity operations support generic and bound use":
     let pop: fn() Int? = values.pop
     let popped = pop()
     let count = values.count
-    try expect_false(popped != some(3) or count(fn(value: Int) Bool: value > 0) != 2)
+    try expect_false(popped != 3 or count(fn(value: Int) Bool: value > 0) != 2)
 
 test "List distinct handles large Int and String lists":
     var numbers: List[Int] = []
@@ -101,8 +101,8 @@ test "List distinct handles large Int and String lists":
     try expect_false(
         (
             unique.length() != 30000
-            or unique.first() != some(0)
-            or unique.last() != some(29999)
+            or unique.first() != 0
+            or unique.last() != 29999
         )
     )
 

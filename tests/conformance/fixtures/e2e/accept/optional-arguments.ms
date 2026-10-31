@@ -71,7 +71,7 @@ test "plain values and explicit optionals share the call contract":
     try expect_equal(number(4), 4)
     try expect_equal(number(value: 0), 0)
 
-    let supplied: Int? = some(4)
+    let supplied: Int? = 4
     try expect_equal(number(supplied), 4)
     try expect_equal(number(), -1)
     try expect_equal(number(), -1)
@@ -81,13 +81,13 @@ test "plain values and explicit optionals share the call contract":
     try expect_equal(present(6).get(), 6)
     try expect_equal(present[Int](7).get(), 7)
 
-    let generic_supplied: Int? = some(8)
+    let generic_supplied: Int? = 8
     try expect_equal(present(generic_supplied).get(), 8)
 
     let missing: Int? = none
     try expect_false(not (nested(missing)))
 
-    let outer: Int?? = some(missing)
+    let outer: Int?? = missing
     try expect_false(not (nested(outer)))
     try expect_equal(list_size([]), 0)
     try expect_equal(list_size([1, 2]), 2)
@@ -145,7 +145,7 @@ test "queue capacity accepts a plain value or omission":
 
     var unbounded = Queue[Int]()
     var absent = Queue[Int]()
-    let capacity: Int? = some(4)
+    let capacity: Int? = 4
     var explicit = Queue[Int](capacity)
 
     for value in [1, 2, 3, 4, 5]:

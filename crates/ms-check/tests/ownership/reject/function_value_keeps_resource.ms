@@ -8,7 +8,7 @@ impl Closeable for Door:
         return
 
 fn wrap(d: Door) Door?:
-    return some(d)
+    return d
 
 fn apply(f: fn(Door) Door?) Int:
     return f(Door(1)).get().n

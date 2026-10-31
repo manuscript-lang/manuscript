@@ -172,6 +172,18 @@ impl Checker {
             }
             return info;
         }
+        if let Some(x) = expected
+            && x.is_std("Optional")
+            && x.args.len() == 1
+            && matches!(e.kind, ExprKind::Lambda(_))
+        {
+            // A function literal checks against the payload signature and wraps like any plain value.
+            let payload = x.args[0].clone();
+            let mut info = self.expression(e, Some(&payload));
+            info.wrap_some = Some(x.clone());
+            self.set_info(e, info.clone());
+            return info;
+        }
         let context = self.mismatch_context.take();
         let i = self.infer(e, expected);
         self.mismatch_context = context;
@@ -1038,7 +1050,7 @@ impl Checker {
             if !invalid_ty(&other.t()) {
                 self.type_error(
                     e.pos,
-                    "none has no type of its own here; test absence with is_none() or is_some() (or compare with some(value))",
+                    "none has no type of its own here; test absence with is_none() or is_some(), or compare with the plain value, e.g. x == 3",
                 );
             }
             i.ty = Some(bool_());
@@ -1067,7 +1079,16 @@ impl Checker {
         } else {
             let a = self.expression(left, None);
             let at = a.t();
-            (a, self.expression(right, literal_hint(right, &at)))
+            // `opt == 3` compares as `opt == Int?`; the plain side wraps without `some`.
+            let wraps = matches!(op, BinaryOp::Eq | BinaryOp::Ne)
+                && at.is_std("Optional")
+                && at.args.len() == 1;
+            let hint = if wraps {
+                Some(&at)
+            } else {
+                literal_hint(right, &at)
+            };
+            (a, self.expression(right, hint))
         };
         let (at, bt) = (a.t(), b.t());
         let logical = matches!(op, BinaryOp::And | BinaryOp::Or);
@@ -1100,9 +1121,13 @@ impl Checker {
             i.ty = Some(if comparison { bool_() } else { invalid() });
             return i;
         }
+        let wrapped_operand = matches!(op, BinaryOp::Eq | BinaryOp::Ne)
+            && common.is_std("Optional")
+            && common.args.len() == 1
+            && compatible(&Some(bt.clone()), &common.args[0]);
         if common.id == "Never"
             || !compatible(&Some(at.clone()), &common)
-            || !compatible(&Some(bt.clone()), &common)
+            || !(wrapped_operand || compatible(&Some(bt.clone()), &common))
         {
             let mut hint = optional_use_hint(&at, &bt);
             if hint.is_empty() {

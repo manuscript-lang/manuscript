@@ -15,7 +15,7 @@ impl Closeable for Res:
         say("close {self.name}")
 
 fn maybe(name: String, present: Bool) Res?:
-    return if present: some(Res(name)) else: none
+    return if present: Res(name) else: none
 
 fn make(name: String) Result[Res, TextError]:
     return ok(Res(name))

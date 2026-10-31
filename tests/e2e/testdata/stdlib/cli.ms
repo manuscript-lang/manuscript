@@ -111,7 +111,7 @@ test "optional and rest arguments":
 
     let full = (run(["remote", "add", "origin", "u", "x", "y"]) | try expect_ok)
     full.list("extra") | try expect_equal(["x", "y"])
-    full.string_or_none("url") | try expect_equal(some("u"))
+    full.string_or_none("url") | try expect_equal("u")
 
 test "usage errors name the problem":
     (try failure(["serve"])) | try expect_equal("cli: missing required root")

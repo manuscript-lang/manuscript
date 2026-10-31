@@ -96,7 +96,7 @@ List details:
 - `set(index:, value:)` and `remove(index:)` accept negative indexes and fault on invalid ones.
 - `replace(index:, value:)` stores `value` and returns the element that was there; `swap(i:, j:)` exchanges two elements. Both move elements without copying them, so they take an element out of a list of owned values (`items.replace(0, none)` on a `List[T?]`) and reorder it without `.clone()`. Both accept negative indexes and fault on invalid ones.
 - `insert(index:, value:)` places before `index`, valid from `-length()` to `length()` (which appends).
-- `pop()` returns the last element as `some(value)`, or `none` when empty.
+- `pop()` returns the last element as the value, or `none` when empty.
 - `splice(start:, delete_count:, replacement:)` needs `0 <= start <= length()` and `delete_count <= length() - start`.
 - Invalid bounds fault; nothing is clamped.
 
@@ -227,7 +227,7 @@ test "sorting and aggregates":
     scores.sort(fn a, b: b - a)
     if scores != [3, 2, 1]:
         return panic("check failed")
-    if scores.sum() != 6 or scores.max() != some(3) or List[Int]().min() != none:
+    if scores.sum() != 6 or scores.max() != 3 or List[Int]().min() != none:
         return panic("check failed")
 ```
 
@@ -254,9 +254,9 @@ test "dynamic mutable data and explicit copies":
     var updated = original.clone()
     updated.add("b", 2)
     updated.add("a", 3)
-    if not (original.get("a") == some(1)):
+    if not (original.get("a") == 1):
         return panic("check failed")
-    if not (updated.get("a") == some(3)):
+    if not (updated.get("a") == 3):
         return panic("check failed")
 ```
 

@@ -23,7 +23,7 @@ test "Map remove direct and bound preserve order and no-op absence":
     var empty = Map[Int, String]()
     empty.remove(1)
     empty.add(2, "two")
-    try expect_equal(empty.get(2), some("two"))
+    try expect_equal(empty.get(2), "two")
 
     var legacy = values.clone()
     legacy.remove(4)
@@ -36,11 +36,11 @@ test "Map remove evaluates its key after choosing the receiver and keeps convers
     var first = Map[Int?, Int]()
     first.add(1, 10)
 
-    let trigger = some(1)
+    let trigger: Int? = 1
     first.remove(
         match trigger:
-            some(key): some(key)
-            none: some(0)
+            key: key
+            none: 0
     )
     try expect_false(not first.is_empty())
 
@@ -107,9 +107,9 @@ test "List splice moves replacement elements and handles Optional elements":
     values.splice(0, 1, [Item(1)])
     try expect_equal(values[0].value, 1)
 
-    var optional: List[Int?] = [some(1)]
-    optional.splice(0, 1, [some(2)])
-    try expect_equal(optional[0], some(2))
+    var optional: List[Int?] = [1]
+    optional.splice(0, 1, [2])
+    try expect_equal(optional[0], 2)
 
 interface ListSplicing:
     var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Unit

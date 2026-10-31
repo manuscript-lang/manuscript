@@ -6,5 +6,5 @@ type Item:
 
 fn use(value: Item?) Int:
     match value:
-        some(Item): return Item.value
+        item: return Item.value
         none: return 0

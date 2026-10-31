@@ -7,11 +7,11 @@ import Bytes from "@std/bytes.ms"
 test "explicit byte conversion":
     if not ("é".byte_length() == 2):
         return panic("check failed")
-    if not ("é".to_bytes().decode_utf8() == some("é")):
+    if not ("é".to_bytes().decode_utf8() == "é"):
         return panic("check failed")
 
     let invalid: String? = none
     if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")
-    if not ("-007".parse_int() == some(-7)):
+    if not ("-007".parse_int() == -7):
         return panic("check failed")

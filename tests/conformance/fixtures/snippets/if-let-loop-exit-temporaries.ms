@@ -4,7 +4,7 @@
 import stdout from "@std/io.ms"
 
 fn maybe(name: String, present: Bool) List[String]?:
-    return if present: some([name]) else: none
+    return if present: [name] else: none
 
 fn stop_in_body() Unit:
     for i in 0..3:

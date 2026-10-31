@@ -26,9 +26,9 @@ test "if let unwraps a present optional":
 
 test "if let takes else when absent and keeps falsy payloads":
     (try check(value: describe(none) == "Hello!", message: "none"))
-    (try check(value: describe(some("Ada")) == "Hello, Ada", message: "some"))
+    (try check(value: describe("Ada") == "Hello, Ada", message: "some"))
 
-    let items: List[Int?] = [some(1), none, some(0), some(2)]
+    let items: List[Int?] = [1, none, 0, 2]
     (try check(value: total(items) == 3, message: "total"))
 
     let empty: List[Int] = []

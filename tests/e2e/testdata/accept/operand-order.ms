@@ -5,8 +5,8 @@ export fn main() Int:
     let total = (
         number
         + (
-            match some(1):
-                some(value):
+            match present(1):
+                value:
                     number += 1
                     value
                 none: 0
@@ -19,3 +19,6 @@ export fn main() Int:
 
 test "operands retain evaluation order":
     main() | try expect_equal(0)
+
+fn present[T](value: T) T?:
+    return value

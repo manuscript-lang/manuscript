@@ -4,10 +4,10 @@ import Queue from "@std/queue.ms"
 test "each paragraph develops one case":
     var queue = Queue[Int]()
     queue.enqueue(7)
-    try expect_equal(queue.dequeue(), some(7))
+    try expect_equal(queue.dequeue(), 7)
     var copy = queue.clone()
     copy.enqueue(9)
-    try expect_equal(copy.dequeue(), some(9))
+    try expect_equal(copy.dequeue(), 9)
     # An absent value stays absent.
     let missing: Int? = none
     try expect_equal(queue.dequeue(), missing)

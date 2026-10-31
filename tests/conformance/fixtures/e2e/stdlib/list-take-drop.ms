@@ -70,7 +70,7 @@ test "List take and drop support generic and nested values":
     try expect_equal(copy_window[String](["a", "b", "c"], 2, 1), ["b"])
 
     let values: List[Result[Int?, TextError]] = [
-        ok(some(1)), error(TextError("cause"))
+        ok(1), error(TextError("cause"))
     ]
     try expect_equal(copy_window(values, 2, 1).get(0).err().message(), "cause")
 

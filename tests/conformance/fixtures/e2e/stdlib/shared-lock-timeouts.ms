@@ -31,9 +31,7 @@ export fn main() Int:
 
         let _first = g.spawn(
             fn ch: waiter(box),
-            timeout: some(
-                nanoseconds(nap - 100000 + (round % 7) * 3000 - 9000)
-            )
+            timeout: nanoseconds(nap - 100000 + (round % 7) * 3000 - 9000)
         )
         let second = g.spawn(fn ch: waiter(box))
         if second.result().is_ok():

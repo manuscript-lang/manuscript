@@ -7,7 +7,6 @@ mod flush;
 mod matches;
 mod patterns;
 mod recursion;
-mod redundant;
 mod tasks;
 
 use ms_check::{ModuleData, Program};
@@ -136,12 +135,6 @@ pub const RULES: &[Rule] = &[
         repair: "add a base case that returns before the recursive call",
     },
     Rule {
-        code: "MSL113",
-        family: "Redundant some(...)",
-        severity: Severity::Warning,
-        repair: "pass the plain value where an Optional is expected; `ms lint --fix` removes the wrapper",
-    },
-    Rule {
         code: "MSL114",
         family: "Resource closed at scope end with an uncalled flush",
         severity: Severity::Error,
@@ -208,7 +201,6 @@ pub fn lint_program(program: &Program) -> Vec<Finding> {
         patterns::lint(module, &mut findings);
         matches::lint(module, &mut findings);
         tasks::lint(module, &mut findings);
-        redundant::lint(module, &mut findings);
     }
     findings.sort_by(|a, b| {
         (a.file.as_ref(), a.pos.offset, a.code).cmp(&(b.file.as_ref(), b.pos.offset, b.code))

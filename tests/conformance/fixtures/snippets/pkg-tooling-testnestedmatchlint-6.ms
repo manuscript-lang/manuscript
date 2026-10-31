@@ -3,11 +3,11 @@
 # conform: origin=pkg/tooling/nested_match_lint_test.go:26 TestNestedMatchLint
 fn use(value: Int?) Int:
     return match value:
-        some(_):
+        _value:
             match value:
-                some(_):
+                _value:
                     match value:
-                        some(n): n
+                        n: n
                         none: 0
                 none: 0
         none: 0

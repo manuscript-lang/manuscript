@@ -28,7 +28,7 @@ fn require_lazy[T, E: Error](value: T?, create: fn() E) Result[T, E]:
 
 fn success_only[T, E: Error](value: Result[T, E]) T?:
     if let item = value:
-        return some(item)
+        return item
 
     return none
 
@@ -45,7 +45,7 @@ fn locate[K: Hashable, V](
     return values.find(predicate)
 
 test "conversions and collection queries are callable":
-    let present: Int? = some(2)
+    let present: Int? = 2
     let missing: Int? = none
     present.ok_or(TextError("absent")).get() | try expect_equal(2)
     try expect_equal(
@@ -58,18 +58,18 @@ test "conversions and collection queries are callable":
     let entries: Map[String, Int] = {"b": 2, "a": 1}
     try expect_equal(entries.fold(0, fn acc, k, v: acc + v), 3)
     try expect_equal(entries.find(fn k, v: v == 1).get().key, "a")
-    try expect_true((entries.some(fn k, v: v == 1)))
-    try expect_true((entries.every(fn k, v: v > 0)))
+    try expect_true((entries.any(fn k, v: v == 1)))
+    try expect_true((entries.all(fn k, v: v > 0)))
 
     let values = Set[Int]([2, 1])
     try expect_equal(values.fold(0, fn acc, n: acc + n), 3)
     try expect_equal(values.find(fn n: n == 1).get(), 1)
-    try expect_true((values.some(fn n: n == 1)))
-    try expect_true((values.every(fn n: n > 0)))
+    try expect_true((values.any(fn n: n == 1)))
+    try expect_true((values.all(fn n: n > 0)))
 
 test "conversions retain unconstrained payloads nesting and lazy counts":
     var counter = Counter(0)
-    let present: Int? = some(0)
+    let present: Int? = 0
     let missing: Int? = none
     (require_value(present, counted(var counter)).get() != 0 or counter.calls != 1) | try expect_false
 
@@ -104,19 +104,17 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     extracted.calls = 7
     counter.calls | try expect_equal(1)
 
-    let nested: Int?? = some(none)
+    let nested: Int?? = none
     let converted = nested.ok_or(TextError("absent"))
     (not (converted.is_ok()) or not (converted.to_optional().get().is_none())) | try expect_false
 
-    let false_value: Bool? = some(false)
+    let false_value: Bool? = false
     false_value.ok_or(TextError("absent")).to_optional().get() | try expect_false
 
-    let unit_value: Unit? = some(unit)
+    let unit_value: Unit? = unit
     (unit_value.ok_or(TextError("absent")).to_optional().is_some()) | try expect_true
 
-    let nested_result: Result[Int, TextError]? = some(
-        error(TextError("nested"))
-    )
+    let nested_result: Result[Int, TextError]? = error(TextError("nested"))
     nested_result.ok_or(
         TextError("absent")
     ).to_optional().get().err().message() | try expect_equal("nested")
@@ -220,19 +218,17 @@ test "Map predicates short circuit over snapshots including empty receivers":
     var empty_calls: List[Int] = []
     var values: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
     var seen: List[String] = []
-    let some = values.some
+    let some = values.any
     try expect_false(
         (
             not (
-                some(
-                    fn k,
+                fn k,
                     v:
                         seen.append(k)
                         values.remove("a")
                         values.add("c", 99)
                         values.add("new", 4)
                         return v == 1
-                )
             )
             or seen != ["b", "a"]
         )
@@ -243,7 +239,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
     values.add("c", 3)
     seen.splice(0, seen.length(), [])
 
-    let every = values.every
+    let every = values.all
     try expect_false(
         (
             every(
@@ -260,7 +256,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
     )
     values.clear()
     try expect_false(
-        values.some(
+        values.any(
             (
                 fn k,
                 v:
@@ -271,7 +267,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
     )
     try expect_true(
         (
-            values.every(
+            values.all(
                 (
                     fn k,
                     v:
@@ -284,7 +280,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
 
     let complete: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
     try expect_false(
-        (complete.some(fn k, v: false) or not (complete.every(fn k, v: true)))
+        (complete.any(fn k, v: false) or not (complete.all(fn k, v: true)))
     )
     empty_calls.is_empty() | try expect_true
 
@@ -373,17 +369,15 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     var empty_calls: List[Int] = []
     var values = Set[Int]([2, 1, 3])
     var seen: List[Int] = []
-    let some = values.some
+    let some = values.any
     try expect_false(
         (
             not (
-                some(
-                    fn v:
+                fn v:
                         seen.append(v)
                         values.remove(1)
                         values.add(4)
                         return v == 1
-                )
             )
             or seen != [2, 1]
         )
@@ -394,7 +388,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     values.add(3)
     seen.splice(0, seen.length(), [])
 
-    let every = values.every
+    let every = values.all
     try expect_false(
         (
             every(
@@ -409,7 +403,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     )
     values.clear()
     try expect_false(
-        values.some(
+        values.any(
             (
                 fn v:
                     empty_calls.append(1)
@@ -419,7 +413,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     )
     try expect_true(
         (
-            values.every(
+            values.all(
                 (
                     fn v:
                         empty_calls.append(1)
@@ -430,7 +424,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     )
 
     let complete = Set[Int]([2, 1])
-    try expect_false(complete.some(fn v: false) or not (complete.every(fn v: true)))
+    try expect_false(complete.any(fn v: false) or not (complete.all(fn v: true)))
     try expect_true((complete.find(fn v: false).is_none()))
     empty_calls.is_empty() | try expect_true
 
@@ -439,7 +433,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
     var map_visits: List[String] = []
     try expect_false(
         (
-            map.some(
+            map.any(
                 fn k,
                 v:
                     map_visits.append(k)
@@ -452,7 +446,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
     try expect_false(
         (
             not (
-                map.every(
+                map.all(
                     fn k,
                     v:
                         map_visits.append(k)
@@ -483,7 +477,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
     var set_visits: List[Int] = []
     try expect_false(
         (
-            set.some(
+            set.any(
                 fn v:
                     set_visits.append(v)
                     return false
@@ -495,7 +489,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
     try expect_false(
         (
             not (
-                set.every(
+                set.all(
                     fn v:
                         set_visits.append(v)
                         return true
@@ -531,7 +525,7 @@ test "ok_or without a cause records the calling file and line":
 
     let message = find_port(none).err().message()
     (message.starts_with("missing value at ")) | try expect_true
-    find_port(some(8080)).get() | try expect_equal(8080)
+    find_port(8080).get() | try expect_equal(8080)
 
     let named: Result[Int, TextError] = absent.ok_or(TextError("port"))
     named.err().message() | try expect_equal("port")

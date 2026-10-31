@@ -31,7 +31,7 @@ fn halve(n: Int) Int?:
     if n % 2 != 0:
         return none
 
-    return some(n / 2)
+    return (n / 2)
 
 fn word(n: Int) Result[String, TextError]:
     if n == 0:
@@ -52,7 +52,7 @@ fn nested(n: Int) Int??:
     if n == 0:
         return none
 
-    return some(halve(n))
+    return halve(n)
 
 fn matched_value(n: Int) Int:
     return checked(n).get(-1)
@@ -122,7 +122,7 @@ test "optional and payload kinds":
     nothing(true).get()
 
     if let inner = nested(4):
-        try expect_equal(inner, some(2))
+        try expect_equal(inner, 2)
     else:
         return fail("nested none")
 

@@ -3,7 +3,7 @@
 # conform: origin=pkg/tooling/lsp/features_test.go:178 TestWildcardBindingsRemainSafeAcrossEditorFeatures
 fn answer(value: Int?) Int:
     match value:
-        some(_):
+        _value:
             return 1
         none:
             return 0

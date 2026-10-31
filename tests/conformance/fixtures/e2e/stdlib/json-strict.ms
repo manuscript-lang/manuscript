@@ -31,7 +31,7 @@ test "JSON strict stringify rejects no-form list elements":
     try expect_equal(stringify(holder, strict: true), invalid)
 
 test "JSON strict stringify accepts none and nulls that are values":
-    let plain = Plain("p", none, [some(1), none])
+    let plain = Plain("p", none, [1, none])
     let expected = "\{\"name\":\"p\",\"tags\":[1,null]\}"
     try expect_equal(stringify(plain, strict: true), ok(expected.clone()))
     try expect_equal(stringify(plain), ok(expected))

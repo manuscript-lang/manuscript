@@ -72,7 +72,7 @@ fn fix_repairs_habits_and_mutation_and_decimal_import() {
         fn main() Int:\n\
         \x20   let fixed = 1\n\
         \x20   fixed = 2\n\
-        \x20   let _a = Some(1)\n\
+        \x20   let _a: Int? = None\n\
         \x20   let _b = true\n\
         \x20   let _d = 1.5d\n\
         \x20   return fixed\n\
@@ -88,7 +88,7 @@ fn fix_repairs_habits_and_mutation_and_decimal_import() {
     );
     assert!(fixed.contains("return Red\n"), "{fixed}");
     assert!(fixed.contains("var fixed = 1"), "{fixed}");
-    assert!(fixed.contains("let _a = some(1)"), "{fixed}");
+    assert!(fixed.contains("let _a: Int? = none"), "{fixed}");
     assert!(fixed.contains("let _b = true"), "{fixed}");
     let _ = std::fs::remove_dir_all(&dir);
 }

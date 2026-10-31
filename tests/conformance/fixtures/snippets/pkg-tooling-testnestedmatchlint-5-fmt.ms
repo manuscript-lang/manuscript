@@ -4,8 +4,8 @@
 fn use(value: Int?) Int:
     return match (
         match value:
-            some(x): some(x)
-            none: some(0)
+            x: x
+            none: 0
     ):
-        some(x): x
+        x: x
         none: 0

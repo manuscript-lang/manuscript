@@ -22,8 +22,8 @@ export fn main() Int:
     let chunk = read.get()
 
     match chunk:
-        some(data):
-            if data.decode_utf8() != some(value: "d"):
+        data:
+            if data.decode_utf8() != "d":
                 return 5
         none:
             return 6

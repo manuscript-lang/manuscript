@@ -107,31 +107,31 @@ test "an empty group has no results":
 test "a task that passes its timeout is cancelled":
     let group = TaskGroup[String]()
     let late = group.spawn(
-        fn ch: slow(2000, "late"), timeout: some(nanoseconds(20000000))
+        fn ch: slow(2000, "late"), timeout: nanoseconds(20000000)
     )
     let quick = group.spawn(
-        fn ch: slow(1, "quick"), timeout: some(nanoseconds(2000000000))
+        fn ch: slow(1, "quick"), timeout: nanoseconds(2000000000)
     )
     late.result() | try expect_error | try expect_equal(TaskError.TimedOut)
     quick.result() | try expect_ok | try expect_equal("quick")
 
 test "a group timeout limits every task started in it":
-    let group = TaskGroup[String](timeout: some(nanoseconds(50000000)))
+    let group = TaskGroup[String](timeout: nanoseconds(50000000))
     let late = group.spawn(fn ch: slow(2000, "late"))
     let early = group.spawn(fn ch: slow(1, "early"))
     early.result() | try expect_ok | try expect_equal("early")
     late.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "a task shorter than its group limit uses its own limit":
-    let group = TaskGroup[String](timeout: some(nanoseconds(2000000000)))
+    let group = TaskGroup[String](timeout: nanoseconds(2000000000))
     let late = group.spawn(
-        fn ch: slow(2000, "late"), timeout: some(nanoseconds(20000000))
+        fn ch: slow(2000, "late"), timeout: nanoseconds(20000000)
     )
     late.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "wait reports a task that timed out":
     let group = TaskGroup[String]()
-    group.spawn(fn ch: slow(2000, "late"), timeout: some(nanoseconds(20000000)))
+    group.spawn(fn ch: slow(2000, "late"), timeout: nanoseconds(20000000))
     group.wait() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "a task without a timeout runs to its end":
@@ -143,7 +143,7 @@ test "wait leaves every outcome readable through its handle":
     let group = TaskGroup[String]()
     let done = group.spawn(fn ch: slow(1, "done"))
     let late = group.spawn(
-        fn ch: slow(2000, "late"), timeout: some(nanoseconds(20000000))
+        fn ch: slow(2000, "late"), timeout: nanoseconds(20000000)
     )
     group.wait() | try expect_error | try expect_equal(TaskError.TimedOut)
     done.result() | try expect_ok | try expect_equal("done")
@@ -152,16 +152,16 @@ test "wait leaves every outcome readable through its handle":
 test "results reports the first task that has no result":
     let group = TaskGroup[String]()
     group.spawn(fn ch: slow(1, "done"))
-    group.spawn(fn ch: slow(2000, "late"), timeout: some(nanoseconds(20000000)))
+    group.spawn(fn ch: slow(2000, "late"), timeout: nanoseconds(20000000))
     group.results() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "a zero timeout times the task out":
     let group = TaskGroup[String]()
-    let task = group.spawn(fn ch: slow(1, "x"), timeout: some(nanoseconds(0)))
+    let task = group.spawn(fn ch: slow(1, "x"), timeout: nanoseconds(0))
     task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "a group whose time has passed times new tasks out":
-    let group = TaskGroup[String](timeout: some(nanoseconds(10000000)))
+    let group = TaskGroup[String](timeout: nanoseconds(10000000))
     pause(30)
 
     let task = group.spawn(fn ch: slow(1, "x"))
@@ -273,7 +273,7 @@ test "a group forgets collected tasks":
     group.results() | try expect_ok | try expect_equal([])
 
 test "a group with a timeout collects many tasks":
-    let group = TaskGroup[Int](timeout: some(nanoseconds(3600000000000)))
+    let group = TaskGroup[Int](timeout: nanoseconds(3600000000000))
     var total = 0
     for i in 0..5000:
         total += group.spawn(fn ch: i).result().get(0)

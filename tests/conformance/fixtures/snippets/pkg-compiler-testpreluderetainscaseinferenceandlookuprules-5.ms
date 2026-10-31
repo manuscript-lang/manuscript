@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=pkg/compiler/prelude_test.go:16 TestPreludeRetainsCaseInferenceAndLookupRules
 type Other:
-    case some(value: Int)
+    case Int
 
 fn f() Int?:
-    return some(value: 1)
+    return 1

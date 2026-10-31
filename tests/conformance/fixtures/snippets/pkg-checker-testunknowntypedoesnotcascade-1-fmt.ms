@@ -6,7 +6,7 @@ fn peek() Missing:
 
 fn f() Int:
     match peek():
-        some(x):
+        x:
             return x
         none:
             return 0

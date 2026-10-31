@@ -120,7 +120,7 @@ fn run(args: List[String]) Result[Unit, Error]:
             ran = ran + 1
             try emit("TEST {file}")
 
-            let result = run_file(ms, file)
+            let result = run_file(ms, file.clone())
 
             match result:
                 ok(_): try emit("PASS {file}")
@@ -158,7 +158,7 @@ export fn main() Int:
     match run(arguments()):
         ok(_): return 0
         error(cause):
-            let written = stdout().write("{cause.message()}\n")
+            let _written = stdout().write("{cause.message()}\n")
             return 1
 
 test "reports require complete nonempty executions and count explicit skips":

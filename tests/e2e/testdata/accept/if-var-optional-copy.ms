@@ -1,7 +1,7 @@
 import expect_equal from "@std/test.ms"
 
 fn grown() Int:
-    var o: List[String]? = some(["a"])
+    var o: List[String]? = ["a"]
 
     if var l = o:
         l.append("q")

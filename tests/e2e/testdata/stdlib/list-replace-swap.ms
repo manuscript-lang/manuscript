@@ -20,8 +20,8 @@ test "replace moves owned records":
 test "replace takes an optional slot":
     var slots: List[String?] = ["a", "b"]
     let taken = slots.replace(0, none)
-    try expect_equal(taken, some("a"))
-    try expect_equal(slots, [none, some("b")])
+    try expect_equal(taken, "a")
+    try expect_equal(slots, [none, "b"])
 
 test "swap exchanges two elements":
     var items = ["a", "b", "c", "d"]
@@ -40,8 +40,8 @@ test "swap moves records without copying":
 
 test "replace takes a scalar optional slot":
     var slots: List[Int?] = [1, 2]
-    try expect_equal(slots.replace(1, none), some(2))
-    try expect_equal(slots, [some(1), none])
+    try expect_equal(slots.replace(1, none), 2)
+    try expect_equal(slots, [1, none])
 
 test "swap exchanges scalars, counting negative indexes from the end":
     var numbers = [1, 2, 3, 4]

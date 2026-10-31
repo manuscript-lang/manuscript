@@ -46,8 +46,8 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
         )
 
         match try socket_result(result: socket.receive()):
-            some(message):
-                let sent = try socket_result(
+            message:
+                let _sent = try socket_result(
                     result: socket.send_bytes(
                         data: message.data, text: message.text
                     )
@@ -59,8 +59,8 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
         return ok(unit)
 
     var fields = headers()
-    let appended = try fields.append("X-Test", "stream")
-    let started = try exchange.send_headers(status: 200, headers: fields)
+    let _appended = try fields.append("X-Test", "stream")
+    let _started = try exchange.send_headers(status: 200, headers: fields)
 
     match exchange.write(data: "hello from streaming Manuscript"):
         ok(_):
@@ -97,12 +97,10 @@ fn exercise() Result[Unit, Error]:
             return fail(message: "Unexpected case")
 
     match part:
-        some(data):
+        data:
             try expect_false(
                 not (
-                    data.decode_utf8() == some(
-                        "hello from streaming Manuscript"
-                    )
+                    data.decode_utf8() == "hello from streaming Manuscript"
                 )
             )
         none:
@@ -121,12 +119,12 @@ fn exercise() Result[Unit, Error]:
     )
     socket.subprotocol() | try expect_equal("echo")
 
-    let sent = try socket_result(result: socket.send(data: "echo me"))
+    let _sent = try socket_result(result: socket.send(data: "echo me"))
 
     match try socket_result(result: socket.receive()):
-        some(message):
+        message:
             (message.text) | try expect_true
-            try expect_equal(message.data.decode_utf8(), some("echo me"))
+            try expect_equal(message.data.decode_utf8(), "echo me")
         none:
             return fail(message: "Unexpected case")
 

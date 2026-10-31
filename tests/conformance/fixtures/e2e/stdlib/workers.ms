@@ -116,9 +116,9 @@ test "a worker answers each message in order":
     try expect_ok(sent)
     try expect_ok(worker.channel.send(2))
     try expect_ok(worker.channel.send(3))
-    try expect_equal(worker.channel.receive(), ok(some(1)))
-    try expect_equal(worker.channel.receive(), ok(some(4)))
-    try expect_equal(worker.channel.receive(), ok(some(9)))
+    try expect_equal(worker.channel.receive(), ok(1))
+    try expect_equal(worker.channel.receive(), ok(4))
+    try expect_equal(worker.channel.receive(), ok(9))
     worker.channel.close()
     try expect_ok(worker.wait())
 
@@ -126,7 +126,7 @@ test "records cross as JSON":
     let group = WorkerGroup[Job, Done]()
     var worker = group.spawn(count_words).get(none)
     try expect_ok(worker.channel.send(Job(id: 7, words: ["a", "b", "c"])))
-    try expect_equal(worker.channel.receive(), ok(some(Done(id: 7, count: 3))))
+    try expect_equal(worker.channel.receive(), ok(Done(id: 7, count: 3)))
     worker.channel.close()
     try expect_ok(worker.wait())
 
@@ -167,14 +167,14 @@ test "a fault in a worker is a result, not the end of the program":
 test "cancelling a worker stops it":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(announce_then_wait).get(none)
-    try expect_equal(worker.channel.receive(), ok(some(1)))
+    try expect_equal(worker.channel.receive(), ok(1))
     worker.cancel()
     try expect_equal(worker.wait(), error(WorkerError.Cancelled))
 
 test "a worker cancelled while computing is cancelled at its next channel operation":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(spin_then_wait).get(none)
-    try expect_equal(worker.channel.receive(), ok(some(1)))
+    try expect_equal(worker.channel.receive(), ok(1))
     worker.cancel()
     try expect_equal(worker.wait(), error(WorkerError.Cancelled))
 
@@ -200,7 +200,7 @@ test "sends after the worker ended report the channel closed":
 test "a worker sleeps without blocking its starter":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(naps).get(none)
-    try expect_equal(worker.channel.receive(), ok(some(1)))
+    try expect_equal(worker.channel.receive(), ok(1))
     try expect_ok(worker.wait())
 
 test "standard input stays with the main thread":
@@ -227,7 +227,7 @@ test "cancelling a joined worker's handle leaves a later worker alone":
     var b = group.spawn(delayed_send).get(none)
     sleep(nanoseconds(30000000))
     a.cancel()
-    try expect_equal(b.channel.receive(), ok(some(1)))
+    try expect_equal(b.channel.receive(), ok(1))
     try expect_ok(b.wait())
 
 fn sends_one() Unit:
@@ -237,7 +237,7 @@ fn sends_one() Unit:
 test "a finished worker's channel ends with none instead of an error":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(sends_one).get(none)
-    try expect_equal(worker.channel.receive(), ok(some(1)))
+    try expect_equal(worker.channel.receive(), ok(1))
     try expect_equal(worker.channel.receive(), ok(none))
     try expect_ok(worker.wait())
 
@@ -282,7 +282,7 @@ fn touches_network() Unit:
 test "a worker that uses the network ends cleanly":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(touches_network).get(none)
-    try expect_equal(worker.channel.receive(), ok(some(1)))
+    try expect_equal(worker.channel.receive(), ok(1))
     try expect_ok(worker.wait())
 
 fn fetches_page() Unit:
@@ -312,7 +312,7 @@ test "workers fetch from the starter's server at the same time":
         workers.append(worker)
 
     for i in 0..4:
-        try expect_equal(workers[i].channel.receive(), ok(some(3 * 65536)))
+        try expect_equal(workers[i].channel.receive(), ok((3 * 65536)))
         try expect_ok(workers[i].wait())
 
     group.close()

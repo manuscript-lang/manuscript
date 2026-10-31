@@ -84,7 +84,7 @@ test "a child process answers each message in order":
 
     for n in [1, 2, 3]:
         child.channel.send(n) | try expect_ok
-        child.channel.receive() | try expect_ok | try expect_equal(some(n * n))
+        child.channel.receive() | try expect_ok | try expect_equal((n * n))
 
     child.channel.close()
 
@@ -110,9 +110,9 @@ test "records cross in both directions":
 test "the parent reads what a finished child sent, then the end":
     let group = ProcessGroup[Int, Unit, Int]()
     var child = group.spawn(report) | try expect_ok
-    child.channel.receive() | try expect_ok | try expect_equal(some(10))
-    child.channel.receive() | try expect_ok | try expect_equal(some(20))
-    child.channel.receive() | try expect_ok | try expect_equal(some(30))
+    child.channel.receive() | try expect_ok | try expect_equal(10)
+    child.channel.receive() | try expect_ok | try expect_equal(20)
+    child.channel.receive() | try expect_ok | try expect_equal(30)
     child.channel.receive() | try expect_ok | try expect_equal(none)
     child.result() | try expect_ok | try expect_equal(3)
     child.wait() | try expect_ok | try expect_equal(0)

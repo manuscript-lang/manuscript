@@ -18,7 +18,7 @@ type Endpoint:
     fallback: IpAddress?
 
 test "JSON payloadless cases are their names and round-trip":
-    let swatch = Swatch(Color.Green, some(Color.Red))
+    let swatch = Swatch(Color.Green, Color.Red)
     let text = try stringify(swatch)
     try expect_equal(text, "\{\"color\":\"Green\",\"shade\":\"Red\"\}")
 
@@ -33,7 +33,7 @@ test "JSON rejects an unknown case name":
 test "JSON writes and reads IpAddress and Cidr as strings":
     let endpoint = Endpoint(
         try parse_ip("::1"), try parse_cidr("10.1.2.3/8"),
-        some(try parse_ip("192.0.2.7"))
+        try parse_ip("192.0.2.7")
     )
     let text = try stringify(endpoint)
     try expect_equal(

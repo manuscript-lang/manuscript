@@ -43,7 +43,7 @@ test "Bytes split optional limits truncate parts":
             or data.split(separator, none) != expected
         )
     )
-    try expect_equal(data.split(separator, some(2)), [Bytes([1]), Bytes([2])])
+    try expect_equal(data.split(separator, 2), [Bytes([1]), Bytes([2])])
     try expect_equal(data.split(separator, 1), [Bytes([1])])
     try expect_false(
         (
@@ -58,7 +58,7 @@ fn split_then[T](data: Bytes, separator: Bytes, transform: fn(List[Bytes]) T) T:
     return data.split(separator) | transform
 
 fn call_split(operation: fn(Bytes, Int?) List[Bytes]) List[Bytes]:
-    return operation(Bytes([0]), some(2))
+    return operation(Bytes([0]), 2)
 
 test "Bytes split bound methods and generic forwarding retain contracts":
     var data = Bytes([1, 0, 2])

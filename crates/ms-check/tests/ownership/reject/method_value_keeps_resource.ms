@@ -12,7 +12,7 @@ type Bin:
 
 impl Bin:
     fn keep(d: Door) Door?:
-        return some(d)
+        return d
 
 fn apply(f: fn(Door) Door?) Int:
     return f(Door(1)).get().n

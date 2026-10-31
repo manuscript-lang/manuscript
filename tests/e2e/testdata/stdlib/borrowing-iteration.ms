@@ -21,7 +21,7 @@ test "queue iterates oldest first and skips consumed slots":
     q.enqueue("a")
     q.enqueue("b")
     q.enqueue("c")
-    try expect_equal(q.dequeue(), some("a"))
+    try expect_equal(q.dequeue(), "a")
 
     var seen: List[String] = []
     for item in q:
@@ -38,7 +38,7 @@ test "priority queue iterates every value and peek borrows":
     for item in q:
         total += item
     try expect_equal(total, 9)
-    try expect_equal(q.peek(), some(1))
+    try expect_equal(q.peek(), 1)
 
 test "break and continue work in a borrowing loop":
     var d = Deque[Int]()

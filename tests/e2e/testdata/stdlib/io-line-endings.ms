@@ -13,12 +13,12 @@ test "an unterminated carriage return remains line content":
 
         let file = try fs.open(path, "r", 384)
         let input = file.reader()
-        try expect_equal((try read_line(input)), some(text))
+        try expect_equal((try read_line(input)), text)
         try expect_equal((try read_line(input)), none)
 
 test "native and source line readers agree on endings and byte limits":
     let fs = filesystem()
-    let limits: List[Int?] = [none, some(0), some(1), some(2), some(3), some(8)]
+    let limits: List[Int?] = [none, 0, 1, 2, 3, 8]
     let temporary = try fs.temporary("manuscript-line-parity-")
     let path = "{temporary.path()}/lines.txt"
 

@@ -239,7 +239,7 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
 
             if let value = lane.value.pop():
                 lane.value.wake()
-                return ok(some(value))
+                return ok(value)
 
             if lane.value.sender_closed:
                 return ok(none)

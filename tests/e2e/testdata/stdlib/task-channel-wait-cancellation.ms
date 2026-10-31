@@ -46,7 +46,7 @@ fn cancel_receive(target: Channel[Int, Int]) Result[Unit, Error]:
     var group = TaskGroup[Int]()
     let end = target.clone()
     var task = group.spawn(fn ready: receive_value(ready, end))
-    task.channel.receive() | try expect_ok | try expect_equal(some(unit))
+    task.channel.receive() | try expect_ok | try expect_equal(unit)
 
     # The acknowledging task parks on the target before this receive resumes us.
     group.close()
@@ -58,7 +58,7 @@ fn cancel_send(target: Channel[Int, Int]) Result[Unit, Error]:
     var group = TaskGroup[Unit]()
     let end = target.clone()
     var task = group.spawn(fn ready: send_value(ready, end))
-    task.channel.receive() | try expect_ok | try expect_equal(some(unit))
+    task.channel.receive() | try expect_ok | try expect_equal(unit)
     group.close()
     task.result() | try expect_error | try expect_equal(TaskError.Closed)
     group.close()
@@ -67,13 +67,13 @@ fn cancel_send(target: Channel[Int, Int]) Result[Unit, Error]:
 fn wake_receiver(target: Channel[Int, Int]) Result[Unit, Error]:
     var end = target.clone()
     end.send(7) | try expect_ok
-    end.receive() | try expect_ok | try expect_equal(some(7))
+    end.receive() | try expect_ok | try expect_equal(7)
     return ok(unit)
 
 fn wake_sender(target: Channel[Int, Int]) Result[Unit, Error]:
     var end = target.clone()
     for value in 0..17:
-        end.receive() | try expect_ok | try expect_equal(some(value))
+        end.receive() | try expect_ok | try expect_equal(value)
     for value in 0..17:
         end.send(value) | try expect_ok
     return ok(unit)
@@ -152,12 +152,12 @@ test "cancelling one receiver preserves another receivers wake":
     let first_end = target.channel.clone()
     var cancelled = TaskGroup[Int]()
     var removed = cancelled.spawn(fn ready: receive_value(ready, first_end))
-    removed.channel.receive() | try expect_ok | try expect_equal(some(unit))
+    removed.channel.receive() | try expect_ok | try expect_equal(unit)
 
     let survivor = TaskGroup[Int]()
     let second_end = target.channel.clone()
     var kept = survivor.spawn(fn ready: receive_value(ready, second_end))
-    kept.channel.receive() | try expect_ok | try expect_equal(some(unit))
+    kept.channel.receive() | try expect_ok | try expect_equal(unit)
     cancelled.close()
     target.channel.send(7) | try expect_ok
     kept.result() | try expect_ok | try expect_equal(7)

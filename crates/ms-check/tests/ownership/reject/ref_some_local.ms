@@ -4,4 +4,4 @@ type Shape:
 impl Shape:
     fn text() ref String?:  # error: returns `ref`, but no `return` gives back part of a parameter
         let owned = "x"
-        return some(owned)
+        return owned

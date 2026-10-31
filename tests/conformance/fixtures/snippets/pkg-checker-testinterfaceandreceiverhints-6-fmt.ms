@@ -4,10 +4,10 @@
 interface Read[T]:
     fn get() T
 
-type Box[T]:
+type Box[T: Clonable]:
     item: T
 
 impl Read[T] for Box[T]:
-    fn get() T: self.item
+    fn get() T: self.item.clone()
 
 fn read() Read[Int]: Box(1)

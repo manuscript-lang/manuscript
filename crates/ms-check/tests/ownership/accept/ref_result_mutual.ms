@@ -7,7 +7,7 @@ fn g(a: Node, i: Int) ref Node?:
     return f(a, i)
 
 fn f(a: Node, i: Int) ref Node?:
-    if i == 0: return some(a.children[0])
+    if i == 0: return a.children[0]
 
     return g(a, i - 1)
 
@@ -19,14 +19,14 @@ fn c2(a: Node, i: Int) ref Node?:
     return c3(a, i)
 
 fn c3(a: Node, i: Int) ref Node?:
-    if i == 0: return some(a.children[0])
+    if i == 0: return a.children[0]
 
     return c1(a, i - 1)
 
 fn name_of(a: Node) ref String?:
     if let n = g(a, 3):
-        return some(n.name)
+        return n.name
     if let m = c1(a, 2):
-        return some(m.name)
+        return m.name
 
     return none

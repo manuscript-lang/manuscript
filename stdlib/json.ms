@@ -161,7 +161,7 @@ impl JsonValue:
 # - An alternative case without payload is its name as a string; one with payload is externally tagged,
 #   `{"Circle":{"radius":2}}`, with the same member rules for the labeled fields. Standard alternatives such
 #   as `Result` and the error types follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
-# - `T?` reads `null` as `none`, so `some(none)`, written as `null`, reads back as `none`. `List` reads an array.
+# - `T?` reads `null` as `none`, so a present `none` (an `Int??` holding `none`), written as `null`, reads back as `none`. `List` reads an array.
 # - A sized integer accepts integer digits within its own range, and `Float32` any finite number that fits it.
 # - `Int` accepts integer digits that fit in the platform's Int, `Float` any finite number, `BigInt` and `Decimal`
 #   the exact number text. A `null` Float, which `stringify` writes for `NaN` and infinities, returns
@@ -217,7 +217,7 @@ export interface JsonEncode:
 # - Record fields appear in declaration order. A field holding `none` is omitted; so is a field
 #   holding a value with no JSON form (`Unit`).
 # - `none` elsewhere (a list element, the root) is `null`, as is a no-form list element.
-#   `T??` is allowed: `some(none)` is `null` and `none` is omitted.
+#   `T??` is allowed: a present `none` is `null` and an absent value is omitted.
 # - A root value with no JSON form returns `InvalidData`.
 # - An alternative case without payload is its name as a string, `"Dot"`. A case with payload is
 #   externally tagged: `{"Circle":{"radius":2}}`, an object keyed by the case name whose value holds

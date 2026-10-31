@@ -20,7 +20,7 @@ fn keep[T](v: T) Int:
     return 0
 
 fn keep_optional[T](v: T) Int:
-    let _o = some(v)
+    let _o: T? = v
     return 1
 
 export fn main() Int:

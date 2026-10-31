@@ -30,7 +30,7 @@ test "a worker answers over its channel":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(squares) | try expect_ok
     try expect_ok(worker.channel.send(12))
-    try expect_equal(worker.channel.receive(), ok(some(144)))
+    try expect_equal(worker.channel.receive(), ok(144))
     worker.channel.close()
     try expect_ok(worker.wait())
 ```

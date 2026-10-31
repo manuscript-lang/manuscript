@@ -72,7 +72,7 @@ impl Decimal:
     fn to_float() Float?:
         let value = msstd_decimal_to_float(self)
         if value.is_finite():
-            return some(value)
+            return value
 
         return none
 

@@ -7,9 +7,9 @@ import MemoryStream from "./support/streams.ms"
 test "stream compositions invoke source implementations and preserve EOF":
     let reader = MemoryStream("one\r\ntwo\nlast".to_bytes(), 0, closed: false)
     let input: ReadStream = reader
-    try expect_equal((try read_line(input)), some("one"))
-    try expect_equal((try read_line(input)), some("two"))
-    try expect_equal((try read_line(input)), some("last"))
+    try expect_equal((try read_line(input)), "one")
+    try expect_equal((try read_line(input)), "two")
+    try expect_equal((try read_line(input)), "last")
     try expect_false(not (try read_line(input)).is_none())
 
     let fs = filesystem()
@@ -37,7 +37,7 @@ test "native line reads reject buffered lines after the shared file is closed":
 
     var handle = try fs.open(path, "r", 384)
     let input = handle.reader()
-    try expect_equal((try read_line(input)), some("first"))
+    try expect_equal((try read_line(input)), "first")
     handle.close()
 
     let closed: Result[String?, IoError] = error(IoError.Closed)

@@ -31,7 +31,7 @@ test "a var binding closes the value it ended with":
 test "a cancelled var binding closes the value it had reached":
     let log: Shared[List[Int]] = share([])
     let mine = log
-    var group = TaskGroup[Int](timeout: some(nanoseconds(20000000)))
+    var group = TaskGroup[Int](timeout: nanoseconds(20000000))
     group.spawn(fn ch: count_then_wait(mine))
 
     let _ignored = group.wait()

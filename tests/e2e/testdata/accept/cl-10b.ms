@@ -39,7 +39,7 @@ test "contract views and callbacks":
     let copied: ReadValue[Int] = forward_view(box)
     let holder = ReaderHolder(identity)
     let _readers: List[ReadValue[Int]] = [forward_view(box)]
-    let _optional: ReadValue[Int]? = some(forward_view(box))
+    let _optional: ReadValue[Int]? = forward_view(box)
     let callback = CallbackReader(seven)
     let callback_view: ReadValue[Int] = callback
     try expect_equal(first.get(), 7)

@@ -52,7 +52,7 @@ export fn main() Int:
     first.close()
     stdout().write("closed listener rebound: {rebound(address)}\n").get()
 
-    var group = TaskGroup[Int](timeout: some(nanoseconds(2000000)))
+    var group = TaskGroup[Int](timeout: nanoseconds(2000000))
     let a = address.clone()
     group.spawn(fn ch: accept_one(a))
 
@@ -67,7 +67,7 @@ export fn main() Int:
 
     for round in 0..20:
         let round_a = target.clone()
-        var round_group = TaskGroup[Int](timeout: some(nanoseconds(2000000)))
+        var round_group = TaskGroup[Int](timeout: nanoseconds(2000000))
         round_group.spawn(fn ch: read_one(round_a))
 
         let _ = round_group.wait()
@@ -89,7 +89,7 @@ export fn main() Int:
         ).get()
     )
 
-    var group2 = TaskGroup[Int](timeout: some(nanoseconds(2000000)))
+    var group2 = TaskGroup[Int](timeout: nanoseconds(2000000))
     let datagram_a = udp_address.clone()
     group2.spawn(fn ch: receive_one(datagram_a))
 
