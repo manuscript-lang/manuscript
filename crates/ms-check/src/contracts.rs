@@ -1255,6 +1255,11 @@ impl Checker {
                 }
                 for op in def.operations.borrow().clone() {
                     self.check_declared(&op.ty, d.pos(), s.export);
+                    for v in stdlib::operation_variables(&format!("{}/{}", t.id, op.name)) {
+                        for b in v.bounds() {
+                            self.check_declared(&b, d.pos(), s.export);
+                        }
+                    }
                 }
             }
             for v in s.variables() {
