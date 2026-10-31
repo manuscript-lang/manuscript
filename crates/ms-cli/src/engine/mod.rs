@@ -63,18 +63,6 @@ impl<L: Lower> Engine<L> {
         kind: BuildType,
         link: &[String],
     ) -> Result<(), String> {
-        self.link_cached(compiled, output, kind, link, None)
-    }
-
-    /// [`Engine::link`] that reuses an executable from `cache` when every input matches.
-    pub(crate) fn link_cached(
-        &self,
-        compiled: &mut Compiled,
-        output: &Path,
-        kind: BuildType,
-        link: &[String],
-        cache: Option<&Path>,
-    ) -> Result<(), String> {
         let runtime = match &self.runtime {
             Some(runtime) => runtime.clone(),
             None => match ms_build::runtime_override()? {
@@ -83,13 +71,12 @@ impl<L: Lower> Engine<L> {
             },
         };
         let extra: Vec<PathBuf> = link.iter().map(PathBuf::from).collect();
-        ms_build::build_executable_cached(
+        ms_build::build_executable(
             &mut compiled.module,
             output,
             profile(kind),
             &runtime,
             &extra,
-            cache,
         )?;
         write_metadata(output, kind)
     }
@@ -255,6 +242,8 @@ pub(crate) struct Compiled {
     pub tests: Vec<String>,
     pub source_root: String,
     pub project_root: String,
+    /// Every source file of the program, as paths (for the build cache).
+    pub sources: Vec<std::path::PathBuf>,
 }
 
 /// What `compile` builds.
@@ -333,6 +322,12 @@ pub(crate) fn compile_target<L: Lower>(
             tests: names,
             source_root: checked.source_root.clone(),
             project_root: checked.project_root.clone(),
+            sources: program
+                .modules
+                .iter()
+                .map(|m| Path::new(&checked.source_root).join(m.file.as_str()))
+                .filter(|p| p.is_file())
+                .collect(),
         }),
         Err(message) => {
             let file = if entry.is_empty() { filename } else { &entry };
