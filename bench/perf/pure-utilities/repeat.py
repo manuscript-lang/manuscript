@@ -101,7 +101,7 @@ def cases():
             "a" * (size - 3) + "%zz", error=True)
     for name, text in {"early-percent": "%zz" + "a" * 4000,
                        "late-percent": "a" * 4000 + "%zz", "short-percent": "%",
-                       "one-digit": "%A", "bad-utf8": "%FF", "overlong": "%C0%AF",
+                       "one-digit": "%A", "bad-utf8": "%FF", "utf8-then-malformed": "%FF%zz", "overlong": "%C0%AF",
                        "surrogate": "%ED%A0%80", "above-unicode": "%F4%90%80%80",
                        "incomplete-utf8": "%E2%82", "late-utf8": "a" * 4000 + "%FF",
                        "valid-then-invalid": "%41" * 1000 + "%zz",
@@ -164,7 +164,7 @@ def main():
     if args.repeats % len(orders):
         parser.error("use at most four producers and repeats divisible by producer permutations")
     os.sched_setaffinity(0, {args.cpu})
-    sources = ["crates/ms-std-path/src/lib.rs", "crates/ms-std-url/src/lib.rs", "crates/ms-std-url/src/gourl.rs",
+    sources = ["crates/ms-std-path/src/lib.rs", "crates/ms-std-url/src/lib.rs", "crates/ms-std-url/src/parser.rs",
                "stdlib/fs.ms", "stdlib/net.ms", "rust-toolchain.toml", "scripts/lld.lock", "Cargo.lock"]
     sources += ["bench/perf/pure-utilities/" + p for p in ["path.ms", "url.ms", "repeat.py", "rust/src/main.rs", "rust/Cargo.toml"]]
     if (ROOT / "bench/perf/pure-utilities/rust/Cargo.lock").is_file():

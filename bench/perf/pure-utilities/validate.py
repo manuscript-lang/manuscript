@@ -94,6 +94,22 @@ def manifest(path):
         native = json.loads(next(source))
     for label in ["before", "after"]:
         assert native["binaries"][label] == identities["artifacts"][f"allocation_{label}"]
+    followup_path = path.parent / "url-direct-identities.json"
+    if followup_path.is_file():
+        followup = json.loads(followup_path.read_text())
+        for name, prefix in [("url-direct-final", "url"), ("url-direct-cumulative-path", "path")]:
+            with gzip.open(path.parent / f"{name}.jsonl.gz", "rt") as source:
+                records = [json.loads(line) for line in source]
+            hashes = {r["label"]: r["sha256"] for r in records if r["kind"] == "identity"}
+            before = "url_before" if prefix == "url" else "path_before81"
+            assert hashes["before"] == followup["artifacts"][before]
+            assert hashes["after"] == followup["artifacts"][f"{prefix}_after"]
+            assert hashes["rust"] == followup["artifacts"]["rust"]
+        assert followup["artifacts"]["path_before_merged"] == followup["artifacts"]["path_after"]
+        with gzip.open(path.parent / "url-direct-native-allocations.jsonl.gz", "rt") as source:
+            native = json.loads(next(source))
+        for label in ["before", "after"]:
+            assert native["binaries"][label] == followup["artifacts"][f"allocation_{label}"]
 
 
 def validate(path):

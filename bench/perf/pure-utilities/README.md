@@ -136,7 +136,7 @@ Parse allocation counts remain unchanged. All 53 decode allocation cases are
 identical before/after. The first stale executable replay is preserved as
 **invalid provenance**, excluded from claims; corrected and fresh replays pass.
 
-## Rejected candidates and URL limits
+## Initial rejected candidates and URL limits at main 413
 
 | Candidate | Blocking evidence |
 | --- | --- |
@@ -178,3 +178,11 @@ Full workspace execution, broad conformance and non-Linux performance were not
 run locally under campaign scope; normal required CI remains unchanged. Known
 Rust gaps are unresolved, not a parity or globally clean claim. Actual merged
 main replay remains a final follow-through step.
+
+## Subsequent decoder work
+
+The [direct byte-scan follow-up](url-component-scan.md) records a fifth decoder
+candidate on merged main 28946f9, after the path fix landed. It keeps the earlier
+measurements above intact, adds the malformed escape after an invalid-UTF-8
+prefix, and records a separate full runtime replay. Compiler/source/executable
+identities are explicit; these reports make no build-time claim.
