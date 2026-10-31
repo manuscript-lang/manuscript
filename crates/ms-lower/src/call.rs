@@ -80,7 +80,11 @@ impl<'a> FnLower<'a> {
             Resolution::Method(_) if self.receiver_expr(e).is_none() => {
                 self.call_value(e, &view)?
             }
-            Resolution::Method(m) => self.method_call(e, &view, m)?,
+            Resolution::Method(m) => {
+                let out = self.method_call(e, &view, m)?;
+                self.consume_closed(e, m);
+                out
+            }
             Resolution::Constructor { ty, case } => self.construct(e, &view, ty, *case)?,
             Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
             _ => return Err(Error::new("unsupported call target")),
@@ -483,6 +487,20 @@ impl<'a> FnLower<'a> {
         match &c.kind {
             ExprKind::Member { left, .. } => Some(left),
             _ => None,
+        }
+    }
+
+    /// An explicit `x.close()` on a closing binding consumes it: the scope end must not close it
+    /// again, so a failure the program handled is not returned a second time.
+    fn consume_closed(&mut self, e: &Expr, m: &ct::MethodRef) {
+        if self.dead || !m.name().is_some_and(|n| n.as_str() == "close") {
+            return;
+        }
+        let Some(recv) = self.receiver_expr(e) else {
+            return;
+        };
+        if let Resolution::Local(b) = self.hir.resolution(recv) {
+            self.moved_closer(b.uid, recv);
         }
     }
 

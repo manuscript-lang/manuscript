@@ -137,6 +137,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         resources: Vec::new(),
         arm_payloads: Vec::new(),
         closed: HashSet::new(),
+        explicit_closes: HashMap::new(),
     };
     w.run();
     w.unclosed_resources();
@@ -206,6 +207,9 @@ struct Walker<'a> {
     arm_payloads: Vec<usize>,
     /// Bindings that had `close()` called on them.
     closed: HashSet<usize>,
+    /// The receiver name expressions of those calls, by binding: the call consumes the binding,
+    /// so the scope end must not close it again.
+    explicit_closes: HashMap<usize, HashSet<NodeId>>,
 }
 
 /// A fix that inserts `text` at `pos`.
@@ -353,14 +357,16 @@ impl Walker<'_> {
                 .filter(|u| u.binding == uid && u.access == Access::Move)
                 .map(|u| u.node)
                 .collect();
-            if !moves.is_empty() {
+            // An explicit `.close()` consumes the binding like a move: the scope end skips it.
+            let explicit = self.explicit_closes.remove(&uid).unwrap_or_default();
+            if !moves.is_empty() || (closable && !explicit.is_empty()) {
                 // Moved on some path: the scope closes it on the paths that keep it. Lowering
                 // tracks that with a flag cleared at each move.
                 if closable {
                     self.facts.implicit_closes.insert(uid);
-                    self.facts
-                        .close_moves
-                        .insert(uid, moves.into_iter().collect());
+                    let mut nodes: HashSet<NodeId> = moves.into_iter().collect();
+                    nodes.extend(explicit);
+                    self.facts.close_moves.insert(uid, nodes);
                 }
                 continue;
             }
@@ -2192,6 +2198,7 @@ impl Walker<'_> {
             && let Resolution::Local(b) = cx.m.resolution(r)
         {
             self.closed.insert(b.uid);
+            self.explicit_closes.entry(b.uid).or_default().insert(r.id);
         }
         // Argument markers: `var` exactly where the callee changes the argument.
         let param_names: Vec<Name> =
