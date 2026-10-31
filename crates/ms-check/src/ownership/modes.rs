@@ -196,12 +196,9 @@ pub fn call_modes(
                     from_summary(summaries, s.module, &func, args.len(), label, None)
                 }
                 None => {
-                    // A native function keeps function arguments it is given, except the
-                    // testing helpers, which run them at once, and the worker start, which
-                    // copies the code pointer of a capture-free entry and keeps nothing else.
-                    let runs_now = s.module.as_str() == "@std/test.ms"
-                        || (s.module.as_str() == "@std/workers.ms"
-                            && s.name.as_str() == "msrt_worker_start");
+                    // A native runs the function arguments it is given before it returns,
+                    // unless bindings.json declares it keeps them.
+                    let runs_now = !crate::stdlib::keeps_callbacks(s.native.as_str());
                     let params = s.ty().params.clone();
                     CallModes {
                         arguments: (0..args.len())
@@ -370,16 +367,6 @@ fn native_unknown(count: usize) -> CallModes {
     }
 }
 
-/// Collections run their callbacks immediately; other natives may keep them.
-fn runs_callbacks(receiver: &Ty) -> bool {
-    receiver.is_std("List")
-        || receiver.is_std("Map")
-        || receiver.is_std("Set")
-        || receiver.is_std("Optional")
-        || receiver.is_std("Result")
-        || receiver.is_std("String")
-}
-
 fn native_method_modes(
     method: &MethodRef,
     count: usize,
@@ -387,7 +374,8 @@ fn native_method_modes(
 ) -> CallModes {
     let receiver = &method.receiver;
     let mutator = collection_mutation(method);
-    let callbacks_borrowed = runs_callbacks(receiver);
+    // A native method runs its callbacks before it returns.
+    let callbacks_borrowed = true;
     let params = &method.ty.params;
     let result = method.ty.result_ty();
     let mut retained = vec![false; count];
