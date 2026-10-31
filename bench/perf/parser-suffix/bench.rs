@@ -27,6 +27,14 @@ fn run() {
     assert!(!sources.is_empty());
     let mut expected = 0u64;
     for (file, text) in &sources {
+        if mode == "partial" {
+            println!("{:?}", ms_syntax::parse_partial(file, text));
+            continue;
+        }
+        if mode == "outcome" {
+            println!("{:?}", parse(file, text));
+            continue;
+        }
         let module = parse(file, text).unwrap();
         if mode == "validate" {
             println!("{:?}\n{}", module, dump_module(&module));
@@ -37,7 +45,7 @@ fn run() {
             u64::from(module.node_count)
         };
     }
-    if mode == "validate" {
+    if mode == "validate" || mode == "outcome" || mode == "partial" {
         return;
     }
     assert!(mode == "parse" || mode == "lex");
