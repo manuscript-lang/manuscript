@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "some 2\nsome 3\nnone\nsome 3\nsome 1\nsome 11\nsome 11\nsome 4\nsome 4\nnone\n",
+    "stderr": ""
+  }
+}

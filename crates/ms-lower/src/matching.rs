@@ -190,6 +190,13 @@ impl FnLower<'_> {
             let facts = self.hir.arm(arm);
             for (i, b) in facts.bindings.iter().enumerate() {
                 let Some(b) = b else { continue };
+                if arm.chain && self.cx.exclusive(b.uid) {
+                    // `c?.f()` changing the payload: `?N` names the payload of `c` itself.
+                    let mut alias = self.alias_chain(scrutinee)?;
+                    alias.steps.push(crate::alias::AStep::Some);
+                    self.aliases.insert(b.uid, alias);
+                    continue;
+                }
                 let cur = self.b.use_var(sv);
                 let payload = match (&kind, case) {
                     (TyKind::Iface(_), Some(_)) => {

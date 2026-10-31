@@ -383,6 +383,11 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.opt_inner(self.ty(o)).expect("optional operand");
         self.val(Op::OptGet, &[o], Imm::None, t)
     }
+    /// `opt.unbox`: moves the payload out of an owned present optional, which it consumes.
+    pub fn opt_unbox(&mut self, o: Value) -> Value {
+        let t = self.m.opt_inner(self.ty(o)).expect("optional operand");
+        self.val(Op::OptUnbox, &[o], Imm::None, t)
+    }
     /// `opt.unwrap` (faults on none).
     pub fn opt_unwrap(&mut self, o: Value) -> Value {
         let t = self.m.opt_inner(self.ty(o)).expect("optional operand");
