@@ -1,12 +1,18 @@
 name: CI/CD
 
 on:
+  # A push to main publishes the docs and runs the language checks; the Rust platform matrix runs on
+  # pull requests (Linux), merge groups, by hand, and every hour on main, which also refreshes the
+  # sccache caches that pull requests restore. Per-push platform runs queued behind each other for
+  # an hour and were replaced before they finished, so they never saved a cache.
   push:
     branches: [main]
   pull_request:
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
+  schedule:
+    - cron: '7 * * * *'
 
 permissions:
   contents: read
@@ -19,7 +25,8 @@ env:
   CARGO_INCREMENTAL: '0'
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  # Scheduled and manual runs never cancel or replace each other or a push run.
+  group: ci-${{ github.event.pull_request.number || (github.event_name == 'push' && github.ref) || (github.event_name == 'schedule' && 'scheduled') || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -46,6 +53,9 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           rust=true
+          if [ "$EVENT" = push ]; then
+            rust=false
+          fi
           if [ "$EVENT" = pull_request ]; then
             if ! git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qvE '^(documentation/|website/|blog/|proposals/|skills/|extensions/|.*\.md$)'; then
               rust=false
