@@ -25,10 +25,30 @@ fi
 cargo xtask runtime >/dev/null
 cargo build --locked -q -p ms-cli --target-dir "$repository/target"
 
+# The corpus replays a single-file accept/stdlib fixture under `ms test` with the same default build type when its
+# frozen copy under tests/conformance/fixtures/e2e is identical, so running it here again adds nothing. A fixture
+# listed as failing still runs, and so does one whose copy is tagged aliasing (the corpus run excludes those).
+covered_by_corpus() {
+    twin=tests/conformance/fixtures/e2e/$(basename "$(dirname "$1")")/$(basename "$1")
+    [ -f "$twin" ] || return 1
+    grep -q '^# conform: phase=test$' "$twin" || return 1
+    ! grep -q '^# conform: tags=.*aliasing' "$twin" || return 1
+    ! grep -v '^#' "$expected" | cut -f1 | grep -Fxq "$1" || return 1
+    grep -v '^# conform:' "$twin" | cmp -s - "$1"
+}
+
 if [ "$#" -gt 0 ]; then
     fixtures=$*
 else
-    fixtures=$(ls -d tests/e2e/testdata/accept/*.ms tests/e2e/testdata/stdlib/*.ms tests/e2e/testdata/reject/*.ms tests/e2e/testdata/projects/* tests/e2e/testdata/projects/*/reject_*.ms)
+    fixtures=
+    skipped=0
+    for fixture in $(ls -d tests/e2e/testdata/accept/*.ms tests/e2e/testdata/stdlib/*.ms tests/e2e/testdata/reject/*.ms tests/e2e/testdata/projects/* tests/e2e/testdata/projects/*/reject_*.ms); do
+        if covered_by_corpus "$fixture"; then
+            skipped=$((skipped + 1))
+        else
+            fixtures="$fixtures $fixture"
+        fi
+    done
 fi
 
 # A project directory passes when its tests pass, or its main.ms checks and prints expected-output.txt.
@@ -149,5 +169,5 @@ for result in "$results"/*; do
 done
 rm -rf "$results"
 [ -z "$exe" ] || rm -f "$expected"
-echo "e2e: $count fixtures, $failed failed ($build_type)"
+echo "e2e: $count fixtures, $failed failed ($build_type)${skipped:+, $skipped left to the corpus}"
 [ "$failed" -eq 0 ]

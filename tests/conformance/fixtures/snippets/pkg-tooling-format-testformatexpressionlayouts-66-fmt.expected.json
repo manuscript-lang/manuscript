@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn choose(value: Choice) Int:\n    match value:\n        long_variant(\n            first_payload_name, second_payload_name, third_payload_name,\n            fourth_payload_name\n        ): return 1\n        _: return 0\n"
-  }
-}

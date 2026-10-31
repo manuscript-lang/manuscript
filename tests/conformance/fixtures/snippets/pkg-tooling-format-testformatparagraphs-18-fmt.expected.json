@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn example(value: Int = choose(first: 1, second: 2)) Int:\n    let text = \"# if value: return {value}\"\n    let next = choose(\n        first: value,\n        # Explain this argument.\n        second: 2\n    )\n    if (next > 0 and value > 0): return next\n\n    return 0\n"
-  }
-}
