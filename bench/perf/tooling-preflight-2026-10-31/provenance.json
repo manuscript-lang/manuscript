@@ -1,0 +1,107 @@
+{
+  "common_main": "b69559b829304ab80d6267c3d4271807f36ceec2",
+  "before_tree": "c4d2b56cd2d9cc7547fd71ae5ecc251a73f3336e",
+  "after_tree": "016e27a29492c91a79729de879edfc79276f18e4",
+  "baseline_reversal_commits": [
+    "9cf35d574845cb07c8af52ee4d0e5a0d1154ae0f",
+    "cb11524bbbfe27c7aba81b2320207fafe07ebd48",
+    "b69559b829304ab80d6267c3d4271807f36ceec2"
+  ],
+  "formatter_head": "18f496c85fb779ebcc3cbb409be3557a92b772a1",
+  "reversal_patch_sha256": "06ffe24efc37706edd7e17cb9ee6f8cb951808c76c6d779f7e7a57ab342c969d",
+  "tests": {
+    "before": 179,
+    "after": 181
+  },
+  "toolchain": "Rust/Cargo 1.99.1 (58cf8f9c3 2026-10-13)",
+  "release": {
+    "opt_level": 3,
+    "debug_info": true,
+    "panic": "abort",
+    "lto": false,
+    "custom_cpu_flags": false
+  },
+  "cpu": 0,
+  "before_binaries": {
+    "formatter": "09ec19cc955b4bdeee896334f9695c0111a013e74a639c74225ab237d01e52be",
+    "navigation": "55bfd0d37ea6fa7bee1645b018a14f106af27310effb3130bb6d5155c7cce5bd",
+    "outline": "e87f888cdf25df3be526d331af8da607a2f3853baec5e300d728461f2d08a960",
+    "semantic": "37878fe35773551dc7d8a7519913bc22b95b46e58ea14119fa9fd902f9686e12"
+  },
+  "after_binaries": {
+    "formatter": "8e02e1158dd171b9cc5493c2224e15b74e2f159a4030c3b94a8ae8ab602e2ac1",
+    "navigation": "328132a4b68df1eceee37b48a91bd7185391f4c867c8c86ab627090b74af7d3b",
+    "outline": "3bbd768bdd28364255a89cb84d46d20bd781a9eba3730aedc99602472181f100",
+    "semantic": "54a6fd16cbf889e81af35d208975a90527587dc5d91acb1ded886b61b868e012"
+  },
+  "status": "All 4,480 matched preflight samples independently validated. Source PR #2137 required LLVM conformance failed; actual merged-main replay blocked. Cause/relation not investigated under campaign backend/parity restrictions.",
+  "rejected_comparison": "rejected/old-main-navigation-partial.csv: old-main baseline stopped at an index fingerprint mismatch; not valid final comparative evidence",
+  "ci_blocker": {
+    "pull_request": 2137,
+    "head": "18f496c85fb779ebcc3cbb409be3557a92b772a1",
+    "run": 41230780663,
+    "job": 124626059261,
+    "step": 17,
+    "step_name": "Conformance corpus (LLVM)",
+    "conclusion": "failure",
+    "logs_or_reproduction_attempted": false
+  },
+  "data_sha256": {
+    "formatter-flow-larger-discovery.csv": "6c680a1085a97a69afe2616594016d2d499b43e3c53da8698175b45adffadda0",
+    "formatter-summary.txt": "8beeec3a650d6db374048d96fda6b2cb5857929f9ca0649bee4ad4614b21415b",
+    "formatter.csv": "2d363f4da7d8aabdc4035523863cd807b958c97885bde0aa58b7c22cd8917180",
+    "navigation-summary.txt": "7cca7135b174d2cdd19157c2746c0e50b3b646ada343c9059be832a9151beda8",
+    "navigation.csv": "d35db331f7858a870d2d9fe42260df7f05e7c2886661569e35a26b6db8c84e32",
+    "outline-summary.txt": "e72706f452bb85f1b7604fd1c1861165d9c24e566719898e7d71812329a90526",
+    "outline.csv": "51f4284c91be3c94c59e2b08c292301259c45922cd0116cc8ac2002cff7939ac",
+    "rejected/old-main-navigation-partial.csv": "584c16faee8a6cee5eb7a6a89a59937626736fb54484acef46690f8475d33bcd",
+    "semantic-summary.txt": "0c37188719289c3cbee44413feabbb197753934117d9bb20d7ea84dac4ae6964",
+    "semantic.csv": "4228ea8b1f45268add28146cca5feab8b1a793dfe4418d9f89df335e4b85c835",
+    "workspace-fresh-main-discovery.csv": "498f16665b6a3a24572b74083da4bc6a57c47add3602a96d874f2a47ad3c8e5d"
+  },
+  "harness_sha256": {
+    "bench/perf/lsp/Cargo.lock": "c95b3267f5d0b47c2455c54f11c7af8337d680eadf010eabfd0e12b1572d126a",
+    "bench/perf/lsp/Cargo.toml": "3dfe6c388a948b17a62d0ba0ae143ec0402a358521f08f0f547258566bbdcd68",
+    "bench/perf/lsp/compare.py": "3c04606cfdd23bdf6ebd590751f2626caf0525706f84a58150f8878f50ebbc09",
+    "bench/perf/lsp/function.ms": "8f59b7e93c205937343f3371023a46f18352580ecb9e8c520e2118fe09d8fa6f",
+    "bench/perf/lsp/main.rs": "a78e99da9b31009d83a662fd57718c399263b6d06e17e230e7dca95c36226acb",
+    "bench/perf/lsp/references.ms": "00b3a62b7aedbdc25c867667185e95831ce7eec0b5a824ccd87b41dc288830e7",
+    "bench/perf/lsp-semantic/Cargo.lock": "7c4af02be07f8d52dcfa2a1cbb6f6216c69dbb447c547afd8d8e3f92ba749fe8",
+    "bench/perf/lsp-semantic/Cargo.toml": "31be6087906389de4ccb439d619d78ea394098477f92335858d744867cc27ef9",
+    "bench/perf/lsp-semantic/compare.py": "5923eba85ccfd5c2cce4f2b07e678f878d28e781ec517fab0e3e82ba4f2a52c1",
+    "bench/perf/lsp-semantic/function.ms": "8f59b7e93c205937343f3371023a46f18352580ecb9e8c520e2118fe09d8fa6f",
+    "bench/perf/lsp-semantic/list.ms": "5ff519c5e42cfb70ffb3d13c8fab410ea88021c4506594752edc2d1101d32ff5",
+    "bench/perf/lsp-semantic/main.rs": "9dc66f96d8499853c31720ecfb521bc778f1cf49bb9e2b3d08fabe1853f6ae74",
+    "bench/perf/lsp-semantic/references.ms": "00b3a62b7aedbdc25c867667185e95831ce7eec0b5a824ccd87b41dc288830e7",
+    "bench/perf/lsp-outline/Cargo.lock": "590fa2db5fc2db2e66a578fba8869e4594afd3319a9ed153e286805d29b15206",
+    "bench/perf/lsp-outline/Cargo.toml": "62d2ba451747429eef5a43181d75eb29edd31b45e31a4d8ce9f027338fc99548",
+    "bench/perf/lsp-outline/compare.py": "799948aafbaabdc70f5ca76628c1ae06fd225cf3d83dfb74bcd288c14517a1b7",
+    "bench/perf/lsp-outline/function.ms": "8f59b7e93c205937343f3371023a46f18352580ecb9e8c520e2118fe09d8fa6f",
+    "bench/perf/lsp-outline/main.rs": "e3bc0a682bbd2c7075ae94b650d015a464a163b1babf8ec2822c606c719a9834",
+    "bench/perf/lsp-outline/references.ms": "00b3a62b7aedbdc25c867667185e95831ce7eec0b5a824ccd87b41dc288830e7",
+    "bench/perf/formatter-flow/Cargo.lock": "a51d17474618cf43db04824ed6954b5aac761b150d784c4dadf14cd2db4ea3ae",
+    "bench/perf/formatter-flow/Cargo.toml": "48725303e11603adfdf5279bdadc5548d499edf5441575dc4e3f26fa5543a38a",
+    "bench/perf/formatter-flow/clause.ms": "c28e44596db5fed8578623ed4a7d629f5574e1f96f43ebed066b13b00c2f7d19",
+    "bench/perf/formatter-flow/compare.py": "7575ec4e32a755238760e2ef3b1f7dfb6f09a4e255647e9c35e1581ba96853a9",
+    "bench/perf/formatter-flow/flow.ms": "b954d4986177f4b1778398e91f3e43db7882c32ef423a82d02743743bfde2010",
+    "bench/perf/formatter-flow/function.ms": "8f59b7e93c205937343f3371023a46f18352580ecb9e8c520e2118fe09d8fa6f",
+    "bench/perf/formatter-flow/inline.ms": "595be1669d80e640d4fc80a89e7b68b351502979291b2faf00c616e55336147a",
+    "bench/perf/formatter-flow/list.ms": "5ff519c5e42cfb70ffb3d13c8fab410ea88021c4506594752edc2d1101d32ff5",
+    "bench/perf/formatter-flow/main.rs": "9f5a516590d995cb994ab1980f46bc0c07a7aae5fe6378403d3f40055326ba9d",
+    "bench/perf/formatter-flow/member.ms": "c038d23aae683661d03d7c2e8830e90fd2caedcc1e08eaab8fb9b20f7fe98da4"
+  },
+  "additional_failed_native_jobs": [
+    {
+      "job": 124626059264,
+      "name": "linux-amd64 \u00b7 tests",
+      "step": 19,
+      "step_name": "Conformance corpus (Cranelift)"
+    },
+    {
+      "job": 124626059297,
+      "name": "linux-arm64 \u00b7 conformance",
+      "step": 17,
+      "step_name": "Conformance corpus (LLVM)"
+    }
+  ]
+}
