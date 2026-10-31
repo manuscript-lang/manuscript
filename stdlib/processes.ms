@@ -418,7 +418,7 @@ impl ProcessGroup[T, In, Out]:
         stdin: Stdio = Stdio.Inherit,
         stdout: Stdio = Stdio.Inherit,
         stderr: Stdio = Stdio.Inherit
-    )(Process[T, In, Out])!ProcessError:
+    ) Process[T, In, Out]!ProcessError:
         let runner: fn() Unit = fn: serve(entry)
         let native = try msstd_process_fork(runner, stdin, stdout, stderr).map_error(
             not_started

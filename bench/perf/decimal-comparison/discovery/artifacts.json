@@ -1,0 +1,36 @@
+{
+  "baseline": "3cfde58b6216ae4db54aeb3ae4e22ee7d527e323",
+  "candidate": "2fef66f08e0bf2db2ae6179d46ad318c7eb01524",
+  "settings": "Same saved combined compiler and native archives as ../results/combined-3cfde58b6/artifacts.json; explicit Cranelift Release, CPU0. Rust1.99.1 release opt3 with overflow checks/frame pointers, GNU target; num-bigint0.5.1.",
+  "status": "Known residual BigInt/primitive gaps; native ABI/ownership/backend investigation excluded. Not a clean numeric lane.",
+  "artifacts": {
+    "before_program": {
+      "sha256": "77a999f8e759f70bc31e04ea11ebab97f21557e60ddbb7f1e727c353c9b18c39",
+      "bytes": 737680
+    },
+    "after_program": {
+      "sha256": "77a999f8e759f70bc31e04ea11ebab97f21557e60ddbb7f1e727c353c9b18c39",
+      "bytes": 737680
+    },
+    "rust_program": {
+      "sha256": "adfdffe5e21d26ad1a2e985f9bbb79cb5dc1c7c300f491b80b86d17b810805a5",
+      "bytes": 558232
+    },
+    "ms_source": {
+      "sha256": "60287380e5149c6b63fde5405b6e3545c041898845526c6aa756dab28f2e8bb1",
+      "bytes": 1675
+    },
+    "rust_source": {
+      "sha256": "057c69d79dd81de47f20be10c7cd5ee82c0132f188ffcbdb4fad51146a354427",
+      "bytes": 1665
+    },
+    "harness": {
+      "sha256": "5a317d7c63bba16344ebae5d8a89e28b1598e243dfaf1d2a7a20b508daaf2dc1",
+      "bytes": 2454
+    },
+    "rust_lock": {
+      "sha256": "d9cba8befaa100f4b9b1873a4d92293c6efb2e29b8fef1a34174ca869cf60bb1",
+      "bytes": 1109
+    }
+  }
+}

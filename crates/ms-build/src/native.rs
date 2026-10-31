@@ -2,6 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::cache;
 use ms_clif::Options;
 use ms_mir::ir::Module;
 use ms_mir::opt::{Level, optimize};
@@ -84,6 +85,19 @@ pub fn build_executable(
     runtime: &Path,
     extra: &[PathBuf],
 ) -> Result<(), String> {
+    build_executable_cached(module, output, profile, runtime, extra, None)
+}
+
+/// [`build_executable`] that reuses an earlier executable from `cache` (a directory, created on
+/// demand) when every input of the build matches; `MS_CACHE=off` disables it.
+pub fn build_executable_cached(
+    module: &mut Module,
+    output: &Path,
+    profile: Profile,
+    runtime: &Path,
+    extra: &[PathBuf],
+    cache: Option<&Path>,
+) -> Result<(), String> {
     if let Some(missing) = extra.iter().find(|p| !p.is_file()) {
         return Err(format!(
             "--link {} does not name a file; pass an object (.o) or static library (.a)",
@@ -97,6 +111,16 @@ pub fn build_executable(
             text.join("\n")
         ));
     }
+    let timings = std::env::var_os("MS_TIMINGS").is_some_and(|v| v != "0");
+    let started = std::time::Instant::now();
+    let phase = |name: &str| {
+        if timings {
+            eprintln!(
+                "ms-timings: {name} done at {:.3}s",
+                started.elapsed().as_secs_f64()
+            );
+        }
+    };
     let (level, options) = profile.options();
     optimize(module, level, cfg!(debug_assertions));
     // Not an optimization: it keeps cancellation from leaking, so every profile runs it.
@@ -104,11 +128,7 @@ pub fn build_executable(
     if unwound && cfg!(debug_assertions) {
         verify_after(module, "unwind")?;
     }
-    let parts = ms_clif::compile_parts(module, &options).map_err(|e| {
-        format!(
-            "native code generation failed (this is a Manuscript bug, so report it with the source that triggers it; 'ms emit <file>' prints the lowered code): {e}"
-        )
-    })?;
+    phase("mir optimize");
 
     let directory = output
         .parent()
@@ -126,6 +146,50 @@ pub fn build_executable(
             let _ = std::fs::remove_dir_all(companion);
         }
     };
+
+    // A build whose inputs all match an earlier one reuses its executable.
+    let cache_mode = cache::mode();
+    let cache_dir = cache.map(Path::to_path_buf).unwrap_or_default();
+    let cache_key = if cache_mode == cache::Mode::Off || cache.is_none() {
+        None
+    } else {
+        let mut inputs: Vec<&Path> = extra.iter().map(PathBuf::as_path).collect();
+        inputs.push(runtime);
+        // Scopes, glue and closers are not all in the printed form; their `Debug` is ordered.
+        let text = ms_mir::print::print_module(module);
+        let rest = format!(
+            "{:?}{:?}{:?}{:?}",
+            module.funcs.iter().map(|f| &f.scopes).collect::<Vec<_>>(),
+            module.desc_glue,
+            module.shared_close,
+            module.vtables
+        );
+        cache::key(&[&text, &rest], &format!("{profile:?}"), output, &inputs)
+    };
+    phase("cache key");
+    let companion = ms_clif::link::debug_companion_path(&staged);
+    if let Some(key) = cache_key.as_deref()
+        && cache::restore(&cache_dir, key, &staged, companion.as_deref())
+        && cache_mode == cache::Mode::On
+    {
+        let published = publish(&staged, output);
+        cleanup();
+        phase("cache hit");
+        return published.map_err(|error| format!("cannot write {}: {error}", output.display()));
+    }
+    let verify_against = (cache_mode == cache::Mode::Verify && staged.is_file()).then(|| {
+        let expected = directory.join(format!("{stem}.expected"));
+        let _ = std::fs::rename(&staged, &expected);
+        expected
+    });
+
+    let parts = ms_clif::compile_parts(module, &options).map_err(|e| {
+        format!(
+            "native code generation failed (this is a Manuscript bug, so report it with the source that triggers it; 'ms emit <file>' prints the lowered code): {e}"
+        )
+    })?;
+    phase("codegen");
+
     if let Err(error) = std::fs::write(&object_path, parts.object) {
         cleanup();
         return Err(format!("cannot write {}: {error}", object_path.display()));
@@ -151,6 +215,17 @@ pub fn build_executable(
     if let Err(error) = linked {
         cleanup();
         return Err(error.to_string());
+    }
+    phase("link");
+    if let Some(expected) = verify_against {
+        let same = cache::same_bytes(&expected, &staged);
+        let _ = std::fs::remove_file(&expected);
+        if !same {
+            cleanup();
+            return Err("MS_CACHE=verify: the rebuilt executable differs from the cached one (this is a Manuscript bug)".into());
+        }
+    } else if let Some(key) = cache_key.as_deref() {
+        cache::store(&cache_dir, key, &staged, companion.as_deref());
     }
     publish(&staged, output).map_err(|error| {
         cleanup();

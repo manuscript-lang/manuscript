@@ -23,10 +23,12 @@ ms profile ms.toml --out-dir capture --top 10 -- arg1
 ```
 
 - Bare `ms` prints help. `ms version` and `ms --version` print the compiler version.
+- Command-line arguments must be valid UTF-8; invalid OS arguments return usage status 2.
 - Long options take `--output path` or `--output=path`; only the first `=` splits, so `--output=api=v1.md` writes `api=v1.md`. Required values cannot be empty.
 - Arguments after `--` are forwarded to the application unchanged.
 - Commands taking one source input also accept a project directory with `ms.toml`. Native commands select one application entrypoint.
 - `ms check <targets> --fix` and `ms lint <targets> --fix` apply available machine-applicable diagnostic fixes in place, then report what remains. They skip overlapping edits and cannot be combined with `--watch`. See the [diagnostic fix contract](source/diagnostics.md#json-diagnostics) for the supported repairs and JSON fields.
+- Final stdout handling reports failed writes or flushes with status 1 when the command would otherwise succeed. It preserves existing nonzero statuses and does not add a failure for a broken pipe.
 
 ## Rebuild on save
 
@@ -137,6 +139,7 @@ Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which pri
 
 - A directory with `ms.toml` selects that project.
 - A directory without one recursively selects `.ms` files, skipping hidden, `vendor`, and `node_modules` directories, directory symlinks, and nested projects. Select nested projects explicitly; explicitly selecting an excluded path is allowed. File symlinks must stay inside the directory.
+- Standalone directory discovery requires UTF-8 source filenames and visited directory names; invalid names are selection errors.
 - Files keep their ordinary import roots. Select `ms.toml` to get project aliases and project-wide checking.
 - Use `--` before filenames beginning with `-`. `fmt` keeps its own [directory and manifest discovery](source/formatting.md).
 

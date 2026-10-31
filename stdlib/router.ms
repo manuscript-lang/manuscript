@@ -412,7 +412,7 @@ fn route_step(
     index: Int,
     params: RouteParams
 ) fn(HttpExchange) Unit!HttpError:
-    return fn exchange: routes.get() [index].handler(exchange, params)
+    return fn exchange: routes.get()[index].handler(exchange, params)
 
 # Runs the matched route, or answers 404, 405 or the OPTIONS listing.
 fn finish(
@@ -422,7 +422,7 @@ fn finish(
     exchange: HttpExchange
 ) Unit!HttpError:
     if let index = found.found:
-        let around = routes.get() [index].around.clone()
+        let around = routes.get()[index].around.clone()
         return chain(
             around, 0, exchange, route_step(routes, index, found.params.clone())
         )
