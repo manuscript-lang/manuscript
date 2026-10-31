@@ -1,299 +1,251 @@
-# Foreign functions: binding C libraries such as libuv
+# Foreign functions: a hardened native ABI for C libraries such as libuv
 
 ## Summary
 
-- Problem: a program cannot call a C library such as libuv: `extern fn` takes only `Int`, `Float`, `Bool` and borrowed `String`, so every pointer, `int`, struct and callback needs a hand-written C shim against `ms_abi.h`.
-- Change: user `extern fn` accepts the sized numeric types and a new `Pointer` scalar; a new `@std/native.ms` adds `Pointer` reads and writes, an owned `Memory` block, `callback(f)` (a C function pointer for a top-level `fn` or an extern), a way to hand a `Shared[T]` to C as `void *` user data, and `on_stop` so a stop request can wake a loop blocked in C. All of it is ordinary Manuscript over about a dozen small runtime primitives. Linking stays `--link`.
-- Cost: one scalar type, one checker rule (`callback` names a top-level `fn` or an extern), a C-ABI entry per callback function, extension attributes on narrow integer arguments, one stdlib module. No new syntax, keyword or manifest table.
-- Decision requested: approve the design and the four open questions (whether `Pointer` is a new type, `Pointer` method names, cancellation inside callbacks, and how bindings declare their native inputs).
+- Problem: a program cannot use a C library such as libuv. `extern fn` crosses only `Int`, `Float`, `Bool` and borrowed `String`, natives cannot hand Manuscript a resource, and errors lose their text.
+- Change: C things stay in C, Manuscript things in Manuscript. A binding is a small C shim written against a versioned, public `ms_abi.h`, plus a Manuscript module of typed `extern` declarations. The ABI grows by what libuv needs: sized numbers and `Bytes`, user `extern type` handles that C allocates and Manuscript owns, errors with a message, and a stop hook.
+- Events are pulled, not pushed: libuv's C callbacks queue events inside the shim, and Manuscript reads them as values with `for event in loop:`. No Manuscript code ever runs inside C, so there is no callback ABI, fault barrier or re-entrancy rule to define.
+- Manuscript code stays memory safe and reads like any other: handles close at scope end, events are a Manuscript `type`, failures flow through `try` and `match`. No `Pointer`, no raw memory, no new syntax.
+- Decision requested: approve the direction and the three open questions.
 
 ## Status
 
 - Proposal, 2026-10-31, checked against `d4a94aa9`. Nothing implemented.
-- Request (Chinmay, 2026-10-31): "design a process /ffi to enable integrating with other external software"; "use case could be to integrate with libuv for instance"; "by process i meant a way for manuscript to do this, not a computer running [processes]". So this covers the FFI only; child processes are out of scope. libuv is the worked example and the acceptance test.
-- Standing direction: Manuscript first (stdlib `.ms`, Rust only for small general primitives); Linux, macOS and Windows parity; native identity is the declared name (`bindings.json` removed, "the Manuscript name is the symbol, no `as`"); one `Closeable` whose `close()` returns `Unit!`; `T!E` result shorthand.
-- Builds on: `extern fn` (#1136, #1138; `documentation/core-language/functions/native-functions.md`), sized and unsigned numeric types (`proposals/sized-numeric-types.md`, `proposals/unsigned-integer-types.md`), `Shared[T]` (`stdlib/shared.ms`), workers (`proposals/worker-threads.md`), the bundled linker (`proposals/bundled-linker.md`), and the earlier extern review, whose "narrow v1" (scalars and borrowed strings) this extends.
-- Prior open idea, "generic extern fn and a callback marker": resolved below with no new language feature (see Design, "Generic externs and kept callbacks").
-- Skeptical review, 2026-10-31 (independent subagent, against source): build with changes. Folded in: the isolate check uses the isolate registration (`msrt_isolate_hdr` never returns null, `crates/ms-rt/src/fault.rs:100`); `on_stop` added because a loop blocked in C never polls cancellation; `Memory.release` is a `var fn` that empties the block, like `SharedGuard`; a callback fault is a barrier, not a guard; pins are generation-tagged handles, so a double take faults; the `[link]` table is dropped (the manifest reader takes only string values in `[project]`/`[aliases]`, and the program's manifest, not the binding's, would carry it); the example closes the handle through the loop when `uv_timer_start` fails.
+- Direction (Chinmay, 2026-10-31): "design a process /ffi to enable integrating with other external software"; "use case could be to integrate with libuv for instance"; "by process i meant a way for manuscript to do this"; "should we harden the ms abi instead of brining all unsafe behavior into ms?"; "ms is supposed to be the language where code will flow like a stream"; "keep c things in c and ms things in ms".
+- History (git): the first draft put `Pointer`, raw `Memory`, function pointers and pinned `Shared` values in Manuscript; replaced per the direction above. The second draft let C keep and call Manuscript closures.
+- Skeptical reviews (independent subagents, against source), both "revise":
+  - First draft: callbacks must check isolate registration, not `msrt_isolate_hdr()` (`crates/ms-rt/src/fault.rs:100` never fails); a loop blocked in C needs a stop hook; Windows needs more import libraries; a `[link]` manifest table does not help vendored bindings. Kept below.
+  - Second draft: closure code does not follow the C ABI beyond scalar arguments and one scalar result (`call_closure`, `crates/ms-clif/src/lower.rs:2847`, multi-value returns via implicit sret, `cg.rs:599`); `extern type` needed a lifetime rule because `uv_close` is asynchronous; the pull-based design was the unevaluated smallest version and removes all callback machinery; the error message needs an out-parameter, not hidden state. All folded in; callbacks are deferred (Alternatives).
+- Standing direction: Manuscript first (Rust only for small general primitives); Linux, macOS and Windows parity; the declared name is the symbol (no `as`, `bindings.json` removed); one `Closeable` whose `close()` returns `Unit!`; `T!E` shorthand.
 
 ## Problem
 
-- Verified: a binding cannot declare libuv's own signatures today.
+- Verified: the types a user extern may use are fixed (`crates/ms-check/src/checker.rs:1268`):
 
   ```text
   extern fn uv_timer_init(loop: Int, timer: Int) Int32
   a.ms:1:48: type: extern result has type Int32, which cannot cross the native boundary; return Int, Float, Bool, String, Unit, or a Result of them
   ```
 
-  The argument list is `Int`, `Float`, `Bool`, `String` (`crates/ms-check/src/checker.rs:1268`). `Int32` and `UInt64` now exist in the language but cannot cross.
-- Verified: there is no way to get a C function pointer for a Manuscript function. libuv reports every event through one (`uv_timer_cb`, `uv_connection_cb`, `uv_read_cb`, `uv_close_cb`).
-- Verified: there is no memory a C library may keep. `Bytes` and `List` move bitwise and reallocate (ABI.md section 4), so their address is not stable; libuv keeps a `uv_tcp_t *` until its close callback runs.
-- Verified: native inputs come only from `--link <file>` on each command (`crates/ms-cli/src/invocation.rs:36`). That is enough for one program; how a reusable binding declares its archives is left open (Open question 4).
-- Consequence: integrating libuv, SQLite, libcurl, zlib or a vendor SDK today means writing and compiling C for every function that touches a pointer. That is the opposite of Manuscript first, and an agent writing the binding needs two languages and a C toolchain.
-- Non-goals:
-  - Structs passed or returned by value, variadic functions (`printf`), C `long` (32-bit on Windows, 64-bit elsewhere), and bitfields. These keep using a C shim.
-  - Callbacks from threads Manuscript does not run (libuv's `uv_queue_work` work callback). Use a worker isolate instead.
-  - Dynamic loading (`dlopen`, `LoadLibrary`). Linux executables are static musl without `dlopen` (`proposals/bundled-linker.md`), so it cannot be at parity.
-  - Generating bindings from C headers. A later tool can emit the `.ms` this design defines.
-  - Exposing Manuscript functions to C programs that link a Manuscript library.
-  - Child processes (`@std/process.ms`, `@std/processes.ms`): unchanged.
+- Verified: `extern type` is rejected outside bundled modules (`checker.rs:732`), so a native cannot return a libuv loop or timer as a typed value that closes itself.
+- Verified: an extern error type must be payload-free (`checker.rs:1306`), so `uv_strerror` text is lost.
+- Verified: `ms_abi.h` is 33 lines and declares only `ms_str` and `msrt_string_from_bytes` (`crates/ms-rt-abi/include/ms_abi.h`). Handles, bytes, faults and cancellation are internal Rust.
+- Why not move the unsafety into Manuscript: every binding would do address arithmetic, casts and manual frees in `.ms`. Building libuv already needs a C compiler, so a shim adds a file, not a toolchain.
+- Non-goals: dynamic loading (`dlopen` is unavailable in static musl executables, `proposals/bundled-linker.md`); C calling Manuscript code (deferred, Alternatives); calling into a library from a thread Manuscript does not run; generating shims from headers.
 
 ## Design
 
-The rule: **a C library is bound in Manuscript.** A binding module declares the library's functions as `extern fn` with their real C types, keeps them private, and exports ordinary Manuscript types and functions over them. `@std/native.ms` supplies the few things Manuscript cannot express itself: an address, memory at a stable address, a function pointer, and a reference that C can hold.
+The rule: **unsafe code lives in native code; the ABI is the safe contract between them.** A native receives and returns only Manuscript values whose ownership the ABI defines, and it never runs Manuscript code.
 
-### Types that cross
+### What crosses the boundary
 
-| Manuscript | C |
-| --- | --- |
-| `Int8`, `Int16`, `Int32`, `Int64`/`Int` | `int8_t` ... `int64_t` (`int` is `Int32`) |
-| `UInt8`, `UInt16`, `UInt32`, `UInt64` | `uint8_t` ... `uint64_t` (`size_t` and `uintptr_t` are `UInt64`) |
-| `Float32`, `Float`/`Float64` | `float`, `double` |
-| `Bool` | `bool` (`_Bool`, one byte) |
-| `Pointer` | any `T *`, including function pointers and `void *` |
-| `Unit` result | `void` |
-| `String` argument, `String` and `Result` results | unchanged: the existing `ms_str` conventions for shims written against `ms_abi.h` |
+| Manuscript | C (`ms_abi.h`) | Ownership |
+| --- | --- | --- |
+| `Int8` ... `Int64`, `UInt8` ... `UInt64`, `Float32`, `Float`, `Bool` | `int8_t` ... `uint64_t`, `float`, `double`, `bool` | by value |
+| `String`, `Bytes` argument | `const ms_str *`, `const ms_bytes *` | borrowed for the call |
+| `String`, `Bytes` result | trailing `ms_str *out`, `ms_bytes *out` | owned by Manuscript, built with `ms_string_new`, `ms_bytes_new` |
+| `extern type H` argument | `ms_object *` | borrowed; `ms_retain` to keep it |
+| `extern type H` result | `ms_object *` from `ms_object_new` | owned by Manuscript |
+| `Result[T, E]` result | `uint8_t` status, `T` through `out` | as today; plus a message out-parameter (below) |
 
-- Arguments are passed in registers or on the stack exactly as the platform C ABI says (System V on Linux and macOS x86_64, AAPCS64 on arm64, Microsoft x64 on Windows). Code generation adds sign or zero extension to narrow arguments and results; today only `I8` gets `uext` (`crates/ms-clif/src/cg.rs:14`), and Apple arm64 requires the caller to extend.
-- An extern still cannot be generic, take defaults or `var` parameters, or be a method (`native-functions.md`).
-- Everything else is rejected with the existing diagnostic, whose list of types grows.
+- Narrow integers are sign- or zero-extended as the platform C ABI requires (Apple arm64 requires the caller to). Today only `I8` gets `uext` (`crates/ms-clif/src/cg.rs:14`); signed types get `sext`.
+- Still rejected for user externs: generics, `var` parameters, defaults, function values, records, lists, maps, optionals. The Manuscript side of a binding builds those from the types above.
+- The `msrt_`/`msstd_` prefixes stay reserved (`checker.rs:1257`). The header's public names are `ms_*`, thin aliases in `ms-rt`, so internal names can change behind them.
 
-### `@std/native.ms`
+### Handles: `extern type`
 
-```manuscript
-# A machine address. Copying it copies the address; it owns nothing.
-export type Pointer          # a scalar, like UInt64 (see Open questions)
+- `ms_object *ms_object_new(size_t size, void (*drop)(void *payload))` returns a runtime object (`Obj { rc, drop }`, ABI.md section 2) followed by one word holding the shim's `drop` and then `size` bytes of payload, zeroed and 16-byte aligned. `ms_payload(obj)` returns the payload address, which never moves, so a library may keep a pointer into it (a `uv_timer_t`).
+- When the last reference goes, the runtime calls the shim's `drop(payload)` and then frees the object. A drop function may only release native resources and call `ms_release`; it must not call into a library that can run callbacks.
+- Lifetime rule for libraries that finish asynchronously: while a library may still touch a payload, the shim holds its own reference (`ms_retain(obj)`), and it releases that reference in the library's completion callback. For libuv: retain at `uv_timer_init`, `uv_close` in the handle's `close()`, `ms_release` in the close callback. A handle also retains its loop.
+- A loop is `Closeable`: its `close()` runs the loop until every closing handle has finished (`uv_run` until `uv_loop_close` stops returning `UV_EBUSY`), so close callbacks run and the last references drop before the loop's memory goes.
+- Counts are isolate-local, like every count in the runtime: a shim touches a handle only on the isolate that passed it.
 
-impl Pointer:
-    fn is_null() Bool
-    fn offset(bytes: Int) Pointer
-    # Reads or writes a T at `offset` bytes. T is a numeric type, Bool or Pointer.
-    # Unchecked: a wrong address is undefined behavior, like in C.
-    fn read[T: NativeValue](offset: Int = 0) T
-    fn write[T: NativeValue](value: T, offset: Int = 0) Unit
-    fn read_bytes(length: Int, offset: Int = 0) Bytes
-    fn c_string_length() Int                   # strlen
-    fn to_shared[T]() Shared[T]                # see "Handing state to C"
-    fn take_shared[T]() Shared[T]
+### Errors with a message
 
-export fn null_pointer() Pointer
+- An error type may have one case whose only field is `message: String`. Its extern gets a trailing `ms_str *message_out` after `out`. A native returns that case's status (case index + 1, as today) and writes the message with `ms_string_new` into `message_out`; for other statuses it leaves it unwritten. This extends the status-and-out convention of ABI.md section 1 and keeps no hidden state.
 
-# Memory at a stable address from the C allocator, zeroed, freed on close.
-export type Memory:
-    pointer: Pointer
-    size: Int
+### Events are values
 
-impl Memory:
-    fn read[T: NativeValue](offset: Int = 0) T     # faults when offset + size of T > size
-    fn write[T: NativeValue](value: T, offset: Int = 0) Unit
-    var fn release() Pointer                       # C now owns it: the block becomes empty and closing it frees nothing
-
-impl Closeable for Memory                          # close frees; ok(unit)
-
-export fn allocate(size: Int) Memory
-export fn c_string(text: String) Memory            # UTF-8 bytes plus NUL
-export fn free(pointer: Pointer) Unit              # C free(); also frees what a library malloc'd
-
-export fn to_pointer[T](box: Shared[T]) Pointer
-export fn callback[F](function: F) Pointer         # F names a top-level fn or an extern; checker rule below
-
-# Calls `function(argument)` when a stop is requested for this isolate; closing the hook removes it.
-export fn on_stop(function: Pointer, argument: Pointer) StopHook
-export type StopHook                                # Closeable
-```
-
-- `Pointer` is unchecked by nature. The rest of the language stays memory safe; `import ... from "@std/native.ms"` is the visible boundary, and `ms review` lists modules that import it as native boundaries (inspection already treats extern calls as external, `wiki/tooling-and-docs/project-review-must-keep-library-internals-behind-their-boun.md`).
-- `Memory` is the safe way to own C memory: reads and writes are bounds-checked, close frees it at scope end, and `release()` is the one explicit hand-off to C. `release` follows `SharedGuard.held` in `stdlib/sync.ms`: it returns the pointer and leaves the block empty, so the binding must be `var` and its scope-end close frees nothing. It comes from libc `malloc` (musl on Linux, the UCRT on Windows, libSystem on macOS) and never from the runtime's per-isolate arena (`crates/ms-rt/src/glue/pool.rs` explains why arena blocks must not be freed by another thread), so C may `free` it and Manuscript may `free` what C allocated.
-- `NativeValue` is a marker interface (like `Copy`) implemented by the numeric types, `Bool` and `Pointer`; it is how `read[Int32]` is limited to scalars without a method per type.
-- Implemented in `.ms` over runtime primitives: `msrt_native_alloc`, `msrt_native_free`, `msrt_native_load_<n>`/`store_<n>` (1, 2, 4, 8 bytes), `msrt_native_strlen`, `msrt_native_copy_bytes`, `msrt_native_pin`, `msrt_native_pinned`, `msrt_native_unpin`, `msrt_native_on_stop`, `msrt_native_stop_hook_close`. Bounds checks, `c_string`, string decoding and `Memory` are Manuscript. Hot loads can become intrinsics later, after a measurement.
-
-### Callbacks
-
-```manuscript
-fn on_tick(timer: Pointer) Unit:       # a top-level fn whose types all cross
-    ...
-
-uv_timer_start(timer, callback(on_tick), 10, 10)
-```
-
-- `callback(f)` returns a C function pointer with `f`'s signature. The compiler emits one C-ABI entry per function named by a `callback` call; calling it twice gives the same pointer. Functions already use the platform C calling convention (`make_signature` in `crates/ms-clif/src/cg.rs`), so the entry is a thin wrapper, and the LLVM backend translates the same IR. For an `extern fn`, `callback` is the symbol's address with no entry, which is how `on_stop` gets `uv_async_send`.
-- Checker rule, the same shape as worker and process entries (`crates/ms-check/src/calls.rs:455`, `:547`): the argument must name a top-level, non-generic `fn` or an `extern fn` whose parameters and result are `NativeValue` types or a `Unit` result. Proposed diagnostic: `a native callback must be the name of a top-level fn; C keeps only a code address, so a closure's captured values cannot come with it. Pass state as a Pointer from to_pointer instead`.
-- No captures, so no closure is kept alive and no ownership marker is needed: state travels through the library's `void *` user-data slot.
-- Where it runs: on the thread that called into C, which must be a Manuscript isolate (the main isolate or a worker) currently inside an extern call. The entry checks the thread's isolate registration (`isolate::CURRENT`, `crates/ms-rt/src/isolate.rs:51`), not `msrt_isolate_hdr()`, which falls back to a thread-local root header and never fails (`fault.rs:100`). A call from any other thread, or from a stop hook, writes `native callback ran on a thread Manuscript does not run; call this library from a worker instead` and exits 67. The check comes before any generated code that masks the stack pointer to find its task header (ABI.md section 7).
-- Faults: the entry is a barrier. A fault inside a callback hides every enclosing guard and behaves as an unguarded fault: all cleanups run (including the outer ones, such as process-group kills), the report is written, and the process exits 67. It never jumps through C frames, because C has no landing pads and the library's state would be left half-updated. In a worker this ends the whole process, not just the worker; a binding that must survive a fault keeps its callbacks small and returns errors as values.
-- Cancellation: the body runs shielded (the existing cleanup shield), so it finishes and returns a value to C. The request is seen at the first poll after the outer `extern` call returns. A loop blocked in C never returns by itself, so `on_stop` (below) is how a binding makes it return. The 30 s forced exit still bounds a callback that never returns.
-- A callback may park (wait on a channel, sleep): tasks are stackful, so the C frames below it stay intact. Another task may then call into the same library; whether that is safe is the library's rule, and the binding documents it.
-- Fault traces: frames are walked by frame pointer; C code built without them truncates the trace at the C frame. Documented, not fixed.
-
-### Handing state to C
-
-- `to_pointer(box)` gives C one reference to a `Shared[T]` and returns a handle, not an address: an index into a per-isolate pin table plus a generation, packed into the pointer's bits. The entry records the box and `T`'s type descriptor (descriptors are interned per type, `desc_ids` in `crates/ms-clif/src/cg.rs`; generic bundled externs already receive them, ABI.md section 8).
-- `pointer.to_shared[T]()` returns a new reference and leaves C's in place (for callbacks that run many times). `pointer.take_shared[T]()` returns C's reference to Manuscript and retires the entry (for the last callback, typically close).
-- Both fault, with no memory read outside the table, when the handle belongs to another isolate or an earlier occupant of its slot (the generation differs; `Shared` counts are not atomic), was already taken, or was made for another `T`. A wrong cast or a double take is a fault, never memory corruption.
-- A pin that is never taken leaks one reference, like a `Shared` cycle (ABI.md section 2).
-
-### Calls that block
-
-- An extern call runs to completion on the calling isolate's thread. A call that blocks, such as `uv_run` or `sqlite3_step`, stalls every task on that isolate, and cancellation waits for it to return.
-- The answer is the existing one: run the library in a worker (`WorkerGroup.spawn`), and talk to it over the worker's channel. No blocking-call marker or thread hand-off is added, because callbacks must run on the isolate that called in.
-- For libuv specifically, the main isolate wakes a loop running in a worker with `uv_async_send`, the one libuv function that is safe from any thread.
+- A library's C callbacks write into a queue inside the shim's loop payload. They never call Manuscript.
+- The shim exposes `next` as one extern: if the queue is empty, it runs `uv_run(loop, UV_RUN_ONCE)` until an event is queued or nothing is left to run, then returns the event kind (0 for none), with accessors for the current event's fields (`Int`, `Bytes`, `String`).
+- The Manuscript module turns kinds into a Manuscript `type` and implements `Iterator` (`stdlib/core.ms:77`), so a program walks events with `for` and `match`, like a stream. Errors are an event case, so the walk stays flat.
+- Blocking: `next` blocks its isolate while libuv waits. A program whose main loop is libuv runs it on the main isolate; one that also serves other tasks runs it in a worker (`WorkerGroup.spawn`) and exchanges values over the worker's channel. Integrating with the runtime poller (`uv_backend_fd`) is not possible on Windows, where libuv uses IOCP (Alternatives).
 
 ### Stopping a loop blocked in C
 
-- A stop request (SIGINT, SIGTERM, `Worker.cancel`, a task group's cancellation of the worker) only sets a flag that Manuscript code polls (ABI.md section 7). Code blocked in `uv_run` never polls, so without help every Ctrl-C ends in the 30 s forced exit.
-- `on_stop(function, argument)` registers a C function that the runtime calls as `function(argument)` at the moment a stop is requested for this isolate, from the requesting context: the signal handler for signals, the cancelling thread for `Worker.cancel`. It must therefore be async-signal-safe and thread-safe; `uv_async_send` is documented as both. Closing the `StopHook` unregisters it.
-- libuv pattern: an `uv_async_t` whose callback calls `uv_stop(loop)`, registered with `on_stop(callback(uv_async_send), wake)`. `uv_run` returns, the extern call returns, and the next poll unwinds with the usual cleanups.
-- A Manuscript `callback` pointer passed as `function` faults when called (the entry's thread check), since a stop hook runs outside the isolate.
+- A stop request (SIGINT, SIGTERM, `Worker.cancel`) sets a flag that Manuscript polls (ABI.md section 7); code blocked in `uv_run` never polls, so without help Ctrl-C ends in the 30 s forced exit.
+- `ms_stop_hook *ms_on_stop(void (*fn)(void *), void *arg)` registers a function the runtime calls when a stop is requested for this isolate; `ms_on_stop_remove(hook)` unregisters it. It runs in the requesting context: a signal handler on Linux and macOS, the console-control thread on Windows, the cancelling thread for `Worker.cancel`. So it must be async-signal-safe and thread-safe; `uv_async_send` is documented as both. Registration uses the lock-free reader-count pattern of `PublishedHdr` (`fault.rs`).
+- libuv shim: the loop's `uv_async_t` callback calls `uv_stop`; `uv_run` returns; `next` returns none; the next poll in Manuscript unwinds with the usual cleanups and exit status 130 or 143.
 
-### Linking
+### Versioning
 
-- Unchanged: `--link <file>` (repeatable) names objects and static archives. Archives must match the bundled toolchain: musl on Linux, mingw (`gnullvm`, UCRT) on Windows (`proposals/bundled-linker.md`). A Windows archive built against `msvcrt.dll` would `free` from another heap.
-- Windows: the bundle embeds a fixed set of import libraries (`crates/ms-clif/src/link/lld.rs:240`); libuv also needs `iphlpapi`, `psapi` and `ole32`. Stage 3 adds those three from the same llvm-mingw release; a general way to name system libraries is Open question 4.
-- macOS: undefined symbols bind to libSystem unless they start with `_Sec` or `_CF` (`crates/ms-clif/src/link/macos_stubs.rs:32`). libuv needs nothing else; a library using another framework (IOKit, SystemConfiguration) is not supported yet and the documentation says so.
-- The documentation gives the libuv `cmake` line per platform.
-- libuv installs `SIGCHLD` handling for `uv_spawn` and `SIGINT` handling for `uv_signal_t`; the documentation says to use `@std/process.ms` for child processes and signals instead, so the runtime's handlers stay in charge.
+- `ms_abi.h` defines `MS_ABI_VERSION`, numbered separately from the internal ABI.md version. `MS_ABI_CHECK()` in a shim references the symbol `ms_abi_v<N>`, which only a matching runtime defines, so a mismatch fails at link time with that name. Static linking makes this sufficient.
+- The header states the shim rules once: never free or reallocate a Manuscript string, bytes or object; build results only with the `ms_*_new` constructors; keep no borrowed `ms_str`/`ms_bytes` pointer past return; touch Manuscript values only on the isolate that passed them; never block a drop function.
 
 ### Worked example: a libuv timer
 
-Checked with `ms check` against stubs (externs written as placeholder `fn`s, since today's checker rejects their types; `@std/native.ms` stubbed as a local module).
+Manuscript side. Checked with `ms check` against stubs (records stand in for the two `extern type`s and placeholder `fn`s for the externs, since today's checker rejects both):
 
 ```manuscript
-import Pointer, Memory, allocate, callback, free, null_pointer, to_pointer from "@std/native.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import Closeable, Iterator from "@std/core.ms"
 
-extern fn uv_default_loop() Pointer
-extern fn uv_handle_size(kind: Int32) UInt64
-extern fn uv_timer_init(loop: Pointer, timer: Pointer) Int32
-extern fn uv_timer_start(timer: Pointer, on_tick: Pointer, timeout: UInt64, repeat: UInt64) Int32
-extern fn uv_handle_set_data(handle: Pointer, data: Pointer) Unit
-extern fn uv_handle_get_data(handle: Pointer) Pointer
-extern fn uv_close(handle: Pointer, on_close: Pointer) Unit
-extern fn uv_run(loop: Pointer, mode: Int32) Int32
-extern fn uv_strerror(code: Int32) Pointer
+export extern type Loop
+export extern type Timer
 
-let UV_TIMER: Int32 = 13
-let UV_RUN_DEFAULT: Int32 = 0
-
-# A failed libuv call: its negative status and libuv's description.
+# A failed libuv call, with libuv's description.
 export type UvError:
-    case Failed(code: Int32, message: String)
+    case Failed(message: String)
 
 impl Error for UvError:
     fn message() String:
         match self:
-            Failed(code, message): return "libuv error {code}: {message}"
+            Failed(message): return "libuv: {message}"
 
-fn check(status: Int32) Unit!UvError:
-    if status >= 0:
+# What the loop reported, in order.
+export type Event:
+    # A timer fired; `timer` is its `id()`.
+    case Tick(timer: Int)
+    # The loop failed; iteration ends after this.
+    case Problem(error: UvError)
+
+extern fn msuv_loop_new() Loop!UvError
+extern fn msuv_loop_next(loop: Loop) Int32!UvError
+extern fn msuv_loop_event_timer(loop: Loop) Int
+extern fn msuv_loop_close(loop: Loop) Unit!UvError
+extern fn msuv_timer_new(loop: Loop, every_ms: UInt64) Timer!UvError
+extern fn msuv_timer_id(timer: Timer) Int
+extern fn msuv_timer_close(timer: Timer) Unit
+
+let EVENT_NONE: Int32 = 0
+let EVENT_TICK: Int32 = 1
+
+impl Iterator[Event] for Loop:
+    # Runs the loop until the shim has queued an event; none once nothing is left to run.
+    var fn next() Event?:
+        let kind = msuv_loop_next(self)
+        if kind.is_error():
+            return Event.Problem(kind.err())
+        let code = kind.get(EVENT_NONE)
+        if code == EVENT_TICK:
+            return Event.Tick(msuv_loop_event_timer(self))
+        return none
+
+impl Closeable for Loop:
+    # Runs the loop until every closed handle has finished, then frees it.
+    var fn close() Unit!:
+        try msuv_loop_close(self)
         return ok(unit)
-    let text = uv_strerror(status)
-    let bytes = text.read_bytes(text.c_string_length())
-    return error(UvError.Failed(status, bytes.decode_utf8().get("?")))
 
-# Counts ticks; the timer stops itself after `limit`.
-export type Ticks:
-    count: Int
-    limit: Int
+impl Timer:
+    fn id() Int: msuv_timer_id(self)
 
-# Runs on the loop's thread each time the timer fires.
-fn on_tick(timer: Pointer) Unit:
-    let state = uv_handle_get_data(timer).to_shared[Ticks]()
-    var ticks = lock(state)
-    ticks.value.count += 1
-    if ticks.value.count == ticks.value.limit:
-        uv_close(timer, callback(on_closed))
+impl Closeable for Timer:
+    var fn close() Unit!:
+        msuv_timer_close(self)
+        return ok(unit)
 
-# libuv is done with the handle: take back the state reference and free the memory.
-fn on_closed(handle: Pointer) Unit:
-    let _state = uv_handle_get_data(handle).take_shared[Ticks]()
-    free(handle)
-
-# Fires every `every_ms` until `limit` ticks, then returns the final count.
+# Fires every `every_ms` until `limit` ticks, then returns the count.
 export fn count_ticks(limit: Int, every_ms: UInt64) Int!UvError:
-    let loop = uv_default_loop()
-    let state = share(Ticks(count: 0, limit: limit))
-    var memory = allocate(uv_handle_size(UV_TIMER).to_int().get(0))
-    try check(uv_timer_init(loop, memory.pointer))
-    # The loop now lists the handle, so only on_closed may free it.
-    let timer = memory.release()
-    uv_handle_set_data(timer, to_pointer(state))
-    let started = check(uv_timer_start(timer, callback(on_tick), every_ms, every_ms))
-    if started.is_error():
-        # Close through the loop so on_closed frees the handle and the pin.
-        uv_close(timer, callback(on_closed))
-        try check(uv_run(loop, UV_RUN_DEFAULT))
-        return error(started.err())
-    try check(uv_run(loop, UV_RUN_DEFAULT))
-    return ok(state.get().count)
+    var loop = try msuv_loop_new()
+    let _timer = try msuv_timer_new(loop, every_ms)
+    var count = 0
+    for event in loop:
+        match event:
+            Tick(_):
+                count += 1
+                if count == limit:
+                    return ok(count)
+            Problem(failure):
+                return error(failure.clone())
+    return ok(count)
 ```
 
-- `uv_handle_set_data`/`get_data` (libuv 1.19+) avoid hard-coding the `data` field offset. Where a layout must be written by hand (`uv_buf_t` is `{base, len}` on Unix and `{ULONG len, base}` on Windows), the binding branches on `os_type()`; parity of the binding is the binding's job, parity of the mechanism is ours.
-- If `uv_timer_init` fails, `memory` is still owned and its scope end frees it. Once init succeeds the loop lists the handle, so it is released at once and every later path, including a failed `uv_timer_start`, ends in `uv_close` and `on_closed`.
-- The example uses `uv_default_loop()` for brevity; in a worker, a binding allocates its own loop with `uv_loop_init` on `Memory`, since the default loop is one per process.
-- A TCP echo server adds `uv_tcp_t`, `uv_buf_t` and the read and write callbacks with the same tools; with a worker-hosted loop and `on_stop` it is the stage 3 fixture.
+C side, `uv_shim.c` (illustrative; stage 2 compiles it on all three platforms). The parts that touch memory, layout and libuv's lifetimes:
 
-```text
- Manuscript task stack                          C (libuv)
- count_ticks ── extern call ─────────────────▶ uv_run
-                                                 │ timer fires
- on_tick entry (isolate check, shield, guard) ◀──┤ via callback(on_tick)
-   to_shared → lock → count += 1                 │
-   ── return to C ─────────────────────────────▶ │
- on_closed entry ◀───────────────────────────────┤ uv_close callback
-   take_shared, free(handle) ──────────────────▶ │
- count_ticks ◀─────────────────────────────────── uv_run returns
+```c
+#include <string.h>
+#include <ms_abi.h>
+#include <uv.h>
+MS_ABI_CHECK();
+
+typedef struct { uv_loop_t uv; int64_t queue[64]; int head, tail; int64_t current; } Loop;
+typedef struct { uv_timer_t uv; ms_object *self, *loop; } Timer;
+
+static void on_tick(uv_timer_t *uv) {              /* C only: queue, never call Manuscript */
+    Timer *t = (Timer *)uv;
+    Loop *l = ms_payload(t->loop);
+    l->queue[l->tail++ % 64] = (int64_t)(intptr_t)t;
+}
+
+static void on_closed(uv_handle_t *uv) {           /* libuv is done: drop the shim's references */
+    Timer *t = (Timer *)uv;
+    ms_release(t->loop);
+    ms_release(t->self);
+}
+
+uint8_t msuv_timer_new(ms_object *loop, uint64_t every_ms, ms_object **out, ms_str *message_out) {
+    ms_object *self = ms_object_new(sizeof(Timer), NULL);
+    Timer *t = ms_payload(self);
+    int rc = uv_timer_init(&((Loop *)ms_payload(loop))->uv, &t->uv);
+    if (rc == 0) rc = uv_timer_start(&t->uv, on_tick, every_ms, every_ms);
+    if (rc < 0) {
+        const char *text = uv_strerror(rc);
+        ms_string_new((const uint8_t *)text, strlen(text), message_out);
+        ms_release(self);   /* real shim: uv_close first if init succeeded */
+        return 1;           /* UvError.Failed */
+    }
+    t->self = ms_retain(self);                     /* held until on_closed */
+    t->loop = ms_retain(loop);
+    *out = self;
+    return 0;
+}
+
+void msuv_timer_close(ms_object *self) {
+    Timer *t = ms_payload(self);
+    if (!uv_is_closing((uv_handle_t *)&t->uv)) uv_close((uv_handle_t *)&t->uv, on_closed);
+}
 ```
 
-### Generic externs and kept callbacks
-
-- Generic `extern fn` already works in bundled modules: `msrt_list_distinct[T]`, `msrt_json_parse[T]`, `msrt_obj_share[T]` pass one descriptor per type parameter (ABI.md section 8). User externs stay non-generic, because a C function cannot take a Manuscript descriptor. Nothing to add.
-- The callback marker was meant to replace `KEPT_CALLBACKS` (`crates/ms-check/src/stdlib.rs:94`), the three bundled externs that store a closure. User callbacks never pass a closure (a `callback` pointer captures nothing), so user FFI does not need the marker, and three internal entries do not justify syntax. Recommendation: keep the list.
+- The unsafe parts (struct layout, casts, `uv_close` lifetimes, `uv_buf_t` differing between Unix and Windows) are in C, where libuv's headers describe them correctly per platform.
+- The Manuscript side has no address, size or cast: handles close at scope end, events are values, failures are `Result`s.
+- Build: `cc -c -I <ms>/include -I <libuv>/include uv_shim.c`, then `ms build main.ms --link uv_shim.o --link libuv.a`. Archives must match the bundled toolchain (musl on Linux, mingw UCRT on Windows, `proposals/bundled-linker.md`); the documentation gives the commands per platform.
+- Windows: libuv also needs `iphlpapi`, `psapi` and `ole32`, which the bundle does not embed today (`crates/ms-clif/src/link/lld.rs:240`); stage 2 adds them.
+- A TCP echo server adds `Read(connection: Int, data: Bytes)` and `Accepted(connection: Int)` events and a `write(connection, data: Bytes)` extern; it is the stage 2 fixture.
 
 ## Components touched
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `stdlib/native.ms` (new) | `Pointer` methods, `Memory`, `allocate`, `c_string`, `free`, `to_pointer`, `callback`, `on_stop`, `StopHook`, `NativeValue` | new stdlib fixture with a C helper archive (`tests/e2e/testdata/native/`) |
-| `stdlib/intrinsics.ms` | `Pointer` scalar and its `NativeValue` impls | checker tests |
-| `crates/ms-rt` | `msrt_native_*` primitives (alloc, free, loads, stores, strlen, copy, pin table, stop hooks); callback entry helper (isolate registration check, shield, fault barrier); stop hooks called from the signal handler and `msrt_worker_cancel` | unit tests per primitive; foreign-thread, double-take and stop-hook tests |
-| `crates/ms-check` | extern argument and result types grow (`checker.rs:1268`); `callback` argument rule; `NativeValue` bound | conformance accept and reject cases with exact diagnostics |
-| `crates/ms-lower`, `crates/ms-mir` | `Pointer` lowers as `I64`; `callback(f)` lowers to the address of `f`'s C entry | lowering snapshot |
-| `crates/ms-clif` (Cranelift and LLVM) | sign/zero extension for 8/16/32-bit extern arguments and results; one C-ABI entry per callback function, emitted with frame pointers | ABI test calling a C function with every type, both backends, all three platforms |
-| `crates/ms-clif/src/link` | Windows: embed `iphlpapi`, `psapi`, `ole32` import libraries (stage 3) | Windows libuv example links |
-| `crates/ms-driver` manifest, `--link` | unchanged | |
-| `ms-lsp`, formatter, lint | unchanged (no syntax); `ms review` labels `@std/native.ms` importers | review snapshot |
-| `documentation/core-language/functions/native-functions.md` | rewritten around binding a C library; libuv build lines per platform | `make docs`, example checks |
-| `wiki/language/extern-def-...md` | correct the spelling (`extern fn`, not `extern def`) and the new type list | `make repo-check` |
-| `examples/libuv-timer` (new) | the worked example as a project | CI builds it where the archive is fetched |
-| parser, grammar, MIR passes, ownership pass | unchanged | |
+| `crates/ms-rt-abi/include/ms_abi.h` | the public contract: `ms_str`, `ms_bytes`, `ms_object`, constructors, `ms_retain`/`ms_release`, `ms_payload`, `ms_on_stop`, `MS_ABI_CHECK`, the rules | C test archive compiled per platform in CI |
+| `crates/ms-rt` | `ms_*` aliases; `ms_object_new` (header, shim drop word, zeroed aligned payload); stop hooks called from the signal handler, the Windows console handler and `msrt_worker_cancel`; `ms_abi_v<N>` | unit tests; stop-hook tests per platform |
+| `crates/ms-check` | user externs: sized types, `Bytes`, `extern type`, error case with `message` | conformance accept and reject cases with exact diagnostics |
+| `crates/ms-lower`, `crates/ms-clif` (both backends) | handles as pointers; sign and zero extension; `message_out` | ABI round-trip test calling C with every type |
+| `crates/ms-clif/src/link` | Windows: embed `iphlpapi`, `psapi`, `ole32` | Windows libuv example links |
+| `stdlib/*.ms`, ownership pass, `KEPT_CALLBACKS` | unchanged (no function values cross user externs) | |
+| `documentation/core-language/functions/native-functions.md` | rewritten around writing a shim; per-platform build commands | `make docs`, example checks |
+| `examples/libuv-timer` (new) | the worked example with its shim | CI builds it against a checksum-pinned libuv |
+| parser, grammar, formatter, LSP | unchanged (no syntax) | |
 
 ## Alternatives
 
-- **Do nothing; write C shims.** Works today and is the documented path. It loses on the stated direction: each libuv function needs C, a C compiler, and knowledge of `ms_abi.h`, and the shim cannot call back into Manuscript at all, so libuv is impossible, not just tedious.
-- **Smallest version: sized types and `Pointer` in externs only.** Covers zlib-style libraries with no callbacks or kept memory. It does not reach libuv, SQLite's busy handler, or libcurl's write callback. Kept as stage 2 so it ships first.
-- **`UInt64` for pointers instead of a `Pointer` type.** No new type, but addresses and sizes mix freely in signatures like `uv_timer_start(Pointer, Pointer, UInt64, UInt64)`, and `read`/`write` would be free functions on integers. Open question 1.
-- **Closures as callbacks via trampolines** (libffi closures or generated thunks with an environment slot). Lets C call a capturing closure, but needs executable memory or a thunk pool, an owner for the closure's lifetime, and a kept-callback ownership marker. Every target library already has a user-data pointer, so it buys convenience at real cost.
-- **Struct and record layout in the language** (`repr(C)` records). Removes hand-written offsets, but it is a language change with per-platform layout rules; most libraries expose accessors, and libuv's own `uv_handle_get_data` shows the pattern. Revisit with a header-to-binding generator.
-- **Run blocking externs on the blocking pool.** Keeps the isolate responsive, but callbacks then run on a pool thread, which has no isolate. Workers already isolate blocking work.
-- **Integrate a library's event loop with the runtime poller** (`uv_backend_fd` plus `msrt_task_wait_fd`). Good on Linux and macOS, but libuv on Windows uses IOCP and has no pollable descriptor, so it breaks parity. Deferred; a later general `wait_readable(fd)` can add it for libraries that expose a descriptor on every platform.
-- **A `[link]` table in `ms.toml`.** Drafted and dropped after review: the manifest reader takes only string values in `[project]` and `[aliases]` (`crates/ms-driver` manifest), and only the program's nearest manifest is read, so a vendored binding still could not carry its own archives. `--link` covers the libuv stages.
+- **Do nothing: shims against today's ABI.** Works for scalar-only libraries. libuv cannot be bound: there is no handle type, `Int32` cannot cross, and error text is lost.
+- **Raw pointers in Manuscript** (first draft: `Pointer`, `Memory`, `callback(f)`, pinned `Shared`). No C file per library, but bindings become address arithmetic and manual lifetimes in `.ms`, an unsafe dialect. Rejected by the owner's direction.
+- **C calls Manuscript closures** (second draft). Lets a library call back directly, but closure code follows the C ABI only for scalar arguments and one scalar result (`lower.rs:2847`, `cg.rs:599`), so the compiler would emit a C-ABI adapter per callback type in both backends; and it needs an isolate check, a fault barrier that still reports to a worker's joiner, a cancellation shield (`stop_shield`, `fault.rs:85`), a rule against re-entering the library from a parked callback, and ownership of closures kept by C. The pull design needs none of it for libuv. Revisit for a library that must get an answer from its callback (SQLite's busy handler, a comparator); stage it then with these rules.
+- **Integrate a library's loop with the runtime poller** (`uv_backend_fd` plus `msrt_task_wait_fd`). Keeps the main isolate's other tasks running, but libuv on Windows has no pollable descriptor (IOCP), so it breaks parity. Deferred.
+- **A `[link]` table in `ms.toml`.** The manifest reader accepts only string values in `[project]` and `[aliases]`, and only the program's manifest is read, so a vendored binding could not carry its own inputs. `--link` covers the libuv stages.
 - **Dynamic libraries.** Impossible on static musl Linux; rejected for parity.
-- How others do it, where it shaped the choice: Zig and Rust bind C with typed pointers and `extern` declarations in the language itself (chosen shape); Go's cgo needs a C compiler per build (avoided); Python's ctypes and Node's N-API load libraries at run time (impossible here without `dlopen`).
 
 ## Staging and verification
 
 Each stage lands green on Linux, macOS and Windows; no platform skips.
 
-1. **Scalars and pointers.** Sized types and `Pointer` in externs, extension attributes, `@std/native.ms` without callbacks or pins. Gate: an ABI test archive (C, compiled per target in CI) round-trips every type on both backends.
-2. **Callbacks, pins and stop hooks.** `callback`, entry helper, pin table, `on_stop`. Gate: fixture where C calls back into Manuscript; a fault in a callback runs outer cleanups and exits 67 with a trace; a foreign-thread call, a double take and a wrong-type pin each fault; SIGINT to a program blocked in a C loop exits 130 through its hook.
-3. **libuv.** `examples/libuv-timer` and a TCP echo server built against libuv 1.x archives fetched by checksum in CI; Windows import libraries added. Gate: both run on all three platforms; a worker-hosted loop is woken by `uv_async_send` and stopped by `Worker.cancel`.
-- Go/no-go after stage 2: if the callback entry needs changes to the fault or task machinery beyond the entry helper, stop and report before stage 3.
-- Checks per stage: `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo nextest run --workspace`, `make verify`, plus `make verify-full` before stage 3 merges.
+1. **The ABI.** Sized types, `Bytes`, user `extern type` with `ms_object_new`, error messages, `ms_on_stop`, the header and `MS_ABI_CHECK`. Gate: a C test archive round-trips every type on both backends; a handle's drop runs exactly once after its last reference; SIGINT to a program blocked in a C wait exits 130 through its hook.
+2. **libuv.** `examples/libuv-timer` and a TCP echo server with shims, against libuv 1.x archives fetched by checksum in CI; Windows import libraries. Gate: both run on all three platforms, including a loop hosted in a worker and stopped by `Worker.cancel`; leak check clean.
+- Go/no-go after stage 1: if the stop hook cannot be made async-signal-safe on one platform, stop and report.
+- Checks per stage: `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo nextest run --workspace`, `make verify`; `make verify-full` before stage 2 merges.
 
 ## Open questions
 
-1. **A `Pointer` type, or `UInt64`?** Recommend `Pointer`: one scalar type keeps addresses out of arithmetic and gives `read`/`write` a receiver.
-2. **`Pointer` method names.** `read[T]`/`write[T]` with an explicit type argument (`p.read[Int32](8)`), against one method per type (`read_int32`). Recommend the generic form: eleven fewer names, and the type is visible at the call.
-3. **Cancellation inside a callback.** Shielded until the outer extern returns (recommended: C always gets a value back), or delivered inside the callback, which then exits the process from inside C.
-4. **How a reusable binding declares its native inputs.** Keep `--link` and document per-platform commands (recommended for now), or design a manifest table once packages exist and a second real binding needs it.
+1. **Header names.** Public `ms_*` aliases (recommended: the `msrt_` names stay free to change), or publish the existing `msrt_*` symbols directly.
+2. **Callbacks into Manuscript.** Leave them out until a bound library needs an answer from a callback (recommended), or design them now with the rules listed under Alternatives.
+3. **Bundled natives.** Move them to the public header over time so the stdlib uses the same contract (recommended, per module, as each is touched), or keep the stdlib on the internal ABI.
