@@ -113,6 +113,26 @@ excludes lifetime, ownership, backend, Windows and networking investigations.
 Those broad local gates are not claimed as passed. Related correctness PRs
 #2059/#2067 touch BigInt power/shift contracts; no overlapping edit is included.
 
+## Fresh-main composition replay
+
+The branch was combined with main `3cfde58b6216ae4db54aeb3ae4e22ee7d527e323`
+(candidate `2fef66f08e0bf2db2ae6179d46ad318c7eb01524`). Both native archives
+were rebuilt sequentially at the same build path, and both MS workloads used one
+saved unchanged compiler. The entire fixed 1,008-invocation protocol was repeated,
+with [all raw results and hashes](results/combined-3cfde58b6/paired.jsonl)
+([controls](results/combined-3cfde58b6/conversion-controls.jsonl),
+[long controls](results/combined-3cfde58b6/long-controls.jsonl),
+[artifacts](results/combined-3cfde58b6/artifacts.json)). This is the PR composition,
+not yet a post-merge final-main claim.
+
+Comparison paired ratios remain 0.519 common, 0.641 signs, 0.462 gaps, 0.298
+alignment and 0.374 large/boundary, with primary A/A 0.997–1.019. Longer common
+ratios are 0.993/1.000 negation, 1.001 Int, 0.982 UInt64, 1.004 conversion stream,
+and 0.989 add/round. Baseline/candidate A/A variation remains visible; these
+controls reproduce the comparison gains without establishing universal
+performance equivalence. Nineteen numeric nextest tests, six source fixtures,
+Release alignment, workspace formatting and Clippy pass on the combined tree.
+
 ## Reproduce
 
 Use isolated baseline/candidate worktrees, build both native archives, then use
