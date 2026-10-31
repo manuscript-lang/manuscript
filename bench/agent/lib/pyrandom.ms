@@ -69,7 +69,7 @@ impl Random:
 
     # A uniform integer in `0..n` by rejection, as CPython's `_randbelow`.
     var fn below(n: Int) Int:
-        if n <= 1: return 0
+        if n <= 0: return 0
 
         var bits = 0
         var m = n

@@ -86,3 +86,16 @@ export fn full_match(pattern: String, text: String) Bool:
     if let re = compile("^(?:{pattern})$").to_optional(): return re.matches(text)
 
     return false
+
+# `text.split()`: the words between runs of whitespace.
+export fn words(text: String) List[String]:
+    var out = List[String]()
+    var current = ""
+    for ch in text.chars():
+        if ch.trim().is_empty():
+            if current != "": out.append(current.clone())
+            current = ""
+        else:
+            current = current + ch
+    if current != "": out.append(current.clone())
+    return out

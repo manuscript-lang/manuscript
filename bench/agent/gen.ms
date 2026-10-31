@@ -8,6 +8,10 @@ import gen_c05 from "./challenges/c05-calculator/gen.ms"
 import gen_c09 from "./challenges/c09-ciphers/gen.ms"
 import gen_c13 from "./challenges/c13-inventory-orders/gen.ms"
 import gen_c14 from "./challenges/c14-dp-suite/gen.ms"
+import gen_c16 from "./challenges/c16-maze-bfs/gen.ms"
+import gen_c18 from "./challenges/c18-cron-next-runs/gen.ms"
+import gen_c25 from "./challenges/c25-log-analyzer/gen.ms"
+import gen_c36 from "./challenges/c36-bank-ledger/gen.ms"
 
 export fn main() Int:
     let args = arguments()
@@ -31,6 +35,18 @@ export fn main() Int:
         ran += 1
     if which == "c14" or which == "all":
         gen_c14()
+        ran += 1
+    if which == "c16" or which == "all":
+        gen_c16()
+        ran += 1
+    if which == "c18" or which == "all":
+        gen_c18()
+        ran += 1
+    if which == "c25" or which == "all":
+        gen_c25()
+        ran += 1
+    if which == "c36" or which == "all":
+        gen_c36()
         ran += 1
     if ran == 0:
         stderr().write("unknown challenge {which}\n").get()
