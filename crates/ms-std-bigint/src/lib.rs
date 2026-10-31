@@ -221,6 +221,9 @@ native! {
         if count < 0 {
             return Err(Code(STATUS_INVALID_INPUT));
         }
+        if n(&a).is_zero() {
+            return Ok(make(BigInt::zero()));
+        }
         let bits = i64::try_from(n(&a).bits()).unwrap_or(i64::MAX);
         if count > MAX_BITS || bits.saturating_add(count) > MAX_BITS {
             return Err(Code(STATUS_LIMIT_EXCEEDED));
@@ -469,5 +472,22 @@ mod tests {
             Some(1180591620717411303424.0)
         );
         assert_eq!(format(&BigInt::from(-255), 16), "-ff");
+    }
+
+    #[test]
+    fn shifting_zero_keeps_the_result_within_the_bit_limit() {
+        let mut out: *mut ObjCell<Big> = core::ptr::null_mut();
+        // SAFETY: zero is a live handle and out points to writable storage.
+        unsafe {
+            let zero = msstd_bigint_from_int(0);
+            for count in [0, MAX_BITS, MAX_BITS + 1, i64::MAX] {
+                assert_eq!(msstd_bigint_shift_left(zero, count, &mut out), STATUS_OK);
+                assert!(val(out).is_zero());
+            }
+            assert_eq!(
+                msstd_bigint_shift_left(zero, -1, &mut out),
+                STATUS_INVALID_INPUT
+            );
+        }
     }
 }
