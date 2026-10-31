@@ -1440,6 +1440,9 @@ pub unsafe extern "C-unwind" fn msrt_set_is_disjoint_from(
     let kd = key_desc(a, kd);
     // SAFETY: caller contract.
     unsafe {
+        if (*b).len == 0 {
+            return 1;
+        }
         let kd = &*kd;
         each_key_while(&*a, kd, |k| !contains_key(&*b, kd, None, k)) as u8
     }
@@ -1453,6 +1456,40 @@ mod tests {
     use crate::testutil;
     use crate::testutil::hot::*;
     use core::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn empty_set_relations_do_not_hash_members() {
+        let _g = testutil::lock();
+        // SAFETY: all set slots hold live i64 values of the static descriptor.
+        unsafe {
+            let kd = &COUNTED_KEY;
+            let mut nonempty = empty();
+            let mut vacant = empty();
+            for i in 0..128i64 {
+                let mut key = i;
+                insert(
+                    &mut nonempty,
+                    kd,
+                    None,
+                    (&mut key as *mut i64).cast(),
+                    core::ptr::null_mut(),
+                );
+            }
+            HASH_CALLS.store(0, Ordering::Relaxed);
+            assert_eq!(msrt_set_is_subset_of(&vacant, &nonempty, kd), 1);
+            assert_eq!(msrt_set_is_subset_of(&nonempty, &vacant, kd), 0);
+            assert_eq!(msrt_set_is_subset_of(&vacant, &vacant, kd), 1);
+            assert_eq!(msrt_set_is_superset_of(&vacant, &vacant, kd), 1);
+            assert_eq!(msrt_set_is_superset_of(&nonempty, &vacant, kd), 1);
+            assert_eq!(msrt_set_is_superset_of(&vacant, &nonempty, kd), 0);
+            assert_eq!(msrt_set_is_disjoint_from(&vacant, &nonempty, kd), 1);
+            assert_eq!(msrt_set_is_disjoint_from(&nonempty, &vacant, kd), 1);
+            assert_eq!(msrt_set_is_disjoint_from(&vacant, &vacant, kd), 1);
+            assert_eq!(HASH_CALLS.load(Ordering::Relaxed), 0);
+            drop_map(&mut nonempty, kd, None);
+            drop_map(&mut vacant, kd, None);
+        }
+    }
 
     unsafe extern "C" fn modulo_eq(a: *const u8, b: *const u8) -> u8 {
         // SAFETY: the test descriptor describes i64 slots.
