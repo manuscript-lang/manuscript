@@ -55,3 +55,28 @@ fn operations_keep_recursive_and_receiver_dependent_interface_bounds() {
     let got = diagnostics(include_str!("../tests/operation_bounds/valid.ms"));
     assert!(got.is_empty(), "{got:?}");
 }
+
+#[test]
+fn exported_operations_reject_private_generic_bounds() {
+    let program = check(include_str!(
+        "../tests/operation_bounds/private_public_bounds.ms"
+    ));
+    let got = program.diagnostics;
+    assert_eq!(got.len(), 4, "{got:?}");
+    for (diagnostic, line) in got.iter().zip([4, 7, 13, 16]) {
+        assert_eq!(diagnostic.pos.line, line);
+        assert_eq!(diagnostic.phase, ms_syntax::Phase::Type);
+        assert!(
+            diagnostic
+                .message
+                .starts_with("public signature exposes private type Secret;"),
+            "{diagnostic:?}"
+        );
+    }
+}
+
+#[test]
+fn operation_bound_visibility_preserves_private_and_public_interfaces() {
+    let got = diagnostics(include_str!("../tests/operation_bounds/public_bounds.ms"));
+    assert!(got.is_empty(), "{got:?}");
+}
