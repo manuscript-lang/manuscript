@@ -1479,11 +1479,18 @@ pub unsafe extern "C-unwind" fn msrt_bytes_index_of_byte(
     // SAFETY: caller contract.
     unsafe {
         let s = bslice(b);
-        if !(0..=255).contains(&value) || start > s.len() as i64 {
+        let from = start.max(0) as usize;
+        if !(0..=255).contains(&value) || from >= s.len() {
             return 0;
         }
-        let from = start.max(0) as usize;
-        match s[from..].iter().position(|&x| x as i64 == value) {
+        let tail = &s[from..];
+        // Keep nearby hits cheap (for example, short CSV fields) before the vector search.
+        let (near, rest) = tail.split_at(tail.len().min(16));
+        let found = near
+            .iter()
+            .position(|&x| x as i64 == value)
+            .or_else(|| memchr::memchr(value as u8, rest).map(|i| near.len() + i));
+        match found {
             Some(i) => {
                 *out = (from + i) as i64;
                 1

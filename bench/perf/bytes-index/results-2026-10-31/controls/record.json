@@ -1,0 +1,60 @@
+[
+  {
+    "suite": "lines",
+    "argv": [
+      "taskset",
+      "-c",
+      "0",
+      "python3",
+      "bench/perf/string-lines/compare.py",
+      "/workspace/byte-search-evidence/lines-before",
+      "/workspace/byte-search-evidence/lines-after",
+      "/workspace/byte-search-evidence/controls/lines-samples.csv",
+      "--pairs",
+      "6"
+    ],
+    "started": 1793462250.9992301,
+    "returncode": 0,
+    "finished": 1793462254.04369
+  },
+  {
+    "suite": "normalize",
+    "argv": [
+      "taskset",
+      "-c",
+      "0",
+      "python3",
+      "bench/perf/string-lines/compare.py",
+      "/workspace/byte-search-evidence/normalize-before",
+      "/workspace/byte-search-evidence/normalize-after",
+      "/workspace/byte-search-evidence/controls/normalize-samples.csv",
+      "--pairs",
+      "6",
+      "--identity-file",
+      "bench/perf/string-normalize-ascii/identities.json"
+    ],
+    "started": 1793462254.043984,
+    "returncode": 0,
+    "finished": 1793462294.4977603
+  },
+  {
+    "suite": "reverse",
+    "argv": [
+      "taskset",
+      "-c",
+      "0",
+      "python3",
+      "bench/perf/string-lines/compare.py",
+      "/workspace/byte-search-evidence/reverse-before",
+      "/workspace/byte-search-evidence/reverse-after",
+      "/workspace/byte-search-evidence/controls/reverse-samples.csv",
+      "--pairs",
+      "6",
+      "--identity-file",
+      "bench/perf/string-normalization-rollback/inputs/reverse-full-identities.json"
+    ],
+    "started": 1793462294.4980915,
+    "returncode": 0,
+    "finished": 1793462392.548574
+  }
+]
