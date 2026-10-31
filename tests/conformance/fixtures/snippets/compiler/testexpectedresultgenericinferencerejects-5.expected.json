@@ -1,0 +1,68 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type TextError; add: import TextError from \"@std/core.ms\"",
+        "position": {
+          "file": "testexpectedresultgenericinferencerejects-5.ms",
+          "line": 5,
+          "column": 39,
+          "offset": 257
+        },
+        "fix": {
+          "position": {
+            "file": "testexpectedresultgenericinferencerejects-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "testexpectedresultgenericinferencerejects-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import TextError from \"@std/core.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding fail; add: import fail from \"@std/test.ms\"",
+        "position": {
+          "file": "testexpectedresultgenericinferencerejects-5.ms",
+          "line": 5,
+          "column": 52,
+          "offset": 270
+        },
+        "fix": {
+          "position": {
+            "file": "testexpectedresultgenericinferencerejects-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "testexpectedresultgenericinferencerejects-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import fail from \"@std/test.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testexpectedresultgenericinferencerejects-5.ms:5:39: resolution: unknown type TextError; add: import TextError from \"@std/core.ms\"\n   |\n 5 |     let value: fn(String) Result[Int, TextError] = fail\n   |                                       ^\n<DIR>/testexpectedresultgenericinferencerejects-5.ms:5:52: resolution: unknown binding fail; add: import fail from \"@std/test.ms\"\n   |\n 5 |     let value: fn(String) Result[Int, TextError] = fail\n   |                                                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
