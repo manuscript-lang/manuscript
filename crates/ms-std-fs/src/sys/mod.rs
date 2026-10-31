@@ -318,18 +318,20 @@ pub fn classify(e: Errno) -> u8 {
     }
 }
 
-/// The text for an error code: Go's wording on Unix, `std`'s message otherwise (without its
-/// trailing " (os error N)").
+/// The text for an error code, as `<kind>: <detail>`: the kind is `std`'s stable name for the
+/// class of failure (the same on every host, so a script can match it); the detail is a fixed
+/// wording on Unix and `std`'s message otherwise (without its trailing " (os error N)").
 pub fn describe(e: Errno) -> String {
+    let err = io::Error::from_raw_os_error(e);
     #[cfg(unix)]
     if let Some(text) = unix::errno_text(e) {
-        return String::from(text);
+        return format!("{}: {text}", err.kind());
     }
-    let mut text = io::Error::from_raw_os_error(e).to_string();
+    let mut text = err.to_string();
     if let Some(i) = text.rfind(" (os error ") {
         text.truncate(i);
     }
-    text
+    format!("{}: {text}", err.kind())
 }
 
 fn unix_pair(t: SystemTime) -> (i64, i64) {

@@ -764,8 +764,10 @@ pub struct TlsIo {
 fn handshake_error_text(e: &rustls::Error) -> String {
     match e {
         rustls::Error::General(m) => m.clone(),
-        rustls::Error::AlertReceived(a) => format!("remote error: tls: {}", alert_text(a)),
-        other => format!("tls: {other}"),
+        rustls::Error::AlertReceived(a) => {
+            format!("TLS handshake: peer sent alert: {}", alert_text(a))
+        }
+        other => format!("TLS handshake: {other}"),
     }
 }
 

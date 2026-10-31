@@ -1,6 +1,5 @@
 //! Path helpers over byte strings, built on `std::path::Path` so the separator, volume and
-//! absolute-path rules are the host's. Results follow Go's `path/filepath` where `std` has the
-//! same operation; `clean` is the one function `std` does not offer (it normalizes `.` and
+//! absolute-path rules are the host's. `clean` is the one function `std` does not offer (it normalizes `.` and
 //! repeated separators in `components` but never resolves `..`).
 use crate::sys::{os_bytes, path_of};
 use alloc::vec::Vec;
@@ -14,7 +13,7 @@ pub fn is_sep(c: u8) -> bool {
     c.is_ascii() && std::path::is_separator(c as char)
 }
 
-/// `filepath.Clean`: the shortest equivalent path by lexical processing.
+/// The shortest equivalent path by lexical processing.
 pub fn clean(path: &[u8]) -> Vec<u8> {
     let p = path_of(path);
     let mut out = PathBuf::new();
@@ -43,7 +42,7 @@ pub fn clean(path: &[u8]) -> Vec<u8> {
     os_bytes(out.as_os_str())
 }
 
-/// `filepath.Join` of two elements.
+/// Two elements joined and cleaned.
 pub fn join(a: &[u8], b: &[u8]) -> Vec<u8> {
     if a.is_empty() {
         return if b.is_empty() { Vec::new() } else { clean(b) };
@@ -54,7 +53,7 @@ pub fn join(a: &[u8], b: &[u8]) -> Vec<u8> {
     clean(&os_bytes(path_of(a).join(path_of(b)).as_os_str()))
 }
 
-/// `filepath.Base`: the last element, `.` for an empty path, the root for a root.
+/// The last element, `.` for an empty path, the root for a root.
 pub fn base(path: &[u8]) -> Vec<u8> {
     path_of(path)
         .components()
@@ -62,7 +61,7 @@ pub fn base(path: &[u8]) -> Vec<u8> {
         .map_or_else(|| b".".to_vec(), |c| os_bytes(c.as_os_str()))
 }
 
-/// `filepath.Dir`: everything but the last element, cleaned.
+/// Everything but the last element, cleaned.
 pub fn dir(path: &[u8]) -> Vec<u8> {
     let p = path_of(path);
     let parent = p
@@ -71,7 +70,7 @@ pub fn dir(path: &[u8]) -> Vec<u8> {
     clean(&parent)
 }
 
-/// `filepath.IsAbs`.
+/// Whether the path is absolute on this host.
 pub fn is_abs(path: &[u8]) -> bool {
     path_of(path).is_absolute()
 }

@@ -175,7 +175,7 @@ pub fn workspace_references(
         }
     };
     let mut locations: Vec<Json> = Vec::new();
-    let mut seen: HashSet<String> = HashSet::new();
+    let mut seen: HashSet<nav::LocationKey> = HashSet::new();
     for file in &documents {
         if canceled(cancel).is_err() {
             return Vec::new();
@@ -265,8 +265,8 @@ pub(crate) fn workspace_symbols_matching(
     }
     let mut analyzed: HashSet<String> = HashSet::new();
     let mut names = HashMap::new();
-    let mut seen: HashSet<String> = HashSet::new();
-    let mut result: Vec<(String, Json)> = Vec::new();
+    let mut seen: HashSet<nav::LocationKey> = HashSet::new();
+    let mut result: Vec<((i64, nav::LocationKey, String), Json)> = Vec::new();
     for d in &documents {
         if canceled(cancel).is_err() {
             return None;
@@ -305,13 +305,13 @@ pub(crate) fn workspace_symbols_matching(
                 Some(s) if s.is_constant() => 14,
                 _ => 12,
             };
-            // Go orders by the printed map: kind, location, name.
-            let order = format!("map[kind:{kind} location:{} name:{}]", id, entry.name);
+            // Ordered by kind, location, then name.
+            let order = (kind, id, entry.name.clone());
             result.push((
                 order,
                 obj([
                     ("name", entry.name.clone().into()),
-                    ("kind", (kind as i64).into()),
+                    ("kind", kind.into()),
                     ("location", location),
                 ]),
             ));
