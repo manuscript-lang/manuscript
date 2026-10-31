@@ -90,8 +90,8 @@ test "JSON is_null distinguishes null from absent and other values":
         try expect_false(user.is_null())
     try expect_true(d.get("missing").is_none())
 
-# `get_in` lends the member it reaches, so a `ref` function can hand it back.
-fn user_name(d: JsonValue) ref String?:
+# `get_in` returns an owned copy of the member it reaches.
+fn user_name(d: JsonValue) String?:
     if let name = d.get_in(["user", "name"]):
         return name.as_string()
 

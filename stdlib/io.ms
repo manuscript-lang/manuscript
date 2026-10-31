@@ -111,8 +111,6 @@ export type LineReader:
     max_bytes: Int?
     # The error that ended iteration, if any.
     failure: IoError?
-    # The line `next` returned last; the item it lends.
-    current: String
 
 impl LineReader:
     # Returns the I/O error that ended iteration, or none after a clean end of input
@@ -122,7 +120,7 @@ impl LineReader:
 
 impl Iterator[String] for LineReader:
     # Returns the next line, or none at end of input or after an error (see `error()`).
-    var fn next() ref String?:
+    var fn next() String?:
         if self.failure.is_some():
             return none
 
@@ -136,13 +134,12 @@ impl Iterator[String] for LineReader:
         if text.is_none():
             return none
 
-        self.current = text.get().clone()
-        return self.current
+        return text.get().clone()
 
 # Returns a reader over the lines of `input`, for `for line in reader:`. `max_bytes` bounds each
 # line, as in `read_line`.
 export fn lines(input: ReadStream, max_bytes: Int?) LineReader:
-    return LineReader(input, max_bytes, none, "")
+    return LineReader(input, max_bytes, none)
 
 impl Error for IoError:
     # Returns original Failed text, or an I/O-prefixed diagnostic for the other cases.

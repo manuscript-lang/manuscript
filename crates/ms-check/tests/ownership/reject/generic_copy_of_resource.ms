@@ -8,14 +8,14 @@ impl Closeable for Door:
         return
 
 fn dupe[T](xs: List[T]) Int:
-    let ys = xs.reversed()
+    let ys = xs.reversed()  # error: reversed requires T to be Clonable
     return ys.length()
 
 fn outer[U](xs: List[U]) Int:
     return dupe(xs)
 
 fn f(ds: List[Door]) Int:
-    let a = dupe(ds)  # error: `dupe` copies values of its type parameter `T`, so `T` cannot be the resource `Door`
-    let b = outer(ds)  # error: `outer` copies values of its type parameter `U`
+    let a = dupe(ds)
+    let b = outer(ds)
     let c = dupe([1, 2])
     return a + b + c

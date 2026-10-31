@@ -4,8 +4,7 @@
 use super::classify::{Class, Classifier, declares_close};
 use super::live::Liveness;
 use super::modes::{
-    CallModes, ParamMode, ResultOrigin, Slot, Summaries, Summary, call_modes, callee_summary,
-    receiver_mode,
+    CallModes, ParamMode, ResultOrigin, Slot, Summaries, Summary, call_modes, receiver_mode,
 };
 use super::places::{Place, Step};
 use super::*;
@@ -139,7 +138,6 @@ pub fn analyze(cx: &Context) -> Outcome {
         pending: Vec::new(),
         declared: Vec::new(),
         consumed: HashSet::new(),
-        copies: std::collections::BTreeSet::new(),
         callees: HashSet::new(),
         escaped: cx.escaped.clone(),
         positions: HashMap::new(),
@@ -201,7 +199,6 @@ pub fn analyze(cx: &Context) -> Outcome {
             })
             .collect(),
         result,
-        copies: w.copies.iter().copied().collect(),
     };
     w.facts.parameters = summary.params.iter().map(|(_, m)| *m).collect();
     w.facts.receiver = cx.c.self_binding.as_ref().map(|_| summary.receiver);
@@ -226,8 +223,6 @@ struct Walker<'a> {
     declared: Vec<usize>,
     /// Parameters and the receiver that were moved from.
     consumed: HashSet<usize>,
-    /// Type parameters of this callable whose values the body may copy.
-    copies: std::collections::BTreeSet<Name>,
     /// Callee expressions of direct calls, which call a named function without making a value.
     callees: HashSet<NodeId>,
     escaped: HashSet<NodeId>,
@@ -2452,9 +2447,13 @@ impl Walker<'_> {
             return;
         }
         if role == Role::LambdaParameter {
-            // In generic code the lent argument may be a resource in some instance.
+            // The lent argument is copied: in generic code its type must be `Clonable`.
             let t = b.ty.clone();
-            self.note_copied(&t);
+            self.require_clonable(
+                e,
+                &t,
+                &format!("this function value keeps `{name}`, which it only borrows, so it"),
+            );
         }
         if self.captured.iter().any(|c| c.contains(&b.uid)) && perm != Perm::Captured {
             if b.ty.kind == Kind::Function {
@@ -2749,13 +2748,14 @@ impl Walker<'_> {
 
     // ---------------------------------------------------------- calls
 
-    /// Records the type parameters in `t`, a type whose values this callable copies.
-    fn note_copied(&mut self, t: &Ty) {
-        if t.kind == Kind::Variable {
-            self.copies.insert(t.id);
-        }
-        for a in &t.args {
-            self.note_copied(a);
+    /// A copy of a value of `t` made by the language rather than by a call: a type parameter in
+    /// `t` must be declared `Clonable`, as a call of a copying method requires.
+    fn require_clonable(&mut self, e: &Expr, t: &Ty, what: &str) {
+        if let Some(v) = unbounded_parameter(t) {
+            self.error(
+                e.pos,
+                format!("{what} copies values of `{v}`, which may be a resource; declare `{v}: Clonable`"),
+            );
         }
     }
 
@@ -2782,7 +2782,6 @@ impl Walker<'_> {
                 continue;
             };
             let op = decl.name();
-            self.bound_copies(e, &format!("{src}'s `{op}`"), &summary.copies, &bound);
             let lent: Vec<Name> = ops
                 .iter()
                 .filter(|o| o.name == op)
@@ -2804,49 +2803,12 @@ impl Walker<'_> {
                         format!("`{text}` becomes a `{target}` whose `{op}` keeps its `{name}`, which the interface only lends, so every call through it hands over a copy; the resource `{t}` cannot be copied: pass something that is not a resource, or call `{src}`'s `{op}` directly"),
                     );
                 } else {
-                    self.note_copied(&t);
+                    let what = format!(
+                        "`{text}` becomes a `{target}` whose `{op}` keeps its `{name}`, which the interface only lends, so it",
+                        text = self.expr_text(e)
+                    );
+                    self.require_clonable(e, &t, &what);
                 }
-            }
-        }
-    }
-
-    /// `src` satisfies the interface `contract` (a conversion, or a type argument bound by it): an
-    /// implementation that copies values of one of its type parameters copies whatever `src`
-    /// binds it to, so a resource there is rejected, and a type parameter passes the duty on.
-    fn implementation_copies(&mut self, e: &Expr, src: &Ty, contract: &Ty) {
-        for m in self.cx.methods {
-            let (Some(c), Some(decl)) = (&m.contract, &m.decl) else {
-                continue;
-            };
-            if c.id != contract.id {
-                continue;
-            }
-            let mut bound = Subst::new();
-            if !unify(&m.receiver, src, &variable_set(&m.variables), &mut bound) {
-                continue;
-            }
-            let Some(summary) = self.cx.summaries.get(&(m.module, decl.id())) else {
-                continue;
-            };
-            let what = format!("{src}'s `{}`", decl.name());
-            self.bound_copies(e, &what, &summary.copies, &bound);
-        }
-    }
-
-    /// Reports each copied type parameter in `copies` that `bound` binds to a resource, and
-    /// records the others as copies of this callable's own type parameters.
-    fn bound_copies(&mut self, e: &Expr, what: &str, copies: &[Name], bound: &Subst) {
-        for v in copies {
-            let Some(t) = bound.get(v).cloned() else {
-                continue;
-            };
-            if self.cx.classes.class(&t) == Class::Resource {
-                self.error(
-                    e.pos,
-                    format!("{what} copies values of a type parameter, which here is the resource `{t}`: each copy would be closed; pass values that are not resources, or move the resources out first"),
-                );
-            } else {
-                self.note_copied(&t);
             }
         }
     }
@@ -2871,90 +2833,17 @@ impl Walker<'_> {
                 );
             } else {
                 let t = p.ty.clone();
-                self.note_copied(&t);
-            }
-        }
-    }
-
-    /// A call of a generic callee that copies values of a type parameter: binding it to a
-    /// resource would make a second owner of each value, so the call is rejected; binding it to
-    /// a type built from this callable's own parameters passes the duty on to this callable.
-    fn generic_copies(&mut self, e: &Expr, callee: &Expr, args: &[Argument]) {
-        let cx = self.cx;
-        let Some((summary, mut fty, mut vars, mut receiver)) =
-            callee_summary(cx.m, e, cx.summaries)
-        else {
-            return;
-        };
-        // A resolved method has its implementation's variables fixed by the receiver; its
-        // declaration keeps them, so they can be bound to this call's types.
-        if let Resolution::Method(used) = cx.m.resolution(e)
-            && let Some(id) = used.decl.as_ref().map(|d| d.id())
-            && let Some(declared) = cx
-                .methods
-                .iter()
-                .find(|d| d.module == used.module && d.decl.as_ref().map(|d| d.id()) == Some(id))
-        {
-            fty = declared.ty.clone();
-            vars = declared.variables.clone();
-            receiver = Some(declared.receiver.clone());
-        }
-        let copies = summary.copies.clone();
-        let mut var_types = vars;
-        if let Some(r) = &receiver {
-            var_types.extend(r.args.iter().filter(|a| a.kind == Kind::Variable).cloned());
-        }
-        let vars = variable_set(&var_types);
-        let mut bound = Subst::new();
-        if let (Some(r), ExprKind::Member { left, .. }) = (&receiver, &callee.kind) {
-            unify(r, &cx.m.ty(left), &vars, &mut bound);
-        }
-        // The result binds parameters no argument mentions (`wrap[Door]()`).
-        if let Some(r) = &fty.result {
-            unify(r, &cx.m.ty(e), &vars, &mut bound);
-        }
-        let slots = cx.m.info(e).arguments.unwrap_or_default();
-        for (i, a) in args.iter().enumerate() {
-            let Some(label) = slots.get(i).map(|s| s.name) else {
-                continue;
-            };
-            if let Some(p) = fty.params.iter().find(|p| p.name == label) {
-                unify(&p.ty, &cx.m.ty(&a.value), &vars, &mut bound);
-            }
-        }
-        // A type argument bound by an interface brings that interface's implementations along.
-        for v in &var_types {
-            let Some(t) = bound.get(&v.id).cloned() else {
-                continue;
-            };
-            for b in v.bounds() {
-                self.implementation_copies(e, &t, &b);
-            }
-        }
-        let name = self.call_name(callee);
-        for v in copies {
-            let Some(t) = bound.get(&v).cloned() else {
-                continue;
-            };
-            if cx.classes.class(&t) == Class::Resource {
-                let v = var_types
-                    .iter()
-                    .find(|x| x.id == v)
-                    .map(|x| x.to_string())
-                    .unwrap_or_else(|| v.to_string());
-                self.error(
-                    e.pos,
-                    format!("`{name}` copies values of its type parameter `{v}`, so `{v}` cannot be the resource `{}`: each copy would be closed; pass values that are not resources, or move the resources out first", t),
+                let what = format!(
+                    "`{}` keeps its parameter `{name}`, but a function value only lends its arguments, so it",
+                    self.expr_text(e)
                 );
-            } else {
-                self.note_copied(&t);
+                self.require_clonable(e, &t, &what);
             }
         }
     }
 
     fn call(&mut self, e: &Expr, callee: &Expr, args: &[Argument], d: Demand) {
         let cx = self.cx;
-        self.generic_copies(e, callee, args);
         let modes = call_modes(cx.m, e, args, cx.summaries);
         self.facts.calls.insert(e.id, modes.clone());
         let name = self.call_name(callee);
@@ -3018,67 +2907,6 @@ impl Walker<'_> {
                     e.pos,
                     format!("`{text}` holds a borrow, so a copy would outlive its source and cannot be made; use it in place, or copy the value it borrows"),
                 );
-            }
-            let rty = self.cx.m.ty(r);
-            let copies = match &e.kind {
-                ExprKind::Call { callee, .. } => match &callee.kind {
-                    ExprKind::Member { name, .. } => name.as_str().to_string(),
-                    _ => String::new(),
-                },
-                _ => String::new(),
-            };
-            if matches!(copies.as_str(), "fill" | "copy_within" | "merge")
-                && (rty.is_std("List") || rty.is_std("Map"))
-            {
-                // In generic code the elements may be resources in some instance.
-                for a in &rty.args {
-                    self.note_copied(a);
-                }
-            }
-            if matches!(copies.as_str(), "fill" | "copy_within" | "merge")
-                && (rty.is_std("List") || rty.is_std("Map"))
-                && self.class_of(r) == Class::Resource
-            {
-                let text = self.expr_text(r);
-                self.error(
-                    e.pos,
-                    format!("`{copies}` would copy the resources `{text}` holds, and a copy would be closed a second time; `set` or `add` each one instead"),
-                );
-            }
-            // A collection method that reads the receiver and returns an owned value holding the
-            // very resources it holds (`xs.take(1)`, `xs.concat(xs)`, `xs.find(..)`) makes a second
-            // owner of each one, and every owner closes it.
-            if modes.receiver != Some(ParamMode::Mutate)
-                && !modes.accessor
-                && (rty.is_std("List") || rty.is_std("Map") || rty.is_std("Set"))
-                && self.cx.m.info(e).native_str() != "clone"
-            {
-                let ety = self.cx.m.ty(e);
-                for a in &rty.args {
-                    if crate::types::same(a, &ety) || ty_contains(&ety, a) {
-                        self.note_copied(a);
-                    }
-                }
-            }
-            if modes.receiver != Some(ParamMode::Mutate)
-                && !modes.accessor
-                && (rty.is_std("List") || rty.is_std("Map") || rty.is_std("Set"))
-                && self.class_of(r) == Class::Resource
-                && self.class_of(e) == Class::Resource
-                && self.cx.m.info(e).native_str() != "clone"
-            {
-                let ety = self.cx.m.ty(e);
-                let copied = rty.args.iter().any(|a| {
-                    self.cx.classes.class(a) == Class::Resource
-                        && (crate::types::same(a, &ety) || ty_contains(&ety, a))
-                });
-                if copied {
-                    let text = self.expr_text(r);
-                    self.error(
-                        e.pos,
-                        format!("`{copies}` would copy the resources `{text}` holds, and a copy would be closed a second time; move them out with `remove` or `pop`, or `set` or `add` each one instead"),
-                    );
-                }
             }
             let mut mode = modes.receiver.unwrap_or(ParamMode::Borrow);
             // An owned resource taken out of a receiver that holds it (`o.get(default)`) is the
@@ -3588,4 +3416,12 @@ fn holds_variable(t: &Ty) -> bool {
 /// Whether the binding is a parameter, whose caller loses it when a part of it moves.
 fn meta_is_parameter(w: &Walker, uid: usize) -> bool {
     w.meta.get(&uid).is_some_and(|m| m.parameter.is_some())
+}
+
+/// The first type parameter in `t` not declared `Clonable`.
+fn unbounded_parameter(t: &Ty) -> Option<Ty> {
+    if t.kind == Kind::Variable {
+        return (!t.bounds().iter().any(implies_clonable)).then(|| t.clone());
+    }
+    t.args.iter().find_map(unbounded_parameter)
 }

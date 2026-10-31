@@ -16,13 +16,13 @@ impl Shelf:
 
         return self.spare
 
-    fn age(name: String) ref String?:
+    fn age(name: String) String?:
         if name == "":
             return none
 
         return self.ages.get(name)
 
-    fn name(index: Int) ref String?:
+    fn name(index: Int) String?:
         if index < 0 or index >= self.names.length():
             return none
 

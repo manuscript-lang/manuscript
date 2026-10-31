@@ -102,6 +102,38 @@ pub fn keeps_callbacks(native: &str) -> bool {
     KEPT_CALLBACKS.contains(&native)
 }
 
+/// The native identity of each bodiless method of a contract implementation (`Contract/method`).
+const CONTRACT_METHODS: &[(&str, &str)] = &[
+    ("Error/message", "core/message"),
+    ("ListCopies/chunks", "collections/list_chunks"),
+    ("ListCopies/clone", "collections/clone"),
+    ("ListCopies/concat", "collections/concat"),
+    ("ListCopies/copy_within", "collections/copy_within"),
+    ("ListCopies/drop", "collections/drop"),
+    ("ListCopies/entries", "collections/list_entries"),
+    ("ListCopies/fill", "collections/fill"),
+    ("ListCopies/filter", "collections/filter"),
+    ("ListCopies/find", "collections/find"),
+    ("ListCopies/find_last", "collections/find_last"),
+    ("ListCopies/partition", "collections/partition"),
+    ("ListCopies/reversed", "collections/reversed"),
+    ("ListCopies/slice", "collections/slice"),
+    ("ListCopies/sorted", "collections/sorted"),
+    ("ListCopies/take", "collections/take"),
+    ("ListCopies/windows", "collections/list_windows"),
+    ("ListCopiesGeneric/group_by", "collections/group_by"),
+    ("ListCopiesGeneric/zip", "collections/list_zip"),
+    ("MapCopies/clone", "collections/clone"),
+    ("MapCopies/entries", "collections/map_entries"),
+    ("MapCopies/filter", "collections/map_filter"),
+    ("MapCopies/find", "collections/map_find"),
+    ("MapCopies/find_last", "collections/map_find_last"),
+    ("MapCopies/get_or", "collections/map_get_or"),
+    ("MapCopies/map_keys", "collections/map_transform_keys"),
+    ("MapCopies/merge", "collections/map_merge"),
+    ("MapCopies/values", "collections/map_values"),
+];
+
 /// Native types that declare fields, so they cannot be written `extern type`.
 const NATIVE_WITH_FIELDS: &[&str] = &["List"];
 
@@ -1290,19 +1322,15 @@ impl Loader<'_> {
                         module.file, receiver_name, contract_name, name
                     );
                     method.id = n(&key);
-                    // A native contract method is the contract module's function of that name (`core/message`).
-                    let contract_module =
-                        world(|w| w.symbols.get(&n(&contract_name)).map(|c| c.module));
-                    let native = format!(
-                        "{}/{}",
-                        contract_module
-                            .unwrap_or(module.file)
-                            .as_str()
-                            .trim_start_matches("@std/")
-                            .trim_end_matches(".ms"),
-                        name
-                    );
-                    method.native = n(&native);
+                    let contract = format!("{contract_name}/{name}");
+                    let Some((_, native)) = CONTRACT_METHODS.iter().find(|(c, _)| *c == contract)
+                    else {
+                        return Err(format!(
+                            "missing native implementation binding for {contract}: {}",
+                            position_text(module.file, method.decl.as_ref().expect("decl").pos())
+                        ));
+                    };
+                    method.native = n(native);
                     self.c.p.methods[index] = Rc::new(method);
                 }
             }

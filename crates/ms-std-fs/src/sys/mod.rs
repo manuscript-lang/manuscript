@@ -440,6 +440,17 @@ pub fn close(fd: Fd) -> Result<(), Errno> {
     Ok(())
 }
 
+/// A second descriptor over the same open file (`dup` on Unix, `DuplicateHandle` on Windows),
+/// closed on its own; the two share the file position.
+pub fn duplicate(fd: Fd) -> Result<Fd, Errno> {
+    if is_invalid(fd) {
+        return Err(codes::EBADF);
+    }
+    // SAFETY: the caller keeps `fd` open for this call; the borrow is never dropped.
+    let file = unsafe { borrow(fd) };
+    file.try_clone().map(into_fd).map_err(|e| code(&e))
+}
+
 /// The descriptor of standard stream `which` (0 input, 1 output, 2 error).
 #[cfg(unix)]
 pub fn standard(which: i64) -> Fd {

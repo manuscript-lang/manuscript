@@ -188,6 +188,9 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
     if current == Tok::Dot && matches!(previous, Tok::Pipe | Tok::Try) {
         return true;
     }
+    if previous == Tok::Bang && current == Tok::Name && tokens[at].lo == tokens[at - 1].hi {
+        return false;
+    }
     if current == Tok::DotDot || previous == Tok::DotDot {
         return false;
     }
@@ -200,6 +203,7 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
             | Tok::Dot
             | Tok::Colon
             | Tok::Question
+            | Tok::Bang
     ) {
         return false;
     }

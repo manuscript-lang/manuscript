@@ -63,7 +63,7 @@ test "List take and drop copy payloads before changing them":
     copied.set(0, inner)
     try expect_false(nested != [1] or lists.get(0) != nested or copied.get(0) != [1, 2])
 
-fn copy_window[T](values: List[T], first: Int, skip: Int) List[T]:
+fn copy_window[T: Clonable](values: List[T], first: Int, skip: Int) List[T]:
     return values.take(first).drop(skip)
 
 test "List take and drop support generic and nested values":
