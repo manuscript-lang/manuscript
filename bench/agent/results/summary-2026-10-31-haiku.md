@@ -9,6 +9,8 @@ Before the run the reference solutions failed `run.py oracle` (stale ts `import 
 | pass | 17/20 | 17/20 | 15/20 | 15/20 |
 | agent timeouts (900s) | 1 | 1 | 1 | 4 |
 
+Saved ms sources are `ms fmt`-formatted; the c51 ms source (run `3c58bd7515`, nested matches) is omitted because `make repo-check` rejects it.
+
 Timeouts report 0 turns and 0 cost because the killed CLI emits no usage; a timed-out workspace that passes the hidden cases counts as a pass (c51 ms, c59 ms). c55-jq-lite timed out in all four languages while still generating a single large file under contention, so it measures throughput, not language fit.
 
 | challenge | ts | go | rust | ms | ms builds | ms first build |
