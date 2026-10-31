@@ -31,6 +31,8 @@ pub mod types;
 mod unused;
 
 #[cfg(test)]
+mod generic_defaults_tests;
+#[cfg(test)]
 mod method_parameter_names_tests;
 #[cfg(test)]
 mod record_fields_tests;

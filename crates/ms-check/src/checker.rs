@@ -987,7 +987,14 @@ impl Checker {
                             continue;
                         };
                         let old = self.scope.clone();
-                        let vars = self.sym(i.name).map(|s| s.variables()).unwrap_or_default();
+                        let mut vars = self.sym(i.name).map(|s| s.variables()).unwrap_or_default();
+                        if let Some(symbol) = self.sym(i.name) {
+                            vars.extend(stdlib::operation_variables(&format!(
+                                "{}/{}",
+                                symbol.ty().id,
+                                method.func.name
+                            )));
+                        }
                         self.scope = self.variable_scope(&vars);
                         let typ = self.resolve(param.ty.as_ref());
                         self.expression(default, Some(&typ));
