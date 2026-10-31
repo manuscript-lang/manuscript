@@ -22,6 +22,8 @@ pub enum Class {
 /// Computes classes, caching nothing: types are small and shared.
 pub struct Classifier {
     closeable: HashSet<Name>,
+    /// Natives declaring `impl Copy`: plain words, so a copy is a bit copy.
+    copyable: HashSet<Name>,
 }
 
 impl Classifier {
@@ -33,7 +35,16 @@ impl Classifier {
             .filter(|m| m.contract.as_ref().is_some_and(|c| c.is_std("Closeable")))
             .map(|m| m.receiver.id)
             .collect();
-        Classifier { closeable }
+        let copyable = p
+            .methods
+            .iter()
+            .filter(|m| m.contract.as_ref().is_some_and(|c| c.is_std("Copy")))
+            .map(|m| m.receiver.id)
+            .collect();
+        Classifier {
+            closeable,
+            copyable,
+        }
     }
 
     /// Whether `t` has a `Closeable` implementation of its own, which runs on the whole value.
@@ -69,8 +80,8 @@ impl Classifier {
     fn native(&self, t: &Ty, visiting: &mut Vec<String>) -> Class {
         if self.closeable.contains(&t.id) {
             Class::Resource
-        } else if t.is_std("Shared") {
-            // Copying shares the box; the payload is closed once the last holder releases it.
+        } else if t.is_std("Shared") || self.copyable.contains(&t.id) {
+            // A declared `Copy` native is plain words. Copying `Shared` shares the box; the payload is closed once the last holder releases it.
             Class::Copy
         } else if t.is_std("List") {
             // An owning collection of resources is itself a resource, closed with its elements.
@@ -78,23 +89,6 @@ impl Classifier {
             self.holds(t.args.first(), visiting)
         } else if t.is_std("Map") {
             self.holds(t.args.get(1), visiting)
-        } else if t.is_std("Bytes") || t.is_std("HttpHeaders") || crate::effects::is_text_builder(t)
-        {
-            Class::Move
-        } else if [
-            "Decimal",
-            "ListBuilder",
-            "MapBuilder",
-            "SetBuilder",
-            "StringBuilder",
-            "BytesBuilder",
-        ]
-        .iter()
-        .any(|n| t.is_std(n))
-        {
-            // Plain words in the runtime, so a copy is a bit copy: `Decimal` is `repr(C)` data.
-            // The builders are shared handles until they become owned values.
-            Class::Copy
         } else {
             // A native owns its storage; `.clone()` is its explicit duplicate.
             Class::Move

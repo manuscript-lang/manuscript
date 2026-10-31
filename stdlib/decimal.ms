@@ -1,4 +1,4 @@
-import Data, panic from "@std/core.ms"
+import Copy, Data, panic from "@std/core.ms"
 import NumberError from "@std/math.ms"
 
 # How a Decimal rounds to a multiple of the requested power of ten.
@@ -18,6 +18,8 @@ export type RoundingMode:
 export extern type Decimal
 
 impl Data for Decimal:
+
+impl Copy for Decimal:
 
 extern fn msstd_decimal_compare(left: Decimal, right: Decimal) Int
 
