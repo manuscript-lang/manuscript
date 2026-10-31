@@ -1,0 +1,6 @@
+{
+  "baseline": "/workspace/normalization-evidence/programs/baseline-byte",
+  "byte": "/workspace/normalization-evidence/programs/byte-byte",
+  "ascii": "/workspace/normalization-evidence/programs/ascii-byte",
+  "both": "/workspace/normalization-evidence/programs/both-byte"
+}

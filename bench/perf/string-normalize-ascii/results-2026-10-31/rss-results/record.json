@@ -1,0 +1,429 @@
+{
+  "complete": true,
+  "source": "bench/perf/string-normalize-ascii/rss.ms",
+  "source_sha256": "0a73231cb49be25add32205c50c09ce95818715d11cf58545c8c6b0dcdd506b9",
+  "launcher_source_sha256": "c671c66114469e2438d3486a19f5826d25cac131405eda0b43cfc5980af62a34",
+  "rust_source_sha256": "84f4ce1e22b00b4a1ec6af62102dbe654cfc00da5ab2657468ac16c1ea675e5f",
+  "samples": [
+    {
+      "repeat": 0,
+      "variant": "baseline",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/0-baseline.json",
+        "/workspace/normalization-evidence/programs/baseline-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "24df26cd0fa3f74d9d43b59bf2f4041e633f3acdc5d361f430eae2ee07cb7a83",
+      "maxrss_kib": 29088
+    },
+    {
+      "repeat": 0,
+      "variant": "byte",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/0-byte.json",
+        "/workspace/normalization-evidence/programs/byte-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "e01f298c0e3978404c4ab36bf03fd1d67a0ed184c95bc8ea5a3b47feffd83c1f",
+      "maxrss_kib": 29088
+    },
+    {
+      "repeat": 0,
+      "variant": "ascii",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/0-ascii.json",
+        "/workspace/normalization-evidence/programs/ascii-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "17dffb1ce52a1fc5c154833fcd8fb0bc349a7bb07083522d415255fbcb090332",
+      "maxrss_kib": 8484
+    },
+    {
+      "repeat": 0,
+      "variant": "both",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/0-both.json",
+        "/workspace/normalization-evidence/programs/both-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "046afe1d35bc8e65eebfe81dee7a1b6a33503aa2ed382d0caa62d5aa6a4e5bb4",
+      "maxrss_kib": 8484
+    },
+    {
+      "repeat": 0,
+      "variant": "rust-matched",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/0-rust-matched.json",
+        "/workspace/normalization-evidence/rss-rust-matched"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "4f9b0ecf42a74c88f56ca658956aaa791f7789c41de5d75f93c54485d9471d48",
+      "maxrss_kib": 25792
+    },
+    {
+      "repeat": 0,
+      "variant": "rust-ascii",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/0-rust-ascii.json",
+        "/workspace/normalization-evidence/rss-rust-ascii"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "38e6993e979ab3a8ff6e1cb500804e0002c0969c9d6bba8e8121292fb596dffc",
+      "maxrss_kib": 9280
+    },
+    {
+      "repeat": 1,
+      "variant": "byte",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/1-byte.json",
+        "/workspace/normalization-evidence/programs/byte-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "e01f298c0e3978404c4ab36bf03fd1d67a0ed184c95bc8ea5a3b47feffd83c1f",
+      "maxrss_kib": 29088
+    },
+    {
+      "repeat": 1,
+      "variant": "ascii",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/1-ascii.json",
+        "/workspace/normalization-evidence/programs/ascii-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "17dffb1ce52a1fc5c154833fcd8fb0bc349a7bb07083522d415255fbcb090332",
+      "maxrss_kib": 8484
+    },
+    {
+      "repeat": 1,
+      "variant": "both",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/1-both.json",
+        "/workspace/normalization-evidence/programs/both-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "046afe1d35bc8e65eebfe81dee7a1b6a33503aa2ed382d0caa62d5aa6a4e5bb4",
+      "maxrss_kib": 8484
+    },
+    {
+      "repeat": 1,
+      "variant": "rust-matched",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/1-rust-matched.json",
+        "/workspace/normalization-evidence/rss-rust-matched"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "4f9b0ecf42a74c88f56ca658956aaa791f7789c41de5d75f93c54485d9471d48",
+      "maxrss_kib": 25816
+    },
+    {
+      "repeat": 1,
+      "variant": "rust-ascii",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/1-rust-ascii.json",
+        "/workspace/normalization-evidence/rss-rust-ascii"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "38e6993e979ab3a8ff6e1cb500804e0002c0969c9d6bba8e8121292fb596dffc",
+      "maxrss_kib": 9244
+    },
+    {
+      "repeat": 1,
+      "variant": "baseline",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/1-baseline.json",
+        "/workspace/normalization-evidence/programs/baseline-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "24df26cd0fa3f74d9d43b59bf2f4041e633f3acdc5d361f430eae2ee07cb7a83",
+      "maxrss_kib": 29088
+    },
+    {
+      "repeat": 2,
+      "variant": "ascii",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/2-ascii.json",
+        "/workspace/normalization-evidence/programs/ascii-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "17dffb1ce52a1fc5c154833fcd8fb0bc349a7bb07083522d415255fbcb090332",
+      "maxrss_kib": 8484
+    },
+    {
+      "repeat": 2,
+      "variant": "both",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/2-both.json",
+        "/workspace/normalization-evidence/programs/both-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "046afe1d35bc8e65eebfe81dee7a1b6a33503aa2ed382d0caa62d5aa6a4e5bb4",
+      "maxrss_kib": 8484
+    },
+    {
+      "repeat": 2,
+      "variant": "rust-matched",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/2-rust-matched.json",
+        "/workspace/normalization-evidence/rss-rust-matched"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "4f9b0ecf42a74c88f56ca658956aaa791f7789c41de5d75f93c54485d9471d48",
+      "maxrss_kib": 25792
+    },
+    {
+      "repeat": 2,
+      "variant": "rust-ascii",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/2-rust-ascii.json",
+        "/workspace/normalization-evidence/rss-rust-ascii"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "38e6993e979ab3a8ff6e1cb500804e0002c0969c9d6bba8e8121292fb596dffc",
+      "maxrss_kib": 9304
+    },
+    {
+      "repeat": 2,
+      "variant": "baseline",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/2-baseline.json",
+        "/workspace/normalization-evidence/programs/baseline-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "24df26cd0fa3f74d9d43b59bf2f4041e633f3acdc5d361f430eae2ee07cb7a83",
+      "maxrss_kib": 29088
+    },
+    {
+      "repeat": 2,
+      "variant": "byte",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/2-byte.json",
+        "/workspace/normalization-evidence/programs/byte-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "e01f298c0e3978404c4ab36bf03fd1d67a0ed184c95bc8ea5a3b47feffd83c1f",
+      "maxrss_kib": 29088
+    },
+    {
+      "repeat": 3,
+      "variant": "both",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/3-both.json",
+        "/workspace/normalization-evidence/programs/both-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "046afe1d35bc8e65eebfe81dee7a1b6a33503aa2ed382d0caa62d5aa6a4e5bb4",
+      "maxrss_kib": 8484
+    },
+    {
+      "repeat": 3,
+      "variant": "rust-matched",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/3-rust-matched.json",
+        "/workspace/normalization-evidence/rss-rust-matched"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "4f9b0ecf42a74c88f56ca658956aaa791f7789c41de5d75f93c54485d9471d48",
+      "maxrss_kib": 25816
+    },
+    {
+      "repeat": 3,
+      "variant": "rust-ascii",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/3-rust-ascii.json",
+        "/workspace/normalization-evidence/rss-rust-ascii"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "38e6993e979ab3a8ff6e1cb500804e0002c0969c9d6bba8e8121292fb596dffc",
+      "maxrss_kib": 9304
+    },
+    {
+      "repeat": 3,
+      "variant": "baseline",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/3-baseline.json",
+        "/workspace/normalization-evidence/programs/baseline-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "24df26cd0fa3f74d9d43b59bf2f4041e633f3acdc5d361f430eae2ee07cb7a83",
+      "maxrss_kib": 29088
+    },
+    {
+      "repeat": 3,
+      "variant": "byte",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/3-byte.json",
+        "/workspace/normalization-evidence/programs/byte-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "e01f298c0e3978404c4ab36bf03fd1d67a0ed184c95bc8ea5a3b47feffd83c1f",
+      "maxrss_kib": 29088
+    },
+    {
+      "repeat": 3,
+      "variant": "ascii",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/3-ascii.json",
+        "/workspace/normalization-evidence/programs/ascii-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "17dffb1ce52a1fc5c154833fcd8fb0bc349a7bb07083522d415255fbcb090332",
+      "maxrss_kib": 8484
+    },
+    {
+      "repeat": 4,
+      "variant": "rust-matched",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/4-rust-matched.json",
+        "/workspace/normalization-evidence/rss-rust-matched"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "4f9b0ecf42a74c88f56ca658956aaa791f7789c41de5d75f93c54485d9471d48",
+      "maxrss_kib": 25816
+    },
+    {
+      "repeat": 4,
+      "variant": "rust-ascii",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/4-rust-ascii.json",
+        "/workspace/normalization-evidence/rss-rust-ascii"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "38e6993e979ab3a8ff6e1cb500804e0002c0969c9d6bba8e8121292fb596dffc",
+      "maxrss_kib": 9232
+    },
+    {
+      "repeat": 4,
+      "variant": "baseline",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/4-baseline.json",
+        "/workspace/normalization-evidence/programs/baseline-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "24df26cd0fa3f74d9d43b59bf2f4041e633f3acdc5d361f430eae2ee07cb7a83",
+      "maxrss_kib": 29088
+    },
+    {
+      "repeat": 4,
+      "variant": "byte",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/4-byte.json",
+        "/workspace/normalization-evidence/programs/byte-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "e01f298c0e3978404c4ab36bf03fd1d67a0ed184c95bc8ea5a3b47feffd83c1f",
+      "maxrss_kib": 29088
+    },
+    {
+      "repeat": 4,
+      "variant": "ascii",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/4-ascii.json",
+        "/workspace/normalization-evidence/programs/ascii-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "17dffb1ce52a1fc5c154833fcd8fb0bc349a7bb07083522d415255fbcb090332",
+      "maxrss_kib": 8484
+    },
+    {
+      "repeat": 4,
+      "variant": "both",
+      "argv": [
+        "/workspace/normalization-evidence/rss-launcher",
+        "/workspace/normalization-evidence/rss-results/4-both.json",
+        "/workspace/normalization-evidence/programs/both-rss"
+      ],
+      "status": 0,
+      "stdout": "4194304\n",
+      "stderr": "",
+      "program_sha256": "046afe1d35bc8e65eebfe81dee7a1b6a33503aa2ed382d0caa62d5aa6a4e5bb4",
+      "maxrss_kib": 8484
+    }
+  ]
+}
