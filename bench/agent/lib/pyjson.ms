@@ -10,6 +10,7 @@ fn hex4(code: Int) String:
 
 fn quote(text: String) String:
     var out = "\""
+
     for code in text.scalar_values():
         if code == 34:
             out = out + "\\\""
@@ -32,6 +33,7 @@ fn quote(text: String) String:
             out = out + hex4(55296 + v / 1024) + hex4(56320 + v % 1024)
         else:
             out = out + from_scalars([code]).get("")
+
     return out + "\""
 
 fn emit(value: JsonValue, indent: Int, level: Int) String:
@@ -56,7 +58,11 @@ fn emit(value: JsonValue, indent: Int, level: Int) String:
             let end = " ".repeat(level * indent).get("")
             var parts = List[String]()
             for entry in members.entries():
-                parts.append(quote(entry.key) + ": " + emit(entry.value, indent, level + 1))
+                parts.append(
+                    quote(entry.key) + ": " + emit(
+                        entry.value, indent, level + 1
+                    )
+                )
             if indent == 0: return "\{" + parts.join(", ") + "\}"
 
             return "\{\n" + pad + parts.join(",\n" + pad) + "\n" + end + "\}"

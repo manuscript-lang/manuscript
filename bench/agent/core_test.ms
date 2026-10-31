@@ -2,11 +2,10 @@
 import access, glob from "@std/fs.ms"
 import JsonValue, parse from "@std/json.ms"
 import expect_close, expect_equal, expect_false, expect_true, fail from "@std/test.ms"
-import root, cost_from_tokens, load_challenges, load_languages from "./core/model.ms"
+import cost_from_tokens, load_challenges, load_languages from "./core/model.ms"
 import count_text from "./core/codetokens.ms"
 import ClaudeCode from "./harnesses/claude_code.ms"
 import Codex from "./harnesses/codex.ms"
-import Harness from "./harnesses/harness.ms"
 import dumps from "./lib/pyjson.ms"
 import fmt_g, fixed, pct0 from "./lib/pyfmt.ms"
 import seeded from "./lib/pyrandom.ms"
@@ -21,18 +20,27 @@ test "every challenge is complete":
     let langs = load_languages([])
     let chs = load_challenges([])
     try expect_true(not chs.is_empty())
+
     for ch in chs:
         try expect_true(not ch.cases("examples").is_empty())
         try expect_true(ch.cases("hidden").length() > ch.cases("examples").length() - 1)
+
         let visible = ch.cases("examples").map(fn c: c.stdin.clone())
-        if not ch.cases("hidden").any(fn c: not visible.contains(c.stdin)): try fail("{ch.id}: hidden cases add nothing")
+        if not ch.cases("hidden").any(fn c: not visible.contains(c.stdin)): try fail(
+            "{ch.id}: hidden cases add nothing"
+        )
+
         if access("{ch.dir}/oracle", 0).is_ok():
             # Large challenges: Go oracle only, no per-language references.
-            if glob("{ch.dir}/oracle", "*.ref", none).get([]).is_empty(): try fail("{ch.id}: empty oracle")
+            if glob("{ch.dir}/oracle", "*.ref", none).get([]).is_empty(): try fail(
+                "{ch.id}: empty oracle"
+            )
             continue
 
         for lang in langs:
-            if not access("{ch.solution(lang.template)}/{lang.reference()}", 0).is_ok(): try fail("{ch.id}: missing {lang.id} reference solution")
+            if not access("{ch.solution(lang.template)}/{lang.reference()}", 0).is_ok(): try fail(
+                "{ch.id}: missing {lang.id} reference solution"
+            )
 
 test "claude code parse":
     let lines = [
@@ -67,13 +75,21 @@ test "random matches CPython's Mersenne Twister":
     try expect_equal(r.randint(0, 999), 243)
     try expect_equal(r.randint(0, 999), 606)
     try expect_equal(r.randint(0, 999), 557)
+
     var s = seeded(3)
     try expect_equal(s.randrange(5, 50), 20)
 
 test "json layout matches json.dumps":
-    let doc = parse("[\{\"a\": \"é\\n\", \"b\": [], \"c\": \{\}\}, 1]").get(JsonValue.Null)
-    try expect_equal(dumps(doc, 1), "[\n \{\n  \"a\": \"\\u00e9\\n\",\n  \"b\": [],\n  \"c\": \{\}\n \},\n 1\n]")
-    try expect_equal(dumps(doc, 0), "[\{\"a\": \"\\u00e9\\n\", \"b\": [], \"c\": \{\}\}, 1]")
+    let doc = parse("[\{\"a\": \"é\\n\", \"b\": [], \"c\": \{\}\}, 1]").get(
+        JsonValue.Null
+    )
+    try expect_equal(
+        dumps(doc, 1),
+        "[\n \{\n  \"a\": \"\\u00e9\\n\",\n  \"b\": [],\n  \"c\": \{\}\n \},\n 1\n]"
+    )
+    try expect_equal(
+        dumps(doc, 0), "[\{\"a\": \"\\u00e9\\n\", \"b\": [], \"c\": \{\}\}, 1]"
+    )
 
 test "number formats match CPython":
     try expect_equal(fixed(17.25, 1), "17.2")

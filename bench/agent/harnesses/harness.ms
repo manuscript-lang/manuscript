@@ -46,13 +46,28 @@ export fn int_at(doc: JsonValue, key: String) Int:
     return 0
 
 # Runs the agent in `workspace`, saves its output to `transcript` and returns the measured run.
-export fn run_agent(h: Harness, prompt: String, model: String?, workspace: String, timeout_s: Int, transcript: String) AgentRun:
+export fn run_agent(
+    h: Harness,
+    prompt: String,
+    model: String?,
+    workspace: String,
+    timeout_s: Int,
+    transcript: String
+) AgentRun:
     let argv = h.command(prompt, model, workspace)
     let wrapper = ["-c", "cd \"$0\" && exec \"$@\"", workspace.clone()].concat(argv)
     let ran = run_in("bash", wrapper, timeout_s, "")
     write_file(transcript, ran.out, replace: true).get()
+
     var usage = h.parse(ran.out)
+
     if usage.cost_source == "none" and (usage.tokens_in > 0 or usage.tokens_out > 0):
-        usage.cost_usd = cost_from_tokens(usage.tokens_in, usage.tokens_cached, usage.tokens_out, model.get("default"))
+        usage.cost_usd = cost_from_tokens(
+            usage.tokens_in, usage.tokens_cached, usage.tokens_out, model.get("default")
+        )
         usage.cost_source = "estimated"
-    return AgentRun(usage, round(ran.seconds * 100.0) / 100.0, ran.code, ran.code == 124 and ran.err == "timeout")
+
+    return AgentRun(
+        usage, round(ran.seconds * 100.0) / 100.0, ran.code,
+        ran.code == 124 and ran.err == "timeout"
+    )

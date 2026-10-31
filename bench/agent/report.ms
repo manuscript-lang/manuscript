@@ -41,31 +41,64 @@ fn wall_mean(ok: List[Run]) String:
 
 fn table(runs: List[Run], title: String, key: fn(Run) String) String:
     var out = "\n### {title}\n\n"
-    out = out + "| group | runs | pass | first build ok | tokens (in+out) | turns | wall s | cost $ |\n"
+    out = (
+        out
+        + "| group | runs | pass | first build ok | tokens (in+out) | turns | wall s | cost $ |\n"
+    )
     out = out + "|---|---:|---:|---:|---:|---:|---:|---:|\n"
+
     for k in runs.map(key).distinct().sorted():
         let rs = runs.filter(fn r: key(r) == k)
         let ok = rs.filter(fn r: r.pass)
         let n = rs.length().to_float()
         let first_ok = rs.filter(fn r: r.first_build_ok).length().to_float()
-        let tokens = average(ok, fn r: (r.usage.tokens_in + r.usage.tokens_cached + r.usage.tokens_out).to_float())
-        out = out + "| {k} | {rs.length()} | {pct0(ok.length().to_float() / n)} | {pct0(first_ok / n)} "
-        out = out + "| {tokens} | {average(ok, fn r: r.usage.turns.to_float())} | {wall_mean(ok)} "
+        let tokens = average(
+            ok,
+            fn r: (
+                r.usage.tokens_in
+                + r.usage.tokens_cached
+                + r.usage.tokens_out
+            ).to_float()
+        )
+        out = (
+            out
+            + "| {k} | {rs.length()} | {pct0(ok.length().to_float() / n)} | {pct0(first_ok / n)} "
+        )
+        out = (
+            out
+            + "| {tokens} | {average(ok, fn r: r.usage.turns.to_float())} | {wall_mean(ok)} "
+        )
         out = out + "| {average(ok, fn r: r.usage.cost_usd)} |\n"
+
     return out
 
 export fn main() Int:
     let args = arguments()
+
     let path = if args.is_empty(): "{root()}/results/runs.jsonl" else: args[0].clone()
+
     var runs = List[Run]()
     for line in nonblank_lines(read_text(path)):
         runs.append(parse[Run](line).get())
+
     if runs.is_empty():
         stderr().write("no runs\n").get()
         return 1
 
-    var text = table(runs, "By harness and language", fn r: "{r.harness} / {r.language}")
-    text = text + table(runs, "By language and category", fn r: "{r.language} / {r.category}")
-    text = text + table(runs, "By language and tier", fn r: "{r.language} / tier {r.tier}")
+    var text = table(
+        runs, "By harness and language", fn r: "{r.harness} / {r.language}"
+    )
+    text = (
+        text
+        + table(
+            runs, "By language and category", fn r: "{r.language} / {r.category}"
+        )
+    )
+    text = (
+        text
+        + table(
+            runs, "By language and tier", fn r: "{r.language} / tier {r.tier}"
+        )
+    )
     stdout().write(text).get()
     return 0

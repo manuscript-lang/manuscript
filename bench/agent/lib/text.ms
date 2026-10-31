@@ -1,7 +1,7 @@
 # Small helpers shared by the benchmark tools: environment, files, shell commands.
 import read_file, write_file, create_directory, dirname from "@std/fs.ms"
 import compile from "@std/string.ms"
-import Duration, seconds from "@std/time.ms"
+import seconds from "@std/time.ms"
 import CommandError, commands, control from "@std/process.ms"
 
 # The value of environment variable `name`, or `fallback`.
@@ -46,16 +46,27 @@ export type Ran:
 # Runs `command` with `bash -c` in directory `cwd`, feeding it `input`. A command still running after
 # `timeout_s` seconds is killed and reports status 124 with "timeout" on standard error.
 export fn bash(command: String, cwd: String, timeout_s: Int, input: String) Ran:
-    return run_in("bash", ["-c", "cd \"$0\" && {command}", cwd.clone()], timeout_s, input)
+    return run_in(
+        "bash", ["-c", "cd \"$0\" && {command}", cwd.clone()], timeout_s, input
+    )
 
 # Runs `program` with `arguments` and the same timeout rule as `bash`.
-export fn run_in(program: String, arguments: List[String], timeout_s: Int, input: String) Ran:
+export fn run_in(
+    program: String,
+    arguments: List[String],
+    timeout_s: Int,
+    input: String
+) Ran:
     let start = control().monotonic_time()
-    let result = commands().run(program, arguments, input: input.to_bytes(), timeout: seconds(timeout_s))
+    let result = commands().run(
+        program, arguments, input: input.to_bytes(), timeout: seconds(timeout_s)
+    )
     let elapsed = (control().monotonic_time() - start).to_float() / 1000000000.0
     if let done = result.to_optional():
-        return Ran(done.exit_code, done.stdout.decode_utf8().get(""), done.stderr.decode_utf8().get(""), elapsed)
-
+        return Ran(
+            done.exit_code, done.stdout.decode_utf8().get(""),
+            done.stderr.decode_utf8().get(""), elapsed
+        )
     if result.err() == CommandError.Timeout: return Ran(124, "", "timeout", elapsed)
 
     return Ran(127, "", "cannot start {program}", elapsed)
@@ -64,12 +75,14 @@ export fn run_in(program: String, arguments: List[String], timeout_s: Int, input
 export fn split_max(text: String, separator: String, splits: Int) List[String]:
     var out = List[String]()
     var rest = text.clone()
+
     while out.length() < splits:
         let at = rest.index_of(separator)
         if at.is_none(): break
 
         out.append(rest.slice(0, at.get(0)).get(""))
         rest = rest.slice(at.get(0) + separator.length(), rest.length()).get("")
+
     out.append(rest)
     return out
 
@@ -91,11 +104,13 @@ export fn full_match(pattern: String, text: String) Bool:
 export fn words(text: String) List[String]:
     var out = List[String]()
     var current = ""
+
     for ch in text.chars():
         if ch.trim().is_empty():
             if current != "": out.append(current.clone())
             current = ""
         else:
             current = current + ch
+
     if current != "": out.append(current.clone())
     return out

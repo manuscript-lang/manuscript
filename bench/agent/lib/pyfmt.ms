@@ -17,11 +17,15 @@ export fn fixed(x: Float, places: Int) String:
     let at = wide.index_of(".").get(wide.length())
     let cut = at + 1 + places
     let tail = wide.slice(cut, wide.length()).get("")
-    let tie = tail.starts_with("5") and tail.slice(1, tail.length()).get("").replace("0", "") == ""
+    let tie = (
+        tail.starts_with("5")
+        and tail.slice(1, tail.length()).get("").replace("0", "") == ""
+    )
     if not tie: return x.to_fixed(places)
 
     var kept = wide.slice(0, cut).get("")
     if places == 0: kept = wide.slice(0, at).get("")
+
     let last = kept.get(kept.length() - 1).parse_int().get(0)
     if last % 2 == 1: return x.to_fixed(places)
 
@@ -33,9 +37,12 @@ export fn fmt_g(x: Float, digits: Int) String:
 
     let sci = x.abs().to_exponential(digits - 1)
     let exp = sci.split("e")[1].replace("+", "").parse_int().get(0)
+
     if exp < -4 or exp >= digits:
         let mantissa = strip_zeros(x.to_exponential(digits - 1).split("e")[0])
+
         let sign = if exp < 0: "-" else: "+"
+
         let mag = "{if exp < 0: 0 - exp else: exp}".pad_start(2, "0")
         return "{mantissa}e{sign}{mag}"
 

@@ -15,9 +15,11 @@ fn u32(value: Int) Int: bit_and(value, MASK)
 fn init_genrand(seed: Int) List[Int]:
     var mt = List[Int](reserve: N)
     mt.append(u32(seed))
+
     for i in 1..N:
         let prev = mt[i - 1]
         mt.append(u32(1812433253 * bit_xor(prev, shift_right(prev, 30)) + i))
+
     return mt
 
 # Seeds like `random.Random(seed)` for a non-negative `seed` below 2**32.
@@ -26,25 +28,41 @@ export fn seeded(seed: Int) Random:
     var i = 1
     var j = 0
     var k = N
+
     while k > 0:
         let prev = mt[i - 1]
-        mt[i] = u32(bit_xor(mt[i], bit_xor(prev, shift_right(prev, 30)) * 1664525) + seed + j)
+        mt[i] = u32(
+            bit_xor(
+                mt[i], bit_xor(prev, shift_right(prev, 30)) * 1664525
+            ) + seed + j
+        )
         i += 1
         j += 1
+
         if i >= N:
             mt[0] = mt[N - 1]
             i = 1
+
         if j >= 1: j = 0
         k -= 1
+
     k = N - 1
+
     while k > 0:
         let prev = mt[i - 1]
-        mt[i] = u32(bit_xor(mt[i], bit_xor(prev, shift_right(prev, 30)) * 1566083941) - i)
+        mt[i] = u32(
+            bit_xor(
+                mt[i], bit_xor(prev, shift_right(prev, 30)) * 1566083941
+            ) - i
+        )
         i += 1
+
         if i >= N:
             mt[0] = mt[N - 1]
             i = 1
+
         k -= 1
+
     mt[0] = 0x80000000
     return Random(mt, N)
 
@@ -60,8 +78,10 @@ impl Random:
         if self.index >= N:
             twist(var self.state)
             self.index = 0
+
         let word = self.state[self.index]
         self.index += 1
+
         let y1 = bit_xor(word, shift_right(word, 11))
         let y2 = bit_xor(y1, bit_and(shift_left(y1, 7), 0x9D2C5680))
         let y3 = bit_xor(y2, bit_and(shift_left(y2, 15), 0xEFC60000))
@@ -73,9 +93,11 @@ impl Random:
 
         var bits = 0
         var m = n
+
         while m > 0:
             bits += 1
             m = shift_right(m, 1)
+
         var r = shift_right(self.next_u32(), 32 - bits)
         while r >= n: r = shift_right(self.next_u32(), 32 - bits)
         return r
@@ -106,8 +128,10 @@ impl Random:
 
         var pool = items.clone()
         var out = List[String]()
+
         for i in 0..k:
             let j = self.below(n - i)
             out.append(pool[j].clone())
             pool[j] = pool[n - i - 1].clone()
+
         return out

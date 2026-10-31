@@ -26,72 +26,94 @@ import gen_c60 from "./challenges/c60-issue-tracker/gen.ms"
 
 export fn main() Int:
     let args = arguments()
+
     if args.length() != 1:
         stderr().write("usage: gen.ms <challenge id prefix such as c03 | all>\n").get()
         return 2
 
     let which = args[0].clone()
     var ran = 0
+
     if which == "c03" or which == "all":
         gen_c03()
         ran += 1
+
     if which == "c05" or which == "all":
         gen_c05()
         ran += 1
+
     if which == "c09" or which == "all":
         gen_c09()
         ran += 1
+
     if which == "c13" or which == "all":
         gen_c13()
         ran += 1
+
     if which == "c14" or which == "all":
         gen_c14()
         ran += 1
+
     if which == "c16" or which == "all":
         gen_c16()
         ran += 1
+
     if which == "c18" or which == "all":
         gen_c18()
         ran += 1
+
     if which == "c25" or which == "all":
         gen_c25()
         ran += 1
+
     if which == "c36" or which == "all":
         gen_c36()
         ran += 1
+
     if which == "c44" or which == "all":
         gen_c44()
         ran += 1
+
     if which == "c51" or which == "all":
         gen_c51()
         ran += 1
+
     if which == "c52" or which == "all":
         gen_c52()
         ran += 1
+
     if which == "c53" or which == "all":
         gen_c53()
         ran += 1
+
     if which == "c54" or which == "all":
         gen_c54()
         ran += 1
+
     if which == "c55" or which == "all":
         gen_c55()
         ran += 1
+
     if which == "c56" or which == "all":
         gen_c56()
         ran += 1
+
     if which == "c57" or which == "all":
         gen_c57()
         ran += 1
+
     if which == "c58" or which == "all":
         gen_c58()
         ran += 1
+
     if which == "c59" or which == "all":
         gen_c59()
         ran += 1
+
     if which == "c60" or which == "all":
         gen_c60()
         ran += 1
+
     if ran == 0:
         stderr().write("unknown challenge {which}\n").get()
         return 2

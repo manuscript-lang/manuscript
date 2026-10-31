@@ -3,7 +3,10 @@
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
 let WF = "workflow\n  # simple board\n  initial: todo\n  todo -> doing, wontfix\n  doing -> review requires assignee+points, todo\n  review -> done requires labels, doing\n  final: done, wontfix\nend\n"
-let SEED = WF + "actor ann\ntoday 2024-03-10\ncreate \"Fix login bug\" priority=high points=5 labels=Bug,auth due=2024-03-01 assignee=bob\ncreate \"Add dark mode\" points=3 labels=ui due=2024-04-01\ncreate \"Refactor database layer\" priority=low points=13 labels=tech,db assignee=Carl\nactor dave\ncreate \"Write docs\" assignee=bob labels=docs due=2024-03-10\ncreate \"Crash on save\" priority=critical points=2 labels=bug,ui assignee=carl due=2024-02-20\ncreate \"Upgrade deps\" priority=medium labels=tech\nmove 1 doing\nmove 5 doing\nactor eve\nmove 4 doing\ncomment 1 reproduced on staging\ncomment 3 needs design review\n"
+let SEED = (
+    WF
+    + "actor ann\ntoday 2024-03-10\ncreate \"Fix login bug\" priority=high points=5 labels=Bug,auth due=2024-03-01 assignee=bob\ncreate \"Add dark mode\" points=3 labels=ui due=2024-04-01\ncreate \"Refactor database layer\" priority=low points=13 labels=tech,db assignee=Carl\nactor dave\ncreate \"Write docs\" assignee=bob labels=docs due=2024-03-10\ncreate \"Crash on save\" priority=critical points=2 labels=bug,ui assignee=carl due=2024-02-20\ncreate \"Upgrade deps\" priority=medium labels=tech\nmove 1 doing\nmove 5 doing\nactor eve\nmove 4 doing\ncomment 1 reproduced on staging\ncomment 3 needs design review\n"
+)
 
 fn strip_nl(text: String) String:
     var chars = text.chars()
@@ -24,59 +27,214 @@ fn add(var cs: Cases, name: String, script: String) Unit:
 fn adds(var cs: Cases, name: String, extra: String) Unit:
     cs.push(name, seeded(extra))
 
-
 export fn gen_c60() Unit:
     var cs = Cases(build_oracle("c60-issue-tracker"))
     add(var cs, "wf-basic", WF + "create a\nshow 1\n")
-    add(var cs, "wf-no-workflow", "create x\nlist\nreport summary\nlist is:open\nview list\nlog\n")
+    add(
+        var cs, "wf-no-workflow",
+        "create x\nlist\nreport summary\nlist is:open\nview list\nlog\n"
+    )
     add(var cs, "wf-errors-initial-missing", "workflow\n a -> b\nend\ncreate x\n")
-    add(var cs, "wf-errors-twice", "workflow\n initial: a\n initial: b\nend\nworkflow\n initial: a\n final: a\n a -> b\nend\nworkflow\n initial: A\nend\n")
-    add(var cs, "wf-errors-guard", "workflow\n initial: a\n a -> b requires owner\nend\nworkflow\n initial: a\n a -> b requires assignee+due, c\n a -> b c\nend\nworkflow\n a b\n initial: x\nend\n")
-    add(var cs, "wf-no-end-and-redefine", "workflow\n initial: a\n a -> b\n b -> a, c requires points\n final: c\nend\ncreate one\nworkflow\n initial: z\nend\ncreate two\nmove 1 b\nmove 1 c\nmove 1 a\n")
-    add(var cs, "wf-replace-before-issues", "workflow\n initial: a\nend\nworkflow\n initial: b\n b -> c\n final: c\nend\ncreate x\nshow 1\nmove 1 a\nmove 1 c\nmove 1 c\n")
-    add(var cs, "wf-final-with-transition", "workflow\n initial: a\n a -> b\n b -> a\n final: b\nend\nworkflow\n initial: a\n final: a\nend\ncreate x\n")
-    adds(var cs, "create-fields", "\ncreate \"Quoted \\\"title\\\" here\" labels=B,a,A,b-c points=0 due=2024-02-29\ncreate plain priority=medium\ncreate x title=y\ncreate \"  \" \ncreate ok points=007\ncreate ok points=-1\ncreate ok points=1000001\ncreate ok due=2023-02-29\ncreate ok due=2024-13-01\ncreate ok priority=urgent\ncreate ok labels=a!b\ncreate ok assignee=\ncreate ok state=done\ncreate ok foo=1\ncreate ok bar\ncreate \"unterminated\ncreate\nlist id>6\nlog tail 8\n")
-    adds(var cs, "edit-basic", "\nedit 2 points=8 priority=high\nedit 2 points=8\nedit 2 title=\"Add dark mode v2\" assignee=zed labels=ui,theme\nedit 2 assignee=none points=none due=none labels=none\nedit 2 reporter=none\nshow 2\nedit 2\nedit 2 title=\nedit 2 state=doing\nedit 99 title=x\nedit abc title=x\nedit #3 priority=critical priority=low\nshow #3\nlog 2\n")
-    adds(var cs, "edit-final-and-bad", "\nmove 1 review\nlabel 1 +auth\nmove 1 review\nmove 1 done\nedit 1 title=zzz\nlabel 1 +x\nassign 1 someone\ncomment 1 still allowed\nshow 1\ndelete 1\nlist state:done\nshow 1\n")
-    adds(var cs, "labels-cmd", "\nlabel 1 +Urgent -bug +Urgent\nlabel 1 -urgent -auth\nlabel 1 -nothing\nlabel 1 +a,b\nlabel 1 +ok extra\nlabel 6 +x +y -z\nlabel 6 -x -y\nlabel 6\nlabel 99 +x\nlabel 1 +\nlabel 1 \"\"\nassign 6\nassign 6 frank\nassign 6 FRANK\nassign 6 frank\nshow 6\nlog 6\n")
-    adds(var cs, "move-guards", "\nmove 2 review\nmove 2 doing\nmove 2 review\nassign 2 gina\nmove 2 review\nmove 2 done\nedit 2 labels=ui\nmove 2 done\nmove 2 todo\nmove 2 bogus\nmove 2 done\nmove 3 done\nmove 3 doing\nmove 3 doing\nmove 3 wontfix\nmove 3 todo\nmove 1\nmove\nmove x doing\n")
-    adds(var cs, "move-comment", "\nmove 6 doing is this thing on? yes\nmove 6 todo   spaced   comment\ncomment 6   a  b  c\ncomment 6\ncomment\nshow 6\nlist text~spaced\nlist text~\"is this\"\nlog 6\n")
-    add(var cs, "move-multi-guard", "\nworkflow\n initial: a\n a -> b requires assignee+points+due+labels+reporter\n b -> a\nend\nactor zed\ncreate thing\nmove 1 b\nedit 1 assignee=u points=1\nmove 1 b\nedit 1 due=2025-01-01 labels=x reporter=none\nmove 1 b\nedit 1 reporter=me\nmove 1 b\nmove 1 a\nlog\n")
-    adds(var cs, "delete-and-ids", "\ndelete 2\ndelete 2\nshow 2\nlist\ncreate fresh\nshow 7\nlog 2\nlog 7\nlog 8\nlog 0\nlog -1\nreport timeline 2\ndelete\ndelete x\n")
-    adds(var cs, "q-basics", "\nlist\nlist is:open\nlist is:final\nlist state:doing\nlist state:doing|review\nlist state!=todo\nlist state:bogus\nlist priority:high\nlist priority>=high\nlist priority<medium\nlist priority:high|critical\nlist priority>low|high\nlist priority>~high\nlist priority:urgent\nlist points>3\nlist points<=3\nlist points:none\nlist points!=none\nlist points:2|5\nlist points!=5\nlist points~3\nlist points>x\n")
-    adds(var cs, "q-strings", "\nlist title~bug\nlist title~BUG\nlist title:\"crash on save\"\nlist title:Crash\nlist assignee:bob\nlist assignee:BOB\nlist assignee:none\nlist assignee!=bob\nlist assignee~ar\nlist assignee~none\nlist reporter:ann\nlist reporter:dave|eve\nlist text~staging\nlist text~\"design review\"\nlist text~login|design\nlist text:login\nlist title~\"two words\" extra\n")
-    adds(var cs, "q-labels-dates", "\nlist label:bug\nlist label:BUG\nlist labels:ui\nlist label:none\nlist label!=bug\nlist label~ec\nlist label:bug|tech\nlist label:bug label:ui\nlist has:labels\nlist has:comments\nlist has:due\nlist has:points\nlist has:assignee\nlist has:reporter\nlist has:wrong\nlist due<2024-03-05\nlist due<=2024-03-10\nlist due>2024-03-10\nlist due>=2024-04-01\nlist due:2024-03-01\nlist due:none\nlist due!=none\nlist due:2024-03-01|2024-04-01\nlist due<none\nlist due<2024-02-31\nlist due~2024\nlist is:overdue\nlist is:unassigned\nlist is:overdue|unassigned\nlist is:bogus\nlist is>open\n")
-    adds(var cs, "q-boolean", "\nlist label:bug AND label:ui\nlist label:bug OR label:tech\nlist label:bug OR label:tech AND priority:low\nlist (label:bug OR label:tech) AND priority:low\nlist NOT label:bug\nlist NOT NOT label:bug\nlist NOT (label:bug OR label:ui)\nlist label:bug label:ui\nlist is:open NOT assignee:none priority>=medium\nlist ((is:open) AND (NOT (priority:low)))\nlist priority:high OR\nlist AND priority:high\nlist (priority:high\nlist priority:high)\nlist ()\nlist NOT\nlist priority:high AND OR state:todo\nlist label:bug and label:ui\nlist foo\nlist title:\"unterminated\nlist title~\"(paren) quote\"\n")
-    adds(var cs, "q-ids-and-clock", "\nlist id:3\nlist id<3\nlist id>=5\nlist id:1|2|9\nlist id!=1\nlist id~1\nlist created:1\nlist created>=3 created<=5\nlist updated>8\nlist updated:0\nlist updated>x\nlist id<-1\nlist id:\nlist nofield:1\nlist :x\nlist Priority:high\n")
-    adds(var cs, "q-sort-limit", "\nlist sort id\nlist sort -id\nlist sort priority\nlist sort -priority,id\nlist sort priority -points\nlist sort points\nlist sort -points\nlist sort due\nlist sort -due\nlist sort assignee,title\nlist sort -assignee\nlist sort title\nlist sort state,id\nlist sort -state\nlist sort reporter,-id\nlist sort created -updated\nlist sort updated\nlist sort bogus\nlist sort\nlist sort -\nlist limit 2\nlist sort -id limit 3\nlist limit 0\nlist limit 100\nlist limit x\nlist limit -1\nlist limit 2 limit 3\nlist is:open sort priority limit 2\nlist limit 2 sort id\nlist sort id,title limit 1\n")
-    adds(var cs, "views-basic", "\nview save urgent priority>=high is:open sort -priority,id\nview save mine assignee:bob sort -id limit 5\nview list\nview show urgent\nview show nope\nview run urgent\nview run mine\nview run mine sort id\nview run mine limit 1\nview run mine sort title limit 1\nview run mine extra\nview run mine assignee:x\nview run nope\nview run\nview save\nview save Bad priority:low\nview save 1x priority:low\nview save ok\nview save emptyview\nview run emptyview limit 2\nview save bad1 priority>>high\nview save bad2 label:x sort nope\nview save bad3 label:x limit zz\nview save bad4 view:ghost\nview save my-view_2 title~\"a b\"\nview show my-view_2\nview bogus\nview show\nview delete\nview delete nope\nview delete mine\nview list\n")
-    adds(var cs, "views-compose", "\nview save open-bugs label:bug is:open\nview save tech label:tech\nview save both view:open-bugs OR view:tech sort id\nview save notops NOT view:both limit 1\nview run both\nview run notops\nview run notops limit 10\nview list\nview delete tech\nview delete both\nview save tech label:db\nview run both\nview save open-bugs view:both\nview save a view:a\nview save b view:both\nview save open-bugs view:notops\nview delete notops\nview delete both\nview delete open-bugs\nview save open-bugs is:open\nlist view:open-bugs\nlist view:open-bugs sort -id\nlist view:nope\nlist view:a|b\nlist view>x\nview list\n")
-    adds(var cs, "views-live", "\nview save todo state:todo sort id\nview run todo\nmove 2 doing\nview run todo\ncreate brand new\nview run todo\ndelete 6\nview run todo\nview save todo state:doing\nview run todo\n")
-    adds(var cs, "bulk-basic", "\nbulk label +triaged where is:open\nlist label:triaged\nbulk label -triaged where label:triaged\nbulk assign pat where assignee:none\nbulk assign pat where assignee:none\nbulk set priority=low where priority:medium\nbulk set points=1 due=2025-05-05 where id<=2\nbulk move doing where state:todo\nbulk move review where state:doing\nbulk move done where state:review\nlist sort id\n")
-    adds(var cs, "bulk-errors", "\nbulk\nbulk move\nbulk move doing\nbulk move doing where\nbulk move where is:open\nbulk move doing review where is:open\nbulk assign where is:open\nbulk assign a b where is:open\nbulk label where is:open\nbulk set where is:open\nbulk set foo=1 where id:1\nbulk set title= where id<=2\nbulk set priority=bad where id:99\nbulk delete where is:open\nbulk move doing where priority>>x\nbulk move doing where sort id\nbulk move doing where limit 1\nbulk label +ok where foo:bar\nbulk set title=\"unterminated where id:1\nbulk label +\"a b\" where id:1\nbulk move wontfix where state:todo\nbulk move doing where is:final\nlog tail 4\n")
-    adds(var cs, "bulk-partial", "\nbulk move review where is:open\nbulk move doing where is:open\nbulk move review where state:doing\nbulk label +checked where id<=3\nbulk set assignee=none where id<=3\nbulk move wontfix where state:todo\nbulk label +late where is:final\nlog tail 12\n")
-    adds(var cs, "log-views", "\nlog\nlog 1\nlog tail 3\nlog 1 tail 2\nlog 1 tail 0\nlog tail\nlog tail x\nlog 1 2\nlog 99\nlog tail 100\n")
-    adds(var cs, "report-all", "\nreport summary\nreport workload\nreport labels\nreport labels is:open\nreport labels label:bug|ui\nreport labels priority:low AND priority:high\nreport labels sort id\nreport timeline 1\nreport timeline 3\nreport timeline 99\nreport timeline\nreport bogus\nreport\n")
-    adds(var cs, "report-after-changes", "\nmove 2 doing\nedit 2 assignee=BOB\nassign 6 Bob\nassign 3 carl\nassign 5 CARL\nedit 5 points=none\nmove 1 review\nmove 1 done\nmove 4 todo\nreport workload\nreport summary\nreport timeline 1\nreport timeline 4\ntoday 2024-02-25\nreport summary\nlist is:overdue\ntoday 2024-02-30\ntoday\ntoday 2025-01-01 extra\ntoday 2000-02-29\ntoday 1900-02-29\ntoday 0000-01-01\n")
-    add(var cs, "report-empty-workload", WF + "report workload\nreport summary\nreport labels\nlist\nview list\nlog\ncreate a\nmove 1 wontfix\nreport workload\nreport labels\nreport summary\n")
-    add(var cs, "report-unassigned-last", WF + "\ncreate a points=5\ncreate b points=1 assignee=Zed\ncreate c points=1 assignee=amy\ncreate d points=1 assignee=AMY\ncreate e points=9 assignee=bob\ncreate f assignee=bob\ncreate g assignee=cat points=1\nreport workload\n")
-    adds(var cs, "actor-and-time", "\nactor\nactor a b\nactor zed\ncreate by zed\nactor\ncomment 7 hello\nmove 7 doing hi\nlog 7\nshow 7\nlist reporter:zed\nlist reporter:ann\nlist created>=7 sort -created\n")
-    adds(var cs, "unknown-commands", "\nfrobnicate\nLIST\nlist  is:open   sort  -id\n   show   1\n\tshow 2\n#comment line\n\nshow 3 extra\nshow\nshow 1 2\ndelete 1 2\n")
-    add(var cs, "windows-newlines", WF.replace("\n", "\r\n") + "create a\r\nlist\r\nshow 1\r\n")
-    add(var cs, "kitchen-sink", WF + "\nactor ann\ntoday 2024-06-01\ncreate \"Ship v1\" priority=critical points=8 labels=release due=2024-06-15 assignee=zoe\ncreate \"Write changelog\" priority=high points=2 labels=docs,release assignee=Zoe\ncreate \"Fix flaky test\" priority=medium points=3 labels=bug,ci\ncreate \"Cleanup\" priority=low labels=chore\nview save release label:release sort -priority\nview save stale is:open due<2024-06-01\nmove 1 doing\nmove 2 doing\nmove 2 review start\nedit 2 labels=docs,release,ready\nmove 2 review\nmove 2 done shipped\nbulk assign mia where assignee:none AND NOT label:chore\nlist view:release\nview run release\nbulk move doing where state:todo AND label:bug\nreport workload\nreport labels\nreport timeline 2\nreport summary\nlog tail 10\n")
-    adds(var cs, "q-precedence", "\nlist priority:high OR priority:low AND label:db\nlist (priority:high OR priority:low) AND label:db\nlist NOT priority:high AND NOT priority:low\nlist NOT (priority:high AND is:open)\nlist is:open AND label:ui OR is:final\nlist state:todo label:tech OR label:bug label:ui\nlist label:bug label:ui OR label:docs\n")
-    adds(var cs, "q-quoting", "\ncreate \"Spaced   title (with) parens\" labels=x\ncreate \"AND OR NOT\" labels=y\nlist title~\"(with)\"\nlist title~\"AND OR\"\nlist title:\"AND OR NOT\"\nlist title:\"spaced   title (with) parens\"\nlist text~\"title (with\"\nlist title~\"a\\\"b\"\ncreate \"say \\\"hi\\\"\"\nlist title~\"\\\"hi\\\"\"\nshow 8\nshow 7\n")
-    adds(var cs, "edit-noop-and-clock", "\nedit 1 priority=high\nedit 1 labels=AUTH,bug\nedit 1 labels=bug,auth,bug\nedit 1 points=5 due=2024-03-01\nedit 1 title=\"Fix login bug\"\nedit 1 reporter=ann\nedit 1 reporter=dave\ncomment 1 x\nlist updated>=10\nlist created:1\nlog 1\n")
-    adds(var cs, "sort-ties-missing", "\nlist sort -due,id\nlist sort due,-id\nlist sort -points,title\nlist sort points,-priority\nlist sort assignee,-id\nlist sort -reporter,-title\nlist sort priority,state,title\nlist sort -priority -state -id\n")
-    adds(var cs, "sort-after-workflow-states", "\nmove 2 wontfix\nmove 3 doing\nmove 6 doing\nmove 6 todo\nlist sort state,id\nlist sort -state,id\nlist state!=todo sort -updated\n")
-    adds(var cs, "bulk-views-and-labels", "\nview save notdone NOT state:done\nbulk label +seen -ui where view:notdone\nlist label:seen\nbulk label -seen where label:ui\nbulk set labels=none where view:notdone\nlist has:labels\nbulk set labels=a,b where id:1\nbulk label +c where id:1|2\nbulk label +c where id:1|2\nlist label:c sort -id\n")
-    adds(var cs, "report-labels-counts", "\nlabel 1 +aa +zz\nlabel 2 +zz\nlabel 4 +zz\nreport labels\nreport labels state:todo\nreport labels NOT label:zz\nreport labels has:comments\n")
-    adds(var cs, "timeline-detail", "\nmove 1 review\nmove 1 doing\ncomment 1 hm\nmove 1 review\nmove 1 done\ncreate late\nmove 7 doing\nreport timeline 1\nreport timeline 7\nreport timeline 2\n")
-    adds(var cs, "misc-errors", "\nshow 1.5\nshow 0\nshow +1\nshow #\nshow ##1\nedit 1 =x\nedit 1 title\nedit 1 labels=a,,b\nedit 1 labels=,\nedit 1 points=1e3\nedit 1 points=\" 1\"\ncomment 1 x\nmove 1 todo\nmove 1 doing\nmove 1 doing\n")
-    adds(var cs, "view-sort-run-override", "\nview save top priority>=medium sort -priority limit 2\nview run top\nview run top sort id\nview run top limit 5\nview run top sort -id limit 1\nview run top sort bogus\nview run top limit zz\nview run top limit\nview show top\n")
+    add(
+        var cs, "wf-errors-twice",
+        "workflow\n initial: a\n initial: b\nend\nworkflow\n initial: a\n final: a\n a -> b\nend\nworkflow\n initial: A\nend\n"
+    )
+    add(
+        var cs, "wf-errors-guard",
+        "workflow\n initial: a\n a -> b requires owner\nend\nworkflow\n initial: a\n a -> b requires assignee+due, c\n a -> b c\nend\nworkflow\n a b\n initial: x\nend\n"
+    )
+    add(
+        var cs, "wf-no-end-and-redefine",
+        "workflow\n initial: a\n a -> b\n b -> a, c requires points\n final: c\nend\ncreate one\nworkflow\n initial: z\nend\ncreate two\nmove 1 b\nmove 1 c\nmove 1 a\n"
+    )
+    add(
+        var cs, "wf-replace-before-issues",
+        "workflow\n initial: a\nend\nworkflow\n initial: b\n b -> c\n final: c\nend\ncreate x\nshow 1\nmove 1 a\nmove 1 c\nmove 1 c\n"
+    )
+    add(
+        var cs, "wf-final-with-transition",
+        "workflow\n initial: a\n a -> b\n b -> a\n final: b\nend\nworkflow\n initial: a\n final: a\nend\ncreate x\n"
+    )
+    adds(
+        var cs, "create-fields",
+        "\ncreate \"Quoted \\\"title\\\" here\" labels=B,a,A,b-c points=0 due=2024-02-29\ncreate plain priority=medium\ncreate x title=y\ncreate \"  \" \ncreate ok points=007\ncreate ok points=-1\ncreate ok points=1000001\ncreate ok due=2023-02-29\ncreate ok due=2024-13-01\ncreate ok priority=urgent\ncreate ok labels=a!b\ncreate ok assignee=\ncreate ok state=done\ncreate ok foo=1\ncreate ok bar\ncreate \"unterminated\ncreate\nlist id>6\nlog tail 8\n"
+    )
+    adds(
+        var cs, "edit-basic",
+        "\nedit 2 points=8 priority=high\nedit 2 points=8\nedit 2 title=\"Add dark mode v2\" assignee=zed labels=ui,theme\nedit 2 assignee=none points=none due=none labels=none\nedit 2 reporter=none\nshow 2\nedit 2\nedit 2 title=\nedit 2 state=doing\nedit 99 title=x\nedit abc title=x\nedit #3 priority=critical priority=low\nshow #3\nlog 2\n"
+    )
+    adds(
+        var cs, "edit-final-and-bad",
+        "\nmove 1 review\nlabel 1 +auth\nmove 1 review\nmove 1 done\nedit 1 title=zzz\nlabel 1 +x\nassign 1 someone\ncomment 1 still allowed\nshow 1\ndelete 1\nlist state:done\nshow 1\n"
+    )
+    adds(
+        var cs, "labels-cmd",
+        "\nlabel 1 +Urgent -bug +Urgent\nlabel 1 -urgent -auth\nlabel 1 -nothing\nlabel 1 +a,b\nlabel 1 +ok extra\nlabel 6 +x +y -z\nlabel 6 -x -y\nlabel 6\nlabel 99 +x\nlabel 1 +\nlabel 1 \"\"\nassign 6\nassign 6 frank\nassign 6 FRANK\nassign 6 frank\nshow 6\nlog 6\n"
+    )
+    adds(
+        var cs, "move-guards",
+        "\nmove 2 review\nmove 2 doing\nmove 2 review\nassign 2 gina\nmove 2 review\nmove 2 done\nedit 2 labels=ui\nmove 2 done\nmove 2 todo\nmove 2 bogus\nmove 2 done\nmove 3 done\nmove 3 doing\nmove 3 doing\nmove 3 wontfix\nmove 3 todo\nmove 1\nmove\nmove x doing\n"
+    )
+    adds(
+        var cs, "move-comment",
+        "\nmove 6 doing is this thing on? yes\nmove 6 todo   spaced   comment\ncomment 6   a  b  c\ncomment 6\ncomment\nshow 6\nlist text~spaced\nlist text~\"is this\"\nlog 6\n"
+    )
+    add(
+        var cs, "move-multi-guard",
+        "\nworkflow\n initial: a\n a -> b requires assignee+points+due+labels+reporter\n b -> a\nend\nactor zed\ncreate thing\nmove 1 b\nedit 1 assignee=u points=1\nmove 1 b\nedit 1 due=2025-01-01 labels=x reporter=none\nmove 1 b\nedit 1 reporter=me\nmove 1 b\nmove 1 a\nlog\n"
+    )
+    adds(
+        var cs, "delete-and-ids",
+        "\ndelete 2\ndelete 2\nshow 2\nlist\ncreate fresh\nshow 7\nlog 2\nlog 7\nlog 8\nlog 0\nlog -1\nreport timeline 2\ndelete\ndelete x\n"
+    )
+    adds(
+        var cs, "q-basics",
+        "\nlist\nlist is:open\nlist is:final\nlist state:doing\nlist state:doing|review\nlist state!=todo\nlist state:bogus\nlist priority:high\nlist priority>=high\nlist priority<medium\nlist priority:high|critical\nlist priority>low|high\nlist priority>~high\nlist priority:urgent\nlist points>3\nlist points<=3\nlist points:none\nlist points!=none\nlist points:2|5\nlist points!=5\nlist points~3\nlist points>x\n"
+    )
+    adds(
+        var cs, "q-strings",
+        "\nlist title~bug\nlist title~BUG\nlist title:\"crash on save\"\nlist title:Crash\nlist assignee:bob\nlist assignee:BOB\nlist assignee:none\nlist assignee!=bob\nlist assignee~ar\nlist assignee~none\nlist reporter:ann\nlist reporter:dave|eve\nlist text~staging\nlist text~\"design review\"\nlist text~login|design\nlist text:login\nlist title~\"two words\" extra\n"
+    )
+    adds(
+        var cs, "q-labels-dates",
+        "\nlist label:bug\nlist label:BUG\nlist labels:ui\nlist label:none\nlist label!=bug\nlist label~ec\nlist label:bug|tech\nlist label:bug label:ui\nlist has:labels\nlist has:comments\nlist has:due\nlist has:points\nlist has:assignee\nlist has:reporter\nlist has:wrong\nlist due<2024-03-05\nlist due<=2024-03-10\nlist due>2024-03-10\nlist due>=2024-04-01\nlist due:2024-03-01\nlist due:none\nlist due!=none\nlist due:2024-03-01|2024-04-01\nlist due<none\nlist due<2024-02-31\nlist due~2024\nlist is:overdue\nlist is:unassigned\nlist is:overdue|unassigned\nlist is:bogus\nlist is>open\n"
+    )
+    adds(
+        var cs, "q-boolean",
+        "\nlist label:bug AND label:ui\nlist label:bug OR label:tech\nlist label:bug OR label:tech AND priority:low\nlist (label:bug OR label:tech) AND priority:low\nlist NOT label:bug\nlist NOT NOT label:bug\nlist NOT (label:bug OR label:ui)\nlist label:bug label:ui\nlist is:open NOT assignee:none priority>=medium\nlist ((is:open) AND (NOT (priority:low)))\nlist priority:high OR\nlist AND priority:high\nlist (priority:high\nlist priority:high)\nlist ()\nlist NOT\nlist priority:high AND OR state:todo\nlist label:bug and label:ui\nlist foo\nlist title:\"unterminated\nlist title~\"(paren) quote\"\n"
+    )
+    adds(
+        var cs, "q-ids-and-clock",
+        "\nlist id:3\nlist id<3\nlist id>=5\nlist id:1|2|9\nlist id!=1\nlist id~1\nlist created:1\nlist created>=3 created<=5\nlist updated>8\nlist updated:0\nlist updated>x\nlist id<-1\nlist id:\nlist nofield:1\nlist :x\nlist Priority:high\n"
+    )
+    adds(
+        var cs, "q-sort-limit",
+        "\nlist sort id\nlist sort -id\nlist sort priority\nlist sort -priority,id\nlist sort priority -points\nlist sort points\nlist sort -points\nlist sort due\nlist sort -due\nlist sort assignee,title\nlist sort -assignee\nlist sort title\nlist sort state,id\nlist sort -state\nlist sort reporter,-id\nlist sort created -updated\nlist sort updated\nlist sort bogus\nlist sort\nlist sort -\nlist limit 2\nlist sort -id limit 3\nlist limit 0\nlist limit 100\nlist limit x\nlist limit -1\nlist limit 2 limit 3\nlist is:open sort priority limit 2\nlist limit 2 sort id\nlist sort id,title limit 1\n"
+    )
+    adds(
+        var cs, "views-basic",
+        "\nview save urgent priority>=high is:open sort -priority,id\nview save mine assignee:bob sort -id limit 5\nview list\nview show urgent\nview show nope\nview run urgent\nview run mine\nview run mine sort id\nview run mine limit 1\nview run mine sort title limit 1\nview run mine extra\nview run mine assignee:x\nview run nope\nview run\nview save\nview save Bad priority:low\nview save 1x priority:low\nview save ok\nview save emptyview\nview run emptyview limit 2\nview save bad1 priority>>high\nview save bad2 label:x sort nope\nview save bad3 label:x limit zz\nview save bad4 view:ghost\nview save my-view_2 title~\"a b\"\nview show my-view_2\nview bogus\nview show\nview delete\nview delete nope\nview delete mine\nview list\n"
+    )
+    adds(
+        var cs, "views-compose",
+        "\nview save open-bugs label:bug is:open\nview save tech label:tech\nview save both view:open-bugs OR view:tech sort id\nview save notops NOT view:both limit 1\nview run both\nview run notops\nview run notops limit 10\nview list\nview delete tech\nview delete both\nview save tech label:db\nview run both\nview save open-bugs view:both\nview save a view:a\nview save b view:both\nview save open-bugs view:notops\nview delete notops\nview delete both\nview delete open-bugs\nview save open-bugs is:open\nlist view:open-bugs\nlist view:open-bugs sort -id\nlist view:nope\nlist view:a|b\nlist view>x\nview list\n"
+    )
+    adds(
+        var cs, "views-live",
+        "\nview save todo state:todo sort id\nview run todo\nmove 2 doing\nview run todo\ncreate brand new\nview run todo\ndelete 6\nview run todo\nview save todo state:doing\nview run todo\n"
+    )
+    adds(
+        var cs, "bulk-basic",
+        "\nbulk label +triaged where is:open\nlist label:triaged\nbulk label -triaged where label:triaged\nbulk assign pat where assignee:none\nbulk assign pat where assignee:none\nbulk set priority=low where priority:medium\nbulk set points=1 due=2025-05-05 where id<=2\nbulk move doing where state:todo\nbulk move review where state:doing\nbulk move done where state:review\nlist sort id\n"
+    )
+    adds(
+        var cs, "bulk-errors",
+        "\nbulk\nbulk move\nbulk move doing\nbulk move doing where\nbulk move where is:open\nbulk move doing review where is:open\nbulk assign where is:open\nbulk assign a b where is:open\nbulk label where is:open\nbulk set where is:open\nbulk set foo=1 where id:1\nbulk set title= where id<=2\nbulk set priority=bad where id:99\nbulk delete where is:open\nbulk move doing where priority>>x\nbulk move doing where sort id\nbulk move doing where limit 1\nbulk label +ok where foo:bar\nbulk set title=\"unterminated where id:1\nbulk label +\"a b\" where id:1\nbulk move wontfix where state:todo\nbulk move doing where is:final\nlog tail 4\n"
+    )
+    adds(
+        var cs, "bulk-partial",
+        "\nbulk move review where is:open\nbulk move doing where is:open\nbulk move review where state:doing\nbulk label +checked where id<=3\nbulk set assignee=none where id<=3\nbulk move wontfix where state:todo\nbulk label +late where is:final\nlog tail 12\n"
+    )
+    adds(
+        var cs, "log-views",
+        "\nlog\nlog 1\nlog tail 3\nlog 1 tail 2\nlog 1 tail 0\nlog tail\nlog tail x\nlog 1 2\nlog 99\nlog tail 100\n"
+    )
+    adds(
+        var cs, "report-all",
+        "\nreport summary\nreport workload\nreport labels\nreport labels is:open\nreport labels label:bug|ui\nreport labels priority:low AND priority:high\nreport labels sort id\nreport timeline 1\nreport timeline 3\nreport timeline 99\nreport timeline\nreport bogus\nreport\n"
+    )
+    adds(
+        var cs, "report-after-changes",
+        "\nmove 2 doing\nedit 2 assignee=BOB\nassign 6 Bob\nassign 3 carl\nassign 5 CARL\nedit 5 points=none\nmove 1 review\nmove 1 done\nmove 4 todo\nreport workload\nreport summary\nreport timeline 1\nreport timeline 4\ntoday 2024-02-25\nreport summary\nlist is:overdue\ntoday 2024-02-30\ntoday\ntoday 2025-01-01 extra\ntoday 2000-02-29\ntoday 1900-02-29\ntoday 0000-01-01\n"
+    )
+    add(
+        var cs,
+        "report-empty-workload",
+        WF
+        + "report workload\nreport summary\nreport labels\nlist\nview list\nlog\ncreate a\nmove 1 wontfix\nreport workload\nreport labels\nreport summary\n"
+    )
+    add(
+        var cs,
+        "report-unassigned-last",
+        WF
+        + "\ncreate a points=5\ncreate b points=1 assignee=Zed\ncreate c points=1 assignee=amy\ncreate d points=1 assignee=AMY\ncreate e points=9 assignee=bob\ncreate f assignee=bob\ncreate g assignee=cat points=1\nreport workload\n"
+    )
+    adds(
+        var cs, "actor-and-time",
+        "\nactor\nactor a b\nactor zed\ncreate by zed\nactor\ncomment 7 hello\nmove 7 doing hi\nlog 7\nshow 7\nlist reporter:zed\nlist reporter:ann\nlist created>=7 sort -created\n"
+    )
+    adds(
+        var cs, "unknown-commands",
+        "\nfrobnicate\nLIST\nlist  is:open   sort  -id\n   show   1\n\tshow 2\n#comment line\n\nshow 3 extra\nshow\nshow 1 2\ndelete 1 2\n"
+    )
+    add(
+        var cs, "windows-newlines",
+        WF.replace("\n", "\r\n") + "create a\r\nlist\r\nshow 1\r\n"
+    )
+    add(
+        var cs,
+        "kitchen-sink",
+        WF
+        + "\nactor ann\ntoday 2024-06-01\ncreate \"Ship v1\" priority=critical points=8 labels=release due=2024-06-15 assignee=zoe\ncreate \"Write changelog\" priority=high points=2 labels=docs,release assignee=Zoe\ncreate \"Fix flaky test\" priority=medium points=3 labels=bug,ci\ncreate \"Cleanup\" priority=low labels=chore\nview save release label:release sort -priority\nview save stale is:open due<2024-06-01\nmove 1 doing\nmove 2 doing\nmove 2 review start\nedit 2 labels=docs,release,ready\nmove 2 review\nmove 2 done shipped\nbulk assign mia where assignee:none AND NOT label:chore\nlist view:release\nview run release\nbulk move doing where state:todo AND label:bug\nreport workload\nreport labels\nreport timeline 2\nreport summary\nlog tail 10\n"
+    )
+    adds(
+        var cs, "q-precedence",
+        "\nlist priority:high OR priority:low AND label:db\nlist (priority:high OR priority:low) AND label:db\nlist NOT priority:high AND NOT priority:low\nlist NOT (priority:high AND is:open)\nlist is:open AND label:ui OR is:final\nlist state:todo label:tech OR label:bug label:ui\nlist label:bug label:ui OR label:docs\n"
+    )
+    adds(
+        var cs, "q-quoting",
+        "\ncreate \"Spaced   title (with) parens\" labels=x\ncreate \"AND OR NOT\" labels=y\nlist title~\"(with)\"\nlist title~\"AND OR\"\nlist title:\"AND OR NOT\"\nlist title:\"spaced   title (with) parens\"\nlist text~\"title (with\"\nlist title~\"a\\\"b\"\ncreate \"say \\\"hi\\\"\"\nlist title~\"\\\"hi\\\"\"\nshow 8\nshow 7\n"
+    )
+    adds(
+        var cs, "edit-noop-and-clock",
+        "\nedit 1 priority=high\nedit 1 labels=AUTH,bug\nedit 1 labels=bug,auth,bug\nedit 1 points=5 due=2024-03-01\nedit 1 title=\"Fix login bug\"\nedit 1 reporter=ann\nedit 1 reporter=dave\ncomment 1 x\nlist updated>=10\nlist created:1\nlog 1\n"
+    )
+    adds(
+        var cs, "sort-ties-missing",
+        "\nlist sort -due,id\nlist sort due,-id\nlist sort -points,title\nlist sort points,-priority\nlist sort assignee,-id\nlist sort -reporter,-title\nlist sort priority,state,title\nlist sort -priority -state -id\n"
+    )
+    adds(
+        var cs, "sort-after-workflow-states",
+        "\nmove 2 wontfix\nmove 3 doing\nmove 6 doing\nmove 6 todo\nlist sort state,id\nlist sort -state,id\nlist state!=todo sort -updated\n"
+    )
+    adds(
+        var cs, "bulk-views-and-labels",
+        "\nview save notdone NOT state:done\nbulk label +seen -ui where view:notdone\nlist label:seen\nbulk label -seen where label:ui\nbulk set labels=none where view:notdone\nlist has:labels\nbulk set labels=a,b where id:1\nbulk label +c where id:1|2\nbulk label +c where id:1|2\nlist label:c sort -id\n"
+    )
+    adds(
+        var cs, "report-labels-counts",
+        "\nlabel 1 +aa +zz\nlabel 2 +zz\nlabel 4 +zz\nreport labels\nreport labels state:todo\nreport labels NOT label:zz\nreport labels has:comments\n"
+    )
+    adds(
+        var cs, "timeline-detail",
+        "\nmove 1 review\nmove 1 doing\ncomment 1 hm\nmove 1 review\nmove 1 done\ncreate late\nmove 7 doing\nreport timeline 1\nreport timeline 7\nreport timeline 2\n"
+    )
+    adds(
+        var cs, "misc-errors",
+        "\nshow 1.5\nshow 0\nshow +1\nshow #\nshow ##1\nedit 1 =x\nedit 1 title\nedit 1 labels=a,,b\nedit 1 labels=,\nedit 1 points=1e3\nedit 1 points=\" 1\"\ncomment 1 x\nmove 1 todo\nmove 1 doing\nmove 1 doing\n"
+    )
+    adds(
+        var cs, "view-sort-run-override",
+        "\nview save top priority>=medium sort -priority limit 2\nview run top\nview run top sort id\nview run top limit 5\nview run top sort -id limit 1\nview run top sort bogus\nview run top limit zz\nview run top limit\nview show top\n"
+    )
+
     let examples = [
-        cs.make("ex-workflow", WF + "actor ann\ncreate \"Fix it\" priority=high\nmove 1 doing\nassign 1 bob\nedit 1 points=3\nmove 1 review\nmove 1 doing sorry\nshow 1\nlog\n"),
-        cs.make("ex-query", seeded("list is:open sort -priority,id limit 3\nlist (label:bug OR label:tech) AND NOT assignee:none\nview save mine assignee:bob sort -id\nview run mine\nlist priority>urgent\n")),
-        cs.make("ex-bulk-report", seeded("bulk assign pat where assignee:none AND is:open\nbulk move review where state:doing\nreport workload\nreport summary\nreport timeline 1\n"))
+        cs.make(
+            "ex-workflow",
+            WF
+            + "actor ann\ncreate \"Fix it\" priority=high\nmove 1 doing\nassign 1 bob\nedit 1 points=3\nmove 1 review\nmove 1 doing sorry\nshow 1\nlog\n"
+        ),
+        cs.make(
+            "ex-query",
+            seeded(
+                "list is:open sort -priority,id limit 3\nlist (label:bug OR label:tech) AND NOT assignee:none\nview save mine assignee:bob sort -id\nview run mine\nlist priority>urgent\n"
+            )
+        ),
+        cs.make(
+            "ex-bulk-report",
+            seeded(
+                "bulk assign pat where assignee:none AND is:open\nbulk move review where state:doing\nreport workload\nreport summary\nreport timeline 1\n"
+            )
+        )
     ]
     write_cases("c60-issue-tracker", examples, cs.list)

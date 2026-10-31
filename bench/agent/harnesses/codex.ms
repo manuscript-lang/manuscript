@@ -19,8 +19,13 @@ impl Harness for Codex:
     # Codex reports no cost; the runner estimates it from pricing.json.
     fn parse(transcript: String) Usage:
         var u = Usage()
+
         for ev in events(transcript):
-            if ev.get("type").get(JsonValue.Null).as_string().get("") != "turn.completed": continue
+            if (
+                ev.get("type").get(JsonValue.Null).as_string().get(
+                    ""
+                ) != "turn.completed"
+            ): continue
 
             let us = ev.get("usage").get(JsonValue.Null)
             let cached = int_at(us, "cached_input_tokens")
@@ -28,4 +33,5 @@ impl Harness for Codex:
             u.tokens_cached += cached
             u.tokens_out += int_at(us, "output_tokens")
             u.turns += 1
+
         return u
