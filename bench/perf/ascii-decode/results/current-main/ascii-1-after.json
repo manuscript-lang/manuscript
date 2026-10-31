@@ -1,0 +1,388 @@
+{
+  "repeat": 1,
+  "format": 1,
+  "source_root": "/workspace/manuscript/bench/perf/stdlib",
+  "benches": [
+    {
+      "index": 0,
+      "duration_ns": 717408751,
+      "name": "encoding_ascii_bench.ms::ascii.valid.0",
+      "status": "passed",
+      "stats": {
+        "iterations": 52215912,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 2.2576699799861775,
+        "median_ns": 2.259591444079345,
+        "mean_ns": 2.2629819852615043,
+        "max_ns": 2.27070476141449,
+        "stddev_ns": 0.005415971528674321
+      }
+    },
+    {
+      "index": 1,
+      "duration_ns": 737986459,
+      "name": "encoding_ascii_bench.ms::ascii.valid.7",
+      "status": "passed",
+      "stats": {
+        "iterations": 9677932,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 12.353174004529066,
+        "median_ns": 12.415930076797398,
+        "mean_ns": 12.417162778163766,
+        "max_ns": 12.489533611106175,
+        "stddev_ns": 0.05404217689404553
+      }
+    },
+    {
+      "index": 2,
+      "duration_ns": 758140650,
+      "name": "encoding_ascii_bench.ms::ascii.valid.56",
+      "status": "passed",
+      "stats": {
+        "iterations": 4743967,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 25.388058981017362,
+        "median_ns": 25.446179115495532,
+        "mean_ns": 25.460854976436387,
+        "max_ns": 25.621137120051635,
+        "stddev_ns": 0.08343078584949333
+      }
+    },
+    {
+      "index": 3,
+      "duration_ns": 737937116,
+      "name": "encoding_ascii_bench.ms::ascii.valid.4095",
+      "status": "passed",
+      "stats": {
+        "iterations": 107161,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 1121.424464124075,
+        "median_ns": 1123.4121928686743,
+        "mean_ns": 1123.331553456948,
+        "max_ns": 1126.2549528279878,
+        "stddev_ns": 1.7107910404639879
+      }
+    },
+    {
+      "index": 4,
+      "duration_ns": 758177836,
+      "name": "encoding_ascii_bench.ms::ascii.valid.1048579",
+      "status": "passed",
+      "stats": {
+        "iterations": 418,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 285196.3564593301,
+        "median_ns": 285321.25358851673,
+        "mean_ns": 287212.2114832536,
+        "max_ns": 294824.75119617226,
+        "stddev_ns": 3806.821641973983
+      }
+    },
+    {
+      "index": 5,
+      "duration_ns": 727707294,
+      "name": "encoding_ascii_bench.ms::ascii.invalid.first.1",
+      "status": "passed",
+      "stats": {
+        "iterations": 18220688,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 6.551235002761696,
+        "median_ns": 6.596044781624053,
+        "mean_ns": 6.585728134963949,
+        "max_ns": 6.620620966672608,
+        "stddev_ns": 0.02541138260942986
+      }
+    },
+    {
+      "index": 6,
+      "duration_ns": 738059348,
+      "name": "encoding_ascii_bench.ms::ascii.invalid.last.1",
+      "status": "passed",
+      "stats": {
+        "iterations": 18341230,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 6.5577899083104025,
+        "median_ns": 6.591719257650659,
+        "mean_ns": 6.598518234600405,
+        "max_ns": 6.673347261879384,
+        "stddev_ns": 0.04151007748205933
+      }
+    },
+    {
+      "index": 7,
+      "duration_ns": 727976625,
+      "name": "encoding_ascii_bench.ms::ascii.invalid.first.57",
+      "status": "passed",
+      "stats": {
+        "iterations": 17583355,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 6.7195270185922995,
+        "median_ns": 6.738663298329585,
+        "mean_ns": 6.7445866047748,
+        "max_ns": 6.767980684004844,
+        "stddev_ns": 0.018863655563433963
+      }
+    },
+    {
+      "index": 8,
+      "duration_ns": 758171466,
+      "name": "encoding_ascii_bench.ms::ascii.invalid.last.57",
+      "status": "passed",
+      "stats": {
+        "iterations": 6584415,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 18.427978643508954,
+        "median_ns": 18.724069032708297,
+        "mean_ns": 18.700006059763854,
+        "max_ns": 19.01143169134995,
+        "stddev_ns": 0.20187983720700334
+      }
+    },
+    {
+      "index": 9,
+      "duration_ns": 781034673,
+      "name": "encoding_ascii_bench.ms::ascii.invalid.first.4096",
+      "status": "passed",
+      "stats": {
+        "iterations": 2351260,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 48.68222187252792,
+        "median_ns": 49.76563332000715,
+        "mean_ns": 49.76855847503041,
+        "max_ns": 50.80017182276737,
+        "stddev_ns": 0.7301264172652014
+      }
+    },
+    {
+      "index": 10,
+      "duration_ns": 726651110,
+      "name": "encoding_ascii_bench.ms::ascii.invalid.last.4096",
+      "status": "passed",
+      "stats": {
+        "iterations": 118503,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 993.0735846349882,
+        "median_ns": 996.9639249639249,
+        "mean_ns": 1000.3641359290483,
+        "max_ns": 1013.8847117794486,
+        "stddev_ns": 7.528831974787876
+      }
+    },
+    {
+      "index": 11,
+      "duration_ns": 748249510,
+      "name": "encoding_ascii_bench.ms::ascii.invalid.first.1048580",
+      "status": "passed",
+      "stats": {
+        "iterations": 8455,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 14507.694973388527,
+        "median_ns": 14551.225073920757,
+        "mean_ns": 14543.338072146658,
+        "max_ns": 14558.824837374335,
+        "stddev_ns": 18.673131343226704
+      }
+    },
+    {
+      "index": 12,
+      "duration_ns": 758434387,
+      "name": "encoding_ascii_bench.ms::ascii.invalid.last.1048580",
+      "status": "passed",
+      "stats": {
+        "iterations": 472,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 252493.2288135593,
+        "median_ns": 255472.0466101695,
+        "mean_ns": 255935.66016949154,
+        "max_ns": 263035.73728813557,
+        "stddev_ns": 3842.266740200896
+      }
+    },
+    {
+      "index": 13,
+      "duration_ns": 737394166,
+      "name": "encoding_ascii_bench.ms::ascii.unicode.accent.1",
+      "status": "passed",
+      "stats": {
+        "iterations": 17640775,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 6.774741585899712,
+        "median_ns": 6.781276502874732,
+        "mean_ns": 6.830025619622721,
+        "max_ns": 7.027594309206937,
+        "stddev_ns": 0.09887221781138744
+      }
+    },
+    {
+      "index": 14,
+      "duration_ns": 737924686,
+      "name": "encoding_ascii_bench.ms::ascii.unicode.emoji.1",
+      "status": "passed",
+      "stats": {
+        "iterations": 17649632,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 6.772719567184177,
+        "median_ns": 6.809141686353573,
+        "mean_ns": 6.857717860633015,
+        "max_ns": 7.029724359125448,
+        "stddev_ns": 0.09140814099283193
+      }
+    },
+    {
+      "index": 15,
+      "duration_ns": 798523031,
+      "name": "encoding_ascii_bench.ms::ascii.unicode.accent.2048",
+      "status": "passed",
+      "stats": {
+        "iterations": 2429422,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 49.20201307142192,
+        "median_ns": 49.33254700089157,
+        "mean_ns": 50.943498824000116,
+        "max_ns": 57.10805903626459,
+        "stddev_ns": 3.091512910536888
+      }
+    },
+    {
+      "index": 16,
+      "duration_ns": 787796890,
+      "name": "encoding_ascii_bench.ms::ascii.unicode.emoji.2048",
+      "status": "passed",
+      "stats": {
+        "iterations": 1877376,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 63.426854290243405,
+        "median_ns": 63.62794400269312,
+        "mean_ns": 63.85353280323174,
+        "max_ns": 64.4878319526829,
+        "stddev_ns": 0.38634758652901624
+      }
+    },
+    {
+      "index": 17,
+      "duration_ns": 717702875,
+      "name": "encoding_ascii_bench.ms::ascii.unicode.accent.524288",
+      "status": "passed",
+      "stats": {
+        "iterations": 7497,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 15627.644924636521,
+        "median_ns": 15705.81912765106,
+        "mean_ns": 15723.851247165532,
+        "max_ns": 15866.088168600774,
+        "stddev_ns": 79.25700932693292
+      }
+    },
+    {
+      "index": 18,
+      "duration_ns": 657659285,
+      "name": "encoding_ascii_bench.ms::ascii.unicode.emoji.524288",
+      "status": "passed",
+      "stats": {
+        "iterations": 3175,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 33711.88220472441,
+        "median_ns": 33850.79118110236,
+        "mean_ns": 33845.177259842516,
+        "max_ns": 33961.551496062995,
+        "stddev_ns": 87.7259418182482
+      }
+    },
+    {
+      "index": 19,
+      "duration_ns": 738346564,
+      "name": "encoding_ascii_bench.ms::ascii.unicode.first.8",
+      "status": "passed",
+      "stats": {
+        "iterations": 17431082,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 6.916552110763979,
+        "median_ns": 6.967309487730022,
+        "mean_ns": 6.971798973810117,
+        "max_ns": 7.029381939686819,
+        "stddev_ns": 0.037836822452877374
+      }
+    },
+    {
+      "index": 20,
+      "duration_ns": 748021462,
+      "name": "encoding_ascii_bench.ms::ascii.unicode.last.8",
+      "status": "passed",
+      "stats": {
+        "iterations": 15267066,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 7.89972814684891,
+        "median_ns": 7.991742486735827,
+        "mean_ns": 7.990672628257452,
+        "max_ns": 8.122011786678593,
+        "stddev_ns": 0.0807967129884302
+      }
+    },
+    {
+      "index": 21,
+      "duration_ns": 778305190,
+      "name": "encoding_ascii_bench.ms::ascii.unicode.first.524288",
+      "status": "passed",
+      "stats": {
+        "iterations": 20895,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 5721.091457286432,
+        "median_ns": 5732.229815745393,
+        "mean_ns": 5733.020579085905,
+        "max_ns": 5750.5380234505865,
+        "stddev_ns": 9.725315981932537
+      }
+    },
+    {
+      "index": 22,
+      "duration_ns": 737463212,
+      "name": "encoding_ascii_bench.ms::ascii.unicode.last.524288",
+      "status": "passed",
+      "stats": {
+        "iterations": 954,
+        "operations": 1,
+        "samples": 5,
+        "min_ns": 124688.37421383648,
+        "median_ns": 124874.64779874214,
+        "mean_ns": 124983.43836477988,
+        "max_ns": 125680.43710691824,
+        "stddev_ns": 358.3526748630519
+      }
+    }
+  ],
+  "summary": {
+    "available": 23,
+    "selected": 23,
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0,
+    "not_run": 0,
+    "duration_ns": 17115560832
+  },
+  "completed": true,
+  "exit_code": 0,
+  "stdout": "RUN encoding_ascii_bench.ms::ascii.valid.0\nBENCH encoding_ascii_bench.ms::ascii.valid.0: 2.260 ns/op median (min 2.258 ns, mean 2.263 ns, max 2.271 ns, stddev 0.005 ns; 52215912 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.valid.7\nBENCH encoding_ascii_bench.ms::ascii.valid.7: 12.416 ns/op median (min 12.353 ns, mean 12.417 ns, max 12.490 ns, stddev 0.054 ns; 9677932 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.valid.56\nBENCH encoding_ascii_bench.ms::ascii.valid.56: 25.446 ns/op median (min 25.388 ns, mean 25.461 ns, max 25.621 ns, stddev 0.083 ns; 4743967 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.valid.4095\nBENCH encoding_ascii_bench.ms::ascii.valid.4095: 1.123 µs/op median (min 1.121 µs, mean 1.123 µs, max 1.126 µs, stddev 1.711 ns; 107161 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.valid.1048579\nBENCH encoding_ascii_bench.ms::ascii.valid.1048579: 285.321 µs/op median (min 285.196 µs, mean 287.212 µs, max 294.825 µs, stddev 3.807 µs; 418 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.invalid.first.1\nBENCH encoding_ascii_bench.ms::ascii.invalid.first.1: 6.596 ns/op median (min 6.551 ns, mean 6.586 ns, max 6.621 ns, stddev 0.025 ns; 18220688 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.invalid.last.1\nBENCH encoding_ascii_bench.ms::ascii.invalid.last.1: 6.592 ns/op median (min 6.558 ns, mean 6.599 ns, max 6.673 ns, stddev 0.042 ns; 18341230 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.invalid.first.57\nBENCH encoding_ascii_bench.ms::ascii.invalid.first.57: 6.739 ns/op median (min 6.720 ns, mean 6.745 ns, max 6.768 ns, stddev 0.019 ns; 17583355 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.invalid.last.57\nBENCH encoding_ascii_bench.ms::ascii.invalid.last.57: 18.724 ns/op median (min 18.428 ns, mean 18.700 ns, max 19.011 ns, stddev 0.202 ns; 6584415 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.invalid.first.4096\nBENCH encoding_ascii_bench.ms::ascii.invalid.first.4096: 49.766 ns/op median (min 48.682 ns, mean 49.769 ns, max 50.800 ns, stddev 0.730 ns; 2351260 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.invalid.last.4096\nBENCH encoding_ascii_bench.ms::ascii.invalid.last.4096: 996.964 ns/op median (min 993.074 ns, mean 1.000 µs, max 1.014 µs, stddev 7.529 ns; 118503 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.invalid.first.1048580\nBENCH encoding_ascii_bench.ms::ascii.invalid.first.1048580: 14.551 µs/op median (min 14.508 µs, mean 14.543 µs, max 14.559 µs, stddev 18.673 ns; 8455 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.invalid.last.1048580\nBENCH encoding_ascii_bench.ms::ascii.invalid.last.1048580: 255.472 µs/op median (min 252.493 µs, mean 255.936 µs, max 263.036 µs, stddev 3.842 µs; 472 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.unicode.accent.1\nBENCH encoding_ascii_bench.ms::ascii.unicode.accent.1: 6.781 ns/op median (min 6.775 ns, mean 6.830 ns, max 7.028 ns, stddev 0.099 ns; 17640775 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.unicode.emoji.1\nBENCH encoding_ascii_bench.ms::ascii.unicode.emoji.1: 6.809 ns/op median (min 6.773 ns, mean 6.858 ns, max 7.030 ns, stddev 0.091 ns; 17649632 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.unicode.accent.2048\nBENCH encoding_ascii_bench.ms::ascii.unicode.accent.2048: 49.333 ns/op median (min 49.202 ns, mean 50.943 ns, max 57.108 ns, stddev 3.092 ns; 2429422 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.unicode.emoji.2048\nBENCH encoding_ascii_bench.ms::ascii.unicode.emoji.2048: 63.628 ns/op median (min 63.427 ns, mean 63.854 ns, max 64.488 ns, stddev 0.386 ns; 1877376 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.unicode.accent.524288\nBENCH encoding_ascii_bench.ms::ascii.unicode.accent.524288: 15.706 µs/op median (min 15.628 µs, mean 15.724 µs, max 15.866 µs, stddev 79.257 ns; 7497 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.unicode.emoji.524288\nBENCH encoding_ascii_bench.ms::ascii.unicode.emoji.524288: 33.851 µs/op median (min 33.712 µs, mean 33.845 µs, max 33.962 µs, stddev 87.726 ns; 3175 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.unicode.first.8\nBENCH encoding_ascii_bench.ms::ascii.unicode.first.8: 6.967 ns/op median (min 6.917 ns, mean 6.972 ns, max 7.029 ns, stddev 0.038 ns; 17431082 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.unicode.last.8\nBENCH encoding_ascii_bench.ms::ascii.unicode.last.8: 7.992 ns/op median (min 7.900 ns, mean 7.991 ns, max 8.122 ns, stddev 0.081 ns; 15267066 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.unicode.first.524288\nBENCH encoding_ascii_bench.ms::ascii.unicode.first.524288: 5.732 µs/op median (min 5.721 µs, mean 5.733 µs, max 5.751 µs, stddev 9.725 ns; 20895 iterations x 5 samples)\nRUN encoding_ascii_bench.ms::ascii.unicode.last.524288\nBENCH encoding_ascii_bench.ms::ascii.unicode.last.524288: 124.875 µs/op median (min 124.688 µs, mean 124.983 µs, max 125.680 µs, stddev 358.353 ns; 954 iterations x 5 samples)\n23 benches, 0 failed\n",
+  "diagnostics": []
+}

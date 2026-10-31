@@ -1,3 +1,0 @@
-interface:
-  display_name: "Runtime"
-  short_description: "Verify execution, cancellation, and cleanup"

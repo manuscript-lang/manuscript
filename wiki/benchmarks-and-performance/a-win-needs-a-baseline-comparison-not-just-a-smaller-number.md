@@ -4,6 +4,14 @@
 
 Verified: keep the raw hand-written baseline (the C controls in `bench/perf/kernels/c`) and distinguish logical work elimination from faster execution of each source operation. Checked arithmetic is language behavior, so a control that omits overflow checks diagnoses cost but does not change the baseline. Reject a candidate that moves a material gap into another workload, and retain its measurements. Prefer removing unobservable work and allocations over placement tuning.
 
+Fixed-set validation optimizations must preserve admission order as well as accepted
+values: TOML checks original byte limits, normalizes CRLF, then reports the first
+invalid control before grammar errors. Cover every ASCII/C1 value and Unicode
+locations when testing a regex replacement. Include structural parser controls
+alongside writers: one TOML scan form improved tiny parsing but incurred repeatable
+writer costs; another improved tiny parsing 2.59x but regressed arrays of 128 tables
+1.75% (11/12 long paired trials). Both were rejected. Evidence: [TOML admission controls](../../bench/perf/toml-control-scan/README.md).
+
 Apply when: optimizing a helper, a lowering path, or a runtime routine.
 Evidence: [program results](../../bench/perf/programs/results.md), [kernel baselines](../../bench/perf/kernels/README.md).
 Verify: time and allocation counts before and after on one machine; behavior tests unchanged.
@@ -20,8 +28,10 @@ overhead, so their nanosecond comparisons alone do not establish language parity
 
 Verified (2026-10-31, TOML quoting): batching UTF-8 runs improved ASCII timing by
 6.9x but raised whole-process peak RSS by 64% for a large string with one late
-escape. Retain large sparse-escape memory controls alongside timing; the accepted
-change only removes general radix formatting for known ASCII control escapes.
+escape. Retain large sparse-escape memory controls alongside timing. The initially
+accepted fixed-digit helper was later reverted after final main exposed common-path
+regressions of about 7–13%; isolated gains do not establish combined acceptance.
+See the [final replay](../../bench/perf/toml-quoting/final-main-replay.md).
 Evidence: [matched controls and rejected variants](../../bench/perf/toml-quoting/README.md).
 
 Verified (2026-10-31, pure utilities): a path candidate combining parse-copy
@@ -47,3 +57,10 @@ improved dense writer timing 3.43x but cost ASCII writing 1.46% in 10/12 long pa
 trials, with near-identical A/A medians. The candidate was rejected; keep plain and
 tiny controls even when their source path looks unchanged. This does not identify
 a backend cause. Evidence: [escape-run study](../../bench/perf/json-escape-runs/README.md).
+
+Verified (2026-10-31, ASCII decoding): equality of UTF-8 byte count and scalar
+count is a correct ASCII predicate, but converting first made large valid
+Unicode rejection tens of times slower. Retain non-ASCII rejection controls when
+eliminating scalar conversions. The direct-conversion candidate also repeatedly slowed a 4 KiB rejection
+control; the fresh-main repeat reached 7.8%, so it was rejected despite valid-input
+gains. Preserve the counterexample rather than labeling it noise. [Report and rejected candidate](../../bench/perf/ascii-decode/README.md).

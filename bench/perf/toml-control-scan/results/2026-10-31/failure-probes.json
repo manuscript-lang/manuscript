@@ -1,0 +1,33 @@
+{
+  "driver_sha256": "20bf91378ba299a57acf5b727cc734edc0fc17551f60e6b21aac731326099230",
+  "environment_sha256": "2e9282a8fbe864f705990fada9b8c5d5e0eb0d28dc0704d7ec1c794c8ac3ea64",
+  "records": [
+    {
+      "case": "failed-producer",
+      "exit": 1,
+      "summary_written": false,
+      "producer_invoked": true,
+      "expected_failure": "returned non-zero exit status 23",
+      "stderr": "Traceback (most recent call last):\n  File \"/workspace/toml-scan/bench/perf/toml-control-scan/file-run.py\", line 62, in <module>\n    outputs = {label: subprocess.check_output([binary, path, '0']) for label,binary in binaries.items()}\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 466, in check_output\n    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py\", line 571, in run\n    raise CalledProcessError(retcode, process.args,\nsubprocess.CalledProcessError: Command '[PosixPath('/workspace/toml-scan/.artifacts/control-scan/toml-fail-e_eud0fz/failed-producer'), PosixPath('/workspace/toml-scan/.artifacts/control-scan/toml-fail-e_eud0fz/failed-producer-output/roundtrip-empty.input'), '0']' returned non-zero exit status 23.\n",
+      "producer_sha256": "ec6fef6bd87200aa86a58a55f6f27c6e3695284ff3c896462469ad3d9f3f91d7"
+    },
+    {
+      "case": "changed-output",
+      "exit": 1,
+      "summary_written": false,
+      "producer_invoked": true,
+      "expected_failure": "changed output: roundtrip/empty",
+      "stderr": "Traceback (most recent call last):\n  File \"/workspace/toml-scan/bench/perf/toml-control-scan/file-run.py\", line 64, in <module>\n    raise ValueError(f'changed output: {operation}/{case}')\nValueError: changed output: roundtrip/empty\n",
+      "producer_sha256": "fa0b600d1c900c733189937d34fc2104af1f176e94f53bcb3f5e790af095f65d"
+    },
+    {
+      "case": "wrong-checksum",
+      "exit": 1,
+      "summary_written": false,
+      "producer_invoked": true,
+      "expected_failure": "invalid producer count/checksum",
+      "stderr": "Traceback (most recent call last):\n  File \"/workspace/toml-scan/bench/perf/toml-control-scan/file-run.py\", line 82, in <module>\n    ns = invoke(label, count)\n         ^^^^^^^^^^^^^^^^^^^^\n  File \"/workspace/toml-scan/bench/perf/toml-control-scan/file-run.py\", line 76, in invoke\n    raise ValueError('invalid producer count/checksum')\nValueError: invalid producer count/checksum\n",
+      "producer_sha256": "ce3f028e4c4085999758b9cf359deb3312b425bee426dd65414fd3dfadcc2a81"
+    }
+  ]
+}
