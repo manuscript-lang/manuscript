@@ -183,6 +183,11 @@ export interface Clonable:
 # is `Data` by declaration, so a JSON object travels as a `JsonValue`.
 export interface Data: ...
 
+# A type whose values are plain words in the runtime, so passing one duplicates it with a bit copy and
+# the original stays usable. Only an extern type in the standard library declares it, with `impl Copy for T:`;
+# records and alternatives are copied when every field is, and every other native moves.
+export interface Copy: ...
+
 # A type with a stable hash consistent with its `Equal` implementation.
 export interface Hashable:
     # Returns a stable hash consistent with `equals` for the same value.
