@@ -5,7 +5,7 @@ description: Organize or maintain Manuscript packages, shared guidance, embedded
 
 # Repository maintenance
 
-Use for cleanup, package moves, pins (`rust-toolchain.toml`, `Cargo.lock`, `scripts/devtools.env`, `.node-version`, `.msversion`), CI/releases, or the skill catalog. Read [architecture](../../documentation/contributing/architecture.md), [maintenance](../../documentation/contributing/maintenance.md), and [lessons](../../.experts/repository.md).
+Use for cleanup, package moves, pins (`rust-toolchain.toml`, `Cargo.lock`, `scripts/devtools.env`, `.node-version`, `.msversion`), CI/releases, or the skill catalog. Read [architecture](../../documentation/contributing/architecture.md), [maintenance](../../documentation/contributing/maintenance.md), and [lessons](../../.experts/repository/index.md).
 
 - Simplify duplicated traversal, queries, serialization, forwarding, and CLI paths as well as layout. Name the work removed; add a layer only for a concrete contract.
 - Respect crate ownership and dependency edges (see [architecture](../../documentation/contributing/architecture.md)) and the `make repo-check` invariants (`crates/ms-repo-check`).

@@ -1,18 +1,18 @@
 # Manuscript expert knowledge
 
-Expert files hold the reasons and failure modes that a future change should inherit. Canonical design pages, source declarations, and behavioral tests retain their own authority. This directory is ordinary Markdown and YAML so any agent can read it through `AGENTS.md`.
+This directory is a wiki: start at [index.md](index.md). Each domain has a folder with an `index.md` of one-line summaries and one page per lesson; `topics/` links lessons across domains. Pages hold the reasons and failure modes that a future change should inherit. Canonical design pages, source declarations, and behavioral tests retain their own authority. This directory is ordinary Markdown and YAML so any agent can read it through `AGENTS.md`.
 
 ## Read and apply
 
-Before implementation or review, select experts from [index.yml](index.yml) using both the task's meaning and affected paths. Patterns are repository-relative globs; they route knowledge, not file ownership. Read every relevant expert, and follow its evidence links only as needed. If exploration reveals another affected domain, consult that expert too.
+Before implementation or review, select domains from [index.yml](index.yml) (or browse [index.md](index.md)) using both the task's meaning and affected paths. Patterns are repository-relative globs; they route knowledge, not file ownership. Read every relevant page, and follow its evidence links only as needed. If exploration reveals another affected domain, consult that expert too.
 
 The user's explicit direction and current canonical design take precedence over remembered guidance. An entry marked **Decision** establishes a user choice, not that every branch implements it. **Verified** requires code or checks that support the claim. **Open** records unresolved questions and cannot impose a rule. If sources disagree, trace their chronology and actual behavior; resolve what can be resolved from evidence and surface a material unresolved conflict.
 
 ## Learn and maintain
 
-Capture a lesson when it changes how the next task should be implemented or reviewed. Repeated corrections deserve attention; a single explicit decision or demonstrated failure can also be enough. Update the closest existing entry before adding one. Replace superseded advice, retaining the previous alternative only when its rejection still prevents a likely mistake. Remove entries whose evidence or scope no longer applies.
+Capture a lesson when it changes how the next task should be implemented or reviewed. Repeated corrections deserve attention; a single explicit decision or demonstrated failure can also be enough. Update the closest existing page before adding one. A new lesson is a new page in its domain folder: add it to that folder's `index.md` with a one-line summary, and list it on the relevant `topics/` pages and in its own `Topics:` footer. Page layout: breadcrumb line, `# Title`, entry body, `---`, `Topics:` links. Delete a page together with its index and topic links. Replace superseded advice, retaining the previous alternative only when its rejection still prevents a likely mistake. Remove entries whose evidence or scope no longer applies.
 
-Use a small entry:
+Use a small entry (the page body):
 
 ```markdown
 ### A concrete lesson title

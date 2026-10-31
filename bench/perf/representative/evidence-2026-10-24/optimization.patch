@@ -1,7 +1,7 @@
-diff --git a/.experts/compiler.md b/.experts/compiler.md
+diff --git a/.experts/compiler/index.md b/.experts/compiler/index.md
 index 04f617e0e..2e186b5cb 100644
---- a/.experts/compiler.md
-+++ b/.experts/compiler.md
+--- a/.experts/compiler/index.md
++++ b/.experts/compiler/index.md
 @@ -116,0 +117,4 @@ Verify: generate inputs at N, 2N, 4N (chained declarations, long function bodies
 +Verified: collecting all caller constants at every inline candidate repeatedly scans a growing function. Index the caller once and extend the index with the appended callee blocks; the continuation contains old instructions and must not be scanned again. Keep the constant-argument bonus, growth budget and inlining decisions unchanged.
 +Evidence: [inliner](../crates/ms-mir/src/opt/inline.rs), [constant-bonus regression](../crates/ms-mir/tests/opt_inline.rs), [representative measurement harness](../bench/perf/representative/README.md).

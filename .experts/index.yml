@@ -1,7 +1,7 @@
-version: 1
+version: 2
 experts:
   - id: language
-    file: language.md
+    file: language/index.md
     topics: [syntax, types, imports, arguments, removals, sharing, language decisions]
     paths:
       - "crates/ms-syntax/**"
@@ -9,7 +9,7 @@ experts:
       - "tests/e2e/testdata/accept/**"
       - "tests/e2e/testdata/reject/**"
   - id: compiler
-    file: compiler.md
+    file: compiler/index.md
     topics: [checking, lowering, MIR, Cranelift, build, module loading, fault sites, compile-time scaling]
     paths:
       - "crates/ms-check/**"
@@ -21,7 +21,7 @@ experts:
       - "crates/ms-native/**"
       - "documentation/contributing/compiler/**"
   - id: runtime
-    file: runtime.md
+    file: runtime/index.md
     topics: [cancellation, cleanup, resources, networking, native APIs, standard library]
     paths:
       - "crates/ms-rt/**"
@@ -32,7 +32,7 @@ experts:
       - "documentation/core-language/types/references.md"
       - "tests/e2e/testdata/projects/**"
   - id: tooling-and-docs
-    file: tooling-and-docs.md
+    file: tooling-and-docs/index.md
     topics: [documentation, generated references, editor tooling, navigation, CLI, diagnostics]
     paths:
       - "crates/ms-tooling/**"
@@ -44,7 +44,7 @@ experts:
       - "stdlib/**"
       - "README.md"
   - id: repository
-    file: repository.md
+    file: repository/index.md
     topics: [repository cleanup, publication, CI, releases, repo checks]
     paths:
       - "scripts/**"
@@ -55,19 +55,19 @@ experts:
       - "Cargo.toml"
       - "Makefile"
   - id: stdlib-design
-    file: stdlib-design.md
+    file: stdlib-design/index.md
     topics: [stdlib API shape, failure modes, Result and Error, TextError, write and write_bytes, Set construction, module consolidation]
     paths:
       - "stdlib/**"
       - "tests/e2e/testdata/stdlib/**"
   - id: testing-and-conformance
-    file: testing-and-conformance.md
+    file: testing-and-conformance/index.md
     topics: [test layers, conformance corpus, ms test, fuzzing, fixture migration]
     paths:
       - "tests/**"
       - "crates/ms-conform/**"
   - id: benchmarks-and-performance
-    file: benchmarks-and-performance.md
+    file: benchmarks-and-performance/index.md
     topics: [performance benchmarks, agent benchmark, ns/op, profiling guide]
     paths:
       - "bench/perf/**"

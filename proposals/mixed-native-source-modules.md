@@ -36,7 +36,7 @@ Proposal, 2026-10-26, checked against 4e349ba. Direction: "Manuscript first", so
 | `crates/ms-check/src/stdlib.rs` | partition in `load`, identity-based `native_sources`, `EXTENSION_MODULES` | `crates/ms-check/tests/list_methods.rs`, new mixed-file load test |
 | `stdlib/collections.ms`, `stdlib/lists.ms` | merge | existing stdlib/conformance tests |
 | `crates/ms-lsp` snapshots | `lists.ms` navigation target becomes `collections.ms` | `navigation.jsonl` |
-| `.experts/stdlib-design.md`, docs mentioning `lists.ms` | update | `make repo-check` |
+| `.experts/stdlib-design/index.md`, docs mentioning `lists.ms` | update | `make repo-check` |
 | parser, grammar, lowering, codegen, runtime | unchanged | |
 
 ## Alternatives

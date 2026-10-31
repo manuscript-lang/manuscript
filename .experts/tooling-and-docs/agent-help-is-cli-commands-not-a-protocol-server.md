@@ -1,0 +1,16 @@
+[Wiki](../index.md) › [Tooling and docs](index.md)
+
+# Agent help is CLI commands, not a protocol server
+
+Decision: the user evaluated an MCP server (PR #528), judged the CLI the better surface for coding agents, and had it removed. Agents with a shell already get compact output from `check`, `lint`, `fmt`, and `test`; the gaps became `ms search_symbol` and `ms guide`. Navigation is by name, not `file:line:col`, because agents track names better than positions; `ms search_symbol` wraps workspace symbols, definition and references, and the next language-server feature to expose is a checked rename. A bare `ms search` read as generic and `ms guide stdlib <module>` printed 42 KB for the prelude, so library lookup folded into `ms search_symbol` (names and words search project and library; a lone module or `<module>[.Decl[.member]]` path shows a page) and every page has a byte budget. Keep the command set small and useful. Search is fuzzy, the guide stays short because agents reread it, and pages are built from the standard declarations, never from `ms doc` or `ms stdlib` (both removed).
+
+Verified: bounded search output does not bound analysis work. Filtering only after enumerating every checked workspace declaration made `search_symbol "read file"` take seconds across the repository fixtures. Apply the same name predicate before checking sources, using lexical matches only as a conservative candidate filter; return checked identities and retain local imports because their graphs can contribute unwritten names. Private module functions and constants cannot be imported, so their references already exist in the selected analysis and need no workspace scan. Preserve reference ordering and exported cross-file uses.
+
+Verified: a failed workspace scan must order its checked-graph references with the same key as a successful scan. Returning the raw occurrence index instead changed standard-library reference ordering on Windows, whose virtual URI produces a different filesystem error. Preserve the separate source order of local-binding references. The [reference-order regressions](../../crates/ms-lsp/tests/reference_order.rs) force an I/O error with an embedded-NUL path on every host and pin declaration filtering and both ordering contracts; the existing protocol snapshot stays unchanged.
+
+Apply when: adding agent-facing commands, changing search ranking, or touching the cheat sheet or standard-library index.
+Evidence: [search](../../crates/ms-tooling/src/guide/search.rs), [workspace queries](../../crates/ms-lsp/src/workspace.rs), [project search regressions](../../crates/ms-lsp/tests/search_symbol.rs), [guide](../../crates/ms-tooling/data/cheatsheet.md), [search_symbol CLI tests](../../crates/ms-cli/tests/search_symbol.rs), [agent commands](../../documentation/developer-tooling/implementation.md#commands-for-agents).
+Verify: `cargo nextest run -p ms-lsp -p ms-tooling -p ms-cli`; search tests pin typo, synonym, partial, and dedup behavior; compare release timings and output for project, standard-library and no-match queries in a large source tree. The cheat sheet's program must check and stay short.
+
+---
+Topics: [Diagnostics and tooling](../topics/diagnostics-and-tooling.md) · [Testing](../topics/testing.md) · [Documentation](../topics/documentation.md)

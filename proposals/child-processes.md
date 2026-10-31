@@ -158,7 +158,7 @@ sequenceDiagram
 | `stdlib/process.ms` | unchanged in stage 3; sharing `Stdio` with `Commands.spawn` (decision 1) is its own stage | - |
 | `crates/ms-std-json` | unchanged | round-trip tests for supported types |
 | `ms-syntax`, formatter, lint, LSP | unchanged (no syntax) | - |
-| Docs | core-language page, cheat sheet (`ms guide`), `crates/DESIGN.md` decision 4, `VISION.md`, `.experts/runtime.md`, `proposals/taskgroup.md` (drop `spawn_worker` string form and sendable text; line 65 still scopes processes in a `TaskGroup`) | `make repo-check`, `make book-check` |
+| Docs | core-language page, cheat sheet (`ms guide`), `crates/DESIGN.md` decision 4, `VISION.md`, `.experts/runtime/index.md`, `proposals/taskgroup.md` (drop `spawn_worker` string form and sendable text; line 65 still scopes processes in a `TaskGroup`) | `make repo-check`, `make book-check` |
 | Conformance | start, ping-pong, backpressure, close and EOF, cancel, child death as data, JSON edge values | `make conform` |
 
 ## Examples

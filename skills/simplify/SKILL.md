@@ -10,7 +10,7 @@ request, survey the requested area before choosing changes.
 
 Use [manuscript-change](../manuscript-change/SKILL.md) for contract tracing,
 domain checks, and durable lessons. Read the
-[cleanup lessons](../../.experts/repository.md#repository-cleanup-must-remove-duplicated-work-and-layers)
+[cleanup lessons](../../.experts/repository/repository-cleanup-must-remove-duplicated-work-and-layers.md)
 and [architecture](../../documentation/contributing/architecture.md).
 
 ## Find the complexity

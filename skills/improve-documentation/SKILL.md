@@ -11,7 +11,7 @@ or make the landing page more compelling. For a narrow correction, use
 and validation rules throughout this workflow.
 
 Read [VISION.md](../../VISION.md) for positioning and the
-[documentation lessons](../../.experts/tooling-and-docs.md) for prior decisions.
+[documentation lessons](../../.experts/tooling-and-docs/index.md) for prior decisions.
 The user's current direction takes precedence over older preferences. The
 landing page is a marketing page intended to get people to try Manuscript;
 learning pages help them succeed after that click.

@@ -1,0 +1,19 @@
+[Wiki](../index.md) › [Language](index.md)
+
+# Infer local callback signatures from context
+
+Decision: the user explicitly permits callback parameter and result inference. Known function contexts supply omitted parameter types; callback bodies can supply generic output evidence after inputs are known, including success types within a partially known Result context. Named public signatures stay explicit; function-type identity uses ordered parameter types and the result, without parameter names. Following [issue #81](https://github.com/manuscript-lang/manuscript/issues/81), contextual anonymous functions adopt the expected call labels independently of local parameter names; lowering must dispatch using those context labels while binding body names by position. Use existing argument/field defaults to omit redundant values; do not treat every Optional parameter as implicitly defaulted.
+
+Verified: a callable parameter or result mismatch cannot be fixed by renaming its parameters. Removing the old name-based hint must retain the real type error, genuine generic conflicts, and arity guidance. Final argument checking reports a fixed callback parameter or result mismatch; it must retain that error even when rejected evidence leaves other type variables unresolved. Evidence: [callable identity](../../crates/ms-check/tests/callable_identity.rs) and [diagnostic regressions](../../tests/conformance/fixtures/snippets/diag-fixed-callback-mismatch-1-named.ms).
+
+Decision: unambiguous generic inference from the expected result to address [issue #98](https://github.com/manuscript-lang/manuscript/issues/98), superseding the argument-only restriction. Preserve argument evidence and explicit specialization; use result context before deferred callbacks, without widening ordinary nominal/function types or adding Optional return wrapping. Existing Error boundaries retain concrete error evidence. Inferred function types still erase default omission permissions.
+
+Verified: argument inference must apply Result error widening within each transactional match, including the single Optional payload attempt, and check the completed target after substitution. A separate root-only fallback missed Optional wrapping and an error parameter already determined as Error; committing a failed success prefix would constrain unrelated later evidence. Keep success types and nested applications invariant, then let final argument checking retain scoped Error evidence. Evidence: [native identity and order](../../tests/e2e/testdata/accept/result-argument-inference.ms) and [error widening](../../tests/e2e/testdata/accept/result-error-widening-inference.ms).
+
+Verify: source and native callbacks cover generic map results, callbacks listed before their inference inputs, optional callbacks, nested closures, constructors, and editor parameter navigation. Expected-result tests also cover return/binding contexts, bounds, conflicting evidence, concrete Error conversion, and nested call order. Preserve explicit annotations where incomplete Result construction or `try` lacks a known result context.
+
+Apply when: changing callback checking, generic inference, syntax or editor annotations.
+Evidence: [callback rules](../../documentation/core-language/functions/function-values-and-closures.md#contextual-callback-inference), [contextual callbacks fixture](../../tests/e2e/testdata/accept/contextual-callbacks.ms). Expected-result evidence: [inference rules](../../documentation/core-language/types/generics.md#inference-from-arguments), [contextual generics fixture](../../tests/e2e/testdata/accept/contextual-generics.ms), and [inference module](../../crates/ms-check/src/inference.rs).
+
+---
+Topics: [Testing](../topics/testing.md) · [Errors and results](../topics/errors-and-results.md) · [Types and interfaces](../topics/types-and-interfaces.md)
