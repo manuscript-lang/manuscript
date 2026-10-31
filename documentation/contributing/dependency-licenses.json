@@ -66,11 +66,6 @@
       "license": "Apache-2.0 OR MIT"
     },
     {
-      "name": "base64",
-      "version": "0.23.1",
-      "license": "MIT OR Apache-2.0"
-    },
-    {
       "name": "base64ct",
       "version": "1.8.3",
       "license": "Apache-2.0 OR MIT"

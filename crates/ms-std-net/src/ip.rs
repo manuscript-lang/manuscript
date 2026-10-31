@@ -203,7 +203,7 @@ mod tests {
     ];
 
     #[test]
-    fn ip_parsing_matches_go() {
+    fn ip_parsing_matches_oracle() {
         for (input, want) in IPS {
             let got = parse_ip(input).ok().map(|ip| ip_text(&ip));
             assert_eq!(got.as_deref(), *want, "{input:?}");
@@ -211,7 +211,7 @@ mod tests {
     }
 
     #[test]
-    fn cidr_parsing_matches_go() {
+    fn cidr_parsing_matches_oracle() {
         for (input, want) in CIDRS {
             let got = Cidr::parse(input).ok().map(|c| c.text());
             assert_eq!(got.as_deref(), *want, "{input:?}");

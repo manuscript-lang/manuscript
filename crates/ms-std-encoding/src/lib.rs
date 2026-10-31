@@ -67,6 +67,20 @@ pub fn base64_encode(data: &[u8], url_safe: bool) -> String {
 
 /// Strict padded Base64: no whitespace, length a multiple of four, zero trailing bits.
 pub fn base64_decode(text: &str, url_safe: bool, max_bytes: Option<i64>) -> Result<Vec<u8>, Fail> {
+    base64_decode_with(text, url_safe, max_bytes, false)
+}
+
+/// Padded standard Base64 that tolerates non-zero trailing bits, as PEM and WebSocket keys allow.
+pub fn base64_decode_lenient(text: &str) -> Option<Vec<u8>> {
+    base64_decode_with(text, false, None, true).ok()
+}
+
+fn base64_decode_with(
+    text: &str,
+    url_safe: bool,
+    max_bytes: Option<i64>,
+    allow_trailing_bits: bool,
+) -> Result<Vec<u8>, Fail> {
     let n = limit(max_bytes)?;
     let t = text.as_bytes();
     if t.iter().any(|&c| matches!(c, b'\r' | b'\n' | b'\t' | b' ')) {
@@ -102,6 +116,7 @@ pub fn base64_decode(text: &str, url_safe: bool, max_bytes: Option<i64>) -> Resu
         }
         // Strict mode: the unused low bits of the last group must be zero.
         match pad {
+            _ if allow_trailing_bits => {}
             1 if v & 0xff != 0 => return Err(Fail::InvalidData),
             2 if v & 0xffff != 0 => return Err(Fail::InvalidData),
             _ => {}

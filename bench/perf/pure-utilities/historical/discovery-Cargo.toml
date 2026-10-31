@@ -1,0 +1,19 @@
+[package]
+name = "pure-utilities-control"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+ms-std-path = { path = "../../../crates/ms-std-path" }
+ms-std-url = { path = "../../../crates/ms-std-url" }
+ms-rt = { path = "../../../crates/ms-rt" }
+
+[profile.release]
+panic = "abort"
+overflow-checks = true
+
+[profile.release.package."*"]
+overflow-checks = false

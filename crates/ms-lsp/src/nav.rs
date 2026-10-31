@@ -459,23 +459,21 @@ pub fn references_with_index(
     locations
 }
 
-/// Go prints a location map as `map[range:{{a b} {c d}} uri:u]`; results
-/// are ordered by that text, which this reproduces.
-pub fn go_location_order(location: &Json) -> String {
+/// Orders locations by range (start line and character, then end), then URI.
+pub type LocationKey = (i64, i64, i64, i64, String);
+
+/// The sort and de-duplication key of a location.
+pub fn location_sort_key(location: &Json) -> LocationKey {
     let number = |j: Option<&Json>| j.and_then(|j| j.as_i64()).unwrap_or(0);
     let range = location.get("range");
     let side = |name: &str| {
         let s = range.and_then(|r| r.get(name));
-        format!(
-            "{{{} {}}}",
+        (
             number(s.and_then(|s| s.get("line"))),
-            number(s.and_then(|s| s.get("character")))
+            number(s.and_then(|s| s.get("character"))),
         )
     };
-    format!(
-        "map[range:{{{} {}}} uri:{}]",
-        side("start"),
-        side("end"),
-        location.get("uri").and_then(|u| u.as_str()).unwrap_or("")
-    )
+    let (start, end) = (side("start"), side("end"));
+    let uri = location.get("uri").and_then(|u| u.as_str()).unwrap_or("");
+    (start.0, start.1, end.0, end.1, uri.to_string())
 }
