@@ -1449,7 +1449,7 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
         has_colon = not is_sequence and context.col.get(context.index) >= 0
     else:
         first = blank_trim_start(uncomment(context.lines.get(context.index)))
-        if first.starts_with("?"): return error(
+        if first.starts_with("?") and not plain_may_start(first): return error(
             YamlError.UnsupportedFeature(
                 line: (context.index + 1),
                 reason: "explicit mapping keys are unsupported"
@@ -1538,6 +1538,19 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
                     )
                 )
 
+            if (
+                not quoted_key
+                and (
+                    not plain_may_start(name)
+                    or key_start == 124
+                    or key_start == 62
+                )
+            ): return error(
+                invalid(
+                    context,
+                    "a plain mapping key cannot start with an indicator character"
+                )
+            )
             if explicit.contains(name): return error(
                 invalid(context, "duplicate mapping key")
             )
