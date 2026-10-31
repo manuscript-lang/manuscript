@@ -2617,7 +2617,7 @@ impl Walker<'_> {
             self.error(
                 e.pos,
                 format!(
-                    "cannot move the resource `{0}` out of `{1}`: `{1}` still closes its parts, and a resource cannot be cloned; use `{0}` in place, or move the whole `{1}`",
+                    "cannot move the resource `{0}` out of `{1}`: a resource cannot be cloned, and it leaves `{1}` only when `{1}` is a `let` or a parameter and no type on the path has a `close` of its own; use `{0}` in place, or move the whole `{1}`",
                     info.text, info.root.name
                 ),
             );
@@ -2656,7 +2656,7 @@ impl Walker<'_> {
         let own_place = matches!(info.resolved.as_slice(), [only] if only.root == root.uid);
         if !owner
             || !own_place
-            || class != Class::Move
+            || class == Class::Copy
             || info.through_ref.is_some()
             || borrows(&root.ty)
             || borrows(&self.cx.m.ty(e))
@@ -2665,14 +2665,24 @@ impl Walker<'_> {
             return false;
         }
         // Only fields: an element of a collection stays where it is.
-        if self.field_path(e).is_none() {
+        let Some(path) = self.field_path(e) else {
+            return false;
+        };
+        // A resource moves without a copy: only a `let` or a parameter, whose cleanup lowering
+        // splits around the hole, and never a type parameter or a part of a closure capture.
+        let resource = class == Class::Resource;
+        if resource
+            && (!matches!(meta.role, Role::Let | Role::Parameter)
+                || meta.perm != Perm::Immutable
+                || self.cx.m.ty(e).kind == Kind::Variable)
+        {
             return false;
         }
         // A type that closes itself would close a record with a hole in it.
         let mut at = e;
         while let ExprKind::Member { left, .. } = &at.kind {
             let holder = self.cx.m.ty(left);
-            if self.cx.classes.class(&holder) == Class::Resource {
+            if self.cx.classes.closes_itself(&holder) {
                 return false;
             }
             at = left;
@@ -2703,6 +2713,26 @@ impl Walker<'_> {
         self.record(info.root_node, &root, Access::Borrow);
         if meta_is_parameter(self, root.uid) {
             self.consumed.insert(root.uid);
+        }
+        if resource {
+            let at = self.facts.resource_moves.entry(root.uid).or_default();
+            // The release at scope end tests one flag per moved place, so a place and a part of
+            // it cannot both be moved.
+            let clash = at.values().find(|o| {
+                let n = o.len().min(path.len());
+                o[..n] == path[..n] && o.len() != path.len()
+            });
+            if clash.is_some() {
+                self.error(
+                    e.pos,
+                    format!(
+                        "`{0}` and a part of it are both moved out of `{1}`: move the same field everywhere, or move the whole `{1}`",
+                        info.text, root.name
+                    ),
+                );
+                return true;
+            }
+            at.insert(e.id, path);
         }
         self.facts
             .partial_moves

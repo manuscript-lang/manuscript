@@ -187,6 +187,6 @@ Go/no-go: stop after step 3 and keep today's behavior if the analysis reports an
 
 ## Open questions
 
-- Resources: should a plain record that holds a `Resource` field allow moving that field out (the record has no own `close`)? Recommend yes in step 4 once the harness shows close order is preserved; start with `Move`-class fields only.
+- Resources: implemented in [move-resource-field-out](move-resource-field-out.md) (#2008).
 - Partial move of a *parameter* changes the callee's mode from `Borrow` to `Consume` for that parameter (found by the existing fixpoint, as for payload moves; place-level events must keep it terminating, shown in step 3). Callers that reuse the argument start failing. Recommend accepting: it is the rule that `return b.items` consumes `b`, and the diagnostic suggests `.clone()` at the caller.
 - Resource-holding records: allow field moves once close order is preserved in the harness? Recommend a later proposal.

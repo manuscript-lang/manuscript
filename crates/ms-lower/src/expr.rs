@@ -375,6 +375,10 @@ impl<'a> FnLower<'a> {
         if matches!(self.b.m.types.kind(self.ty_of(f)), TyKind::Ref(_)) {
             f = self.b.ref_get(f);
         }
+        if let Some((uid, names)) = self.resource_move_of(e) {
+            let o = self.moved_field(uid, &names, f)?;
+            return Ok(Val { v: o, own: true });
+        }
         if obj.own && self.is_resource(self.ty_of(obj.v)) {
             // A resource is read in place and closed whole with the statement's temporaries:
             // copying the part out would make a second owner of it.
@@ -392,6 +396,19 @@ impl<'a> FnLower<'a> {
             });
         }
         Ok(Val { v: f, own: false })
+    }
+
+    /// The binding and field path when the member `e` moves a resource field out of a binding.
+    fn resource_move_of(&self, e: &Expr) -> Option<(usize, Vec<ct::Name>)> {
+        let mut at = e;
+        while let ExprKind::Member { left, .. } = &at.kind {
+            at = left;
+        }
+        let Resolution::Local(b) = self.hir.resolution(at) else {
+            return None;
+        };
+        let names = self.cx.resource_moves.get(&b.uid)?.get(&e.id)?;
+        Some((b.uid, names.clone()))
     }
 
     fn index(&mut self, e: &Expr, left: &Expr, index: &Expr) -> Result<Val, Error> {
