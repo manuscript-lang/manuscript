@@ -2,8 +2,8 @@
 
 use crate::analysis::{Document, Documents, workspace_analysis};
 use crate::editor::{
-    CursorContext, EditorAnalysis, call_arguments, context_at, query_call, query_editor,
-    type_expression,
+    CursorContext, EditorAnalysis, call_arguments, context_at, interpolation_start, query_call,
+    query_editor, type_expression,
 };
 use crate::index::DeclFiles;
 use crate::json::{Json, obj};
@@ -918,7 +918,7 @@ pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Jso
     let Some((call, t)) = query_call(&a) else {
         return Ok(Json::Null);
     };
-    let name = d.text[c.callee_start..c.callee_end].trim();
+    let name = signature_name(&a.document.text, &call);
     let mut parameters = Vec::new();
     let mut labels = Vec::new();
     for param in &t.params {
@@ -974,6 +974,40 @@ pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Jso
         ("activeSignature", 0usize.into()),
         ("activeParameter", active.into()),
     ]))
+}
+
+/// Read the checked callee rather than guessing its boundary from operators or
+/// keywords. Its start excludes grouping parentheses, so include an opener when
+/// a parenthesized receiver closes inside the callee, as in `(pair).combine`.
+fn signature_name<'a>(source: &'a str, call: &ms_syntax::ast::Expr) -> &'a str {
+    let ms_syntax::ast::ExprKind::Call { callee, .. } = &call.kind else {
+        return "";
+    };
+    let mut start = callee.start().offset as usize;
+    let end = callee.end.offset as usize;
+    let (mut depth, mut missing) = (0usize, 0usize);
+    for token in text::editor_tokens(&source[start..end]) {
+        if token.is(b'(') {
+            depth += 1;
+        } else if token.is(b')') && depth == 0 {
+            missing += 1;
+        } else if token.is(b')') {
+            depth -= 1;
+        }
+    }
+    if missing > 0 {
+        let from = interpolation_start(source, start).unwrap_or(0);
+        for token in text::editor_tokens(&source[from..start]).iter().rev() {
+            if token.is(b'(') {
+                missing -= 1;
+                if missing == 0 {
+                    start = from + token.start;
+                    break;
+                }
+            }
+        }
+    }
+    source[start..end].trim()
 }
 
 /// Select argument boundaries in the original source. A completion marker can
