@@ -31,6 +31,8 @@ pub mod types;
 mod unused;
 
 #[cfg(test)]
+mod method_parameter_names_tests;
+#[cfg(test)]
 mod record_fields_tests;
 
 pub use checker::{CheckOptions, ImportMap, Program, TestFixture, self_variable};

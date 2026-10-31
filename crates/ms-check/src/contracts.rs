@@ -672,6 +672,14 @@ impl Checker {
                         param.name
                     ),
                 );
+            } else if self.intrinsic_type_parameter(param.name) {
+                self.res_error(
+                    param.pos,
+                    format!(
+                        "duplicate or intrinsic type parameter {}; choose a different type parameter name",
+                        param.name
+                    ),
+                );
             }
             let id = self.unique("typevar");
             let v: Ty = Rc::new(Type::new(param.name, id, Kind::Variable));

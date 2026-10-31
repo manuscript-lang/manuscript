@@ -477,6 +477,14 @@ impl Checker {
                         param.name
                     ),
                 );
+            } else if self.intrinsic_type_parameter(param.name) {
+                self.res_error(
+                    param.pos,
+                    format!(
+                        "duplicate or intrinsic type parameter {}; choose a different type parameter name",
+                        param.name
+                    ),
+                );
             }
             let v: Ty = Rc::new(Type::new(
                 param.name,
@@ -1098,17 +1106,19 @@ impl Checker {
         b
     }
 
+    pub(crate) fn intrinsic_type_parameter(&self, name: Name) -> bool {
+        self.sym(name).is_some_and(|s| s.module.as_str().is_empty())
+            || matches!(
+                name.as_str(),
+                "Equal" | "Comparable" | "Hashable" | "Clonable"
+            )
+    }
+
     pub(crate) fn type_variables(&mut self, params: &[TypeParam]) -> Vec<Ty> {
         let mut vars: Vec<Ty> = Vec::new();
         for p in params {
-            let intrinsic = self
-                .sym(p.name)
-                .is_some_and(|s| s.module.as_str().is_empty())
-                || self.scope.types.borrow().contains_key(&p.name)
-                || matches!(
-                    p.name.as_str(),
-                    "Equal" | "Comparable" | "Hashable" | "Clonable"
-                );
+            let intrinsic = self.intrinsic_type_parameter(p.name)
+                || self.scope.types.borrow().contains_key(&p.name);
             if intrinsic {
                 self.res_error(
                     p.pos,
