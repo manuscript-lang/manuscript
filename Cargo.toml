@@ -43,6 +43,21 @@ panic = "abort"
 # Line tables are enough for backtraces and profiles; full variable info slows every build and link.
 debug = "line-tables-only"
 
+# The front end (parse, check, lower, MIR) runs once per `ms` process in every corpus, e2e and CLI test, and an
+# unoptimized build spends about 0.2 s on a four-line file, almost all of it loading the standard library.
+# Optimizing these crates cuts that to 0.06 s and the corpus parse and check phases by about 3.4x; the extra
+# build time is small and cached by sccache.
+[profile.dev.package.ms-syntax]
+opt-level = 2
+[profile.dev.package.ms-check]
+opt-level = 2
+[profile.dev.package.ms-lower]
+opt-level = 2
+[profile.dev.package.ms-mir]
+opt-level = 2
+[profile.dev.package.ms-json]
+opt-level = 2
+
 # Cranelift is slow to build unoptimized; keep it lightly optimized in dev builds.
 [profile.dev.package.regalloc2]
 opt-level = 1
