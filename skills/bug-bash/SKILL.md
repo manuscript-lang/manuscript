@@ -5,7 +5,7 @@ description: Probe one Manuscript area for real bugs, then fix them with regress
 
 # Bug bash
 
-Scope is one area (type checker, formatter, a stdlib module, a backend). Read [manuscript-change](../manuscript-change/SKILL.md) and the area's domain skill first.
+Scope is one area (type checker, formatter, a stdlib module, a backend). Read [manuscript-change](../manuscript-change/SKILL.md) and the area's wiki checklist first.
 
 1. **List open work.** Search open issues and PRs for the area so nothing is duplicated.
 2. **Probe.** Write small `.ms` programs against current `main`, aimed at newer features and their boundaries (generics, interfaces, ownership, `?.`, `T!`, `Clonable`, `Closeable`, cancellation). Check `ms` output, diagnostics, formatter round-trips, and native execution. Compare against the documented rule, not against what the implementation happens to do.
