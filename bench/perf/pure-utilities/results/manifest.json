@@ -103,5 +103,61 @@
     "raw_sha256": "1abae307283a9ed930d467864ff377d85816cc51bae62db0b2552717d2fe4ae4",
     "gzip_sha256": "94a7e46ef2c9199328baa2c13d849092a5e28a983b9895ae3b4571858818978f",
     "sample_count": 1000
+  },
+  {
+    "file": "url-direct-probe.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "05a43036370fa1533a906bfc88ca87882b9e594a9f586cc079dad985a0927d64",
+    "gzip_sha256": "aa6f7fd73456f013cc511e80bb3d8a6f317f3a8fc8b195701ea5b499cbcb74f5",
+    "sample_count": 507
+  },
+  {
+    "file": "url-direct-probe-smoke.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "4d69e5d3e0fc4f810110b2391d78832056a2c9715f4cd9109acdf346a2183220",
+    "gzip_sha256": "0a741b419ab464a29f238f4367e4e1d86df64c6b5f23b5a024d6909b88445458",
+    "sample_count": 1680
+  },
+  {
+    "file": "url-direct-probe-allocations.jsonl.gz",
+    "role": "allocation",
+    "raw_sha256": "67b84e8b91d5fedaa407aa6b20bfa7434e11d21d3f72ba85f853ff445c4c982a",
+    "gzip_sha256": "cbba6f0d1965118988090662104d59f26b2b6dd2e770c9a46a7ccc5ca9407936",
+    "sample_count": 432
+  },
+  {
+    "file": "url-direct-cumulative-path.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "a22604a8a63e0b31076c409e040e275ea38b3342ebc340b75267999d71b6cb73",
+    "gzip_sha256": "b79085916c4005bde4b417657bc491c1300dd3d9b2225d85688d1e3e70a435ea",
+    "sample_count": 7200
+  },
+  {
+    "file": "url-direct-final.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "429cf2bd54855ef08bfdbd5d2a5a7519d5134c796ea883ee72f3f36727303e22",
+    "gzip_sha256": "6530a003838952c61a5a73d836d341a3892b778a7653183b2d8446029b5a3c9a",
+    "sample_count": 8000
+  },
+  {
+    "file": "url-direct-confirmation.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "367aba4bae6f0453add965cd4c5a11c6fef8df3249ce1ce649ce5baffb6b5f74",
+    "gzip_sha256": "835bb7a6ad5a9ba3620685b60605e898d46ed8eda86401cf0d91e31fbf6b519b",
+    "sample_count": 375
+  },
+  {
+    "file": "url-direct-native-allocations.jsonl.gz",
+    "role": "allocation",
+    "raw_sha256": "c9fcbb3e32ed7b49e50fc56637887b1ba34723a3b3f8d3da25e8fa49a4c75d31",
+    "gzip_sha256": "5b2d4aa4b67b2704ec76066011049bb61e7dc38e6112e566d434ffbc27d81cfa",
+    "sample_count": 1008
+  },
+  {
+    "file": "url-direct-current-head.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "f33675dfc6402e2f6c39a034e1813ffef21029094970e9b3973f9f095b62f410",
+    "gzip_sha256": "79dbb516b81dcb067a4e7f0a91b04504a0fd873f70f7b1bb0403d24c1bf94ad9",
+    "sample_count": 8000
   }
 ]
