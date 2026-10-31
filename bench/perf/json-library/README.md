@@ -218,3 +218,26 @@ bytes and incomplete sample sets before writing final summaries. Build/input wor
 is outside measurement. For source tests build normally with `cargo xtask runtime`
 and `cargo build --release --locked -p ms-cli`; use writable XDG_CACHE_HOME if needed.
 Never bypass native archive freshness checks.
+
+## Updated main after shared byte-search changes
+
+The conflict-resolution head `34697faf851073b330443f6d86b6dbfdadcd6b20` integrates
+main `d439d4e4b`, including the TOML revert and shared byte-search changes. Both
+native controls were rebuilt on this combined tree, restoring only current main's
+original JSON library source for before. The full 720 observations and 108 RSS records
+are retained under [updated-main](results/2026-10-31/updated-main/summary.json),
+[edges](results/2026-10-31/updated-main-edges/summary.json) and
+[memory](results/2026-10-31/updated-main-memory/samples.json).
+Hard floats improve 1.844×; extra float cases improve 1.852–7.861×.
+The million-value byte oracle still matches the original hash.
+
+A short tiny-parse shift prompted another long A/A check:
+89.56/86.54→87.01 ns, with overlapping distributions and baseline A/A variation
+larger than the candidate/B shift. Empty writes measure 29.38/29.47→29.64 ns in the
+long replay; this possible 0.17–0.26 ns cost remains within their observed variation.
+See [tiny parse](results/2026-10-31/updated-main-tiny-parse/summary.json) and
+[empty writes](results/2026-10-31/updated-main-empty-write/summary.json).
+All 22 scoped Rust tests, source float regression, affected Clippy, workspace
+formatting, repository and license checks pass on the conflict-resolution head.
+The wiki now preserves both independent lessons and correctly records the TOML
+helper's later revert. No GitHub approval was submitted; required CI remains enabled.
