@@ -92,7 +92,7 @@ fn maker(text: String) fn() fn() Int:
 fn c8(text: String) Int:
     return maker(text)()()
 
-fn c9(text: String)(fn() Int)?:
+fn c9(text: String) (fn() Int)?:
     var r: (fn() Int)? = none
     for p in text.split(","):
         r = fn() Int: return p.length()

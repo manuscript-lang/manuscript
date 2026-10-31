@@ -70,7 +70,7 @@ fn tail_cleanup(
     let value = try visit(result, var visits)
     return ok(value)
 
-fn function_tail(result: (fn() Int)!TextError)(fn() Int)!TextError:
+fn function_tail(result: (fn() Int)!TextError) (fn() Int)!TextError:
     let value = try result
     return ok(value)
 
