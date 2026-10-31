@@ -31,6 +31,8 @@ pub mod types;
 mod unused;
 
 #[cfg(test)]
+mod generic_defaults_tests;
+#[cfg(test)]
 mod operation_bounds_tests;
 #[cfg(test)]
 mod record_fields_tests;
