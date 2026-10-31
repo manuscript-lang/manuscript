@@ -6,5 +6,5 @@ Decision: `let (` / `var (` declare several bindings of one kind, one entry per 
 
 
 Apply when: changing binding grammar, formatter layout of declarations, or destructuring.
-Evidence: [grouping rules](../../documentation/core-language/basics/bindings.md#grouping-bindings), [destructuring](../../documentation/core-language/types/destructuring.md), [module constants](../../documentation/core-language/modules/declarations.md), [binding groups fixture](../../tests/e2e/testdata/accept/binding-groups.ms).
+Evidence: [grouping rules](../../documentation/core-language/basics/bindings.md#grouping-bindings), [destructuring](../../documentation/core-language/types/destructuring.md), [module constants](../../documentation/core-language/modules/declarations.md), [binding groups fixture](../../tests/conformance/fixtures/e2e/accept/binding-groups.ms).
 Verify: `let (` entries evaluate in order with earlier ones in scope, `export let (` exports every entry, and `let (a, b) = pair` still fails with the not-a-binding-pattern diagnostic.
