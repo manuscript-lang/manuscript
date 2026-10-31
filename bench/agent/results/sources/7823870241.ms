@@ -1197,7 +1197,7 @@ export fn main() Int:
                     pos += 1
                     repo.cmd_write(args[0].clone(), body, cmd == "append")
             else:
-                let rest = text.split(cmd, 2) [1].trim()
+                let rest = text.split(cmd, 2)[1].trim()
                 repo.run(cmd, args, rest)
 
     return 0

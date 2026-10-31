@@ -1457,6 +1457,22 @@ impl<'a> Parser<'a> {
             return Ok(Vec::new());
         }
         if self.kind() != Tok::Newline {
+            if self.kind() == Tok::If && (expression || fn_body) {
+                // `fn x: if c: a else: b`: the body is the conditional expression.
+                let (start, at) = (self.at, self.peek().pos);
+                if let Ok(value) = self.expression(0)
+                    && (expression || self.end().is_ok())
+                {
+                    let id = self.id();
+                    return Ok(vec![Stmt {
+                        id,
+                        pos: at,
+                        kind: StmtKind::Return(Some(value)),
+                    }]);
+                }
+                // Not a conditional expression: report it as the statement it was written as.
+                self.at = start;
+            }
             if matches!(self.kind(), Tok::If | Tok::While | Tok::For) {
                 let t = self.peek();
                 return self.fail(t, format!("inline bodies require one simple statement; put '{}' on its own line in an indented block", t.kind.as_str()));
