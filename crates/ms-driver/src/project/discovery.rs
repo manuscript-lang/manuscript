@@ -1,6 +1,8 @@
 //! Test and source module discovery.
 
 use std::collections::BTreeSet;
+use std::fs::FileType;
+use std::path::Path;
 
 use crate::project::error::ProjectError;
 use crate::project::manifest::Project;
@@ -22,8 +24,12 @@ fn is_test_name_bytes(name: &[u8]) -> bool {
         || name.ends_with(b"_bench.ms")
 }
 
-/// `filepath.WalkDir` semantics: lexical order, symlinks are not followed
-/// (a symlink is a non-directory entry), the root is `lstat`ed first.
+fn is_directory_link(path: &Path, kind: &FileType) -> bool {
+    kind.is_symlink() && std::fs::metadata(path).is_ok_and(|m| m.is_dir())
+}
+
+/// Walk in lexical order, skipping directory links at every level. The root
+/// is `lstat`ed first; source-file links remain entries for later resolution.
 fn walk(
     root: &str,
     include_source: bool,
@@ -31,6 +37,9 @@ fn walk(
 ) -> Result<(), ProjectError> {
     let meta =
         std::fs::symlink_metadata(root).map_err(|e| ProjectError::path("lstat", root, &e))?;
+    if is_directory_link(Path::new(root), &meta.file_type()) {
+        return Ok(());
+    }
     walk_entry(
         root,
         &pathops::base(root),
@@ -59,9 +68,7 @@ fn walk_entry(
             .file_type()
             .map_err(|e| ProjectError::path("lstat", path, &e))?;
         // A symlink to a directory is skipped, even when its name ends in `.ms`.
-        let linked_dir =
-            file_type.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|m| m.is_dir());
-        if linked_dir {
+        if is_directory_link(&entry.path(), &file_type) {
             continue;
         }
         let native_name = entry.file_name();

@@ -1,3 +1,7 @@
+> Follow-up: the [final main replay](final-main-replay.md) exposes a reproducible
+> common-path regression, so the helper is reverted. The measurements below remain
+> historical evidence; their dense-control gain is not a current landing recommendation.
+
 # TOML control-escape performance
 
 On 2026-10-31, replacing general radix conversion and zero-padding in the private
