@@ -105,7 +105,7 @@ flowchart LR
 | `stdlib/workers.ms` | `WorkerGroup`, `Worker`, `worker_channel`, `WorkerTransport` in Manuscript (done) | `make docs-check` |
 | `crates/ms-std-*` | statics classified; reactors per thread | per-crate tests |
 | `ms-syntax`, formatter, lint, LSP | unchanged (no syntax) | - |
-| Docs | core-language page, cheat sheet (`ms guide`), `crates/DESIGN.md` decision 4, `VISION.md`, `.experts/runtime/index.md` | `make repo-check`, `make book-check` |
+| Docs | core-language page, cheat sheet (`ms guide`), `crates/DESIGN.md` decision 4, `VISION.md`, `wiki/runtime/index.md` | `make repo-check`, `make book-check` |
 | Conformance | ordering, rejection, cancel, fault exit | `make conform` |
 
 ## Examples
@@ -153,7 +153,7 @@ flowchart LR
 3. Done: per-isolate arenas with registry and remote free; per-isolate wake inboxes; header blocks with slot-aligned stacks; main as a task; worker spawn/cancel/join with unit tests (spawn, fault report, cancel, remote free).
 4. Done: checker rule (named-def entry), `WorkerGroup`/`Worker`/`worker_channel` in `stdlib/workers.ms`, `Global<T>` faults in a worker, conformance fixtures `workers.ms` and `worker-entry-lambda.ms`.
 5. Done: in-memory duplex message pipe (`pipe.rs`) and the transport.
-6. Done on Linux: docs (`concurrency/workers.md`, `crates/DESIGN.md`, `VISION.md`, `.experts/runtime/index.md`), scaling (gate of 1.6x on two workers met). Open: green `make verify-full` on macOS and Windows.
+6. Done on Linux: docs (`concurrency/workers.md`, `crates/DESIGN.md`, `VISION.md`, `wiki/runtime/index.md`), scaling (gate of 1.6x on two workers met). Open: green `make verify-full` on macOS and Windows.
 
 ## Open questions
 

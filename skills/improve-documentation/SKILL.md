@@ -11,7 +11,7 @@ or make the landing page more compelling. For a narrow correction, use
 and validation rules throughout this workflow.
 
 Read [VISION.md](../../VISION.md) for positioning and the
-[documentation lessons](../../.experts/tooling-and-docs/index.md) for prior decisions.
+[documentation lessons](../../wiki/tooling-and-docs/index.md) for prior decisions.
 The user's current direction takes precedence over older preferences. The
 landing page is a marketing page intended to get people to try Manuscript;
 learning pages help them succeed after that click.
@@ -134,6 +134,6 @@ Summarize the reader obstacles removed and the evidence for each improvement;
 do not claim increased conversion without measurement. Report unavailable checks
 and distinguish local changes, a merged PR, and a deployed site. Follow
 [create-pr](../create-pr/SKILL.md) when PR work is requested.
-Update the closest existing expert entry when a new user decision supersedes
+Update the closest existing wiki page when a new user decision supersedes
 older advice; keep exact rules and enforceable regressions in their canonical
 docs or checks. Avoid creating parallel inventories of the same guidance.
