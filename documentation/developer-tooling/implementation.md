@@ -137,6 +137,7 @@ Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which pri
 
 - A directory with `ms.toml` selects that project.
 - A directory without one recursively selects `.ms` files, skipping hidden, `vendor`, and `node_modules` directories, directory symlinks, and nested projects. Select nested projects explicitly; explicitly selecting an excluded path is allowed. File symlinks must stay inside the directory.
+- Standalone directory discovery requires UTF-8 source filenames and visited directory names; invalid names are selection errors.
 - Files keep their ordinary import roots. Select `ms.toml` to get project aliases and project-wide checking.
 - Use `--` before filenames beginning with `-`. `fmt` keeps its own [directory and manifest discovery](source/formatting.md).
 

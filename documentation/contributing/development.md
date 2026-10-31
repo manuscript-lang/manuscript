@@ -34,7 +34,7 @@ It adds `make conform` (the conformance corpus), `make e2e` (every `tests/e2e/te
 
 ## Conformance
 
-`make conform` builds the Rust `ms` and `ms-conform`, lints the corpus, and replays the run, check, and test phases of `tests/conformance/` against `ms`, excluding fixtures tagged `aliasing`. Known differences are listed in `tests/conformance/expect-fail.txt`. `CONFORM_SHARD=i/n` splits the run. See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
+`make conform` builds the Rust `ms` and `ms-conform`, lints the corpus, and replays the run, check, and test phases of `tests/conformance/` against `ms`, excluding fixtures tagged `aliasing`, and the parse phase for every fixture. Known differences are listed in `tests/conformance/expect-fail.txt`. `CONFORM_SHARD=i/n` splits the run. See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
 
 `python3 scripts/extern-parity.py` (read-only; `-v` lists every entry) reports how many bodiless standard functions derive their runtime signature from their declaration under the ABI conventions, and which are mismatched, use types outside the scalar/`String`/`Bytes` set, or have no runtime symbol. It measures how much of the native table a signature-driven `extern` could cover.
 
