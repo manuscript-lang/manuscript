@@ -1,5 +1,4 @@
-//! `@std/string.ms` natives, on top of the
-//! `regex` crate; see [`translate`] for the dialect differences that are bridged.
+//! `@std/string.ms` natives, on top of the `regex` crate and its pattern dialect.
 #![no_std]
 
 // Links the msrt_* runtime symbols into this crate's test binaries.
@@ -9,7 +8,6 @@ use ms_rt as _;
 extern crate alloc;
 
 pub mod ffi;
-mod translate;
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -61,8 +59,7 @@ impl Iterator for Spans<'_> {
 }
 
 pub fn compile(pattern: &str) -> Result<Regex, Fail> {
-    let translated = translate::translate(pattern).map_err(|()| Fail::InvalidData)?;
-    let pattern = regex::RegexBuilder::new(&translated)
+    let pattern = regex::RegexBuilder::new(pattern)
         .size_limit(64 << 20)
         .build()
         .map_err(|_| Fail::InvalidData)?;
