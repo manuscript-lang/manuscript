@@ -129,3 +129,7 @@ impl Checker {
         info
     }
 }
+
+#[cfg(test)]
+#[path = "method_type_defaults_tests.rs"]
+mod method_type_defaults_tests;
