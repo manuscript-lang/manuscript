@@ -8,7 +8,7 @@
 
 ## Status
 
-Approved, 2026-10-31, checked at `be04a207`. Chinmay: "having one filesystem(), network() functions feels very weird ... same for rest of the stdlib as well", then "should these be free functions instead? see how the stdlib for node/python/go is setup". Interface-typed default parameters check (`ms check`, scratch project). Approved by Chinmay 2026-10-31: plain free functions, no injectable `Commands`/`Entropy` interfaces, constants become values.
+Approved, 2026-10-31, checked at `be04a207`; skeptic review applied. Chinmay: "having one filesystem(), network() functions feels very weird ... same for rest of the stdlib as well", then "should these be free functions instead? see how the stdlib for node/python/go is setup". Interface-typed default parameters check (`ms check`, scratch project). Approved by Chinmay 2026-10-31: plain free functions, no injectable `Commands`/`Entropy` interfaces, constants become values.
 
 ## Problem
 
@@ -20,7 +20,7 @@ let text = try fs.read_file("a.txt")
 let client = try network().http_client(HttpClientOptions())
 ```
 
-- The getter adds a line and a name that carry no meaning. Nothing implements `FileSystem`, `Network`, `Clock`, `WallClock`, `System`, `ProcessControl`, `Terminal` or `Files` but the host (`grep 'impl X for'`: none), so the interface is not an abstraction.
+- The getter adds a line and a name that carry no meaning. Only `FileSystem` (conformance snippet `testfilesystemimplementationdefaultsoverrideonlyco-3.ms`, `tests/e2e/testdata/stdlib/fs-defaults.ms`, which exercises interface default methods) and `Commands`/`Entropy` are implemented by user code; no user code implements `Network`, `Clock`, `WallClock`, `System`, `ProcessControl`, `Terminal` or `Files`. The `FileSystem` fixtures move to a source type in the test that exercises interface defaults.
 - `fs.ms` already mixes both: `basename`, `join` are free functions, `posix()` returns a `PathOperations` interface with the same methods.
 - Constants are calls: `math.pi()`, `max_int()`, `process.os_type()`, `end_of_line()`.
 - Only `Commands` (`tests/e2e/testdata/stdlib/defaults.ms:12`) and `Entropy` (`tests/conformance/fixtures/e2e/stdlib/random.ms:12`) are implemented by user code, for fakes.
@@ -63,7 +63,13 @@ let limited = try narrow.http_client(HttpClientOptions())
 | `crates/ms-lower` `native.rs`, `natiface.rs` | interface-method natives become plain `extern fn`s; coordinate with the "Simplify Rust code structure" thread | `cargo nextest run -p ms-lower` |
 | `ms-check` | undefined-name hint for a removed getter | conformance reject case |
 | docs, `crates/ms-tooling/data/cheatsheet.md` | examples | `make docs-check` |
-| ~2,400 getter calls in `.ms`/`.md` (measured: grep of 11 getter names) | mechanical rewrite | `make verify-full` |
+| ~1,050 getter calls in `.ms`/`.md` (measured: grep of the 10 getter names; also references in `ms-check`, `ms-syntax`, `ms-cli`, `ms-std-time`, `ms-rt/start.rs`) | mechanical rewrite | `make verify-full` |
+
+## Net, collisions, injection
+
+- `net`: free functions are the same operations on the process-wide host network. `restrict` and `with_resolver` return a `Network` value that keeps every method and `close()`, with the documented rule that closing a parent closes its children. The host network has no `close`; programs that need cancellation scope derive a network with `restrict` (an unrestricted call is `restrict([], [], true)` style, exact signature set in stage 3). Net functions: `connect`, `connect_tls`, `connect_unix`, `listen`, `listen_tls`, `listen_unix`, `bind_datagram`, `lookup`, `request`, `request_bytes`, `serve`, `serve_connections`, `http_client`, `web_socket`. DNS `Network.resolve` keeps its method name and does not get a free `resolve`, which `net.ms` already uses for URLs.
+- `fetch.fetcher(options, net: Network = network())` becomes `net: Network? = none`, using the host network when `none`. `log.file_transport` calls `fs` functions directly.
+- Collisions: `System.info` and `ProcessControl.info` keep distinct names (`system_info`, `process_info`); `process.constants`/`fs.constants` stay module-qualified; `ProcessControl.monotonic_time` is removed in favour of `time.monotonic()`. Callers alias on import (`import open as fs_open`); `ms-check` already supports this.
 
 ## Alternatives
 
