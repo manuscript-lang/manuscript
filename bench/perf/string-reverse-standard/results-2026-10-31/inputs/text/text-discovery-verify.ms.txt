@@ -1,0 +1,128 @@
+import stdout from "@std/io.ms"
+import clock from "@std/time.ms"
+
+type Run:
+    text: String
+    copies: Int
+
+fn expected_parts(runs: List[Run]) List[String]:
+    var output: List[String] = []
+    for run in runs:
+        for unused in 0..run.copies:
+            output.append(run.text.clone())
+    return output
+
+fn split_result(text: String, separator: String, limit: Int) List[String]:
+    if limit < 0: return text.split(separator)
+    return text.split(separator, max_parts: limit)
+
+fn parts_sum(parts: List[String]) Int:
+    var checksum = 0
+    for piece in parts:
+        checksum += piece.byte_length() + 17
+    return checksum
+
+fn split_sum(text: String, separator: String, limit: Int, expected: List[String]) Int:
+    let output = split_result(text, separator, limit)
+    if output != expected: return -1
+    return parts_sum(output)
+
+fn search_sum(kind: Int, text: String, needle: String, expected: Int) Int:
+    var actual = -1
+    if kind == 0:
+        actual = 0
+        if text.contains(needle): actual = 1
+    if kind == 1: actual = text.index_of(needle).get(-1)
+    if kind == 2: actual = text.last_index_of(needle).get(-1)
+    if actual != expected: return -1
+    return actual + 18
+
+fn measure_split(name: String, text: String, separator: String, limit: Int, expected: List[String], iterations: Int) Int:
+    let expected_sum = parts_sum(expected)
+    if split_sum(text, separator, limit, expected) != expected_sum: return 1
+    var checksum = 0
+    let started = clock().now()
+    for unused in 0..iterations:
+        checksum += split_sum(text, separator, limit, expected)
+    let elapsed = clock().now().difference(started).to_nanoseconds()
+    if checksum != expected_sum * iterations: return 1
+    let _written = stdout().write("{name},{text.byte_length()},{iterations},{elapsed},{checksum}\n")
+    return 0
+
+fn measure_search(name: String, kind: Int, text: String, needle: String, expected: Int, iterations: Int) Int:
+    let expected_sum = expected + 18
+    if search_sum(kind, text, needle, expected) != expected_sum: return 1
+    var checksum = 0
+    let started = clock().now()
+    for unused in 0..iterations:
+        checksum += search_sum(kind, text, needle, expected)
+    let elapsed = clock().now().difference(started).to_nanoseconds()
+    if checksum != expected_sum * iterations: return 1
+    let _written = stdout().write("{name},{text.byte_length()},{iterations},{elapsed},{checksum}\n")
+    return 0
+
+export fn main() Int:
+    if split_sum("", "::", -1, expected_parts([Run("", 1)])) != 17: return 1
+    if split_sum("", "", -1, expected_parts([])) != 0: return 1
+    if split_sum("abc", "::", -1, expected_parts([Run("abc", 1)])) != 20: return 1
+    if split_sum("::a::::b::", "::", -1, expected_parts([Run("", 1), Run("a", 1), Run("", 1), Run("b", 1), Run("", 1)])) != 87: return 1
+    if split_sum("aaaaa", "aa", -1, expected_parts([Run("", 2), Run("a", 1)])) != 52: return 1
+    if split_sum("a\u{0000}bé日\u{0000}b", "\u{0000}b", -1, expected_parts([Run("a", 1), Run("é日", 1), Run("", 1)])) != 57: return 1
+    if split_sum("é日😀é", "", -1, expected_parts([Run("é", 1), Run("日", 1), Run("😀", 1), Run("e", 1), Run("́", 1)])) != 97: return 1
+    if split_sum("a::b::c", "::", 0, expected_parts([])) != 0: return 1
+    if split_sum("a::b::c", "::", 1, expected_parts([Run("a", 1)])) != 18: return 1
+    if split_sum("a::b::c", "::", 2, expected_parts([Run("a", 1), Run("b", 1)])) != 36: return 1
+    if split_sum("é日😀é", "", 2, expected_parts([Run("é", 1), Run("日", 1)])) != 39: return 1
+    if split_sum("abcdefghijklmnopqrstuvwx||".repeat(64).get(), "||", -1, expected_parts([Run("abcdefghijklmnopqrstuvwx", 64), Run("", 1)])) != 2641: return 1
+    if split_sum("abcdefghijklmnopqrstuvwx||".repeat(4096).get(), "||", -1, expected_parts([Run("abcdefghijklmnopqrstuvwx", 4096), Run("", 1)])) != 167953: return 1
+    if split_sum("é日😀§§".repeat(1024).get(), "§§", -1, expected_parts([Run("é日😀", 1024), Run("", 1)])) != 26641: return 1
+    if split_sum("a".repeat(65536).get(), "a".repeat(127).get() + "b" + "a".repeat(128).get(), -1, expected_parts([Run("a".repeat(65536).get(), 1)])) != 65553: return 1
+    if split_sum("aaaaaab".repeat(1024).get(), "aaaaab", -1, expected_parts([Run("a", 1024), Run("", 1)])) != 18449: return 1
+    if split_sum("x".repeat(1048576).get(), "needle", -1, expected_parts([Run("x".repeat(1048576).get(), 1)])) != 1048593: return 1
+    if split_sum("abcdefghijklmnopqrstuvwx||".repeat(4096).get(), "||", 2, expected_parts([Run("abcdefghijklmnopqrstuvwx", 2)])) != 82: return 1
+    if search_sum(0, "", "", 1) != 19: return 1
+    if search_sum(1, "", "", 0) != 18: return 1
+    if search_sum(2, "", "", 0) != 18: return 1
+    if search_sum(0, "", "x", 0) != 18: return 1
+    if search_sum(1, "", "x", -1) != 17: return 1
+    if search_sum(2, "", "x", -1) != 17: return 1
+    if search_sum(0, "abcabc", "ab", 1) != 19: return 1
+    if search_sum(1, "abcabc", "ab", 0) != 18: return 1
+    if search_sum(2, "abcabc", "ab", 3) != 21: return 1
+    if search_sum(0, "abc", "xy", 0) != 18: return 1
+    if search_sum(1, "abc", "xy", -1) != 17: return 1
+    if search_sum(2, "abc", "xy", -1) != 17: return 1
+    if search_sum(0, "é日😀_é日😀", "日😀", 1) != 19: return 1
+    if search_sum(1, "é日😀_é日😀", "日😀", 1) != 19: return 1
+    if search_sum(2, "é日😀_é日😀", "日😀", 5) != 23: return 1
+    if search_sum(0, "é日😀", "", 1) != 19: return 1
+    if search_sum(1, "é日😀", "", 0) != 18: return 1
+    if search_sum(2, "é日😀", "", 3) != 21: return 1
+    if search_sum(0, "aaaaa", "aa", 1) != 19: return 1
+    if search_sum(1, "aaaaa", "aa", 0) != 18: return 1
+    if search_sum(2, "aaaaa", "aa", 3) != 21: return 1
+    if search_sum(0, "a\u{0000}bé日\u{0000}b", "\u{0000}b", 1) != 19: return 1
+    if search_sum(1, "a\u{0000}bé日\u{0000}b", "\u{0000}b", 1) != 19: return 1
+    if search_sum(2, "a\u{0000}bé日\u{0000}b", "\u{0000}b", 5) != 23: return 1
+    if search_sum(0, "the quick brown fox jumps over the lazy dog. ".repeat(128).get(), "brown", 1) != 19: return 1
+    if search_sum(1, "the quick brown fox jumps over the lazy dog. ".repeat(128).get(), "brown", 10) != 28: return 1
+    if search_sum(2, "the quick brown fox jumps over the lazy dog. ".repeat(128).get(), "brown", 5725) != 5743: return 1
+    if search_sum(0, "x".repeat(65536).get() + "needle", "needle", 1) != 19: return 1
+    if search_sum(1, "x".repeat(65536).get() + "needle", "needle", 65536) != 65554: return 1
+    if search_sum(2, "x".repeat(65536).get() + "needle", "needle", 65536) != 65554: return 1
+    if search_sum(0, "é日😀".repeat(16384).get() + "needle", "needle", 1) != 19: return 1
+    if search_sum(1, "é日😀".repeat(16384).get() + "needle", "needle", 49152) != 49170: return 1
+    if search_sum(2, "é日😀".repeat(16384).get() + "needle", "needle", 49152) != 49170: return 1
+    if search_sum(0, "a".repeat(65536).get(), "a".repeat(127).get() + "b" + "a".repeat(128).get(), 0) != 18: return 1
+    if search_sum(1, "a".repeat(65536).get(), "a".repeat(127).get() + "b" + "a".repeat(128).get(), -1) != 17: return 1
+    if search_sum(2, "a".repeat(65536).get(), "a".repeat(127).get() + "b" + "a".repeat(128).get(), -1) != 17: return 1
+    if search_sum(0, "a".repeat(29).get() + "::", "::", 1) != 19: return 1
+    if search_sum(1, "a".repeat(29).get() + "::", "::", 29) != 47: return 1
+    if search_sum(2, "a".repeat(29).get() + "::", "::", 29) != 47: return 1
+    if search_sum(0, "a".repeat(30).get() + "::", "::", 1) != 19: return 1
+    if search_sum(1, "a".repeat(30).get() + "::", "::", 30) != 48: return 1
+    if search_sum(2, "a".repeat(30).get() + "::", "::", 30) != 48: return 1
+    if search_sum(0, "a".repeat(31).get() + "::", "::", 1) != 19: return 1
+    if search_sum(1, "a".repeat(31).get() + "::", "::", 31) != 49: return 1
+    if search_sum(2, "a".repeat(31).get() + "::", "::", 31) != 49: return 1
+    return 0

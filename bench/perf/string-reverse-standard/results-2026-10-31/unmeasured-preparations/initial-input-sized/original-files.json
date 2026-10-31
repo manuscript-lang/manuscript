@@ -1,0 +1,27 @@
+{
+  "measured": false,
+  "files_sha256": {
+    "rust-inventory.csv": "e890220556a4ce28fc7e8d98cc3bc286e6dd60102087e192923cef1e56f1538b",
+    "ms-verify-build.log": "60037c25065d485809f47112979ba9230c76b93e65259c45534b22cfff8c6aac",
+    "text-discovery-ms": "3bd06edb9b40df09631feb0321b9933aea1f6fb83f4b1d67e1e24b8dcb968cbe",
+    "ms-verify.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "identities.json": "d115ec5011c07a0d36a81d6a46ebccd9af3f163830a060185f05f5ef98566567",
+    "text-discovery-ms-verify": "f2380eb7158326dfccd37169dd693f5ae998cec23ca75b573cf4d04174a45fe3",
+    "rust-verify.log": "8f07512c656e9c9c3d76583c672980530c6b947a4e9a2193d5fdbc50d3714b3c",
+    "text-discovery-ms-verify.ms-build.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "text-discovery-rust": "6c2627584e9c221040cc638881728c6b7d7e1f8266692b97a6c718e5c8920f9c",
+    "semantics.json": "9a62925675e245c87cbb23673640c7fd790262525c497091b38775c126117c9a",
+    "text-discovery-ms.ms-build.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "ms-build.log": "8357ed2df93628fd1f210e321453ac84326e3fac861bab83a597216d7c5d9c08",
+    "prepare.py": "0b848eac1db500713a4e3a8f66553e8bffd9f475263d1a0711ed501588f80e38",
+    "text-discovery.ms": "05ec26fce057be0a03771c54fcac1c171be4777cbd87f489b915e8e93875f488",
+    "ms-verify.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "text-discovery-verify.ms": "75781155f32ca6b768cb02e7bf6c21b0500d72cdb8c9a07facdb2c61b45ba371",
+    "build-and-verify.json": "bc835e0b4ae5400eaa871ce3c33fdee9f4ad8db134f495c18d5a2b31a15121a4",
+    "text-discovery.rs": "522f6b210c9300ba4d08006569023f5922d73b2f7f8505b11875206f4e612106",
+    "SHA256SUMS": "06f9ec242ea0e999dc2c55f025b0b82746daf19a6be4ca8481df872278037d69"
+  },
+  "raw_semantics_identical_to": "../../inputs/text/semantics.json",
+  "generated_sources_reconstructable_from": "prepare.py",
+  "binaries_published": false
+}

@@ -1,0 +1,22 @@
+   Compiling libc v0.2.191
+   Compiling tinyvec v1.13.3
+   Compiling ms-rt-abi v0.1.0 (/workspace/reverse-std-perf/crates/ms-rt-abi)
+   Compiling memchr v2.8.3
+   Compiling ms-rt-hot v0.1.0 (/workspace/reverse-std-perf/crates/ms-rt-hot)
+   Compiling unicode-normalization v0.1.26
+   Compiling mio v1.2.4
+   Compiling ms-rt v0.1.0 (/workspace/reverse-std-perf/crates/ms-rt)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.57s
+────────────
+ Nextest run ID a43471bb-f467-4b12-96bd-4111b551f4c2 with nextest profile: default
+    Starting 8 tests across 3 binaries (149 tests skipped)
+        PASS [   0.004s] (1/8) ms-rt string::tests::normalization_preserves_valid_and_malformed_scalar_sequences_with_budgets
+        PASS [   0.004s] (2/8) ms-rt string::tests::normalization_keeps_invalid_form_and_negative_budget_errors
+        PASS [   0.007s] (3/8) ms-rt string::tests::find_matches_naive_search
+        PASS [   0.003s] (4/8) ms-rt string::tests::normalize_nfd
+        PASS [   0.003s] (5/8) ms-rt string::tests::short_searches_agree_with_a_naive_scan
+        PASS [   0.017s] (6/8) ms-rt string::tests::needle_find_matches_a_naive_search_near_the_window_edge
+        PASS [   0.010s] (7/8) ms-rt string::tests::substring_search_repetitive_near_matches
+        PASS [   0.039s] (8/8) ms-rt string::tests::substring_search_matches_exhaustive_byte_model
+────────────
+     Summary [   0.046s] 8 tests run: 8 passed, 149 skipped

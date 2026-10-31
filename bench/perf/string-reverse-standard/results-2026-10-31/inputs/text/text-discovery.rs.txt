@@ -1,0 +1,130 @@
+use std::{hint::black_box, time::Instant};
+struct Case {
+    name: &'static str, kind: u8, text: String, needle: String,
+    limit: i64, index: i64, parts: Vec<String>, iterations: i64, per_sum: i64,
+}
+fn expected(runs: &[(&str, usize)]) -> Vec<String> {
+    let mut result = Vec::new();
+    for &(text, count) in runs {
+        for _ in 0..count { result.push(text.to_owned()); }
+    }
+    result
+}
+#[inline(never)]
+fn operation(case: &Case) -> i64 {
+    if case.kind == 3 {
+        let limit = if case.limit < 0 { usize::MAX } else { case.limit as usize };
+        let actual: Vec<String> = if case.needle.is_empty() {
+            case.text.chars().take(limit).map(|scalar| scalar.to_string()).collect()
+        } else {
+            case.text.split(case.needle.as_str()).take(limit).map(str::to_owned).collect()
+        };
+        if black_box(actual.as_slice()) != case.parts.as_slice() { return -1; }
+        return actual.iter().map(|piece| piece.len() as i64 + 17).sum();
+    }
+    let actual = if case.kind == 0 {
+        case.text.contains(case.needle.as_str()) as i64
+    } else {
+        let byte = if case.kind == 1 {
+            case.text.find(case.needle.as_str())
+        } else {
+            case.text.rfind(case.needle.as_str())
+        };
+        byte.map(|at| case.text[..at].chars().count() as i64).unwrap_or(-1)
+    };
+    if actual != case.index { return -1; }
+    actual + 18
+}
+fn main() {
+    let corpus = vec![
+Case { name: "split_empty_text", kind: 3, text: ["".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: -1, index: 0, parts: expected(&[(&(["".to_owned()].concat()), 1)]), iterations: 100000, per_sum: 17 },
+Case { name: "split_empty_scalar_separator", kind: 3, text: ["".to_owned()].concat(), needle: ["".to_owned()].concat(), limit: -1, index: 0, parts: expected(&[]), iterations: 100000, per_sum: 0 },
+Case { name: "split_tiny_no_match", kind: 3, text: ["abc".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: -1, index: 0, parts: expected(&[(&(["abc".to_owned()].concat()), 1)]), iterations: 100000, per_sum: 20 },
+Case { name: "split_tiny_edges", kind: 3, text: ["::a::::b::".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: -1, index: 0, parts: expected(&[(&(["".to_owned()].concat()), 1), (&(["a".to_owned()].concat()), 1), (&(["".to_owned()].concat()), 1), (&(["b".to_owned()].concat()), 1), (&(["".to_owned()].concat()), 1)]), iterations: 100000, per_sum: 87 },
+Case { name: "split_tiny_overlap", kind: 3, text: ["aaaaa".to_owned()].concat(), needle: ["aa".to_owned()].concat(), limit: -1, index: 0, parts: expected(&[(&(["".to_owned()].concat()), 2), (&(["a".to_owned()].concat()), 1)]), iterations: 100000, per_sum: 52 },
+Case { name: "split_nul_delimiter", kind: 3, text: ["a\u{0000}bé日\u{0000}b".to_owned()].concat(), needle: ["\u{0000}b".to_owned()].concat(), limit: -1, index: 0, parts: expected(&[(&(["a".to_owned()].concat()), 1), (&(["é日".to_owned()].concat()), 1), (&(["".to_owned()].concat()), 1)]), iterations: 100000, per_sum: 57 },
+Case { name: "split_unicode_scalar_separator", kind: 3, text: ["é日😀é".to_owned()].concat(), needle: ["".to_owned()].concat(), limit: -1, index: 0, parts: expected(&[(&(["é".to_owned()].concat()), 1), (&(["日".to_owned()].concat()), 1), (&(["😀".to_owned()].concat()), 1), (&(["e".to_owned()].concat()), 1), (&(["́".to_owned()].concat()), 1)]), iterations: 100000, per_sum: 97 },
+Case { name: "split_cap_zero", kind: 3, text: ["a::b::c".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: 0, index: 0, parts: expected(&[]), iterations: 100000, per_sum: 0 },
+Case { name: "split_cap_one", kind: 3, text: ["a::b::c".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: 1, index: 0, parts: expected(&[(&(["a".to_owned()].concat()), 1)]), iterations: 100000, per_sum: 18 },
+Case { name: "split_cap_two_truncates", kind: 3, text: ["a::b::c".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: 2, index: 0, parts: expected(&[(&(["a".to_owned()].concat()), 1), (&(["b".to_owned()].concat()), 1)]), iterations: 100000, per_sum: 36 },
+Case { name: "split_cap_scalar_two", kind: 3, text: ["é日😀é".to_owned()].concat(), needle: ["".to_owned()].concat(), limit: 2, index: 0, parts: expected(&[(&(["é".to_owned()].concat()), 1), (&(["日".to_owned()].concat()), 1)]), iterations: 100000, per_sum: 39 },
+Case { name: "split_common_fields", kind: 3, text: ["abcdefghijklmnopqrstuvwx||".repeat(64)].concat(), needle: ["||".to_owned()].concat(), limit: -1, index: 0, parts: expected(&[(&(["abcdefghijklmnopqrstuvwx".to_owned()].concat()), 64), (&(["".to_owned()].concat()), 1)]), iterations: 5041, per_sum: 2641 },
+Case { name: "split_large_fields", kind: 3, text: ["abcdefghijklmnopqrstuvwx||".repeat(4096)].concat(), needle: ["||".to_owned()].concat(), limit: -1, index: 0, parts: expected(&[(&(["abcdefghijklmnopqrstuvwx".to_owned()].concat()), 4096), (&(["".to_owned()].concat()), 1)]), iterations: 78, per_sum: 167953 },
+Case { name: "split_unicode_fields", kind: 3, text: ["é日😀§§".repeat(1024)].concat(), needle: ["§§".to_owned()].concat(), limit: -1, index: 0, parts: expected(&[(&(["é日😀".to_owned()].concat()), 1024), (&(["".to_owned()].concat()), 1)]), iterations: 630, per_sum: 26641 },
+Case { name: "split_repetitive_near_miss", kind: 3, text: ["a".repeat(65536)].concat(), needle: ["a".repeat(127), "b".to_owned(), "a".repeat(128)].concat(), limit: -1, index: 0, parts: expected(&[(&(["a".repeat(65536)].concat()), 1)]), iterations: 128, per_sum: 65553 },
+Case { name: "split_dense_periodic", kind: 3, text: ["aaaaaab".repeat(1024)].concat(), needle: ["aaaaab".to_owned()].concat(), limit: -1, index: 0, parts: expected(&[(&(["a".to_owned()].concat()), 1024), (&(["".to_owned()].concat()), 1)]), iterations: 1170, per_sum: 18449 },
+Case { name: "split_large_no_match", kind: 3, text: ["x".repeat(1048576)].concat(), needle: ["needle".to_owned()].concat(), limit: -1, index: 0, parts: expected(&[(&(["x".repeat(1048576)].concat()), 1)]), iterations: 16, per_sum: 1048593 },
+Case { name: "split_large_fields_cap_two", kind: 3, text: ["abcdefghijklmnopqrstuvwx||".repeat(4096)].concat(), needle: ["||".to_owned()].concat(), limit: 2, index: 0, parts: expected(&[(&(["abcdefghijklmnopqrstuvwx".to_owned()].concat()), 2)]), iterations: 100000, per_sum: 82 },
+Case { name: "contains_empty_empty", kind: 0, text: ["".to_owned()].concat(), needle: ["".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 100000, per_sum: 19 },
+Case { name: "index_empty_empty", kind: 1, text: ["".to_owned()].concat(), needle: ["".to_owned()].concat(), limit: -1, index: 0, parts: vec![], iterations: 100000, per_sum: 18 },
+Case { name: "last_index_empty_empty", kind: 2, text: ["".to_owned()].concat(), needle: ["".to_owned()].concat(), limit: -1, index: 0, parts: vec![], iterations: 100000, per_sum: 18 },
+Case { name: "contains_empty_nonempty", kind: 0, text: ["".to_owned()].concat(), needle: ["x".to_owned()].concat(), limit: -1, index: 0, parts: vec![], iterations: 100000, per_sum: 18 },
+Case { name: "index_empty_nonempty", kind: 1, text: ["".to_owned()].concat(), needle: ["x".to_owned()].concat(), limit: -1, index: -1, parts: vec![], iterations: 100000, per_sum: 17 },
+Case { name: "last_index_empty_nonempty", kind: 2, text: ["".to_owned()].concat(), needle: ["x".to_owned()].concat(), limit: -1, index: -1, parts: vec![], iterations: 100000, per_sum: 17 },
+Case { name: "contains_tiny_first_last", kind: 0, text: ["abcabc".to_owned()].concat(), needle: ["ab".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 100000, per_sum: 19 },
+Case { name: "index_tiny_first_last", kind: 1, text: ["abcabc".to_owned()].concat(), needle: ["ab".to_owned()].concat(), limit: -1, index: 0, parts: vec![], iterations: 100000, per_sum: 18 },
+Case { name: "last_index_tiny_first_last", kind: 2, text: ["abcabc".to_owned()].concat(), needle: ["ab".to_owned()].concat(), limit: -1, index: 3, parts: vec![], iterations: 100000, per_sum: 21 },
+Case { name: "contains_tiny_absent", kind: 0, text: ["abc".to_owned()].concat(), needle: ["xy".to_owned()].concat(), limit: -1, index: 0, parts: vec![], iterations: 100000, per_sum: 18 },
+Case { name: "index_tiny_absent", kind: 1, text: ["abc".to_owned()].concat(), needle: ["xy".to_owned()].concat(), limit: -1, index: -1, parts: vec![], iterations: 100000, per_sum: 17 },
+Case { name: "last_index_tiny_absent", kind: 2, text: ["abc".to_owned()].concat(), needle: ["xy".to_owned()].concat(), limit: -1, index: -1, parts: vec![], iterations: 100000, per_sum: 17 },
+Case { name: "contains_unicode_scalar_index", kind: 0, text: ["é日😀_é日😀".to_owned()].concat(), needle: ["日😀".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 100000, per_sum: 19 },
+Case { name: "index_unicode_scalar_index", kind: 1, text: ["é日😀_é日😀".to_owned()].concat(), needle: ["日😀".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 100000, per_sum: 19 },
+Case { name: "last_index_unicode_scalar_index", kind: 2, text: ["é日😀_é日😀".to_owned()].concat(), needle: ["日😀".to_owned()].concat(), limit: -1, index: 5, parts: vec![], iterations: 100000, per_sum: 23 },
+Case { name: "contains_unicode_empty_needle", kind: 0, text: ["é日😀".to_owned()].concat(), needle: ["".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 100000, per_sum: 19 },
+Case { name: "index_unicode_empty_needle", kind: 1, text: ["é日😀".to_owned()].concat(), needle: ["".to_owned()].concat(), limit: -1, index: 0, parts: vec![], iterations: 100000, per_sum: 18 },
+Case { name: "last_index_unicode_empty_needle", kind: 2, text: ["é日😀".to_owned()].concat(), needle: ["".to_owned()].concat(), limit: -1, index: 3, parts: vec![], iterations: 100000, per_sum: 21 },
+Case { name: "contains_overlap", kind: 0, text: ["aaaaa".to_owned()].concat(), needle: ["aa".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 100000, per_sum: 19 },
+Case { name: "index_overlap", kind: 1, text: ["aaaaa".to_owned()].concat(), needle: ["aa".to_owned()].concat(), limit: -1, index: 0, parts: vec![], iterations: 100000, per_sum: 18 },
+Case { name: "last_index_overlap", kind: 2, text: ["aaaaa".to_owned()].concat(), needle: ["aa".to_owned()].concat(), limit: -1, index: 3, parts: vec![], iterations: 100000, per_sum: 21 },
+Case { name: "contains_nul_unicode", kind: 0, text: ["a\u{0000}bé日\u{0000}b".to_owned()].concat(), needle: ["\u{0000}b".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 100000, per_sum: 19 },
+Case { name: "index_nul_unicode", kind: 1, text: ["a\u{0000}bé日\u{0000}b".to_owned()].concat(), needle: ["\u{0000}b".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 100000, per_sum: 19 },
+Case { name: "last_index_nul_unicode", kind: 2, text: ["a\u{0000}bé日\u{0000}b".to_owned()].concat(), needle: ["\u{0000}b".to_owned()].concat(), limit: -1, index: 5, parts: vec![], iterations: 100000, per_sum: 23 },
+Case { name: "contains_common_prose", kind: 0, text: ["the quick brown fox jumps over the lazy dog. ".repeat(128)].concat(), needle: ["brown".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 100000, per_sum: 19 },
+Case { name: "index_common_prose", kind: 1, text: ["the quick brown fox jumps over the lazy dog. ".repeat(128)].concat(), needle: ["brown".to_owned()].concat(), limit: -1, index: 10, parts: vec![], iterations: 100000, per_sum: 28 },
+Case { name: "last_index_common_prose", kind: 2, text: ["the quick brown fox jumps over the lazy dog. ".repeat(128)].concat(), needle: ["brown".to_owned()].concat(), limit: -1, index: 5725, parts: vec![], iterations: 1456, per_sum: 5743 },
+Case { name: "contains_large_ascii_late", kind: 0, text: ["x".repeat(65536), "needle".to_owned()].concat(), needle: ["needle".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 127, per_sum: 19 },
+Case { name: "index_large_ascii_late", kind: 1, text: ["x".repeat(65536), "needle".to_owned()].concat(), needle: ["needle".to_owned()].concat(), limit: -1, index: 65536, parts: vec![], iterations: 127, per_sum: 65554 },
+Case { name: "last_index_large_ascii_late", kind: 2, text: ["x".repeat(65536), "needle".to_owned()].concat(), needle: ["needle".to_owned()].concat(), limit: -1, index: 65536, parts: vec![], iterations: 127, per_sum: 65554 },
+Case { name: "contains_large_unicode_late", kind: 0, text: ["é日😀".repeat(16384), "needle".to_owned()].concat(), needle: ["needle".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 56, per_sum: 19 },
+Case { name: "index_large_unicode_late", kind: 1, text: ["é日😀".repeat(16384), "needle".to_owned()].concat(), needle: ["needle".to_owned()].concat(), limit: -1, index: 49152, parts: vec![], iterations: 56, per_sum: 49170 },
+Case { name: "last_index_large_unicode_late", kind: 2, text: ["é日😀".repeat(16384), "needle".to_owned()].concat(), needle: ["needle".to_owned()].concat(), limit: -1, index: 49152, parts: vec![], iterations: 56, per_sum: 49170 },
+Case { name: "contains_repetitive_near_miss", kind: 0, text: ["a".repeat(65536)].concat(), needle: ["a".repeat(127), "b".to_owned(), "a".repeat(128)].concat(), limit: -1, index: 0, parts: vec![], iterations: 128, per_sum: 18 },
+Case { name: "index_repetitive_near_miss", kind: 1, text: ["a".repeat(65536)].concat(), needle: ["a".repeat(127), "b".to_owned(), "a".repeat(128)].concat(), limit: -1, index: -1, parts: vec![], iterations: 128, per_sum: 17 },
+Case { name: "last_index_repetitive_near_miss", kind: 2, text: ["a".repeat(65536)].concat(), needle: ["a".repeat(127), "b".to_owned(), "a".repeat(128)].concat(), limit: -1, index: -1, parts: vec![], iterations: 128, per_sum: 17 },
+Case { name: "contains_boundary_31", kind: 0, text: ["a".repeat(29), "::".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 100000, per_sum: 19 },
+Case { name: "index_boundary_31", kind: 1, text: ["a".repeat(29), "::".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: -1, index: 29, parts: vec![], iterations: 100000, per_sum: 47 },
+Case { name: "last_index_boundary_31", kind: 2, text: ["a".repeat(29), "::".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: -1, index: 29, parts: vec![], iterations: 100000, per_sum: 47 },
+Case { name: "contains_boundary_32", kind: 0, text: ["a".repeat(30), "::".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 100000, per_sum: 19 },
+Case { name: "index_boundary_32", kind: 1, text: ["a".repeat(30), "::".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: -1, index: 30, parts: vec![], iterations: 100000, per_sum: 48 },
+Case { name: "last_index_boundary_32", kind: 2, text: ["a".repeat(30), "::".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: -1, index: 30, parts: vec![], iterations: 100000, per_sum: 48 },
+Case { name: "contains_boundary_33", kind: 0, text: ["a".repeat(31), "::".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: -1, index: 1, parts: vec![], iterations: 100000, per_sum: 19 },
+Case { name: "index_boundary_33", kind: 1, text: ["a".repeat(31), "::".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: -1, index: 31, parts: vec![], iterations: 100000, per_sum: 49 },
+Case { name: "last_index_boundary_33", kind: 2, text: ["a".repeat(31), "::".to_owned()].concat(), needle: ["::".to_owned()].concat(), limit: -1, index: 31, parts: vec![], iterations: 100000, per_sum: 49 }
+    ]; // All setup precedes clocks.
+    assert_eq!(corpus.len(), 63);
+    let mode = std::env::args().nth(1);
+    assert!(std::env::args().len() <= 2);
+    if mode.as_deref() == Some("--verify") {
+        for case in &corpus { assert_eq!(operation(black_box(case)), case.per_sum, "{}", case.name); }
+        println!("verified {} exact scalar-search/owned-split outputs", corpus.len());
+        return;
+    }
+    if mode.as_deref() == Some("--inventory") {
+        println!("case,input_bytes,iterations,checksum");
+        for case in &corpus {
+            println!("{},{},{},{}", case.name, case.text.len(), case.iterations, case.per_sum * case.iterations);
+        }
+        return;
+    }
+    assert!(mode.is_none(), "unknown mode");
+    println!("case,input_bytes,iterations,elapsed_ns,checksum");
+    for case in &corpus {
+        assert_eq!(operation(black_box(case)), case.per_sum, "{}", case.name);
+        let mut checksum = 0_i64;
+        let now = Instant::now();
+        for _ in 0..case.iterations { checksum += black_box(operation(black_box(case))); }
+        let elapsed = now.elapsed().as_nanos();
+        assert_eq!(checksum, case.per_sum * case.iterations, "{}", case.name);
+        println!("{},{},{},{},{}", case.name, case.text.len(), case.iterations, elapsed, checksum);
+    }
+}

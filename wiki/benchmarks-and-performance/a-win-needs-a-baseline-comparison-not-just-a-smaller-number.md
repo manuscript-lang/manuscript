@@ -24,6 +24,14 @@ escape. Retain large sparse-escape memory controls alongside timing; the accepte
 change only removes general radix formatting for known ASCII control escapes.
 Evidence: [matched controls and rejected variants](../../bench/perf/toml-quoting/README.md).
 
+Verified (2026-10-31, String reversal): a standard-iterator candidate cut large
+reversal times substantially but added 2.5–3.6 ns to empty/one-byte reversals,
+regressed normalization/search controls and raised whole-process peak RSS about
+6.1%. Reject the complete candidate, retain every adverse result, and distinguish
+standalone from combined-change controls. A textual proof that the old fallback
+is unchanged does not establish performance equivalence for other operations.
+Evidence: [four-state reversal rejection](../../bench/perf/string-reverse-standard/README.md).
+
 Verified (2026-10-31, pure utilities): a path candidate combining parse-copy
 removal with a different reverse scan doubled long-basename parse time in all
 24 pairs. Restore that copy and scan before retaining separate extension,

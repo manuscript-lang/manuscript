@@ -1,0 +1,129 @@
+import stdout from "@std/io.ms"
+import clock from "@std/time.ms"
+
+type Run:
+    text: String
+    copies: Int
+
+fn expected_parts(runs: List[Run]) List[String]:
+    var output: List[String] = []
+    for run in runs:
+        for unused in 0..run.copies:
+            output.append(run.text.clone())
+    return output
+
+fn split_result(text: String, separator: String, limit: Int) List[String]:
+    if limit < 0: return text.split(separator)
+    return text.split(separator, max_parts: limit)
+
+fn parts_sum(parts: List[String]) Int:
+    var checksum = 0
+    for piece in parts:
+        checksum += piece.byte_length() + 17
+    return checksum
+
+fn split_sum(text: String, separator: String, limit: Int, expected: List[String]) Int:
+    let output = split_result(text, separator, limit)
+    if output != expected: return -1
+    return parts_sum(output)
+
+fn search_sum(kind: Int, text: String, needle: String, expected: Int) Int:
+    var actual = -1
+    if kind == 0:
+        actual = 0
+        if text.contains(needle): actual = 1
+    if kind == 1: actual = text.index_of(needle).get(-1)
+    if kind == 2: actual = text.last_index_of(needle).get(-1)
+    if actual != expected: return -1
+    return actual + 18
+
+fn measure_split(name: String, text: String, separator: String, limit: Int, expected: List[String], iterations: Int) Int:
+    let expected_sum = parts_sum(expected)
+    if split_sum(text, separator, limit, expected) != expected_sum: return 1
+    var checksum = 0
+    let started = clock().now()
+    for unused in 0..iterations:
+        checksum += split_sum(text, separator, limit, expected)
+    let elapsed = clock().now().difference(started).to_nanoseconds()
+    if checksum != expected_sum * iterations: return 1
+    let _written = stdout().write("{name},{text.byte_length()},{iterations},{elapsed},{checksum}\n")
+    return 0
+
+fn measure_search(name: String, kind: Int, text: String, needle: String, expected: Int, iterations: Int) Int:
+    let expected_sum = expected + 18
+    if search_sum(kind, text, needle, expected) != expected_sum: return 1
+    var checksum = 0
+    let started = clock().now()
+    for unused in 0..iterations:
+        checksum += search_sum(kind, text, needle, expected)
+    let elapsed = clock().now().difference(started).to_nanoseconds()
+    if checksum != expected_sum * iterations: return 1
+    let _written = stdout().write("{name},{text.byte_length()},{iterations},{elapsed},{checksum}\n")
+    return 0
+
+export fn main() Int:
+    let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
+    if measure_split("split_empty_text", "", "::", -1, expected_parts([Run("", 1)]), 100000) != 0: return 1
+    if measure_split("split_empty_scalar_separator", "", "", -1, expected_parts([]), 100000) != 0: return 1
+    if measure_split("split_tiny_no_match", "abc", "::", -1, expected_parts([Run("abc", 1)]), 100000) != 0: return 1
+    if measure_split("split_tiny_edges", "::a::::b::", "::", -1, expected_parts([Run("", 1), Run("a", 1), Run("", 1), Run("b", 1), Run("", 1)]), 100000) != 0: return 1
+    if measure_split("split_tiny_overlap", "aaaaa", "aa", -1, expected_parts([Run("", 2), Run("a", 1)]), 100000) != 0: return 1
+    if measure_split("split_nul_delimiter", "a\u{0000}bé日\u{0000}b", "\u{0000}b", -1, expected_parts([Run("a", 1), Run("é日", 1), Run("", 1)]), 100000) != 0: return 1
+    if measure_split("split_unicode_scalar_separator", "é日😀é", "", -1, expected_parts([Run("é", 1), Run("日", 1), Run("😀", 1), Run("e", 1), Run("́", 1)]), 100000) != 0: return 1
+    if measure_split("split_cap_zero", "a::b::c", "::", 0, expected_parts([]), 100000) != 0: return 1
+    if measure_split("split_cap_one", "a::b::c", "::", 1, expected_parts([Run("a", 1)]), 100000) != 0: return 1
+    if measure_split("split_cap_two_truncates", "a::b::c", "::", 2, expected_parts([Run("a", 1), Run("b", 1)]), 100000) != 0: return 1
+    if measure_split("split_cap_scalar_two", "é日😀é", "", 2, expected_parts([Run("é", 1), Run("日", 1)]), 100000) != 0: return 1
+    if measure_split("split_common_fields", "abcdefghijklmnopqrstuvwx||".repeat(64).get(), "||", -1, expected_parts([Run("abcdefghijklmnopqrstuvwx", 64), Run("", 1)]), 5041) != 0: return 1
+    if measure_split("split_large_fields", "abcdefghijklmnopqrstuvwx||".repeat(4096).get(), "||", -1, expected_parts([Run("abcdefghijklmnopqrstuvwx", 4096), Run("", 1)]), 78) != 0: return 1
+    if measure_split("split_unicode_fields", "é日😀§§".repeat(1024).get(), "§§", -1, expected_parts([Run("é日😀", 1024), Run("", 1)]), 630) != 0: return 1
+    if measure_split("split_repetitive_near_miss", "a".repeat(65536).get(), "a".repeat(127).get() + "b" + "a".repeat(128).get(), -1, expected_parts([Run("a".repeat(65536).get(), 1)]), 128) != 0: return 1
+    if measure_split("split_dense_periodic", "aaaaaab".repeat(1024).get(), "aaaaab", -1, expected_parts([Run("a", 1024), Run("", 1)]), 1170) != 0: return 1
+    if measure_split("split_large_no_match", "x".repeat(1048576).get(), "needle", -1, expected_parts([Run("x".repeat(1048576).get(), 1)]), 16) != 0: return 1
+    if measure_split("split_large_fields_cap_two", "abcdefghijklmnopqrstuvwx||".repeat(4096).get(), "||", 2, expected_parts([Run("abcdefghijklmnopqrstuvwx", 2)]), 100000) != 0: return 1
+    if measure_search("contains_empty_empty", 0, "", "", 1, 100000) != 0: return 1
+    if measure_search("index_empty_empty", 1, "", "", 0, 100000) != 0: return 1
+    if measure_search("last_index_empty_empty", 2, "", "", 0, 100000) != 0: return 1
+    if measure_search("contains_empty_nonempty", 0, "", "x", 0, 100000) != 0: return 1
+    if measure_search("index_empty_nonempty", 1, "", "x", -1, 100000) != 0: return 1
+    if measure_search("last_index_empty_nonempty", 2, "", "x", -1, 100000) != 0: return 1
+    if measure_search("contains_tiny_first_last", 0, "abcabc", "ab", 1, 100000) != 0: return 1
+    if measure_search("index_tiny_first_last", 1, "abcabc", "ab", 0, 100000) != 0: return 1
+    if measure_search("last_index_tiny_first_last", 2, "abcabc", "ab", 3, 100000) != 0: return 1
+    if measure_search("contains_tiny_absent", 0, "abc", "xy", 0, 100000) != 0: return 1
+    if measure_search("index_tiny_absent", 1, "abc", "xy", -1, 100000) != 0: return 1
+    if measure_search("last_index_tiny_absent", 2, "abc", "xy", -1, 100000) != 0: return 1
+    if measure_search("contains_unicode_scalar_index", 0, "é日😀_é日😀", "日😀", 1, 100000) != 0: return 1
+    if measure_search("index_unicode_scalar_index", 1, "é日😀_é日😀", "日😀", 1, 100000) != 0: return 1
+    if measure_search("last_index_unicode_scalar_index", 2, "é日😀_é日😀", "日😀", 5, 100000) != 0: return 1
+    if measure_search("contains_unicode_empty_needle", 0, "é日😀", "", 1, 100000) != 0: return 1
+    if measure_search("index_unicode_empty_needle", 1, "é日😀", "", 0, 100000) != 0: return 1
+    if measure_search("last_index_unicode_empty_needle", 2, "é日😀", "", 3, 100000) != 0: return 1
+    if measure_search("contains_overlap", 0, "aaaaa", "aa", 1, 100000) != 0: return 1
+    if measure_search("index_overlap", 1, "aaaaa", "aa", 0, 100000) != 0: return 1
+    if measure_search("last_index_overlap", 2, "aaaaa", "aa", 3, 100000) != 0: return 1
+    if measure_search("contains_nul_unicode", 0, "a\u{0000}bé日\u{0000}b", "\u{0000}b", 1, 100000) != 0: return 1
+    if measure_search("index_nul_unicode", 1, "a\u{0000}bé日\u{0000}b", "\u{0000}b", 1, 100000) != 0: return 1
+    if measure_search("last_index_nul_unicode", 2, "a\u{0000}bé日\u{0000}b", "\u{0000}b", 5, 100000) != 0: return 1
+    if measure_search("contains_common_prose", 0, "the quick brown fox jumps over the lazy dog. ".repeat(128).get(), "brown", 1, 100000) != 0: return 1
+    if measure_search("index_common_prose", 1, "the quick brown fox jumps over the lazy dog. ".repeat(128).get(), "brown", 10, 100000) != 0: return 1
+    if measure_search("last_index_common_prose", 2, "the quick brown fox jumps over the lazy dog. ".repeat(128).get(), "brown", 5725, 1456) != 0: return 1
+    if measure_search("contains_large_ascii_late", 0, "x".repeat(65536).get() + "needle", "needle", 1, 127) != 0: return 1
+    if measure_search("index_large_ascii_late", 1, "x".repeat(65536).get() + "needle", "needle", 65536, 127) != 0: return 1
+    if measure_search("last_index_large_ascii_late", 2, "x".repeat(65536).get() + "needle", "needle", 65536, 127) != 0: return 1
+    if measure_search("contains_large_unicode_late", 0, "é日😀".repeat(16384).get() + "needle", "needle", 1, 56) != 0: return 1
+    if measure_search("index_large_unicode_late", 1, "é日😀".repeat(16384).get() + "needle", "needle", 49152, 56) != 0: return 1
+    if measure_search("last_index_large_unicode_late", 2, "é日😀".repeat(16384).get() + "needle", "needle", 49152, 56) != 0: return 1
+    if measure_search("contains_repetitive_near_miss", 0, "a".repeat(65536).get(), "a".repeat(127).get() + "b" + "a".repeat(128).get(), 0, 128) != 0: return 1
+    if measure_search("index_repetitive_near_miss", 1, "a".repeat(65536).get(), "a".repeat(127).get() + "b" + "a".repeat(128).get(), -1, 128) != 0: return 1
+    if measure_search("last_index_repetitive_near_miss", 2, "a".repeat(65536).get(), "a".repeat(127).get() + "b" + "a".repeat(128).get(), -1, 128) != 0: return 1
+    if measure_search("contains_boundary_31", 0, "a".repeat(29).get() + "::", "::", 1, 100000) != 0: return 1
+    if measure_search("index_boundary_31", 1, "a".repeat(29).get() + "::", "::", 29, 100000) != 0: return 1
+    if measure_search("last_index_boundary_31", 2, "a".repeat(29).get() + "::", "::", 29, 100000) != 0: return 1
+    if measure_search("contains_boundary_32", 0, "a".repeat(30).get() + "::", "::", 1, 100000) != 0: return 1
+    if measure_search("index_boundary_32", 1, "a".repeat(30).get() + "::", "::", 30, 100000) != 0: return 1
+    if measure_search("last_index_boundary_32", 2, "a".repeat(30).get() + "::", "::", 30, 100000) != 0: return 1
+    if measure_search("contains_boundary_33", 0, "a".repeat(31).get() + "::", "::", 1, 100000) != 0: return 1
+    if measure_search("index_boundary_33", 1, "a".repeat(31).get() + "::", "::", 31, 100000) != 0: return 1
+    if measure_search("last_index_boundary_33", 2, "a".repeat(31).get() + "::", "::", 31, 100000) != 0: return 1
+    return 0

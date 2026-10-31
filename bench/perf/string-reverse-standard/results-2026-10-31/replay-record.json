@@ -1,0 +1,285 @@
+{
+  "complete": true,
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "/workspace/reverse-std-evidence/runner/string-normalize-ascii/compare_matrix.py",
+        "/workspace/reverse-std-evidence/reverse-programs.json",
+        "/workspace/reverse-std-evidence/reverse-identities.json",
+        "/workspace/reverse-std-evidence/reverse-matrix",
+        "--cpu",
+        "0"
+      ],
+      "exit": 0,
+      "log": "reverse-matrix.log"
+    },
+    {
+      "argv": [
+        "python3",
+        "/workspace/reverse-std-evidence/runner/string-normalize-ascii/compare_matrix.py",
+        "/workspace/reverse-std-evidence/normalize-programs.json",
+        "/workspace/reverse-std-evidence/normalize-identities.json",
+        "/workspace/reverse-std-evidence/normalize-matrix",
+        "--cpu",
+        "0"
+      ],
+      "exit": 0,
+      "log": "normalize-matrix.log"
+    },
+    {
+      "argv": [
+        "python3",
+        "/workspace/reverse-std-evidence/runner/string-normalize-ascii/compare_matrix.py",
+        "/workspace/reverse-std-evidence/byte-programs.json",
+        "/workspace/reverse-std-evidence/byte-identities.json",
+        "/workspace/reverse-std-evidence/byte-matrix",
+        "--cpu",
+        "0"
+      ],
+      "exit": 0,
+      "log": "byte-matrix.log"
+    },
+    {
+      "argv": [
+        "python3",
+        "/workspace/reverse-std-evidence/runner/string-normalize-ascii/compare_matrix.py",
+        "/workspace/reverse-std-evidence/lines-programs.json",
+        "/workspace/reverse-std-evidence/lines-identities.json",
+        "/workspace/reverse-std-evidence/lines-matrix",
+        "--cpu",
+        "0"
+      ],
+      "exit": 0,
+      "log": "lines-matrix.log"
+    },
+    {
+      "argv": [
+        "python3",
+        "/workspace/reverse-std-evidence/runner/string-normalize-ascii/compare_matrix.py",
+        "/workspace/reverse-std-evidence/text-programs.json",
+        "/workspace/reverse-std-evidence/text-identities.json",
+        "/workspace/reverse-std-evidence/text-matrix",
+        "--cpu",
+        "0"
+      ],
+      "exit": 0,
+      "log": "text-matrix.log"
+    }
+  ],
+  "inputs": {
+    "/workspace/reverse-std-evidence/states.json": "c5c5bcb64c217f9e8a03e4e1dbba53cd5a697e467476c9440b3f118fbdd5a8f4",
+    "/workspace/reverse-std-evidence/rss-builds.json": "d363d49c592195f6462156a37fede92cf5a4e1ae2acee10eaf544d07e47fb660",
+    "/workspace/reverse-std-evidence/protocol.md": "54c12d21bbbcac9775885e718ab5e36515b8f3cd3d64c1a260ce88fcfe4f9de8",
+    "/workspace/reverse-std-evidence/fallback-source-proof.json": "896091d63d13b8293968e26b6023e755874aa55fc38db8ea7c10b471c36ebda5",
+    "/workspace/reverse-std-evidence/replay.py": "19858fcbcc1bd092b28e1453c09c77b25e840ba7957a5e2fd8b87b7ea2970e1e",
+    "/workspace/reverse-std-evidence/runner/string-normalize-ascii/compare_matrix.py": "d2ebeaf2c449cc49830beba5e267dc03b89e864ff0cb43830dd29a5144dcd485",
+    "/workspace/reverse-std-evidence/runner/string-lines/compare.py": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+    "/workspace/reverse-std-evidence/reverse-programs.json": "19b5e76ee199115d2d79a3fd6bad5a46c3e3c5959e94f83e296479d8003fdd68",
+    "/workspace/reverse-std-evidence/reverse-identities.json": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0",
+    "/workspace/reverse-std-evidence/normalize-programs.json": "366bea92c236366be3f23908f5bdd8c4868c361c18395822e958d4f57f734fe6",
+    "/workspace/reverse-std-evidence/normalize-identities.json": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+    "/workspace/reverse-std-evidence/byte-programs.json": "247abfec97a72fe786998167567c647d42a2df16b2a762413e59c6f16a56ca1a",
+    "/workspace/reverse-std-evidence/byte-identities.json": "92f64bf1570cfb2edea65d39e7de7a09dc9223dd37cf589140a03dcee973523d",
+    "/workspace/reverse-std-evidence/lines-programs.json": "370c6e9984b163162d9337d20188577a16c621eaffe5cfb944aa98553e1be2c2",
+    "/workspace/reverse-std-evidence/lines-identities.json": "910d8ccb7b7065c8c90afefdaef31999c694aeefaeb27ee6283505e318d75bc0",
+    "/workspace/reverse-std-evidence/text-programs.json": "78e97015ac3d3a7c9447cf0ad50b322b5a02c1c83912875d3c84cbcf13ec9e62",
+    "/workspace/reverse-std-evidence/text-identities.json": "24c03963afb1e4b37297c7e6c741223bca2e211b269b21a2e029127eb1aa63c1"
+  },
+  "programs": {
+    "reverse-baseline": {
+      "path": "/workspace/reverse-std-evidence/baseline-reverse",
+      "sha256": "8206642a1b66e10dd19ce655177de9c87114e395c25318cc2c159031776a1bbd"
+    },
+    "reverse-word": {
+      "path": "/workspace/reverse-std-evidence/word-reverse",
+      "sha256": "70ac5c64390ea56545a02bf3d2d6753aad570a066d181c10e23c636319191bc6"
+    },
+    "reverse-reverse": {
+      "path": "/workspace/reverse-std-evidence/reverse-reverse",
+      "sha256": "23a830025e57b80d2d60d02214f8cb11fe3e093e6f8e54db315c32ee33d6f47d"
+    },
+    "reverse-both": {
+      "path": "/workspace/reverse-std-evidence/both-reverse",
+      "sha256": "11db1e14ad93f966ead4447cbebe372f70e79904c765ce83fb7a60bb4c1c1f60"
+    },
+    "reverse-rust": {
+      "path": "/workspace/reverse-discovery/rust-reverse-control",
+      "sha256": "5e3f74836ec76da1835928aa6fd50ec0aa2fcecea9f88a37efc3f82798fce6ea"
+    },
+    "normalize-baseline": {
+      "path": "/workspace/reverse-std-evidence/baseline-normalize",
+      "sha256": "69dc61352a811028a33d29cf7c16c2ffc91cc92a7129cdd5f510c6c3ee9fab68"
+    },
+    "normalize-word": {
+      "path": "/workspace/reverse-std-evidence/word-normalize",
+      "sha256": "8dfce1dbb2439b3308a33d7e11d0318bb396f4fffe0f3c77b4369da9267994d6"
+    },
+    "normalize-reverse": {
+      "path": "/workspace/reverse-std-evidence/reverse-normalize",
+      "sha256": "f5a225a0a643334b2f259ce4cdc2f6cbaf5d62442242d75251b0f7b27955551d"
+    },
+    "normalize-both": {
+      "path": "/workspace/reverse-std-evidence/both-normalize",
+      "sha256": "a8a9ed26c45b5de7fb353aede07494f6a991971269f6d09ca69c5d71f5fce02a"
+    },
+    "byte-baseline": {
+      "path": "/workspace/reverse-std-evidence/baseline-byte",
+      "sha256": "bca92f3b9336d351cb207bd229b9ae92f3eff42f51fad66afecea25ed52d62a0"
+    },
+    "byte-word": {
+      "path": "/workspace/reverse-std-evidence/word-byte",
+      "sha256": "88435124f0003c2c66b7b2195490e13c4c3b0cedfa4261f886c0fb0714fed547"
+    },
+    "byte-reverse": {
+      "path": "/workspace/reverse-std-evidence/reverse-byte",
+      "sha256": "8ed2be669c14266deda96233fad518f2759b6bc31cab25e62a51cbb0c4b1800c"
+    },
+    "byte-both": {
+      "path": "/workspace/reverse-std-evidence/both-byte",
+      "sha256": "1dbd8724fd70bf80d47321aef0cef4750ffcb744c1150730a07d8b58d03bf73a"
+    },
+    "byte-rust": {
+      "path": "/workspace/perf-toolchain/bytes-index-rust-target/release/bytes-index-rust",
+      "sha256": "a3682e891b77d3f0801de7b8edea638f0eca5a48c0033bdbd91d39aed48f567c"
+    },
+    "lines-baseline": {
+      "path": "/workspace/reverse-std-evidence/baseline-lines",
+      "sha256": "c648fc79fc0d6f28440f7903aeea9a6f29764729843b4fd28b944f3bf7dff59a"
+    },
+    "lines-word": {
+      "path": "/workspace/reverse-std-evidence/word-lines",
+      "sha256": "502f55db8f9c505c13b82f67d5f261d1233eb7e524548894c45b5433c3d2896e"
+    },
+    "lines-reverse": {
+      "path": "/workspace/reverse-std-evidence/reverse-lines",
+      "sha256": "b13acc7dd2179550fb22e9e3f2fc59d6aa5bc11e4f51386fdebd76b1a9b8ed5d"
+    },
+    "lines-both": {
+      "path": "/workspace/reverse-std-evidence/both-lines",
+      "sha256": "da5e1b545e995c60338e7934d89543a8faa5dcfff089150553fcf2d843c16450"
+    },
+    "text-baseline": {
+      "path": "/workspace/reverse-std-evidence/baseline-text",
+      "sha256": "5c995f02e9b5ed0eb35b4cbf85d0da7510dbb9f3b05ae79cc3e2f3b3c24522cf"
+    },
+    "text-word": {
+      "path": "/workspace/reverse-std-evidence/word-text",
+      "sha256": "e2c44e3f194369e765dc40bb7d23739118f1227c8575e3399ff9b3b40d7e9cd3"
+    },
+    "text-reverse": {
+      "path": "/workspace/reverse-std-evidence/reverse-text",
+      "sha256": "a33144d507751294fc084ca37cacc18d42ac2d045a8d52ad44a771b5042a8326"
+    },
+    "text-both": {
+      "path": "/workspace/reverse-std-evidence/both-text",
+      "sha256": "cf1201f45fac639da337cd8302f80d23697efe3166e10238bf6efb1ff311a19f"
+    },
+    "text-rust": {
+      "path": "/workspace/text-discovery/text-discovery-rust",
+      "sha256": "8678e001b3a09eafb5ef2d64912ce0626d1ffea8ad33bdb12a3d9fdd4d4dbfcd"
+    },
+    "rss-baseline-ascii": {
+      "path": "/workspace/reverse-std-evidence/baseline-rss-ascii",
+      "sha256": "a07aca9194a715101b240fac8aef5a249b80eea6b02d495e51d5b44afcc5e5bd"
+    },
+    "rss-word-ascii": {
+      "path": "/workspace/reverse-std-evidence/word-rss-ascii",
+      "sha256": "5ac30cbf0f2d0587aa0803751dfcc80c59160ae5eba6349512be2816718af3dc"
+    },
+    "rss-reverse-ascii": {
+      "path": "/workspace/reverse-std-evidence/reverse-rss-ascii",
+      "sha256": "ee14a73aadc6ea561e796ecebaa98a971d482c3217256fe0b4d3fd6ce70d1869"
+    },
+    "rss-both-ascii": {
+      "path": "/workspace/reverse-std-evidence/both-rss-ascii",
+      "sha256": "d00cead3173a3520e6e35ae82d62f352d8d5809ca4ffc6157f3d966a43d6c76c"
+    },
+    "rss-rust-ascii": {
+      "path": "/workspace/reverse-std-evidence/rust-rss-ascii",
+      "sha256": "c7a0e2a7dc2720392c2d5d33a0488d534f0a956c4e6301e0bcfbf4d2d9e02565"
+    },
+    "rss-baseline-mixed": {
+      "path": "/workspace/reverse-std-evidence/baseline-rss-mixed",
+      "sha256": "3b4912b44adeb8b3e912d4092bbea4b101abe25438b9fdb56df438b7fb6c4284"
+    },
+    "rss-word-mixed": {
+      "path": "/workspace/reverse-std-evidence/word-rss-mixed",
+      "sha256": "039afccdfb4cbe21b4526283b281235714b49439e2dc0f2f1dab21bc65d94327"
+    },
+    "rss-reverse-mixed": {
+      "path": "/workspace/reverse-std-evidence/reverse-rss-mixed",
+      "sha256": "03cc6d3942ed11cc6bde601165822f3ba918eb73a07a07e0f2ecdebe8615a72e"
+    },
+    "rss-both-mixed": {
+      "path": "/workspace/reverse-std-evidence/both-rss-mixed",
+      "sha256": "51271fbeb1001d0774bf3d4bfebd16e866b55260efed1109dce7bbaf522cffb9"
+    },
+    "rss-rust-mixed": {
+      "path": "/workspace/reverse-std-evidence/rust-rss-mixed",
+      "sha256": "b851ac69e7f5a6688099d081c23a0a6bebf8b2628949401d199b8f709223e1ab"
+    },
+    "rss-launcher": {
+      "path": "/workspace/reverse-std-evidence/rss-launcher",
+      "sha256": "09441b9246dd4d6a5b1454b9d3652f8a8b3dc1b1f925218d00fa91d3fdc98347"
+    }
+  },
+  "affinity": [
+    0
+  ],
+  "integrity_after": {
+    "/workspace/reverse-std-evidence/states.json": true,
+    "/workspace/reverse-std-evidence/rss-builds.json": true,
+    "/workspace/reverse-std-evidence/protocol.md": true,
+    "/workspace/reverse-std-evidence/fallback-source-proof.json": true,
+    "/workspace/reverse-std-evidence/replay.py": true,
+    "/workspace/reverse-std-evidence/runner/string-normalize-ascii/compare_matrix.py": true,
+    "/workspace/reverse-std-evidence/runner/string-lines/compare.py": true,
+    "/workspace/reverse-std-evidence/reverse-programs.json": true,
+    "/workspace/reverse-std-evidence/reverse-identities.json": true,
+    "/workspace/reverse-std-evidence/normalize-programs.json": true,
+    "/workspace/reverse-std-evidence/normalize-identities.json": true,
+    "/workspace/reverse-std-evidence/byte-programs.json": true,
+    "/workspace/reverse-std-evidence/byte-identities.json": true,
+    "/workspace/reverse-std-evidence/lines-programs.json": true,
+    "/workspace/reverse-std-evidence/lines-identities.json": true,
+    "/workspace/reverse-std-evidence/text-programs.json": true,
+    "/workspace/reverse-std-evidence/text-identities.json": true
+  },
+  "programs_integrity_after": {
+    "reverse-baseline": true,
+    "reverse-word": true,
+    "reverse-reverse": true,
+    "reverse-both": true,
+    "reverse-rust": true,
+    "normalize-baseline": true,
+    "normalize-word": true,
+    "normalize-reverse": true,
+    "normalize-both": true,
+    "byte-baseline": true,
+    "byte-word": true,
+    "byte-reverse": true,
+    "byte-both": true,
+    "byte-rust": true,
+    "lines-baseline": true,
+    "lines-word": true,
+    "lines-reverse": true,
+    "lines-both": true,
+    "text-baseline": true,
+    "text-word": true,
+    "text-reverse": true,
+    "text-both": true,
+    "text-rust": true,
+    "rss-baseline-ascii": true,
+    "rss-word-ascii": true,
+    "rss-reverse-ascii": true,
+    "rss-both-ascii": true,
+    "rss-rust-ascii": true,
+    "rss-baseline-mixed": true,
+    "rss-word-mixed": true,
+    "rss-reverse-mixed": true,
+    "rss-both-mixed": true,
+    "rss-rust-mixed": true,
+    "rss-launcher": true
+  }
+}

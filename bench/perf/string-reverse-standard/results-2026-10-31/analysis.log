@@ -1,0 +1,170 @@
+
+SUITE reverse rows 4150
+baseline->reverse increases 6
+ascii_controls_n0 127.014 2.775 10/10 2.19 4.972
+ascii_mixed_n0 117.589 2.489 10/10 2.142 4.661
+ascii_controls_n1 33.489 3.475 10/10 9.996 13.344
+ascii_mixed_n1 32.812 3.373 10/10 10.05 13.348
+word->both increases 6
+ascii_controls_n0 124.132 2.775 10/10 2.255 5.053
+ascii_mixed_n0 119.706 2.561 10/10 2.183 4.796
+ascii_controls_n1 35.274 3.529 10/10 9.967 13.483
+ascii_mixed_n1 35.158 3.454 10/10 10.049 13.582
+baseline->both increases 6
+ascii_controls_n0 130.714 2.845 10/10 2.19 5.053
+ascii_mixed_n0 123.87 2.63 10/10 2.142 4.796
+ascii_mixed_n1 35.136 3.504 10/10 10.05 13.582
+ascii_controls_n1 34.884 3.586 10/10 9.996 13.483
+GAIN {'suite': 'reverse', 'case': 'ascii_mixed_n63', 'before': 'baseline', 'after': 'reverse', 'rounds': 10, 'before_median_ns': 222.774695, 'after_median_ns': 71.6174, 'change_pct': -67.85209379368693, 'paired_median_delta_ns': -151.724245, 'paired_min_delta_ns': -184.31561, 'paired_max_delta_ns': -129.50572, 'slower_pairs': 0, 'before_min_ns': 200.79764, 'before_max_ns': 256.5121, 'after_min_ns': 70.32324, 'after_max_ns': 75.18379}
+GAIN {'suite': 'reverse', 'case': 'ascii_mixed_n63', 'before': 'word', 'after': 'both', 'rounds': 10, 'before_median_ns': 220.48052, 'after_median_ns': 71.73732000000001, 'change_pct': -67.4631935737452, 'paired_median_delta_ns': -148.7432, 'paired_min_delta_ns': -175.25113, 'paired_max_delta_ns': -130.27944000000002, 'slower_pairs': 0, 'before_min_ns': 201.42721, 'before_max_ns': 247.66938, 'after_min_ns': 69.62852, 'after_max_ns': 72.96739}
+GAIN {'suite': 'reverse', 'case': 'ascii_mixed_n63', 'before': 'reverse', 'after': 'rust', 'rounds': 10, 'before_median_ns': 71.6174, 'after_median_ns': 117.084285, 'change_pct': 63.485807918187454, 'paired_median_delta_ns': 44.910985, 'paired_min_delta_ns': 42.66596, 'paired_max_delta_ns': 47.54669, 'slower_pairs': 10, 'before_min_ns': 70.32324, 'before_max_ns': 75.18379, 'after_min_ns': 114.22845, 'after_max_ns': 119.74318}
+GAIN {'suite': 'reverse', 'case': 'ascii_mixed_n1048576', 'before': 'baseline', 'after': 'reverse', 'rounds': 10, 'before_median_ns': 3355880.5625, 'after_median_ns': 553089.625, 'change_pct': -83.51879291592041, 'paired_median_delta_ns': -2788735.59375, 'paired_min_delta_ns': -3266121.6875, 'paired_max_delta_ns': -2376101.9375, 'slower_pairs': 0, 'before_min_ns': 2926917.875, 'before_max_ns': 3811750.25, 'after_min_ns': 545628.5625, 'after_max_ns': 573919.0}
+GAIN {'suite': 'reverse', 'case': 'ascii_mixed_n1048576', 'before': 'word', 'after': 'both', 'rounds': 10, 'before_median_ns': 3279077.21875, 'after_median_ns': 555378.75, 'change_pct': -83.06295604067192, 'paired_median_delta_ns': -2719032.6875, 'paired_min_delta_ns': -3080867.5, 'paired_max_delta_ns': -2362311.1875, 'slower_pairs': 0, 'before_min_ns': 2919059.625, 'before_max_ns': 3634383.6875, 'after_min_ns': 545369.8125, 'after_max_ns': 582177.4375}
+GAIN {'suite': 'reverse', 'case': 'ascii_mixed_n1048576', 'before': 'reverse', 'after': 'rust', 'rounds': 10, 'before_median_ns': 553089.625, 'after_median_ns': 1212586.53125, 'change_pct': 119.23870498384414, 'paired_median_delta_ns': 660645.0, 'paired_min_delta_ns': 631950.3125, 'paired_max_delta_ns': 694347.0625, 'slower_pairs': 10, 'before_min_ns': 545628.5625, 'before_max_ns': 573919.0, 'after_min_ns': 1204760.25, 'after_max_ns': 1244224.5625}
+GAIN {'suite': 'reverse', 'case': 'two_byte_copies65536', 'before': 'baseline', 'after': 'reverse', 'rounds': 10, 'before_median_ns': 1628160.21875, 'after_median_ns': 507902.4375, 'change_pct': -68.8051316049267, 'paired_median_delta_ns': -1130452.03125, 'paired_min_delta_ns': -1215310.25, 'paired_max_delta_ns': -1108580.1875, 'slower_pairs': 0, 'before_min_ns': 1615487.5, 'before_max_ns': 1733772.5625, 'after_min_ns': 496262.125, 'after_max_ns': 546992.4375}
+GAIN {'suite': 'reverse', 'case': 'two_byte_copies65536', 'before': 'word', 'after': 'both', 'rounds': 10, 'before_median_ns': 1650066.3125, 'after_median_ns': 500071.5625, 'change_pct': -69.69385056153614, 'paired_median_delta_ns': -1144711.1875, 'paired_min_delta_ns': -1205313.0625, 'paired_max_delta_ns': -1128768.5625, 'slower_pairs': 0, 'before_min_ns': 1626938.1875, 'before_max_ns': 1717328.5, 'after_min_ns': 496002.875, 'after_max_ns': 527520.6875}
+GAIN {'suite': 'reverse', 'case': 'two_byte_copies65536', 'before': 'reverse', 'after': 'rust', 'rounds': 10, 'before_median_ns': 507902.4375, 'after_median_ns': 422422.59375, 'change_pct': -16.82997312845147, 'paired_median_delta_ns': -81571.09375, 'paired_min_delta_ns': -124739.875, 'paired_max_delta_ns': -44307.625, 'slower_pairs': 0, 'before_min_ns': 496262.125, 'before_max_ns': 546992.4375, 'after_min_ns': 419941.5, 'after_max_ns': 452603.6875}
+GAIN {'suite': 'reverse', 'case': 'early_unicode_1048576', 'before': 'baseline', 'after': 'reverse', 'rounds': 10, 'before_median_ns': 3614156.5, 'after_median_ns': 556271.15625, 'change_pct': -84.60854818406453, 'paired_median_delta_ns': -3059565.6875, 'paired_min_delta_ns': -3209657.0, 'paired_max_delta_ns': -2334417.6875, 'slower_pairs': 0, 'before_min_ns': 3191565.4375, 'before_max_ns': 3760037.375, 'after_min_ns': 546727.875, 'after_max_ns': 857147.75}
+GAIN {'suite': 'reverse', 'case': 'early_unicode_1048576', 'before': 'word', 'after': 'both', 'rounds': 10, 'before_median_ns': 3504964.3125, 'after_median_ns': 729427.15625, 'change_pct': -79.18874227481881, 'paired_median_delta_ns': -2809145.625, 'paired_min_delta_ns': -3355443.0, 'paired_max_delta_ns': -2540081.0625, 'slower_pairs': 0, 'before_min_ns': 3341828.8125, 'before_max_ns': 3911108.0, 'after_min_ns': 546187.6875, 'after_max_ns': 823264.1875}
+GAIN {'suite': 'reverse', 'case': 'early_unicode_1048576', 'before': 'reverse', 'after': 'rust', 'rounds': 10, 'before_median_ns': 556271.15625, 'after_median_ns': 931162.78125, 'change_pct': 67.39368395932357, 'paired_median_delta_ns': 324069.03125, 'paired_min_delta_ns': 3053.5625, 'paired_max_delta_ns': 695918.8125, 'slower_pairs': 10, 'before_min_ns': 546727.875, 'before_max_ns': 857147.75, 'after_min_ns': 767777.9375, 'after_max_ns': 1246299.1875}
+
+SUITE normalize rows 3200
+baseline->reverse increases 73
+ascii_scale_65536_NFKC_full 6.997 301815.344 8/8 3528144.906 3775011.188
+early_unicode_4096_NFD 6.613 2164.053 7/8 32722.457 34886.51
+late_unicode_4096_NFKD 6.362 1761.016 5/8 34245.773 36424.547
+ascii_scale_4096_NFC_full 6.301 12082.764 8/8 228133.848 242509.148
+word->both increases 90
+one_ascii_NFKD_full 51.569 18.605 8/8 35.048 53.121
+compose_NFKD_full 44.561 21.687 8/8 48.638 70.312
+replacement_nul_NFKD_full 41.664 23.285 8/8 55.947 79.257
+reorder_NFKD_full 38.557 22.921 8/8 60.874 84.346
+baseline->both increases 94
+one_ascii_NFKD_full 56.603 19.358 8/8 33.921 53.121
+compose_NFKD_full 45.148 21.793 8/8 48.442 70.312
+replacement_nul_NFKD_full 40.593 22.932 8/8 56.373 79.257
+reorder_NFKD_full 38.555 23.111 8/8 60.875 84.346
+
+SUITE byte rows 11000
+baseline->reverse increases 134
+miss_256 13.113 8.8 7/10 68.559 77.55
+equal_256 12.884 0.016 8/10 1.586 1.791
+equal_4096 12.423 0.019 7/10 1.59 1.788
+negative_4096 11.143 -0.003 4/10 1.806 2.007
+word->both increases 57
+past_256 15.588 0.068 7/10 1.117 1.291
+equal_31 15.295 0.013 6/10 1.163 1.34
+past_31 15.29 0.021 5/10 1.158 1.336
+past_32 13.211 0.019 6/10 1.121 1.269
+baseline->both increases 9
+near1_1048576 13.753 0.347 10/10 2.12 2.412
+near1_64 12.883 0.28 10/10 2.126 2.4
+near1_4096 11.862 0.25 10/10 2.155 2.41
+near1_32 9.148 0.256 9/10 2.2 2.401
+
+SUITE lines rows 512
+baseline->reverse increases 8
+lf_31 2.242 5515.602 6/8 330591.227 338002.922
+lf_16 2.177 11778.859 6/8 491305.758 502000.781
+lf_1024 0.925 629.297 6/8 30384.812 30665.844
+unicode_crlf 0.697 -226.828 3/8 24102.602 24270.586
+word->both increases 12
+lf_16 3.114 15440.078 8/8 486100.023 501238.797
+lf_32 2.273 8912.516 7/8 355934.266 364024.688
+lf_1024 2.136 296.844 4/8 30363.375 31011.828
+lf_31 1.793 5585.703 7/8 331721.969 337670.242
+baseline->both increases 14
+unicode_crlf 2.92 728.961 8/8 24102.602 24806.461
+lf_31 2.141 6536.172 7/8 330591.227 337670.242
+lf_1024 2.064 195.992 4/8 30384.812 31011.828
+lf_16 2.022 10858.273 6/8 491305.758 501238.797
+
+SUITE text rows 3150
+baseline->reverse increases 38
+index_repetitive_near_miss 14.708 159.961 9/10 1488.73 1707.688
+contains_repetitive_near_miss 10.36 156.949 8/10 1493.07 1647.754
+split_repetitive_near_miss 4.427 201.781 8/10 4044.906 4223.957
+last_index_boundary_33 4.053 0.294 9/10 7.19 7.481
+word->both increases 34
+index_repetitive_near_miss 10.118 135.75 9/10 1487.477 1637.977
+contains_repetitive_near_miss 9.094 119.008 10/10 1483.723 1618.648
+last_index_empty_empty 3.339 0.015 7/10 3.169 3.275
+last_index_common_prose 3.17 1.94 8/10 61.179 63.119
+baseline->both increases 36
+index_repetitive_near_miss 10.025 152.645 9/10 1488.73 1637.977
+contains_repetitive_near_miss 8.411 130.66 8/10 1493.07 1618.648
+last_index_common_prose 3.555 2.16 9/10 60.952 63.119
+last_index_empty_empty 3.133 0.022 7/10 3.175 3.275
+RUST split_empty_text 10.125 156.176 0.065 10/10
+RUST split_empty_scalar_separator 4.889 4.927 0.992 4/10
+RUST split_tiny_no_match 13.083 32.34 0.405 10/10
+RUST split_tiny_edges 42.43 484.436 0.088 10/10
+RUST split_tiny_overlap 24.604 298.218 0.083 10/10
+RUST split_nul_delimiter 26.59 186.291 0.143 10/10
+RUST split_unicode_scalar_separator 54.944 92.775 0.592 10/10
+RUST split_cap_zero 4.17 11.562 0.361 10/10
+RUST split_cap_one 12.079 33.281 0.363 10/10
+RUST split_cap_two_truncates 19.269 43.857 0.439 10/10
+RUST split_cap_scalar_two 29.291 32.149 0.911 10/10
+RUST split_common_fields 2173.896 1510.059 1.44 0/10
+RUST split_large_fields 138422.16 111052.045 1.246 1/10
+RUST split_unicode_fields 32146.202 25792.064 1.246 0/10
+RUST split_repetitive_near_miss 4044.906 24161.285 0.167 10/10
+RUST split_dense_periodic 30435.068 24827.838 1.226 0/10
+RUST split_large_no_match 61435.125 87858.719 0.699 10/10
+RUST split_large_fields_cap_two 71.041 54.813 1.296 0/10
+RUST contains_empty_empty 2.705 2.368 1.142 0/10
+RUST index_empty_empty 3.656 5.015 0.729 10/10
+RUST last_index_empty_empty 3.175 4.008 0.792 10/10
+RUST contains_empty_nonempty 2.732 2.304 1.186 0/10
+RUST index_empty_nonempty 3.334 7.224 0.462 10/10
+RUST last_index_empty_nonempty 3.142 5.968 0.526 10/10
+RUST contains_tiny_first_last 3.921 3.158 1.241 0/10
+RUST index_tiny_first_last 5.704 9.686 0.589 10/10
+RUST last_index_tiny_first_last 5.454 9.982 0.546 10/10
+RUST contains_tiny_absent 3.48 4.644 0.749 10/10
+RUST index_tiny_absent 4.664 8.844 0.527 10/10
+RUST last_index_tiny_absent 3.866 7.997 0.483 10/10
+RUST contains_unicode_scalar_index 5.049 5.967 0.846 10/10
+RUST index_unicode_scalar_index 10.104 16.686 0.606 10/10
+RUST last_index_unicode_scalar_index 14.802 15.526 0.953 10/10
+RUST contains_unicode_empty_needle 2.703 2.322 1.164 0/10
+RUST index_unicode_empty_needle 3.753 5.582 0.672 10/10
+RUST last_index_unicode_empty_needle 9.169 6.535 1.403 0/10
+RUST contains_overlap 3.95 3.172 1.246 1/10
+RUST index_overlap 5.766 10.888 0.53 10/10
+RUST last_index_overlap 4.994 10.841 0.461 10/10
+RUST contains_nul_unicode 4.444 4.815 0.923 10/10
+RUST index_nul_unicode 5.839 10.401 0.561 10/10
+RUST last_index_nul_unicode 11.009 10.393 1.059 0/10
+RUST contains_common_prose 24.831 6.965 3.565 0/10
+RUST index_common_prose 29.44 15.009 1.962 0/10
+RUST last_index_common_prose 60.952 166.758 0.366 10/10
+RUST contains_large_ascii_late 893.331 1224.488 0.73 8/10
+RUST index_large_ascii_late 1386.898 5597.429 0.248 10/10
+RUST last_index_large_ascii_late 528.854 1818.406 0.291 10/10
+RUST contains_large_unicode_late 1925.705 2571.58 0.749 10/10
+RUST index_large_unicode_late 73022.0 12756.062 5.724 0/10
+RUST last_index_large_unicode_late 70198.875 3968.821 17.688 0/10
+RUST contains_repetitive_near_miss 1493.07 15132.238 0.099 10/10
+RUST index_repetitive_near_miss 1488.73 15180.074 0.098 10/10
+RUST last_index_repetitive_near_miss 165848.832 38393.906 4.32 0/10
+RUST contains_boundary_31 5.939 4.653 1.276 0/10
+RUST index_boundary_31 8.714 21.308 0.409 10/10
+RUST last_index_boundary_31 6.96 14.633 0.476 10/10
+RUST contains_boundary_32 18.64 4.687 3.977 0/10
+RUST index_boundary_32 22.128 21.062 1.051 0/10
+RUST last_index_boundary_32 7.181 14.831 0.484 10/10
+RUST contains_boundary_33 18.904 4.763 3.969 0/10
+RUST index_boundary_33 22.811 21.652 1.054 2/10
+RUST last_index_boundary_33 7.19 14.803 0.486 10/10
+RSS ascii baseline [16660, 16660, 16660, 16660, 16660]
+RSS ascii word [16660, 16660, 16660, 16660, 16660]
+RSS ascii reverse [17680, 17680, 17680, 17680, 17680]
+RSS ascii both [17680, 17680, 17680, 17680, 17680]
+RSS ascii rust [13368, 13368, 13348, 13368, 13368]
+RSS mixed baseline [20756, 20756, 20756, 20756, 20756]
+RSS mixed word [20756, 20756, 20756, 20756, 20756]
+RSS mixed reverse [22032, 22032, 22032, 22032, 22032]
+RSS mixed both [22032, 22032, 22032, 22032, 22032]
+RSS mixed rust [16440, 16440, 16416, 16440, 16392]

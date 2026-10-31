@@ -1,0 +1,233 @@
+{
+  "complete": true,
+  "argv": [
+    "/workspace/reverse-std-evidence/runner/string-normalize-ascii/compare_matrix.py",
+    "/workspace/reverse-std-evidence/lines-programs.json",
+    "/workspace/reverse-std-evidence/lines-identities.json",
+    "/workspace/reverse-std-evidence/lines-matrix",
+    "--cpu",
+    "0"
+  ],
+  "affinity": [
+    0
+  ],
+  "orders": [
+    [
+      "baseline",
+      "word",
+      "reverse",
+      "both"
+    ],
+    [
+      "word",
+      "reverse",
+      "both",
+      "baseline"
+    ],
+    [
+      "reverse",
+      "both",
+      "baseline",
+      "word"
+    ],
+    [
+      "both",
+      "baseline",
+      "word",
+      "reverse"
+    ],
+    [
+      "both",
+      "reverse",
+      "word",
+      "baseline"
+    ],
+    [
+      "baseline",
+      "both",
+      "reverse",
+      "word"
+    ],
+    [
+      "word",
+      "baseline",
+      "both",
+      "reverse"
+    ],
+    [
+      "reverse",
+      "word",
+      "baseline",
+      "both"
+    ]
+  ],
+  "cases": 16,
+  "validated_producers": [
+    [
+      "warmup",
+      "baseline"
+    ],
+    [
+      "warmup",
+      "word"
+    ],
+    [
+      "warmup",
+      "reverse"
+    ],
+    [
+      "warmup",
+      "both"
+    ],
+    [
+      0,
+      "baseline"
+    ],
+    [
+      0,
+      "word"
+    ],
+    [
+      0,
+      "reverse"
+    ],
+    [
+      0,
+      "both"
+    ],
+    [
+      1,
+      "word"
+    ],
+    [
+      1,
+      "reverse"
+    ],
+    [
+      1,
+      "both"
+    ],
+    [
+      1,
+      "baseline"
+    ],
+    [
+      2,
+      "reverse"
+    ],
+    [
+      2,
+      "both"
+    ],
+    [
+      2,
+      "baseline"
+    ],
+    [
+      2,
+      "word"
+    ],
+    [
+      3,
+      "both"
+    ],
+    [
+      3,
+      "baseline"
+    ],
+    [
+      3,
+      "word"
+    ],
+    [
+      3,
+      "reverse"
+    ],
+    [
+      4,
+      "both"
+    ],
+    [
+      4,
+      "reverse"
+    ],
+    [
+      4,
+      "word"
+    ],
+    [
+      4,
+      "baseline"
+    ],
+    [
+      5,
+      "baseline"
+    ],
+    [
+      5,
+      "both"
+    ],
+    [
+      5,
+      "reverse"
+    ],
+    [
+      5,
+      "word"
+    ],
+    [
+      6,
+      "word"
+    ],
+    [
+      6,
+      "baseline"
+    ],
+    [
+      6,
+      "both"
+    ],
+    [
+      6,
+      "reverse"
+    ],
+    [
+      7,
+      "reverse"
+    ],
+    [
+      7,
+      "word"
+    ],
+    [
+      7,
+      "baseline"
+    ],
+    [
+      7,
+      "both"
+    ]
+  ],
+  "programs": {
+    "baseline": {
+      "path": "/workspace/reverse-std-evidence/baseline-lines",
+      "sha256": "c648fc79fc0d6f28440f7903aeea9a6f29764729843b4fd28b944f3bf7dff59a"
+    },
+    "word": {
+      "path": "/workspace/reverse-std-evidence/word-lines",
+      "sha256": "502f55db8f9c505c13b82f67d5f261d1233eb7e524548894c45b5433c3d2896e"
+    },
+    "reverse": {
+      "path": "/workspace/reverse-std-evidence/reverse-lines",
+      "sha256": "b13acc7dd2179550fb22e9e3f2fc59d6aa5bc11e4f51386fdebd76b1a9b8ed5d"
+    },
+    "both": {
+      "path": "/workspace/reverse-std-evidence/both-lines",
+      "sha256": "da5e1b545e995c60338e7934d89543a8faa5dcfff089150553fcf2d843c16450"
+    }
+  },
+  "program_inventory_sha256": "370c6e9984b163162d9337d20188577a16c621eaffe5cfb944aa98553e1be2c2",
+  "identities_sha256": "910d8ccb7b7065c8c90afefdaef31999c694aeefaeb27ee6283505e318d75bc0",
+  "runner_sha256": "d2ebeaf2c449cc49830beba5e267dc03b89e864ff0cb43830dd29a5144dcd485",
+  "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883"
+}

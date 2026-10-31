@@ -1,0 +1,6 @@
+{
+  "entire_file_minus_exact4linebranch_matches_base": true,
+  "vec_unchanged": true,
+  "baseline_string_sha256": "d61ca5b408602dda474058ca6b83661b16bb2187d567fc950a816eb6cba22725",
+  "reverse_string_sha256": "d15d9dbd434e6edd0d838f9033df18d5576752565b2493c913e20c7c9827b84e"
+}

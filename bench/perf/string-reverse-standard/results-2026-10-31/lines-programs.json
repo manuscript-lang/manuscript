@@ -1,0 +1,6 @@
+{
+  "baseline": "/workspace/reverse-std-evidence/baseline-lines",
+  "word": "/workspace/reverse-std-evidence/word-lines",
+  "reverse": "/workspace/reverse-std-evidence/reverse-lines",
+  "both": "/workspace/reverse-std-evidence/both-lines"
+}

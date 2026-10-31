@@ -1,0 +1,1156 @@
+{
+  "complete": true,
+  "units": "KiB single-child whole-process maximum RSS",
+  "samples": [
+    {
+      "repetition": 0,
+      "order": [
+        "baseline",
+        "word",
+        "reverse",
+        "both",
+        "rust"
+      ],
+      "mode": "ascii",
+      "label": "baseline",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-0-baseline.json",
+        "/workspace/reverse-std-evidence/baseline-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16660
+      }
+    },
+    {
+      "repetition": 0,
+      "order": [
+        "baseline",
+        "word",
+        "reverse",
+        "both",
+        "rust"
+      ],
+      "mode": "ascii",
+      "label": "word",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-0-word.json",
+        "/workspace/reverse-std-evidence/word-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16660
+      }
+    },
+    {
+      "repetition": 0,
+      "order": [
+        "baseline",
+        "word",
+        "reverse",
+        "both",
+        "rust"
+      ],
+      "mode": "ascii",
+      "label": "reverse",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-0-reverse.json",
+        "/workspace/reverse-std-evidence/reverse-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 17680
+      }
+    },
+    {
+      "repetition": 0,
+      "order": [
+        "baseline",
+        "word",
+        "reverse",
+        "both",
+        "rust"
+      ],
+      "mode": "ascii",
+      "label": "both",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-0-both.json",
+        "/workspace/reverse-std-evidence/both-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 17680
+      }
+    },
+    {
+      "repetition": 0,
+      "order": [
+        "baseline",
+        "word",
+        "reverse",
+        "both",
+        "rust"
+      ],
+      "mode": "ascii",
+      "label": "rust",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-0-rust.json",
+        "/workspace/reverse-std-evidence/rust-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 13368
+      }
+    },
+    {
+      "repetition": 0,
+      "order": [
+        "baseline",
+        "word",
+        "reverse",
+        "both",
+        "rust"
+      ],
+      "mode": "mixed",
+      "label": "baseline",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-0-baseline.json",
+        "/workspace/reverse-std-evidence/baseline-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 20756
+      }
+    },
+    {
+      "repetition": 0,
+      "order": [
+        "baseline",
+        "word",
+        "reverse",
+        "both",
+        "rust"
+      ],
+      "mode": "mixed",
+      "label": "word",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-0-word.json",
+        "/workspace/reverse-std-evidence/word-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 20756
+      }
+    },
+    {
+      "repetition": 0,
+      "order": [
+        "baseline",
+        "word",
+        "reverse",
+        "both",
+        "rust"
+      ],
+      "mode": "mixed",
+      "label": "reverse",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-0-reverse.json",
+        "/workspace/reverse-std-evidence/reverse-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 22032
+      }
+    },
+    {
+      "repetition": 0,
+      "order": [
+        "baseline",
+        "word",
+        "reverse",
+        "both",
+        "rust"
+      ],
+      "mode": "mixed",
+      "label": "both",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-0-both.json",
+        "/workspace/reverse-std-evidence/both-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 22032
+      }
+    },
+    {
+      "repetition": 0,
+      "order": [
+        "baseline",
+        "word",
+        "reverse",
+        "both",
+        "rust"
+      ],
+      "mode": "mixed",
+      "label": "rust",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-0-rust.json",
+        "/workspace/reverse-std-evidence/rust-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16440
+      }
+    },
+    {
+      "repetition": 1,
+      "order": [
+        "word",
+        "reverse",
+        "both",
+        "rust",
+        "baseline"
+      ],
+      "mode": "ascii",
+      "label": "word",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-1-word.json",
+        "/workspace/reverse-std-evidence/word-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16660
+      }
+    },
+    {
+      "repetition": 1,
+      "order": [
+        "word",
+        "reverse",
+        "both",
+        "rust",
+        "baseline"
+      ],
+      "mode": "ascii",
+      "label": "reverse",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-1-reverse.json",
+        "/workspace/reverse-std-evidence/reverse-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 17680
+      }
+    },
+    {
+      "repetition": 1,
+      "order": [
+        "word",
+        "reverse",
+        "both",
+        "rust",
+        "baseline"
+      ],
+      "mode": "ascii",
+      "label": "both",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-1-both.json",
+        "/workspace/reverse-std-evidence/both-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 17680
+      }
+    },
+    {
+      "repetition": 1,
+      "order": [
+        "word",
+        "reverse",
+        "both",
+        "rust",
+        "baseline"
+      ],
+      "mode": "ascii",
+      "label": "rust",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-1-rust.json",
+        "/workspace/reverse-std-evidence/rust-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 13368
+      }
+    },
+    {
+      "repetition": 1,
+      "order": [
+        "word",
+        "reverse",
+        "both",
+        "rust",
+        "baseline"
+      ],
+      "mode": "ascii",
+      "label": "baseline",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-1-baseline.json",
+        "/workspace/reverse-std-evidence/baseline-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16660
+      }
+    },
+    {
+      "repetition": 1,
+      "order": [
+        "word",
+        "reverse",
+        "both",
+        "rust",
+        "baseline"
+      ],
+      "mode": "mixed",
+      "label": "word",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-1-word.json",
+        "/workspace/reverse-std-evidence/word-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 20756
+      }
+    },
+    {
+      "repetition": 1,
+      "order": [
+        "word",
+        "reverse",
+        "both",
+        "rust",
+        "baseline"
+      ],
+      "mode": "mixed",
+      "label": "reverse",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-1-reverse.json",
+        "/workspace/reverse-std-evidence/reverse-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 22032
+      }
+    },
+    {
+      "repetition": 1,
+      "order": [
+        "word",
+        "reverse",
+        "both",
+        "rust",
+        "baseline"
+      ],
+      "mode": "mixed",
+      "label": "both",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-1-both.json",
+        "/workspace/reverse-std-evidence/both-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 22032
+      }
+    },
+    {
+      "repetition": 1,
+      "order": [
+        "word",
+        "reverse",
+        "both",
+        "rust",
+        "baseline"
+      ],
+      "mode": "mixed",
+      "label": "rust",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-1-rust.json",
+        "/workspace/reverse-std-evidence/rust-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16440
+      }
+    },
+    {
+      "repetition": 1,
+      "order": [
+        "word",
+        "reverse",
+        "both",
+        "rust",
+        "baseline"
+      ],
+      "mode": "mixed",
+      "label": "baseline",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-1-baseline.json",
+        "/workspace/reverse-std-evidence/baseline-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 20756
+      }
+    },
+    {
+      "repetition": 2,
+      "order": [
+        "reverse",
+        "both",
+        "rust",
+        "baseline",
+        "word"
+      ],
+      "mode": "ascii",
+      "label": "reverse",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-2-reverse.json",
+        "/workspace/reverse-std-evidence/reverse-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 17680
+      }
+    },
+    {
+      "repetition": 2,
+      "order": [
+        "reverse",
+        "both",
+        "rust",
+        "baseline",
+        "word"
+      ],
+      "mode": "ascii",
+      "label": "both",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-2-both.json",
+        "/workspace/reverse-std-evidence/both-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 17680
+      }
+    },
+    {
+      "repetition": 2,
+      "order": [
+        "reverse",
+        "both",
+        "rust",
+        "baseline",
+        "word"
+      ],
+      "mode": "ascii",
+      "label": "rust",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-2-rust.json",
+        "/workspace/reverse-std-evidence/rust-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 13348
+      }
+    },
+    {
+      "repetition": 2,
+      "order": [
+        "reverse",
+        "both",
+        "rust",
+        "baseline",
+        "word"
+      ],
+      "mode": "ascii",
+      "label": "baseline",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-2-baseline.json",
+        "/workspace/reverse-std-evidence/baseline-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16660
+      }
+    },
+    {
+      "repetition": 2,
+      "order": [
+        "reverse",
+        "both",
+        "rust",
+        "baseline",
+        "word"
+      ],
+      "mode": "ascii",
+      "label": "word",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-2-word.json",
+        "/workspace/reverse-std-evidence/word-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16660
+      }
+    },
+    {
+      "repetition": 2,
+      "order": [
+        "reverse",
+        "both",
+        "rust",
+        "baseline",
+        "word"
+      ],
+      "mode": "mixed",
+      "label": "reverse",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-2-reverse.json",
+        "/workspace/reverse-std-evidence/reverse-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 22032
+      }
+    },
+    {
+      "repetition": 2,
+      "order": [
+        "reverse",
+        "both",
+        "rust",
+        "baseline",
+        "word"
+      ],
+      "mode": "mixed",
+      "label": "both",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-2-both.json",
+        "/workspace/reverse-std-evidence/both-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 22032
+      }
+    },
+    {
+      "repetition": 2,
+      "order": [
+        "reverse",
+        "both",
+        "rust",
+        "baseline",
+        "word"
+      ],
+      "mode": "mixed",
+      "label": "rust",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-2-rust.json",
+        "/workspace/reverse-std-evidence/rust-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16416
+      }
+    },
+    {
+      "repetition": 2,
+      "order": [
+        "reverse",
+        "both",
+        "rust",
+        "baseline",
+        "word"
+      ],
+      "mode": "mixed",
+      "label": "baseline",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-2-baseline.json",
+        "/workspace/reverse-std-evidence/baseline-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 20756
+      }
+    },
+    {
+      "repetition": 2,
+      "order": [
+        "reverse",
+        "both",
+        "rust",
+        "baseline",
+        "word"
+      ],
+      "mode": "mixed",
+      "label": "word",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-2-word.json",
+        "/workspace/reverse-std-evidence/word-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 20756
+      }
+    },
+    {
+      "repetition": 3,
+      "order": [
+        "both",
+        "rust",
+        "baseline",
+        "word",
+        "reverse"
+      ],
+      "mode": "ascii",
+      "label": "both",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-3-both.json",
+        "/workspace/reverse-std-evidence/both-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 17680
+      }
+    },
+    {
+      "repetition": 3,
+      "order": [
+        "both",
+        "rust",
+        "baseline",
+        "word",
+        "reverse"
+      ],
+      "mode": "ascii",
+      "label": "rust",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-3-rust.json",
+        "/workspace/reverse-std-evidence/rust-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 13368
+      }
+    },
+    {
+      "repetition": 3,
+      "order": [
+        "both",
+        "rust",
+        "baseline",
+        "word",
+        "reverse"
+      ],
+      "mode": "ascii",
+      "label": "baseline",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-3-baseline.json",
+        "/workspace/reverse-std-evidence/baseline-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16660
+      }
+    },
+    {
+      "repetition": 3,
+      "order": [
+        "both",
+        "rust",
+        "baseline",
+        "word",
+        "reverse"
+      ],
+      "mode": "ascii",
+      "label": "word",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-3-word.json",
+        "/workspace/reverse-std-evidence/word-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16660
+      }
+    },
+    {
+      "repetition": 3,
+      "order": [
+        "both",
+        "rust",
+        "baseline",
+        "word",
+        "reverse"
+      ],
+      "mode": "ascii",
+      "label": "reverse",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-3-reverse.json",
+        "/workspace/reverse-std-evidence/reverse-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 17680
+      }
+    },
+    {
+      "repetition": 3,
+      "order": [
+        "both",
+        "rust",
+        "baseline",
+        "word",
+        "reverse"
+      ],
+      "mode": "mixed",
+      "label": "both",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-3-both.json",
+        "/workspace/reverse-std-evidence/both-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 22032
+      }
+    },
+    {
+      "repetition": 3,
+      "order": [
+        "both",
+        "rust",
+        "baseline",
+        "word",
+        "reverse"
+      ],
+      "mode": "mixed",
+      "label": "rust",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-3-rust.json",
+        "/workspace/reverse-std-evidence/rust-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16440
+      }
+    },
+    {
+      "repetition": 3,
+      "order": [
+        "both",
+        "rust",
+        "baseline",
+        "word",
+        "reverse"
+      ],
+      "mode": "mixed",
+      "label": "baseline",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-3-baseline.json",
+        "/workspace/reverse-std-evidence/baseline-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 20756
+      }
+    },
+    {
+      "repetition": 3,
+      "order": [
+        "both",
+        "rust",
+        "baseline",
+        "word",
+        "reverse"
+      ],
+      "mode": "mixed",
+      "label": "word",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-3-word.json",
+        "/workspace/reverse-std-evidence/word-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 20756
+      }
+    },
+    {
+      "repetition": 3,
+      "order": [
+        "both",
+        "rust",
+        "baseline",
+        "word",
+        "reverse"
+      ],
+      "mode": "mixed",
+      "label": "reverse",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-3-reverse.json",
+        "/workspace/reverse-std-evidence/reverse-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 22032
+      }
+    },
+    {
+      "repetition": 4,
+      "order": [
+        "rust",
+        "baseline",
+        "word",
+        "reverse",
+        "both"
+      ],
+      "mode": "ascii",
+      "label": "rust",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-4-rust.json",
+        "/workspace/reverse-std-evidence/rust-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 13368
+      }
+    },
+    {
+      "repetition": 4,
+      "order": [
+        "rust",
+        "baseline",
+        "word",
+        "reverse",
+        "both"
+      ],
+      "mode": "ascii",
+      "label": "baseline",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-4-baseline.json",
+        "/workspace/reverse-std-evidence/baseline-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16660
+      }
+    },
+    {
+      "repetition": 4,
+      "order": [
+        "rust",
+        "baseline",
+        "word",
+        "reverse",
+        "both"
+      ],
+      "mode": "ascii",
+      "label": "word",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-4-word.json",
+        "/workspace/reverse-std-evidence/word-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16660
+      }
+    },
+    {
+      "repetition": 4,
+      "order": [
+        "rust",
+        "baseline",
+        "word",
+        "reverse",
+        "both"
+      ],
+      "mode": "ascii",
+      "label": "reverse",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-4-reverse.json",
+        "/workspace/reverse-std-evidence/reverse-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 17680
+      }
+    },
+    {
+      "repetition": 4,
+      "order": [
+        "rust",
+        "baseline",
+        "word",
+        "reverse",
+        "both"
+      ],
+      "mode": "ascii",
+      "label": "both",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/ascii-4-both.json",
+        "/workspace/reverse-std-evidence/both-rss-ascii"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 17680
+      }
+    },
+    {
+      "repetition": 4,
+      "order": [
+        "rust",
+        "baseline",
+        "word",
+        "reverse",
+        "both"
+      ],
+      "mode": "mixed",
+      "label": "rust",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-4-rust.json",
+        "/workspace/reverse-std-evidence/rust-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 16392
+      }
+    },
+    {
+      "repetition": 4,
+      "order": [
+        "rust",
+        "baseline",
+        "word",
+        "reverse",
+        "both"
+      ],
+      "mode": "mixed",
+      "label": "baseline",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-4-baseline.json",
+        "/workspace/reverse-std-evidence/baseline-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 20756
+      }
+    },
+    {
+      "repetition": 4,
+      "order": [
+        "rust",
+        "baseline",
+        "word",
+        "reverse",
+        "both"
+      ],
+      "mode": "mixed",
+      "label": "word",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-4-word.json",
+        "/workspace/reverse-std-evidence/word-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 20756
+      }
+    },
+    {
+      "repetition": 4,
+      "order": [
+        "rust",
+        "baseline",
+        "word",
+        "reverse",
+        "both"
+      ],
+      "mode": "mixed",
+      "label": "reverse",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-4-reverse.json",
+        "/workspace/reverse-std-evidence/reverse-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 22032
+      }
+    },
+    {
+      "repetition": 4,
+      "order": [
+        "rust",
+        "baseline",
+        "word",
+        "reverse",
+        "both"
+      ],
+      "mode": "mixed",
+      "label": "both",
+      "argv": [
+        "/workspace/reverse-std-evidence/rss-launcher",
+        "/workspace/reverse-std-evidence/rss-results/mixed-4-both.json",
+        "/workspace/reverse-std-evidence/both-rss-mixed"
+      ],
+      "exit": 0,
+      "stdout_matches": true,
+      "stderr_empty": true,
+      "metrics": {
+        "maxrss_kib": 22032
+      }
+    }
+  ]
+}

@@ -6,3 +6,5 @@ tests/conformance/** text eol=lf
 # Everything else is text with LF too: tests compare byte offsets and sizes of fixtures,
 # recorded corpora and guide text, and git detects binary files on its own.
 * text=auto eol=lf
+# Preserve raw benchmark CSV bytes and their recorded hashes.
+bench/perf/string-reverse-standard/results-2026-10-31/**/*.csv -text

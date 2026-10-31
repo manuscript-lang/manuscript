@@ -1,0 +1,250 @@
+{
+  "complete": true,
+  "commands": [
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/reverse-std-evidence/rss-ascii.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/baseline-rss-ascii"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-rss-ascii-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/reverse-std-evidence/rss-ascii.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/word-rss-ascii"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/word.a"
+      },
+      "exit": 0,
+      "log": "word-rss-ascii-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/reverse-std-evidence/rss-ascii.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/reverse-rss-ascii"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/reverse.a"
+      },
+      "exit": 0,
+      "log": "reverse-rss-ascii-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/reverse-std-evidence/rss-ascii.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/both-rss-ascii"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/both.a"
+      },
+      "exit": 0,
+      "log": "both-rss-ascii-build.log"
+    },
+    {
+      "argv": [
+        "rustc",
+        "--edition=2024",
+        "-C",
+        "opt-level=3",
+        "-C",
+        "overflow-checks=yes",
+        "-C",
+        "force-frame-pointers=yes",
+        "/workspace/reverse-std-evidence/rss.rs",
+        "-o",
+        "/workspace/reverse-std-evidence/rust-rss-ascii"
+      ],
+      "extra_env": {},
+      "exit": 0,
+      "log": "rust-rss-ascii-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/reverse-std-evidence/rss-mixed.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/baseline-rss-mixed"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-rss-mixed-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/reverse-std-evidence/rss-mixed.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/word-rss-mixed"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/word.a"
+      },
+      "exit": 0,
+      "log": "word-rss-mixed-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/reverse-std-evidence/rss-mixed.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/reverse-rss-mixed"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/reverse.a"
+      },
+      "exit": 0,
+      "log": "reverse-rss-mixed-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/reverse-std-evidence/rss-mixed.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/both-rss-mixed"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/both.a"
+      },
+      "exit": 0,
+      "log": "both-rss-mixed-build.log"
+    },
+    {
+      "argv": [
+        "rustc",
+        "--edition=2024",
+        "-C",
+        "opt-level=3",
+        "-C",
+        "overflow-checks=yes",
+        "-C",
+        "force-frame-pointers=yes",
+        "/workspace/reverse-std-evidence/rss.rs",
+        "-o",
+        "/workspace/reverse-std-evidence/rust-rss-mixed",
+        "--cfg",
+        "feature=\"mixed\""
+      ],
+      "extra_env": {},
+      "exit": 0,
+      "log": "rust-rss-mixed-build.log"
+    },
+    {
+      "argv": [
+        "cc",
+        "-O2",
+        "/workspace/manuscript/bench/perf/representative/rss.c",
+        "-o",
+        "/workspace/reverse-std-evidence/rss-launcher"
+      ],
+      "extra_env": {},
+      "exit": 0,
+      "log": "rss-launcher-build.log"
+    },
+    {
+      "argv": [
+        "cc",
+        "--version"
+      ],
+      "extra_env": {},
+      "exit": 0,
+      "log": "cc-version.log"
+    },
+    {
+      "argv": [
+        "rustc",
+        "-vV"
+      ],
+      "extra_env": {},
+      "exit": 0,
+      "log": "rustc-version.log"
+    }
+  ],
+  "programs": {
+    "baseline-ascii": {
+      "path": "/workspace/reverse-std-evidence/baseline-rss-ascii",
+      "sha256": "a07aca9194a715101b240fac8aef5a249b80eea6b02d495e51d5b44afcc5e5bd"
+    },
+    "word-ascii": {
+      "path": "/workspace/reverse-std-evidence/word-rss-ascii",
+      "sha256": "5ac30cbf0f2d0587aa0803751dfcc80c59160ae5eba6349512be2816718af3dc"
+    },
+    "reverse-ascii": {
+      "path": "/workspace/reverse-std-evidence/reverse-rss-ascii",
+      "sha256": "ee14a73aadc6ea561e796ecebaa98a971d482c3217256fe0b4d3fd6ce70d1869"
+    },
+    "both-ascii": {
+      "path": "/workspace/reverse-std-evidence/both-rss-ascii",
+      "sha256": "d00cead3173a3520e6e35ae82d62f352d8d5809ca4ffc6157f3d966a43d6c76c"
+    },
+    "rust-ascii": {
+      "path": "/workspace/reverse-std-evidence/rust-rss-ascii",
+      "sha256": "c7a0e2a7dc2720392c2d5d33a0488d534f0a956c4e6301e0bcfbf4d2d9e02565"
+    },
+    "baseline-mixed": {
+      "path": "/workspace/reverse-std-evidence/baseline-rss-mixed",
+      "sha256": "3b4912b44adeb8b3e912d4092bbea4b101abe25438b9fdb56df438b7fb6c4284"
+    },
+    "word-mixed": {
+      "path": "/workspace/reverse-std-evidence/word-rss-mixed",
+      "sha256": "039afccdfb4cbe21b4526283b281235714b49439e2dc0f2f1dab21bc65d94327"
+    },
+    "reverse-mixed": {
+      "path": "/workspace/reverse-std-evidence/reverse-rss-mixed",
+      "sha256": "03cc6d3942ed11cc6bde601165822f3ba918eb73a07a07e0f2ecdebe8615a72e"
+    },
+    "both-mixed": {
+      "path": "/workspace/reverse-std-evidence/both-rss-mixed",
+      "sha256": "51271fbeb1001d0774bf3d4bfebd16e866b55260efed1109dce7bbaf522cffb9"
+    },
+    "rust-mixed": {
+      "path": "/workspace/reverse-std-evidence/rust-rss-mixed",
+      "sha256": "b851ac69e7f5a6688099d081c23a0a6bebf8b2628949401d199b8f709223e1ab"
+    }
+  },
+  "sources": {
+    "/workspace/reverse-std-evidence/rss-ascii.ms": "8b82262f34d34582998c05a1a8ae2327c42b2f47dd0d8d6544967e2d179dde72",
+    "/workspace/reverse-std-evidence/rss-mixed.ms": "f7b4933ab1a4cdc9bbb4d24cd9372e714df0c4dea6a6c660005cb80e726653c3",
+    "/workspace/manuscript/bench/perf/representative/rss.c": "c671c66114469e2438d3486a19f5826d25cac131405eda0b43cfc5980af62a34",
+    "/workspace/reverse-std-evidence/rss.rs": "619d710362d166615c47f2a868b5b59456dcdd11b9ceeeb3737a16f9f22fe297"
+  },
+  "launcher_sha256": "09441b9246dd4d6a5b1454b9d3652f8a8b3dc1b1f925218d00fa91d3fdc98347"
+}
