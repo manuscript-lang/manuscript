@@ -9,6 +9,7 @@ fn mk(n: Int) Big:
     var xs = List[Int]()
     for i in 0..n:
         xs.append(i)
+
     let b = Big(name: "a name that is long enough to live on the heap", items: xs)
     return b
 
@@ -19,6 +20,7 @@ fn wrap(n: Int) Big:
 fn pick(n: Int, c: Bool) Big:
     if c:
         return mk(n)
+
     return wrap(n)
 
 export fn main() Int:
