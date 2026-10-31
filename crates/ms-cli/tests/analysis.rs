@@ -122,3 +122,76 @@ fn directories_without_sources_report_none() {
         assert!(stderr.contains("no .ms files found"), "{command}: {stderr}");
     }
 }
+
+#[cfg(unix)]
+#[test]
+fn discovered_source_names_are_never_replaced() {
+    use std::ffi::OsString;
+    use std::os::unix::{ffi::OsStringExt, fs::symlink};
+
+    let dir = scratch("invalid-source-name");
+    std::fs::write(dir.join("\u{fffd}.ms"), "").unwrap();
+    std::fs::write(dir.join(".ms"), "").unwrap();
+    std::fs::write(dir.join(OsString::from_vec(b"\xff.txt".to_vec())), [0xff]).unwrap();
+    let hidden = dir.join(OsString::from_vec(b".\xff".to_vec()));
+    std::fs::create_dir(&hidden).unwrap();
+    std::fs::write(hidden.join("bad.ms"), [0xff]).unwrap();
+    std::fs::create_dir(dir.join("empty")).unwrap();
+    symlink(
+        dir.join("empty"),
+        dir.join(OsString::from_vec(b"linked-\xff.ms".to_vec())),
+    )
+    .unwrap();
+
+    for command in ["check", "lint"] {
+        let output = ms(&dir, &[command, "."]);
+        assert!(output.status.success(), "{command}: {output:?}");
+        if command == "check" {
+            assert_eq!(
+                String::from_utf8(output.stdout).unwrap(),
+                "Checked .ms\nChecked \u{fffd}.ms\n"
+            );
+        }
+    }
+
+    std::fs::write(dir.join(OsString::from_vec(b"\xff.ms".to_vec())), [0xff]).unwrap();
+    for command in ["check", "lint"] {
+        let output = ms(&dir, &[command, "."]);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert_eq!(output.status.code(), Some(1), "{command}: {output:?}");
+        assert!(stderr.contains("source filename"), "{stderr}");
+        assert!(stderr.contains("is not valid UTF-8;"), "{stderr}");
+        assert!(stderr.contains("rename it using UTF-8"), "{stderr}");
+
+        let output = ms(&dir, &[command, ".", "--json"]);
+        assert_eq!(output.status.code(), Some(1), "{command}: {output:?}");
+        assert!(output.stderr.is_empty(), "{command}: {output:?}");
+        let document = ms_json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+        let diagnostics = document.get("diagnostics").unwrap().as_array().unwrap();
+        assert_eq!(diagnostics.len(), 1, "{document:?}");
+        assert_eq!(
+            diagnostics[0].get("phase").unwrap().as_str(),
+            Some("resolution")
+        );
+
+        let output = ms(&dir, &[command, ".", "\u{fffd}.ms"]);
+        assert_eq!(output.status.code(), Some(1), "{command}: {output:?}");
+        if command == "check" {
+            assert_eq!(
+                String::from_utf8(output.stdout).unwrap(),
+                "Checked \u{fffd}.ms\n"
+            );
+        }
+    }
+
+    std::fs::remove_file(dir.join(OsString::from_vec(b"\xff.ms".to_vec()))).unwrap();
+    let nested = dir.join(OsString::from_vec(b"nested-\xff".to_vec()));
+    std::fs::create_dir(&nested).unwrap();
+    std::fs::write(nested.join("ms.toml"), "not a manifest").unwrap();
+    std::fs::write(nested.join("bad.ms"), [0xff]).unwrap();
+    for command in ["check", "lint"] {
+        let output = ms(&dir, &[command, "."]);
+        assert!(output.status.success(), "{command}: {output:?}");
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
