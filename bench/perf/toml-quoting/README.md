@@ -156,3 +156,15 @@ python3 bench/perf/toml-quoting/memory.py \
   --timing-environment /fresh/timing/output/environment.json \
   --output /fresh/memory/output
 ```
+
+## Integrated replay on fresh main
+
+Main advanced to `3cfde58b6216ae4db54aeb3ae4e22ee7d527e323` while the PR
+was published. Merge head `60d9db5bdf39b7f94652842d083dfb3b150e54e0` incorporates
+those changes. Both baseline and candidate producers were rebuilt with that
+compiler/main state, changing only the TOML helper, then all eight timing and five
+RSS controls were repeated. Dense controls improve **1.504x**; the other seven
+median ratios range from 0.980x to 1.017x, with overlapping distributions. Whole
+process RSS remains flat. [Integrated raw records, hashes and distributions](results/2026-10-31/integrated/)
+retain all 288 timing and 90 RSS records. This validates that combined state; it
+does not claim other serialization paths or later main revisions are clean.
