@@ -292,6 +292,8 @@ extern fn msstd_fs_file_writer(file: NativeFile) WriteStream
 
 extern fn msstd_io_close(file: NativeFile) Unit
 
+extern fn msstd_fs_file_duplicate(file: NativeFile) Result[FileHandle, FileSystemError]
+
 extern fn msstd_io_read(
     file: NativeFile,
     max_bytes: Int?
@@ -383,6 +385,12 @@ impl Closeable for FileHandle:
         msstd_io_close(self.native)
 
 impl FileHandle:
+    # Returns a second handle over a duplicate of the file's descriptor, which closes on its own.
+    # Both share the file position, so a read or write through one moves the other; bytes this handle already read ahead stay with it.
+    # A closed handle returns Closed.
+    fn duplicate() Result[FileHandle, FileSystemError]:
+        return msstd_fs_file_duplicate(self.native)
+
     # Adapts this handle to IoError/Optional chunk reads; closing either view closes all aliases.
     fn reader() ReadStream:
         return msstd_fs_file_reader(self.native)

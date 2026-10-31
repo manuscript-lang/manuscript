@@ -21,6 +21,10 @@ An interface value is never closed automatically, even when its interface declar
 
 The standard handles a caller owns are nominal types with that implementation, such as `FileHandle`, so a binding of one is checked and closed like your own. A stream interface such as `ReadStream` or `WriteStream` is never owned by its holder, because `stdout()` and a file's `writer()` share one type.
 
+## Duplicating a handle
+
+A resource has one owner and is never copied implicitly. Where the operating system can duplicate the handle, the type offers `duplicate()`: `FileHandle.duplicate()` and a plain TCP or Unix `Connection.duplicate()` return a second value with its own descriptor, which closes on its own scope or `close()`. The copies share the underlying file or socket, so a file's position and a socket's stream are common to both. Nothing is reference counted. Lock guards, task, process and worker groups, temporary directories and raw terminal mode run their own cleanup once, so they have no `duplicate`.
+
 ## Records and collections close what they hold
 
 A record, alternative, `Optional`, `List` or `Map` that holds a `Closeable` value is itself a resource: it moves, it cannot be cloned, and when its scope ends without anything taking it, the compiler closes what it holds. The type's own `close`, if it has one, runs first; then its parts close in reverse order of acquisition.
