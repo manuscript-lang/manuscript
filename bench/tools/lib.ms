@@ -149,7 +149,7 @@ export fn absolute(path: String) String:
 
     return join([control().working_directory().get("."), path])
 
-# Runs `program` in directory `dir`, restoring the working directory afterwards; the working directory is process-wide.
+# Workaround for #2165 (delete when run/spawn take a working directory). Runs `program` in directory `dir`, restoring the working directory afterwards; the working directory is process-wide.
 export fn run_in(dir: String, program: String, arguments: List[String]) Ran:
     let here = control().working_directory().get(".")
     control().change_directory(dir).get()
@@ -301,7 +301,7 @@ export fn stdlib_bench(ms: String, samples: Int, filter: String) Result[String, 
     if filter != "": args = args.concat(["--filter", filter.clone()])
     return must("ms bench", run_in("bench/perf/stdlib", ms, args))
 
-# JSON construction helpers; a record holding a Map is not Data, so reports are built as JsonValue objects.
+# Workaround for #2167 (Map fields in stringify). JSON construction helpers; a record holding a Map is not Data, so reports are built as JsonValue objects.
 export fn jstr(text: String) JsonValue:
     return JsonValue.StringValue(text)
 
@@ -343,7 +343,7 @@ export fn run_inherit(dir: String, program: String, arguments: List[String]) Int
     control().change_directory(here).get()
     return code
 
-# Compiles bench/perf/representative/rss.c into `dir`. A parent cannot read the peak resident set of a finished child through
+# Workaround for #2165 (delete when a finished child reports its peak RSS). Compiles bench/perf/representative/rss.c into `dir`. A parent cannot read the peak resident set of a finished child through
 # @std/process (ResourceUsage describes only the calling process), so Unix drivers measure it with this small helper.
 export fn build_rss(dir: String) Result[String, Invalid]:
     let out = "{dir}/rss"

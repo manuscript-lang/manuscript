@@ -11,7 +11,7 @@ import stdout from "@std/io.ms"
 fn q(text: String) String:
     return text.replace("‹", "\{").replace("›", "\}")
 
-# A small deterministic generator, so the same arguments always produce the same program.
+# Workaround for #2166 (replace with a seeded @std/random generator). A small deterministic generator, so the same arguments always produce the same program.
 type Rng:
     state: Int
 
