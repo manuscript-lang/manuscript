@@ -1,0 +1,14 @@
+diff --git a/stdlib/queue.ms b/stdlib/queue.ms
+index fd096bdec..39ca941be 100644
+--- a/stdlib/queue.ms
++++ b/stdlib/queue.ms
+@@ -152,6 +152,9 @@ impl PriorityQueue[T]:
+         let count = self.heap.length()
+         if count == 0:
+             return none
++        if count == 1:
++            self.orders.pop()
++            return self.heap.pop()
+ 
+         self.swap_entries(0, count - 1)
+         self.orders.pop()

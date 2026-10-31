@@ -31,10 +31,6 @@ pub struct CursorContext {
     pub member: bool,
     /// The `(` of the enclosing call.
     pub call_open: Option<usize>,
-    /// Start of the enclosing call's callee.
-    pub callee_start: usize,
-    /// End of the enclosing call's callee.
-    pub callee_end: usize,
     /// The cursor is at the start of an argument (a label position).
     pub argument: bool,
     /// The cursor is in type syntax.
@@ -56,8 +52,6 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
         prefix: String::new(),
         member: false,
         call_open: None,
-        callee_start: 0,
-        callee_end: 0,
         argument: false,
         type_context: false,
         literal: false,
@@ -127,36 +121,8 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
             continue;
         }
         c.call_open = Some(t.start);
-        c.callee_end = previous.end;
-        c.callee_start = previous.start;
-        // Include chained receivers and generic specialization in the callee span.
-        let mut depth = 0;
-        for j in (0..at).rev() {
-            let v = before[j];
-            if v.is(b')') || v.is(b']') {
-                depth += 1;
-            }
-            if v.is(b'(') || v.is(b'[') {
-                if depth == 0 {
-                    break;
-                }
-                depth -= 1;
-            }
-            if depth == 0
-                && (v.is(b'\n')
-                    || v.is(b',')
-                    || v.is(b':')
-                    || v.is(b'=')
-                    || v.text == "return"
-                    || v.text == "let"
-                    || v.text == "var")
-            {
-                break;
-            }
-            c.callee_start = v.start;
-        }
         let mut segment = t.end;
-        depth = 0;
+        let mut depth = 0;
         for v in &before[at + 1..] {
             if v.is(b'(') || v.is(b'[') || v.is(b'{') {
                 depth += 1;
@@ -210,7 +176,7 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
 /// The offset where the text interpolation containing `offset` begins
 /// (just after its `{`), or `None` when the cursor is outside every
 /// interpolation. Literals sit on one line, so only the cursor's line is read.
-fn interpolation_start(source: &str, offset: usize) -> Option<usize> {
+pub(crate) fn interpolation_start(source: &str, offset: usize) -> Option<usize> {
     #[derive(PartialEq)]
     enum State {
         Code,

@@ -1,0 +1,1004 @@
+{
+  "complete": true,
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "affinity": [
+    0
+  ],
+  "sha256": {
+    "/workspace/collection-evidence/maps-before": "cddc0f44eb4201e63506f89271590ab66f23c599264664737f8d800f1149846e",
+    "/workspace/collection-evidence/maps-final": "295a3f3594ae9ae9edc8f61acc31bbca50918ffda19e8da31303e07ddec940ad",
+    "/workspace/collection-evidence/maps-rust": "b23d9df7f73013ce32bbc3eba1c885e493c8927ca705bc80e1e42501a6c3b8fb"
+  },
+  "cases": [
+    {
+      "mode": "int_get",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 5000,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          71292606,
+          66799085,
+          67980878,
+          66602620,
+          67022681,
+          66900097,
+          67858304,
+          67564664,
+          67112692,
+          67312031,
+          69807924,
+          69597919
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          68018304,
+          68798023,
+          66975280,
+          67244283,
+          67325135,
+          66915990,
+          66520187,
+          66633367,
+          67029647,
+          67789477,
+          68514094,
+          76521464
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          238150950,
+          238060805,
+          242629027,
+          238859151,
+          237614094,
+          237882236,
+          234763889,
+          238026324,
+          244349120,
+          244714064,
+          243896093,
+          242239713
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 67438347.5,
+        "/workspace/collection-evidence/maps-final": 67284709.0,
+        "/workspace/collection-evidence/maps-rust": 238505050.5
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 5000,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          119700872,
+          122279961,
+          122017606,
+          121906540,
+          123921261,
+          121743235,
+          119770085,
+          120850045,
+          122744517,
+          123674342,
+          121679490,
+          118868008
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          122024667,
+          123217967,
+          119350035,
+          121910205,
+          117676795,
+          117973331,
+          119050797,
+          117178699,
+          120095504,
+          118497677,
+          118334322,
+          119247428
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          456109502,
+          457821004,
+          458209308,
+          455221466,
+          447074265,
+          451017150,
+          461408156,
+          449118021,
+          456229709,
+          450641947,
+          447417771,
+          446515207
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 121824887.5,
+        "/workspace/collection-evidence/maps-final": 119149112.5,
+        "/workspace/collection-evidence/maps-rust": 453119308.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 5000,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          164918427,
+          164504246,
+          165488251,
+          166504686,
+          165479158,
+          164223155,
+          162977104,
+          167017966,
+          170223309,
+          164194301,
+          163809849,
+          164615258
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          166144726,
+          164792998,
+          164214371,
+          169722683,
+          166232017,
+          165429963,
+          163444626,
+          167878702,
+          164602062,
+          173540089,
+          166167330,
+          164133335
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          316636142,
+          310610403,
+          315019737,
+          312144173,
+          312100297,
+          316234740,
+          310311655,
+          318124364,
+          317155452,
+          316532306,
+          314302409,
+          313636550
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 164766842.5,
+        "/workspace/collection-evidence/maps-final": 165787344.5,
+        "/workspace/collection-evidence/maps-rust": 314661073.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 16,
+      "repeats": 5000,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          315375970,
+          315930952,
+          316573626,
+          319361840,
+          319081589,
+          318132876,
+          318408725,
+          319971402,
+          315589550,
+          322380932,
+          338312974,
+          317537167
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          317644794,
+          314939484,
+          315632885,
+          317860898,
+          319897012,
+          324098211,
+          317214621,
+          317263375,
+          315854858,
+          316478696,
+          322438889,
+          313977959
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          395884369,
+          395195846,
+          400006032,
+          402342168,
+          398250789,
+          399551881,
+          402080615,
+          400845259,
+          400271196,
+          411434826,
+          398633686,
+          401561985
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 318270800.5,
+        "/workspace/collection-evidence/maps-final": 317238998.0,
+        "/workspace/collection-evidence/maps-rust": 400138614.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 256,
+      "repeats": 555,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          227169759,
+          227986232,
+          227392692,
+          226175685,
+          237135196,
+          226876668,
+          231807524,
+          229268521,
+          231573131,
+          229601385,
+          231891217,
+          231080179
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          226965192,
+          227217272,
+          228266124,
+          230154181,
+          235193890,
+          230654472,
+          232110038,
+          231579952,
+          230006759,
+          231203423,
+          229374656,
+          230381450
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          212515109,
+          210322918,
+          213091284,
+          210351427,
+          250895644,
+          212654286,
+          214163102,
+          211471449,
+          213946386,
+          210634840,
+          210076522,
+          214026616
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 229434953.0,
+        "/workspace/collection-evidence/maps-final": 230267815.5,
+        "/workspace/collection-evidence/maps-rust": 212584697.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 4096,
+      "repeats": 38,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          338372976,
+          339023069,
+          333669248,
+          332433793,
+          328961296,
+          332819681,
+          335216481,
+          328947568,
+          329656563,
+          327670632,
+          327812435,
+          329498445
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          329698236,
+          331142722,
+          332032375,
+          333890570,
+          345104011,
+          329044442,
+          333392031,
+          327780524,
+          330720540,
+          330901221,
+          335666353,
+          336552803
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          244689912,
+          258795206,
+          254449312,
+          257090189,
+          243591556,
+          246286282,
+          245620893,
+          245585383,
+          242556247,
+          247212034,
+          251390325,
+          247453567
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 331045178.0,
+        "/workspace/collection-evidence/maps-final": 331587548.5,
+        "/workspace/collection-evidence/maps-rust": 246749158.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 5000,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          305942758,
+          314954326,
+          304672962,
+          314382679,
+          320041287,
+          315210313,
+          314888148,
+          308037592,
+          310738825,
+          307929422,
+          305620576,
+          315248470
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          317672553,
+          306385102,
+          313987496,
+          311181867,
+          328012706,
+          360650959,
+          310280640,
+          303876073,
+          309082400,
+          305539248,
+          313498564,
+          311820334
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          760068665,
+          767954616,
+          751450360,
+          792168447,
+          767114176,
+          820929802,
+          760637422,
+          790942575,
+          760300357,
+          760378138,
+          752202313,
+          753337347
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 312560752.0,
+        "/workspace/collection-evidence/maps-final": 311501100.5,
+        "/workspace/collection-evidence/maps-rust": 760507780.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 16,
+      "repeats": 5000,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          880479625,
+          868508500,
+          874483816,
+          886591797,
+          870381922,
+          875405411,
+          878223441,
+          869883751,
+          870824510,
+          902094459,
+          872291691,
+          868171906
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          873227141,
+          871618297,
+          904179959,
+          915083497,
+          874298613,
+          874517128,
+          874815897,
+          862909130,
+          865406490,
+          862398106,
+          867935551,
+          863556099
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          1005417777,
+          987691225,
+          1000631573,
+          1022769254,
+          1006199467,
+          1012227868,
+          1022649895,
+          999964278,
+          1003173770,
+          992500692,
+          1016808794,
+          1021643483
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 873387753.5,
+        "/workspace/collection-evidence/maps-final": 872422719.0,
+        "/workspace/collection-evidence/maps-rust": 1005808622.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 256,
+      "repeats": 555,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          418681021,
+          402597567,
+          403296937,
+          405858813,
+          402322723,
+          401112157,
+          400424252,
+          406014959,
+          405672585,
+          410493192,
+          404761339,
+          404838475
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          402584047,
+          400727621,
+          400448010,
+          400812739,
+          401135502,
+          401176373,
+          414429205,
+          410692400,
+          406887889,
+          406725996,
+          406223473,
+          408969343
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          379185532,
+          377863787,
+          378873163,
+          378579932,
+          377365274,
+          388536457,
+          383191478,
+          386783310,
+          385260684,
+          382422885,
+          380068268,
+          382312916
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 404799907.0,
+        "/workspace/collection-evidence/maps-final": 404403760.0,
+        "/workspace/collection-evidence/maps-rust": 381190592.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 4096,
+      "repeats": 38,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          567242156,
+          570838383,
+          580481047,
+          570457900,
+          574833608,
+          590081451,
+          588295382,
+          579306700,
+          586463247,
+          592668518,
+          593660730,
+          574460681
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          561781789,
+          569389698,
+          564745059,
+          560652034,
+          568060904,
+          588033670,
+          593912594,
+          581011138,
+          576139798,
+          596625636,
+          582883082,
+          582161108
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          399408162,
+          404092694,
+          407738837,
+          408587347,
+          399169122,
+          406637191,
+          425232885,
+          412595261,
+          413801711,
+          420538711,
+          426358442,
+          423163727
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 579893873.5,
+        "/workspace/collection-evidence/maps-final": 578575468.0,
+        "/workspace/collection-evidence/maps-rust": 410591304.0
+      }
+    },
+    {
+      "mode": "int_get",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          109220407,
+          108674512,
+          110947934,
+          109836626,
+          109361283,
+          113574806,
+          120235470,
+          110327513,
+          107602654,
+          108987251,
+          108892769,
+          111563798
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          120317654,
+          117487587,
+          110612309,
+          109529925,
+          113039231,
+          112220894,
+          107910375,
+          110839901,
+          108617807,
+          109493130,
+          109942224,
+          109205809
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          102850072,
+          103694598,
+          101236279,
+          106635482,
+          102286936,
+          102917202,
+          101256099,
+          101549099,
+          103293237,
+          101343961,
+          100606434,
+          102020837
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 109598954.5,
+        "/workspace/collection-evidence/maps-final": 110277266.5,
+        "/workspace/collection-evidence/maps-rust": 102153886.5
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          162440735,
+          162924060,
+          164893146,
+          169730475,
+          164769156,
+          161826230,
+          164785311,
+          164551410,
+          162962617,
+          162730019,
+          164463788,
+          167292790
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          164092605,
+          161788817,
+          162691752,
+          166666287,
+          163914338,
+          163110607,
+          165051460,
+          160391222,
+          162984100,
+          163827054,
+          167919270,
+          162503839
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          185877877,
+          190460373,
+          192722829,
+          190025491,
+          186874612,
+          186267204,
+          186609755,
+          187840581,
+          187062004,
+          186921833,
+          186623756,
+          191467309
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 164507599.0,
+        "/workspace/collection-evidence/maps-final": 163468830.5,
+        "/workspace/collection-evidence/maps-rust": 186991918.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          157844844,
+          157518676,
+          157087749,
+          157073076,
+          160470465,
+          159827451,
+          158124594,
+          164393343,
+          161110916,
+          157816948,
+          161319100,
+          160236156
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          159224036,
+          158464915,
+          158262653,
+          155940016,
+          158560879,
+          162105750,
+          161342926,
+          159706789,
+          161068670,
+          158905460,
+          158563649,
+          158840443
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          150241313,
+          149183025,
+          149274403,
+          146690124,
+          157813187,
+          157187288,
+          155624473,
+          154709550,
+          151975797,
+          150250530,
+          151481606,
+          151908446
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 158976022.5,
+        "/workspace/collection-evidence/maps-final": 158872951.5,
+        "/workspace/collection-evidence/maps-rust": 151695026.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 65536,
+      "prefix_width": 16,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          221531408,
+          217147844,
+          217268595,
+          216479421,
+          221811793,
+          221467416,
+          221782709,
+          222324582,
+          215885485,
+          214126006,
+          214244292,
+          213765634
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          219551659,
+          218671529,
+          215005148,
+          216264768,
+          218732752,
+          219765812,
+          223030572,
+          221843190,
+          214003441,
+          217470144,
+          218331567,
+          214671925
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          185141019,
+          183050590,
+          182743785,
+          182543535,
+          184732759,
+          184483886,
+          185719340,
+          182253749,
+          183059649,
+          178811858,
+          182207864,
+          180354694
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 217208219.5,
+        "/workspace/collection-evidence/maps-final": 218501548.0,
+        "/workspace/collection-evidence/maps-rust": 182897187.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 65536,
+      "prefix_width": 256,
+      "repeats": 11,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          87824080,
+          88266573,
+          88327716,
+          88442248,
+          88949649,
+          87823820,
+          88202578,
+          88297531,
+          90729511,
+          89148547,
+          88286604,
+          88967676
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          88168527,
+          87900315,
+          89817963,
+          89606751,
+          89312524,
+          88350389,
+          87545112,
+          88320826,
+          88971082,
+          89262859,
+          90534158,
+          88776139
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          110518308,
+          111093722,
+          113486382,
+          105134418,
+          99315526,
+          113242216,
+          111221573,
+          113265310,
+          102410371,
+          119602481,
+          107420620,
+          101277350
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 88312623.5,
+        "/workspace/collection-evidence/maps-final": 88873610.5,
+        "/workspace/collection-evidence/maps-rust": 110806015.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          229278673,
+          234208643,
+          228894757,
+          232213019,
+          231779203,
+          229496897,
+          228404448,
+          231494816,
+          233195279,
+          231569855,
+          238054977,
+          233343417
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          229542289,
+          232623760,
+          231069612,
+          229755108,
+          229921368,
+          232446975,
+          231572572,
+          231943949,
+          233887763,
+          234548856,
+          231209173,
+          231643101
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          400968231,
+          395624338,
+          394120581,
+          403249210,
+          392360018,
+          392309971,
+          398389645,
+          396786790,
+          403391372,
+          395811098,
+          399040584,
+          396935314
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 231674529.0,
+        "/workspace/collection-evidence/maps-final": 231607836.5,
+        "/workspace/collection-evidence/maps-rust": 396861052.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 65536,
+      "prefix_width": 16,
+      "repeats": 100,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          423524659,
+          427301366,
+          425091440,
+          420679138,
+          426493543,
+          435334211,
+          430100786,
+          431955450,
+          436575723,
+          430500055,
+          432985260,
+          437455871
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          422528424,
+          422155343,
+          420967715,
+          425906892,
+          424927764,
+          431982951,
+          433517905,
+          433522502,
+          434606922,
+          437078957,
+          427543218,
+          447351512
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          445157934,
+          443730762,
+          441029909,
+          442108677,
+          440291526,
+          446175321,
+          454658251,
+          452022755,
+          452964639,
+          454035172,
+          460638961,
+          448087416
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 430300420.5,
+        "/workspace/collection-evidence/maps-final": 429763084.5,
+        "/workspace/collection-evidence/maps-rust": 447131368.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 65536,
+      "prefix_width": 256,
+      "repeats": 11,
+      "samples": {
+        "/workspace/collection-evidence/maps-before": [
+          149761959,
+          151264673,
+          153532061,
+          154443975,
+          155972286,
+          151582194,
+          159568148,
+          154249987,
+          157517673,
+          151368363,
+          149656650,
+          151999480
+        ],
+        "/workspace/collection-evidence/maps-final": [
+          151316151,
+          149972074,
+          156350505,
+          153203712,
+          156740250,
+          155088686,
+          155499132,
+          151150062,
+          151461043,
+          150957105,
+          149849954,
+          154823617
+        ],
+        "/workspace/collection-evidence/maps-rust": [
+          174721013,
+          168154889,
+          173649805,
+          175850517,
+          186098397,
+          179837364,
+          181900910,
+          183945178,
+          181328642,
+          176760957,
+          173877440,
+          172694354
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/maps-before": 152765770.5,
+        "/workspace/collection-evidence/maps-final": 152332377.5,
+        "/workspace/collection-evidence/maps-rust": 176305737.0
+      }
+    }
+  ]
+}

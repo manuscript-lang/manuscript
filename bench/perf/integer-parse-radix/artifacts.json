@@ -1,0 +1,104 @@
+{
+  "baseline_commit": "d4a94aa9283348133542078e22ccaa3b2c9dc348",
+  "production_num_git_blob": "4565cb55f8dba3b3ffa8077c20c8be83d8d11c7a",
+  "production_num_sha256": "6b22a224261af4710209e6b036aecde78c1dd6d2a1cf7871ffd71dc98fd19183",
+  "machine": {
+    "system": "Linux",
+    "node": "c05a8254b0a8",
+    "release": "6.18.57",
+    "version": "#1 SMP Tue Oct 20 21:56:04 UTC 2026",
+    "machine": "x86_64",
+    "processor": ""
+  },
+  "cpu_quota": "400000 100000",
+  "memory_limit": "17179869184",
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13); cargo 1.99.1 (5f94df478 2026-08-27)",
+  "frozen_compiler_sha256": "2ee1cfd0b5d84e008478172689a0b282d90ef3580e929e9abb8c0dc49db76d5d",
+  "baseline_archive_sha256": "764711c0af9863e4b54ea5f21b418dc2db44f20878112e055d794634f576e30a",
+  "sticky_native_archive_sha256": "2f62c03e6722475e553d471238557f5a90a63cd2c117d273d27193788d3a2acf",
+  "native_suffix_archive_sha256": "8bf3b4fe4f591ac4c12917b742f3e4ec3391ae1d8b19eb502bbb84a36207fa2b",
+  "conservative_suffix_archive_sha256": "a6a5c52255fc7864306c729cafc9a3f5067da1361a372741bd26accbd04e37ed",
+  "final_measured_manuscript_source_sha256": "c81e10b193685980f376ac757c4af1589005808e7bf081de71a71c604beb93cf",
+  "final_measured_rust_source_sha256": "5d1d28b176ab17d488c68973e38ae312e6c6dbec59527981eb02e1792b3e4645",
+  "binary_sha256": {
+    "ms-suffix-after": "2457bc7674ec7edaaacfbd45b0968161190d5332399798419b01e3db548a7f9e",
+    "ms-final-aa": "2f658696beaa04d015830c05ac2f04bda4de3d3731e59d88a5f7109bf80d365e",
+    "ms-suffix-before": "6129a3b7d6e0f985788a91a5155ae40953f6c2ed6aba8640d5a46c771a37edee",
+    "ms-conservative-after": "4f8ead307a9300aa444b149dbdedf504eb2f8986d31d82bbbb3f937592a1101e",
+    "ms-final-before": "2f658696beaa04d015830c05ac2f04bda4de3d3731e59d88a5f7109bf80d365e",
+    "rust-final": "884eb2ec40c00c513e2ca2dfea3486f186be156a9225527f811d4c8202daa2b6",
+    "ms-final-after": "4391b9d9c1b2949a8566c4dfc48673c081932d5306de8a10ccbbb363aba02606",
+    "rust-suffix": "8ca7021b60ad7a844c0106db6f6cc7f10b19a69039316c76e42d715d47e780a0",
+    "ms-suffix-aa": "6129a3b7d6e0f985788a91a5155ae40953f6c2ed6aba8640d5a46c771a37edee"
+  },
+  "sidecars": {
+    "ms-suffix-after.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "cranelift",
+      "build_type": "Release"
+    },
+    "ms-final-before.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "cranelift",
+      "build_type": "Release"
+    },
+    "ms-before.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "cranelift",
+      "build_type": "Release"
+    },
+    "ms-suffix-before.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "cranelift",
+      "build_type": "Release"
+    },
+    "ms-final-after.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "cranelift",
+      "build_type": "Release"
+    },
+    "ms-conservative-after.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "cranelift",
+      "build_type": "Release"
+    },
+    "ms-discovery.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "cranelift",
+      "build_type": "Release"
+    }
+  },
+  "retained_file_sha256": {
+    "main.ms": "c1d6525f2219445c9e499ea6a72c272ff172ca716f0aa8c44908d211d417fa22",
+    "measured-main.ms.txt": "c81e10b193685980f376ac757c4af1589005808e7bf081de71a71c604beb93cf",
+    "README.md": "c83133901446ef10b11714b5047c0e68bb4f113b8cace245619d1741a640071e",
+    "rust-sticky-exploratory.rs.txt": "62570b4d4acea86f9a2805bd4a5bfaa1b394eb7dd3c99a96759d1172ae1ebb79",
+    "source-tests.ms": "cf1ee2ab10c5a87b03d2418056770190332298165ec194d21593256f6eae764f",
+    "validate.py": "fe5e718e4634c32b77fea5dec4b60b8f35516f1d1e1df625875ded379a197ba4",
+    "repeat.py": "0e128c13ac19e5b2b90628726482b01acf54fbab17ed29bd0ce17e55181de6de",
+    "repeat-sticky-exploratory.py.txt": "d151bd093e44d6ea958a76c950e291b39f4e409a24ee52f0a2bb782c027f3382",
+    "rust.rs": "5d1d28b176ab17d488c68973e38ae312e6c6dbec59527981eb02e1792b3e4645",
+    "summary.md": "c64867eae9a3fb84e63b1370ba61e00785916f41fa5586cff185e3b4aa01bfb3",
+    "variants/sticky-native.patch": "d0bb29c0b2f1973be38eac58ba3fa9e3c59b42f76d5083f2fe6efb65f1fe33e8",
+    "variants/conservative-suffix.patch": "84b6f1ff71abfaf0e0280928159e8dde6ab1321f93ce8739a5153747c41d3b55",
+    "variants/native-suffix.patch": "f91adfa2fddbbc88defc1e1ce834552404aaaba9c174a95dfaae4269ccf72d67",
+    "results/sticky-native.jsonl": "66512ecda1de126c0bdfe52111663bee228ed6545b0e7aa745983147987f9102",
+    "results/native-suffix.jsonl": "e417007b3f2456b89c6e5ba246a0fef1f92df1492554df9e05e87c813b856109",
+    "results/conservative-suffix.jsonl": "346a4775e2a293fcfb49f39a19753cc59d089f3630672cd3e3c687c9db0f5c38"
+  },
+  "limits": [
+    "No allocation/RSS/instruction counters",
+    "No backend or parity investigation",
+    "No integrated-main replay",
+    "No public Float32 performance investigation",
+    "Sticky-native Rust fixed-text error samples excluded: output-only optimization barrier"
+  ],
+  "cpu_model": "AMD EPYC 9V45 96-Core Processor"
+}

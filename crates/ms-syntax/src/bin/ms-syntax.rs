@@ -58,6 +58,14 @@ fn run() -> i32 {
                 bytes += text.len();
                 sources.push((Arc::<str>::from(path.as_str()), text));
             }
+            // Validate the workload before timing it: an early parse failure
+            // would otherwise look like exceptionally fast source parsing.
+            for (file, text) in &sources {
+                if let Err(diagnostic) = parse(file, text) {
+                    eprintln!("{diagnostic}");
+                    return 1;
+                }
+            }
             let rounds = 20;
             let start = std::time::Instant::now();
             for _ in 0..rounds {

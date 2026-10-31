@@ -209,17 +209,24 @@ native! {
         let bits = i64::try_from(n(&a).bits()).unwrap_or(i64::MAX);
         if exponent > 1
             && bits > 1
-            && (exponent > MAX_BITS || bits.saturating_mul(exponent) > MAX_BITS + exponent)
+            && (bits - 1).saturating_mul(exponent) >= MAX_BITS
         {
             return Err(Code(STATUS_LIMIT_EXCEEDED));
         }
         poll_cancel();
-        Ok(make(num_traits::pow::Pow::pow(n(&a), exponent as u64)))
+        let result = num_traits::pow::Pow::pow(n(&a), exponent as u64);
+        if result.bits() > MAX_BITS as u64 {
+            return Err(Code(STATUS_LIMIT_EXCEEDED));
+        }
+        Ok(make(result))
     }
 
     fn msstd_bigint_shift_left(a: ObjRef<Big>, count: i64) -> Result<Object<Big>, Code> {
         if count < 0 {
             return Err(Code(STATUS_INVALID_INPUT));
+        }
+        if n(&a).is_zero() {
+            return Ok(make(BigInt::zero()));
         }
         let bits = i64::try_from(n(&a).bits()).unwrap_or(i64::MAX);
         if count > MAX_BITS || bits.saturating_add(count) > MAX_BITS {
@@ -455,6 +462,43 @@ mod tests {
     }
 
     #[test]
+    fn powers_enforce_the_actual_result_bit_limit() {
+        let mut out: *mut ObjCell<Big> = core::ptr::null_mut();
+        // SAFETY: each input is a live handle and out points to writable storage.
+        unsafe {
+            let two = msstd_bigint_from_int(2);
+            assert_eq!(msstd_bigint_pow(two, MAX_BITS - 1, &mut out), STATUS_OK);
+            assert_eq!(val(out).bits(), MAX_BITS as u64);
+            let oversized = msstd_bigint_multiply(out, two);
+            assert_eq!(
+                msstd_bigint_pow(oversized, 1, &mut out),
+                STATUS_LIMIT_EXCEEDED
+            );
+            assert_eq!(msstd_bigint_pow(oversized, 0, &mut out), STATUS_OK);
+            assert_eq!(val(out), &BigInt::from(1));
+            assert_eq!(
+                msstd_bigint_pow(two, MAX_BITS, &mut out),
+                STATUS_LIMIT_EXCEEDED
+            );
+
+            let one = msstd_bigint_from_int(1);
+            assert_eq!(
+                msstd_bigint_shift_left(one, MAX_BITS / 2, &mut out),
+                STATUS_OK
+            );
+            let large = out;
+            assert_eq!(msstd_bigint_pow(large, 2, &mut out), STATUS_LIMIT_EXCEEDED);
+
+            assert_eq!(
+                msstd_bigint_shift_left(one, MAX_BITS / 3 + 1, &mut out),
+                STATUS_OK
+            );
+            let dense = msstd_bigint_subtract(out, one);
+            assert_eq!(msstd_bigint_pow(dense, 3, &mut out), STATUS_LIMIT_EXCEEDED);
+        }
+    }
+
+    #[test]
     fn conversions() {
         let big_one = big("9223372036854775808");
         assert!(big_one.to_i64().is_none());
@@ -469,5 +513,22 @@ mod tests {
             Some(1180591620717411303424.0)
         );
         assert_eq!(format(&BigInt::from(-255), 16), "-ff");
+    }
+
+    #[test]
+    fn shifting_zero_keeps_the_result_within_the_bit_limit() {
+        let mut out: *mut ObjCell<Big> = core::ptr::null_mut();
+        // SAFETY: zero is a live handle and out points to writable storage.
+        unsafe {
+            let zero = msstd_bigint_from_int(0);
+            for count in [0, MAX_BITS, MAX_BITS + 1, i64::MAX] {
+                assert_eq!(msstd_bigint_shift_left(zero, count, &mut out), STATUS_OK);
+                assert!(val(out).is_zero());
+            }
+            assert_eq!(
+                msstd_bigint_shift_left(zero, -1, &mut out),
+                STATUS_INVALID_INPUT
+            );
+        }
     }
 }

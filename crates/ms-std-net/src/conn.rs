@@ -1073,7 +1073,7 @@ impl Network {
             return Err(NetErr::PermissionDenied);
         }
         let sock = self.listen_tcp(address)?;
-        let config = tls::server_config(options)?;
+        let config = tls::stream_server_config(options)?;
         let clients = !options.roots_pem.is_empty() || options.require_client_certificate;
         let upgrade: Upgrade =
             Box::new(move |s, deadline| tls::accept(s, config.clone(), deadline, clients));
