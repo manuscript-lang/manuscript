@@ -1,0 +1,317 @@
+{
+  "split_empty_text": [
+    0,
+    100000,
+    1700000
+  ],
+  "split_empty_scalar_separator": [
+    0,
+    100000,
+    0
+  ],
+  "split_tiny_no_match": [
+    3,
+    100000,
+    2000000
+  ],
+  "split_tiny_edges": [
+    10,
+    100000,
+    8700000
+  ],
+  "split_tiny_overlap": [
+    5,
+    100000,
+    5200000
+  ],
+  "split_nul_delimiter": [
+    10,
+    100000,
+    5700000
+  ],
+  "split_unicode_scalar_separator": [
+    12,
+    100000,
+    9700000
+  ],
+  "split_cap_zero": [
+    7,
+    100000,
+    0
+  ],
+  "split_cap_one": [
+    7,
+    100000,
+    1800000
+  ],
+  "split_cap_two_truncates": [
+    7,
+    100000,
+    3600000
+  ],
+  "split_cap_scalar_two": [
+    12,
+    100000,
+    3900000
+  ],
+  "split_common_fields": [
+    1664,
+    5041,
+    13313281
+  ],
+  "split_large_fields": [
+    106496,
+    78,
+    13100334
+  ],
+  "split_unicode_fields": [
+    13312,
+    630,
+    16783830
+  ],
+  "split_repetitive_near_miss": [
+    65536,
+    128,
+    8390784
+  ],
+  "split_dense_periodic": [
+    7168,
+    1170,
+    21585330
+  ],
+  "split_large_no_match": [
+    1048576,
+    16,
+    16777488
+  ],
+  "split_large_fields_cap_two": [
+    106496,
+    100000,
+    8200000
+  ],
+  "contains_empty_empty": [
+    0,
+    100000,
+    1900000
+  ],
+  "index_empty_empty": [
+    0,
+    100000,
+    1800000
+  ],
+  "last_index_empty_empty": [
+    0,
+    100000,
+    1800000
+  ],
+  "contains_empty_nonempty": [
+    0,
+    100000,
+    1800000
+  ],
+  "index_empty_nonempty": [
+    0,
+    100000,
+    1700000
+  ],
+  "last_index_empty_nonempty": [
+    0,
+    100000,
+    1700000
+  ],
+  "contains_tiny_first_last": [
+    6,
+    100000,
+    1900000
+  ],
+  "index_tiny_first_last": [
+    6,
+    100000,
+    1800000
+  ],
+  "last_index_tiny_first_last": [
+    6,
+    100000,
+    2100000
+  ],
+  "contains_tiny_absent": [
+    3,
+    100000,
+    1800000
+  ],
+  "index_tiny_absent": [
+    3,
+    100000,
+    1700000
+  ],
+  "last_index_tiny_absent": [
+    3,
+    100000,
+    1700000
+  ],
+  "contains_unicode_scalar_index": [
+    19,
+    100000,
+    1900000
+  ],
+  "index_unicode_scalar_index": [
+    19,
+    100000,
+    1900000
+  ],
+  "last_index_unicode_scalar_index": [
+    19,
+    100000,
+    2300000
+  ],
+  "contains_unicode_empty_needle": [
+    9,
+    100000,
+    1900000
+  ],
+  "index_unicode_empty_needle": [
+    9,
+    100000,
+    1800000
+  ],
+  "last_index_unicode_empty_needle": [
+    9,
+    100000,
+    2100000
+  ],
+  "contains_overlap": [
+    5,
+    100000,
+    1900000
+  ],
+  "index_overlap": [
+    5,
+    100000,
+    1800000
+  ],
+  "last_index_overlap": [
+    5,
+    100000,
+    2100000
+  ],
+  "contains_nul_unicode": [
+    10,
+    100000,
+    1900000
+  ],
+  "index_nul_unicode": [
+    10,
+    100000,
+    1900000
+  ],
+  "last_index_nul_unicode": [
+    10,
+    100000,
+    2300000
+  ],
+  "contains_common_prose": [
+    5760,
+    100000,
+    1900000
+  ],
+  "index_common_prose": [
+    5760,
+    100000,
+    2800000
+  ],
+  "last_index_common_prose": [
+    5760,
+    1456,
+    8361808
+  ],
+  "contains_large_ascii_late": [
+    65542,
+    127,
+    2413
+  ],
+  "index_large_ascii_late": [
+    65542,
+    127,
+    8325358
+  ],
+  "last_index_large_ascii_late": [
+    65542,
+    127,
+    8325358
+  ],
+  "contains_large_unicode_late": [
+    147462,
+    56,
+    1064
+  ],
+  "index_large_unicode_late": [
+    147462,
+    56,
+    2753520
+  ],
+  "last_index_large_unicode_late": [
+    147462,
+    56,
+    2753520
+  ],
+  "contains_repetitive_near_miss": [
+    65536,
+    128,
+    2304
+  ],
+  "index_repetitive_near_miss": [
+    65536,
+    128,
+    2176
+  ],
+  "last_index_repetitive_near_miss": [
+    65536,
+    128,
+    2176
+  ],
+  "contains_boundary_31": [
+    31,
+    100000,
+    1900000
+  ],
+  "index_boundary_31": [
+    31,
+    100000,
+    4700000
+  ],
+  "last_index_boundary_31": [
+    31,
+    100000,
+    4700000
+  ],
+  "contains_boundary_32": [
+    32,
+    100000,
+    1900000
+  ],
+  "index_boundary_32": [
+    32,
+    100000,
+    4800000
+  ],
+  "last_index_boundary_32": [
+    32,
+    100000,
+    4800000
+  ],
+  "contains_boundary_33": [
+    33,
+    100000,
+    1900000
+  ],
+  "index_boundary_33": [
+    33,
+    100000,
+    4900000
+  ],
+  "last_index_boundary_33": [
+    33,
+    100000,
+    4900000
+  ]
+}

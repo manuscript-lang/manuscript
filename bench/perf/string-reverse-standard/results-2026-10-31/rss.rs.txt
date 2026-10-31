@@ -1,0 +1,14 @@
+use std::hint::black_box;
+
+fn main() {
+    let (forward, backward) = if cfg!(feature = "mixed") {
+        ("aé日😀", "😀日éa")
+    } else {
+        ("abcD09_?", "?_90Dcba")
+    };
+    let text = forward.repeat(524288);
+    let expected = backward.repeat(524288);
+    let output: String = black_box(text.as_str()).chars().rev().collect();
+    assert_eq!(black_box(output.as_str()), expected.as_str());
+    println!("{}", black_box(output.len()));
+}

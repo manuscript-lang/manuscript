@@ -1,0 +1,706 @@
+{
+  "complete": true,
+  "base": "98854115f95bfeddbaa362382bfcff85c0499752",
+  "compiler": {
+    "path": "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+    "sha256": "c0206ad63cab27353feb941a70d4f500dca2856beeb184e4cd98cf3b997a4a85"
+  },
+  "commands": [
+    {
+      "argv": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ],
+      "extra_env": {},
+      "exit": 0,
+      "log": "reverse-runtime-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/reverse-reverse"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/reverse.a"
+      },
+      "exit": 0,
+      "log": "reverse-reverse-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/reverse-normalize"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/reverse.a"
+      },
+      "exit": 0,
+      "log": "reverse-normalize-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/bytes-index/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/reverse-byte"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/reverse.a"
+      },
+      "exit": 0,
+      "log": "reverse-byte-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-lines/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/reverse-lines"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/reverse.a"
+      },
+      "exit": 0,
+      "log": "reverse-lines-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/text-discovery/text-discovery.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/reverse-text"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/reverse.a"
+      },
+      "exit": 0,
+      "log": "reverse-text-build.log"
+    },
+    {
+      "argv": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ],
+      "extra_env": {},
+      "exit": 0,
+      "log": "both-runtime-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/both-reverse"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/both.a"
+      },
+      "exit": 0,
+      "log": "both-reverse-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/both-normalize"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/both.a"
+      },
+      "exit": 0,
+      "log": "both-normalize-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/bytes-index/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/both-byte"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/both.a"
+      },
+      "exit": 0,
+      "log": "both-byte-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-lines/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/both-lines"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/both.a"
+      },
+      "exit": 0,
+      "log": "both-lines-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/text-discovery/text-discovery.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/both-text"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/both.a"
+      },
+      "exit": 0,
+      "log": "both-text-build.log"
+    },
+    {
+      "argv": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ],
+      "extra_env": {},
+      "exit": 0,
+      "log": "word-runtime-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/word-reverse"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/word.a"
+      },
+      "exit": 0,
+      "log": "word-reverse-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/word-normalize"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/word.a"
+      },
+      "exit": 0,
+      "log": "word-normalize-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/bytes-index/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/word-byte"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/word.a"
+      },
+      "exit": 0,
+      "log": "word-byte-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-lines/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/word-lines"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/word.a"
+      },
+      "exit": 0,
+      "log": "word-lines-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/text-discovery/text-discovery.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/word-text"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/word.a"
+      },
+      "exit": 0,
+      "log": "word-text-build.log"
+    },
+    {
+      "argv": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ],
+      "extra_env": {},
+      "exit": 0,
+      "log": "baseline-runtime-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/baseline-reverse"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-reverse-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/baseline-normalize"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-normalize-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/bytes-index/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/baseline-byte"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-byte-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/manuscript/bench/perf/string-lines/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/baseline-lines"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-lines-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/text-discovery/text-discovery.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/baseline-text"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-text-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "test",
+        "tests/e2e/testdata/stdlib/string-reverse-standard.ms",
+        "--build-type",
+        "Debug"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-source-debug.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "test",
+        "tests/e2e/testdata/stdlib/string-reverse-standard.ms",
+        "--build-type",
+        "Release"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-source-release.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "test",
+        "tests/e2e/testdata/stdlib/string-reverse-standard.ms",
+        "--build-type",
+        "Debug"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/reverse.a"
+      },
+      "exit": 0,
+      "log": "reverse-source-debug.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "test",
+        "tests/e2e/testdata/stdlib/string-reverse-standard.ms",
+        "--build-type",
+        "Release"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/reverse.a"
+      },
+      "exit": 0,
+      "log": "reverse-source-release.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "test",
+        "tests/e2e/testdata/stdlib/string-reverse-standard.ms",
+        "--build-type",
+        "Debug"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/both.a"
+      },
+      "exit": 0,
+      "log": "both-source-debug.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "test",
+        "tests/e2e/testdata/stdlib/string-reverse-standard.ms",
+        "--build-type",
+        "Release"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/both.a"
+      },
+      "exit": 0,
+      "log": "both-source-release.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "test",
+        "/workspace/manuscript/tests/e2e/testdata/stdlib/bytes-index-search.ms",
+        "--build-type",
+        "Debug"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/both.a"
+      },
+      "exit": 0,
+      "log": "both-byte-source-debug.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "test",
+        "/workspace/manuscript/tests/e2e/testdata/stdlib/bytes-index-search.ms",
+        "--build-type",
+        "Release"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/both.a"
+      },
+      "exit": 0,
+      "log": "both-byte-source-release.log"
+    },
+    {
+      "argv": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ],
+      "extra_env": {},
+      "exit": 0,
+      "log": "restored-reverse-runtime-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/text-discovery/text-discovery.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/baseline-text"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/baseline.a"
+      },
+      "exit": 0,
+      "log": "baseline-text-compact-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/text-discovery/text-discovery.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/word-text"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/word.a"
+      },
+      "exit": 0,
+      "log": "word-text-compact-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/text-discovery/text-discovery.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/reverse-text"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/reverse.a"
+      },
+      "exit": 0,
+      "log": "reverse-text-compact-build.log"
+    },
+    {
+      "argv": [
+        "/workspace/byte-search-evidence/fresh-main-988/ms-compiler",
+        "build",
+        "/workspace/text-discovery/text-discovery.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/workspace/reverse-std-evidence/both-text"
+      ],
+      "extra_env": {
+        "MS_RT_LIB": "/workspace/reverse-std-evidence/both.a"
+      },
+      "exit": 0,
+      "log": "both-text-compact-build.log"
+    }
+  ],
+  "states": {
+    "reverse": {
+      "sources": {
+        "crates/ms-rt/src/string.rs": "d15d9dbd434e6edd0d838f9033df18d5576752565b2493c913e20c7c9827b84e",
+        "crates/ms-rt/src/vec.rs": "a983e6c02b4c07977d82258fc277b4a281c2fa6148cd87b59261f38cf89ebfa6"
+      },
+      "archive_sha256": "1ec1c65a98380d62eb6377e44debc16344566af5aa9403c4d562fe016909e781",
+      "programs": {
+        "reverse": {
+          "path": "/workspace/reverse-std-evidence/reverse-reverse",
+          "sha256": "23a830025e57b80d2d60d02214f8cb11fe3e093e6f8e54db315c32ee33d6f47d"
+        },
+        "normalize": {
+          "path": "/workspace/reverse-std-evidence/reverse-normalize",
+          "sha256": "f5a225a0a643334b2f259ce4cdc2f6cbaf5d62442242d75251b0f7b27955551d"
+        },
+        "byte": {
+          "path": "/workspace/reverse-std-evidence/reverse-byte",
+          "sha256": "8ed2be669c14266deda96233fad518f2759b6bc31cab25e62a51cbb0c4b1800c"
+        },
+        "lines": {
+          "path": "/workspace/reverse-std-evidence/reverse-lines",
+          "sha256": "b13acc7dd2179550fb22e9e3f2fc59d6aa5bc11e4f51386fdebd76b1a9b8ed5d"
+        },
+        "text": {
+          "path": "/workspace/reverse-std-evidence/reverse-text",
+          "sha256": "a33144d507751294fc084ca37cacc18d42ac2d045a8d52ad44a771b5042a8326"
+        }
+      }
+    },
+    "both": {
+      "sources": {
+        "crates/ms-rt/src/string.rs": "e37392d9d0bc308b7b4d75312f974b3f9dab9757608b0e4a19781d7e785f5cf7",
+        "crates/ms-rt/src/vec.rs": "5669bab683fa9f75b7055cc538f5b749a728ce4336957ad367ad6a298a48e91e"
+      },
+      "archive_sha256": "3d087524e8786f7770fb46202dc7c11e15d89576901174f747f9fa361c82a168",
+      "programs": {
+        "reverse": {
+          "path": "/workspace/reverse-std-evidence/both-reverse",
+          "sha256": "11db1e14ad93f966ead4447cbebe372f70e79904c765ce83fb7a60bb4c1c1f60"
+        },
+        "normalize": {
+          "path": "/workspace/reverse-std-evidence/both-normalize",
+          "sha256": "a8a9ed26c45b5de7fb353aede07494f6a991971269f6d09ca69c5d71f5fce02a"
+        },
+        "byte": {
+          "path": "/workspace/reverse-std-evidence/both-byte",
+          "sha256": "1dbd8724fd70bf80d47321aef0cef4750ffcb744c1150730a07d8b58d03bf73a"
+        },
+        "lines": {
+          "path": "/workspace/reverse-std-evidence/both-lines",
+          "sha256": "da5e1b545e995c60338e7934d89543a8faa5dcfff089150553fcf2d843c16450"
+        },
+        "text": {
+          "path": "/workspace/reverse-std-evidence/both-text",
+          "sha256": "cf1201f45fac639da337cd8302f80d23697efe3166e10238bf6efb1ff311a19f"
+        }
+      }
+    },
+    "word": {
+      "sources": {
+        "crates/ms-rt/src/string.rs": "7fc15b3dfdd016c8ee451f13e1c694fc08da217b76d2c7235574a025f10e4d65",
+        "crates/ms-rt/src/vec.rs": "5669bab683fa9f75b7055cc538f5b749a728ce4336957ad367ad6a298a48e91e"
+      },
+      "archive_sha256": "143c2592a1c481ab14eb613aff6415df9b8dd021f56b5b480ece60ddf50c5b03",
+      "programs": {
+        "reverse": {
+          "path": "/workspace/reverse-std-evidence/word-reverse",
+          "sha256": "70ac5c64390ea56545a02bf3d2d6753aad570a066d181c10e23c636319191bc6"
+        },
+        "normalize": {
+          "path": "/workspace/reverse-std-evidence/word-normalize",
+          "sha256": "8dfce1dbb2439b3308a33d7e11d0318bb396f4fffe0f3c77b4369da9267994d6"
+        },
+        "byte": {
+          "path": "/workspace/reverse-std-evidence/word-byte",
+          "sha256": "88435124f0003c2c66b7b2195490e13c4c3b0cedfa4261f886c0fb0714fed547"
+        },
+        "lines": {
+          "path": "/workspace/reverse-std-evidence/word-lines",
+          "sha256": "502f55db8f9c505c13b82f67d5f261d1233eb7e524548894c45b5433c3d2896e"
+        },
+        "text": {
+          "path": "/workspace/reverse-std-evidence/word-text",
+          "sha256": "e2c44e3f194369e765dc40bb7d23739118f1227c8575e3399ff9b3b40d7e9cd3"
+        }
+      }
+    },
+    "baseline": {
+      "sources": {
+        "crates/ms-rt/src/string.rs": "d61ca5b408602dda474058ca6b83661b16bb2187d567fc950a816eb6cba22725",
+        "crates/ms-rt/src/vec.rs": "a983e6c02b4c07977d82258fc277b4a281c2fa6148cd87b59261f38cf89ebfa6"
+      },
+      "archive_sha256": "0efde0154f2c05d1c6c748307f2c586e815bd69e8cfe5074bb5ce12a0908dae7",
+      "programs": {
+        "reverse": {
+          "path": "/workspace/reverse-std-evidence/baseline-reverse",
+          "sha256": "8206642a1b66e10dd19ce655177de9c87114e395c25318cc2c159031776a1bbd"
+        },
+        "normalize": {
+          "path": "/workspace/reverse-std-evidence/baseline-normalize",
+          "sha256": "69dc61352a811028a33d29cf7c16c2ffc91cc92a7129cdd5f510c6c3ee9fab68"
+        },
+        "byte": {
+          "path": "/workspace/reverse-std-evidence/baseline-byte",
+          "sha256": "bca92f3b9336d351cb207bd229b9ae92f3eff42f51fad66afecea25ed52d62a0"
+        },
+        "lines": {
+          "path": "/workspace/reverse-std-evidence/baseline-lines",
+          "sha256": "c648fc79fc0d6f28440f7903aeea9a6f29764729843b4fd28b944f3bf7dff59a"
+        },
+        "text": {
+          "path": "/workspace/reverse-std-evidence/baseline-text",
+          "sha256": "5c995f02e9b5ed0eb35b4cbf85d0da7510dbb9f3b05ae79cc3e2f3b3c24522cf"
+        }
+      }
+    }
+  },
+  "inputs": {
+    "reverse": {
+      "path": "/workspace/manuscript/bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+      "sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e"
+    },
+    "normalize": {
+      "path": "/workspace/manuscript/bench/perf/string-normalize-ascii/main.ms",
+      "sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4"
+    },
+    "byte": {
+      "path": "/workspace/manuscript/bench/perf/bytes-index/main.ms",
+      "sha256": "f30c18354c0450b840c846586481ad08550a3455c7e081270b71acdd38fb5f88"
+    },
+    "lines": {
+      "path": "/workspace/manuscript/bench/perf/string-lines/main.ms",
+      "sha256": "e7d37f5ea0147ac0fa127990ec52848f7319fd300f07719a3f0bd7be76a51787"
+    },
+    "text": {
+      "path": "/workspace/text-discovery/text-discovery.ms",
+      "sha256": "6a8e44ac986a6b53a7aacb07f660b0d7ffdaa56a3fe1573a454338900528e426"
+    }
+  },
+  "restored_sources": {
+    "crates/ms-rt/src/string.rs": "d15d9dbd434e6edd0d838f9033df18d5576752565b2493c913e20c7c9827b84e",
+    "crates/ms-rt/src/vec.rs": "a983e6c02b4c07977d82258fc277b4a281c2fa6148cd87b59261f38cf89ebfa6"
+  },
+  "text_preparation_change": {
+    "reason": "Expected construction compacted before any timing; exact63identities and content hashes unchanged",
+    "source_before": "c174bd4b5935794de103b98e24c2ca0ed8f5590db52de22cf1e568ea4c4cbe6d",
+    "source_after": "6a8e44ac986a6b53a7aacb07f660b0d7ffdaa56a3fe1573a454338900528e426",
+    "audit": "/workspace/text-discovery/compaction-audit.json"
+  }
+}

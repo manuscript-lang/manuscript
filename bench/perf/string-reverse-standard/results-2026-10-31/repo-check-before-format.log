@@ -1,0 +1,4 @@
+cargo run --release --locked -q -p ms-repo-check
+repository invariants:
+- tests/e2e/testdata/stdlib/string-reverse-standard.ms: run ms fmt
+make: *** [Makefile:41: repo-check] Error 1

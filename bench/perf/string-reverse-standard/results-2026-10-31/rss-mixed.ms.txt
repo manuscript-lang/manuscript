@@ -1,0 +1,10 @@
+import stdout from "@std/io.ms"
+
+export fn main() Int:
+    let text = "aé日😀".repeat(524288).get()
+    let expected = "😀日éa".repeat(524288).get()
+    let output = text.reverse()
+    if output != expected: return 1
+
+    let _written = stdout().write("{output.byte_length()}\n")
+    return 0

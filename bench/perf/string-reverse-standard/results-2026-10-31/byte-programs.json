@@ -1,0 +1,7 @@
+{
+  "baseline": "/workspace/reverse-std-evidence/baseline-byte",
+  "word": "/workspace/reverse-std-evidence/word-byte",
+  "reverse": "/workspace/reverse-std-evidence/reverse-byte",
+  "both": "/workspace/reverse-std-evidence/both-byte",
+  "rust": "/workspace/perf-toolchain/bytes-index-rust-target/release/bytes-index-rust"
+}

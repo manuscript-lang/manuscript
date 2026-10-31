@@ -1,0 +1,31 @@
+{
+  "case_count": 63,
+  "unchanged_bytes_and_sha256": {
+    "identities.json": "24c03963afb1e4b37297c7e6c741223bca2e211b269b21a2e029127eb1aa63c1",
+    "semantics.json": "9a62925675e245c87cbb23673640c7fd790262525c497091b38775c126117c9a"
+  },
+  "sources": {
+    "text-discovery.ms": {
+      "old_bytes": 1124385,
+      "new_bytes": 10317,
+      "old_sha256": "c174bd4b5935794de103b98e24c2ca0ed8f5590db52de22cf1e568ea4c4cbe6d",
+      "new_sha256": "6a8e44ac986a6b53a7aacb07f660b0d7ffdaa56a3fe1573a454338900528e426"
+    },
+    "text-discovery-verify.ms": {
+      "old_bytes": 1122057,
+      "new_bytes": 7989,
+      "old_sha256": "75781155f32ca6b768cb02e7bf6c21b0500d72cdb8c9a07facdb2c61b45ba371",
+      "new_sha256": "cd6198e29ebdaab3d1956804131fbca0ade0de24bd2407115a39b66a8bd40e49"
+    },
+    "text-discovery.rs": {
+      "old_bytes": 1130229,
+      "new_bytes": 16952,
+      "old_sha256": "26ac7385cb5dacfd8d2a82f74e6090479eeefda2ab4d2e93ea3969406f30570b",
+      "new_sha256": "45e55d12f80531b013bb2a87de408f67f30683162f320f8c76a9ce0c93c091a7"
+    }
+  },
+  "clocked_work_changed": false,
+  "precompaction_benchmarks_executed": false,
+  "expected_construction": "shortest periodic prefix repeat with optional partial tail, before clocks",
+  "independent_expected_preservation": "full semantics.json byte identity, including all raw expected outputs and input/needle SHA256; compacted values reconstructed and asserted equal to original oracle values"
+}

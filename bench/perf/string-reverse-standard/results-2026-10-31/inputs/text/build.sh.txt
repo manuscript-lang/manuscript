@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd /workspace/text-discovery
+compiler=/workspace/byte-search-evidence/fresh-main-988/ms-compiler
+export XDG_CACHE_HOME=/workspace/text-discovery/cache
+export MS_RT_LIB=/workspace/byte-search-evidence/fresh-main-988/baseline.a
+python3 prepare.py
+/workspace/perf-toolchain/rustup/toolchains/1.99.1-x86_64-unknown-linux-gnu/bin/rustc --edition=2024 -C opt-level=3 -C overflow-checks=yes -C force-frame-pointers=yes text-discovery.rs -o text-discovery-rust
+"$compiler" build text-discovery.ms --build-type Release -o text-discovery-ms > ms-build.log 2>&1
+"$compiler" build text-discovery-verify.ms --build-type Release -o text-discovery-ms-verify > ms-verify-build.log 2>&1
+sha256sum text-discovery.rs text-discovery.ms text-discovery-verify.ms text-discovery-rust text-discovery-ms text-discovery-ms-verify identities.json semantics.json > SHA256SUMS

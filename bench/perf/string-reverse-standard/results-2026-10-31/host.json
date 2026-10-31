@@ -1,0 +1,8 @@
+{
+  "system": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "cpu": "AMD EPYC 9V45 96-Core Processor",
+  "logical_cpus_exposed": 5,
+  "measurement_affinity": [
+    0
+  ]
+}

@@ -1,0 +1,5 @@
+RUN string-reverse-standard.ms::reversal keeps scalar order across UTF-8 widths and combining sequences
+PASS string-reverse-standard.ms::reversal keeps scalar order across UTF-8 widths and combining sequences
+RUN string-reverse-standard.ms::reversal handles byte boundaries with Unicode at either end
+PASS string-reverse-standard.ms::reversal handles byte boundaries with Unicode at either end
+2 tests, 0 failed

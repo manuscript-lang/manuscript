@@ -1,0 +1,160 @@
+   Compiling zeroize v1.9.1
+   Compiling subtle v2.6.1
+   Compiling rand_core v0.10.1
+   Compiling typenum v1.20.1
+   Compiling libc v0.2.191
+   Compiling cmov v0.5.4
+   Compiling memchr v2.8.3
+   Compiling ctutils v0.4.3
+   Compiling autocfg v1.5.1
+   Compiling const-oid v0.10.2
+   Compiling hybrid-array v0.4.15
+   Compiling num-traits v0.2.19
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling tinyvec v1.13.3
+   Compiling ms-rt-abi v0.1.0 (/workspace/reverse-std-perf/crates/ms-rt-abi)
+   Compiling cfg-if v1.0.5
+   Compiling ms-rt-hot v0.1.0 (/workspace/reverse-std-perf/crates/ms-rt-hot)
+   Compiling mio v1.2.4
+   Compiling unicode-normalization v0.1.26
+   Compiling proc-macro2 v1.0.107
+   Compiling digest v0.11.3
+   Compiling ms-rt v0.1.0 (/workspace/reverse-std-perf/crates/ms-rt)
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling cpubits v0.1.1
+   Compiling base64ct v1.8.3
+   Compiling cpufeatures v0.3.1
+   Compiling crypto-bigint v0.7.5
+   Compiling syn v2.0.119
+   Compiling pem-rfc7468 v1.0.0
+   Compiling der v0.8.2
+   Compiling spki v0.8.1
+   Compiling ff v0.14.0
+   Compiling hmac v0.13.0
+   Compiling find-msvc-tools v0.1.15
+   Compiling shlex v2.0.1
+   Compiling group v0.14.0
+   Compiling cc v1.9.0
+   Compiling pkcs8 v0.11.0
+   Compiling syn v3.0.9
+   Compiling signature v3.0.0
+   Compiling base16ct v1.0.0
+   Compiling sec1 v0.8.1
+   Compiling ring v0.17.14
+   Compiling hkdf v0.13.0
+   Compiling num-integer v0.1.47
+   Compiling inout v0.2.5
+   Compiling num-conv v0.2.2
+   Compiling thiserror v2.0.21
+   Compiling minimal-lexical v0.2.1
+   Compiling semver v1.0.28
+   Compiling time-core v0.1.9
+   Compiling rustc_version v0.4.1
+   Compiling time-macros v0.2.32
+   Compiling nom v7.1.3
+   Compiling thiserror-impl v2.0.21
+   Compiling elliptic-curve v0.14.1
+   Compiling primefield v0.14.0
+   Compiling synstructure v0.13.2
+   Compiling sha2 v0.11.1
+   Compiling deranged v0.5.9
+   Compiling powerfmt v0.2.1
+   Compiling asn1-rs-derive v0.6.0
+   Compiling rusticata-macros v4.1.0
+   Compiling time v0.3.55
+   Compiling wnaf v0.14.1
+   Compiling curve25519-dalek v5.0.0
+   Compiling displaydoc v0.2.7
+   Compiling cipher v0.5.2
+   Compiling asn1-rs-impl v0.2.0
+   Compiling rfc6979 v0.6.0
+   Compiling getrandom v0.2.17
+   Compiling untrusted v0.9.0
+   Compiling rustix v1.1.5
+   Compiling simd-adler32 v0.3.10
+   Compiling adler2 v2.0.1
+   Compiling miniz_oxide v0.9.1
+   Compiling ecdsa v0.17.0
+   Compiling asn1-rs v0.7.2
+   Compiling primeorder v0.14.0
+   Compiling curve25519-dalek-derive v0.1.1
+   Compiling ms-std-path v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-path)
+   Compiling universal-hash v0.6.1
+   Compiling rustls-pki-types v1.15.1
+   Compiling crc32fast v1.5.2
+   Compiling oid-registry v0.8.1
+   Compiling linux-raw-sys v0.12.1
+   Compiling getrandom v0.4.3
+   Compiling bitflags v2.13.2
+   Compiling polyval v0.7.3
+   Compiling ms-std-fs v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-fs)
+   Compiling num-bigint v0.4.8
+   Compiling aho-corasick v1.1.5
+   Compiling rustls v0.23.46
+   Compiling httparse v1.10.1
+   Compiling regex-syntax v0.8.11
+   Compiling der-parser v10.0.0
+   Compiling regex-automata v0.4.18
+   Compiling rustls-webpki v0.103.15
+   Compiling ms-std-io v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-io)
+   Compiling ghash v0.6.0
+   Compiling aes v0.9.3
+   Compiling ctr v0.10.1
+   Compiling aead v0.6.1
+   Compiling num-bigint v0.5.1
+   Compiling ed25519 v3.0.0
+   Compiling pkcs1 v0.8.0-rc.5
+   Compiling crypto-primes v0.7.2
+   Compiling keccak v0.2.2
+   Compiling lazy_static v1.5.1
+   Compiling data-encoding v2.11.1
+   Compiling jiff-tzdb v0.1.9
+   Compiling psl-types v2.0.11
+   Compiling jiff-core v0.1.1
+   Compiling openssl-probe v0.2.1
+   Compiling sponge-cursor v0.1.0
+   Compiling once_cell v1.21.4
+   Compiling sha3 v0.12.0
+   Compiling rustls-native-certs v0.8.5
+   Compiling jiff v0.2.38
+   Compiling psl v2.1.245
+   Compiling x509-parser v0.18.1
+   Compiling rsa v0.10.0-rc.19
+   Compiling ed25519-dalek v3.0.0
+   Compiling regex v1.13.1
+   Compiling aes-gcm v0.11.1
+   Compiling flate2 v1.1.10
+   Compiling ms-std-process v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-process)
+   Compiling x25519-dalek v3.0.0
+   Compiling p384 v0.14.0
+   Compiling p521 v0.14.0
+   Compiling p256 v0.14.0
+   Compiling ms-std-compress v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-compress)
+   Compiling cbc v0.2.1
+   Compiling ms-std-json v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-json)
+   Compiling sha1 v0.11.0
+   Compiling md-5 v0.11.0
+   Compiling socket2 v0.6.5
+   Compiling base64 v0.23.1
+   Compiling ms-std-crypto v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-crypto)
+   Compiling ms-std-log v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-log)
+   Compiling ms-std-archive v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-archive)
+   Compiling ms-std-system v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-system)
+   Compiling ms-std-regex v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-regex)
+   Compiling ms-std-time v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-time)
+   Compiling ms-std-decimal v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-decimal)
+   Compiling ms-std-bigint v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-bigint)
+   Compiling ms-std-net v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-net)
+   Compiling ms-std-random v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-random)
+   Compiling ms-std-terminal v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-terminal)
+   Compiling ms-std-url v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-url)
+   Compiling ms-std-encoding v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-encoding)
+   Compiling ms-std-html v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-html)
+   Compiling ms-std-math v0.1.0 (/workspace/reverse-std-perf/crates/ms-std-math)
+   Compiling ms-native v0.1.0 (/workspace/reverse-std-perf/crates/ms-native)
+    Finished `release` profile [optimized] target(s) in 34.86s
+   Compiling ms-rt-hot v0.1.0 (/workspace/reverse-std-perf/crates/ms-rt-hot)
+    Finished `release` profile [optimized] target(s) in 0.09s
+/workspace/reverse-std-perf/crates/xtask/../../target/ms-native/libms_native.a

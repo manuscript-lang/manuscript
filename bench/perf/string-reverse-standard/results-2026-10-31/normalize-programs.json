@@ -1,0 +1,6 @@
+{
+  "baseline": "/workspace/reverse-std-evidence/baseline-normalize",
+  "word": "/workspace/reverse-std-evidence/word-normalize",
+  "reverse": "/workspace/reverse-std-evidence/reverse-normalize",
+  "both": "/workspace/reverse-std-evidence/both-normalize"
+}
