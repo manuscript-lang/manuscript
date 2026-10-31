@@ -441,9 +441,10 @@ impl Expr {
         }
     }
 
-    /// A written `match`, not the Bool match an `if` expression stands for.
+    /// A written `match`, not the Bool match an `if` expression stands for or
+    /// the match an optional chain `a?.b` stands for.
     pub fn is_written_match(&self) -> bool {
-        matches!(&self.kind, ExprKind::Match { arms, .. } if !arms.first().is_some_and(|a| a.from_if))
+        matches!(&self.kind, ExprKind::Match { arms, .. } if !arms.first().is_some_and(|a| a.from_if || a.chain))
     }
 }
 
