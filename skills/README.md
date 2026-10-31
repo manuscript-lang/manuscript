@@ -14,6 +14,9 @@ a simplification pass for design proposals.
 marketing, and reader-journey improvements. [Documentation](documentation/SKILL.md)
 owns the shared authoring and publication rules, including narrow edits.
 
+[Bug bash](bug-bash/SKILL.md) and [perf bash](perf-bash/SKILL.md) are the repeated
+probe-fix-file and measure-fix-record workflows.
+
 ## Maintain the catalog
 
 - Each skill needs `SKILL.md` with `name` and `description` frontmatter, a concrete trigger, repository entry points, and applicable checks. Match the folder and frontmatter names.

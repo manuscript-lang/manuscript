@@ -27,6 +27,8 @@ Manuscript is a statically typed, natively compiled language implemented in Rust
 | Writing or revising a design proposal | [author-proposal](skills/author-proposal/SKILL.md) |
 | Opening or updating a pull request | [create-pr](skills/create-pr/SKILL.md) |
 | Filing or rewriting an issue | [create-issue](skills/create-issue/SKILL.md) |
+| "Bug bash" of an area | [bug-bash](skills/bug-bash/SKILL.md), then affected domain skills |
+| "Perf bash", perf gaps and perf issues | [perf-bash](skills/perf-bash/SKILL.md) |
 
 Syntax changes usually need language-design, compiler, tooling, and documentation. Standard API changes usually need runtime, tooling, and documentation. Select only domains the change reaches.
 
