@@ -22,7 +22,6 @@ test "an element kept past the loop is an independent copy":
     var kept: List[String] = []
     for item in queue:
         kept.append(item.clone())
-
     queue.dequeue()
     queue.enqueue("later")
     kept | try expect_equal(["q-0", "q-1", "q-2"])
