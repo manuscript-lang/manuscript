@@ -14,8 +14,11 @@ type Room:
 fn keep(var d: Door) Door:
     return d  # error: a resource cannot be cloned, so change it in place
 
-fn field(r: Room) List[Door]:
-    return [r.door]  # error: a resource cannot be cloned; use `r.door` in place
+fn field(rooms: List[Room]) List[Door]:
+    var ys: List[Door] = []
+    for r in rooms:
+        ys.append(r.door)  # error: a resource cannot be cloned, and it leaves `r` only when `r` is a `let` or a parameter
+    return ys
 
 fn looped() Int:
     let xs = [Door(1)]

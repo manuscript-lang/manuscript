@@ -36,6 +36,11 @@ impl Classifier {
         Classifier { closeable }
     }
 
+    /// Whether `t` has a `Closeable` implementation of its own, which runs on the whole value.
+    pub fn closes_itself(&self, t: &Ty) -> bool {
+        self.closeable.contains(&t.id)
+    }
+
     /// The class of values of `t`.
     pub fn class(&self, t: &Ty) -> Class {
         self.class_in(t, &mut Vec::new())
@@ -76,9 +81,23 @@ impl Classifier {
         } else if t.is_std("Bytes") || t.is_std("HttpHeaders") || crate::effects::is_text_builder(t)
         {
             Class::Move
-        } else {
-            // Immutable value natives and shared handles.
+        } else if [
+            "Decimal",
+            "ListBuilder",
+            "MapBuilder",
+            "SetBuilder",
+            "StringBuilder",
+            "BytesBuilder",
+        ]
+        .iter()
+        .any(|n| t.is_std(n))
+        {
+            // Plain words in the runtime, so a copy is a bit copy: `Decimal` is `repr(C)` data.
+            // The builders are shared handles until they become owned values.
             Class::Copy
+        } else {
+            // A native owns its storage; `.clone()` is its explicit duplicate.
+            Class::Move
         }
     }
 

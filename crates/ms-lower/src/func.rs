@@ -869,7 +869,9 @@ impl<'a> FnLower<'a> {
                     let v = self.local_get(&l);
                     self.close_discarded_kind(&kind, v);
                 }
-                if self.needs_drop(l.ty) {
+                if self.closers.get(uid).is_some_and(|c| c.split.is_some()) {
+                    self.release_split(*uid);
+                } else if self.needs_drop(l.ty) {
                     let v = self.local_take(&l);
                     self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
                 }

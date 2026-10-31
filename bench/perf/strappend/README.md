@@ -2,6 +2,18 @@
 
 `StringBuilder.append` against Rust's `String::push_str` (glibc, `rustc -C opt-level=3`), building about 1 MB from pieces of 4 B to 8 KiB. Manuscript is the default Release build (LLVM). `MS=ms sh bench/perf/strappend/run.sh 5` prints the best of N runs (each the best of 40 builds) in microseconds. It also builds `List[Int]`s of 10K to 1M items with `append` in a `while` loop against `Vec::push`. The `Platform benchmarks` workflow (run it by hand on a branch) runs the allocator tests and this table on Linux, macOS and Windows.
 
+## 2026-10-31 (Linux): loop-carried slot
+
+Same machine, release build of this branch against `main` (1f30c7157), `run.sh 5`. The `loopslot` pass keeps a loop-carried owned buffer in one slot made at function entry, so an append calls on it directly instead of moving it into a slot and back on every pass. Microseconds, Manuscript only.
+
+| piece | main | loopslot |
+|---|---|---|
+| 4 B | 757-819 | 742 |
+| 16 B | 162 | 137 |
+| 64 B | 53-58 | 44 |
+| 256 B | 26-28 | 25 |
+| 1 KiB, 8 KiB | 22 | 21, 17 |
+
 ## 2026-10-30 (Linux): owned builders
 
 Same machine as 2026-10-27, release build of this branch against `main` (b7ee9710), `run.sh 9`, three runs back to back. `StringBuilder` is an owned byte buffer with a consuming `build()` instead of a shared handle, so an append no longer loads a sealed flag or goes through the shared cell. Microseconds, Manuscript only (Rust is unchanged at 22-77 us for these sizes).

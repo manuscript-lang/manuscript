@@ -136,6 +136,18 @@ pub unsafe extern "C-unwind" fn msrt_retain(o: *mut Obj) {
     unsafe { retain(o) }
 }
 
+/// Returns a second owned reference to the same object: the clone of a shared native handle.
+///
+/// # Safety
+/// `o` must be a live object.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_obj_share(o: *const Obj) -> *mut Obj {
+    let o = o.cast_mut();
+    // SAFETY: forwarded contract; the retain makes the returned reference an owner.
+    unsafe { retain(o) };
+    o
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_release(o: *mut Obj) {
     // SAFETY: forwarded contract.

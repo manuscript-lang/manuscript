@@ -1269,6 +1269,23 @@ pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
     }
 }
 
+unsafe extern "C-unwind" fn cleanup_nothing(_: *mut u8) {}
+
+/// Turns the action behind `handle` into one that does nothing, leaving newer actions in place.
+/// The entry stays on the stack until a `msrt_cleanup_discard` of it or of an older one pops it.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_cleanup_cancel(handle: usize) {
+    // SAFETY: single threaded access to the cleanup stack.
+    unsafe {
+        let stack = &mut *CLEANUPS.ptr();
+        if handle > 0
+            && let Some(entry) = stack.get_mut(handle - 1)
+        {
+            *entry = (cleanup_nothing as CleanupFn as usize, 0);
+        }
+    }
+}
+
 /// Whether the cleanup stack is running because a cancellation or a fault leaves a guarded task.
 /// Generated drop cleanups act only then: an unguarded fault ends the process and process exit
 /// needs no frees.

@@ -50,6 +50,7 @@ msrt_fault_div_overflow(a: i64, b: i64) -> !
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize
 msrt_cleanup_run(handle: usize)
 msrt_cleanup_discard(handle: usize)
+msrt_cleanup_cancel(handle: usize)
 msrt_unwind_drops() -> u8
 msrt_cancelled() -> !
 msrt_guard_call( code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8, msg_out: *mut StrVal, ) -> u8
@@ -127,6 +128,7 @@ msrt_realloc(p: *mut u8, size: usize) -> *mut u8
 msrt_free(p: *mut u8)
 msrt_retain(o: *mut Obj)
 msrt_release(o: *mut Obj)
+msrt_obj_share(o: *const Obj) -> *mut Obj
 msrt_drop_slow(o: *mut Obj)
 msrt_str_count(kind: i64, cap: i64)
 msrt_process_on_exit(hook: extern "C" fn())

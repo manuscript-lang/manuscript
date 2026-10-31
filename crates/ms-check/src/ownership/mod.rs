@@ -149,6 +149,9 @@ pub struct CallableOwnership {
     /// member expression. The value is still copied where it is consumed; the rest of the binding
     /// is cleaned up as before.
     pub partial_moves: HashMap<NodeId, Place>,
+    /// The part of `partial_moves` that are resources, by root binding: lowering moves these
+    /// without copying and closes the rest of the binding around the hole.
+    pub resource_moves: HashMap<usize, HashMap<NodeId, Vec<Name>>>,
     /// Resource bindings that nothing takes: lowering closes them when their scope ends.
     pub implicit_closes: HashSet<usize>,
     /// For a closed resource binding that is also moved on some paths: the name expressions
@@ -181,6 +184,8 @@ pub struct Ownership {
     pub closes: HashSet<usize>,
     /// Name expressions that move a closed resource binding, by binding.
     pub close_moves: HashMap<usize, HashSet<NodeId>>,
+    /// Resource fields moved out of an owned binding, by binding and member node.
+    pub resource_moves: HashMap<usize, HashMap<NodeId, Vec<Name>>>,
     /// Payload bindings of a consumed match scrutinee that some path moves out.
     pub moved_payloads: HashSet<usize>,
     /// Calls bound with `var` as a mutable borrow, by module file and node: the fields from the
@@ -407,6 +412,7 @@ impl Hir<'_> {
         let mut closes = HashSet::new();
         let mut close_moves = HashMap::new();
         let mut moved_payloads = HashSet::new();
+        let mut resource_moves = HashMap::new();
         let mut getters = HashMap::new();
         let mut lenders = HashSet::new();
         let mut borrowed_captures = HashSet::new();
@@ -432,6 +438,12 @@ impl Hir<'_> {
             closes.extend(out.facts.implicit_closes.iter().copied());
             close_moves.extend(out.facts.close_moves.iter().map(|(k, v)| (*k, v.clone())));
             moved_payloads.extend(out.facts.moved_payloads.iter().copied());
+            resource_moves.extend(
+                out.facts
+                    .resource_moves
+                    .iter()
+                    .map(|(k, v)| (*k, v.clone())),
+            );
             if c.func.func().is_some_and(|f| f.result_ref) && !out.summary.result.owned {
                 lenders.insert((c.module.file, c.id()));
             }
@@ -457,6 +469,7 @@ impl Hir<'_> {
             borrows,
             closes,
             close_moves,
+            resource_moves,
             moved_payloads,
             getters,
             lenders,

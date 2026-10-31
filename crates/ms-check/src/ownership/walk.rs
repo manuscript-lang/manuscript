@@ -2332,6 +2332,15 @@ impl Walker<'_> {
                     // A method used as a value; calls take their receiver apart instead.
                     self.function_value_copies(e, m.module, &func);
                 }
+                // A generic function used as a value with its type arguments (`keep[T]`).
+                if let ExprKind::Apply { .. } = &e.kind
+                    && !self.callees.contains(&e.id)
+                    && let Resolution::Function(sym) = self.cx.m.resolution(e)
+                    && let Some(decl) = sym.decl.clone()
+                {
+                    let func = crate::syntax::FuncRef::of_decl(decl);
+                    self.function_value_copies(e, sym.module, &func);
+                }
                 self.projection(e, d)
             }
             ExprKind::List(items) => items.iter().for_each(|i| self.expr(i, Demand::Consume)),
@@ -2608,7 +2617,7 @@ impl Walker<'_> {
             self.error(
                 e.pos,
                 format!(
-                    "cannot move the resource `{0}` out of `{1}`: `{1}` still closes its parts, and a resource cannot be cloned; use `{0}` in place, or move the whole `{1}`",
+                    "cannot move the resource `{0}` out of `{1}`: a resource cannot be cloned, and it leaves `{1}` only when `{1}` is a `let` or a parameter and no type on the path has a `close` of its own; use `{0}` in place, or move the whole `{1}`",
                     info.text, info.root.name
                 ),
             );
@@ -2647,7 +2656,7 @@ impl Walker<'_> {
         let own_place = matches!(info.resolved.as_slice(), [only] if only.root == root.uid);
         if !owner
             || !own_place
-            || class != Class::Move
+            || class == Class::Copy
             || info.through_ref.is_some()
             || borrows(&root.ty)
             || borrows(&self.cx.m.ty(e))
@@ -2656,14 +2665,24 @@ impl Walker<'_> {
             return false;
         }
         // Only fields: an element of a collection stays where it is.
-        if self.field_path(e).is_none() {
+        let Some(path) = self.field_path(e) else {
+            return false;
+        };
+        // A resource moves without a copy: only a `let` or a parameter, whose cleanup lowering
+        // splits around the hole, and never a type parameter or a part of a closure capture.
+        let resource = class == Class::Resource;
+        if resource
+            && (!matches!(meta.role, Role::Let | Role::Parameter)
+                || meta.perm != Perm::Immutable
+                || self.cx.m.ty(e).kind == Kind::Variable)
+        {
             return false;
         }
         // A type that closes itself would close a record with a hole in it.
         let mut at = e;
         while let ExprKind::Member { left, .. } = &at.kind {
             let holder = self.cx.m.ty(left);
-            if self.cx.classes.class(&holder) == Class::Resource {
+            if self.cx.classes.closes_itself(&holder) {
                 return false;
             }
             at = left;
@@ -2694,6 +2713,26 @@ impl Walker<'_> {
         self.record(info.root_node, &root, Access::Borrow);
         if meta_is_parameter(self, root.uid) {
             self.consumed.insert(root.uid);
+        }
+        if resource {
+            let at = self.facts.resource_moves.entry(root.uid).or_default();
+            // The release at scope end tests one flag per moved place, so a place and a part of
+            // it cannot both be moved.
+            let clash = at.values().find(|o| {
+                let n = o.len().min(path.len());
+                o[..n] == path[..n] && o.len() != path.len()
+            });
+            if clash.is_some() {
+                self.error(
+                    e.pos,
+                    format!(
+                        "`{0}` and a part of it are both moved out of `{1}`: move the same field everywhere, or move the whole `{1}`",
+                        info.text, root.name
+                    ),
+                );
+                return true;
+            }
+            at.insert(e.id, path);
         }
         self.facts
             .partial_moves
@@ -2736,6 +2775,7 @@ impl Walker<'_> {
                 continue;
             };
             let op = decl.name();
+            self.bound_copies(e, &format!("{src}'s `{op}`"), &summary.copies, &bound);
             let lent: Vec<Name> = ops
                 .iter()
                 .filter(|o| o.name == op)
@@ -2759,6 +2799,47 @@ impl Walker<'_> {
                 } else {
                     self.note_copied(&t);
                 }
+            }
+        }
+    }
+
+    /// `src` satisfies the interface `contract` (a conversion, or a type argument bound by it): an
+    /// implementation that copies values of one of its type parameters copies whatever `src`
+    /// binds it to, so a resource there is rejected, and a type parameter passes the duty on.
+    fn implementation_copies(&mut self, e: &Expr, src: &Ty, contract: &Ty) {
+        for m in self.cx.methods {
+            let (Some(c), Some(decl)) = (&m.contract, &m.decl) else {
+                continue;
+            };
+            if c.id != contract.id {
+                continue;
+            }
+            let mut bound = Subst::new();
+            if !unify(&m.receiver, src, &variable_set(&m.variables), &mut bound) {
+                continue;
+            }
+            let Some(summary) = self.cx.summaries.get(&(m.module, decl.id())) else {
+                continue;
+            };
+            let what = format!("{src}'s `{}`", decl.name());
+            self.bound_copies(e, &what, &summary.copies, &bound);
+        }
+    }
+
+    /// Reports each copied type parameter in `copies` that `bound` binds to a resource, and
+    /// records the others as copies of this callable's own type parameters.
+    fn bound_copies(&mut self, e: &Expr, what: &str, copies: &[Name], bound: &Subst) {
+        for v in copies {
+            let Some(t) = bound.get(v).cloned() else {
+                continue;
+            };
+            if self.cx.classes.class(&t) == Class::Resource {
+                self.error(
+                    e.pos,
+                    format!("{what} copies values of a type parameter, which here is the resource `{t}`: each copy would be closed; pass values that are not resources, or move the resources out first"),
+                );
+            } else {
+                self.note_copied(&t);
             }
         }
     }
@@ -2811,9 +2892,6 @@ impl Walker<'_> {
             vars = declared.variables.clone();
             receiver = Some(declared.receiver.clone());
         }
-        if summary.copies.is_empty() {
-            return;
-        }
         let copies = summary.copies.clone();
         let mut var_types = vars;
         if let Some(r) = &receiver {
@@ -2835,6 +2913,15 @@ impl Walker<'_> {
             };
             if let Some(p) = fty.params.iter().find(|p| p.name == label) {
                 unify(&p.ty, &cx.m.ty(&a.value), &vars, &mut bound);
+            }
+        }
+        // A type argument bound by an interface brings that interface's implementations along.
+        for v in &var_types {
+            let Some(t) = bound.get(&v.id).cloned() else {
+                continue;
+            };
+            for b in v.bounds() {
+                self.implementation_copies(e, &t, &b);
             }
         }
         let name = self.call_name(callee);
