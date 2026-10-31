@@ -2332,6 +2332,15 @@ impl Walker<'_> {
                     // A method used as a value; calls take their receiver apart instead.
                     self.function_value_copies(e, m.module, &func);
                 }
+                // A generic function used as a value with its type arguments (`keep[T]`).
+                if let ExprKind::Apply { .. } = &e.kind
+                    && !self.callees.contains(&e.id)
+                    && let Resolution::Function(sym) = self.cx.m.resolution(e)
+                    && let Some(decl) = sym.decl.clone()
+                {
+                    let func = crate::syntax::FuncRef::of_decl(decl);
+                    self.function_value_copies(e, sym.module, &func);
+                }
                 self.projection(e, d)
             }
             ExprKind::List(items) => items.iter().for_each(|i| self.expr(i, Demand::Consume)),
@@ -2736,6 +2745,7 @@ impl Walker<'_> {
                 continue;
             };
             let op = decl.name();
+            self.bound_copies(e, &format!("{src}'s `{op}`"), &summary.copies, &bound);
             let lent: Vec<Name> = ops
                 .iter()
                 .filter(|o| o.name == op)
@@ -2759,6 +2769,47 @@ impl Walker<'_> {
                 } else {
                     self.note_copied(&t);
                 }
+            }
+        }
+    }
+
+    /// `src` satisfies the interface `contract` (a conversion, or a type argument bound by it): an
+    /// implementation that copies values of one of its type parameters copies whatever `src`
+    /// binds it to, so a resource there is rejected, and a type parameter passes the duty on.
+    fn implementation_copies(&mut self, e: &Expr, src: &Ty, contract: &Ty) {
+        for m in self.cx.methods {
+            let (Some(c), Some(decl)) = (&m.contract, &m.decl) else {
+                continue;
+            };
+            if c.id != contract.id {
+                continue;
+            }
+            let mut bound = Subst::new();
+            if !unify(&m.receiver, src, &variable_set(&m.variables), &mut bound) {
+                continue;
+            }
+            let Some(summary) = self.cx.summaries.get(&(m.module, decl.id())) else {
+                continue;
+            };
+            let what = format!("{src}'s `{}`", decl.name());
+            self.bound_copies(e, &what, &summary.copies, &bound);
+        }
+    }
+
+    /// Reports each copied type parameter in `copies` that `bound` binds to a resource, and
+    /// records the others as copies of this callable's own type parameters.
+    fn bound_copies(&mut self, e: &Expr, what: &str, copies: &[Name], bound: &Subst) {
+        for v in copies {
+            let Some(t) = bound.get(v).cloned() else {
+                continue;
+            };
+            if self.cx.classes.class(&t) == Class::Resource {
+                self.error(
+                    e.pos,
+                    format!("{what} copies values of a type parameter, which here is the resource `{t}`: each copy would be closed; pass values that are not resources, or move the resources out first"),
+                );
+            } else {
+                self.note_copied(&t);
             }
         }
     }
@@ -2811,9 +2862,6 @@ impl Walker<'_> {
             vars = declared.variables.clone();
             receiver = Some(declared.receiver.clone());
         }
-        if summary.copies.is_empty() {
-            return;
-        }
         let copies = summary.copies.clone();
         let mut var_types = vars;
         if let Some(r) = &receiver {
@@ -2835,6 +2883,15 @@ impl Walker<'_> {
             };
             if let Some(p) = fty.params.iter().find(|p| p.name == label) {
                 unify(&p.ty, &cx.m.ty(&a.value), &vars, &mut bound);
+            }
+        }
+        // A type argument bound by an interface brings that interface's implementations along.
+        for v in &var_types {
+            let Some(t) = bound.get(&v.id).cloned() else {
+                continue;
+            };
+            for b in v.bounds() {
+                self.implementation_copies(e, &t, &b);
             }
         }
         let name = self.call_name(callee);
