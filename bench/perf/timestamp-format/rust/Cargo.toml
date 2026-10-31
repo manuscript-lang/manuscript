@@ -1,0 +1,17 @@
+[package]
+name = "timestamp-format-control"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+ms-std-time = { path = "../../../../crates/ms-std-time" }
+
+[profile.release]
+panic = "abort"
+overflow-checks = true
+
+[profile.release.package."*"]
+overflow-checks = false
