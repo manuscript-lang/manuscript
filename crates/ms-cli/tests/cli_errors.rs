@@ -62,6 +62,16 @@ fn init_next_command_for_hyphen_directory_is_a_file_operand() {
 }
 
 #[test]
+fn init_extra_argument_error_reads_cause_then_fix() {
+    let (status, err) = ms(&["init", "a", "b"]);
+    assert_eq!(status, 2);
+    assert!(
+        err.contains("unexpected init argument: b; ms init takes"),
+        "{err}"
+    );
+}
+
+#[test]
 fn source_only_commands_reject_program_arguments_before_discovery() {
     for command in ["inspect", "diagram"] {
         for extra in [&["extra"][..], &["--", "extra"], &["--", "--help"]] {
