@@ -13,6 +13,7 @@ import HttpServerOptions from "@std/http.ms"
 import IoError from "@std/io.ms"
 import Timestamp from "@std/time.ms"
 import WorkerGroup, worker_channel from "@std/workers.ms"
+import msrt_url_encode_component from "@std/internal/net.ms"
 
 extern fn msrt_net_ip_address_text(value: IpAddress) String
 
@@ -41,8 +42,6 @@ extern fn msrt_tls_verify_certificates(
 ) Unit!TlsError
 
 extern fn msrt_url_decode_component(text: String) String!UrlError
-
-extern fn msrt_url_encode_component(text: String) String
 
 extern fn msrt_url_format(value: Url) String!UrlError
 

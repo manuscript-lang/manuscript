@@ -151,7 +151,7 @@ impl SseDecoder for Decoder:
         if start < total:
             self.carriage = false
 
-            let step = hold(var self, chunk.slice(start, total).get())
+            let step = self.hold(chunk.slice(start, total).get())
 
             if step.is_error():
                 let failure = step.err().clone()
@@ -175,15 +175,49 @@ impl SseDecoder for Decoder:
     fn retry() Int?:
         return self.retry_ms
 
-# Buffers the unterminated tail of a chunk as part of the line being assembled.
-fn hold(var decoder: Decoder, segment: Bytes) Unit!SseError:
-    decoder.line_bytes += segment.length()
-    if exceeds(decoder.line_bytes, decoder.limits.max_line_bytes): return error(
-        SseError.LimitExceeded
-    )
+impl Decoder:
+    # Buffers the unterminated tail of a chunk as part of the line being assembled.
+    var fn hold(segment: Bytes) Unit!SseError:
+        self.line_bytes += segment.length()
+        if exceeds(self.line_bytes, self.limits.max_line_bytes): return error(
+            SseError.LimitExceeded
+        )
 
-    decoder.line.append_bytes(segment)
-    return ok(unit)
+        self.line.append_bytes(segment)
+        return ok(unit)
+
+    var fn apply(line: String) Unit:
+        if line.starts_with("data:"):
+            self.data.append(value_after(line, 5, line.starts_with("data: ")))
+        else if line.starts_with("event:"):
+            self.event_type = value_after(line, 6, line.starts_with("event: "))
+        else if line.starts_with("id:"):
+            self.identify(value_after(line, 3, line.starts_with("id: ")))
+        else if line.starts_with("retry:"):
+            self.reconnect(value_after(line, 6, line.starts_with("retry: ")))
+        else: self.apply_other(line)
+
+    # Lines without a colon name a field with an empty value; other names are ignored.
+    var fn apply_other(line: String) Unit:
+        if line.index_of(":").is_some(): return unit
+
+        if line == "data": self.data.append("")
+        else if line == "event": self.event_type = ""
+        else if line == "id": self.identify("")
+        else if line == "retry": self.reconnect("")
+
+    # An ID containing NUL is ignored, so it neither replaces nor clears the last ID.
+    var fn identify(value: String) Unit:
+        if value.to_bytes().contains("\u{0}".to_bytes()): return unit
+
+        self.last_id = value
+
+    # Only ASCII digits form a retry time; overflow and signs are ignored.
+    var fn reconnect(value: String) Unit:
+        if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return unit
+
+        let milliseconds = value.parse_int()
+        if milliseconds.is_some(): self.retry_ms = milliseconds
 
 # Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any bytes held from earlier chunks.
 fn complete(
@@ -196,7 +230,7 @@ fn complete(
 
         return end_line(var decoder, chunk, start, end, var events)
 
-    try hold(var decoder, chunk.slice(start, end).get())
+    try decoder.hold(chunk.slice(start, end).get())
 
     let joined = decoder.line.drain()
     decoder.line_bytes = 0
@@ -224,47 +258,14 @@ fn end_line(
     )
 
     decoder.open_block = true
-    apply(var decoder, line)
+    decoder.apply(line)
     return ok(unit)
-
-fn apply(var decoder: Decoder, line: String) Unit:
-    if line.starts_with("data:"):
-        decoder.data.append(value_after(line, 5, line.starts_with("data: ")))
-    else if line.starts_with("event:"):
-        decoder.event_type = value_after(line, 6, line.starts_with("event: "))
-    else if line.starts_with("id:"):
-        identify(var decoder, value_after(line, 3, line.starts_with("id: ")))
-    else if line.starts_with("retry:"):
-        reconnect(var decoder, value_after(line, 6, line.starts_with("retry: ")))
-    else: apply_other(var decoder, line)
 
 # The value after the colon, skipping one leading space when `spaced`.
 fn value_after(line: String, colon_end: Int, spaced: Bool) String:
     if spaced: return line.slice(colon_end + 1, line.length()).get()
 
     return line.slice(colon_end, line.length()).get()
-
-# Lines without a colon name a field with an empty value; other names are ignored.
-fn apply_other(var decoder: Decoder, line: String) Unit:
-    if line.index_of(":").is_some(): return unit
-
-    if line == "data": decoder.data.append("")
-    else if line == "event": decoder.event_type = ""
-    else if line == "id": identify(var decoder, "")
-    else if line == "retry": reconnect(var decoder, "")
-
-# An ID containing NUL is ignored, so it neither replaces nor clears the last ID.
-fn identify(var decoder: Decoder, value: String) Unit:
-    if value.to_bytes().contains("\u{0}".to_bytes()): return unit
-
-    decoder.last_id = value
-
-# Only ASCII digits form a retry time; overflow and signs are ignored.
-fn reconnect(var decoder: Decoder, value: String) Unit:
-    if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return unit
-
-    let milliseconds = value.parse_int()
-    if milliseconds.is_some(): decoder.retry_ms = milliseconds
 
 fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Unit:
     if decoder.data.length() > 0:

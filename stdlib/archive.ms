@@ -1,5 +1,6 @@
 import Bytes from "@std/bytes.ms"
 import ReadStream from "@std/io.ms"
+import msstd_archive_compress_stream, msstd_archive_decompress_stream from "@std/internal/archive.ms"
 
 extern fn msrt_archive_pack(
     entries: List[ArchiveEntry],
@@ -19,18 +20,6 @@ extern fn msrt_compress_compress(
     level: Int,
     max_bytes: Int?
 ) Bytes!CompressionError
-
-extern fn msstd_archive_compress_stream(
-    format: String,
-    input: ReadStream,
-    level: Int
-) ReadStream
-
-extern fn msstd_archive_decompress_stream(
-    format: String,
-    input: ReadStream,
-    max_bytes: Int?
-) ReadStream
 
 extern fn msrt_compress_decompress(
     data: Bytes,

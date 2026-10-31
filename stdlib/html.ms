@@ -1,6 +1,4 @@
-extern fn msrt_html_escape(text: String) String
-
-extern fn msrt_html_unescape(text: String) String
+import msrt_html_escape, msrt_html_unescape from "@std/internal/html.ms"
 
 extern fn msrt_html_parse(text: String, limits: HtmlLimits?) HtmlNode!HtmlError
 

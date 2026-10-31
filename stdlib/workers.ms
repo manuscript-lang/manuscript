@@ -20,28 +20,11 @@ import Closeable, Data from "@std/core.ms"
 import parse, stringify from "@std/json.ms"
 import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
-
-extern fn msrt_pipe_new() Int
-
-extern fn msrt_pipe_peer(end: Int) Int
-
-extern fn msrt_pipe_send(end: Int, message: String) Int
+import msrt_pipe_new, msrt_pipe_peer, msrt_pipe_send, msrt_pipe_send_bytes, msrt_pipe_close, msrt_worker_start, msrt_worker_end, msrt_worker_cancel, msrt_worker_wait from "@std/internal/workers.ms"
 
 extern fn msrt_pipe_receive(end: Int) String!PipeEnd
 
-extern fn msrt_pipe_send_bytes(end: Int, message: Bytes) Int
-
 extern fn msrt_pipe_receive_bytes(end: Int) Bytes!PipeEnd
-
-extern fn msrt_pipe_close(end: Int) Unit
-
-extern fn msrt_worker_start(entry: fn() Unit, end: Int) Int
-
-extern fn msrt_worker_end() Int
-
-extern fn msrt_worker_cancel(handle: Int) Unit
-
-extern fn msrt_worker_wait(handle: Int) String
 
 # Why a read from the pipe gave no message. The native side numbers these cases from 1 (1 + declaration index).
 type PipeEnd:

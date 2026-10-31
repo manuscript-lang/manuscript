@@ -89,7 +89,7 @@ export fn main() Int:
         stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
     else if operation == "float_special":
         let texts = ["Infinity", "-Infinity", "NaN"]
-        let values = [infinity(), -infinity(), nan()]
+        let values = [infinity, -infinity, nan]
         let start = monotonic()
 
         for i in 0..count:

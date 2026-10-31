@@ -3,35 +3,7 @@ import Closeable, panic from "@std/core.ms"
 import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 import Duration from "@std/time.ms"
-
-extern fn msrt_scope_new() Int
-
-extern fn msrt_scope_spawn(
-    scope: Int,
-    work: fn() Unit,
-    task_limit_ns: Int,
-    scope_limit_ns: Int
-) Int
-
-extern fn msrt_scope_contain(scope: Int) Unit
-
-extern fn msrt_scope_fault_message() String
-
-extern fn msrt_scope_started() Unit
-
-extern fn msrt_task_cancel_requested() Int
-
-extern fn msrt_scope_join(scope: Int, handle: Int, keep: Int) Int
-
-extern fn msrt_scope_wait(scope: Int) Int
-
-extern fn msrt_scope_close(scope: Int) Unit
-
-extern fn msrt_channel_token() Int
-
-extern fn msrt_channel_park(token: Int) Unit
-
-extern fn msrt_channel_post(token: Int) Unit
+import msrt_scope_new, msrt_scope_spawn, msrt_scope_contain, msrt_scope_fault_message, msrt_scope_started, msrt_task_cancel_requested, msrt_scope_join, msrt_scope_wait, msrt_scope_close, msrt_channel_token, msrt_channel_park, msrt_channel_post, msrt_obj_share from "@std/internal/tasks.ms"
 
 # Internal lifetime tracker for the group's channels; it never owns its channel leases.
 export extern type TaskChannels
@@ -43,8 +15,6 @@ impl TaskChannelLease:
     # Another holder of the same lease: the channel closes when the last holder is released.
     fn clone() TaskChannelLease:
         return msrt_obj_share(self)
-
-extern fn msrt_obj_share[T](value: T) T
 
 extern fn msrt_channel_group_new() TaskChannels
 

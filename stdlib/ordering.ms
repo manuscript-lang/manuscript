@@ -24,12 +24,12 @@ fn clamped[T: Comparable](value: T, low: T, high: T) T:
 
     return value
 
-interface IntOrder:
-    fn min(other: Int) Int
-    fn max(other: Int) Int
-    fn clamp(low: Int, high: Int) Int
+interface Ordered:
+    fn min(other: Self) Self
+    fn max(other: Self) Self
+    fn clamp(low: Self, high: Self) Self
 
-impl IntOrder for Int:
+impl Ordered for Int:
     # Returns the lesser of this value and `other`, or this value when they compare equal.
     # Example: `(3).min(2)` is `2`.
     fn min(other: Int) Int:
@@ -45,12 +45,7 @@ impl IntOrder for Int:
     fn clamp(low: Int, high: Int) Int:
         return clamped(self, low, high)
 
-interface Int8Order:
-    fn min(other: Int8) Int8
-    fn max(other: Int8) Int8
-    fn clamp(low: Int8, high: Int8) Int8
-
-impl Int8Order for Int8:
+impl Ordered for Int8:
     # Returns the lesser of this value and `other`, or this value when they compare equal.
     # Example: `(3).min(2)` is `2`.
     fn min(other: Int8) Int8:
@@ -66,12 +61,7 @@ impl Int8Order for Int8:
     fn clamp(low: Int8, high: Int8) Int8:
         return clamped(self, low, high)
 
-interface Int16Order:
-    fn min(other: Int16) Int16
-    fn max(other: Int16) Int16
-    fn clamp(low: Int16, high: Int16) Int16
-
-impl Int16Order for Int16:
+impl Ordered for Int16:
     # Returns the lesser of this value and `other`, or this value when they compare equal.
     # Example: `(3).min(2)` is `2`.
     fn min(other: Int16) Int16:
@@ -87,12 +77,7 @@ impl Int16Order for Int16:
     fn clamp(low: Int16, high: Int16) Int16:
         return clamped(self, low, high)
 
-interface Int32Order:
-    fn min(other: Int32) Int32
-    fn max(other: Int32) Int32
-    fn clamp(low: Int32, high: Int32) Int32
-
-impl Int32Order for Int32:
+impl Ordered for Int32:
     # Returns the lesser of this value and `other`, or this value when they compare equal.
     # Example: `(3).min(2)` is `2`.
     fn min(other: Int32) Int32:
@@ -108,12 +93,7 @@ impl Int32Order for Int32:
     fn clamp(low: Int32, high: Int32) Int32:
         return clamped(self, low, high)
 
-interface UInt8Order:
-    fn min(other: UInt8) UInt8
-    fn max(other: UInt8) UInt8
-    fn clamp(low: UInt8, high: UInt8) UInt8
-
-impl UInt8Order for UInt8:
+impl Ordered for UInt8:
     # Returns the lesser of this value and `other`, or this value when they compare equal.
     # Example: `(3).min(2)` is `2`.
     fn min(other: UInt8) UInt8:
@@ -129,12 +109,7 @@ impl UInt8Order for UInt8:
     fn clamp(low: UInt8, high: UInt8) UInt8:
         return clamped(self, low, high)
 
-interface UInt16Order:
-    fn min(other: UInt16) UInt16
-    fn max(other: UInt16) UInt16
-    fn clamp(low: UInt16, high: UInt16) UInt16
-
-impl UInt16Order for UInt16:
+impl Ordered for UInt16:
     # Returns the lesser of this value and `other`, or this value when they compare equal.
     # Example: `(3).min(2)` is `2`.
     fn min(other: UInt16) UInt16:
@@ -150,12 +125,7 @@ impl UInt16Order for UInt16:
     fn clamp(low: UInt16, high: UInt16) UInt16:
         return clamped(self, low, high)
 
-interface UInt32Order:
-    fn min(other: UInt32) UInt32
-    fn max(other: UInt32) UInt32
-    fn clamp(low: UInt32, high: UInt32) UInt32
-
-impl UInt32Order for UInt32:
+impl Ordered for UInt32:
     # Returns the lesser of this value and `other`, or this value when they compare equal.
     # Example: `(3).min(2)` is `2`.
     fn min(other: UInt32) UInt32:
@@ -171,12 +141,7 @@ impl UInt32Order for UInt32:
     fn clamp(low: UInt32, high: UInt32) UInt32:
         return clamped(self, low, high)
 
-interface UInt64Order:
-    fn min(other: UInt64) UInt64
-    fn max(other: UInt64) UInt64
-    fn clamp(low: UInt64, high: UInt64) UInt64
-
-impl UInt64Order for UInt64:
+impl Ordered for UInt64:
     # Returns the lesser of this value and `other`, or this value when they compare equal.
     # Example: `(3).min(2)` is `2`.
     fn min(other: UInt64) UInt64:
@@ -192,18 +157,13 @@ impl UInt64Order for UInt64:
     fn clamp(low: UInt64, high: UInt64) UInt64:
         return clamped(self, low, high)
 
-interface FloatOrder:
-    fn min(other: Float) Float
-    fn max(other: Float) Float
-    fn clamp(low: Float, high: Float) Float
-
-impl FloatOrder for Float:
+impl Ordered for Float:
     # Returns the lesser of this value and `other`, or this value when they compare equal.
     # Example: `(3).min(2)` is `2`.
     fn min(other: Float) Float:
         return lesser(self, other)
 
-    # Returns the greater of this value and `other`, or this value when they compare equal. Float orders NaN above every other value, so a NaN operand makes `max` NaN.
+    # Returns the greater of this value and `other`, or this value when they compare equal.
     # Example: `(3).max(2)` is `3`.
     fn max(other: Float) Float:
         return greater(self, other)
@@ -213,18 +173,13 @@ impl FloatOrder for Float:
     fn clamp(low: Float, high: Float) Float:
         return clamped(self, low, high)
 
-interface Float32Order:
-    fn min(other: Float32) Float32
-    fn max(other: Float32) Float32
-    fn clamp(low: Float32, high: Float32) Float32
-
-impl Float32Order for Float32:
+impl Ordered for Float32:
     # Returns the lesser of this value and `other`, or this value when they compare equal.
     # Example: `(3).min(2)` is `2`.
     fn min(other: Float32) Float32:
         return lesser(self, other)
 
-    # Returns the greater of this value and `other`, or this value when they compare equal. Float orders NaN above every other value, so a NaN operand makes `max` NaN.
+    # Returns the greater of this value and `other`, or this value when they compare equal.
     # Example: `(3).max(2)` is `3`.
     fn max(other: Float32) Float32:
         return greater(self, other)
@@ -234,12 +189,7 @@ impl Float32Order for Float32:
     fn clamp(low: Float32, high: Float32) Float32:
         return clamped(self, low, high)
 
-interface StringOrder:
-    fn min(other: String) String
-    fn max(other: String) String
-    fn clamp(low: String, high: String) String
-
-impl StringOrder for String:
+impl Ordered for String:
     # Returns the lesser of this value and `other`, or this value when they compare equal.
     # Example: `(3).min(2)` is `2`.
     fn min(other: String) String:

@@ -1,132 +1,9 @@
 import Data, panic from "@std/core.ms"
-
-extern fn msstd_math_acos(value: Float) Float
-
-extern fn msstd_math_asin(value: Float) Float
-
-extern fn msstd_math_atan(value: Float) Float
-
-extern fn msstd_math_atan2(y: Float, x: Float) Float
-
-extern fn msstd_math_ceil(value: Float) Float
-
-extern fn msstd_math_cos(value: Float) Float
-
-extern fn msstd_math_cosh(value: Float) Float
-
-extern fn msstd_math_e() Float
-
-extern fn msstd_math_exp(value: Float) Float
-
-extern fn msstd_math_floor(value: Float) Float
-
-extern fn msstd_math_hypot(left: Float, right: Float) Float
-
-extern fn msstd_math_log(value: Float) Float
-
-extern fn msstd_math_log10(value: Float) Float
-
-extern fn msstd_math_log2(value: Float) Float
-
-extern fn msstd_math_pi() Float
-
-extern fn msstd_math_pow(base: Float, exponent: Float) Float
-
-extern fn msstd_math_remainder(left: Float, right: Float) Float
-
-extern fn msstd_math_round(value: Float) Float
-
-extern fn msstd_math_sin(value: Float) Float
-
-extern fn msstd_math_sinh(value: Float) Float
-
-extern fn msstd_math_sqrt(value: Float) Float
-
-extern fn msstd_math_tan(value: Float) Float
-
-extern fn msstd_math_tanh(value: Float) Float
-
-extern fn msstd_math_truncate(value: Float) Float
-
-extern fn msstd_math_acosh(value: Float) Float
-
-extern fn msstd_math_asinh(value: Float) Float
-
-extern fn msstd_math_atanh(value: Float) Float
-
-extern fn msstd_math_cbrt(value: Float) Float
-
-extern fn msstd_math_expm1(value: Float) Float
-
-extern fn msstd_math_log1p(value: Float) Float
-
-extern fn msstd_math_is_integer(value: Float) Bool
-
-extern fn msstd_math_is_safe_integer(value: Float) Bool
-
-extern fn msstd_math_infinity() Float
-
-extern fn msstd_math_nan() Float
-
-extern fn msstd_math_epsilon() Float
-
-extern fn msstd_math_max_float() Float
-
-extern fn msstd_math_min_float() Float
-
-extern fn msstd_math_max_int() Int
-
-extern fn msstd_math_min_int() Int
-
-extern fn msstd_math_max_safe_integer() Int
-
-extern fn msstd_math_min_safe_integer() Int
-
-extern fn msstd_math_ln2() Float
-
-extern fn msstd_math_ln10() Float
-
-extern fn msstd_math_log2e() Float
-
-extern fn msstd_math_log10e() Float
-
-extern fn msstd_math_sqrt2() Float
-
-extern fn msstd_math_sqrt_half() Float
+import msstd_math_acos, msstd_math_asin, msstd_math_atan, msstd_math_atan2, msstd_math_ceil, msstd_math_cos, msstd_math_cosh, msstd_math_exp, msstd_math_floor, msstd_math_hypot, msstd_math_log, msstd_math_log10, msstd_math_log2, msstd_math_pow, msstd_math_remainder, msstd_math_round, msstd_math_sin, msstd_math_sinh, msstd_math_sqrt, msstd_math_tan, msstd_math_tanh, msstd_math_truncate, msstd_math_acosh, msstd_math_asinh, msstd_math_atanh, msstd_math_cbrt, msstd_math_expm1, msstd_math_log1p, msstd_math_is_integer, msstd_math_is_safe_integer, msrt_bits_bit_and, msrt_bits_bit_or, msrt_bits_bit_xor, msrt_bits_bit_not, msrt_bits_shift_left, msrt_bits_shift_right, msrt_bits_shift_right_unsigned, msrt_bits_rotate_left, msrt_bits_rotate_right, msrt_bits_count_ones, msrt_bits_leading_zeros, msrt_bits_trailing_zeros, msrt_bits_wrapping_add, msrt_bits_wrapping_subtract, msrt_bits_wrapping_multiply from "@std/internal/math.ms"
 
 extern fn msrt_numbers_parse_float(text: String) Float!NumberError
 
 extern fn msrt_numbers_parse_int(text: String, radix: Int) Int!NumberError
-
-extern fn msrt_bits_bit_and(left: Int, right: Int) Int
-
-extern fn msrt_bits_bit_or(left: Int, right: Int) Int
-
-extern fn msrt_bits_bit_xor(left: Int, right: Int) Int
-
-extern fn msrt_bits_bit_not(value: Int) Int
-
-extern fn msrt_bits_shift_left(value: Int, count: Int) Int
-
-extern fn msrt_bits_shift_right(value: Int, count: Int) Int
-
-extern fn msrt_bits_shift_right_unsigned(value: Int, count: Int) Int
-
-extern fn msrt_bits_rotate_left(value: Int, count: Int) Int
-
-extern fn msrt_bits_rotate_right(value: Int, count: Int) Int
-
-extern fn msrt_bits_count_ones(value: Int) Int
-
-extern fn msrt_bits_leading_zeros(value: Int) Int
-
-extern fn msrt_bits_trailing_zeros(value: Int) Int
-
-extern fn msrt_bits_wrapping_add(left: Int, right: Int) Int
-
-extern fn msrt_bits_wrapping_subtract(left: Int, right: Int) Int
-
-extern fn msrt_bits_wrapping_multiply(left: Int, right: Int) Int
 
 extern fn msstd_bigint_add(value: BigInt, other: BigInt) BigInt
 
@@ -206,9 +83,8 @@ export fn cos(value: Float) Float:
 export fn cosh(value: Float) Float:
     return msstd_math_cosh(value)
 
-# Returns Euler's number, the base of natural logarithms.
-export fn e() Float:
-    return msstd_math_e()
+# Euler's number, the base of natural logarithms.
+export let e: Float = 2.718281828459045
 
 # Returns e raised to `value`.
 export fn exp(value: Float) Float:
@@ -248,9 +124,8 @@ export fn min[T: Comparable](left: T, right: T) T:
 
     return left
 
-# Returns π, the ratio of a circle's circumference to its diameter.
-export fn pi() Float:
-    return msstd_math_pi()
+# Π, the ratio of a circle's circumference to its diameter.
+export let pi: Float = 3.141592653589793
 
 # Returns `base` raised to `exponent`.
 export fn pow(base: Float, exponent: Float) Float:
@@ -320,65 +195,36 @@ export fn is_integer(value: Float) Bool:
 export fn is_safe_integer(value: Float) Bool:
     return msstd_math_is_safe_integer(value)
 
-# Returns positive infinity, the Float that exceeds every finite value; negate it for negative infinity.
-export fn infinity() Float:
-    return msstd_math_infinity()
-
-# Returns NaN, the Float that is not equal to itself under IEEE rules; use `is_nan()` to detect it.
-export fn nan() Float:
-    return msstd_math_nan()
-
-# Returns the difference between 1.0 and the next larger Float.
-export fn epsilon() Float:
-    return msstd_math_epsilon()
-
-# Returns the largest finite Float.
-export fn max_float() Float:
-    return msstd_math_max_float()
-
-# Returns the smallest positive Float, a subnormal value.
-export fn min_float() Float:
-    return msstd_math_min_float()
-
-# Returns the largest Int.
-export fn max_int() Int:
-    return msstd_math_max_int()
-
-# Returns the smallest Int.
-export fn min_int() Int:
-    return msstd_math_min_int()
-
-# Returns 2^53 - 1, the largest integer every smaller integer of which a Float represents exactly.
-export fn max_safe_integer() Int:
-    return msstd_math_max_safe_integer()
-
-# Returns -(2^53 - 1).
-export fn min_safe_integer() Int:
-    return msstd_math_min_safe_integer()
-
-# Returns the natural logarithm of 2.
-export fn ln2() Float:
-    return msstd_math_ln2()
-
-# Returns the natural logarithm of 10.
-export fn ln10() Float:
-    return msstd_math_ln10()
-
-# Returns the base-2 logarithm of e.
-export fn log2e() Float:
-    return msstd_math_log2e()
-
-# Returns the base-10 logarithm of e.
-export fn log10e() Float:
-    return msstd_math_log10e()
-
-# Returns the square root of 2.
-export fn sqrt2() Float:
-    return msstd_math_sqrt2()
-
-# Returns the square root of 1/2.
-export fn sqrt_half() Float:
-    return msstd_math_sqrt_half()
+# Positive infinity, the Float that exceeds every finite value; negate it for negative infinity.
+export let infinity: Float = 1.0 / 0.0
+# NaN, the Float that is not equal to itself under IEEE rules; use `is_nan()` to detect it.
+export let nan: Float = 0.0 / 0.0
+# The difference between 1.0 and the next larger Float.
+export let epsilon: Float = 2.220446049250313e-16
+# The largest finite Float.
+export let max_float: Float = 1.7976931348623157e+308
+# The smallest positive Float, a subnormal value.
+export let min_float: Float = 5e-324
+# The largest Int, 2^63 - 1.
+export let max_int: Int = 9223372036854775807
+# The smallest Int, -2^63.
+export let min_int: Int = -9223372036854775807 - 1
+# 2^53 - 1, the largest integer every smaller integer of which a Float represents exactly.
+export let max_safe_integer: Int = 9007199254740991
+# The smallest integer every larger integer of which a Float represents exactly, -(2^53 - 1).
+export let min_safe_integer: Int = -9007199254740991
+# The natural logarithm of 2.
+export let ln2: Float = 0.6931471805599453
+# The natural logarithm of 10.
+export let ln10: Float = 2.302585092994046
+# The base-2 logarithm of e.
+export let log2e: Float = 1.4426950408889634
+# The base-10 logarithm of e.
+export let log10e: Float = 0.43429448190325176
+# The square root of 2.
+export let sqrt2: Float = 1.4142135623730951
+# The square root of 1/2.
+export let sqrt_half: Float = 0.7071067811865476
 
 # Errors returned for invalid numeric requests, malformed text, or out-of-range values.
 export type NumberError:

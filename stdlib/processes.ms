@@ -14,6 +14,7 @@ import CommandError, Stdio from "@std/process.ms"
 import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 import Duration from "@std/time.ms"
+import msrt_obj_share from "@std/internal/processes.ms"
 
 # A running child, owned by its `Process`.
 export extern type NativeProcess
@@ -22,8 +23,6 @@ impl NativeProcess:
     # Another holder of the same child handle.
     fn clone() NativeProcess:
         return msrt_obj_share(self)
-
-extern fn msrt_obj_share[T](value: T) T
 
 # One end of a process's IPC pipe.
 export extern type NativeLink

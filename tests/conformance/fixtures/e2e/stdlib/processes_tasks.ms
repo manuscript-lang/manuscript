@@ -100,7 +100,7 @@ test "the process listing command runs":
     else:
         try expect_ok(run("pgrep", ["-f", "sleep 30.717"]))
 
-test "cancelling a task inside commands().run kills the child":
+test "cancelling a task inside run kills the child":
     var group = TaskGroup[Int](timeout: nanoseconds(200000000))
     let t = group.spawn(fn ch: run_long())
     try expect_equal(t.result().is_ok(), false)

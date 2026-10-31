@@ -73,7 +73,7 @@ export fn draw(source: Source, max: Int) Drawn[Int]:
             value = 0
         else if edge == 1:
             value = max
-        else if max == max_int():
+        else if max == max_int:
             value = positive
         else:
             value = positive % (max + 1)
@@ -404,7 +404,7 @@ export fn check[T](
     if let given = chosen:
         base = given
     else:
-        base = try secure_int(0, max_int())
+        base = try secure_int(0, max_int)
 
     let fuzzing = config.fuzz_milliseconds > 0
     if fuzzing:

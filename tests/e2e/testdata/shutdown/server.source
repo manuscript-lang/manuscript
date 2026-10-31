@@ -1,7 +1,7 @@
 import Closeable from "@std/core.ms"
 import stdout from "@std/io.ms"
-import network, Listener, Connection from "@std/net.ms"
-import control from "@std/process.ms"
+import listen, Listener, Connection from "@std/net.ms"
+import watch_signals from "@std/process.ms"
 import sleep from "@std/time.ms"
 
 fn say(text: String) Unit:
@@ -43,8 +43,8 @@ impl Closeable for Server:
         return ok(unit)
 
 fn serve() Result[Unit, Error]:
-    let signals = try control().watch_signals([2, 15])
-    let listener = try network().listen("127.0.0.1:0")
+    let signals = try watch_signals([2, 15])
+    let listener = try listen("127.0.0.1:0")
     say("{listener.address()}\n")
 
     let client = try listener.accept()

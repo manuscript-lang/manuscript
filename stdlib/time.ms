@@ -1,26 +1,5 @@
 import Data, panic from "@std/core.ms"
-
-extern fn msstd_time_duration_add(value: Int, other: Int) Int
-
-extern fn msstd_time_duration_subtract(value: Int, other: Int) Int
-
-extern fn msstd_time_duration_multiply(value: Int, factor: Int) Int
-
-extern fn msstd_time_duration_divide(value: Int, divisor: Int) Int
-
-extern fn msstd_time_duration_negate(value: Int) Int
-
-extern fn msstd_time_duration_abs(value: Int) Int
-
-extern fn msstd_time_duration_to_microseconds(value: Int) Int
-
-extern fn msstd_time_duration_to_milliseconds(value: Int) Int
-
-extern fn msstd_time_duration_to_seconds(value: Int) Float
-
-extern fn msstd_time_duration_to_minutes(value: Int) Float
-
-extern fn msstd_time_duration_to_hours(value: Int) Float
+import msstd_time_duration_add, msstd_time_duration_subtract, msstd_time_duration_multiply, msstd_time_duration_divide, msstd_time_duration_negate, msstd_time_duration_abs, msstd_time_duration_to_microseconds, msstd_time_duration_to_milliseconds, msstd_time_duration_to_seconds, msstd_time_duration_to_minutes, msstd_time_duration_to_hours, msstd_time_local_zone, msstd_time_sleep from "@std/internal/time.ms"
 
 extern fn msstd_time_instant_shift(value: Instant, duration: Int) Instant
 
@@ -67,10 +46,6 @@ extern fn msstd_time_from_calendar(
     nanosecond: Int,
     zone: String
 ) Timestamp!TimeError
-
-extern fn msstd_time_local_zone() String
-
-extern fn msstd_time_sleep(duration: Int) Unit
 
 extern fn msstd_time_timestamp(seconds: Int, nanoseconds: Int) Timestamp!TimeError
 

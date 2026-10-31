@@ -4,22 +4,11 @@ import Duration from "@std/time.ms"
 import IpFamily from "@std/net.ms"
 import ReadStream from "@std/io.ms"
 import WriteStream from "@std/io.ms"
+import msrt_args, msstd_system_endianness, msstd_system_end_of_line, msstd_system_dev_null, msstd_system_os_type, msstd_system_constants from "@std/internal/process.ms"
 
 extern fn msstd_process_commands() Commands
 
-extern fn msrt_args() List[String]
-
 extern fn msstd_process_control() ProcessControl
-
-extern fn msstd_system_endianness() String
-
-extern fn msstd_system_end_of_line() String
-
-extern fn msstd_system_dev_null() String
-
-extern fn msstd_system_os_type() String
-
-extern fn msstd_system_constants() Map[String, Int]
 
 extern fn msstd_process_system() System
 

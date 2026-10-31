@@ -15,10 +15,8 @@ test "integer interpolation shapes":
     try expect_equal(label("n=", -7), "n=-7")
     try expect_equal(pair(1, ":", 2), "1:2")
     try expect_equal(pair(-1, "", -2), "-1-2")
-    try expect_equal("{min_int()}", "-9223372036854775808")
-    try expect_equal(
-        "{max_int()}|{min_int()}", "9223372036854775807|-9223372036854775808"
-    )
+    try expect_equal("{min_int}", "-9223372036854775808")
+    try expect_equal("{max_int}|{min_int}", "9223372036854775807|-9223372036854775808")
 
 test "integer interpolation at the inline boundary":
     # 14 bytes of text plus one digit is the longest inline string; one more byte allocates.

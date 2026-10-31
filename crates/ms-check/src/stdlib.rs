@@ -282,7 +282,12 @@ pub fn standard_module_symbol(path: Name, name: Name) -> Option<SymRef> {
     })
 }
 
-/// Every bundled module path in sorted order.
+/// Whether a bundled module is internal: it holds the native declarations of the public modules and is not importable by programs.
+pub fn is_internal(path: &str) -> bool {
+    path.starts_with("@std/internal/")
+}
+
+/// Every public bundled module path in sorted order.
 pub fn standard_module_names() -> Vec<&'static str> {
     ensure_standard();
     let mut names: BTreeSet<&'static str> = BTreeSet::new();
@@ -290,7 +295,7 @@ pub fn standard_module_names() -> Vec<&'static str> {
         names.extend(w.modules.keys().map(|k| k.as_str()));
         names.extend(w.source_modules.keys().map(|k| k.as_str()));
     });
-    names.into_iter().collect()
+    names.into_iter().filter(|path| !is_internal(path)).collect()
 }
 
 /// A standard module's exported declarations, checking a bundled source

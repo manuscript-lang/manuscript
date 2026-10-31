@@ -696,7 +696,8 @@ impl Checker {
                     })
                 })
             };
-            let usable = found.as_ref().filter(|f| f.export).cloned();
+            let hidden = stdlib::is_internal(path) && !module.file.starts_with("@std/");
+            let usable = found.as_ref().filter(|f| f.export && !hidden).cloned();
             let Some(found) = usable else {
                 let end = Pos::new(
                     item.name_pos.offset + item.name.len() as u32,

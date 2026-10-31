@@ -68,86 +68,87 @@ fn starts_value(byte: UInt8) Bool:
         or byte == 110
     )
 
-fn reset(var state: Decoder) Unit:
-    state.pending = BytesBuilder()
-    state.size = 0
-    state.depth = 0
-    state.mode = 0
-    state.in_string = false
-    state.escaped = false
+impl Decoder:
+    var fn reset() Unit:
+        self.pending = BytesBuilder()
+        self.size = 0
+        self.depth = 0
+        self.mode = 0
+        self.in_string = false
+        self.escaped = false
 
-fn fail(var state: Decoder, cause: JsonError) List[JsonValue]!JsonError:
-    # Dropping the partial value releases its buffered bytes.
-    reset(var state)
-    state.failure = cause
-    return error(cause)
+    var fn fail(cause: JsonError) List[JsonValue]!JsonError:
+        # Dropping the partial value releases its buffered bytes.
+        self.reset()
+        self.failure = cause
+        return error(cause)
 
-# Parses the buffered value and clears the scanner for the next one.
-fn complete(var state: Decoder) JsonValue!JsonError:
-    let bytes = state.pending.drain()
-    reset(var state)
-    if let text = bytes.decode_utf8():
-        return parse(text, state.limits)
+    # Parses the buffered value and clears the scanner for the next one.
+    var fn complete() JsonValue!JsonError:
+        let bytes = self.pending.drain()
+        self.reset()
+        if let text = bytes.decode_utf8():
+            return parse(text, self.limits)
 
-    return error(JsonError.InvalidData)
+        return error(JsonError.InvalidData)
 
-# Consumes one byte and reports whether it finished a value.
-fn scan(var state: Decoder, byte: UInt8) Bool!JsonError:
-    if state.mode == 0:
-        if is_space(byte): return ok(false)
-        if not starts_value(byte): return error(JsonError.InvalidData)
+    # Consumes one byte and reports whether it finished a value.
+    var fn scan(byte: UInt8) Bool!JsonError:
+        if self.mode == 0:
+            if is_space(byte): return ok(false)
+            if not starts_value(byte): return error(JsonError.InvalidData)
 
-        state.mode = 3
+            self.mode = 3
+
+            if byte == 123 or byte == 91:
+                self.mode = 1
+            else if byte == 34:
+                self.mode = 2
+
+        let limit = self.limits.max_bytes.get(-1)
+        if self.mode == 3 and is_space(byte): return ok(true)
+
+        self.size += 1
+        if limit >= 0 and self.size > limit: return error(JsonError.LimitExceeded)
+
+        self.pending.append(byte)
+        if self.mode == 3: return ok(false)
+
+        if self.in_string:
+            if self.escaped:
+                self.escaped = false
+            else if byte == 92:
+                self.escaped = true
+            else if byte == 34:
+                self.in_string = false
+
+            return ok(self.mode == 2 and not self.in_string)
+
+        if byte == 34:
+            self.in_string = true
+            return ok(false)
 
         if byte == 123 or byte == 91:
-            state.mode = 1
-        else if byte == 34:
-            state.mode = 2
+            self.depth += 1
+            if self.depth > self.limits.max_depth.get(self.depth): return error(
+                JsonError.LimitExceeded
+            )
 
-    let limit = state.limits.max_bytes.get(-1)
-    if state.mode == 3 and is_space(byte): return ok(true)
+            return ok(false)
 
-    state.size += 1
-    if limit >= 0 and state.size > limit: return error(JsonError.LimitExceeded)
-
-    state.pending.append(byte)
-    if state.mode == 3: return ok(false)
-
-    if state.in_string:
-        if state.escaped:
-            state.escaped = false
-        else if byte == 92:
-            state.escaped = true
-        else if byte == 34:
-            state.in_string = false
-
-        return ok(state.mode == 2 and not state.in_string)
-
-    if byte == 34:
-        state.in_string = true
-        return ok(false)
-
-    if byte == 123 or byte == 91:
-        state.depth += 1
-        if state.depth > state.limits.max_depth.get(state.depth): return error(
-            JsonError.LimitExceeded
-        )
+        if byte == 125 or byte == 93:
+            self.depth -= 1
+            return ok(self.depth == 0)
 
         return ok(false)
 
-    if byte == 125 or byte == 93:
-        state.depth -= 1
-        return ok(state.depth == 0)
+    # Consumes one byte and returns the value it completes, if any.
+    var fn step(byte: UInt8) JsonValue?!JsonError:
+        let done = try self.scan(byte)
+        if not done: return ok(none)
 
-    return ok(false)
-
-# Consumes one byte and returns the value it completes, if any.
-fn step(var state: Decoder, byte: UInt8) JsonValue?!JsonError:
-    let done = try scan(var state, byte)
-    if not done: return ok(none)
-
-    let value = try complete(var state)
-    return ok(value)
+        let value = try self.complete()
+        return ok(value)
 
 impl JsonDecoder for Decoder:
     var fn feed(chunk: Bytes) List[JsonValue]!JsonError:
@@ -157,8 +158,8 @@ impl JsonDecoder for Decoder:
         var values: List[JsonValue] = []
 
         for byte in chunk.values():
-            let stepped = step(var self, byte)
-            if stepped.is_error(): return fail(var self, stepped.err())
+            let stepped = self.step(byte)
+            if stepped.is_error(): return self.fail(stepped.err())
 
             if let found = stepped.get(): values.append(found.clone())
 
@@ -172,10 +173,10 @@ impl JsonDecoder for Decoder:
 
         var values: List[JsonValue] = []
         if self.mode == 0: return ok(values)
-        if self.mode != 3: return fail(var self, JsonError.InvalidData)
+        if self.mode != 3: return self.fail(JsonError.InvalidData)
 
-        let completed = complete(var self)
-        if completed.is_error(): return fail(var self, completed.err())
+        let completed = self.complete()
+        if completed.is_error(): return self.fail(completed.err())
 
         values.append(completed.get().clone())
         return ok(values)

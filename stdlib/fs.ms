@@ -5,22 +5,9 @@ import ReadStream from "@std/io.ms"
 import Timestamp from "@std/time.ms"
 import WriteStream from "@std/io.ms"
 import Closeable from "@std/core.ms"
-
-extern fn msstd_fs_constants() Map[String, Int]
+import msstd_fs_constants, msrt_path_basename, msrt_path_dirname, msrt_path_extension, msrt_path_is_absolute, msrt_path_join, msrt_path_normalize, msrt_path_basename_without, msrt_path_separator, msrt_path_delimiter, msrt_path_to_namespaced_path from "@std/internal/fs.ms"
 
 extern fn msstd_fs_filesystem() FileSystem
-
-extern fn msrt_path_basename(path: String) String
-
-extern fn msrt_path_dirname(path: String) String
-
-extern fn msrt_path_extension(path: String) String
-
-extern fn msrt_path_is_absolute(path: String) Bool
-
-extern fn msrt_path_join(parts: List[String]) String
-
-extern fn msrt_path_normalize(path: String) String
 
 extern fn msrt_path_relative(base: String, target: String) String!PathError
 
@@ -28,19 +15,11 @@ extern fn msstd_fs_posix() PathOperations
 
 extern fn msstd_fs_win32() PathOperations
 
-extern fn msrt_path_basename_without(path: String, suffix: String) String
-
 extern fn msrt_path_resolve(base: String, parts: List[String]) String!PathError
 
 extern fn msrt_path_parse(path: String) PathParts
 
 extern fn msrt_path_format(parts: PathParts) String
-
-extern fn msrt_path_separator() String
-
-extern fn msrt_path_delimiter() String
-
-extern fn msrt_path_to_namespaced_path(path: String) String
 
 extern fn msrt_path_matches_glob(path: String, pattern: String) Bool!PathError
 

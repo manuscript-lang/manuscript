@@ -49,7 +49,7 @@ test "shift counts outside 0 through 63 fault":
 test "rotation and bit counts":
     try expect_equal(rotate_left(1, 64), 1)
     try expect_equal(rotate_left(1, 1), 2)
-    try expect_equal(rotate_right(1, 1), min_int())
+    try expect_equal(rotate_right(1, 1), min_int)
     try expect_equal(count_ones(255), 8)
     try expect_equal(count_ones(-1), 64)
     try expect_equal(leading_zeros(1), 63)
@@ -58,6 +58,6 @@ test "rotation and bit counts":
     try expect_equal(trailing_zeros(0), 64)
 
 test "wrapping arithmetic never faults":
-    try expect_equal(wrapping_add(max_int(), 1), min_int())
-    try expect_equal(wrapping_subtract(min_int(), 1), max_int())
-    try expect_equal(wrapping_multiply(max_int(), 2), -2)
+    try expect_equal(wrapping_add(max_int, 1), min_int)
+    try expect_equal(wrapping_subtract(min_int, 1), max_int)
+    try expect_equal(wrapping_multiply(max_int, 2), -2)

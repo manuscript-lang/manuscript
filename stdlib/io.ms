@@ -1,6 +1,7 @@
 import Closeable, Iterator from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
+import msstd_terminal_event_kind, msstd_terminal_event_text, msstd_terminal_event_ctrl, msstd_terminal_event_alt, msstd_terminal_event_shift, msstd_terminal_event_columns, msstd_terminal_event_rows from "@std/internal/io.ms"
 
 extern fn msstd_io_copy(
     input: ReadStream,
@@ -283,20 +284,6 @@ extern fn msstd_terminal_raw_terminal_next_event(
     handle: NativeRawTerminal,
     timeout: Duration?
 ) Unit?!TerminalError
-
-extern fn msstd_terminal_event_kind() Int
-
-extern fn msstd_terminal_event_text() String
-
-extern fn msstd_terminal_event_ctrl() Bool
-
-extern fn msstd_terminal_event_alt() Bool
-
-extern fn msstd_terminal_event_shift() Bool
-
-extern fn msstd_terminal_event_columns() Int
-
-extern fn msstd_terminal_event_rows() Int
 
 extern fn msstd_terminal_raw_terminal_size_status(
     handle: NativeRawTerminal

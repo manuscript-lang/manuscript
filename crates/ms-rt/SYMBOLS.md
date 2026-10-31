@@ -563,23 +563,6 @@ msstd_math_cbrt(value: f64) -> f64
 msstd_math_expm1(value: f64) -> f64
 msstd_math_log1p(value: f64) -> f64
 msstd_math_sign(value: f64) -> f64
-msstd_math_e() -> f64
-msstd_math_pi() -> f64
-msstd_math_infinity() -> f64
-msstd_math_nan() -> f64
-msstd_math_epsilon() -> f64
-msstd_math_max_float() -> f64
-msstd_math_min_float() -> f64
-msstd_math_max_int() -> i64
-msstd_math_min_int() -> i64
-msstd_math_max_safe_integer() -> i64
-msstd_math_min_safe_integer() -> i64
-msstd_math_ln2() -> f64
-msstd_math_ln10() -> f64
-msstd_math_log2e() -> f64
-msstd_math_log10e() -> f64
-msstd_math_sqrt2() -> f64
-msstd_math_sqrt_half() -> f64
 msrt_http_error_message(status: u8, has_failed: u8, failed: *const StrVal, out: *mut StrVal)
 msrt_http_headers_new() -> *mut Obj
 msrt_http_headers_append( h: *const Obj, name: *const StrVal, value: *const VecVal, ) -> u8

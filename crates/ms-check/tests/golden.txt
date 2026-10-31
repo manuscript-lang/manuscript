@@ -27,9 +27,11 @@ fn use() Unit:
         shared.add(key: 1, value: 2)
         return panic("unreached")
     )
-resolution	3	8	81	unknown standard module @std/faults.ms
-resolution	8	16	302	unknown binding panic; add: import panic from "@std/core.ms"
-type	6	68	224	expected fn(HttpExchange) Result[Unit, HttpError], found fn(HttpExchange) HttpResponse (in argument 'handler' of serve)# Doubles a number.
+resolution	1	8	7	module does not export network; did you mean 'Network'?
+resolution	3	8	81	unknown standard module @std/faults.ms
+resolution	6	19	175	unknown binding network; declare it with 'let network = ...' before use, define 'fn network(...) T:', or import it from a module
+type	6	71	227	cannot infer callback parameter request; provide a type or a known function context
+resolution	8	16	302	unknown binding panic; add: import panic from "@std/core.ms"# Doubles a number.
 export fn double(value: Int) Int:
     return value * 2
 
@@ -826,7 +828,7 @@ import commands, Commands, CommandOutput, CommandError from "@std/process.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 fn forward[T](item: T) T: item
-let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
+resolution	3	8	111	module does not export commands; did you mean 'Commands'?let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
     f(Bytes([]))parse	2	5	66	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f = forward(base64_encode)
     f(Bytes([]))parse	2	5	35	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int?, timeout: Duration?) Result[CommandOutput, CommandError] = commands().run
     f(program: "", arguments: [])parse	2	5	167	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itexport fn main() Int:
@@ -3865,7 +3867,8 @@ import HttpResponse, HttpServerOptions from "@std/http.ms"
 import panic from "@std/faults.ms"
 fn run() Unit:
     let values = [0]
-resolution	3	8	100	unknown standard module @std/faults.ms    let _server = network().serve(address: "127.0.0.1:0", handler: fn(request) HttpResponse:
+resolution	1	8	7	module does not export network; did you mean 'Network'?
+resolution	3	8	100	unknown standard module @std/faults.ms    let _server = network().serve(address: "127.0.0.1:0", handler: fn(request) HttpResponse:
         values.append(1)
         return panic("not executed by lint")
     )
@@ -4461,7 +4464,7 @@ fn example() Int:
         # A comment inside the branch.
     # A comment on the next step.
     return second
-resolution	9	9	142	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module# File introduction.
+resolution	9	9	142	unknown binding run; add: import run from "@std/process.ms"# File introduction.
 fn example() Int:
     let first = 1
     # A deliberate new step.
@@ -4471,7 +4474,7 @@ fn example() Int:
         # A comment inside the branch.
     # A comment on the next step.
     return second
-resolution	7	9	140	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a modulefn example(
+resolution	7	9	140	unknown binding run; add: import run from "@std/process.ms"fn example(
     value: Int = choose(
         first: 1,
         second: 2
@@ -5087,7 +5090,7 @@ fn os_name() String:
     return system().info().os
 resolution	1	8	7	module does not export ListBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'
 resolution	2	8	53	unknown standard module @std/system.ms
-resolution	6	12	175	unknown binding system; add: import system from "@std/process.ms"fn label(value: Int) String:
+resolution	6	12	175	unknown binding system; declare it with 'let system = ...' before use, define 'fn system(...) T:', or import it from a modulefn label(value: Int) String:
     return "{value}"
 test "methods":
     let labels = [1].map(transform: label)
@@ -6019,7 +6022,8 @@ export fn now() Instant:
 
 export fn close_output() Unit:
     stdout().close()
-fn private_value() Int:
+resolution	2	8	39	module does not export clock; @std/time.ms exports: Calendar, Duration, Instant, TimeError, Timestamp, from_calendar, hours, local_zone, microseconds, milliseconds, minutes, monotonic, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/time.ms"'
+resolution	6	12	137	unknown binding clock; declare it with 'let clock = ...' before use, define 'fn clock(...) T:', or import it from a modulefn private_value() Int:
     return 7
 export fn defaulted(value: Int = private_value()) Int:
     return value
@@ -6500,7 +6504,8 @@ export fn main() Int:
         _:
             return 2
 
-type	27	10	605	cannot change `copy.label`: `copy` is declared with let, which is immutable including its contents; declare it `var copy` to change ittest %q:
+resolution	1	8	7	module does not export files; did you mean 'File'?
+resolution	8	18	179	unknown binding files; declare it with 'let files = ...' before use, define 'fn files(...) T:', or import it from a moduletest %q:
     let minimum = nanoseconds(-9223372036854775808)
     let maximum = nanoseconds(9223372036854775807)
     let divide = minimum.divide
@@ -6671,7 +6676,14 @@ test "first request":
 test "second request uses same server":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
-type	9	80	461	expected fn(HttpExchange) Result[Unit, HttpError], found fn(HttpRequest) HttpResponse (in argument 'handler' of serve)
+resolution	3	8	155	module does not export network; did you mean 'Network'?
+resolution	9	31	412	unknown binding network; declare it with 'let network = ...' before use, define 'fn network(...) T:', or import it from a module
+type	14	24	605	cannot infer type argument T for expect_ok; write expect_ok[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
+type	14	24	605	cannot infer type argument E for expect_ok; write expect_ok[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter
+resolution	14	34	615	unknown binding network; declare it with 'let network = ...' before use, define 'fn network(...) T:', or import it from a module
+type	17	24	848	cannot infer type argument T for expect_ok; write expect_ok[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
+type	17	24	848	cannot infer type argument E for expect_ok; write expect_ok[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter
+resolution	17	34	858	unknown binding network; declare it with 'let network = ...' before use, define 'fn network(...) T:', or import it from a module
 type	12	9	540	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeexport fn helper() Unit:
     return
 test "interruptible":

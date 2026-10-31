@@ -20,5 +20,5 @@ test "math rounding signs and exact identities":
     try expect_false(sqrt(9.0) != 3.0 or hypot(3.0, 4.0) != 5.0)
     try expect_false(pow(2.0, 3.0) != 8.0 or log2(8.0) != 3.0)
     try expect_false(min(2.0, 3.0) != 2.0 or max(2.0, 3.0) != 3.0)
-    try expect_false((sin(0.0) != 0.0 or cos(0.0) != 1.0 or pi() < 3.14))
+    try expect_false((sin(0.0) != 0.0 or cos(0.0) != 1.0 or pi < 3.14))
     try expect_false(not sqrt(-1.0).is_nan())

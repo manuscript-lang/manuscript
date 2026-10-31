@@ -9,8 +9,8 @@ test "parse_float reads integers decimals and exponents":
     "5E-1".parse_float() | try expect_equal(0.5)
 
 test "parse_float accepts the special spellings of math.parse_float":
-    "Infinity".parse_float() | try expect_equal(infinity())
-    "-Infinity".parse_float() | try expect_equal(-infinity())
+    "Infinity".parse_float() | try expect_equal(infinity)
+    "-Infinity".parse_float() | try expect_equal(-infinity)
     try expect_true("NaN".parse_float().get().is_nan())
 
 test "parse_float returns none for invalid or out-of-range text":
