@@ -209,7 +209,7 @@ fn drop_attribute(line: &str, name: &str) -> String {
 }
 
 /// The C compiler for the runtime's C sources: `cc` where the target is Linux, else llvm-mingw's clang
-/// (`MS_MINGW`, else the tree `scripts/fetch-mingw.sh` leaves in `target/llvm-bundle/mingw`).
+/// (`MS_MINGW`, else the tree `toolchain/fetch-mingw.sh` leaves in `target/llvm-bundle/mingw`).
 fn c_compiler(root: &Path, triple: &str, arch: &str) -> PathBuf {
     if !triple.contains("windows") {
         return PathBuf::from("cc");

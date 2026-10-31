@@ -60,7 +60,8 @@ weight = 1
 | `website/static/stdlib.md`, `stdlib.json` | Generated API downloads; not committed |
 | `.artifacts/book/` | Ignored generated HTML, search data, and downloads |
 | `crates/` | The Rust implementation; `crates/DESIGN.md` is the design contract |
-| `scripts/` | Tool bootstrap, doctor, `package-rust.sh`, `dist-check.sh` |
+| `tools/` | Repository tools written in Manuscript (`ms run tools/<name>.ms`): conform, e2e, leak and count checks, packaging, doctor |
+| `toolchain/` | Pinned lld and llvm-mingw downloads (`lld.lock`, `fetch-mingw.sh`) read by the build before `ms` exists |
 | `tests/` | `conformance/` (frozen corpus), `docs/` (book checks), `e2e/testdata` (fixtures) |
 | `bench/` | `perf/` (kernels, workloads, JSON, web, workers, stdlib, each with a run script and a dated result page) and `agent/` (the agent benchmark and its results) |
 | `examples/` | Hello project and tooling demo |
@@ -81,7 +82,7 @@ Fix generated output through its generator, never by editing HTML or copying sta
 | Manifest, alias, or import | `ms-driver` `project`, module graph, overlays; test equivalent paths, escapes, malformed input |
 | CLI command | `ms-cli`, relevant crate, status/output contract; failed checking preserves outputs |
 | Documentation | Markdown or generator, `make docs-check`, `make book-check`, `make book` |
-| Build packaging | `scripts/package-rust.sh`; `make dist-check` runs the packaged binary |
+| Build packaging | `tools/package.ms`; `make dist-check` runs the packaged binary |
 
 ## Read the evidence correctly
 

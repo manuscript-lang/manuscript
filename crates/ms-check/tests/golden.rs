@@ -1,6 +1,6 @@
-//! Diagnostic parity with the Go checker: every Manuscript source found in the
-//! Go test suite's string literals must produce exactly the diagnostics
-//! `ms check --json` reported for it (see `gen_golden.py`). Run with
+//! Diagnostic parity with the removed Go checker: every Manuscript source from the
+//! Go test suite's string literals must produce exactly the diagnostics recorded in
+//! `golden.txt`. The Go oracle and its generator scripts are gone; run with
 //! `UPDATE_GOLDEN=1` to rewrite `golden.txt` after an intended wording change.
 
 use ms_check::{CheckOptions, ImportMap};
