@@ -107,6 +107,23 @@ fn display_name(name: String?) String:
 
 A [match](../control-flow/pattern-matching.md) with only `some` and `none` arms is reported by `ms lint` as MSL108. Use [Result](../errors/results.md) when failure needs an explanation; `try` propagates only `Result` errors.
 
+## Optional chaining
+
+`a?.b` reads `b` when `a` is present and is `none` otherwise. The result is optional (`B?`), and stays `B?` rather than `B??` when `b` is already optional. The rest of the chain runs only when `a` is present, so `a?.f(args)` evaluates `args` only then, and `a?.b?.c` stops at the first `none`. Write `?.` with no space on either side; the receiver must be optional, since `.` already reads a member of a value that is always present.
+
+```manuscript
+type Address:
+    city: String?
+
+type User:
+    address: Address?
+
+fn city_length(user: User?) Int?:
+    return user?.address?.city?.length()
+```
+
+A chain cannot move a field out of the optional it reads, so end an owned `String` or record field with `.clone()`.
+
 ## Converting absence to a Result
 
 - `ok_or[E: Error = MissingValue](cause: E?) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` must implement `Error`.

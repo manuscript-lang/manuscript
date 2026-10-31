@@ -2371,7 +2371,24 @@ impl<'a> Parser<'a> {
     /// Applies member access, indexing and calls to `e`.
     fn postfix(&mut self, mut e: Expr) -> PResult<Expr> {
         let mut links = 0usize;
+        // Receivers of `?.` links, outermost first: the rest of the chain
+        // applies to the present payload, so each becomes a match at the end.
+        let mut chains: Vec<(Expr, Symbol)> = Vec::new();
         loop {
+            if self.kind() == Tok::Question
+                && self.ahead(1).kind == Tok::Dot
+                && self.ahead(1).pos.offset == self.peek().end.offset
+                && self.at > 0
+                && self.previous().end.offset == self.peek().pos.offset
+            {
+                self.at += 1;
+                let question = self.previous();
+                let binding = Symbol::intern(&format!("?{}", chains.len()));
+                let present = self.mk(question.pos, ExprKind::Name(binding));
+                chains.push((std::mem::replace(&mut e, present), binding));
+                // The `.` is read as an ordinary member link on the payload.
+                continue;
+            }
             if self.take(Tok::Dot) {
                 self.link(&mut links)?;
                 if self.kind() == Tok::Number {
@@ -2404,7 +2421,45 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
+        while let Some((receiver, binding)) = chains.pop() {
+            e = self.chain_match(receiver, binding, e);
+        }
         Ok(e)
+    }
+
+    /// `receiver?.rest`, with `rest` already applied to `binding`: a match
+    /// that yields `rest` when the receiver is present and `none` otherwise.
+    fn chain_match(&mut self, receiver: Expr, binding: Symbol, rest: Expr) -> Expr {
+        let pos = receiver.pos;
+        let mut arms = Vec::new();
+        for (case, bindings, value) in [
+            ("some", vec![ArmBinding { name: binding, pos }], rest),
+            (
+                "none",
+                Vec::new(),
+                self.mk(pos, ExprKind::Name(Symbol::intern("none"))),
+            ),
+        ] {
+            let path = self.mk(pos, ExprKind::Name(Symbol::intern(case)));
+            let id = self.id();
+            arms.push(Arm {
+                id,
+                pos,
+                path,
+                bindings,
+                body: Vec::new(),
+                value: Some(value),
+                from_if: false,
+                chain: true,
+            });
+        }
+        self.mk(
+            pos,
+            ExprKind::Match {
+                scrutinee: Box::new(receiver),
+                arms,
+            },
+        )
     }
 
     /// Parses the arguments after an opening parenthesis, through `)`.
@@ -2615,6 +2670,7 @@ impl<'a> Parser<'a> {
                 body: Vec::new(),
                 value: Some(branch),
                 from_if: true,
+                chain: false,
             });
         }
         Ok(self.mk(
@@ -2692,6 +2748,7 @@ impl<'a> Parser<'a> {
                 body: Vec::new(),
                 value: None,
                 from_if: false,
+                chain: false,
             };
             self.value_arm(&mut arm)?;
             arms.push(arm);
