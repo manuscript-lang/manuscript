@@ -4,6 +4,13 @@
 
 Verified: keep the raw hand-written baseline (the C controls in `bench/perf/kernels/c`) and distinguish logical work elimination from faster execution of each source operation. Checked arithmetic is language behavior, so a control that omits overflow checks diagnoses cost but does not change the baseline. Reject a candidate that moves a material gap into another workload, and retain its measurements. Prefer removing unobservable work and allocations over placement tuning.
 
+Fixed-set validation optimizations must preserve admission order as well as accepted
+values: TOML checks original byte limits, normalizes CRLF, then reports the first
+invalid control before grammar errors. Cover every ASCII/C1 value and Unicode
+locations when replacing a regex with a byte predicate. Retain protected writer
+controls: an earlier helper form improved parsing but incurred a repeatable writer
+cost. Evidence: [TOML admission controls](../../bench/perf/toml-control-scan/README.md).
+
 Apply when: optimizing a helper, a lowering path, or a runtime routine.
 Evidence: [program results](../../bench/perf/programs/results.md), [kernel baselines](../../bench/perf/kernels/README.md).
 Verify: time and allocation counts before and after on one machine; behavior tests unchanged.
@@ -20,8 +27,10 @@ overhead, so their nanosecond comparisons alone do not establish language parity
 
 Verified (2026-10-31, TOML quoting): batching UTF-8 runs improved ASCII timing by
 6.9x but raised whole-process peak RSS by 64% for a large string with one late
-escape. Retain large sparse-escape memory controls alongside timing; the accepted
-change only removes general radix formatting for known ASCII control escapes.
+escape. Retain large sparse-escape memory controls alongside timing. The initially
+accepted fixed-digit helper was later reverted after final main exposed common-path
+regressions of about 7–13%; isolated gains do not establish combined acceptance.
+See the [final replay](../../bench/perf/toml-quoting/final-main-replay.md).
 Evidence: [matched controls and rejected variants](../../bench/perf/toml-quoting/README.md).
 
 Verified (2026-10-31, normalization): ASCII identity shortcuts can win over 200x
