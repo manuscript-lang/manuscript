@@ -13,6 +13,7 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [Recovered navigation needs local header ranges](recovered-navigation-needs-local-header-ranges.md): a malformed neighbor must not move declaration names to their keyword positions.
 - [Keep CLI and HTTP documentation with their packages](keep-cli-and-http-documentation-with-their-packages.md): the user explicitly removed the "Application hosts" section.
 - [Polish the documentation design without expanding its prose](polish-the-documentation-design-without-expanding-its-prose.md): the user selected Tailwind CSS and Vercel as documentation design references and asked not to add filler.
+- [Preserve OS argument identity before dispatch](preserve-os-argument-identity-before-dispatch.md): lossy conversion can select an existing replacement-character filename instead of the requested byte path.
 - [Profile native programs by Manuscript position](profile-native-programs-by-manuscript-position.md): `ms profile` replaces the debugger (the debugger and DAP are dropped).
 - [Project review must keep library internals behind their boundary](project-review-must-keep-library-internals-behind-their-boun.md): inspection deliberately includes bundled standard source modules.
 - [Readable formatting needs paragraphs while retaining inline guards](readable-formatting-needs-paragraphs-while-retaining-inline.md): the user's formatter request keeps inline `if` bodies and introduces natural reading boundaries around declarations, guard sections, substan…
