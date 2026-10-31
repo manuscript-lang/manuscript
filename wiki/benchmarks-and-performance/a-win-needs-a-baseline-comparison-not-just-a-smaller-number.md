@@ -31,3 +31,10 @@ regressed normalization/search controls and raised whole-process peak RSS about
 standalone from combined-change controls. A textual proof that the old fallback
 is unchanged does not establish performance equivalence for other operations.
 Evidence: [four-state reversal rejection](../../bench/perf/string-reverse-standard/README.md).
+
+Verified (2026-10-31, normalization): ASCII identity shortcuts can win over 200x
+on ASCII while slowing Unicode controls by several percent. A content-based
+first-byte gate removed one flag but exposed other NFD costs; both were rejected.
+Retain complete matrices and composition controls rather than accepting a
+removed flag or a clean screen.
+Evidence: [both rejected normalization candidates](../../bench/perf/string-normalize-ascii/results-2026-10-31.md).

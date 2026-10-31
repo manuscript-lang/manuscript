@@ -1,0 +1,6 @@
+{
+  "ascii-a": "/workspace/normalization-evidence/programs/ascii-normalize",
+  "ascii-b": "/workspace/normalization-evidence/programs/ascii-normalize",
+  "both-a": "/workspace/normalization-evidence/programs/both-normalize",
+  "both-b": "/workspace/normalization-evidence/programs/both-normalize"
+}
