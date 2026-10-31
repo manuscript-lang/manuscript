@@ -36,7 +36,10 @@ absent in the preceding cohorts. All cases—not just the flagged ones—are ret
 The new normalization prototype has additional unresolved composition costs.
 Original C0→both compatibility4096NFKD is +6.32%, paired +7.63 us,11/12 slower;
 the baseline-inclusive repeat has a +5.05% median while its sign count does not
-cross the descriptive screen. It remains unaccepted. Word-only is approximately
+cross the descriptive screen. It is rejected. A subsequent distinct first-byte
+variant is also rejected for repeated Unicode NFD costs; [complete evidence is
+published separately](https://github.com/manuscript-lang/manuscript/pull/2125),
+with no normalization production change. Word-only is approximately
 flat for this normalization case; this is not attributed to the byte operation.
 Other same-binary normalization A/A flags and the complete controls remain as
 noise evidence, not proof of equivalence. No backend/placement cause is claimed

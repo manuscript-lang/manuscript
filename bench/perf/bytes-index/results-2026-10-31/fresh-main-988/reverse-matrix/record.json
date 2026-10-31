@@ -1,0 +1,151 @@
+{
+  "complete": true,
+  "argv": [
+    "/workspace/byte-search-evidence/fresh-main-988/runner/string-normalize-ascii/compare_matrix.py",
+    "/workspace/byte-search-evidence/fresh-main-988/reverse-programs.json",
+    "/workspace/byte-search-evidence/fresh-main-988/reverse-identities.json",
+    "/workspace/byte-search-evidence/fresh-main-988/reverse-matrix",
+    "--cpu",
+    "0"
+  ],
+  "affinity": [
+    0
+  ],
+  "orders": [
+    [
+      "baseline",
+      "word",
+      "rust"
+    ],
+    [
+      "word",
+      "rust",
+      "baseline"
+    ],
+    [
+      "rust",
+      "baseline",
+      "word"
+    ],
+    [
+      "rust",
+      "word",
+      "baseline"
+    ],
+    [
+      "baseline",
+      "rust",
+      "word"
+    ],
+    [
+      "word",
+      "baseline",
+      "rust"
+    ]
+  ],
+  "cases": 83,
+  "validated_producers": [
+    [
+      "warmup",
+      "baseline"
+    ],
+    [
+      "warmup",
+      "word"
+    ],
+    [
+      "warmup",
+      "rust"
+    ],
+    [
+      0,
+      "baseline"
+    ],
+    [
+      0,
+      "word"
+    ],
+    [
+      0,
+      "rust"
+    ],
+    [
+      1,
+      "word"
+    ],
+    [
+      1,
+      "rust"
+    ],
+    [
+      1,
+      "baseline"
+    ],
+    [
+      2,
+      "rust"
+    ],
+    [
+      2,
+      "baseline"
+    ],
+    [
+      2,
+      "word"
+    ],
+    [
+      3,
+      "rust"
+    ],
+    [
+      3,
+      "word"
+    ],
+    [
+      3,
+      "baseline"
+    ],
+    [
+      4,
+      "baseline"
+    ],
+    [
+      4,
+      "rust"
+    ],
+    [
+      4,
+      "word"
+    ],
+    [
+      5,
+      "word"
+    ],
+    [
+      5,
+      "baseline"
+    ],
+    [
+      5,
+      "rust"
+    ]
+  ],
+  "programs": {
+    "baseline": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/baseline-reverse",
+      "sha256": "4e5bfe6e4aff26cc10291a686f20b5a849bfaf43f3641487dced1c6cbeb8ce51"
+    },
+    "word": {
+      "path": "/workspace/byte-search-evidence/fresh-main-988/word-reverse",
+      "sha256": "8ed413db341a0fc9b3acda46441220fb43f9739d925ffdb5f577611bb80c8f90"
+    },
+    "rust": {
+      "path": "/workspace/reverse-discovery/rust-reverse-control",
+      "sha256": "5e3f74836ec76da1835928aa6fd50ec0aa2fcecea9f88a37efc3f82798fce6ea"
+    }
+  },
+  "program_inventory_sha256": "e5d23b40605f00bc44b5770ac1c17ae95cd8be292c1f48b3f066b84e2e01c8ec",
+  "identities_sha256": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0",
+  "runner_sha256": "d2ebeaf2c449cc49830beba5e267dc03b89e864ff0cb43830dd29a5144dcd485",
+  "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883"
+}

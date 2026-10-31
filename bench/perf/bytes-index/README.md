@@ -6,12 +6,19 @@ helper, then uses the already locked memchr 2.8.3 dependency for the suffix. It
 returns absence before searching an empty range/suffix. Public signatures, byte
 values, earliest absolute offsets, negative starts and absence behavior stay unchanged.
 
-On the final integrated 220-case comparison, 1 MiB misses and late hits improve
+On the first integrated 220-case comparison, 1 MiB misses and late hits improve
 about 31x while preserving inexpensive nearby hits. The earlier scalar-prefix
 candidate is rejected after a combined-main replay exposed boundary-hit costs.
 All original and unfavorable measurements remain separately labeled below.
 
-## Final integrated comparison
+The [fresh main 988 integration replay](results-2026-10-31/fresh-main-988/README.md)
+repeats all 220 byte cases and all 199 affected controls with a rebuilt compiler
+after resolving the documentation conflict. Miss/late-hit speedups remain about
+32x/33x; second-byte hits retain a real 0.26–0.39 ns paired cost. Every adverse
+distribution remains, including small unrelated-control increases. The new Rust
+reversal reference exposes a separate gap; it is not a reversal optimization.
+
+## First integrated comparison (main 3cf)
 
 Base main: `3cfde58b6216ae4db54aeb3ae4e22ee7d527e323`; native sources match the
 original baseline `d4a94aa92` through that main revision. Rust 1.99.1; Linux x86_64
@@ -112,9 +119,20 @@ This temporarily held the word/vector PR. Two predeclared full-suite repeats sho
 +2.21%/+1.49%; identical-binary A/A shows a +5.01% median difference. The material
 penalty is unconfirmed, not disproved; a smaller persistent cost remains possible.
 All original/repeat/A/A phases and paired ranges remain. The same experiment's
-separate ASCII-normalization prototype has an unresolved composition cost and is
-not accepted by the byte PR. Read the follow-up before interpreting the earlier
+separate ASCII-normalization prototype is rejected for its repeated composition
+cost. A distinct first-byte candidate is rejected too; [their complete evidence
+PR](https://github.com/manuscript-lang/manuscript/pull/2125) changes no runtime
+code. Read the follow-up before interpreting the earlier
 zero-screen results as proof that unrelated operations are unchanged.
+
+The subsequent [988 replay](results-2026-10-31/fresh-main-988/README.md) has a
++0.81% 63-byte reversal median with paired -2.49 ns, two of six slower. Maximum
+unrelated-control median increases are 2.97% lines, 3.72% normalization and 3.17%
+reversal; full signs, ranges and smaller consistent costs remain explicit.
+Independent review finds no new blocking regression at this checkpoint and
+supports word-only publication with the disclosed tradeoffs. Normal required CI
+and actual merged-main replay remain necessary; the entire lane is not declared
+clean.
 
 ## Reproduce
 
