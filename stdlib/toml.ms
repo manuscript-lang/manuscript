@@ -918,14 +918,6 @@ fn materialize(
             )
             return ok(TomlValue.ArrayValue(result))
 
-# ASCII control characters other than tab and newline, which no TOML document may contain.
-fn control_offset(data: Bytes) Int?:
-    for pos in 0..data.length():
-        let code = data.get(pos).to_int()
-        if code == 127 or (code < 32 and code != 9 and code != 10): return pos
-
-    return none
-
 # Parses a TOML document into a table value and reports source line and column on invalid input.
 export fn parse(text: String, limits: TomlLimits?) TomlValue!TomlError:
     var options = default_limits()
@@ -943,21 +935,25 @@ export fn parse(text: String, limits: TomlLimits?) TomlValue!TomlError:
     var normalized = text.clone()
     if text.contains("\r"): normalized = text.replace("\r\n", "\n")
 
-    var reader = Reader(
-        data: normalized.to_bytes(), pos: 0, limits: options, values: 0, tables: [],
-        entries: []
-    )
+    let data = normalized.to_bytes()
 
-    if let pos = control_offset(reader.data):
-        let place = locate(reader.data, pos)
-        var reason = "invalid control character"
-        if reader.data.get(pos) == 13: reason = "bare carriage return"
+    for pos in 0..data.length():
+        let code = data.get(pos).to_int()
+        if code != 127 and (code >= 32 or code == 9 or code == 10): continue
+
+        let place = locate(data, pos)
+
+        let reason = if code == 13: "bare carriage return" else: "invalid control character"
+
         return error(
             TomlError.InvalidData(
                 line: place.get(0), column: place.get(1), reason: reason
             )
         )
 
+    var reader = Reader(
+        data: data, pos: 0, limits: options, values: 0, tables: [], entries: []
+    )
     try allocate(var reader)
 
     let root = new_table(var reader, explicit: true, dotted: false)

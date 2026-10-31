@@ -6,6 +6,7 @@ import pathlib
 import platform
 import statistics
 import subprocess
+import sys
 
 p = argparse.ArgumentParser()
 for name in ['before', 'after', 'rust', 'error-before', 'error-after', 'writer-before', 'writer-after', 'read-before', 'read-after', 'rust-writer', 'rust-read', 'output']:
@@ -20,7 +21,7 @@ errors = {'before': a.error_before.resolve(), 'after': a.error_after.resolve()}
 writers = {'before': a.writer_before.resolve(), 'after': a.writer_after.resolve(), 'rust': a.rust_writer.resolve()}
 readers = {'before': a.read_before.resolve(), 'after': a.read_after.resolve(), 'rust': a.rust_read.resolve()}
 baseline = subprocess.check_output(['git', 'show', a.revision + ':stdlib/toml.ms'], cwd=root)
-metadata = {'revision': a.revision, 'platform': platform.platform(), 'toolchain': subprocess.check_output(['rustc', '-vV'], text=True),
+metadata = {'command': sys.argv, 'revision': a.revision, 'platform': platform.platform(), 'toolchain': subprocess.check_output(['rustc', '-vV'], text=True),
             'before_toml_sha256': hashlib.sha256(baseline).hexdigest(), 'after_toml_sha256': digest(root/'stdlib/toml.ms'),
             'binaries': {k: {'path': str(v), 'sha256': digest(v)} for k,v in versions.items()},
             'error_binaries': {k: {'path': str(v), 'sha256': digest(v)} for k,v in errors.items()},

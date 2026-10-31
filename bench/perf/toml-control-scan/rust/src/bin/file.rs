@@ -21,6 +21,9 @@ fn main() {
         print!("{expected}");
         return;
     }
+    if args.len() > 3 {
+        std::fs::write(&args[3], b"ready").unwrap();
+    }
     let mut checksum = 0usize;
     let start = Instant::now();
     for _ in 0..count {
