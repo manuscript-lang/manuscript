@@ -204,7 +204,7 @@ pub enum EditorKind {
     Str,
     /// An identifier, keyword or number.
     Name,
-    /// One other byte.
+    /// An ASCII punctuation byte, or the leading byte of another Unicode scalar.
     Char(u8),
 }
 
@@ -213,7 +213,7 @@ pub enum EditorKind {
 pub struct EditorToken<'a> {
     /// Kind.
     pub kind: EditorKind,
-    /// Text (empty for a non-ASCII byte).
+    /// The complete token's original text.
     pub text: &'a str,
     /// Start byte.
     pub start: usize,
@@ -279,7 +279,7 @@ pub fn editor_tokens(source: &str) -> Vec<EditorToken<'_>> {
             result.push(token(source, EditorKind::Name, start, at));
             continue;
         }
-        at += 1;
+        at += rune_width(&bytes[at..]).1;
         result.push(token(source, EditorKind::Char(b), start, at));
     }
     result
