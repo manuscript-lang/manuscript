@@ -1,0 +1,37 @@
+{
+  "command": [
+    "bench/perf/toml-control-scan/focused.py",
+    "--environment",
+    ".artifacts/control-scan/inline/environment.json",
+    "--summary",
+    ".artifacts/control-scan/inline/summary.json",
+    "--inputs",
+    ".artifacts/control-scan/inline",
+    "--output",
+    ".artifacts/control-scan/inline-writer-long",
+    "--operation",
+    "writer",
+    "--cases",
+    "empty",
+    "tiny",
+    "common",
+    "unicode16k"
+  ],
+  "driver_sha256": "3f0c7d472fb75a515c0c030b2a4de00d7e6585eae5ccaab98da118f150b45aeb",
+  "environment_sha256": "995fda99b5059793f82bb28285165ebb64a0c297b9dc1398a66c1069278926c3",
+  "summary_sha256": "2915287fadfb57fd8304932582f441ddc3374bd82c028ff96ae0a9fcedbfd998",
+  "binaries": {
+    "baseline-a": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-writer-ready-before",
+      "sha256": "d60594d4881a61dd66e71feb45a5f9f85b4d41f8683c06d76d0ce225c6edc544"
+    },
+    "baseline-b": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-writer-ready-before",
+      "sha256": "d60594d4881a61dd66e71feb45a5f9f85b4d41f8683c06d76d0ce225c6edc544"
+    },
+    "candidate": {
+      "path": "/workspace/toml-scan/.artifacts/control-scan/file-writer-inline-after",
+      "sha256": "d60594d4881a61dd66e71feb45a5f9f85b4d41f8683c06d76d0ce225c6edc544"
+    }
+  }
+}

@@ -12,7 +12,17 @@ Inline type hints are off by default to keep code readable. Hover over a name to
 
 Project manifests provide detected build/check/test/lint tasks with positioned problem matching. Process invocation uses argument arrays rather than a shell. Indentation defaults to four spaces and Manuscript is the default formatter for `.ms` files.
 
-Development:
+From the repository root, package and install the extension with Make and the Node version in [`.node-version`](../../.node-version) (including npm):
+
+```sh
+make vscode-install
+```
+
+The VS Code CLI (`code`) must be on PATH. On macOS, run **Shell Command: Install 'code' command in PATH** from VS Code's Command Palette. To use another CLI executable or a path containing spaces, run `make vscode-install VSCODE_CLI="/path/to/code"`. Installation uses that CLI's editor environment; run it where you want the extension installed. Repeated installs replace the same extension version.
+
+`make vscode-package` only creates `extensions/vscode/<name>-<version>.vsix`, using the extension's current package metadata. Both targets install locked npm dependencies and reuse the package script's checks and bundling. They package the client only; the `ms` binary still needs the setup described above.
+
+For development inside `extensions/vscode`:
 
 ```sh
 npm ci

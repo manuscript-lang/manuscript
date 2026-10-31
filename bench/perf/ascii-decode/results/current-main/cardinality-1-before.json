@@ -1,0 +1,340 @@
+{
+  "repeat": 1,
+  "format": 1,
+  "source_root": "/workspace/manuscript/bench/perf/stdlib",
+  "benches": [
+    {
+      "index": 0,
+      "duration_ns": 496717496,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.whole.0",
+      "status": "passed",
+      "stats": {
+        "iterations": 7401122,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 16.06631318873003,
+        "median_ns": 16.13633108601642,
+        "mean_ns": 16.14255473697096,
+        "max_ns": 16.225019936166436,
+        "stddev_ns": 0.06494104143433327
+      }
+    },
+    {
+      "index": 1,
+      "duration_ns": 475675786,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.whole.1",
+      "status": "passed",
+      "stats": {
+        "iterations": 995590,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 117.3981317610663,
+        "median_ns": 117.87719442742494,
+        "mean_ns": 118.58548030146278,
+        "max_ns": 120.4811147158971,
+        "stddev_ns": 1.3546088327054644
+      }
+    },
+    {
+      "index": 2,
+      "duration_ns": 455923165,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.whole.128",
+      "status": "passed",
+      "stats": {
+        "iterations": 10000,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 11221.307,
+        "median_ns": 11243.0063,
+        "mean_ns": 11266.902933333333,
+        "max_ns": 11336.3955,
+        "stddev_ns": 49.9308022604842
+      }
+    },
+    {
+      "index": 3,
+      "duration_ns": 496351399,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.whole.2000",
+      "status": "passed",
+      "stats": {
+        "iterations": 687,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 172733.71615720523,
+        "median_ns": 173233.35662299854,
+        "mean_ns": 173191.42115477924,
+        "max_ns": 173607.1906841339,
+        "stddev_ns": 357.8252598866288
+      }
+    },
+    {
+      "index": 4,
+      "duration_ns": 475530956,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.grouped.1",
+      "status": "passed",
+      "stats": {
+        "iterations": 447271,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 261.51463654026304,
+        "median_ns": 262.13256839813,
+        "mean_ns": 262.4576487185621,
+        "max_ns": 263.7257412172933,
+        "stddev_ns": 0.9314876575476753
+      }
+    },
+    {
+      "index": 5,
+      "duration_ns": 526660780,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.grouped.2000",
+      "status": "passed",
+      "stats": {
+        "iterations": 271,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 440707.7121771218,
+        "median_ns": 440824.0110701107,
+        "mean_ns": 441178.9077490775,
+        "max_ns": 442005,
+        "stddev_ns": 586.0618075500605
+      }
+    },
+    {
+      "index": 6,
+      "duration_ns": 505764174,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.whole.long",
+      "status": "passed",
+      "stats": {
+        "iterations": 552,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 216585.3170289855,
+        "median_ns": 217075.01268115942,
+        "mean_ns": 217003.14311594202,
+        "max_ns": 217349.09963768115,
+        "stddev_ns": 315.9270951130822
+      }
+    },
+    {
+      "index": 7,
+      "duration_ns": 485632817,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.whole.empty_matches",
+      "status": "passed",
+      "stats": {
+        "iterations": 414610,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 287.1813511492728,
+        "median_ns": 287.76510455608883,
+        "mean_ns": 288.04935240346344,
+        "max_ns": 289.2016015050288,
+        "stddev_ns": 0.8489014485541082
+      }
+    },
+    {
+      "index": 8,
+      "duration_ns": 496239070,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.whole.over_limit",
+      "status": "passed",
+      "stats": {
+        "iterations": 887624,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 136.8494948311447,
+        "median_ns": 136.93896627400792,
+        "mean_ns": 137.04692827894095,
+        "max_ns": 137.35232373167017,
+        "stddev_ns": 0.21901456828679475
+      }
+    },
+    {
+      "index": 9,
+      "duration_ns": 576509146,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.first.whole.hit",
+      "status": "passed",
+      "stats": {
+        "iterations": 1367170,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 87.6693798137759,
+        "median_ns": 87.97516621927046,
+        "mean_ns": 87.90476800007802,
+        "max_ns": 88.0697579671877,
+        "stddev_ns": 0.17086563606424712
+      }
+    },
+    {
+      "index": 10,
+      "duration_ns": 495244991,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.first.whole.miss",
+      "status": "passed",
+      "stats": {
+        "iterations": 10391244,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 11.486373527558394,
+        "median_ns": 11.500853410813951,
+        "mean_ns": 11.519991286253438,
+        "max_ns": 11.572746920387972,
+        "stddev_ns": 0.03776933901527532
+      }
+    },
+    {
+      "index": 11,
+      "duration_ns": 496131860,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.first.grouped.hit",
+      "status": "passed",
+      "stats": {
+        "iterations": 633258,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 193.17032236466022,
+        "median_ns": 193.45276017042028,
+        "mean_ns": 193.3827744773852,
+        "max_ns": 193.52524089707512,
+        "stddev_ns": 0.15311278867790182
+      }
+    },
+    {
+      "index": 12,
+      "duration_ns": 505972518,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.first.whole.long",
+      "status": "passed",
+      "stats": {
+        "iterations": 550,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 215733.3381818182,
+        "median_ns": 216212.83272727273,
+        "mean_ns": 216178.74666666667,
+        "max_ns": 216590.0690909091,
+        "stddev_ns": 350.588417087291
+      }
+    },
+    {
+      "index": 13,
+      "duration_ns": 495922945,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.named.whole.hit",
+      "status": "passed",
+      "stats": {
+        "iterations": 9107331,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 13.123055481347938,
+        "median_ns": 13.17839222050895,
+        "mean_ns": 13.182087778150006,
+        "max_ns": 13.244815632593127,
+        "stddev_ns": 0.04977701254944621
+      }
+    },
+    {
+      "index": 14,
+      "duration_ns": 496060984,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.named.whole.long_miss",
+      "status": "passed",
+      "stats": {
+        "iterations": 9077120,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 13.168943343263061,
+        "median_ns": 13.182934565148416,
+        "mean_ns": 13.254439109908574,
+        "max_ns": 13.411439421314249,
+        "stddev_ns": 0.11116282924482186
+      }
+    },
+    {
+      "index": 15,
+      "duration_ns": 486015703,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.named.named.hit",
+      "status": "passed",
+      "stats": {
+        "iterations": 595918,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 201.56127185283881,
+        "median_ns": 201.62634288610178,
+        "mean_ns": 202.01777985114282,
+        "max_ns": 202.8657248144879,
+        "stddev_ns": 0.6001758383946998
+      }
+    },
+    {
+      "index": 16,
+      "duration_ns": 506039877,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.named.anonymous.hit",
+      "status": "passed",
+      "stats": {
+        "iterations": 6170636,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 19.30504181416632,
+        "median_ns": 19.37879742055762,
+        "mean_ns": 19.372304194683768,
+        "max_ns": 19.433073349327362,
+        "stddev_ns": 0.05246992780383817
+      }
+    },
+    {
+      "index": 17,
+      "duration_ns": 517179934,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.named.anonymous.long_miss",
+      "status": "passed",
+      "stats": {
+        "iterations": 6183576,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 19.400637753946906,
+        "median_ns": 19.551508382851605,
+        "mean_ns": 19.565890783369795,
+        "max_ns": 19.745526213310875,
+        "stddev_ns": 0.14116692821883398
+      }
+    },
+    {
+      "index": 18,
+      "duration_ns": 506791928,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.named.late.hit",
+      "status": "passed",
+      "stats": {
+        "iterations": 82428,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 1451.8968069102732,
+        "median_ns": 1476.3157543553161,
+        "mean_ns": 1470.1848401028776,
+        "max_ns": 1482.3419590430435,
+        "stddev_ns": 13.163533068669864
+      }
+    },
+    {
+      "index": 19,
+      "duration_ns": 566428275,
+      "name": "regex_cardinality_bench.ms::regex.cardinality.named.late.miss",
+      "status": "passed",
+      "stats": {
+        "iterations": 1781908,
+        "operations": 1,
+        "samples": 3,
+        "min_ns": 68.73643532662742,
+        "median_ns": 68.75547110176284,
+        "mean_ns": 68.80359030881505,
+        "max_ns": 68.91886449805489,
+        "stddev_ns": 0.08188078412109721
+      }
+    }
+  ],
+  "summary": {
+    "available": 20,
+    "selected": 20,
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0,
+    "not_run": 0,
+    "duration_ns": 10063193628
+  },
+  "completed": true,
+  "exit_code": 0,
+  "stdout": "RUN regex_cardinality_bench.ms::regex.cardinality.whole.0\nBENCH regex_cardinality_bench.ms::regex.cardinality.whole.0: 16.136 ns/op median (min 16.066 ns, mean 16.143 ns, max 16.225 ns, stddev 0.065 ns; 7401122 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.whole.1\nBENCH regex_cardinality_bench.ms::regex.cardinality.whole.1: 117.877 ns/op median (min 117.398 ns, mean 118.585 ns, max 120.481 ns, stddev 1.355 ns; 995590 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.whole.128\nBENCH regex_cardinality_bench.ms::regex.cardinality.whole.128: 11.243 µs/op median (min 11.221 µs, mean 11.267 µs, max 11.336 µs, stddev 49.931 ns; 10000 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.whole.2000\nBENCH regex_cardinality_bench.ms::regex.cardinality.whole.2000: 173.233 µs/op median (min 172.734 µs, mean 173.191 µs, max 173.607 µs, stddev 357.825 ns; 687 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.grouped.1\nBENCH regex_cardinality_bench.ms::regex.cardinality.grouped.1: 262.133 ns/op median (min 261.515 ns, mean 262.458 ns, max 263.726 ns, stddev 0.931 ns; 447271 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.grouped.2000\nBENCH regex_cardinality_bench.ms::regex.cardinality.grouped.2000: 440.824 µs/op median (min 440.708 µs, mean 441.179 µs, max 442.005 µs, stddev 586.062 ns; 271 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.whole.long\nBENCH regex_cardinality_bench.ms::regex.cardinality.whole.long: 217.075 µs/op median (min 216.585 µs, mean 217.003 µs, max 217.349 µs, stddev 315.927 ns; 552 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.whole.empty_matches\nBENCH regex_cardinality_bench.ms::regex.cardinality.whole.empty_matches: 287.765 ns/op median (min 287.181 ns, mean 288.049 ns, max 289.202 ns, stddev 0.849 ns; 414610 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.whole.over_limit\nBENCH regex_cardinality_bench.ms::regex.cardinality.whole.over_limit: 136.939 ns/op median (min 136.849 ns, mean 137.047 ns, max 137.352 ns, stddev 0.219 ns; 887624 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.first.whole.hit\nBENCH regex_cardinality_bench.ms::regex.cardinality.first.whole.hit: 87.975 ns/op median (min 87.669 ns, mean 87.905 ns, max 88.070 ns, stddev 0.171 ns; 1367170 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.first.whole.miss\nBENCH regex_cardinality_bench.ms::regex.cardinality.first.whole.miss: 11.501 ns/op median (min 11.486 ns, mean 11.520 ns, max 11.573 ns, stddev 0.038 ns; 10391244 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.first.grouped.hit\nBENCH regex_cardinality_bench.ms::regex.cardinality.first.grouped.hit: 193.453 ns/op median (min 193.170 ns, mean 193.383 ns, max 193.525 ns, stddev 0.153 ns; 633258 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.first.whole.long\nBENCH regex_cardinality_bench.ms::regex.cardinality.first.whole.long: 216.213 µs/op median (min 215.733 µs, mean 216.179 µs, max 216.590 µs, stddev 350.588 ns; 550 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.named.whole.hit\nBENCH regex_cardinality_bench.ms::regex.cardinality.named.whole.hit: 13.178 ns/op median (min 13.123 ns, mean 13.182 ns, max 13.245 ns, stddev 0.050 ns; 9107331 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.named.whole.long_miss\nBENCH regex_cardinality_bench.ms::regex.cardinality.named.whole.long_miss: 13.183 ns/op median (min 13.169 ns, mean 13.254 ns, max 13.411 ns, stddev 0.111 ns; 9077120 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.named.named.hit\nBENCH regex_cardinality_bench.ms::regex.cardinality.named.named.hit: 201.626 ns/op median (min 201.561 ns, mean 202.018 ns, max 202.866 ns, stddev 0.600 ns; 595918 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.named.anonymous.hit\nBENCH regex_cardinality_bench.ms::regex.cardinality.named.anonymous.hit: 19.379 ns/op median (min 19.305 ns, mean 19.372 ns, max 19.433 ns, stddev 0.052 ns; 6170636 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.named.anonymous.long_miss\nBENCH regex_cardinality_bench.ms::regex.cardinality.named.anonymous.long_miss: 19.552 ns/op median (min 19.401 ns, mean 19.566 ns, max 19.746 ns, stddev 0.141 ns; 6183576 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.named.late.hit\nBENCH regex_cardinality_bench.ms::regex.cardinality.named.late.hit: 1.476 µs/op median (min 1.452 µs, mean 1.470 µs, max 1.482 µs, stddev 13.164 ns; 82428 iterations x 3 samples)\nRUN regex_cardinality_bench.ms::regex.cardinality.named.late.miss\nBENCH regex_cardinality_bench.ms::regex.cardinality.named.late.miss: 68.755 ns/op median (min 68.736 ns, mean 68.804 ns, max 68.919 ns, stddev 0.082 ns; 1781908 iterations x 3 samples)\n20 benches, 0 failed\n",
+  "diagnostics": []
+}

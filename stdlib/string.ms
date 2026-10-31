@@ -52,7 +52,7 @@ impl StringBuilder:
 export type RegexError:
     # A supplied match-count or output-byte budget is negative.
     case InvalidInput
-    # Pattern syntax is invalid for the native RE2-compatible regular-expression engine.
+    # Pattern syntax is invalid for the native regular-expression engine (Rust `regex` syntax).
     case InvalidData
     # More matches exist than permitted, or replacement output exceeds its byte budget.
     case LimitExceeded
@@ -65,7 +65,7 @@ impl Regex:
     fn matches(text: String) Bool: ...
 
     # Returns nonoverlapping full-match text in occurrence order, excluding capture groups.
-    # A supplied cap is a strict budget, not truncation; zero-width matches follow native regexp rules.
+    # A supplied cap is a strict budget, not truncation; zero-width matches follow the engine's rules.
     fn find_all(text: String, max_matches: Int?) List[String]!RegexError: ...
 
     # Replaces every nonoverlapping match with literal replacement text; $ and capture names are not expanded.

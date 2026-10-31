@@ -1,0 +1,148 @@
+{
+  "repeat": 1,
+  "format": 1,
+  "source_root": "/workspace/manuscript/bench/perf/stdlib",
+  "benches": [
+    {
+      "index": 0,
+      "duration_ns": 516995404,
+      "name": "binary_bench.ms::encoding.base64_encode",
+      "status": "passed",
+      "stats": {
+        "iterations": 421,
+        "operations": 157689,
+        "samples": 3,
+        "min_ns": 1.802220745729865,
+        "median_ns": 1.8031619380575454,
+        "mean_ns": 1.805368612774073,
+        "max_ns": 1.8107231545348086,
+        "stddev_ns": 0.0038056798648001037
+      }
+    },
+    {
+      "index": 1,
+      "duration_ns": 516285446,
+      "name": "binary_bench.ms::encoding.base64_decode",
+      "status": "passed",
+      "stats": {
+        "iterations": 432,
+        "operations": 157689,
+        "samples": 3,
+        "min_ns": 1.7525183330855414,
+        "median_ns": 1.7581779730284857,
+        "mean_ns": 1.774052070300276,
+        "max_ns": 1.8114599047868014,
+        "stddev_ns": 0.0265520550591901
+      }
+    },
+    {
+      "index": 2,
+      "duration_ns": 525573685,
+      "name": "binary_bench.ms::encoding.hex_encode",
+      "status": "passed",
+      "stats": {
+        "iterations": 330,
+        "operations": 157689,
+        "samples": 3,
+        "min_ns": 2.2967781807574057,
+        "median_ns": 2.3002329671926156,
+        "mean_ns": 2.301397194618662,
+        "max_ns": 2.3071804359059653,
+        "stddev_ns": 0.004325759830642719
+      }
+    },
+    {
+      "index": 3,
+      "duration_ns": 495733376,
+      "name": "binary_bench.ms::crypto.sha256",
+      "status": "passed",
+      "stats": {
+        "iterations": 1668,
+        "operations": 157689,
+        "samples": 3,
+        "min_ns": 0.45671392038054204,
+        "median_ns": 0.4574253653789865,
+        "mean_ns": 0.4608108654145496,
+        "max_ns": 0.4682933104841204,
+        "stddev_ns": 0.005298853754087484
+      }
+    },
+    {
+      "index": 4,
+      "duration_ns": 485896602,
+      "name": "binary_bench.ms::bytes.builder",
+      "status": "passed",
+      "stats": {
+        "iterations": 2076,
+        "operations": 100000,
+        "samples": 3,
+        "min_ns": 0.567257239884393,
+        "median_ns": 0.5678666763005781,
+        "mean_ns": 0.5678301878612717,
+        "max_ns": 0.5683666473988439,
+        "stddev_ns": 0.0004536480375300376
+      }
+    },
+    {
+      "index": 5,
+      "duration_ns": 506385520,
+      "name": "binary_bench.ms::bytes.read_int32_le",
+      "status": "passed",
+      "stats": {
+        "iterations": 732,
+        "operations": 25000,
+        "samples": 3,
+        "min_ns": 6.526357322404372,
+        "median_ns": 6.538836557377049,
+        "mean_ns": 6.56505262295082,
+        "max_ns": 6.6299639890710385,
+        "stddev_ns": 0.0461811427249307
+      }
+    },
+    {
+      "index": 6,
+      "duration_ns": 505863004,
+      "name": "binary_bench.ms::bytes.read_uint32_le",
+      "status": "passed",
+      "stats": {
+        "iterations": 816,
+        "operations": 25000,
+        "samples": 3,
+        "min_ns": 5.857374264705882,
+        "median_ns": 5.858206862745098,
+        "mean_ns": 5.892475049019608,
+        "max_ns": 5.9618440196078435,
+        "stddev_ns": 0.049052447205192945
+      }
+    },
+    {
+      "index": 7,
+      "duration_ns": 505924767,
+      "name": "binary_bench.ms::bytes.append_int32_le",
+      "status": "passed",
+      "stats": {
+        "iterations": 577,
+        "operations": 100000,
+        "samples": 3,
+        "min_ns": 2.069252253032929,
+        "median_ns": 2.0740349220103984,
+        "mean_ns": 2.078114714038128,
+        "max_ns": 2.091056967071057,
+        "stddev_ns": 0.009357525164745948
+      }
+    }
+  ],
+  "summary": {
+    "available": 8,
+    "selected": 8,
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "not_run": 0,
+    "duration_ns": 4058796419
+  },
+  "completed": true,
+  "exit_code": 0,
+  "stdout": "RUN binary_bench.ms::encoding.base64_encode\nBENCH binary_bench.ms::encoding.base64_encode: 1.803 ns/op median (min 1.802 ns, mean 1.805 ns, max 1.811 ns, stddev 0.004 ns; 421 iterations x 3 samples)\nRUN binary_bench.ms::encoding.base64_decode\nBENCH binary_bench.ms::encoding.base64_decode: 1.758 ns/op median (min 1.753 ns, mean 1.774 ns, max 1.811 ns, stddev 0.027 ns; 432 iterations x 3 samples)\nRUN binary_bench.ms::encoding.hex_encode\nBENCH binary_bench.ms::encoding.hex_encode: 2.300 ns/op median (min 2.297 ns, mean 2.301 ns, max 2.307 ns, stddev 0.004 ns; 330 iterations x 3 samples)\nRUN binary_bench.ms::crypto.sha256\nBENCH binary_bench.ms::crypto.sha256: 0.457 ns/op median (min 0.457 ns, mean 0.461 ns, max 0.468 ns, stddev 0.005 ns; 1668 iterations x 3 samples)\nRUN binary_bench.ms::bytes.builder\nBENCH binary_bench.ms::bytes.builder: 0.568 ns/op median (min 0.567 ns, mean 0.568 ns, max 0.568 ns, stddev 0.000 ns; 2076 iterations x 3 samples)\nRUN binary_bench.ms::bytes.read_int32_le\nBENCH binary_bench.ms::bytes.read_int32_le: 6.539 ns/op median (min 6.526 ns, mean 6.565 ns, max 6.630 ns, stddev 0.046 ns; 732 iterations x 3 samples)\nRUN binary_bench.ms::bytes.read_uint32_le\nBENCH binary_bench.ms::bytes.read_uint32_le: 5.858 ns/op median (min 5.857 ns, mean 5.892 ns, max 5.962 ns, stddev 0.049 ns; 816 iterations x 3 samples)\nRUN binary_bench.ms::bytes.append_int32_le\nBENCH binary_bench.ms::bytes.append_int32_le: 2.074 ns/op median (min 2.069 ns, mean 2.078 ns, max 2.091 ns, stddev 0.009 ns; 577 iterations x 3 samples)\n8 benches, 0 failed\n",
+  "diagnostics": []
+}

@@ -1,0 +1,11 @@
+--- a/stdlib/encoding.ms
++++ b/stdlib/encoding.ms
+@@ -286,2 +286,4 @@
+ export fn ascii_decode(data: Bytes) String!EncodingError:
++    if data.is_empty(): return ok("")
++
+     let bytes = data.values()
+@@ -289,2 +291,2 @@
+         if byte > 127: return error(EncodingError.InvalidData)
+-    return ok(text_of(bytes.map(fn b: b.to_int())))
++    return ok(data.decode_utf8().get(""))

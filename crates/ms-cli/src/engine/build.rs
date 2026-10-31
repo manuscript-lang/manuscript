@@ -5,7 +5,7 @@ use std::path::Path;
 use ms_build::Lower;
 use ms_driver::project::pathops;
 
-use super::{Engine, Failure, compile};
+use super::{Engine, Failure, compile, write_metadata};
 use crate::backend::{BackendResult, BuildRequest, Io};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::json::Json;
@@ -90,6 +90,26 @@ pub(super) fn build<L: Lower>(
         )
     };
 
+    // An unchanged build is restored without loading or checking anything.
+    let cache = BuildCache::open(backend, request, &output);
+    if path_error.is_none()
+        && let Some(cache) = &cache
+        && cache.mode == ms_build::cache::Mode::On
+        && let Some(entry) = cache.lookup()
+        && entry.restore_to(&output).is_ok()
+        && write_metadata(Path::new(&output), request.build_type).is_ok()
+    {
+        if structured {
+            return Ok(emit_json(
+                io,
+                &document(&entry.source_root, true, 0, None, &[]),
+                0,
+            ));
+        }
+        let _ = writeln!(io.stdout, "Built {display}");
+        return Ok(0);
+    }
+
     let mut compiled = match compile(backend, &request.filename, false) {
         Ok(compiled) => compiled,
         Err(failure) => return Ok(report_failure(&failure, structured, &document, io)),
@@ -118,16 +138,17 @@ pub(super) fn build<L: Lower>(
         let message = format!("cannot create {}: {error}", parent.display());
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
-    let cache = Path::new(&compiled.project_root)
-        .join(".ms-cache")
-        .join("exe");
-    if let Err(message) = backend.link_cached(
+    if let Err(message) = backend.link(
         &mut compiled,
         Path::new(&output),
         request.build_type,
         &request.link,
-        Some(&cache),
     ) {
+        return Ok(fail(io, &compiled.source_root, "build", &message));
+    }
+    if let Some(cache) = &cache
+        && let Err(message) = cache.record(&compiled, &output)
+    {
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
     if structured {
@@ -199,4 +220,113 @@ fn same_file(a: &std::fs::Metadata, b: &std::fs::Metadata, a_path: &str, b_path:
             (Ok(x), Ok(y)) if x == y
         )
     }
+}
+
+/// The `ms build` cache of one request: see [`ms_build::cache`].
+struct BuildCache {
+    mode: ms_build::cache::Mode,
+    directory: std::path::PathBuf,
+    key: String,
+}
+
+impl BuildCache {
+    /// `None` when caching is off or an input of the key cannot be read.
+    fn open<L: Lower>(backend: &Engine<L>, request: &BuildRequest, output: &str) -> Option<Self> {
+        let mode = ms_build::cache::mode();
+        if mode == ms_build::cache::Mode::Off {
+            return None;
+        }
+        let filename = pathops::abs(&request.filename).ok()?;
+        let directory = Path::new(&filename)
+            .parent()?
+            .join(".ms-cache")
+            .join("build");
+        let mut inputs = vec![std::env::current_exe().ok()?];
+        inputs.extend(backend.runtime.clone());
+        inputs.extend(ms_build::runtime_override().ok()?);
+        inputs.extend(request.link.iter().map(std::path::PathBuf::from));
+        let inputs: Vec<&Path> = inputs.iter().map(std::path::PathBuf::as_path).collect();
+        let build_type = request.build_type.as_str();
+        let mut parts = vec![build_type, filename.as_str(), output, crate::VERSION];
+        parts.extend(request.link.iter().map(String::as_str));
+        let key = ms_build::cache::key(&parts, &inputs)?;
+        Some(BuildCache {
+            mode,
+            directory,
+            key,
+        })
+    }
+
+    fn lookup(&self) -> Option<Hit> {
+        ms_build::cache::lookup(&self.directory, &self.key).map(Hit)
+    }
+
+    /// Stores the finished build at `output` for the next one (or, under `MS_CACHE=verify`,
+    /// compares it with the stored build).
+    fn record(&self, compiled: &super::Compiled, output: &str) -> Result<(), String> {
+        let output = Path::new(output);
+        if self.mode == ms_build::cache::Mode::Verify {
+            let Some(hit) = self.lookup() else {
+                return Ok(());
+            };
+            if hit.0.matches(output) {
+                return Ok(());
+            }
+            return Err("MS_CACHE=verify: the rebuilt executable differs from the cached one (this is a Manuscript bug)".into());
+        }
+        let mut sources = compiled.sources.clone();
+        if !compiled.project_root.is_empty() {
+            sources.push(Path::new(&compiled.project_root).join("ms.toml"));
+        }
+        let companion = ms_clif_companion(output);
+        ms_build::cache::store(
+            &self.directory,
+            &self.key,
+            &compiled.source_root,
+            &sources,
+            output,
+            companion.as_deref(),
+        );
+        Ok(())
+    }
+}
+
+struct Hit(ms_build::cache::Entry);
+
+impl std::ops::Deref for Hit {
+    type Target = ms_build::cache::Entry;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Hit {
+    /// Publishes the stored executable (and macOS debug companion) at `output`.
+    fn restore_to(&self, output: &str) -> Result<(), String> {
+        let output = Path::new(output);
+        let directory = output
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(Path::new("."));
+        std::fs::create_dir_all(directory).map_err(|e| e.to_string())?;
+        let staged = directory.join(format!(".ms-build-{}.exe", std::process::id()));
+        let companion = ms_clif_companion(&staged);
+        let published = if self.0.restore(&staged, companion.as_deref()) {
+            ms_build::publish(&staged, output).map_err(|e| e.to_string())
+        } else {
+            Err("cannot restore the cached build".to_string())
+        };
+        if published.is_err() {
+            let _ = std::fs::remove_file(&staged);
+            if let Some(c) = companion {
+                let _ = std::fs::remove_dir_all(c);
+            }
+        }
+        published
+    }
+}
+
+/// The macOS `.dSYM` directory beside `executable`; none elsewhere.
+fn ms_clif_companion(executable: &Path) -> Option<std::path::PathBuf> {
+    ms_build::debug_companion_path(executable)
 }
