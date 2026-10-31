@@ -1,0 +1,13 @@
+[package]
+name = "lsp-workspace-probe"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+ms-lsp = { path = "/workspace/main-api-current/crates/ms-lsp" }
+
+[profile.release]
+debug = 1
+panic = "abort"
+
+[workspace]
