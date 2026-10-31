@@ -1,5 +1,0 @@
---- FAIL: TestRenameCancellationAfterBeforeCheck (0.05s)
-    scheduling_test.go:239: rename did not observe cancellation immediately after checking <nil> rename requires a clean workspace: /tmp/TestRenameCancellationAfterBeforeCheck1013276539/001/main.ms 3
-FAIL
-FAIL	github.com/manuscript-lang/manuscript/pkg/tooling/lsp	0.054s
-FAIL
