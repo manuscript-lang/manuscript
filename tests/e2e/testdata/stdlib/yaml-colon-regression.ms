@@ -1,5 +1,5 @@
-import expect_equal, expect_ok, expect_true from "@std/test.ms"
-import parse, YamlValue from "@std/yaml.ms"
+import expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test.ms"
+import parse, YamlValue, YamlError from "@std/yaml.ms"
 
 fn object(keys: List[String], values: List[YamlValue]) YamlValue:
     var result = Map[String, YamlValue]()
@@ -35,3 +35,36 @@ test "YAML flow colon separators retain quoted and empty values":
         object(["a"], [object(["b"], [YamlValue.NumberValue("2")])])
     )
     parse("\{a:]\}").is_error() | try expect_true
+
+fn invalid(source: String) Unit!:
+    let cause = parse(source) | try expect_error
+
+    match cause:
+        InvalidData(_, _, reason):
+            reason | try expect_equal("unexpected mapping colon")
+            return ok(unit)
+        _: return fail("expected malformed YAML, got {cause}")
+
+test "YAML flow scalar rejects a colon before tab":
+    try invalid("\{a: x:\tb\}")
+
+test "YAML flow scalar rejects a colon before newline":
+    try invalid("\{a: x:\nb\}")
+
+test "YAML flow scalar rejects a colon before a closing mapping":
+    try invalid("\{a: x:\}")
+
+test "YAML block scalar rejects an embedded mapping separator":
+    try invalid("a: x:\tb")
+
+test "YAML block scalar rejects a trailing mapping separator":
+    try invalid("a: x:")
+
+test "YAML block plain scalars retain nonseparating colons and punctuation":
+    for text in ["http://example.org/path", "x:]", "x:[word]", "x:\{word\}"]:
+        parse("a: {text}") | try expect_ok | try expect_equal(
+            object(["a"], [YamlValue.StringValue(text.clone())])
+        )
+
+test "YAML block scalar rejects a separator before a folded paragraph break":
+    try invalid("a: x:\n\n  b")

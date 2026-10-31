@@ -422,6 +422,21 @@ fn fold_plain(text: String) String:
 
     return result
 
+# Whether the character following a colon ends a plain scalar in this context.
+fn separates_colon(next: Int, delimited: Bool) Bool:
+    if next == 0 or next == 9 or next == 10 or next == 32: return true
+
+    return (
+        delimited
+        and (
+            next == 44
+            or next == 91
+            or next == 93
+            or next == 123
+            or next == 125
+        )
+    )
+
 # A scalar, alias or quoted string at the cursor, whose first code is `c`.
 fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
     if c == 42:
@@ -458,23 +473,15 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
             )
         ): break
 
-        if key and code == 58:
-            let next = flow.codes.get(flow.pos + 1, default: 0)
-            if (
-                next == 0
-                or next == 9
-                or next == 10
-                or next == 32
-                or next == 44
-                or next == 91
-                or next == 93
-                or next == 123
-                or next == 125
-            ): break
+        if (
+            code == 58
+            and separates_colon(
+                flow.codes.get(flow.pos + 1, default: 0), flow.delimited or key
+            )
+        ):
+            if key: break
 
-        if code == 58 and flow.codes.get(flow.pos + 1, default: 0) == 32: return error(
-            flow_invalid(flow, "unexpected mapping colon")
-        )
+            return error(flow_invalid(flow, "unexpected mapping colon"))
 
         flow.pos += 1
 
@@ -981,7 +988,15 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
     if (
         text != ""
         and not structured_lead(text.scalar_at(0, default: 0), blank: true)
-        and not text.contains(": ")
+        and (
+            not text.contains(":")
+            or not (
+                text.contains(": ")
+                or text.contains(":\t")
+                or text.contains(":\n")
+                or text.ends_with(":")
+            )
+        )
         and plain_may_start(text.trim())
     ):
         try count(var context, depth)
