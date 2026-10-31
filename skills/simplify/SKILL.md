@@ -36,7 +36,7 @@ tree or line count alone does not establish simpler behavior.
   boundaries before moving responsibilities; splitting files alone may leave
   duplicate work intact.
 - Compare language/API alternatives with small source examples and fewer rules
-  to remember. Use [language-design-taste](../language-design-taste/SKILL.md)
+  to remember. Use [language-design](../language-design/SKILL.md)
   for current choices, flat control flow, and generated-code performance goals.
 - Simplify an example's scenario before adding helpers or types. Follow
   [documentation](../documentation/SKILL.md) for authoring and

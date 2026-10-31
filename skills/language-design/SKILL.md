@@ -1,11 +1,11 @@
 ---
 name: language-design
-description: Design or review Manuscript syntax, types, calls, imports, interfaces, errors, mutation, and execution semantics against current decisions and source examples.
+description: Design or review Manuscript language, standard-library, runtime, compiler, or tooling choices against current decisions and Chinmay's design taste, with acceptance cases.
 ---
 
 # Language design
 
-Use for semantic rules or proposals to add/remove syntax and language concepts. Apply [taste](../language-design-taste/SKILL.md) and read [language lessons](../../wiki/language/index.md).
+Use for semantic rules or proposals to add/remove syntax and language concepts. Apply the taste rules below and read [language lessons](../../wiki/language/index.md).
 
 - Start with a concrete program that is hard to express. Try existing functions, types, matching, and scoped cleanup before adding a concept.
 - Read the relevant [core language](../../documentation/core-language/_index.md), [modules](../../documentation/core-language/modules/_index.md), [cleanup](../../documentation/core-language/cleanup/_index.md) chapter. Compare the documented rule with current source and tests.
@@ -17,5 +17,29 @@ Use for semantic rules or proposals to add/remove syntax and language concepts. 
 - Keep equality/hashing separate from sharing and cleanup. `Equal` and `Hashable` are ordinary interfaces: usable as bounds and in `impl`, with Map/Set keys required to be `Hashable`. Consult the [newer stdlib direction](../../wiki/runtime/newer-stdlib-direction-needs-checkout-reconciliation.md) before restoring older derived-bound requirements.
 - Module-level `let NAME = <constant expression>` is allowed and evaluated per use; see the [constants lesson](../../wiki/language/module-level-constants-are-use-site-evaluations-not-stored-v.md).
 - The surface is deliberately not Python (`fn` for functions and closures, `fn(Int) Int` types, `else if`, `true`/`false`, `unit`, `if c: a else: b`, interpolating `"..."`, `import A from "p"`, match arms without `case`; see [the decision](../../wiki/language/surface-syntax-is-its-own-not-python-s.md)); spell a new form like Python only when it behaves like Python, and give foreign words (`def`, `lambda`, `elif`, `except`, `class`, ...) a targeted diagnostic. Block syntax stays indentation-based. Braces were weighed and showed no measurable speed or first-try benefit, so do not propose them for speed.
-- Trace adopted rules through [compiler](../compiler/SKILL.md) (syntax included), [tooling](../tooling/SKILL.md), [documentation](../documentation/SKILL.md), and the [runtime checklist](../../wiki/runtime/runtime-and-stdlib-change-checklist.md) where execution changes.
+- Trace adopted rules through the [compiler](../../wiki/compiler/compiler-change-checklist.md) (syntax included) and [tooling](../../wiki/tooling-and-docs/tooling-change-checklist.md) checklists, [documentation](../documentation/SKILL.md), and the [runtime checklist](../../wiki/runtime/runtime-and-stdlib-change-checklist.md) where execution changes.
 - Implemented rules need acceptance/rejection, diagnostic, and observable native cases. Design-only work supplies acceptance cases and unresolved questions without claiming implementation.
+
+## Taste
+
+Chinmay's design preferences for languages, standard libraries, runtimes, compilers, and tooling, especially Manuscript.
+
+- Optimize for AI writing code and humans understanding it: readable source, visible dependencies, clear system boundaries, and explainable execution flows.
+- Prefer a few consistent, composable concepts. Before adding syntax, types, or rules, show the concrete problem and whether an existing mechanism can solve it.
+- Use familiar names and syntax: `fn`, `type`, `String`, `import A, B from "p"`, and destructuring. Allow positional invocation with optional labels, binding unlabeled arguments by position, never by variable name, and preserving written evaluation order. Favor one obvious spelling over clever alternatives.
+- Make public contracts explicit and infer local details. For Manuscript, use explicit `impl` relationships and contract conversions; avoid accidental conformance and invisible coercions.
+- Keep intrinsics, compiler bounds, and ambient names small. Keep `Optional`, `Result`, `Error`, `List`, `Map`, `Set`, their public API support types `CollectionError`, `ListEntry`, `MapEntry`, `MissingValue`, and the alternative cases in the source-backed prelude. Use one path for canonical prelude types: reject redundant standard imports and reject application declarations or imports that reuse the names. Other standard types and utilities remain explicitly importable. Runtime support does not require a language keyword.
+- Keep one function kind; ordinary functions may block. Concurrency lives in tasks, channels, and workers (see the [runtime checklist](../../wiki/runtime/runtime-and-stdlib-change-checklist.md)); do not restore the removed Scheduler or concurrent collection-mapping helpers without a new user direction.
+- Keep expected failures as values. Preserve operation return types rather than silently flattening or rewriting `Result`; distinguish domain errors, cancellation, and programming faults.
+- Never show `match` as a way to unwrap a Result in examples, docs, or implementation: use `try`, `if let`, `get(default)`, or `is_ok`/`is_error`/`err`. Compose sequences of calls as `|` flows (`text | try parse | normalize`) instead of nesting calls or naming single-use temporaries.
+- Keep success paths flat with compatible `try` calls. Nested `match` is an anti-pattern: use an early-exit payload binding or a small helper when further case handling is needed. Keep examples small and focused; avoid contrived domain models or helper layers added only to make an example work.
+- Prefer garbage-collected references and scope-end cleanup through `Closeable` over general moves, borrows, and consuming closures. Specify cleanup on every exit and runtime behavior after close.
+- Keep ordinary records and collections as owned values: mutation requires `var`, borrows obey exclusivity, and `.clone()` makes an explicit deep copy; the `Clonable` bound lets generic code keep a value it only borrows. Do not clone native resource handles.
+- Prefer methods to free functions: put an operation on the type it acts on, and add a free function only when no single receiver fits (Chinmay's preference). `|` flows still compose the free functions that remain.
+- Treat sharing, resource lifetime, and work lifetime as separate guarantees. Values may be passed freely without sharing bounds. Keep a local Queue single-threaded and an owned value (a copy is independent, like Deque and List); native services retain their lifecycle synchronization. Keep equality/hashing as explicit interfaces with built-in value implementations.
+- Expose standard host services through explicitly imported accessors and keep application entrypoints parameterless. Use ordinary capability parameters where they improve composition or testing. Do not impose per-function authority declarations or manifest permission enforcement without a new user direction.
+- Choose an implementation you can explain end to end. For Manuscript, favor straightforward lowering to MIR and Cranelift and a small runtime; keep build speed, native execution, and source-level debugging practical.
+- Speed is a goal. Generated code need not mirror source structure: the language is designed to lower cheaply (`try` returns an error value, `Optional` and `Result` stay typed), and the target is parity with hand-written native code. Validate the benefit by measurement before building structural machinery.
+- Keep syntax and standard APIs as simple as possible and document how to use each new standard type with a class comment and example. Keep this repository about Manuscript alone: no Node.js, JavaScript, or Go parity documentation.
+- Check designs against real CLIs, services, and servers: bounded work, streaming and backpressure, shared state, cancellation, and shutdown. Resolve essential semantics without adding machinery for speculative cases.
+- Derive diagrams and tooling from typed source. Write terse, technical docs with concrete signatures and examples; give each rule one home, link to it, and name unresolved decisions plainly.

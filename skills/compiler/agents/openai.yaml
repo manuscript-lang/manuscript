@@ -1,3 +1,0 @@
-interface:
-  display_name: "Compiler"
-  short_description: "Check, lower, and build Manuscript programs"

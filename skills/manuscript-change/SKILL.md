@@ -5,9 +5,9 @@ description: Implement or review Manuscript language, standard library, runtime,
 
 # Manuscript changes
 
-Read the [wiki index](../../wiki/index.md) and the domain pages that match the task and affected paths ([routes](../../wiki/index.yml); [protocol](../../wiki/README.md)). Apply [language design taste](../language-design-taste/SKILL.md) for design choices.
+Read the [wiki index](../../wiki/index.md) and the domain pages that match the task and affected paths ([routes](../../wiki/index.yml); [protocol](../../wiki/README.md)). Apply [language design](../language-design/SKILL.md) for design choices.
 
-Select domain workflows from [AGENTS.md](../../AGENTS.md#domain-skills): language design, compiler (including syntax and parsing), runtime (including the standard library), tooling, documentation, and repository maintenance. Read only the relevant skills, adding another when the contract trace reaches it. They provide concrete entry points and checks; this skill owns the common change workflow.
+Select workflow skills from [AGENTS.md](../../AGENTS.md#workflow-skills) and read the compiler, runtime and stdlib, and tooling wiki checklists for the surfaces the change reaches, adding another when the contract trace reaches it. This skill owns the common change workflow.
 
 ## Establish the contract
 

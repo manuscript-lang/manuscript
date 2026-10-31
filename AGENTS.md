@@ -6,29 +6,29 @@ Manuscript is a statically typed, natively compiled language implemented in Rust
 
 - Read [the Manuscript vision](VISION.md) for design direction while respecting current technical contracts. The vision describes aspirations, not evidence of shipped features; verify current behavior against source, tests, and canonical guides.
 - Read [architecture](documentation/contributing/architecture.md) and [development checks](documentation/contributing/development.md) for implementation or repository work. Check the relevant source and tests before assuming a documented design is implemented.
-- Before implementing or reviewing a change, read [manuscript-change](skills/manuscript-change/SKILL.md), select relevant domain skills below, and read the [wiki](wiki/index.md) pages it routes to. Read additional skills if exploration reaches another domain; do not load the whole catalog for every task.
-- Apply [language-design-taste](skills/language-design-taste/SKILL.md) for language, standard-library, runtime, compiler, or tooling design choices.
+- Before implementing or reviewing a change, read [manuscript-change](skills/manuscript-change/SKILL.md), select the workflow skills below, and read the [wiki](wiki/index.md) pages it routes to. Read additional skills or checklists if exploration reaches another domain; do not load the whole catalog for every task.
+- Apply [language-design](skills/language-design/SKILL.md) (including its taste rules) for language, standard-library, runtime, compiler, or tooling design choices.
 - The user's latest explicit direction and current canonical design take precedence over remembered preferences. Historical proposals and assistant completion reports do not establish current behavior. Identify material differences between a newer decision and this checkout.
 - Read the [wiki](wiki/index.md) for the domains you touch before changing code. When a correction, user decision, or verified failure would change future work, update the wiki in the same change ([protocol](wiki/README.md), [record durable lessons](skills/manuscript-change/SKILL.md#record-durable-lessons)): edit the closest page, keep it short, and delete superseded advice.
 - Find code and standard-library APIs with `ms search_symbol <name or words>` (project and standard library, fuzzy, bounded output) before reading files or guessing signatures; `ms search_symbol <module>` or `<module>.<Name>` shows a page. `ms guide` prints the language cheat sheet.
 
-## Domain skills
+## Workflow skills
+
+Domain rules live in the wiki: read the [compiler](wiki/compiler/compiler-change-checklist.md), [runtime and stdlib](wiki/runtime/runtime-and-stdlib-change-checklist.md), and [tooling](wiki/tooling-and-docs/tooling-change-checklist.md) checklists for the surfaces you touch.
 
 | Task or affected surface | Read |
 | --- | --- |
-| Simplification, duplicated behavior, unnecessary work, or hard-to-follow layers | [simplify](skills/simplify/SKILL.md), then affected domain skills |
+| Simplification, duplicated behavior, unnecessary work, or hard-to-follow layers | [simplify](skills/simplify/SKILL.md), then the affected wiki checklists |
 | Syntax, types, calls, imports, interfaces, language semantics | [language-design](skills/language-design/SKILL.md) |
-| Syntax nodes, lexer/parser, checking, lowering, module resolution, build pins/cache, native toolchain | [compiler](skills/compiler/SKILL.md) |
-| Formatter, lint, inspection, LSP, VS Code, CLI, profiling | [tooling](skills/tooling/SKILL.md) |
 | Tutorials, exact rules, generated API reference, Hugo book/publication, docs revamps, landing page, onboarding | [documentation](skills/documentation/SKILL.md) |
 | Package organization, dependency policy, pins, CI, releases, repository cleanup | [repository-maintenance](skills/repository-maintenance/SKILL.md) |
 | Writing or revising a design proposal | [author-proposal](skills/author-proposal/SKILL.md) |
 | Opening or updating a pull request | [create-pr](skills/create-pr/SKILL.md) |
 | Filing or rewriting an issue | [create-issue](skills/create-issue/SKILL.md) |
-| "Bug bash" of an area | [bug-bash](skills/bug-bash/SKILL.md), then affected domain skills |
+| "Bug bash" of an area | [bug-bash](skills/bug-bash/SKILL.md), then the affected wiki checklists |
 | "Perf bash", perf gaps and perf issues | [perf-bash](skills/perf-bash/SKILL.md) |
 
-Syntax changes usually need language-design, compiler, tooling, and documentation. Standard API changes usually need the [runtime checklist](wiki/runtime/runtime-and-stdlib-change-checklist.md), tooling, and documentation. Select only domains the change reaches.
+Syntax changes usually need language-design, the compiler and tooling checklists, and documentation. Standard API changes usually need the runtime and tooling checklists and documentation. Select only domains the change reaches.
 
 ## Repository layout
 

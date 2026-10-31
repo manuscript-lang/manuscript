@@ -27,7 +27,7 @@ The runtime is `crates/ms-rt`, `ms-rt-abi`, and one `crates/ms-std-*` crate per 
 
 ## Standard library
 
-For standard APIs (intrinsic/native members, design), read [declaration ownership](../../stdlib/intrinsics.ms), [contracts](../../stdlib/intrinsics.ms), [runtime lessons](index.md), and [taste](../../skills/language-design-taste/SKILL.md).
+For standard APIs (intrinsic/native members, design), read [declaration ownership](../../stdlib/intrinsics.ms), [contracts](../../stdlib/intrinsics.ms), [runtime lessons](index.md), and [taste](../../skills/language-design/SKILL.md#taste).
 
 - Inspect [newer stdlib direction](newer-stdlib-direction-needs-checkout-reconciliation.md) and current source first. Distinguish requested changes from shipped interfaces/bounds, removals, optional limits, and scheduling consolidation.
 - Give each operation one appropriate module/spelling. Cover units, defaults, errors, streaming, mutation, edge cases, and cancellation; use Manuscript's execution model.
@@ -38,4 +38,4 @@ For standard APIs (intrinsic/native members, design), read [declaration ownershi
 - Use domain-specific expected errors, preserving causes/concrete interface receivers. Generic boundaries use explicit matching/views; do not silently flatten Results or recreate convenience error-mapping APIs.
 - Rename/removal covers imports, constructors, methods, aliases, bindings, dispatch, fixtures, virtual documents, generated pages/downloads, and guides. Respect the user's removal scope for historical/rejection mentions.
 - Keep collection, synchronization, scheduling, and cleanup contracts explicit. Defaults agree across source metadata, native arity, function values, completion, and docs.
-- Verify declaration/native ABI comparisons and called conformance, including invalid inputs/edges. Pair with [tooling](../../skills/tooling/SKILL.md); run `make docs-check` and applicable [documentation checks](../../skills/documentation/SKILL.md).
+- Verify declaration/native ABI comparisons and called conformance, including invalid inputs/edges. Pair with the [tooling checklist](../tooling-and-docs/tooling-change-checklist.md); run `make docs-check` and applicable [documentation checks](../../skills/documentation/SKILL.md).

@@ -22,3 +22,4 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [Standard-library prose has the same owner as declarations](standard-library-prose-has-the-same-owner-as-declarations.md): the user requires `.ms` standard-library sources to own all library documentation.
 - [Teach a runnable path before formal reference](teach-a-runnable-path-before-formal-reference.md): public documentation should focus on Manuscript and what readers can build.
 - [User tooling must work in the shipped binary](user-tooling-must-work-in-the-shipped-binary.md): documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator.
+- [Tooling change checklist](tooling-change-checklist.md): formatter, LSP, CLI, diagnostics, and debugging rules to check before editing tooling.
