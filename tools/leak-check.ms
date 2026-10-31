@@ -4,7 +4,7 @@
 # no count and are skipped. Arguments name the files to sweep instead.
 # MS names the ms that runs the programs (default target/release/ms).
 # Usage: ms run tools/leak-check.ms [-- files]
-import env, exe, use_stats_runtime from "./lib.ms"
+import tool_ms, use_stats_runtime from "./lib.ms"
 import glob, read_file, temporary from "@std/fs.ms"
 import arguments, commands, control from "@std/process.ms"
 import seconds from "@std/time.ms"
@@ -40,7 +40,7 @@ export fn main() Int:
                     ""
                 ).contains("fn main"): files.append(path.clone())
 
-    let ms = env("MS", "{root}/target/release/ms{exe()}")
+    let ms = tool_ms(root.clone())
     let scratch = temporary("ms-leak-").get()
     control().change_directory(scratch.path()).get()
 

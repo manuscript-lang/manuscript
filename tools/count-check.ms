@@ -5,7 +5,7 @@
 # A change may not raise a count without a stated reason; update the header in the same change.
 # MS names the ms that runs the programs (default target/release/ms).
 # Usage: ms run tools/count-check.ms [-- files]
-import env, exe, host, use_stats_runtime from "./lib.ms"
+import tool_ms, host, use_stats_runtime from "./lib.ms"
 import glob, read_file, temporary from "@std/fs.ms"
 import arguments, commands, control from "@std/process.ms"
 import stdout from "@std/io.ms"
@@ -42,7 +42,7 @@ export fn main() Int:
         startup_allocs = 1
         startup_bytes = 16
 
-    let ms = env("MS", "{root}/target/release/ms{exe()}")
+    let ms = tool_ms(root.clone())
     let scratch = temporary("ms-counts-").get()
     control().change_directory(scratch.path()).get()
 

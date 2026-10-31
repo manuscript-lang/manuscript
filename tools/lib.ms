@@ -129,3 +129,12 @@ export fn use_stats_runtime() Int:
     let lib = canonicalize("{stats_target}/{release}/libms_native.a").get()
     control().set_environment("MS_RT_LIB", lib).get()
     return 0
+
+# The ms that runs the programs under test: `MS` (resolved against `root` when relative), else
+# target/release/ms.
+export fn tool_ms(root: String) String:
+    let named = env("MS", "")
+    if named == "": return "{root}/target/release/ms{exe()}"
+    if named.starts_with("/") or named.contains(":"): return named
+
+    return "{root}/{named}{exe()}"
