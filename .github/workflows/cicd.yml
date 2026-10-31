@@ -29,7 +29,7 @@ jobs:
 
   # Docs-only changes skip the Rust jobs.
   changes:
-    name: Detect Rust-relevant changes
+    name: Detect code changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -80,7 +80,7 @@ jobs:
   # slowest part, not the sum of all of them, sets the wall time. Tests also parallelize inside a
   # part: nextest and the corpus runner both use every core.
   rust:
-    name: Rust ${{ matrix.os }}-${{ matrix.arch }} ${{ matrix.part_name }}
+    name: ${{ matrix.os }}-${{ matrix.arch }} · ${{ matrix.part_name }}
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     runs-on: ${{ matrix.runner }}
