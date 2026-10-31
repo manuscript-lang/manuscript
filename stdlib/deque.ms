@@ -113,7 +113,7 @@ impl DequeCopy[T] for Deque[T]:
                 out.append(value.clone())
         return out
 
-impl Deque[T]:
+impl Iterable[T] for Deque[T]:
     # Returns the number of values in the deque.
     fn length() Int:
         return self.size
@@ -125,22 +125,3 @@ impl Deque[T]:
             return none
 
         return self.slots.get(self.slot_of(index))
-
-# Walks a deque from front to back, lending each value; made by `iter()` and used by `for`.
-export type DequeIter[T]:
-    # The deque being walked.
-    source: Deque[T]
-    # Index of the value `next` returns.
-    position: Int
-
-impl Iterator[T] for DequeIter[T]:
-    # Returns the value at the current position and moves past it, or none after the last one.
-    var fn next() T?:
-        let item = self.source.at(self.position)
-        self.position += 1
-        return item
-
-impl Iterable[DequeIter[T]] for Deque[T]:
-    # Returns an iterator over the values from front to back, borrowing the deque.
-    fn iter() DequeIter[T]:
-        return DequeIter(source: self.clone(), position: 0)

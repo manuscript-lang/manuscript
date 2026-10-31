@@ -83,7 +83,7 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 | `Set[T]` | `T` | Insertion order |
 | `Map[K, V]` | `MapEntry[K, V]` | Key insertion order |
 | `Iterator[T]` implementation | `T` | Order of `next()` results |
-| `Iterable[I]` implementation (`Deque`, `Queue`, `PriorityQueue`) | owned `T` | Order of `iter()`'s `next()` results |
+| `Iterable[T]` implementation (`Deque`, `Queue`, `PriorityQueue`) | owned `T` | Index order of `at(index)` |
 
 `MapEntry[K, V]` is a record with `key: K` and `value: V` (constructor from `@std/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body. The entry is borrowed from the map, not copied. A loop header `for e in m.entries()`, `m.values()` or `m.keys()` over a map the body does not change walks the map the same way instead of building the list; when the body changes the map, the list is built first, so the loop sees the entries as they were.
 
@@ -126,9 +126,8 @@ export fn main() Int:
 
 ## Borrowing containers
 
-A type that implements `Iterable[I]` from `@std/iterable.ms` (`fn iter() I`, where `I` is an `Iterator` made from the container) is iterable: `for item in container:` is the same as `for item in container.iter():`. `item` is an owned element; the iterator holds its own copy of `container`. A place is read where it stands, so it need not be `var`; any other expression is held by the loop. `Deque` iterates front to back (`DequeIter`), `Queue` oldest first (`QueueIter`), and `PriorityQueue` in heap order, not dequeue order (`PriorityQueueIter`). A type that implements both `Iterator` and `Iterable` iterates with `Iterator`.
+A type that implements `Iterable[T]` from `@std/iterable.ms` (`fn length() Int` and `fn at(index: Int) T?`) is iterable: `for item in container:` reads `length()` once and then `at(index)` for each index, so the container is read in place and never copied, and `item` is an owned element. A place is read where it stands, so it need not be `var`; any other expression is held by the loop. `Deque` iterates front to back, `Queue` oldest first, and `PriorityQueue` in heap order, not dequeue order. A type that implements both `Iterator` and `Iterable` iterates with `Iterator`. The item count is fixed when the loop starts; a body that changes the container sees the new values at later indexes.
 
-An iterator over a container is a record holding a copy of its source (`source: Deque[T]`) whose `next` returns owned items; `iter()` builds it from the receiver.
 
 <!-- manuscript-example: {"mode":"run","stdout":"11\n12\n"} -->
 ```manuscript

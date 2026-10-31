@@ -59,7 +59,7 @@ impl Queue[T]:
     fn is_empty() Bool:
         return self.head >= self.items.length()
 
-impl Queue[T]:
+impl Iterable[T] for Queue[T]:
     # Returns the number of values currently waiting in the queue.
     fn length() Int:
         return self.items.length() - self.head
@@ -70,25 +70,6 @@ impl Queue[T]:
             return none
 
         return self.items.get(self.head + index)
-
-# Walks a queue from the oldest value to the newest, lending each value; made by `iter()` and used by `for`.
-export type QueueIter[T]:
-    # The queue being walked.
-    source: Queue[T]
-    # Distance from the oldest value of the value `next` returns.
-    position: Int
-
-impl Iterator[T] for QueueIter[T]:
-    # Returns the value at the current position and moves past it, or none after the newest.
-    var fn next() T?:
-        let item = self.source.at(self.position)
-        self.position += 1
-        return item
-
-impl Iterable[QueueIter[T]] for Queue[T]:
-    # Returns an iterator over the values from oldest to newest, borrowing the queue.
-    fn iter() QueueIter[T]:
-        return QueueIter(source: self.clone(), position: 0)
 
 # Orders two values: negative when `left` dequeues first, zero when equal, positive when `right` dequeues first.
 fn order[T: Comparable](left: T, right: T) Int:
@@ -190,7 +171,7 @@ impl PriorityQueue[T]:
     fn is_empty() Bool:
         return self.heap.length() == 0
 
-impl PriorityQueue[T]:
+impl Iterable[T] for PriorityQueue[T]:
     # Returns the number of enqueued values, independent of their priorities.
     fn length() Int:
         return self.heap.length()
@@ -202,22 +183,3 @@ impl PriorityQueue[T]:
             return none
 
         return self.heap.get(index)
-
-# Walks a priority queue in heap order, lending each value; made by `iter()` and used by `for`.
-export type PriorityQueueIter[T: Comparable]:
-    # The queue being walked.
-    source: PriorityQueue[T]
-    # Heap index of the value `next` returns.
-    position: Int
-
-impl Iterator[T] for PriorityQueueIter[T]:
-    # Returns the value at the current heap position and moves past it, or none after the last.
-    var fn next() T?:
-        let item = self.source.at(self.position)
-        self.position += 1
-        return item
-
-impl Iterable[PriorityQueueIter[T]] for PriorityQueue[T]:
-    # Returns an iterator over the values in heap order, borrowing the queue; only the first is known to be the next to dequeue.
-    fn iter() PriorityQueueIter[T]:
-        return PriorityQueueIter(source: self.clone(), position: 0)
