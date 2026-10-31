@@ -6,5 +6,5 @@ Verified: a plain local read is not ordered against a later call unless the lowe
 
 
 Apply when: removing bound-call wrappers or lowering expressions to direct operations.
-Evidence: [evaluation order](../../documentation/contributing/compiler/lowering/evaluation-order.md), [receiver reassignment regression](../../tests/e2e/testdata/accept/collection-call-order.ms), [operand order](../../tests/e2e/testdata/accept/operand-order.ms).
+Evidence: [evaluation order](../../documentation/contributing/compiler/lowering/evaluation-order.md), [receiver reassignment regression](../../tests/conformance/fixtures/e2e/accept/collection-call-order.ms), [operand order](../../tests/conformance/fixtures/e2e/accept/operand-order.ms).
 Verify: a list receiver initially holding 7 still yields 7 when its index expression reassigns the local to a list holding 9.

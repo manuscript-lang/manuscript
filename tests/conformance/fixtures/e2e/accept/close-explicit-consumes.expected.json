@@ -18,19 +18,24 @@
           "index": 1,
           "name": "close-explicit-consumes.ms::a close on one path leaves the other path to the scope",
           "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "close-explicit-consumes.ms::a binding given a new value is closed afresh",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 2,
-        "selected": 2,
-        "passed": 2,
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN close-explicit-consumes.ms::an explicit close consumes the binding\nPASS close-explicit-consumes.ms::an explicit close consumes the binding\nRUN close-explicit-consumes.ms::a close on one path leaves the other path to the scope\nPASS close-explicit-consumes.ms::a close on one path leaves the other path to the scope\n2 tests, 0 failed\n",
+      "stdout": "RUN close-explicit-consumes.ms::an explicit close consumes the binding\nPASS close-explicit-consumes.ms::an explicit close consumes the binding\nRUN close-explicit-consumes.ms::a close on one path leaves the other path to the scope\nPASS close-explicit-consumes.ms::a close on one path leaves the other path to the scope\nRUN close-explicit-consumes.ms::a binding given a new value is closed afresh\nPASS close-explicit-consumes.ms::a binding given a new value is closed afresh\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

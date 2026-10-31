@@ -1,0 +1,153 @@
+diff --git a/crates/ms-std-decimal/src/lib.rs b/crates/ms-std-decimal/src/lib.rs
+index d8cc451c4..b51a9a82c 100644
+--- a/crates/ms-std-decimal/src/lib.rs
++++ b/crates/ms-std-decimal/src/lib.rs
+@@ -364,20 +364,24 @@ impl Dec {
+
+     /// The integer part toward zero, when it fits an `i64`.
+     pub fn truncate_to_int(&self) -> Option<i64> {
+-        let coef = self.coefficient();
+-        if self.exp >= 0 {
+-            if coef.is_zero() {
+-                return Some(0);
+-            }
+-            if self.exp > 19 {
+-                return None;
+-            }
+-            return (coef * pow10(self.exp)).to_i64();
+-        }
+-        if -self.exp > 40 {
++        let coefficient = (i128::from(self.hi) << 64) | i128::from(self.lo);
++        if coefficient == 0 {
+             return Some(0);
+         }
+-        (coef / pow10(-self.exp)).to_i64()
++        let integer = if self.exp >= 0 {
++            // A nonzero coefficient times 10^19 cannot fit either sign of i64.
++            if self.exp > 18 {
++                return None;
++            }
++            coefficient.checked_mul(10_i128.pow(self.exp as u32))?
++        } else {
++            // 10^39 exceeds even an arbitrary i128 coefficient, not just Decimal's 34 digits.
++            if self.exp < -38 {
++                return Some(0);
++            }
++            coefficient / 10_i128.pow((-self.exp) as u32)
++        };
++        i64::try_from(integer).ok()
+     }
+
+     /// The coefficient of `self` rounded to a multiple of `10^-places`.
+@@ -516,6 +520,80 @@ mod tests {
+         assert_eq!(Dec::from_int(123), d("123d"));
+     }
+
++    #[test]
++    fn truncation_matches_exact_integer_scaling() {
++        let check = |coefficient: i128, exp: i64| {
++            let value = Dec::pack_wide(coefficient, exp);
++            let coefficient = BigInt::from(coefficient);
++            let expected = if exp >= 0 {
++                if exp > 19 {
++                    if coefficient.is_zero() { Some(0) } else { None }
++                } else {
++                    (coefficient * pow10(exp)).to_i64()
++                }
++            } else if exp < -40 {
++                Some(0)
++            } else {
++                (coefficient / pow10(-exp)).to_i64()
++            };
++            assert_eq!(value.truncate_to_int(), expected, "{value:?}");
++        };
++        let exponents = [
++            i64::MIN,
++            -6176,
++            -41,
++            -40,
++            -39,
++            -38,
++            -35,
++            -34,
++            -33,
++            -19,
++            -18,
++            -1,
++            0,
++            1,
++            17,
++            18,
++            19,
++            20,
++            6144,
++            i64::MAX,
++        ];
++        let maximum = 10_i128.pow(34) - 1;
++        for coefficient in [
++            0,
++            1,
++            -1,
++            9,
++            -9,
++            10,
++            -10,
++            i128::from(i64::MAX),
++            i128::from(i64::MIN),
++            i128::from(i64::MAX) + 1,
++            i128::from(i64::MIN) - 1,
++            maximum,
++            -maximum,
++            i128::MIN,
++            i128::MAX,
++        ] {
++            for exp in exponents {
++                check(coefficient, exp);
++            }
++        }
++        // Exercise every power-of-ten divisor and scaling branch with varied coefficients.
++        let mut sample = 0x9e3779b97f4a7c15_u128;
++        for _ in 0..1000 {
++            sample = sample.wrapping_mul(6364136223846793005).wrapping_add(1);
++            let coefficient = (sample % (maximum as u128 + 1)) as i128;
++            for exp in -40..=20 {
++                check(coefficient, exp);
++                check(-coefficient, exp);
++            }
++        }
++    }
++
+     #[test]
+     fn integer_conversions_match_bigint_normalization() {
+         let check = |signed: i64, unsigned: u64| {
+diff --git a/tests/e2e/testdata/stdlib/decimal-truncation-boundaries.ms b/tests/e2e/testdata/stdlib/decimal-truncation-boundaries.ms
+new file mode 100644
+index 000000000..c961f7f8a
+--- /dev/null
++++ b/tests/e2e/testdata/stdlib/decimal-truncation-boundaries.ms
+@@ -0,0 +1,25 @@
++import Decimal from "@std/decimal.ms"
++import expect_equal from "@std/test.ms"
++
++test "decimal truncation keeps signed Int boundaries after discarding fractions":
++    let maximum: Int = 9223372036854775807
++    let minimum: Int = -9223372036854775808
++    try expect_equal(9223372036854775807.9d.truncate_to_int(), maximum)
++    try expect_equal((-9223372036854775808.9d).truncate_to_int(), minimum)
++    try expect_equal(9223372036854775808d.truncate_to_int(), none)
++    try expect_equal((-9223372036854775809d).truncate_to_int(), none)
++    try expect_equal(1e19d.truncate_to_int(), none)
++    try expect_equal((-1e19d).truncate_to_int(), none)
++    try expect_equal(9e18d.truncate_to_int(), 9000000000000000000)
++    try expect_equal((-9e18d).truncate_to_int(), -9000000000000000000)
++
++test "decimal truncation scales full precision and extreme exponents exactly":
++    try expect_equal(9999999999999999999999999999999999e-33d.truncate_to_int(), 9)
++    try expect_equal((-9999999999999999999999999999999999e-33d).truncate_to_int(), -9)
++    try expect_equal(9999999999999999999999999999999999e-34d.truncate_to_int(), 0)
++    try expect_equal((-9999999999999999999999999999999999e-34d).truncate_to_int(), 0)
++    try expect_equal(1e-6176d.truncate_to_int(), 0)
++    try expect_equal((-1e-6176d).truncate_to_int(), 0)
++    try expect_equal(1e6144d.truncate_to_int(), none)
++    try expect_equal((-1e6144d).truncate_to_int(), none)
++    try expect_equal(0d.truncate_to_int(), 0)

@@ -1471,14 +1471,14 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             }
         }
 
-        fn wrap(&mut self, start: usize) {
+        fn wrap(&mut self, start: usize, limit: u32) {
             if self.strip {
                 return;
             }
             let tokens = self.tokens;
             let (mut end, mut booleans, mut dots, mut operators) = (start, 0, 0, 0);
             let mut calls: Vec<(usize, usize)> = Vec::new();
-            while end < tokens.len() {
+            while end < tokens.len() && tokens[end].pos.offset < limit {
                 if let Some(&close) = self.pairs.get(&end) {
                     // A call with a trivial argument gains nothing from breaking.
                     if tokens[end].kind == Tok::LParen && close > end + 3 {
@@ -1488,13 +1488,9 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     continue;
                 }
                 let kind = tokens[end].kind;
-                if layout_token(kind)
-                    || matches!(
-                        kind,
-                        Tok::Colon | Tok::Comma | Tok::RParen | Tok::RBracket | Tok::RBrace
-                    )
-                {
-                    break;
+                if layout_token(kind) {
+                    // An indented suite cannot be wrapped as a partial value.
+                    return;
                 }
                 match kind {
                     Tok::And | Tok::Or => booleans += 1,
@@ -1602,7 +1598,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                 }
                 _ => {}
             }
-            self.wrap(start);
+            self.wrap(start, value.end.offset);
         }
     }
     let mut g = G {
@@ -1626,7 +1622,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             && !suite_expression(&c.value)
             && let Some(&start) = g.starts.get(&c.init_pos.offset)
         {
-            g.wrap(start);
+            g.wrap(start, c.value.end.offset);
         }
         visit::walk_decl(&mut g, d);
     }
