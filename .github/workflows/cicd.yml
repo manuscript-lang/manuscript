@@ -64,12 +64,13 @@ jobs:
             {\"os\":\"windows\",\"arch\":\"amd64\",\"runner\":\"windows-2025\",\"tests\":true,\"corpus\":true,\"cranelift\":true},
             {\"os\":\"windows\",\"arch\":\"arm64\",\"runner\":\"windows-11-arm\",\"tests\":true,\"corpus\":true}"
           fi
-          # Each platform splits into parts that run on separate runners at once: `unit` (format, clippy,
-          # nextest, doc tests), `corpus`, `e2e`, `misc` (release builds, source conformance, ownership
-          # gates, packaging) and, where the leg has `cranelift`, `clif`. Every part is a full job on the
-          # platform, so no platform loses coverage; only the serial wall time shrinks.
+          # Each platform splits into three parts that run on separate runners at once: `unit` (format,
+          # clippy, nextest, doc tests), `conform` (corpus and e2e fixtures) and `extra` (release builds,
+          # source conformance, ownership gates, packaging, and the Cranelift corpus and fixtures where
+          # the leg has `cranelift`). Three parts keep a main run near the account's 20-job limit. Every
+          # part is a full job on the platform, so no platform loses coverage; only wall time shrinks.
           matrix=$(echo "{\"include\":[$include]}" | jq -c '{include: [.include[] | . as $leg
-            | (["unit","corpus","e2e","misc"] + (if $leg.cranelift then ["clif"] else [] end))[] as $part
+            | ["unit","conform","extra"][] as $part
             | $leg + {part: $part}]}')
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
@@ -220,7 +221,7 @@ jobs:
         if: ${{ !(matrix.full || matrix.tests) }}
         run: cargo test --locked -p ms-mir --test opt_overflow -- --nocapture
       - name: Build CLI for native source conformance
-        if: matrix.part == 'unit' || matrix.part == 'misc'
+        if: matrix.part == 'unit' || matrix.part == 'extra'
         run: |
           set -euo pipefail
           reports="$RUNNER_TEMP/ms-native-conformance"
@@ -234,7 +235,7 @@ jobs:
         if: matrix.part == 'unit' && runner.os == 'Windows'
         run: cargo test --locked -p ms-driver --test project_windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
       - name: Release builds use the bundled LLVM tools
-        if: matrix.part == 'misc'
+        if: matrix.part == 'extra'
         run: |
           set -euo pipefail
           # MS_KEEP_LL copies the LLVM IR next to the build, so it exists only when LLVM compiled the program.
@@ -242,7 +243,7 @@ jobs:
           mkdir -p "$dir"
           (cd "$dir" && MS_KEEP_LL=1 "$GITHUB_WORKSPACE/target/debug/ms" build "$GITHUB_WORKSPACE/examples/hello/ms.toml" -o hello --build-type Release && test -s ms-keep.ll && ./hello)
       - name: Native standard-library source conformance
-        if: matrix.part == 'misc'
+        if: matrix.part == 'extra'
         run: |
           set -euo pipefail
           ms=target/debug/ms
@@ -280,33 +281,33 @@ jobs:
           cargo test --locked -p ms-build --test debug_artifacts -- --nocapture
           cargo test --locked -p ms-build --lib -- --nocapture
       - name: Rust ms replays the corpus
-        if: matrix.part == 'corpus' && matrix.corpus
+        if: matrix.part == 'conform' && matrix.corpus
         run: sh scripts/conform.sh
       - name: Rust ms runs the e2e fixtures
-        if: matrix.part == 'e2e' && matrix.corpus
+        if: matrix.part == 'conform' && matrix.corpus
         run: sh scripts/e2e.sh
       - name: Rust ms replays the corpus on Cranelift
-        if: matrix.part == 'clif' && matrix.cranelift
+        if: matrix.part == 'extra' && matrix.cranelift
         env:
           MS_BACKEND: cranelift
         run: sh scripts/conform.sh
       - name: Rust ms runs the e2e fixtures on Cranelift
-        if: matrix.part == 'clif' && matrix.cranelift
+        if: matrix.part == 'extra' && matrix.cranelift
         env:
           MS_BACKEND: cranelift
         run: sh scripts/e2e.sh
       - name: Cancelled tasks release what they own
-        if: matrix.part == 'misc' && matrix.corpus
+        if: matrix.part == 'extra' && matrix.corpus
         run: |
           sh scripts/leak-check.sh tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release-shapes.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release-vars.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-channel-wait-memory.ms
       - name: Ownership counts and cleanup order hold
-        if: matrix.part == 'misc' && matrix.corpus
+        if: matrix.part == 'extra' && matrix.corpus
         run: sh scripts/count-check.sh
       - name: Package and run the distribution on a hello project
-        if: matrix.part == 'misc'
+        if: matrix.part == 'extra'
         run: |
           sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"
           name="manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}"
