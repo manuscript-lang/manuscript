@@ -152,5 +152,12 @@
     "raw_sha256": "c9fcbb3e32ed7b49e50fc56637887b1ba34723a3b3f8d3da25e8fa49a4c75d31",
     "gzip_sha256": "5b2d4aa4b67b2704ec76066011049bb61e7dc38e6112e566d434ffbc27d81cfa",
     "sample_count": 1008
+  },
+  {
+    "file": "url-direct-current-head.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "f33675dfc6402e2f6c39a034e1813ffef21029094970e9b3973f9f095b62f410",
+    "gzip_sha256": "79dbb516b81dcb067a4e7f0a91b04504a0fd873f70f7b1bb0403d24c1bf94ad9",
+    "sample_count": 8000
   }
 ]

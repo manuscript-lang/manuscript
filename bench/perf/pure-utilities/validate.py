@@ -110,6 +110,15 @@ def manifest(path):
             native = json.loads(next(source))
         for label in ["before", "after"]:
             assert native["binaries"][label] == followup["artifacts"][f"allocation_{label}"]
+    current_path = path.parent / "url-current-identities.json"
+    if current_path.is_file():
+        current = json.loads(current_path.read_text())
+        with gzip.open(path.parent / "url-direct-current-head.jsonl.gz", "rt") as source:
+            records = [json.loads(line) for line in source]
+        hashes = {r["label"]: r["sha256"] for r in records if r["kind"] == "identity"}
+        for label in ["before", "after", "rust"]:
+            key = label if label == "rust" else f"url_{label}"
+            assert hashes[label] == current["artifacts"][key]
 
 
 def validate(path):

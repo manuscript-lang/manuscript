@@ -112,5 +112,51 @@ Runtime results above use the exact pinned main-289 compiler, native archives
 and executable identities. No build-time speed claim is made. Newer main added
 backend/cache mechanisms outside this lane and retired the earlier calendar
 benchmark directories. Retired sources/results remain reachable through their
-immutable commits; this change does not restore them. Latest-main reconciliation,
-ordinary current-head validation and normal CI remain publication prerequisites.
+immutable commits; this change does not restore them. Latest-main reconciliation and ordinary current-head validation are recorded
+below; normal required CI remains the publication gate.
+
+## Current-head replay after reconciliation
+
+The candidate was rebased onto actual main
+`1b1a0359806e2a23e37190ba12d1063e4d16301f`. Current entry points still use Cargo
+xtask runtime, workspace Clippy and nextest; the proposed entry-point PR was not
+merged. Removed calendar directories stay removed. Current standard builds and
+called Debug/Release tests, exact native tests, workspace/all-target Clippy,
+formatting and repository checks pass.
+
+The compiler built at source head
+`741707912c768f30fb9750d665a900f56826d07d` has SHA-256
+`279c8a640ac9aa7b46c6535028b230f8db3905518459b08b09f67fabca0e68d3`. Its emitted
+candidate image differs from the earlier image, so the complete 80-case runtime
+matrix was repeated: **8,000 additional observations**, with no discarded trial.
+The native baseline remains main 28946f9, whose URL implementation is unchanged
+apart from the already-reconciled parser-module spelling. Exact identities are
+in [url-current-identities.json](results/url-current-identities.json). These are
+runtime measurements; no cached/fresh build-time comparison is made.
+
+| Workload | Before ns/op | After ns/op | Paired after/before | Paired after/Rust |
+| --- | ---: | ---: | ---: | ---: |
+| Safe ASCII |59.501|51.561|0.871|0.116|
+| Plus and escape |58.039|55.578|0.976|0.126|
+| Mixed Unicode |68.039|64.021|0.934|0.143|
+| Long safe |3166.156|1648.530|0.521|2.033|
+| Dense escapes |8722.187|7498.690|0.878|1.473|
+| Sparse escape |6628.726|3435.891|0.519|1.337|
+| Tail escape |6777.165|1823.323|0.268|2.123|
+| Early malformed |32.042|29.842|0.932|0.058|
+| Late malformed |2362.547|1259.865|0.507|1.643|
+| Late invalid UTF-8 |6072.481|1391.951|0.230|1.638|
+
+Every adverse current-run paired median remains explicit: encode empty 1.0036,
+percent 1.0003; decode escaped-percent 1.0001; parse-error opaque 1.0014, port 1.0042,
+host-space 1.0121, query-space 1.0019, early-percent 1.0019, late-percent 1.0085,
+late-UTF8 1.0157. Each adverse interquartile range crosses 1. Escaped-percent has
+a 0.006 ns median paired increase, 12/24 faster; not every decoder median improves.
+No material common-path regression is demonstrated. Independent review supports
+the current pinned runtime result with these limits and no causal compiler or
+universal-parity claim. The earlier 0.884 ns empty URL-error parsing observation
+remains historical and is not erased by this checkpoint.
+
+All new records, snapshots and exact compiler/image identities are included in
+the lossless manifest alongside the earlier data. The validator audits sources,
+outputs, counts, ordering, summaries, allocations and raw/compressed hashes.
