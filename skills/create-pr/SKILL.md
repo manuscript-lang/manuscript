@@ -22,7 +22,7 @@ Start from `.github/pull_request_template.md` and put these four sections first,
 - Title: imperative, specific, under about 70 characters.
 - Claims need evidence: link source, tests, or output. Say when something is inferred.
 - Flag public API, diagnostic, manifest, or artifact changes and any migration.
-- Keep skills, `.experts/` entries, and discovery links in sync when the change touches them (see [manuscript-change](../manuscript-change/SKILL.md#record-durable-lessons)).
+- Keep skills, `wiki/` pages, and discovery links in sync when the change touches them (see [manuscript-change](../manuscript-change/SKILL.md#record-durable-lessons)).
 - Do not merge with failing checks. Fix the cause; never skip or disable a test.
 
 ## Merging

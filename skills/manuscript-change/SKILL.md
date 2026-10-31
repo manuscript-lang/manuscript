@@ -5,7 +5,7 @@ description: Implement or review Manuscript language, standard library, runtime,
 
 # Manuscript changes
 
-Read [the expert protocol](../../.experts/README.md), then select relevant files from [the expert index](../../.experts/index.yml) by task meaning and affected paths. Apply [language design taste](../language-design-taste/SKILL.md) for design choices.
+Read the [wiki index](../../wiki/index.md) and the domain pages that match the task and affected paths ([routes](../../wiki/index.yml); [protocol](../../wiki/README.md)). Apply [language design taste](../language-design-taste/SKILL.md) for design choices.
 
 Select domain workflows from [AGENTS.md](../../AGENTS.md#domain-skills): language design, compiler (including syntax and parsing), runtime (including the standard library), tooling, documentation, and repository maintenance. Read only the relevant skills, adding another when the contract trace reaches it. They provide concrete entry points and checks; this skill owns the common change workflow.
 
@@ -33,12 +33,12 @@ A review follows the same contract trace: passing tests do not establish that ev
 
 ## Record durable lessons
 
-When the work yields reusable evidence or a correction, or the user asks to learn from previous interactions, close the loop using [the expert protocol](../../.experts/README.md) for routing, authority, and the entry format. A routine edit need not manufacture a lesson.
+When the work yields reusable evidence or a correction, or the user asks to learn from previous interactions, update the wiki per its [protocol](../../wiki/README.md). A routine edit need not manufacture a lesson.
 
-1. Read the relevant expert entries and the evidence from the work. For historical backfills, inspect actual user messages, changes, and checks; chat titles and assistant completion reports are discovery aids, not proof. Follow corrections through to the latest decision.
+1. Read the relevant wiki pages and the evidence from the work. For historical backfills, inspect actual user messages, changes, and checks; chat titles and assistant completion reports are discovery aids, not proof. Follow corrections through to the latest decision.
 2. Identify what would change a future implementation or review: a non-obvious constraint, an accepted or rejected choice, a failure mechanism, or a check that caught a regression. Separate an explicit decision from verified behavior and a hypothesis; keep uncertainty as an open question only when it affects future work.
-3. Put prevention in the strongest home. Observable regressions belong in behavioral tests; deterministic drift in the existing check or generator; exact semantics in canonical design; terminology in the glossary. The expert entry keeps the reason, evidence, and trigger for reaching that home. Change a workflow skill only when the lesson changes the workflow, and a taste preference only when the user's direction supports generalizing it.
-4. Update the closest existing entry in place, merging repeated evidence and replacing superseded guidance. A newer explicit request can supersede a remembered decision before it ships: record the direction, link the request, and state what still needs checkout verification. Add an expert and index route only when a distinct domain needs one. Keep memory changes reviewable alongside the implementation; during read-only reviews, report proposed updates instead of editing.
+3. Put prevention in the strongest home. Observable regressions belong in behavioral tests; deterministic drift in the existing check or generator; exact semantics in canonical design; terminology in the glossary. The wiki page keeps the reason, evidence, and trigger for reaching that home. Change a workflow skill only when the lesson changes the workflow, and a taste preference only when the user's direction supports generalizing it.
+4. Update the closest existing page in place, merging repeated evidence and replacing superseded guidance. A newer explicit request can supersede a remembered decision before it ships: record the direction, link the request, and state what still needs checkout verification. Add a page and its domain-index line when no page fits; add a domain only when a distinct one needs routes in `wiki/index.yml`. Keep memory changes reviewable alongside the implementation; during read-only reviews, report proposed updates instead of editing.
 
 Update catalog routes and both discovery directories when a skill is added, renamed, or removed. Finish when the next agent can find the lesson, tell what establishes it, and perform a concrete verification.
 

@@ -66,7 +66,7 @@ weight = 1
 | `examples/` | Hello project and tooling demo |
 | `extensions/vscode/` | VS Code client, grammar, snippets |
 | `.github/workflows/` | CI, book publishing, six-target release packaging |
-| `skills/`, `.experts/`, `AGENTS.md` | Contributor guidance; `.agents/skills/` and `.claude/skills/` link to shared skills |
+| `skills/`, `wiki/`, `AGENTS.md` | Contributor guidance; `.agents/skills/` and `.claude/skills/` link to shared skills |
 | `.artifacts/`, `dist/`, `target/` | Ignored local reports, releases, build output |
 
 Fix generated output through its generator, never by editing HTML or copying standard signatures into another catalog.

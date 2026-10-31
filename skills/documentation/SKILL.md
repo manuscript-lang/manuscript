@@ -5,14 +5,14 @@ description: Write Manuscript tutorials, canonical rules, generated API referenc
 
 # Documentation
 
-Use for `README.md`, `documentation/`, `crates/ms-tooling/src/guide/`, or `website/`. Read [development/publishing](../../documentation/contributing/development.md), [source ownership](../../documentation/contributing/architecture.md#keep-source-and-generated-output-distinct), and [lessons](../../.experts/tooling-and-docs.md).
+Use for `README.md`, `documentation/`, `crates/ms-tooling/src/guide/`, or `website/`. Read [development/publishing](../../documentation/contributing/development.md), [source ownership](../../documentation/contributing/architecture.md#keep-source-and-generated-output-distinct), and [lessons](../../wiki/tooling-and-docs/index.md).
 
 For a broad refresh, marketing homepage, or reader-journey redesign, start with
 [improve-documentation](../improve-documentation/SKILL.md); this skill owns the
 authoring, source ownership, and publication rules it uses.
 
 - Start with the reader's task. Explain one concept at a time in plain language with a small example; describe Equal/Hashable through comparison, lookup, and deduplication. Introduce dependencies before use.
-- Keep only simple, focused examples and alternatives. Avoid contrived domain models, error hierarchies, and helper layers added just to make an example work. Keep control flow shallow; simplify the scenario instead of spreading deep nesting across more helpers. See the [example simplicity lesson](../../.experts/language.md#error-translation-does-not-need-a-dedicated-standard-helper).
+- Keep only simple, focused examples and alternatives. Avoid contrived domain models, error hierarchies, and helper layers added just to make an example work. Keep control flow shallow; simplify the scenario instead of spreading deep nesting across more helpers. See the [example simplicity lesson](../../wiki/language/error-translation-does-not-need-a-dedicated-standard-helper.md).
 - Keep docs minimal and let code be the source of truth: state what the checkout ships, trim restated prose, and label pending design as pending. Write only about Manuscript: no Node.js, JavaScript, or Go parity or comparison pages, and no language-comparison inventories.
 - Give exact rules one canonical home and link there. Tutorials teach use and references define contracts. State limits on the relevant page; do not maintain separate coverage maps or language-comparison inventories.
 - Check behavior/signatures against current source. Newer direction can supersede older guides; label pending design as pending rather than shipped.
