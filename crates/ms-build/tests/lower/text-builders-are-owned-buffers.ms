@@ -1,7 +1,6 @@
 # Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-# expect-mir: "shared.new"
-# expect-mir: "shared.addr"
-# expect-mir: "builder is sealed"
+# expect-mir: "msrt_strbuilder_append"
+# expect-mir: "msrt_strbuilder_freeze"
 
 import StringBuilder from "@std/string.ms"
 

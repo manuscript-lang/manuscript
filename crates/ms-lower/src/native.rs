@@ -1513,10 +1513,6 @@ impl<'a> FnLower<'a> {
         {
             return self.format_method(result, m, recv, args.to_vec(), (sym, param, as_text));
         }
-        if crate::sharedbuilder::builder_kind(&m.receiver).is_some() {
-            let handle = self.borrow(recv);
-            return self.builder_call(&name, handle, &m.ty.params, args, result);
-        }
         if ms_check::effects::collection_mutation(m) {
             // The bound receiver is a copy: the mutated collection is the result.
             let b = self.borrow(recv);

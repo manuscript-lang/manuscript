@@ -132,7 +132,7 @@ These removed spellings looked like copies but mutated. Labels and return types 
 
 Map `add_default` evaluates its argument and inserts only when absent; `add_default_from` calls `create(key:)` once, only when absent. Neither replaces an existing value or position. Copy first with `map.clone().add_default(...)`.
 
-Builder mutations return Unit; `build` returns the sealed result.
+Builder mutations return Unit; `build` returns the sealed result. `StringBuilder` and `BytesBuilder` are owned values like `List`: declare them with `var`, pass them with `var`, and `build` consumes them, so using one after `build` is a move error. `drain` returns the content so far and leaves the builder empty, for a builder held in a record field, where `build` cannot move it out.
 
 ## Other collections
 

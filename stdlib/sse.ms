@@ -198,8 +198,7 @@ fn complete(
 
     try hold(var decoder, chunk.slice(start, end).get())
 
-    let joined = decoder.line.build()
-    decoder.line = BytesBuilder()
+    let joined = decoder.line.drain()
     decoder.line_bytes = 0
     return end_line(var decoder, joined, 0, joined.length(), var events)
 

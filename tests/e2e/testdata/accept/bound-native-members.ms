@@ -43,13 +43,6 @@ test "builder":
     append("é")
     (sb.build() == "aé") | try expect_true
 
-test "sealed builder":
-    var sb = StringBuilder()
-    sb.build()
-
-    let message = try expect_fault(fn: sb.append(""))
-    message | try expect_contains("builder is sealed")
-
 test "abs of the minimum overflows":
     let smallest = 0 - 9223372036854775807 - 1
     let message = try expect_fault(

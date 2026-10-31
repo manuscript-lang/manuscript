@@ -84,7 +84,7 @@ fn fail(var state: Decoder, cause: JsonError) Result[List[JsonValue], JsonError]
 
 # Parses the buffered value and clears the scanner for the next one.
 fn complete(var state: Decoder) Result[JsonValue, JsonError]:
-    let bytes = state.pending.build()
+    let bytes = state.pending.drain()
     reset(var state)
     if let text = bytes.decode_utf8():
         return parse(text, state.limits)

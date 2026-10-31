@@ -442,6 +442,10 @@ fn native_method_modes(
     CallModes {
         receiver: Some(if mutator {
             ParamMode::Mutate
+        } else if crate::effects::is_text_builder(receiver)
+            && method.name().is_some_and(|n| n.as_str() == "build")
+        {
+            ParamMode::Consume
         } else {
             ParamMode::Borrow
         }),

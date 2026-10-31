@@ -504,7 +504,7 @@ fn finished(state: Shared[TestState]) Result[HttpResponse, HttpError]:
     return ok(
         HttpResponse(
             status: guard.value.status, headers: guard.value.head.clone(),
-            body: guard.value.body.build()
+            body: guard.value.body.drain()
         )
     )
 

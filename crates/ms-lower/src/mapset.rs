@@ -652,8 +652,8 @@ impl<'a> FnLower<'a> {
         result_ty: MTy,
     ) -> Result<(Value, Option<Val>), Error> {
         let mt = self.ty_of(old);
-        if name == "build" {
-            return self.build_builder(old, result_ty);
+        if name == "drain" {
+            return self.drain_builder(old, result_ty);
         }
         if name == "add_default_from" {
             return self.add_default_from(old, decl, args, copy_result);
@@ -793,17 +793,16 @@ impl<'a> FnLower<'a> {
         Ok((new, result))
     }
 
-    /// `builder.build()`: a copy of the accumulated value; building again yields the same.
-    fn build_builder(&mut self, old: Value, result_ty: MTy) -> Result<(Value, Option<Val>), Error> {
+    /// `builder.drain()`: the accumulated value, leaving the builder empty. The runtime consumes
+    /// the buffer it freezes into text.
+    fn drain_builder(&mut self, old: Value, result_ty: MTy) -> Result<(Value, Option<Val>), Error> {
+        let empty = self.call_runtime("msrt_list_new", &[], MTy::BYTES)?;
         if result_ty == MTy::STR {
-            // The runtime consumes the buffer it builds from: build from a copy.
-            let copy = self.owned(Val { v: old, own: false });
-            let slot = self.put_slot(copy);
+            let slot = self.put_slot(old);
             let text = self.call_runtime("msrt_strbuilder_freeze", &[slot], MTy::STR)?;
-            return Ok((old, Some(Val { v: text, own: true })));
+            return Ok((empty, Some(Val { v: text, own: true })));
         }
-        let copy = self.owned(Val { v: old, own: false });
-        Ok((old, Some(Val { v: copy, own: true })))
+        Ok((empty, Some(Val { v: old, own: true })))
     }
 
     /// `map.get_or(key, fallback)`: the entry is read through its pointer, so a hit copies the
