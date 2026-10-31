@@ -4,6 +4,7 @@
 
 Formatter, LSP, CLI, diagnostics, documentation, site.
 
+- [Bound formatter scans to required context](bound-formatter-scans-to-required-context.md): track flow prefix facts and stop suffix measurement once a safe bound forces expansion.
 - [Bound navigation coordinate work to the query](bound-navigation-coordinate-work-to-the-query.md): avoid repeated prefix scans while preserving malformed snapshots and early-reference costs.
 
 - [Agent help is CLI commands, not a protocol server](agent-help-is-cli-commands-not-a-protocol-server.md): the user evaluated an MCP server (PR #528), judged the CLI the better surface for coding agents, and had it removed.
