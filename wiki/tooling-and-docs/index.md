@@ -18,5 +18,6 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [Source freshness does not establish published freshness](source-freshness-does-not-establish-published-freshness.md): after the concurrency simplification, source declarations and generated Markdown were current while the checked-in website still exposed ret…
 - [Standard declarations are source that tools must navigate](standard-declarations-are-source-that-tools-must-navigate.md): the user asked to keep standard type definitions in Manuscript so editor tooling can use them.
 - [Standard-library prose has the same owner as declarations](standard-library-prose-has-the-same-owner-as-declarations.md): the user requires `.ms` standard-library sources to own all library documentation.
+- [Stream coordinates for ordered token batches](stream-coordinates-for-ordered-token-batches.md): keep an exact boundary anchor to avoid repeated UTF-16 prefix work without changing exceptional offsets.
 - [Teach a runnable path before formal reference](teach-a-runnable-path-before-formal-reference.md): public documentation should focus on Manuscript and what readers can build.
 - [User tooling must work in the shipped binary](user-tooling-must-work-in-the-shipped-binary.md): documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator.
