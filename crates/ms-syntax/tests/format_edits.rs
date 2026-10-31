@@ -39,3 +39,12 @@ fn comments_off_the_four_space_grid_format_in_one_stable_pass() {
     assert_eq!(ms_syntax::format(&file, source).unwrap(), expected);
     assert_eq!(ms_syntax::format(&file, expected).unwrap(), expected);
 }
+
+#[test]
+fn off_grid_comment_before_a_block_argument_does_not_shift_its_suite() {
+    let file: Arc<str> = Arc::from("edits.ms");
+    let source = include_str!("format_edits/comment_before_block.src");
+    let expected = include_str!("format_edits/comment_before_block.expected");
+    assert_eq!(ms_syntax::format(&file, source).unwrap(), expected);
+    assert_eq!(ms_syntax::format(&file, expected).unwrap(), expected);
+}

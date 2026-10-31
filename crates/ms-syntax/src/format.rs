@@ -1173,7 +1173,8 @@ impl<'a> Layout<'a> {
         };
         let mut first_indent = 0i64;
         for node in nodes {
-            if !layout_token(node.tok.kind) {
+            // A leading comment may sit off the code's indentation.
+            if !layout_token(node.tok.kind) && node.tok.kind != Tok::Comment {
                 first_indent = self.line_indent(node.tok.pos.line) as i64;
                 break;
             }
