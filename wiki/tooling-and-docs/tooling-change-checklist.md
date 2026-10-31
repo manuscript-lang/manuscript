@@ -1,14 +1,15 @@
----
-name: tooling
-description: Change Manuscript formatting, lint, inspection, LSP features, VS Code integration, CLI commands, or debugging against checked source.
----
+[Wiki](../index.md) › [Tooling and docs](index.md)
 
-# Tooling
+# Tooling change checklist
 
-Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, or line tables/profiling. Read [implementation/limits](../../documentation/developer-tooling/implementation.md) and [lessons](../../wiki/tooling-and-docs/index.md).
+Verified: rules gathered from past formatter, LSP, CLI, and diagnostics work; the linked lessons carry the evidence.
+
+Apply when: changing `ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, line tables, or profiling.
+
+Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, or line tables/profiling. Read [implementation/limits](../../documentation/developer-tooling/implementation.md) and [lessons](../tooling-and-docs/index.md).
 
 - Derive semantics from checked symbols/types and shared traversal. Reuse one source index per request; do not re-lex names for import usage or generate inspection output just to find a receiver.
-- Formatting preserves semantics and is idempotent for inline/indented suites, defaults, closures, interpolation, and multiline parameters. Use [compiler](../compiler/SKILL.md) for changed syntax/recovery.
+- Formatting preserves semantics and is idempotent for inline/indented suites, defaults, closures, interpolation, and multiline parameters. Use the [compiler checklist](../compiler/compiler-change-checklist.md) for changed syntax/recovery.
 - Test valid source and incomplete snapshots: preserve neighboring declarations and positions; check navigation/completion with malformed input, LF/CRLF, and relevant Unicode positions.
 - Analysis/completion/workspace discovery share nearest-manifest and canonical identity. Confine overlays; malformed nested manifests cannot inherit parent aliases silently. Edits respect versions, shadowing, and binding identity.
 - Standard virtual documents are checked source: navigate workspace → stdlib, within stdlib, and across modules, including signature types/hover. Keep documents immutable/outside overlays; register their scheme with the client and test restarts.

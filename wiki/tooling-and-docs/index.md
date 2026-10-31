@@ -28,4 +28,5 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [Stream coordinates for ordered token batches](stream-coordinates-for-ordered-token-batches.md): keep an exact boundary anchor to avoid repeated UTF-16 prefix work without changing exceptional offsets.
 - [Teach a runnable path before formal reference](teach-a-runnable-path-before-formal-reference.md): public documentation should focus on Manuscript and what readers can build.
 - [User tooling must work in the shipped binary](user-tooling-must-work-in-the-shipped-binary.md): documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator.
+- [Tooling change checklist](tooling-change-checklist.md): formatter, LSP, CLI, diagnostics, and debugging rules to check before editing tooling.
 - [Stdout errors include the final flush](stdout-errors-include-final-flush.md): small buffered writes and large direct writes fail at different points; neither failure may silently become a successful command.

@@ -43,4 +43,5 @@ Cancellation, cleanup, resources, networking, workers, test helpers.
 - [YAML implicit keys need physical-source validation](yaml-implicit-keys-need-physical-source-validation.md): validate a key’s physical source span, preserving decoded escapes and omitted values.
 - [YAML diagnostics need source origins](yaml-flow-errors-need-source-origins.md): gathered value cursors retain their source prefix and physical line breaks when projected into diagnostics.
 - [YAML folding must retain physical blank lines until decoding](yaml-folding-must-retain-physical-blank-lines-until-decoding.md): stripping continuation lines before joining loses paragraph breaks and can misclassify comment markers inside an open quote.
+- [Runtime and stdlib change checklist](runtime-and-stdlib-change-checklist.md): ownership, cancellation, cleanup, native binding, and stdlib API rules to check before editing runtime or stdlib code.
 - [YAML comments terminate plain scalar continuation](yaml-comments-terminate-plain-scalar-continuation.md): retain actual comment boundaries through continuation gathering and compact collection rewrites.
