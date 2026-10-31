@@ -20,5 +20,5 @@ export fn second() Int!:
     add(value: 4, key: Key(2.0))
     m.get(Key(1.0)).get() | try expect_equal(3)
     original.code = 9.0
-    m.keys() [0].code | try expect_equal(1.0)
+    m.keys()[0].code | try expect_equal(1.0)
     return ok(m.length())

@@ -68,7 +68,7 @@ mod imp {
 
     const WAKE_TOKEN: Token = Token(usize::MAX);
     const EPERM: i32 = 1;
-    const EINVAL: i32 = 22;
+    const EBADF: i32 = 9;
 
     struct State {
         poll: Poll,
@@ -196,7 +196,9 @@ mod imp {
             // epoll refuses regular files and `/dev/null` with EPERM; kqueue refuses `/dev/null` with
             // EINVAL. Either way the descriptor never blocks, so it is ready at once.
             Err(e) if e.raw_os_error() == Some(EPERM) => Watch::Always,
-            Err(e) if cfg!(not(target_os = "linux")) && e.raw_os_error() == Some(EINVAL) => {
+            // kqueue's refusal of a device varies by system (EINVAL, ENOTSUP, ENODEV); only a
+            // closed descriptor is a real failure.
+            Err(e) if cfg!(not(target_os = "linux")) && e.raw_os_error() != Some(EBADF) => {
                 Watch::Always
             }
             Err(_) => Watch::Failed,
@@ -597,6 +599,23 @@ mod imp {
             .retain(|&h| h != handle);
     }
 
+    /// Waits shorter than this poll without blocking: the high-resolution timer's own latency
+    /// (a thread-pool callback and a completion packet, near a millisecond on Windows arm64)
+    /// would stretch them past the deadline.
+    const SPIN_BELOW_NS: i64 = 1_000_000;
+
+    /// Polls without blocking until an event arrives or `ns` nanoseconds pass.
+    fn spin_poll(poll: &mut Poll, events: &mut Events, ns: i64) -> std::io::Result<()> {
+        let deadline = std::time::Instant::now() + Duration::from_nanos(ns as u64);
+        loop {
+            poll.poll(events, Some(Duration::ZERO))?;
+            if !events.is_empty() || std::time::Instant::now() >= deadline {
+                return Ok(());
+            }
+            std::hint::spin_loop();
+        }
+    }
+
     pub unsafe fn wait(_: i32, timeout_ns: i64, out: &mut [Ready; 64]) -> Option<usize> {
         let s = state();
         // The completion port waits in whole milliseconds, rounded up, and on the system tick
@@ -611,7 +630,11 @@ mod imp {
             }
             _ => None,
         };
-        let polled = s.poll.poll(&mut s.events, timeout);
+        let polled = if (1..SPIN_BELOW_NS).contains(&timeout_ns) {
+            spin_poll(&mut s.poll, &mut s.events, timeout_ns)
+        } else {
+            s.poll.poll(&mut s.events, timeout)
+        };
         if let Some(handle) = armed {
             // SAFETY: as above. A wake for another reason must not leave a stale signal behind.
             unsafe { crate::sys::precise_timer_cancel(handle as *mut _) };

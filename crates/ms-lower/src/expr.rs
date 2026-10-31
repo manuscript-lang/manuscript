@@ -44,17 +44,7 @@ impl<'a> FnLower<'a> {
         let x = self.expr_value(e);
         self.converting = saved;
         let x = x?;
-        let x = match self.hir.info(e).wrap_some {
-            Some(_) if !self.dead => {
-                let o = self.owned(x);
-                Val {
-                    v: self.b.opt_some(o),
-                    own: true,
-                }
-            }
-            _ => x,
-        };
-        match self.hir.info(e).error_source {
+        let x = match self.hir.info(e).error_source {
             Some(src) if !self.dead => {
                 let want = self.emty(e)?;
                 // An owned resource converted to an interface without `close` is only read (the
@@ -78,10 +68,22 @@ impl<'a> FnLower<'a> {
                 self.scope_override = self.evidence_of(std::slice::from_ref(&src));
                 let out = self.fit_ty(x, &ct::sub(&src, &self.subst), want);
                 self.scope_override = saved;
-                out
+                out?
             }
-            _ => Ok(x),
-        }
+            _ => x,
+        };
+        // The conversion to the interface comes first: `Shape?` takes a `Sq` as `some(Shape(sq))`.
+        let x = match self.hir.info(e).wrap_some {
+            Some(_) if !self.dead => {
+                let o = self.owned(x);
+                Val {
+                    v: self.b.opt_some(o),
+                    own: true,
+                }
+            }
+            _ => x,
+        };
+        Ok(x)
     }
 
     pub(crate) fn expr_value(&mut self, e: &Expr) -> Result<Val, Error> {
@@ -359,11 +361,7 @@ impl<'a> FnLower<'a> {
             .iter()
             .position(|f| f.0 == name)
             .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
-        let mut f = self.b.rec_get(rid, idx, obj.v);
-        // A `ref` field holds a view; reading it borrows what it views.
-        if matches!(self.b.m.types.kind(self.ty_of(f)), TyKind::Ref(_)) {
-            f = self.b.ref_get(f);
-        }
+        let f = self.b.rec_get(rid, idx, obj.v);
         if let Some((uid, names)) = self.resource_move_of(e) {
             let o = self.moved_field(uid, &names, f)?;
             return Ok(Val { v: o, own: true });

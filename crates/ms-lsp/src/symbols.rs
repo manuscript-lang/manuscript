@@ -183,11 +183,11 @@ pub fn document_symbols(analysis: &Analysis, d: &Document) -> Json {
         if decl.0.decl.synthetic && matches!(decl.decl().kind, DeclKind::Interface(_)) {
             continue;
         }
-        let mut end = outline.block_end(d.text.len());
-        if let Some(next) = declarations.get(i + 1) {
-            end = outline.block_end(next.pos().offset as usize);
-        }
-        end = end.max(decl.pos().offset as usize);
+        // Select the boundary before scanning a potentially large EOF suffix.
+        let next = declarations
+            .get(i + 1)
+            .map_or(d.text.len(), |next| next.pos().offset as usize);
+        let end = outline.block_end(next).max(decl.pos().offset as usize);
         out.push(outline.declaration(decl, end));
     }
     Json::Arr(out)

@@ -1,0 +1,17 @@
+[package]
+name = "normalize-rust-control"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[features]
+ascii-identity = []
+eager-input = []
+
+[dependencies]
+unicode-normalization = { version = "=0.1.26", default-features = false }
+
+[profile.release]
+overflow-checks = true
