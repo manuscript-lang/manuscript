@@ -1,0 +1,5584 @@
+{
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "cpu_affinity": [
+    0
+  ],
+  "revision": "241a491151c50381d05bea5fcc2108d3ba9932ad",
+  "baseline_revision": "649ddeb9a2fb91eb36d1eb074842eaaa4ee370fc",
+  "baseline_parser_sha256": "cae01de886fe725067923b0c2b10b8e9ad2b19a4e1d6e5aa429d1f93eb8e0a66",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "binaries": {
+    "baseline": "b1120ece14a592becf53ee85109745ed72eea39b98558452e993508f5e77f271",
+    "candidate": "44fa4f7c53584ab1b2a19ef1566c99972693fa520553f470611cb9bc0cab0d33"
+  },
+  "parser_sha256": "faff9436f85674deba31a34b3ed357cd5dee4694e6688002c28f51a4e6c952a0",
+  "validation": {
+    "tiny": {
+      "tree_sha256": "1d54e041e3e87587efed05bc6447ef2d66b0b138830abfd7df69ce2384c2c89f",
+      "inputs": [
+        {
+          "path": "tiny.ms",
+          "sha256": "49b3ad174ff21b8516cef778facc81f0cd902cc25cd8ae6d6fe9d3798a0c6fad",
+          "bytes": 40
+        }
+      ]
+    },
+    "plain-256": {
+      "tree_sha256": "1cb72e9dff92090cd00c29dc43ab225aa2e1ce93816ffef782df839ee8b746f9",
+      "inputs": [
+        {
+          "path": "plain-256.ms",
+          "sha256": "969271dfd20efedde27344087c2f2094d7285ea75a93dd96286f0697473f9902",
+          "bytes": 10642
+        }
+      ]
+    },
+    "generic-optional-256": {
+      "tree_sha256": "9beda1f4076d720f2ee3a7e4bd0c45965e6975480510b37c0fa090d7e03ee6aa",
+      "inputs": [
+        {
+          "path": "generic-optional-256.ms",
+          "sha256": "de80a804ed3d1d4a35e19b6fc893ddc604b3c3b6873c02112924c35aa704a6dc",
+          "bytes": 17298
+        }
+      ]
+    },
+    "index-1": {
+      "tree_sha256": "78dd8f7a7cf58797ae18125ccef42311641994b8c87256c5c0b2d2a1599f37c5",
+      "inputs": [
+        {
+          "path": "index-1.ms",
+          "sha256": "a7b5b37db6c58e27b151b689d85d7cf2065f039dbc325498aacee31e5ba45584",
+          "bytes": 46
+        }
+      ]
+    },
+    "index-2": {
+      "tree_sha256": "44b275be6e4377f8af6e3ef5e63dd6f4fe7b2f4a5586af606b27002d300aaeca",
+      "inputs": [
+        {
+          "path": "index-2.ms",
+          "sha256": "77f003bcea77470e4330c2f6bf9bb8df56f97df98a10bdc00c1dc1b66019ccf4",
+          "bytes": 52
+        }
+      ]
+    },
+    "index-4": {
+      "tree_sha256": "d5e8a9e96b18f169c4b07984843d867f593690d03b25d2986681ebf533510b97",
+      "inputs": [
+        {
+          "path": "index-4.ms",
+          "sha256": "80920a112238117cb500c6e32b361818b1ca1b96433a4d06ec2b0c39fb054fca",
+          "bytes": 64
+        }
+      ]
+    },
+    "index-8": {
+      "tree_sha256": "54c06375460dd3bad8d8079b0367a44ca157a6af2f9f80ef31de6a4371331c1f",
+      "inputs": [
+        {
+          "path": "index-8.ms",
+          "sha256": "9995492b2f42c2dc628aff4d0f7f04a8050198a3cb4c2bc756f34c212b4d4629",
+          "bytes": 88
+        }
+      ]
+    },
+    "index-16": {
+      "tree_sha256": "6217c4de7ad3db469ce9defd9a72b0455fdb91b440e2f8567ae6c7032bac0428",
+      "inputs": [
+        {
+          "path": "index-16.ms",
+          "sha256": "8ce921b6179102d23134fe458c7da0f1ac81a58f2624aa445a55d766169bd382",
+          "bytes": 136
+        }
+      ]
+    },
+    "index-64": {
+      "tree_sha256": "73d0ef7dc76a920eae425087eada05910d8a3d691322f4ae629c53d463d67fae",
+      "inputs": [
+        {
+          "path": "index-64.ms",
+          "sha256": "86fa02dce2001daed58c052e4985c815224435cff8600712aa535a4a22dbc18f",
+          "bytes": 424
+        }
+      ]
+    },
+    "index-128": {
+      "tree_sha256": "ca4e569ffba4046ab5727de0a1cc301132794e559fd2387e21de7e3bbd2a3402",
+      "inputs": [
+        {
+          "path": "index-128.ms",
+          "sha256": "ee4b723737190bd39d1a9c09ee04e6e551a7d56a88137dc6b80362deb0780d37",
+          "bytes": 808
+        }
+      ]
+    },
+    "index-256": {
+      "tree_sha256": "3d52b0bbc921995d6d0e367c32fdb54b26d65fec6c563cbcd52ce92364d4848e",
+      "inputs": [
+        {
+          "path": "index-256.ms",
+          "sha256": "2c5df33c6aa06028287631d2100a736bab4a22cd965248e2aa159f5e50f6ae8b",
+          "bytes": 1576
+        }
+      ]
+    },
+    "flat-name": {
+      "tree_sha256": "5f0cad774d84994a9aa8e14c502a511cc7f0dff6ac83004e8fef234454a5d7e4",
+      "inputs": [
+        {
+          "path": "flat-name.ms",
+          "sha256": "5645f90e6d3ab81b3bc0a32a70718baf93fa15433324d0d8606259cd88415ca6",
+          "bytes": 62
+        }
+      ]
+    },
+    "flat-value": {
+      "tree_sha256": "984f702035d0b57bd6bb575e75df7de8d36f87f59168227d049df6806c1d10fc",
+      "inputs": [
+        {
+          "path": "flat-value.ms",
+          "sha256": "93f7597f4c0c6c24e4a6a7d1b14b8112835da416cbd695ae2e66ba0973321638",
+          "bytes": 66
+        }
+      ]
+    },
+    "mixed-flat-after-nested": {
+      "tree_sha256": "96c83f04292e56b4112471ffa63d121a4f1a587b572a1848661c877ec9dc9ceb",
+      "inputs": [
+        {
+          "path": "mixed-flat-after-nested.ms",
+          "sha256": "19bea6cc8b72a275599f386bc64de7e31bbc485eedbfe0592363b13fba4fcf53",
+          "bytes": 4252
+        }
+      ]
+    },
+    "nested-type-16": {
+      "tree_sha256": "15c64da88536241b7bd87860f008323e22913e8465966b11060ba100183da306",
+      "inputs": [
+        {
+          "path": "nested-type-16.ms",
+          "sha256": "d1db4c46ab86ae65c39060a6243010cedd1f97f3f5f9b70ce417774ec94d4c96",
+          "bytes": 2182
+        }
+      ]
+    },
+    "generic-apply-16": {
+      "tree_sha256": "88fba6399b952affa88fc819527104cec3dfa46746dfebf1ef9d4d058b88eb43",
+      "inputs": [
+        {
+          "path": "generic-apply-16.ms",
+          "sha256": "85eda01ad80b10a7d1a507e269b19c7d06780bb12538a530cab34b4ef7445dba",
+          "bytes": 130
+        }
+      ]
+    },
+    "nested-type-32": {
+      "tree_sha256": "d45105a43e7fe9ee0ad2c048f7abf8086bf553d03cb595bc0a8046a0108c57c3",
+      "inputs": [
+        {
+          "path": "nested-type-32.ms",
+          "sha256": "e3778e397350dc2ea3121326f36149fa807b62fadace0b2445d8fb4dcebf38d6",
+          "bytes": 3718
+        }
+      ]
+    },
+    "generic-apply-32": {
+      "tree_sha256": "453c6578491886cccf00a1a4c146a34edea6a29ae9d50b75d77abdf4cf38d2ef",
+      "inputs": [
+        {
+          "path": "generic-apply-32.ms",
+          "sha256": "a2ba17bd1f9f2257115c843e5121d9658d8c106131b418004ec3faf6a8ebbc33",
+          "bytes": 226
+        }
+      ]
+    },
+    "nested-type-64": {
+      "tree_sha256": "9fb4a68e3fc91a13c2f46ee503ffa33b41fb98205c36c6fdced483406e981ad1",
+      "inputs": [
+        {
+          "path": "nested-type-64.ms",
+          "sha256": "25cfc798fbc934bc804f32e66dd63e25757aa78bc11e58b3acf3c90e9d9920ea",
+          "bytes": 6790
+        }
+      ]
+    },
+    "generic-apply-64": {
+      "tree_sha256": "c5868c44a65ad894d577456913019f6125d7aee4c5d60a84abe61846aca5d964",
+      "inputs": [
+        {
+          "path": "generic-apply-64.ms",
+          "sha256": "7ff8a0c1f59cd814b788f7581ca06d725a69da4ff31c322092fe4112bcfba95e",
+          "bytes": 418
+        }
+      ]
+    },
+    "stdlib": {
+      "tree_sha256": "d7e6e37dbb6c9cbf9e8e2321058caded7dd6a893b8dfd77b0fa88bb624ad8662",
+      "inputs": [
+        {
+          "path": "stdlib/archive.ms",
+          "sha256": "646fe9c1ebb9c071bdc9f5fd30cb9727d738559517d2d1ec41c6445b223c0719",
+          "bytes": 8527
+        },
+        {
+          "path": "stdlib/bench.ms",
+          "sha256": "1182189fcdad6583b3c02789093d3beb6e3cfe63cce003893aae6c33af63031f",
+          "bytes": 5633
+        },
+        {
+          "path": "stdlib/bitset.ms",
+          "sha256": "fa4260c2f429ee1f5ab9e22415fb535a60a94a3526b8b33bad6af9f6116e9af4",
+          "bytes": 5587
+        },
+        {
+          "path": "stdlib/bytes.ms",
+          "sha256": "340e0989fb1cd6baa6e23045c37da641b1e6867e1a40df5fc9e24b5c03928a14",
+          "bytes": 13764
+        },
+        {
+          "path": "stdlib/channels.ms",
+          "sha256": "a78425c1a1ff9f5ad868751b5c23f947061bd757189d3d500d3542f1a6b09cff",
+          "bytes": 2788
+        },
+        {
+          "path": "stdlib/cli.ms",
+          "sha256": "fb72a78b335b2ac5207080aaae67e271b310ad7022f88bfce4720f8c73de287a",
+          "bytes": 26938
+        },
+        {
+          "path": "stdlib/collections.ms",
+          "sha256": "729b7bf80566a52f3ccf422d83964111da00791569541f99599ae63cd957d500",
+          "bytes": 30005
+        },
+        {
+          "path": "stdlib/core.ms",
+          "sha256": "d64152d69f3e02f0f4722bb66180d256a063128e74a17d299bf1e9cf6ba42f37",
+          "bytes": 9344
+        },
+        {
+          "path": "stdlib/crypto.ms",
+          "sha256": "2700df85d2cd6aab9705ee9c8604b235e8c7c6bf3fc43616e3d5a8670a6e0112",
+          "bytes": 12815
+        },
+        {
+          "path": "stdlib/csv.ms",
+          "sha256": "bcb1edfb379ee26c01bf7add0f77648696629cf3a98443f4059eae65bc33761d",
+          "bytes": 9265
+        },
+        {
+          "path": "stdlib/decimal.ms",
+          "sha256": "4266d654ee8f014c6415fa95bdf51ed9caac4501963da42b5cf38580a412d26a",
+          "bytes": 3612
+        },
+        {
+          "path": "stdlib/deque.ms",
+          "sha256": "e2fbc8577bdbe945e6563659df2dc309662bbd20e71caadebd87365b8555f50f",
+          "bytes": 4113
+        },
+        {
+          "path": "stdlib/encoding.ms",
+          "sha256": "5b0ec361dcab8a46148e049484c99fe592a91a24ca3f70c94d6be6844a0f426f",
+          "bytes": 9669
+        },
+        {
+          "path": "stdlib/fetch.ms",
+          "sha256": "583bd24aaebe159de7717095a59fb3b31e46b00ffbde800865c282371c7ccfd6",
+          "bytes": 10035
+        },
+        {
+          "path": "stdlib/fs.ms",
+          "sha256": "cd1dabe5a880488c474ac42bee864cf13e4d2d07b371cf2979b92b728e587f57",
+          "bytes": 36296
+        },
+        {
+          "path": "stdlib/html.ms",
+          "sha256": "d14e35273f74a79bef82c905f7d4c852c1241e65c2d0512e6097fd204c933956",
+          "bytes": 4120
+        },
+        {
+          "path": "stdlib/http.ms",
+          "sha256": "e38ae4fbdd63675aee975956b5b2311495376c6d17cfce2e22e9ba8d5877e178",
+          "bytes": 24732
+        },
+        {
+          "path": "stdlib/intrinsics.ms",
+          "sha256": "fa1da9779075ef3b914f67bdde0c275852bef4e022b02d26a9df4c2f9d766922",
+          "bytes": 22116
+        },
+        {
+          "path": "stdlib/io.ms",
+          "sha256": "73d52d6e1de4781fb63c272d27f21c9387d76d831d7568e534724999c4e23c64",
+          "bytes": 16122
+        },
+        {
+          "path": "stdlib/iterable.ms",
+          "sha256": "dab670f496df5fad09ac4938e6c2cab27d38fcb7a73f2c84d1eba061313fbe4e",
+          "bytes": 429
+        },
+        {
+          "path": "stdlib/json.ms",
+          "sha256": "edaacf22d6a1e34762559239eb0bb5d306f4ce41230ca36e656fd0b4ea9a67aa",
+          "bytes": 13356
+        },
+        {
+          "path": "stdlib/jsonstream.ms",
+          "sha256": "ef961024cbc19b9867236d0065249980b58bd7e718e9b210d12a32b4d395ca1f",
+          "bytes": 6252
+        },
+        {
+          "path": "stdlib/log.ms",
+          "sha256": "edfb24e9ca77ba4f43469c0163a2963855b7cdb8624ea524b319df0c12184c09",
+          "bytes": 12725
+        },
+        {
+          "path": "stdlib/logcore.ms",
+          "sha256": "b7a3edfbbe2a7b144b617e8ff8bde516e24318e154c79dd3e9832e04cfdd042b",
+          "bytes": 3742
+        },
+        {
+          "path": "stdlib/math.ms",
+          "sha256": "f7f9b051bf1cb124c6d70ef30e03f07cd5b602ab167b82a24ad368cc6ecc1280",
+          "bytes": 21197
+        },
+        {
+          "path": "stdlib/net.ms",
+          "sha256": "22c08b6cc93a98cc46310bcafd3318f42bc975aeae82754bae00891f040127c5",
+          "bytes": 38333
+        },
+        {
+          "path": "stdlib/ordering.ms",
+          "sha256": "d6f6a314ea3b3810fbb1d69338779b3ec901dd17e444f594a7a00d6af2fd0177",
+          "bytes": 9611
+        },
+        {
+          "path": "stdlib/process.ms",
+          "sha256": "5d533e7c2554bd63c2125d15482335defd915ba917e52d01efa3442534677e62",
+          "bytes": 28436
+        },
+        {
+          "path": "stdlib/processes.ms",
+          "sha256": "bdd517d38ce7c846a7e12861fd02ecec2f091c62ac0519c2efd8241c975ee5d3",
+          "bytes": 18103
+        },
+        {
+          "path": "stdlib/queue.ms",
+          "sha256": "89841c33abd7a6f57d2ab2a9c7d3d7f8b93c81c9c0ca4fd720c21db148a28ae9",
+          "bytes": 6887
+        },
+        {
+          "path": "stdlib/random.ms",
+          "sha256": "df7b60df61ad1a2a5c715a71fa4fdec62d6973a6d0a7e1066151c5df6188700a",
+          "bytes": 2092
+        },
+        {
+          "path": "stdlib/router.ms",
+          "sha256": "5c71754ae1d275dccf3fc8257207a89c8cf618ff8294961e46065f70c171107e",
+          "bytes": 27020
+        },
+        {
+          "path": "stdlib/semver.ms",
+          "sha256": "3c69d27a8bda07c072ecfdafc748731b97ca72a3344340ae6f2b59e3420b46a4",
+          "bytes": 6038
+        },
+        {
+          "path": "stdlib/shared.ms",
+          "sha256": "f645acae961ec03665db6475e5fe8316dd2291eb35d0142bd314608784bc6670",
+          "bytes": 1433
+        },
+        {
+          "path": "stdlib/sorted.ms",
+          "sha256": "bd594197424cbe17aa4f4fe1e58e3a2cbe154d1106e3a030b03b312a58f65c48",
+          "bytes": 13410
+        },
+        {
+          "path": "stdlib/sse.ms",
+          "sha256": "ec4a8eadbe5af2163333c6745244b915e4cc2a91a38903ee9e5117185aa8b789",
+          "bytes": 13343
+        },
+        {
+          "path": "stdlib/streams.ms",
+          "sha256": "8b130bf3b6ffde20a5c8467949d39fdd81a3140802430a52c94c35a3fc88bf38",
+          "bytes": 6291
+        },
+        {
+          "path": "stdlib/string.ms",
+          "sha256": "b15a88de4243d777450c689e505171287d4082a7668756262709ea7f1f4aa2e9",
+          "bytes": 4828
+        },
+        {
+          "path": "stdlib/sync.ms",
+          "sha256": "207cd898e789c79530c8966f7c7c17d9f34db4a19c3f146b0a5a656db3387a23",
+          "bytes": 2281
+        },
+        {
+          "path": "stdlib/tasks.ms",
+          "sha256": "accf589ae8e7b4555df5c4c9b5d3487cc8897c46b0f3a92a9609d47272f83eff",
+          "bytes": 17184
+        },
+        {
+          "path": "stdlib/test.ms",
+          "sha256": "bb3f536b4abda636888f6f94d4e431ea0a5690e54d1937ad2e18ddac11c987f4",
+          "bytes": 4261
+        },
+        {
+          "path": "stdlib/time.ms",
+          "sha256": "99773de2c84e7cc37cdc57985569fc457a2615b1dee73d22e6025ed337186132",
+          "bytes": 16672
+        },
+        {
+          "path": "stdlib/toml.ms",
+          "sha256": "79b719c6bfab6b57566bebb644b7523c172f74d610dd2778e051b76c674ab522",
+          "bytes": 40086
+        },
+        {
+          "path": "stdlib/workers.ms",
+          "sha256": "3d05e19bf17628aba8e91130d02a042a4bb57df2d96c20f81b12277b7827219c",
+          "bytes": 10560
+        },
+        {
+          "path": "stdlib/yaml.ms",
+          "sha256": "2ec9270e5c40abe483985d914eac6057de8d4838c1ff23d45313b30b862a98b9",
+          "bytes": 62151
+        }
+      ]
+    }
+  },
+  "samples": [
+    {
+      "elapsed_ns": 100006847,
+      "passes": 94048,
+      "units": 14,
+      "checksum": 1316672,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100000428,
+      "passes": 95056,
+      "units": 14,
+      "checksum": 1330784,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 102952330,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100044434,
+      "passes": 3488,
+      "units": 263,
+      "checksum": 917344,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100679010,
+      "passes": 944,
+      "units": 1120,
+      "checksum": 1057280,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100879449,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100098515,
+      "passes": 13632,
+      "units": 39,
+      "checksum": 531648,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100021809,
+      "passes": 25792,
+      "units": 39,
+      "checksum": 1005888,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100043682,
+      "passes": 3584,
+      "units": 664,
+      "checksum": 2379776,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100462026,
+      "passes": 3568,
+      "units": 664,
+      "checksum": 2369152,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 101101881,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 101448217,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100010773,
+      "passes": 37904,
+      "units": 23,
+      "checksum": 871792,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100031724,
+      "passes": 48016,
+      "units": 23,
+      "checksum": 1104368,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100003462,
+      "passes": 140096,
+      "units": 9,
+      "checksum": 1260864,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100006366,
+      "passes": 138464,
+      "units": 9,
+      "checksum": 1246176,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100014068,
+      "passes": 103296,
+      "units": 13,
+      "checksum": 1342848,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100006491,
+      "passes": 104800,
+      "units": 13,
+      "checksum": 1362400,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100123897,
+      "passes": 10912,
+      "units": 208,
+      "checksum": 2269696,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100077076,
+      "passes": 10720,
+      "units": 208,
+      "checksum": 2229760,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 101162527,
+      "passes": 1104,
+      "units": 135,
+      "checksum": 149040,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100182354,
+      "passes": 6928,
+      "units": 135,
+      "checksum": 935280,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100006301,
+      "passes": 107504,
+      "units": 11,
+      "checksum": 1182544,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100005751,
+      "passes": 107248,
+      "units": 11,
+      "checksum": 1179728,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 101397597,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 101181075,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100018129,
+      "passes": 186400,
+      "units": 6,
+      "checksum": 1118400,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100001985,
+      "passes": 179712,
+      "units": 6,
+      "checksum": 1078272,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 110945833,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100302633,
+      "passes": 1776,
+      "units": 519,
+      "checksum": 921744,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100014374,
+      "passes": 74832,
+      "units": 15,
+      "checksum": 1122480,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100015445,
+      "passes": 79280,
+      "units": 15,
+      "checksum": 1189200,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100267371,
+      "passes": 3136,
+      "units": 352,
+      "checksum": 1103872,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100389353,
+      "passes": 3168,
+      "units": 352,
+      "checksum": 1115136,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100256584,
+      "passes": 1760,
+      "units": 608,
+      "checksum": 1070080,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100754027,
+      "passes": 1792,
+      "units": 608,
+      "checksum": 1089536,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 101107815,
+      "passes": 1040,
+      "units": 1579,
+      "checksum": 1642160,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100844202,
+      "passes": 1088,
+      "units": 1579,
+      "checksum": 1717952,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 101550695,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100858503,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 159299602,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 159814831,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100004028,
+      "passes": 138992,
+      "units": 9,
+      "checksum": 1250928,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100004048,
+      "passes": 142304,
+      "units": 9,
+      "checksum": 1280736,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100028194,
+      "passes": 1744,
+      "units": 519,
+      "checksum": 905136,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 110185989,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100090707,
+      "passes": 6800,
+      "units": 135,
+      "checksum": 918000,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101399109,
+      "passes": 1104,
+      "units": 135,
+      "checksum": 149040,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101207003,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101039463,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100090017,
+      "passes": 10784,
+      "units": 208,
+      "checksum": 2243072,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100122966,
+      "passes": 10880,
+      "units": 208,
+      "checksum": 2263040,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100011559,
+      "passes": 108576,
+      "units": 11,
+      "checksum": 1194336,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100004279,
+      "passes": 106064,
+      "units": 11,
+      "checksum": 1166704,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100009226,
+      "passes": 78544,
+      "units": 15,
+      "checksum": 1178160,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100012631,
+      "passes": 75120,
+      "units": 15,
+      "checksum": 1126800,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100243626,
+      "passes": 3184,
+      "units": 352,
+      "checksum": 1120768,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100247742,
+      "passes": 3136,
+      "units": 352,
+      "checksum": 1103872,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101212591,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100439688,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100595151,
+      "passes": 1824,
+      "units": 608,
+      "checksum": 1108992,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100868048,
+      "passes": 1776,
+      "units": 608,
+      "checksum": 1079808,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100414901,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100225778,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100259488,
+      "passes": 3536,
+      "units": 263,
+      "checksum": 929968,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100741063,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100007340,
+      "passes": 178032,
+      "units": 6,
+      "checksum": 1068192,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100003645,
+      "passes": 187440,
+      "units": 6,
+      "checksum": 1124640,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100089191,
+      "passes": 3552,
+      "units": 664,
+      "checksum": 2358528,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100095902,
+      "passes": 3600,
+      "units": 664,
+      "checksum": 2390400,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100022092,
+      "passes": 47968,
+      "units": 23,
+      "checksum": 1103264,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100012177,
+      "passes": 37520,
+      "units": 23,
+      "checksum": 862960,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100016274,
+      "passes": 25936,
+      "units": 39,
+      "checksum": 1011504,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100004927,
+      "passes": 13360,
+      "units": 39,
+      "checksum": 521040,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101066900,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101598373,
+      "passes": 944,
+      "units": 1120,
+      "checksum": 1057280,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101382421,
+      "passes": 1056,
+      "units": 1579,
+      "checksum": 1667424,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100391294,
+      "passes": 1040,
+      "units": 1579,
+      "checksum": 1642160,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 154912224,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 156326644,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100014421,
+      "passes": 95408,
+      "units": 14,
+      "checksum": 1335712,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100016213,
+      "passes": 96080,
+      "units": 14,
+      "checksum": 1345120,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100008853,
+      "passes": 104544,
+      "units": 13,
+      "checksum": 1359072,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100012448,
+      "passes": 103920,
+      "units": 13,
+      "checksum": 1350960,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 111030600,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100767503,
+      "passes": 1744,
+      "units": 519,
+      "checksum": 905136,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100343051,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100383271,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100004976,
+      "passes": 103152,
+      "units": 13,
+      "checksum": 1340976,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100025517,
+      "passes": 103104,
+      "units": 13,
+      "checksum": 1340352,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100013579,
+      "passes": 72960,
+      "units": 15,
+      "checksum": 1094400,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100008632,
+      "passes": 78464,
+      "units": 15,
+      "checksum": 1176960,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101137067,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101499755,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100299495,
+      "passes": 3552,
+      "units": 664,
+      "checksum": 2358528,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100112426,
+      "passes": 3552,
+      "units": 664,
+      "checksum": 2358528,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100207457,
+      "passes": 1104,
+      "units": 135,
+      "checksum": 149040,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100209370,
+      "passes": 6896,
+      "units": 135,
+      "checksum": 930960,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100005706,
+      "passes": 95328,
+      "units": 14,
+      "checksum": 1334592,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100006166,
+      "passes": 96000,
+      "units": 14,
+      "checksum": 1344000,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100018555,
+      "passes": 944,
+      "units": 1536,
+      "checksum": 1449984,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101605994,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100318874,
+      "passes": 1760,
+      "units": 608,
+      "checksum": 1070080,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100195259,
+      "passes": 1792,
+      "units": 608,
+      "checksum": 1089536,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100001179,
+      "passes": 104752,
+      "units": 11,
+      "checksum": 1152272,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100005776,
+      "passes": 107616,
+      "units": 11,
+      "checksum": 1183776,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100002051,
+      "passes": 186560,
+      "units": 6,
+      "checksum": 1119360,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100000358,
+      "passes": 180272,
+      "units": 6,
+      "checksum": 1081632,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100025796,
+      "passes": 141728,
+      "units": 9,
+      "checksum": 1275552,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100011475,
+      "passes": 137568,
+      "units": 9,
+      "checksum": 1238112,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100005456,
+      "passes": 37696,
+      "units": 23,
+      "checksum": 867008,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100020698,
+      "passes": 48144,
+      "units": 23,
+      "checksum": 1107312,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100042411,
+      "passes": 13744,
+      "units": 39,
+      "checksum": 536016,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100006116,
+      "passes": 26144,
+      "units": 39,
+      "checksum": 1019616,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100506323,
+      "passes": 1056,
+      "units": 1579,
+      "checksum": 1667424,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100719561,
+      "passes": 1088,
+      "units": 1579,
+      "checksum": 1717952,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100023753,
+      "passes": 10944,
+      "units": 208,
+      "checksum": 2276352,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100136141,
+      "passes": 10816,
+      "units": 208,
+      "checksum": 2249728,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100012627,
+      "passes": 3152,
+      "units": 352,
+      "checksum": 1109504,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100413905,
+      "passes": 3232,
+      "units": 352,
+      "checksum": 1137664,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 152902722,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 152228146,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 104609536,
+      "passes": 304,
+      "units": 263,
+      "checksum": 79952,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100394565,
+      "passes": 3600,
+      "units": 263,
+      "checksum": 946800,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101143708,
+      "passes": 960,
+      "units": 1120,
+      "checksum": 1075200,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100810550,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100046751,
+      "passes": 1808,
+      "units": 519,
+      "checksum": 938352,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 109661431,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100839133,
+      "passes": 1088,
+      "units": 1579,
+      "checksum": 1717952,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100962737,
+      "passes": 1056,
+      "units": 1579,
+      "checksum": 1667424,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100021524,
+      "passes": 47920,
+      "units": 23,
+      "checksum": 1102160,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100034373,
+      "passes": 37904,
+      "units": 23,
+      "checksum": 871792,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100416092,
+      "passes": 3568,
+      "units": 263,
+      "checksum": 938384,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 104965879,
+      "passes": 304,
+      "units": 263,
+      "checksum": 79952,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100014272,
+      "passes": 96032,
+      "units": 14,
+      "checksum": 1344448,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100009055,
+      "passes": 96784,
+      "units": 14,
+      "checksum": 1354976,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100049906,
+      "passes": 10768,
+      "units": 208,
+      "checksum": 2239744,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100142874,
+      "passes": 10656,
+      "units": 208,
+      "checksum": 2216448,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100576121,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 101127683,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 154511335,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 156666080,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100026981,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 101096407,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100037236,
+      "passes": 25648,
+      "units": 39,
+      "checksum": 1000272,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100108223,
+      "passes": 13712,
+      "units": 39,
+      "checksum": 534768,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 101020063,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 101672686,
+      "passes": 960,
+      "units": 1120,
+      "checksum": 1075200,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100006261,
+      "passes": 181280,
+      "units": 6,
+      "checksum": 1087680,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100006511,
+      "passes": 185024,
+      "units": 6,
+      "checksum": 1110144,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100745332,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 101562282,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100015475,
+      "passes": 78688,
+      "units": 15,
+      "checksum": 1180320,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100018329,
+      "passes": 75072,
+      "units": 15,
+      "checksum": 1126080,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100001693,
+      "passes": 138848,
+      "units": 9,
+      "checksum": 1249632,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100006081,
+      "passes": 143120,
+      "units": 9,
+      "checksum": 1288080,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100436502,
+      "passes": 3584,
+      "units": 664,
+      "checksum": 2379776,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100107271,
+      "passes": 3616,
+      "units": 664,
+      "checksum": 2401024,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100377434,
+      "passes": 3200,
+      "units": 352,
+      "checksum": 1126400,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100276433,
+      "passes": 3152,
+      "units": 352,
+      "checksum": 1109504,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100261912,
+      "passes": 1808,
+      "units": 608,
+      "checksum": 1099264,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100085849,
+      "passes": 1760,
+      "units": 608,
+      "checksum": 1070080,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100023106,
+      "passes": 6880,
+      "units": 135,
+      "checksum": 928800,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100381430,
+      "passes": 1088,
+      "units": 135,
+      "checksum": 146880,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100013181,
+      "passes": 104576,
+      "units": 13,
+      "checksum": 1359488,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100005529,
+      "passes": 104592,
+      "units": 13,
+      "checksum": 1359696,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100009535,
+      "passes": 108256,
+      "units": 11,
+      "checksum": 1190816,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100004381,
+      "passes": 107808,
+      "units": 11,
+      "checksum": 1185888,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100006664,
+      "passes": 94352,
+      "units": 14,
+      "checksum": 1320928,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100000545,
+      "passes": 96352,
+      "units": 14,
+      "checksum": 1348928,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 101146675,
+      "passes": 1056,
+      "units": 1579,
+      "checksum": 1667424,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 101299933,
+      "passes": 1088,
+      "units": 1579,
+      "checksum": 1717952,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 101065874,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100427102,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100000826,
+      "passes": 139152,
+      "units": 9,
+      "checksum": 1252368,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100007776,
+      "passes": 138256,
+      "units": 9,
+      "checksum": 1244304,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100033144,
+      "passes": 13840,
+      "units": 39,
+      "checksum": 539760,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100044021,
+      "passes": 26176,
+      "units": 39,
+      "checksum": 1020864,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100007566,
+      "passes": 186144,
+      "units": 6,
+      "checksum": 1116864,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100007836,
+      "passes": 180496,
+      "units": 6,
+      "checksum": 1082976,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100515273,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100234025,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100008927,
+      "passes": 37792,
+      "units": 23,
+      "checksum": 869216,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100003549,
+      "passes": 48416,
+      "units": 23,
+      "checksum": 1113568,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100011763,
+      "passes": 108288,
+      "units": 11,
+      "checksum": 1191168,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100001567,
+      "passes": 108160,
+      "units": 11,
+      "checksum": 1189760,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100566249,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100975800,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 111381720,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100067314,
+      "passes": 1776,
+      "units": 519,
+      "checksum": 921744,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 101735203,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100440732,
+      "passes": 3552,
+      "units": 263,
+      "checksum": 934176,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100009519,
+      "passes": 10976,
+      "units": 208,
+      "checksum": 2283008,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100093634,
+      "passes": 10800,
+      "units": 208,
+      "checksum": 2246400,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100002238,
+      "passes": 103648,
+      "units": 13,
+      "checksum": 1347424,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100002368,
+      "passes": 104016,
+      "units": 13,
+      "checksum": 1352208,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100436055,
+      "passes": 1760,
+      "units": 608,
+      "checksum": 1070080,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100444517,
+      "passes": 1776,
+      "units": 608,
+      "checksum": 1079808,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100313122,
+      "passes": 944,
+      "units": 1120,
+      "checksum": 1057280,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100828110,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100791875,
+      "passes": 1136,
+      "units": 135,
+      "checksum": 153360,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100073694,
+      "passes": 6880,
+      "units": 135,
+      "checksum": 928800,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100258631,
+      "passes": 3584,
+      "units": 664,
+      "checksum": 2379776,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100048638,
+      "passes": 3568,
+      "units": 664,
+      "checksum": 2369152,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 155420211,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 154531065,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100012774,
+      "passes": 73600,
+      "units": 15,
+      "checksum": 1104000,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100001096,
+      "passes": 79008,
+      "units": 15,
+      "checksum": 1185120,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100146864,
+      "passes": 3152,
+      "units": 352,
+      "checksum": 1109504,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100180094,
+      "passes": 3200,
+      "units": 352,
+      "checksum": 1126400,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 101796274,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101361175,
+      "passes": 1088,
+      "units": 2344,
+      "checksum": 2550272,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100009129,
+      "passes": 47408,
+      "units": 23,
+      "checksum": 1090384,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100036850,
+      "passes": 37504,
+      "units": 23,
+      "checksum": 862592,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 153772614,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 155788380,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100046504,
+      "passes": 10752,
+      "units": 208,
+      "checksum": 2236416,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100004642,
+      "passes": 10816,
+      "units": 208,
+      "checksum": 2249728,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100002227,
+      "passes": 93280,
+      "units": 14,
+      "checksum": 1305920,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100016190,
+      "passes": 94832,
+      "units": 14,
+      "checksum": 1327648,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101683586,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101285372,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100454662,
+      "passes": 3152,
+      "units": 352,
+      "checksum": 1109504,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100103890,
+      "passes": 3136,
+      "units": 352,
+      "checksum": 1103872,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100006724,
+      "passes": 102512,
+      "units": 13,
+      "checksum": 1332656,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100006264,
+      "passes": 103360,
+      "units": 13,
+      "checksum": 1343680,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100337127,
+      "passes": 1728,
+      "units": 608,
+      "checksum": 1050624,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100249056,
+      "passes": 1760,
+      "units": 608,
+      "checksum": 1070080,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101336127,
+      "passes": 1088,
+      "units": 1579,
+      "checksum": 1717952,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100890082,
+      "passes": 1040,
+      "units": 1579,
+      "checksum": 1642160,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100002839,
+      "passes": 136256,
+      "units": 9,
+      "checksum": 1226304,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100004763,
+      "passes": 142288,
+      "units": 9,
+      "checksum": 1280592,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100001657,
+      "passes": 107824,
+      "units": 11,
+      "checksum": 1186064,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100012453,
+      "passes": 104368,
+      "units": 11,
+      "checksum": 1148048,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100031822,
+      "passes": 26048,
+      "units": 39,
+      "checksum": 1015872,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100018353,
+      "passes": 13920,
+      "units": 39,
+      "checksum": 542880,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100540161,
+      "passes": 1792,
+      "units": 519,
+      "checksum": 930048,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 108726480,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100284949,
+      "passes": 3600,
+      "units": 664,
+      "checksum": 2390400,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100011602,
+      "passes": 3584,
+      "units": 664,
+      "checksum": 2379776,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100023560,
+      "passes": 78160,
+      "units": 15,
+      "checksum": 1172400,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100017853,
+      "passes": 74480,
+      "units": 15,
+      "checksum": 1117200,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101327328,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100523118,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100363049,
+      "passes": 3552,
+      "units": 263,
+      "checksum": 934176,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 104679094,
+      "passes": 304,
+      "units": 263,
+      "checksum": 79952,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100138484,
+      "passes": 6928,
+      "units": 135,
+      "checksum": 935280,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100883616,
+      "passes": 1120,
+      "units": 135,
+      "checksum": 151200,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100004074,
+      "passes": 179136,
+      "units": 6,
+      "checksum": 1074816,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100007309,
+      "passes": 184720,
+      "units": 6,
+      "checksum": 1108320,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101141480,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100270812,
+      "passes": 944,
+      "units": 1120,
+      "checksum": 1057280,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100018976,
+      "passes": 73840,
+      "units": 15,
+      "checksum": 1107600,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100019667,
+      "passes": 77936,
+      "units": 15,
+      "checksum": 1169040,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 155339742,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 154178052,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100209189,
+      "passes": 3568,
+      "units": 664,
+      "checksum": 2369152,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100329259,
+      "passes": 3552,
+      "units": 664,
+      "checksum": 2358528,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101551921,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101334077,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101008762,
+      "passes": 944,
+      "units": 1120,
+      "checksum": 1057280,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100132776,
+      "passes": 944,
+      "units": 1120,
+      "checksum": 1057280,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101077455,
+      "passes": 1120,
+      "units": 135,
+      "checksum": 151200,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100200306,
+      "passes": 6944,
+      "units": 135,
+      "checksum": 937440,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100010363,
+      "passes": 37792,
+      "units": 23,
+      "checksum": 869216,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100024454,
+      "passes": 48128,
+      "units": 23,
+      "checksum": 1106944,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100515026,
+      "passes": 1056,
+      "units": 2344,
+      "checksum": 2475264,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101178313,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 104667808,
+      "passes": 304,
+      "units": 263,
+      "checksum": 79952,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100272431,
+      "passes": 3504,
+      "units": 263,
+      "checksum": 921552,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100015478,
+      "passes": 3056,
+      "units": 352,
+      "checksum": 1075712,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100395985,
+      "passes": 3216,
+      "units": 352,
+      "checksum": 1132032,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101353344,
+      "passes": 1056,
+      "units": 1579,
+      "checksum": 1667424,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100688812,
+      "passes": 1072,
+      "units": 1579,
+      "checksum": 1692688,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100687687,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100768311,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 110052718,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100538398,
+      "passes": 1792,
+      "units": 519,
+      "checksum": 930048,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100008808,
+      "passes": 104864,
+      "units": 13,
+      "checksum": 1363232,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100013265,
+      "passes": 104896,
+      "units": 13,
+      "checksum": 1363648,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100012874,
+      "passes": 107648,
+      "units": 11,
+      "checksum": 1184128,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100003140,
+      "passes": 107120,
+      "units": 11,
+      "checksum": 1178320,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100000886,
+      "passes": 143472,
+      "units": 9,
+      "checksum": 1291248,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100008788,
+      "passes": 141536,
+      "units": 9,
+      "checksum": 1273824,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100102037,
+      "passes": 13888,
+      "units": 39,
+      "checksum": 541632,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100051562,
+      "passes": 26288,
+      "units": 39,
+      "checksum": 1025232,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100068727,
+      "passes": 1776,
+      "units": 608,
+      "checksum": 1079808,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100301265,
+      "passes": 1808,
+      "units": 608,
+      "checksum": 1099264,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100006024,
+      "passes": 188336,
+      "units": 6,
+      "checksum": 1130016,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100006765,
+      "passes": 181056,
+      "units": 6,
+      "checksum": 1086336,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100012113,
+      "passes": 92096,
+      "units": 14,
+      "checksum": 1289344,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100010551,
+      "passes": 97072,
+      "units": 14,
+      "checksum": 1359008,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100013435,
+      "passes": 10960,
+      "units": 208,
+      "checksum": 2279680,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100057300,
+      "passes": 10832,
+      "units": 208,
+      "checksum": 2253056,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100007957,
+      "passes": 141408,
+      "units": 9,
+      "checksum": 1272672,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100010931,
+      "passes": 140304,
+      "units": 9,
+      "checksum": 1262736,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100009089,
+      "passes": 3200,
+      "units": 352,
+      "checksum": 1126400,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100409526,
+      "passes": 3168,
+      "units": 352,
+      "checksum": 1115136,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100013545,
+      "passes": 109008,
+      "units": 11,
+      "checksum": 1199088,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100007406,
+      "passes": 106560,
+      "units": 11,
+      "checksum": 1172160,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100040476,
+      "passes": 26256,
+      "units": 39,
+      "checksum": 1023984,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100076409,
+      "passes": 13632,
+      "units": 39,
+      "checksum": 531648,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100403627,
+      "passes": 1776,
+      "units": 519,
+      "checksum": 921744,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 109301919,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100118001,
+      "passes": 6992,
+      "units": 135,
+      "checksum": 943920,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 101173996,
+      "passes": 1120,
+      "units": 135,
+      "checksum": 151200,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100163659,
+      "passes": 3600,
+      "units": 664,
+      "checksum": 2390400,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100045914,
+      "passes": 3616,
+      "units": 664,
+      "checksum": 2401024,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100849742,
+      "passes": 1824,
+      "units": 608,
+      "checksum": 1108992,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100208766,
+      "passes": 1760,
+      "units": 608,
+      "checksum": 1070080,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100000757,
+      "passes": 180416,
+      "units": 6,
+      "checksum": 1082496,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100003520,
+      "passes": 186128,
+      "units": 6,
+      "checksum": 1116768,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100029419,
+      "passes": 48384,
+      "units": 23,
+      "checksum": 1112832,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100030480,
+      "passes": 38288,
+      "units": 23,
+      "checksum": 880624,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 152714406,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 154672507,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100341048,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100280868,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 101205907,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100696128,
+      "passes": 944,
+      "units": 1120,
+      "checksum": 1057280,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100012378,
+      "passes": 79024,
+      "units": 15,
+      "checksum": 1185360,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100001682,
+      "passes": 74608,
+      "units": 15,
+      "checksum": 1119120,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100253578,
+      "passes": 1088,
+      "units": 1579,
+      "checksum": 1717952,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 104197249,
+      "passes": 992,
+      "units": 1579,
+      "checksum": 1566368,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100621005,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100965369,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100068122,
+      "passes": 10800,
+      "units": 208,
+      "checksum": 2246400,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100139337,
+      "passes": 10880,
+      "units": 208,
+      "checksum": 2263040,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100565102,
+      "passes": 3536,
+      "units": 263,
+      "checksum": 929968,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100154079,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100004607,
+      "passes": 96224,
+      "units": 14,
+      "checksum": 1347136,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100005878,
+      "passes": 97264,
+      "units": 14,
+      "checksum": 1361696,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100013270,
+      "passes": 103792,
+      "units": 13,
+      "checksum": 1349296,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100008012,
+      "passes": 104096,
+      "units": 13,
+      "checksum": 1353248,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100232867,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100869025,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100033960,
+      "passes": 142352,
+      "units": 9,
+      "checksum": 1281168,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100004137,
+      "passes": 141056,
+      "units": 9,
+      "checksum": 1269504,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101137239,
+      "passes": 1056,
+      "units": 1579,
+      "checksum": 1667424,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100350124,
+      "passes": 1088,
+      "units": 1579,
+      "checksum": 1717952,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 110047286,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100766605,
+      "passes": 1792,
+      "units": 519,
+      "checksum": 930048,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100006522,
+      "passes": 1072,
+      "units": 135,
+      "checksum": 144720,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100096265,
+      "passes": 6832,
+      "units": 135,
+      "checksum": 922320,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100006361,
+      "passes": 96512,
+      "units": 14,
+      "checksum": 1351168,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100013722,
+      "passes": 96288,
+      "units": 14,
+      "checksum": 1348032,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100029195,
+      "passes": 3136,
+      "units": 352,
+      "checksum": 1103872,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100467459,
+      "passes": 3216,
+      "units": 352,
+      "checksum": 1132032,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100242573,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100514079,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100239620,
+      "passes": 1760,
+      "units": 608,
+      "checksum": 1070080,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100108844,
+      "passes": 1808,
+      "units": 608,
+      "checksum": 1099264,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101564696,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100099179,
+      "passes": 3520,
+      "units": 263,
+      "checksum": 925760,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100418427,
+      "passes": 944,
+      "units": 1120,
+      "checksum": 1057280,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100552726,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100007973,
+      "passes": 37360,
+      "units": 23,
+      "checksum": 859280,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100031019,
+      "passes": 48144,
+      "units": 23,
+      "checksum": 1107312,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100014473,
+      "passes": 107360,
+      "units": 11,
+      "checksum": 1180960,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100008233,
+      "passes": 107952,
+      "units": 11,
+      "checksum": 1187472,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100094733,
+      "passes": 13696,
+      "units": 39,
+      "checksum": 534144,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100028915,
+      "passes": 25936,
+      "units": 39,
+      "checksum": 1011504,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100004479,
+      "passes": 184400,
+      "units": 6,
+      "checksum": 1106400,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100000152,
+      "passes": 176576,
+      "units": 6,
+      "checksum": 1059456,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100008535,
+      "passes": 103328,
+      "units": 13,
+      "checksum": 1343264,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100008054,
+      "passes": 103904,
+      "units": 13,
+      "checksum": 1350752,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101226351,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100793325,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100058119,
+      "passes": 10976,
+      "units": 208,
+      "checksum": 2283008,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100065600,
+      "passes": 10816,
+      "units": 208,
+      "checksum": 2249728,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101053353,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100684533,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 155881114,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 154369970,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100003057,
+      "passes": 74272,
+      "units": 15,
+      "checksum": 1114080,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100008284,
+      "passes": 78688,
+      "units": 15,
+      "checksum": 1180320,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100243775,
+      "passes": 3632,
+      "units": 664,
+      "checksum": 2411648,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100329114,
+      "passes": 3600,
+      "units": 664,
+      "checksum": 2390400,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100000973,
+      "passes": 179616,
+      "units": 6,
+      "checksum": 1077696,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100001574,
+      "passes": 187520,
+      "units": 6,
+      "checksum": 1125120,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100834527,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100916880,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100511124,
+      "passes": 1792,
+      "units": 608,
+      "checksum": 1089536,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100001855,
+      "passes": 1760,
+      "units": 608,
+      "checksum": 1070080,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100367781,
+      "passes": 3552,
+      "units": 263,
+      "checksum": 934176,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100770962,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100079540,
+      "passes": 10752,
+      "units": 208,
+      "checksum": 2236416,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100007884,
+      "passes": 10928,
+      "units": 208,
+      "checksum": 2273024,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100083437,
+      "passes": 3184,
+      "units": 352,
+      "checksum": 1120768,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100021915,
+      "passes": 3136,
+      "units": 352,
+      "checksum": 1103872,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 155414007,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 156604239,
+      "passes": 32,
+      "units": 46776,
+      "checksum": 1496832,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100001628,
+      "passes": 140400,
+      "units": 9,
+      "checksum": 1263600,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100008187,
+      "passes": 142416,
+      "units": 9,
+      "checksum": 1281744,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100006195,
+      "passes": 6960,
+      "units": 135,
+      "checksum": 939600,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100798956,
+      "passes": 1120,
+      "units": 135,
+      "checksum": 151200,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100028397,
+      "passes": 26208,
+      "units": 39,
+      "checksum": 1022112,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100074786,
+      "passes": 13872,
+      "units": 39,
+      "checksum": 541008,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100019846,
+      "passes": 78080,
+      "units": 15,
+      "checksum": 1171200,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100035648,
+      "passes": 74704,
+      "units": 15,
+      "checksum": 1120560,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100163173,
+      "passes": 1776,
+      "units": 519,
+      "checksum": 921744,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 107591453,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 101066075,
+      "passes": 1088,
+      "units": 1579,
+      "checksum": 1717952,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100784164,
+      "passes": 1056,
+      "units": 1579,
+      "checksum": 1667424,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100009859,
+      "passes": 47600,
+      "units": 23,
+      "checksum": 1094800,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100034486,
+      "passes": 38144,
+      "units": 23,
+      "checksum": 877312,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100434102,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 101111602,
+      "passes": 960,
+      "units": 1120,
+      "checksum": 1075200,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100007156,
+      "passes": 105216,
+      "units": 13,
+      "checksum": 1367808,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100014887,
+      "passes": 104336,
+      "units": 13,
+      "checksum": 1356368,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 102945076,
+      "passes": 512,
+      "units": 2816,
+      "checksum": 1441792,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100742733,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 101497778,
+      "passes": 1088,
+      "units": 2344,
+      "checksum": 2550272,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 101145984,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100009499,
+      "passes": 108800,
+      "units": 11,
+      "checksum": 1196800,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100010360,
+      "passes": 108656,
+      "units": 11,
+      "checksum": 1195216,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100396856,
+      "passes": 3616,
+      "units": 664,
+      "checksum": 2401024,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100021587,
+      "passes": 3632,
+      "units": 664,
+      "checksum": 2411648,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100036911,
+      "passes": 78096,
+      "units": 14,
+      "checksum": 1093344,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100005714,
+      "passes": 96704,
+      "units": 14,
+      "checksum": 1353856,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 9
+    }
+  ],
+  "outcome_parity": [
+    {
+      "depth": 1,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "9c3331e03eb641282e16845d76fd5b0dcd5c9b329fd88d7adab904690f17e38a"
+    },
+    {
+      "depth": 1,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "f503842e311e3288d7b8395b50fd16322992d1e71330b1b072724c1a929ed85a"
+    },
+    {
+      "depth": 1,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "0f75ca9b8b09add3b02d352b2c33c0eba8378c767179bf7019661b343b16fdcc"
+    },
+    {
+      "depth": 1,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "3ec59d83626153a228806f574a9218bbba31b82d2db24d75ccf1b2a4947ebcf7"
+    },
+    {
+      "depth": 1,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "1fcd14953d68fcc0629ab87bce305a50caf179814d54f316bd684e556f7c7c50"
+    },
+    {
+      "depth": 1,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "12109c5f7d17160724afc309e5efcca2852afd3824ae8767421b6023b61d8f5f"
+    },
+    {
+      "depth": 1,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "2c93e363f37869c1e996e58a3facc20c422504a01fd8d5c25ad315eb50872249"
+    },
+    {
+      "depth": 1,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "9743f0f76393cee31148ecbc2b2b0e8685321df484b0ea74029e6d9af9d54ed6"
+    },
+    {
+      "depth": 1,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "be13889f2df19f29cba128a68235a65b0b25e555a1ee71990beb2a9e19cd318a"
+    },
+    {
+      "depth": 1,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "db1bbe6918ca57546ffbd0b925ac514f21db8bc4e2131cb4bd170bee4c962f99"
+    },
+    {
+      "depth": 1,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "8ef2932bf33ce7aa0698e003016a4380ba0c73b38bc26d1cc227e2df7754dc2e"
+    },
+    {
+      "depth": 1,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "2494c7ebb1fd9d5071aa7f21d486cf38322c678c4e974193d95a087810d887bc"
+    },
+    {
+      "depth": 1,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "edd065884ff322bf35bf486d5316570af4630dfbf6915b7c9264643775af4fe4"
+    },
+    {
+      "depth": 1,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "2b0e5516abc2fa4bc98c127685909ae52ab49a5df8f235019a0cbc1a4f907934"
+    },
+    {
+      "depth": 1,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "8fe4516de3db9a3b31593351bf466bf67fd41e0e8221ab3cc680b2120202bc4a"
+    },
+    {
+      "depth": 1,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "26f5562561620269616bf7bd9b2ffec12bcef19471e0b54a50656d2e5be39b00"
+    },
+    {
+      "depth": 1,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "0e950be0c631b42ab564279479d1cb352889e2f1c70ae5f1772cca1a2da39fe1"
+    },
+    {
+      "depth": 1,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "ab62f09d38e471fa77208ffdfaae74eb18437adfd95ca9bd0f29f03e746424de"
+    },
+    {
+      "depth": 1,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "f6d4adc678a743e3fd2229ad34a1f81e94ef2591fc3313e7d47afc3ac5bcbc21"
+    },
+    {
+      "depth": 1,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "dc80d20172ee216d24b4660b0b810137fdd375461c8d2b48cde90ae6445b23af"
+    },
+    {
+      "depth": 1,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "4493102f1230a02387912848d9f4462f96d4a44897e1d892f4ac9ebf4cd5efb7"
+    },
+    {
+      "depth": 1,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "dcf8441e5eb5f88c711be4e850cced99b6bd704a6b14cc86c022240309f67f51"
+    },
+    {
+      "depth": 2,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "a7acf889be97c3f5892835b6c3c18308f536414a87e86b18a553760c73f65bb7"
+    },
+    {
+      "depth": 2,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "032960dd8cc3cf87ff4b76ccaf3dc05c26662401a216e8367b0db19b84c3d95c"
+    },
+    {
+      "depth": 2,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "629c2d0d4e1fcfd769c43c8575b29fafbec428865e90e7bdc284e012472bf602"
+    },
+    {
+      "depth": 2,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "cbfa7d807622df7d1c1875692dc39288b7087b290f0964c953d5f1dda2e7b4c9"
+    },
+    {
+      "depth": 2,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "c6a6a926299a261a91853d51e3ddbe6849019ac96707bf3c53539d7c06578a37"
+    },
+    {
+      "depth": 2,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "c16148cf36592c51f59dd6905cae04cf430a9a351d4807362ab3a10ac05bee62"
+    },
+    {
+      "depth": 2,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "7eadbc2662de0bf13cd3b5182308cdab608fe621a6f1635d2a3b1e839749a2f9"
+    },
+    {
+      "depth": 2,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "1c35075d2cb8dad25db006a3ff71c9a495fad1497cfee870618f56569e0ae416"
+    },
+    {
+      "depth": 2,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "75b6256b22f171a2813057cf533a2919de6c9ff41efe37568509b2176abe091a"
+    },
+    {
+      "depth": 2,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "941625a557d1318cf755bc8594746b36dad71d0506c271c652bf6c515e785783"
+    },
+    {
+      "depth": 2,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "bb64a04dec37ebaef3de114e15861728d85ef34cbd3c6b1b2f48a9a43a09ac4b"
+    },
+    {
+      "depth": 2,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "5773cf9f32f99b5f6e47110fed3f68e6ada9e44e6de602d3b390e5223b5dacca"
+    },
+    {
+      "depth": 2,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "3ce6f95aebfafb66d02a1c07c8ba1020421ff698515cfecf6e126faeaadd10ad"
+    },
+    {
+      "depth": 2,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "eeee59a28ebd304cadfe39351d61effc1bcd269174c3592071cd9a1b55e9d90e"
+    },
+    {
+      "depth": 2,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "019892f07d13d15cf357dc39fe9b3561a7f53214b655bc0f5faf6e2869b8bba2"
+    },
+    {
+      "depth": 2,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "80bc01d38c09baaeffae55f59464bc288fb27417d8d3c6dc18333504d95c2a34"
+    },
+    {
+      "depth": 2,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "14458dc1668017d2ab8cae67543719f6f4849da298bc4af077c81fc873130118"
+    },
+    {
+      "depth": 2,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "2f3e17ba8b026a927144480838198face50f108f3db4401afe33a10ed5cca1a6"
+    },
+    {
+      "depth": 2,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "6d794ced32dcc61fc45fbe76bf39136f5f77311168634b868786119b264ddeda"
+    },
+    {
+      "depth": 2,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "b161061717cd05465ecc3dcd6b8eef62461645637145838cae3f8810448acbd5"
+    },
+    {
+      "depth": 2,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "589d2cc448427580ca20f8c87f9cdb088305a0ad90477cee8ed3123547160498"
+    },
+    {
+      "depth": 2,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "dc6b7ac06797ca00b31f37b7cc9b644f7891f43124ab360ce57a45a29da81a5d"
+    },
+    {
+      "depth": 4,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "665a029dc99dbf8338589db9fbaa658aeb96deb1ba6df8f18a36b1e928cfe732"
+    },
+    {
+      "depth": 4,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "9e1a6fe4bdf7123162124db083bfdafc62b37456bf464dcaae1c815bcdd3a267"
+    },
+    {
+      "depth": 4,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "68f49e14670f5428015a5227abc65b4099c03f7b9d0de06daa0a0e790a045cf5"
+    },
+    {
+      "depth": 4,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "d72973990d65f7f703c57d636c429ee5089e6002f79d5ad64b9c602096f4e7c2"
+    },
+    {
+      "depth": 4,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "8113faec1fcc432b93ed6142717d3e7b5ec1d87ca06e0f87e083be1c1075e210"
+    },
+    {
+      "depth": 4,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "9580fbc9411066319d19a48477c0ab3204b49fc5f400eb166e6a970a0edd68e2"
+    },
+    {
+      "depth": 4,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "e81e5fbb405832ff381764baa0b299c19927515ad57266f69fea1c0d7ba6e3f2"
+    },
+    {
+      "depth": 4,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "f3006029b089e8401c999dbc1594d95a90e5ed68ee1106df00c87a0238e271ca"
+    },
+    {
+      "depth": 4,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "7bcc230e99dbfd7501b594debf75511351144aed60ee63898529aa3a2fcce437"
+    },
+    {
+      "depth": 4,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "c23b6faf0f71691868d87a007d5ae3652ab989524240d1c040808918733c6b32"
+    },
+    {
+      "depth": 4,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "c022d15dfecc9b6df90b269fbb6e860b39c4628824c968977ab5913804437b11"
+    },
+    {
+      "depth": 4,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "00e9409d844da0c7da38492e799d3a0f1a16b212d6c11410d6ebcd1efabe2fee"
+    },
+    {
+      "depth": 4,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "d4589904cbd794dc5be0d21144f4a210f783ceeb63b05099c379c68df00a8a22"
+    },
+    {
+      "depth": 4,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "1726ecea85e2cac81a5f139f91e5b427de2784b8c514a032073e32e1f473914a"
+    },
+    {
+      "depth": 4,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "89b0b7ad4805734ea205156a00d0e64dde239a44a8e14ac7a26c298dd2799ad0"
+    },
+    {
+      "depth": 4,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "09b68190870d92ffd8fee1682d2a82e2a2ec70dd4f834dae69284281d524c054"
+    },
+    {
+      "depth": 4,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "f79df663e6687d3b92a01bd38dc0336d765b29ccc6fb571c7d0e87af946e83ae"
+    },
+    {
+      "depth": 4,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "5c98e462277faa0ba8bebaa7db00ed199e7b07151967b2e2324a4fcf05faef69"
+    },
+    {
+      "depth": 4,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "a96a54986c2a38f8f436bb4adc1f104dfe551b439b3278a5e574d17cdb427bfa"
+    },
+    {
+      "depth": 4,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "ff012e2166549f55466af643c61cce7e00515058cfdaed16eef6f9435ceb1eb2"
+    },
+    {
+      "depth": 4,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "1a79c89e2cdd310c94d9e6af495ec120d64ab3333ca80763de0a7988997edf89"
+    },
+    {
+      "depth": 4,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "454edd9e9f0776064710ed2ff96e0f4d78ccd73050f4469572c326f1c248ac50"
+    },
+    {
+      "depth": 16,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "c983f5c8aab01e94932d49551af6fe3d46ffb4a5133f072890c6cc08d440fadc"
+    },
+    {
+      "depth": 16,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "d2fc91fdf63eae91b85730154d1c2137643cedfe965b2ec35a4429e083586be8"
+    },
+    {
+      "depth": 16,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "f5fe8f7d5349f12098164602bc0845182178bc46dff15841f10fb3a7df55d8a1"
+    },
+    {
+      "depth": 16,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "f3b96e401b7e945c70b0dc4a97c9d84131841c4aab413f678b1fe4c1bd46ee64"
+    },
+    {
+      "depth": 16,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "07eb04026d9bf123b70015e4196355158b3d4183d1a03a4970f02e4c1c9ba806"
+    },
+    {
+      "depth": 16,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "84792dbad04d9e660629a95705f30f2d4c12c4e2773b1fd035b58428c24c4fd0"
+    },
+    {
+      "depth": 16,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "85abbb4e356295f84b162270eb4d9af64424a5f14221d74b1e97564e86f84bb5"
+    },
+    {
+      "depth": 16,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "463a11dae7c9edca8258ec6d3d7f407cb53cf0b30533f246b03e7bd9a5e12ca3"
+    },
+    {
+      "depth": 16,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "b9e9dddc3ae79696a417b99ae3c88002848f684bad00b9eab26c997fef98fc48"
+    },
+    {
+      "depth": 16,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "479fd59e70ceec09459aa21ad4ee74b18848b8fe51b3035d467086f6dfa2c121"
+    },
+    {
+      "depth": 16,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "428ba5b0eac7fe7d784cbef68be21d413e64df5ce02c81418048808e177e678c"
+    },
+    {
+      "depth": 16,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "4a1ef0cc431097ff6bd9c77b3bcb1d6437dc75df5f3ef017df0f2c4c94551012"
+    },
+    {
+      "depth": 16,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "38223befa8c21f987ef1f38f9fc4f771e802a598854ebbb27d3bf2fae8ffcebe"
+    },
+    {
+      "depth": 16,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "dadd4b5723e0a6ba32f56cad14c4c6d6315b090b861774cc30129fc53b82d5a9"
+    },
+    {
+      "depth": 16,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "575b4f8f9b34171eab4fecdf90654a3884fa907853163f335033b03992d70b3f"
+    },
+    {
+      "depth": 16,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "e8acc006933834c96ae4051f6b1d51f94d411f0d8aac68424f6d69088db1607b"
+    },
+    {
+      "depth": 16,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "858b32a4e2ad000fa632d5fc5ecf96c30c0d78c84f8e651711a54ed67b33ccd8"
+    },
+    {
+      "depth": 16,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "b351df21ea381ecde52a4d45f3d3805bf897a00217203bac83773ac62c8415a4"
+    },
+    {
+      "depth": 16,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "d99d0a66f28c1c0d82a5b1e6bc002bbce3004ce6f445314608c71a8fdeb9c299"
+    },
+    {
+      "depth": 16,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "13f3eafadcd3434b89a373f528df227e16d8e6ea076d595320649c4511fcc688"
+    },
+    {
+      "depth": 16,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "6cc403feb85f7dc04b375b45cc1e01d0cbab9ce953152375065ab0abcc42d32a"
+    },
+    {
+      "depth": 16,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "4c19d9afea8bb88840a15a62b8779368dc3925f4abfb1c7d51099f36e9fc0b73"
+    },
+    {
+      "depth": 64,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "0ff2129998d6838c2df3e9c414f92111ada7278d3e3c7ffb3128154c7cbf013b"
+    },
+    {
+      "depth": 64,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "a208a0a937cd56906b40c548c29e99a13939ed7d5edcaac984fc36b14bf18e28"
+    },
+    {
+      "depth": 64,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "67c82334a74edf22c119c2055cf0061407cb41021f98b655572c2a3c486bc349"
+    },
+    {
+      "depth": 64,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "2814ee7d93373023fd205c8bed49ef37ca6ddbcdc417806d74d3aa0d39502585"
+    },
+    {
+      "depth": 64,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "3092feb9429281a0bc2661775fc088b4d98e97fd0c69036ec6248b1a9e683ab0"
+    },
+    {
+      "depth": 64,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "0f5173fc4c8d1ef19ca863b65a3545057f64bdb016a7cfa041b6ad748ef1c431"
+    },
+    {
+      "depth": 64,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "62d8ab0827f29b0b786f713208066a06753bc411493211cf692c32e16d09a018"
+    },
+    {
+      "depth": 64,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "2ed81861ec382d402d61b5321981169b3d235f486bc5cda22dd4bda33a2e0904"
+    },
+    {
+      "depth": 64,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "dff1c5dc59d1a7e987a19b590e367de683afcc0ea5115bb81e26a33d124efb48"
+    },
+    {
+      "depth": 64,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "faf42bd6c210da5e8df15925b07a2c6a664663c8a28ea556f326eae31cf66b2c"
+    },
+    {
+      "depth": 64,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "2357ea32393ad8baef098360f1bb8c4088d6c1183379b3e727204eced5bd464e"
+    },
+    {
+      "depth": 64,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "29be73f45612541bec447e5e851217e922e1ead287359672016025f119e1111a"
+    },
+    {
+      "depth": 64,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "f65d4da9f36371e488547014407d847b46fe2fddd01ec95c95928a662fe4f508"
+    },
+    {
+      "depth": 64,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "9ad31833c71f7bb56fb5ee4197402028f407bbd6e1251ac2b0fc438b6db8291b"
+    },
+    {
+      "depth": 64,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "cd30c3eb60917ad310971c98b6c9cb503530eb1c44a7e74176ef42190f318fdf"
+    },
+    {
+      "depth": 64,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "c76b6ff01216ba828f473cbdc0410b6d4bc1dde5982692484a6179757e9bd81e"
+    },
+    {
+      "depth": 64,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "98ca121a12a046fe68ea755b706924e9bf12e2fbe6136cd0b400ecc3b1146a59"
+    },
+    {
+      "depth": 64,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "c69821588d730fb062fa0cbcc7532aadf09b19a1167dc82ee08d60f14c913fa6"
+    },
+    {
+      "depth": 64,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "b83edc2f468dad483c0de3e362ffcfaec68bb37f66eff974986a376ba438fd92"
+    },
+    {
+      "depth": 64,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "3829f32e447a5cbd4208e2652fc0cde04787cbfb4ad5cda05a9602303d4e41df"
+    },
+    {
+      "depth": 64,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "b08467a4be2c829125fe25941f7a7c0dd87cde9126fe5a37a9ef930695b32dc9"
+    },
+    {
+      "depth": 64,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "917944d6b9779f1a980d79c4a225c1b19e0b10c5ed675e8e1b437b1077333af7"
+    },
+    {
+      "depth": 256,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "a0737a32a99157b2ba3b1ceb6fd225c6c53568e506f466ea0ab562b49e37f080"
+    },
+    {
+      "depth": 256,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "2b71f86971d5021e0121b4b02ee8d750fe01d9785cb12e02c549f73a6e615148"
+    },
+    {
+      "depth": 256,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "710ce7c23f4f275bf27574b91de519aff10eb326e5b552dbcb043f62b2f4e1ed"
+    },
+    {
+      "depth": 256,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "1076cb32833e22ba1ae87401f079054d3bef24ce012d7006af40c92be593ff62"
+    },
+    {
+      "depth": 256,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "34d13b518613f44b375cc8e354e45d7085e1cc9aaca76b5c48322729f98c58e0"
+    },
+    {
+      "depth": 256,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "e075d509466b11960d9035c382b96a3510d7b764d750369b9d747caa6cf09d2e"
+    },
+    {
+      "depth": 256,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "ff0e9bf64a1aad6dc506121911b21d1caff395096845040d115a5e6b87f57234"
+    },
+    {
+      "depth": 256,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "728a139525405c44fd1e741a9d7410758ff692fa6f808882eecb2835139a8ce0"
+    },
+    {
+      "depth": 256,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "b71b2689cfc46497c6b3563e6d7e4af6398f1d159abd5c7a7731f94947955da8"
+    },
+    {
+      "depth": 256,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "cb9e61599e172d60e5f0ef67732ac5330bd8ea35a3c5e037226030ab134d4860"
+    },
+    {
+      "depth": 256,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "cab93b6ac20308ee66c02741ebcd5f966c7cd6ba9f25a81bce55fa783118d561"
+    },
+    {
+      "depth": 256,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "fea56796c33396f954ca968c6fdb43b3910a6c5f14fbe0f0acb3abcfd9034ec2"
+    },
+    {
+      "depth": 256,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "ee2a66655e3ab6282bda3199cc70f97a00bbc54587791440cf4a4f35eaf6b6e2"
+    },
+    {
+      "depth": 256,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "7b95478ee1322a238743a1a643ea1101470fa3d023231be242b690160dd3feab"
+    },
+    {
+      "depth": 256,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "330b8c75f3f19298364f332051a0f108917c3abe1320fbdca97ea8e4c51a1e9f"
+    },
+    {
+      "depth": 256,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "2f900e8547f9c50ca4d97d6fe30fc34a76735ff6e01bde563636c6bb5dc99a1d"
+    },
+    {
+      "depth": 256,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "8eaf2c045d7ce53779f7a361c6c7586ff38539839d4ee74b64357422bc91825b"
+    },
+    {
+      "depth": 256,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "55987956e21ec8027e15969108fffededb85b8da1bb0c8577dd080c2d0865709"
+    },
+    {
+      "depth": 256,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "41389b96c200dfd9244948f349404127fc5dfdbf6f875044c0144416bdabf57b"
+    },
+    {
+      "depth": 256,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "6bc894373d85d1eb5d6f6d26dccfe54c2003ba85768eaf7cec58d31eaf6a8008"
+    },
+    {
+      "depth": 256,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "122ed6ed98e11587134a5ce35776e1a67bdf5b10b78ab942d8ed990afb1de717"
+    },
+    {
+      "depth": 256,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "1fb763c2f9830882fdf7958483432bda1af14268bc0519b12e128c9f1b1aae5d"
+    },
+    {
+      "depth": 990,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "cf7121175e8bd8b97c7b095b6f42566a9c935f0ab4e1d5df0a084347bb6e46aa"
+    },
+    {
+      "depth": 990,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "f87466e8a48056cfc3fd67df4ee9a83d21c54031a15504d3bd56847dea4c5732"
+    },
+    {
+      "depth": 990,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "e62ad377a13a004d7cfbb073b5c4ecee53108e815b703ee8d8e21856e60750fc"
+    },
+    {
+      "depth": 990,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "e4545bf957692d19f397ead3232db2ab2c8c2bcd55a6700e3fbfd81dd7e2697e"
+    },
+    {
+      "depth": 990,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "9601a0b26122a72f151b26b1cd6cf642e4bbc4652ae9f3cadc2ca5941f4d9993"
+    },
+    {
+      "depth": 990,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "5ef56250c9ab88ed8ccc05ff3ac0458ebc33cc6fcf33ace89a72fc5718b80ccd"
+    },
+    {
+      "depth": 990,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "499fdeb9805063b8e423301233ac45fae99290b0afa3a1c424b29d3b9a9913b4"
+    },
+    {
+      "depth": 990,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "0f4aa28291e34227c0f15e33247c6719e62c7d88a1856d979bb364f4556c107b"
+    },
+    {
+      "depth": 990,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "96642aa3c77abaea553b15b1565b9c1a0b7611ff2623f179d16e3f316445ee0d"
+    },
+    {
+      "depth": 990,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "53643ac5e8e79effd2172d94ee4294c048a4ffa7891121153dd58088ffa64ca3"
+    },
+    {
+      "depth": 990,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "497f3f9b434861a324a9bacf13bbf39d54f7e88aa5ddb7e27900def370bd8683"
+    },
+    {
+      "depth": 990,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "37ec8f8f0fba83d8c500131fde1053c635df99dadea38f9dfc1f953942f3d3d5"
+    },
+    {
+      "depth": 990,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "3b082e3ff8386f9ebb8685616b28043388751a668c5e6f4b7694d6678f602d6c"
+    },
+    {
+      "depth": 990,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "7ae3fbd1b60e6a66f759ac4bddf4eeed08c3585e4fafb58f3348e3d4214c31ba"
+    },
+    {
+      "depth": 990,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "913332223c352e55b63b2d3f56bff966c42449477d935b72dbb81148ae18125b"
+    },
+    {
+      "depth": 990,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "d6e45f80e75709563635a5174332f26f470e17c91a23ce24d0c0c613e96e5fbd"
+    },
+    {
+      "depth": 990,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "cc31a7c028449a51cec24150e4bb5a2a622b25474d286d36cf29e4960963999e"
+    },
+    {
+      "depth": 990,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "338c45d850e8b0071c4fbfeaddb786999a60bddd9c522e5c1512a083a80dbd57"
+    },
+    {
+      "depth": 990,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "42f8b0c96090be53501c76be5332cb1549b1470271041bbe6f022e1550064251"
+    },
+    {
+      "depth": 990,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "34add627dc3f5924679b0edb43750878e8e4e7e51c9362f726359ea286038ec1"
+    },
+    {
+      "depth": 990,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "c94c6c7c5e082717c8ad48584e73b7d007faf58c2a82f06e11fd0a088c5215a2"
+    },
+    {
+      "depth": 990,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "ce4d39d770d6d153536ce5a7bf5a923e199701f55454905eb9679b091bcbc52a"
+    },
+    {
+      "depth": 999,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 999,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 999,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 999,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 999,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 999,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 999,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 999,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 999,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 999,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 999,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 999,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 999,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 999,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 999,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 999,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 999,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 999,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 999,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "e151cf8e9b75a012e58a38a54e4f92fe76122c7ffef6855591c68c00ffc6d6ee"
+    },
+    {
+      "depth": 999,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "ddc896c687e6762e8587e97c2874f591e7f8175f9d55392b695f9bae3a52ab06"
+    },
+    {
+      "depth": 999,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 999,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1000,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1000,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1000,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1000,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1000,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1000,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1000,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1000,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1000,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1000,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1000,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1000,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1000,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1000,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1000,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1000,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1000,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1000,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1000,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "4d30cad46ae9566d83ea7f9ceae8486169d9f25fc28c14f3cf7050813acebd2f"
+    },
+    {
+      "depth": 1000,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "380e5ba7232518652bcf4ee0236546a96af24d2694295b68a1ed7d3977d2d44c"
+    },
+    {
+      "depth": 1000,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1000,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1001,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1001,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1001,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1001,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1001,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1001,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1001,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1001,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1001,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1001,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1001,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1001,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1001,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1001,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1001,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1001,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1001,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1001,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    },
+    {
+      "depth": 1001,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "0c82ab63b670d2fec6521fecbe1544abc6103542618d9a0e9a464d0506153fed"
+    },
+    {
+      "depth": 1001,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "0f5ef0f10ae31e40bfddf2322a6b92edefff93531545eccf4938169d7fc14160"
+    },
+    {
+      "depth": 1001,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "e556d14cf70fedec09944ec7935084dd5e0c5ef29b3727ddc9b1c9e5d299f260"
+    },
+    {
+      "depth": 1001,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "068bc3deee00cd937c42ea576d1d75f749603b000f9a88e15a3796cef8b46f75"
+    }
+  ],
+  "recovery_parity": [
+    {
+      "depth": 2,
+      "ending": "'\\n'",
+      "sha256": "e2b95642b0447dbab016440a952472cf881403ae2a413f20a131eb3753b65f3b"
+    },
+    {
+      "depth": 2,
+      "ending": "'\\r\\n'",
+      "sha256": "fd7961cd417d28239849bf2eb253c5993d14f233d851a18b87dc046e15dde27e"
+    },
+    {
+      "depth": 16,
+      "ending": "'\\n'",
+      "sha256": "fddc0551637ac9c21ac45fbb4b6b849cdcaae19987812c5fa06c364463c03a40"
+    },
+    {
+      "depth": 16,
+      "ending": "'\\r\\n'",
+      "sha256": "6ac37c16dc04f0b0b780333855a50a2bd4e23329cb3bff8a86580d7b65e02d09"
+    },
+    {
+      "depth": 64,
+      "ending": "'\\n'",
+      "sha256": "041a1ddfa4de60e236906d6de982a8df8dd7a592a67257ef51687c15e0832e71"
+    },
+    {
+      "depth": 64,
+      "ending": "'\\r\\n'",
+      "sha256": "e4b40988b69d2ed71af6822951b9ab5567a8ec3f1798ba08959ace0c0513ec42"
+    }
+  ],
+  "comparison_note": "Matched baseline and candidate both include merged main649ddeb9a; only parser speculation production code differs. Replaces preliminary cross-main comparison for causal acceptance."
+}

@@ -1,0 +1,4 @@
+fn g() Int:
+    let a = h(text | f | .m() | .n(), a.b.c())
+    let b = (text | try f | .m())
+    return [x | f | .m(), 1]

@@ -12,7 +12,7 @@ fn runners_execute_the_binaries_they_build() {
             "conform",
             include_bytes!("../../../scripts/conform.sh").as_slice(),
             Vec::new(),
-            vec!["lint", "run"],
+            vec!["lint", "run", "run"],
         ),
         (
             "e2e",

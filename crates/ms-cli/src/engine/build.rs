@@ -118,11 +118,15 @@ pub(super) fn build<L: Lower>(
         let message = format!("cannot create {}: {error}", parent.display());
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
-    if let Err(message) = backend.link(
+    let cache = Path::new(&compiled.project_root)
+        .join(".ms-cache")
+        .join("exe");
+    if let Err(message) = backend.link_cached(
         &mut compiled,
         Path::new(&output),
         request.build_type,
         &request.link,
+        Some(&cache),
     ) {
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }

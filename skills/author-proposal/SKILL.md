@@ -23,29 +23,36 @@ Do this before writing any section. A proposal that invents syntax or names with
 
 ## Step 2: write it
 
-Technical, bulleted, scannable. One fact per bullet, bullets of one or two lines, no paragraph over two sentences. Name crates, files, functions, and types exactly. Label claims as measured (command, commit, number), verified (`file:line`), or hypothesis.
+Target 60 to 100 lines; past 120, split or cut. Every line must change the decision or tell the implementer what to build. Technical and scannable: one fact per bullet, bullets of one or two lines, no paragraph over two sentences. Name crates, files, functions, and types exactly. Label claims as measured (command, commit, number), verified (`file:line`), or hypothesis.
 
-Sections, in order (a small change uses Summary, Problem, Design, Components, Alternatives):
+Sections, in order. A small change uses Summary, Problem, Design, Components, Alternatives.
 
-1. **Summary**: 3 to 5 bullets: problem, change, cost, decision requested.
-2. **Status**: proposal, approved, or implemented; date; commit checked against; the user's direction, quoted.
-3. **Problem**: observable failure or cost with a minimal repro or measurement. Non-goals as bullets.
+1. **Summary**: 3 bullets: problem, change, decision requested.
+2. **Status**: one line: proposal, approved, or implemented; date; commit checked. Quote the user's direction only when it constrains the design. No review logs, changelogs, or progress notes; the review outcome is one line.
+3. **Problem**: the observable failure or cost, with one minimal repro (at most 10 lines) or one measurement. Further cases get one bullet each, with a pointer to the test or fixture. Non-goals only if a reader would assume them.
 4. **Design**: the rule, stated once.
-   - Syntax and API as `.ms` examples (accepted and rejected, with exact diagnostics) and before/after for changed programs.
+   - Syntax and API as short `.ms` examples (accepted and rejected, with the exact diagnostic) and before/after only for programs that change.
    - Semantics for ownership, errors, cancellation, and edge cases, one bullet each.
-   - A diagram (mermaid or ASCII) only where data flow, lifetimes, layout, or stage order matter; show before and after when rewiring. Never restate a bullet list.
-5. **Components touched**: one row per component, including "unchanged" for any a reader would expect to change.
+   - A diagram only where data flow, lifetimes, layout, or stage order matter. Never restate a bullet list.
+5. **Components touched**: a table of components that change, with the test for each. Add "unchanged" only for a component a reader would expect to change.
 
    | Component | Change | Test |
    | --- | --- | --- |
    | `crates/ms-check` | new rule, diagnostic | conformance reject case |
 
-   Consider: parser, checker, lowering/MIR, codegen, `ms-rt`/ABI, `stdlib/*.ms`, formatter, lint, LSP/VS Code, CLI, docs, tests.
-6. **Alternatives**: including do nothing and the smallest version, each with evidence for why it lost. Add drawbacks of the chosen design and a line on how comparable languages do it only when that changes the decision.
-7. **Staging and verification**: stages that each land green, the check per stage, the go/no-go gate.
-8. **Open questions**: options with a recommendation, for the owner, only where the language or user-visible behavior changes.
+6. **Alternatives**: do nothing, the smallest version, and the real runner-up, one or two lines each with the evidence it lost. Drawbacks of the chosen design only if they change the decision.
+7. **Stages**: one line per stage with its check; each lands green. Omit when there is one stage.
+8. **Open questions**: only where the language or user-visible behavior changes, each with a recommendation.
 
-Omit a section by saying in one line why it does not apply. Add nothing beyond these.
+Omit a section by leaving it out. Add nothing beyond these.
+
+Cut on sight:
+- history of how the idea evolved, rejected syntax that nobody proposed, and restated context from other proposals (link instead);
+- full programs where an excerpt shows the point, and tables that repeat prose;
+- implementation detail the code will show (function-by-function walkthroughs, line-number tours); keep the contract and the invariants;
+- stage detail beyond the check that gates it.
+
+Once implemented, cut the proposal to Summary, Status, and the decisions that are not obvious from the code, and move durable lessons to `wiki/`.
 
 ## Step 3: check the syntax
 
@@ -61,5 +68,6 @@ Every `.ms` example must pass `ms check` against current main before the proposa
 - List every new concept, name, flag, type, keyword, runtime entry point, and pass. For each: can an existing mechanism cover it? Can the first version drop it? Delete what cannot be justified, and record what was removed.
 - Prefer one rule over two; prefer a stdlib function over syntax; prefer a smaller first stage.
 - Keep Linux, macOS, and Windows at parity; never propose disabling a test on a platform.
-- Run the skeptical review in [AGENTS.md](../../AGENTS.md) on the finished file, giving the reviewer the file rather than your conclusion, and record the outcome in Status.
+- Run the skeptical review in [AGENTS.md](../../AGENTS.md) on the finished file, giving the reviewer the file rather than your conclusion. Apply its changes and record the verdict in one line of Status.
+- Last, reread for length: delete every bullet that does not change the decision or the build.
 - Run `make repo-check`; keep `match` flat in examples.

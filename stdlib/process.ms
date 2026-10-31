@@ -181,7 +181,7 @@ export interface ProcessControl:
     # Returns elapsed Duration since runtime initialization, rather than host boot.
     fn uptime() Duration!ControlError
     # Reads a fresh live process environment map; non-UTF-8 entries return Unsupported.
-    fn environment()(Map[String, String])!ControlError
+    fn environment() Map[String, String]!ControlError
     # Sets environment variable `name` for this process to `value`, or removes it when `value` is none.
     # An empty name, or a name or value with `=` or NUL, returns InvalidInput. The change is visible to child processes started afterwards.
     fn set_environment(name: String, value: String?) Unit!ControlError

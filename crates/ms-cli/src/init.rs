@@ -16,7 +16,7 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
         if arg.starts_with('-') || given {
             let _ = writeln!(
                 io.stderr,
-                "unexpected init argument: {arg} ; ms init takes at most one directory, e.g. ms init hello"
+                "unexpected init argument: {arg}; ms init takes at most one directory, e.g. ms init hello"
             );
             return 2;
         }

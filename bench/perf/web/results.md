@@ -184,3 +184,15 @@ Throughput and tail latency are at parity with hyper. `run.sh` prints resident m
 
 The CPU-bound handler scales 2.3x on two cores (the shared-listener workers reached 58k to 61k on the same rows, and with an uneven spread). Tiny requests gain 1.6x; the load generator takes the other two CPUs. Connection-per-request throughput is 85% to 90% of one thread with two workers: every connection pays the accept loop and a channel send, and the 2 CPUs are shared by acceptor and workers. Four workers on two CPUs add nothing, as expected.
 
+
+## 2026-10-31, `serve_cores`
+
+`MS_THREADS=n sh bench/perf/web/run.sh 4` on `f3e8d95e`: the Manuscript server is `serve_cores(listener, serve_worker, n)` (acceptor on the main thread, `n` serving workers, connections dealt round robin). Shared 4-CPU Linux VM (+/-10% between runs), servers on CPUs 0-1, load on 2-3, 64 keep-alive connections, 4 s per row, two rounds. The Go server in `go/` is the comparison; it ran in each pass.
+
+| Server | `/health` req/s | `/user/42` req/s | `/top?n=10` req/s | `/health` p99 | `/health` req/s beside 10,000 idle connections |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Manuscript, 1 worker | 110k, 118k | 104k, 114k | 27k, 31k | 1.5-1.7 ms | 98k |
+| Manuscript, 2 workers | 152k, 180k | 158k, 164k | 70k, 70k | 1.3-1.4 ms | 166k |
+| Go (2 CPUs) | 99k-104k | not run | 42k-44k | 3.2-4.1 ms | 92k-97k |
+
+Two workers scale the CPU-bound `/top` row 2.3x and tiny requests 1.4x to 1.6x, and pass Go on every row on the same two CPUs, with a lower p99. Resident memory is 56 MB with one worker and 58 MB with two (this includes the `/io` payloads). Not measured: skewed load (a few long-lived connections) and more than two server CPUs, which need a larger machine than this VM.

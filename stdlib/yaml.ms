@@ -449,6 +449,21 @@ fn fold_plain(text: String) String:
 
     return result
 
+# Whether the character following a colon ends a plain scalar in this context.
+fn separates_colon(next: Int, delimited: Bool) Bool:
+    if next == 0 or next == 9 or next == 10 or next == 32: return true
+
+    return (
+        delimited
+        and (
+            next == 44
+            or next == 91
+            or next == 93
+            or next == 123
+            or next == 125
+        )
+    )
+
 # A scalar, alias or quoted string at the cursor, whose first code is `c`.
 fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
     if c == 42:
@@ -672,9 +687,13 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
                 if cur(flow) == 0: return error(
                     flow_invalid(flow, "unterminated flow mapping")
                 )
+                if cur(flow) == 44: return error(
+                    flow_invalid(flow, "expected flow mapping key")
+                )
 
                 quoted_key = cur(flow) == 34 or cur(flow) == 39
 
+                let key_start = flow.pos
                 let parsed_key = try flow_value(var flow, level, key: true)
 
                 match parsed_key:
@@ -697,6 +716,19 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
                 if step(var flow) != 58: return error(
                     flow_invalid(flow, "expected mapping colon")
                 )
+
+                # A colon makes this an implicit key: validate physical source lines, not
+                # decoded text, which may legitimately contain an escaped newline.
+                var key_at = key_start
+
+                while key_at < flow.pos:
+                    if flow.codes.get(key_at) == 10: return error(
+                        flow_invalid(
+                            flow, "an implicit mapping key must stay on one line"
+                        )
+                    )
+
+                    key_at += 1
 
                 phase = 0
                 continue
@@ -761,10 +793,120 @@ fn plain_boundary(text: String, colon: Bool) Int:
         let at = offset + found
         let before = text.get(at - 1, default: "")
         let after = text.get(at + 1, default: "")
-        if colon and (after == "" or after == " " or after == "\t"): return at
-        if not colon and (at == 0 or before == " " or before == "\t"): return at
+        if colon and (after == "" or after == " " or after == "\t" or after == "\n"): return at
+        if not colon and (at == 0 or before == " " or before == "\t" or before == "\n"): return at
 
         offset = at + 1
+
+# A structural marker; `closed` is meaningful only when the scan reaches the end.
+type StructureScan:
+    marker: Int
+    closed: Bool
+
+# Scan quoted and flow nodes without interpreting quotes or brackets inside plain text.
+fn scan_structure(text: String, target: String) StructureScan:
+    let chars = text.split("")
+    var quote = ""
+    var depth = 0
+    var node_start = true
+    var json_node = false
+    var index = 0
+
+    while index < chars.length():
+        let c = chars.get(index)
+        let next = chars.get(index + 1, default: "")
+
+        if quote != "":
+            if c == "\\" and quote == "\"": index += 1
+            else if c == quote:
+                if quote == "'" and next == "'": index += 1
+                else:
+                    quote = ""
+                    json_node = true
+
+            index += 1
+            continue
+
+        let before = chars.get(index - 1, default: "")
+
+        if (
+            c == "#"
+            and (
+                index == 0
+                or before == " "
+                or before == "\t"
+                or before == "\n"
+            )
+        ):
+            if target == "#": return StructureScan(index, closed: false)
+
+            while index < chars.length() and chars.get(index) != "\n": index += 1
+            node_start = true
+            json_node = false
+            continue
+
+        if node_start and (c == "&" or c == "!"):
+            index += 1
+
+            if c == "!" and next == "<":
+                while index < chars.length() and chars.get(index) != ">": index += 1
+                if index < chars.length(): index += 1
+            else:
+                while (
+                    index < chars.length()
+                    and not " \t\n,[]\{\}".contains(
+                        chars.get(index)
+                    )
+                ):
+                    index += 1
+
+            json_node = false
+            continue
+
+        if node_start and (c == "\"" or c == "'"):
+            quote = c.clone()
+            node_start = false
+            json_node = false
+        else if node_start and (c == "[" or c == "\{"):
+            depth += 1
+            json_node = false
+        else if depth > 0 and (c == "]" or c == "\}"):
+            depth -= 1
+            node_start = false
+            json_node = true
+        else if depth > 0 and c == ",":
+            node_start = true
+            json_node = false
+        else if c == ":":
+            let separates = (
+                json_node
+                or separates_colon(
+                    next.scalar_at(0, default: 0), depth > 0
+                )
+            )
+
+            if separates:
+                if target == ":" and depth == 0: return StructureScan(
+                    index, closed: false
+                )
+
+                node_start = true
+            else: node_start = false
+
+            json_node = false
+        else if (
+            node_start
+            and (c == "-" or c == "?")
+            and (next == "" or next == " " or next == "\t" or next == "\n")
+        ):
+            json_node = false
+        else if c != " " and c != "\t" and c != "\n":
+            node_start = false
+            json_node = false
+
+        index += 1
+
+    return StructureScan(-1, closed: quote == "" and depth == 0)
 
 # Find a mapping colon or comment outside quoted/flow values.
 fn boundary(text: String, colon: Bool) Int:
@@ -778,56 +920,7 @@ fn boundary(text: String, colon: Bool) Int:
     if first < 0: return -1
     if not quoted_or_nested(text.slice_scalars(0, first).get("")): return first
 
-    let chars = text.split("")
-    var quote = ""
-    var depth = 0
-    var index = 0
-
-    while index < chars.length():
-        let c = chars.get(index)
-
-        if quote != "":
-            if c == "\\" and quote == "\"": index += 1
-            else if c == quote:
-                if quote == "'" and chars.get(index + 1, default: "") == "'": index = (
-                    index
-                    + 1
-                )
-                else: quote = ""
-        else if (
-            (c == "\"" or c == "'")
-            and (
-                index == 0
-                or " \t\n:[\{,".contains((chars.get((index - 1))))
-            )
-        ): quote = c.clone()
-        else if c == "[" or c == "\{": depth += 1
-        else if c == "]" or c == "\}": depth -= 1
-        else if (
-            colon
-            and c == ":"
-            and depth == 0
-            and (
-                index + 1 == chars.length()
-                or chars.get((index + 1), default: "") == " "
-                or chars.get((index + 1), default: "") == "\t"
-            )
-        ):
-            return index
-        else if (
-            not colon
-            and c == "#"
-            and (
-                index == 0
-                or chars.get(index - 1, default: "") == " "
-                or chars.get((index - 1), default: "") == "\t"
-            )
-        ):
-            return index
-
-        index += 1
-
-    return -1
+    return scan_structure(text, if colon: ":" else: "#").marker
 
 fn uncomment(text: String) String:
     let index = boundary(text, colon: false)
@@ -942,35 +1035,7 @@ fn sequence(text: String) Bool:
 fn complete(text: String) Bool:
     if not quoted_or_nested(text): return true
 
-    var quote = ""
-    var depth = 0
-    var index = 0
-    let chars = text.split("")
-
-    while index < chars.length():
-        let c = chars.get(index)
-
-        if quote != "":
-            if c == "\\" and quote == "\"": index += 1
-            else if c == quote:
-                if quote == "'" and chars.get(index + 1, default: "") == "'": index = (
-                    index
-                    + 1
-                )
-                else: quote = ""
-        else if (
-            (c == "\"" or c == "'")
-            and (
-                index == 0
-                or " \t\n:[\{,".contains((chars.get((index - 1))))
-            )
-        ): quote = c.clone()
-        else if c == "[" or c == "\{": depth += 1
-        else if c == "]" or c == "\}": depth -= 1
-
-        index += 1
-
-    return quote == "" and depth <= 0
+    return scan_structure(text, "").closed
 
 # Whether a value starting with this scalar is a flow collection, quote, anchor, alias or tag
 # (or, with `blank`, whitespace) rather than a plain scalar.
@@ -1449,7 +1514,7 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
         has_colon = not is_sequence and context.col.get(context.index) >= 0
     else:
         first = blank_trim_start(uncomment(context.lines.get(context.index)))
-        if first.starts_with("?"): return error(
+        if first.starts_with("?") and not plain_may_start(first): return error(
             YamlError.UnsupportedFeature(
                 line: (context.index + 1),
                 reason: "explicit mapping keys are unsupported"
@@ -1538,6 +1603,19 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
                     )
                 )
 
+            if (
+                not quoted_key
+                and (
+                    not plain_may_start(name)
+                    or key_start == 124
+                    or key_start == 62
+                )
+            ): return error(
+                invalid(
+                    context,
+                    "a plain mapping key cannot start with an indicator character"
+                )
+            )
             if explicit.contains(name): return error(
                 invalid(context, "duplicate mapping key")
             )

@@ -1,0 +1,3 @@
+fn work() Unit:
+    send(payload: incoming_request_payload.normalize_white?.space().remove_legacy_separators()._whitespace_abcdef())
+    return unit

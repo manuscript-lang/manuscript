@@ -59,7 +59,7 @@ test "indexing and generic applications coexist":
     ((items[0] != 10 or items[index] != 20 or items[-1] != 20)) | try expect_false
     (items[indices[index]] != 20 or items[index - 1] != 10) | try expect_false
     (items[counter.count] != 10 or [items.clone()][0][1] != 20) | try expect_false
-    (values(var counter) [(try tick(var counter))] != 7 or counter.count != 2) | try expect_false
+    (values(var counter)[(try tick(var counter))] != 7 or counter.count != 2) | try expect_false
     identity[Int](items[0]) | try expect_equal(10)
 
     let callbacks: List[fn(Int) Int] = [identity[Int]]

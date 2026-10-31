@@ -101,17 +101,19 @@ pub fn parse_timestamp(text: &[u8]) -> Result<Ts, u8> {
 /// `Timestamp.to_string()`: UTC RFC 3339 with the fraction trimmed of trailing zeros.
 pub fn to_string(ts: Ts) -> String {
     let c = civil_of(ts.seconds, ts.nanos);
-    let mut s = String::new();
+    // Four year digits, the calendar/time separators, nine fractional digits and Z.
+    // This is an initial capacity, so internal callers outside the UTC range still grow.
+    let mut s = String::with_capacity(30);
     let _ = write!(
         s,
         "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
         c.year, c.month, c.day, c.hour, c.minute, c.second
     );
     if ts.nanos != 0 {
-        let mut frac = String::new();
-        let _ = write!(frac, "{:09}", ts.nanos);
-        s.push('.');
-        s.push_str(frac.trim_end_matches('0'));
+        let _ = write!(s, ".{:09}", ts.nanos);
+        while s.ends_with('0') {
+            s.pop();
+        }
     }
     s.push('Z');
     s
@@ -522,6 +524,53 @@ mod tests {
             core::str::from_utf8(&text).unwrap(),
             "2024-07-04 18:05:09.123 +02:00 [CEST] SS"
         );
+    }
+
+    #[test]
+    fn timestamp_text_matches_previous_renderer() {
+        let mut random = 7_u64;
+        for i in 0..512 {
+            random = random
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
+            let seconds = match i {
+                0 => MIN_SECONDS,
+                1 => MAX_SECONDS,
+                2 => -1,
+                3 => 0,
+                _ => MIN_SECONDS + (random % (MAX_SECONDS - MIN_SECONDS + 1) as u64) as i64,
+            };
+            for nanos in [
+                0,
+                1,
+                9,
+                10,
+                99,
+                100,
+                99_999_999,
+                100_000_000,
+                250_000_000,
+                999_999_999,
+            ] {
+                let c = civil_of(seconds, nanos);
+                let mut previous = String::new();
+                let _ = write!(
+                    previous,
+                    "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
+                    c.year, c.month, c.day, c.hour, c.minute, c.second
+                );
+                if nanos != 0 {
+                    let mut frac = String::new();
+                    let _ = write!(frac, "{:09}", nanos);
+                    previous.push('.');
+                    previous.push_str(frac.trim_end_matches('0'));
+                }
+                previous.push('Z');
+                let value = Ts { seconds, nanos };
+                assert_eq!(to_string(value), previous, "{value:?}");
+                assert_eq!(parse_timestamp(previous.as_bytes()), Ok(value));
+            }
+        }
     }
 
     #[test]
