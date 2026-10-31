@@ -169,6 +169,8 @@ pub struct Cx {
     pub borrows: Rc<HashMap<usize, BorrowKind>>,
     /// Resource bindings closed implicitly when their scope ends.
     pub implicit_closes: Rc<std::collections::HashSet<usize>>,
+    /// Closing bindings the program also closes with an explicit `.close()` call.
+    pub explicit_closes: Rc<std::collections::HashSet<usize>>,
     /// The name expressions that move a closed resource binding, by binding: the scope-end close
     /// runs only on the paths that never reach one.
     pub close_moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
@@ -234,6 +236,7 @@ impl Cx {
             fixtures: program.test_fixtures.clone(),
             borrows: program.borrows.clone(),
             implicit_closes: program.implicit_closes.clone(),
+            explicit_closes: program.explicit_closes.clone(),
             close_moves: program.close_moves.clone(),
             moved_payloads: program.moved_payloads.clone(),
             resource_moves: program.resource_moves.clone(),

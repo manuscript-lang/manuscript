@@ -117,6 +117,8 @@ pub struct Program {
     pub borrows: Rc<HashMap<usize, crate::ownership::BorrowKind>>,
     /// Resource bindings closed implicitly when their scope ends. Filled together with `borrows`.
     pub implicit_closes: Rc<HashSet<usize>>,
+    /// Closed resource bindings that also have an explicit `.close()` call.
+    pub explicit_closes: Rc<HashSet<usize>>,
     /// The name expressions that move a closed resource binding, by binding.
     pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
     /// Payload bindings of a consumed match scrutinee that some path moves out.

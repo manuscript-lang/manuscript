@@ -154,6 +154,9 @@ pub struct CallableOwnership {
     pub resource_moves: HashMap<usize, HashMap<NodeId, Vec<Name>>>,
     /// Resource bindings that nothing takes: lowering closes them when their scope ends.
     pub implicit_closes: HashSet<usize>,
+    /// Closed resource bindings the program also closes by an explicit `.close()` call: the
+    /// scope end still releases them, but a result the program handled is not returned again.
+    pub explicit_closes: HashSet<usize>,
     /// For a closed resource binding that is also moved on some paths: the name expressions
     /// that move it. The close at scope end runs only on the paths with no move.
     pub close_moves: HashMap<usize, HashSet<NodeId>>,
@@ -182,6 +185,8 @@ pub struct Ownership {
     pub borrows: HashMap<usize, BorrowKind>,
     /// Resource bindings closed implicitly when their scope ends.
     pub closes: HashSet<usize>,
+    /// Closed resource bindings with an explicit `.close()` call.
+    pub explicit_closes: HashSet<usize>,
     /// Name expressions that move a closed resource binding, by binding.
     pub close_moves: HashMap<usize, HashSet<NodeId>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
@@ -274,6 +279,7 @@ impl Hir<'_> {
         let mut diagnostics = Vec::new();
         let mut borrows = HashMap::new();
         let mut closes = HashSet::new();
+        let mut explicit_closes = HashSet::new();
         let mut close_moves = HashMap::new();
         let mut moved_payloads = HashSet::new();
         let mut resource_moves = HashMap::new();
@@ -298,6 +304,7 @@ impl Hir<'_> {
                 borrows.insert(f.binding.uid, kind);
             }
             closes.extend(out.facts.implicit_closes.iter().copied());
+            explicit_closes.extend(out.facts.explicit_closes.iter().copied());
             close_moves.extend(out.facts.close_moves.iter().map(|(k, v)| (*k, v.clone())));
             moved_payloads.extend(out.facts.moved_payloads.iter().copied());
             resource_moves.extend(
@@ -324,6 +331,7 @@ impl Hir<'_> {
             diagnostics,
             borrows,
             closes,
+            explicit_closes,
             close_moves,
             resource_moves,
             moved_payloads,
