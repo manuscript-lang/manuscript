@@ -6,7 +6,7 @@ impl Box:
     fn list() ref List[Int]:
         return self.items
 
-fn trimmed(line: String) ref String:
+fn trimmed(line: String) String:
     return line.trim()
 
 fn len(line: String) Int:
