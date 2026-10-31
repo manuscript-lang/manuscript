@@ -26,7 +26,7 @@ MS_RT_LIB=/absolute/path/runtime-before.a target/release/ms build \
   bench/perf/codecs/ms.toml --build-type Release -o /tmp/codecs-before
 MS_RT_LIB=/absolute/path/runtime-after.a target/release/ms build \
   bench/perf/codecs/ms.toml --build-type Release -o /tmp/codecs-after
-python3 bench/perf/codecs/compare.py /tmp/codecs-before /tmp/codecs-after \
+ms run bench/tools/codecs_compare.ms -- decode /tmp/codecs-before /tmp/codecs-after \
   /tmp/codecs-results --pairs 9
 ```
 

@@ -7,7 +7,7 @@ type MemoryStream:
     offset: Int
 
 impl ReadStream for MemoryStream:
-    var fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Int?) Result[Bytes?, IoError]:
         if self.offset == self.data.length():
             return ok(none)
 

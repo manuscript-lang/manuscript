@@ -48,7 +48,7 @@ cargo +1.99.1 build --release --locked \
    --target-dir .artifacts/lsp-before-target
 cargo +1.99.1 build --release --locked \
    --manifest-path bench/perf/lsp/Cargo.toml --target-dir .artifacts/lsp-after-target
-python3 bench/perf/lsp/compare.py \
+ms run bench/tools/lsp_compare.ms -- hover \
    .artifacts/lsp-before-target/release/ms-lsp-perf \
    .artifacts/lsp-after-target/release/ms-lsp-perf \
    --out .artifacts/lsp-results.csv --samples 9

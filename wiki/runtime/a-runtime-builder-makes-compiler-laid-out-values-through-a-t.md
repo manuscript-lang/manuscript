@@ -6,4 +6,4 @@ Decided: an untyped `parse` builds `JsonValue` in `ms_rt::tree::TreeBuilder` whi
 
 Apply when: adding another recursive alternative to build natively, or changing the `JsonValue` cases (the thunk looks them up by name) or the map/list slot layout.
 Evidence: [builder](../../crates/ms-rt/src/tree.rs), [thunk and call](../../crates/ms-lower/src/json.rs) (`json_tree_ctor`), [scanner](../../crates/ms-std-json/src/lib.rs) (`parse_tree`), [fixture](../../tests/e2e/testdata/stdlib/json.ms) ("releases partial trees on failure").
-Verify: `sh bench/perf/json/run.sh`; the json fixtures pass; a failing document leaves no leak (`make leak-check`).
+Verify: `ms run bench/tools/json_bench.ms`; the json fixtures pass; a failing document leaves no leak (`make leak-check`).

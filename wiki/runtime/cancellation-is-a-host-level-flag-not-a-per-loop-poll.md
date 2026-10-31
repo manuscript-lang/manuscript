@@ -6,4 +6,4 @@ Decision: cancellation is one global flag (set by signals, shutdown, and task-gr
 
 Apply when: adding a runtime function, or deciding where a function should be a cancellation point.
 Evidence: [design contract](../../crates/DESIGN.md), [shutdown fixtures](../../tests/e2e/testdata/shutdown/server.source), [signal project](../../tests/e2e/testdata/projects/signal).
-Verify: loop and I/O cancellation cases still stop; compare `bench/perf/programs/run.sh` before and after.
+Verify: loop and I/O cancellation cases still stop; compare `ms run bench/tools/programs.ms --` before and after.

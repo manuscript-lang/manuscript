@@ -43,7 +43,7 @@ cargo +1.99.1 build --release --locked \
 cargo +1.99.1 build --release --locked \
   --manifest-path bench/perf/formatter-flow/Cargo.toml \
   --target-dir .artifacts/flow-after-target
-python3 bench/perf/formatter-flow/compare.py \
+ms run bench/tools/formatter_flow_compare.ms -- \
   .artifacts/flow-before-target/release/ms-formatter-flow-perf \
   .artifacts/flow-after-target/release/ms-formatter-flow-perf \
   --out .artifacts/flow-results.csv --samples 10 --cpu 0

@@ -37,4 +37,4 @@ Caveat: synthetic code; real programs with heavier generics/closures may shift f
 ## Priority
 Incremental builds first (per-module/function object cache keyed by content hash), then parallel LLVM partitioning and the rest.
 
-Reproduce: `bench/compile-time/run.sh` (set `SKIP_LLVM=1` to skip the 5-minute release step).
+Reproduce: `bench/tools/compile_time.ms` (set `SKIP_LLVM=1` to skip the 5-minute release step).
