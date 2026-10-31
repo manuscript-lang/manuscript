@@ -9,6 +9,18 @@ Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected
 
 Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can test it with `is_error()`, read the success path with `if let`, or pass the error back with `try`. Validate runtime input with ordinary conditions before doing the work.
 
+## Shorthand: `T!` and `T!E`
+
+`T!` is `Result[T, Error]` and `T!E` (with no space before `E`) is `Result[T, E]`, mirroring `T?` for optionals. Both spellings mean the same type; `Result[T, E]` stays valid.
+
+```manuscript
+fn parse_port(text: String) Int!:
+    let port = try text.parse_int().ok_or()
+    return ok(port)
+```
+
+Suffixes apply left to right: `Int?!` is `Result[Int?, Error]` and `Int!?` is `Optional[Result[Int, Error]]`. A function type needs parentheses first, as with `?`: `(fn() Int)!`.
+
 ## Returning a domain error
 
 ```manuscript
