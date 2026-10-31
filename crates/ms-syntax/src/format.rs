@@ -1502,12 +1502,12 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             }
             let tokens = self.tokens;
             let (mut end, mut booleans, mut dots, mut operators) = (start, 0, 0, 0);
-            let mut first_call = None;
+            let mut calls: Vec<(usize, usize)> = Vec::new();
             while end < tokens.len() && tokens[end].pos.offset < limit {
                 if let Some(&close) = self.pairs.get(&end) {
                     // A call with a trivial argument gains nothing from breaking.
-                    if tokens[end].kind == Tok::LParen && close > end + 3 && first_call.is_none() {
-                        first_call = Some(end);
+                    if tokens[end].kind == Tok::LParen && close > end + 3 {
+                        calls.push((end, close));
                     }
                     end = close + 1;
                     continue;
@@ -1552,9 +1552,8 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             }
             // A chain breaks inside a call whose opening parenthesis still fits
             // on the first line, rather than wrapping the whole chain.
-            // Later openers only add width to this first eligible prefix.
             let hugs = booleans + operators == 0
-                && first_call.is_some_and(|open| {
+                && calls.iter().any(|&(open, _)| {
                     let mut head = column;
                     let mut code: Vec<Token> = Vec::new();
                     for t in &tokens[start..=open] {
