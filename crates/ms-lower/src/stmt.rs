@@ -663,7 +663,7 @@ impl<'a> FnLower<'a> {
             let found = if exclusive {
                 let (alias, found) = self.alias_accessor(cond)?;
                 accessor_alias = Some(alias);
-                found
+                crate::alias::Found::Present(found)
             } else if let Some((b, shape)) = self.lendable(binding, cond)? {
                 // `if let x = m.get(k)`: the test is the entry's presence and `x` is the entry
                 // itself, lent for the branch; no `Optional` is built.

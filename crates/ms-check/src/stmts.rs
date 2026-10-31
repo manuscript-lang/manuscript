@@ -1379,6 +1379,41 @@ impl Checker {
         info
     }
 
+    /// `target?` where `target` is `left[index]`: the entry of a map or list, when present.
+    pub(crate) fn probe(&mut self, e: &Expr, target: &Expr) -> Info {
+        let left = match &target.kind {
+            ExprKind::Index { left, .. } => left,
+            ExprKind::Apply {
+                left,
+                value: Some(_),
+                ..
+            } => left,
+            _ => {
+                return Info {
+                    ty: Some(invalid()),
+                    ..Info::default()
+                };
+            }
+        };
+        let mut info = self.expression(target, None);
+        let receiver = self.info_of(left).and_then(|i| i.ty);
+        let entries = receiver.is_some_and(|r| {
+            (r.is_std("List") && r.args.len() == 1) || (r.is_std("Map") && r.args.len() == 2)
+        });
+        info.ty = match info.ty {
+            Some(t) if entries => Some(standard("Optional", vec![t])),
+            Some(t) if t.id == "<invalid>" => Some(t),
+            _ => {
+                self.type_error(
+                    e.pos,
+                    "`?` after an index tests whether a List or Map entry exists; use it as `if var name = place[key]?`",
+                );
+                Some(invalid())
+            }
+        };
+        info
+    }
+
     pub(crate) fn match_expression<'a>(
         &mut self,
         e: &'a Expr,

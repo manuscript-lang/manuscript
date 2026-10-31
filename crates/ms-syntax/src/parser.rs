@@ -2400,6 +2400,10 @@ impl<'a> Parser<'a> {
                         args,
                     },
                 );
+            } else if self.kind() == Tok::Question && index_parts(&e).is_some() {
+                self.at += 1;
+                let pos = e.pos;
+                e = self.mk(pos, ExprKind::Probe(Box::new(e)));
             } else {
                 break;
             }

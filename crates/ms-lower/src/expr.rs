@@ -115,6 +115,7 @@ impl<'a> FnLower<'a> {
             ExprKind::Name(_) => self.name(e),
             ExprKind::Member { left, name } => self.member(e, left, name.as_str()),
             ExprKind::Index { left, index } => self.index(e, left, index),
+            ExprKind::Probe(_) => Err(Error::new("`place[key]?` is only lowered by `if var`")),
             ExprKind::Apply { value, .. } => match value {
                 Some(v) if self.is_index_apply(e) => {
                     let ExprKind::Apply { left, .. } = &e.kind else {
