@@ -1,6 +1,0 @@
-=== RUN   TestLexicalSerializerCoversInfo
---- PASS: TestLexicalSerializerCoversInfo (0.00s)
-=== RUN   TestLexicalSourceIndexPayload
-    lexical_index_probe_test.go:330: lexical_payload={"occurrences":3876,"payload_bytes":10521111,"payload_sha256":"f16201dd91ee33a06a9f52930d1ff0d4772476190aaa7682e0dd22235d1c25cb","std_source_sha256":"aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4"}
---- PASS: TestLexicalSourceIndexPayload (0.31s)
-PASS

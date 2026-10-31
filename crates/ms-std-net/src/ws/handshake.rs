@@ -14,9 +14,6 @@ use crate::error::WsErr;
 use crate::http::h1::{self, ResponseHead};
 use crate::http::headers::canonical;
 use crate::http::url;
-use base64::Engine as _;
-use base64::alphabet;
-use base64::engine::{GeneralPurpose, GeneralPurposeConfig};
 use ring::digest;
 use ring::rand::{SecureRandom, SystemRandom};
 
@@ -30,18 +27,12 @@ pub const GUID: &str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 pub const DEFLATE_RESPONSE: &str =
     "permessage-deflate; server_no_context_takeover; client_no_context_takeover";
 
-/// Standard base64 accepts non-zero trailing bits; the strict default does not.
-const LENIENT: GeneralPurpose = GeneralPurpose::new(
-    &alphabet::STANDARD,
-    GeneralPurposeConfig::new().with_decode_allow_trailing_bits(true),
-);
-
 /// `Sec-WebSocket-Accept` for a challenge key.
 pub fn accept_key(challenge: &str) -> String {
     let mut ctx = digest::Context::new(&digest::SHA1_FOR_LEGACY_USE_ONLY);
     ctx.update(challenge.as_bytes());
     ctx.update(GUID.as_bytes());
-    base64::engine::general_purpose::STANDARD.encode(ctx.finish())
+    ms_std_encoding::base64_encode(ctx.finish().as_ref(), false)
 }
 
 /// A fresh `Sec-WebSocket-Key`: 16 random bytes in base64.
@@ -53,12 +44,12 @@ pub fn generate_key() -> String {
             .map_or(0, |d| d.as_nanos());
         bytes.copy_from_slice(&nanos.to_le_bytes());
     }
-    base64::engine::general_purpose::STANDARD.encode(bytes)
+    ms_std_encoding::base64_encode(&bytes, false)
 }
 
 /// Whether `s` is the base64 text of exactly 16 bytes.
 pub fn valid_challenge_key(s: &str) -> bool {
-    !s.is_empty() && LENIENT.decode(s).is_ok_and(|b| b.len() == 16)
+    !s.is_empty() && ms_std_encoding::base64_decode_lenient(s).is_some_and(|b| b.len() == 16)
 }
 
 fn values<'a>(fields: &'a Fields, name: &'a str) -> impl Iterator<Item = &'a [u8]> {

@@ -31,7 +31,7 @@ fn err(e: Fail) -> String {
 }
 
 #[test]
-fn matches_go() {
+fn matches_oracle() {
     let data = include_str!("oracle/regex.tsv");
     let mut compiled: BTreeMap<String, Option<Regex>> = BTreeMap::new();
     let mut bad: BTreeMap<String, String> = BTreeMap::new();

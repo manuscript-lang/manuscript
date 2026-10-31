@@ -75,7 +75,7 @@ pub fn classify(e: Errno) -> u8 {
     sys::classify(e)
 }
 
-/// Go's text for an OS error code (`syscall.Errno.Error`).
+/// The host's detail text for an OS error code.
 pub fn describe(e: Errno) -> String {
     sys::describe(e)
 }

@@ -123,7 +123,7 @@ fn repeat(n: usize, mut step: impl FnMut() -> Result<String, RandomFail>) -> Str
 }
 
 #[test]
-fn matches_go() {
+fn matches_oracle() {
     let data = include_str!("oracle/random.tsv");
     let mut n = 0;
     for line in data.lines().filter(|l| !l.starts_with('#')) {

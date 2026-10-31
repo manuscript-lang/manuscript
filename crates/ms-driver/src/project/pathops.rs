@@ -421,7 +421,7 @@ mod tests {
     }
 
     #[test]
-    fn clean_matches_go() {
+    fn clean_matches_oracle() {
         for (input, want) in [
             ("", "."),
             ("/", "/"),
@@ -452,7 +452,7 @@ mod tests {
     }
 
     #[test]
-    fn rel_matches_go() {
+    fn rel_matches_oracle() {
         assert_eq!(rel("/a/b", "/a/b/c/d").unwrap(), "c/d");
         assert_eq!(rel("/a/b", "/a/c").unwrap(), "../c");
         assert_eq!(rel("/a/b", "/a/b").unwrap(), ".");

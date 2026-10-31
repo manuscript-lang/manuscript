@@ -4,7 +4,7 @@
 use crate::analysis::{Analysis, Document, Documents, workspace_analysis};
 use crate::index::Occurrence;
 use crate::json::{Json, obj};
-use crate::nav::{self, go_location_order};
+use crate::nav::{self, location_sort_key};
 use crate::text::Position;
 use crate::uri;
 use ms_driver::project::pathops;
@@ -162,7 +162,7 @@ pub fn workspace_references(
         .is_some_and(|symbol| symbol.kind == ms_check::types::SymKind::Fn && !symbol.export)
     {
         let mut locations = nav::references_with_index(analysis, index, d, p, include);
-        locations.sort_by_cached_key(go_location_order);
+        locations.sort_by_cached_key(location_sort_key);
         return locations;
     }
     let documents = match workspace_documents(d, docs, false, cancel) {
@@ -170,12 +170,12 @@ pub fn workspace_references(
         Err(ScanError::Canceled) => return Vec::new(),
         Err(ScanError::Io(_)) => {
             let mut locations = nav::references_with_index(analysis, index, d, p, include);
-            locations.sort_by_cached_key(go_location_order);
+            locations.sort_by_cached_key(location_sort_key);
             return locations;
         }
     };
     let mut locations: Vec<Json> = Vec::new();
-    let mut seen: HashSet<String> = HashSet::new();
+    let mut seen: HashSet<nav::LocationKey> = HashSet::new();
     for file in &documents {
         if canceled(cancel).is_err() {
             return Vec::new();
@@ -194,12 +194,12 @@ pub fn workspace_references(
             let Some(location) = nav::occurrence_location(&checked, entry) else {
                 continue;
             };
-            if seen.insert(go_location_order(&location)) {
+            if seen.insert(location_sort_key(&location)) {
                 locations.push(location);
             }
         }
     }
-    locations.sort_by_cached_key(go_location_order);
+    locations.sort_by_cached_key(location_sort_key);
     locations
 }
 
@@ -265,8 +265,8 @@ pub(crate) fn workspace_symbols_matching(
     }
     let mut analyzed: HashSet<String> = HashSet::new();
     let mut names = HashMap::new();
-    let mut seen: HashSet<String> = HashSet::new();
-    let mut result: Vec<(String, Json)> = Vec::new();
+    let mut seen: HashSet<nav::LocationKey> = HashSet::new();
+    let mut result: Vec<((i64, nav::LocationKey, String), Json)> = Vec::new();
     for d in &documents {
         if canceled(cancel).is_err() {
             return None;
@@ -296,7 +296,7 @@ pub(crate) fn workspace_symbols_matching(
             let Some(location) = nav::occurrence_location(&checked, entry) else {
                 continue;
             };
-            let id = go_location_order(&location);
+            let id = location_sort_key(&location);
             if !seen.insert(id.clone()) {
                 continue;
             }
@@ -305,13 +305,13 @@ pub(crate) fn workspace_symbols_matching(
                 Some(s) if s.is_constant() => 14,
                 _ => 12,
             };
-            // Go orders by the printed map: kind, location, name.
-            let order = format!("map[kind:{kind} location:{} name:{}]", id, entry.name);
+            // Ordered by kind, location, then name.
+            let order = (kind, id, entry.name.clone());
             result.push((
                 order,
                 obj([
                     ("name", entry.name.clone().into()),
-                    ("kind", (kind as i64).into()),
+                    ("kind", kind.into()),
                     ("location", location),
                 ]),
             ));
