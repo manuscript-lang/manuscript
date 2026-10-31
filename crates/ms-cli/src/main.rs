@@ -29,14 +29,24 @@ fn main() {
 }
 
 fn real_main() -> i32 {
-    let args: Vec<String> = std::env::args_os()
+    let args: Result<Vec<String>, _> = std::env::args_os()
         .skip(1)
-        .map(|a| a.to_string_lossy().into_owned())
+        .map(|a| a.into_string())
         .collect();
     // Unlocked: `ms lsp` reads the process stdin from its own thread.
     let mut stdin = std::io::stdin();
     let mut stdout = std::io::BufWriter::new(std::io::stdout().lock());
     let mut stderr = std::io::stderr().lock();
+    let args = match args {
+        Ok(args) => args,
+        Err(_) => {
+            let _ = writeln!(
+                stderr,
+                "ms: an argument is not valid UTF-8; pass UTF-8 command-line arguments"
+            );
+            return 2;
+        }
+    };
     let status = {
         let mut io = Io {
             stdin: &mut stdin,

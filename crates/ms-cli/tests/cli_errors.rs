@@ -60,3 +60,43 @@ fn init_next_command_for_hyphen_directory_is_a_file_operand() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[cfg(unix)]
+#[test]
+fn invalid_unicode_argument_does_not_select_a_different_file() {
+    use std::os::unix::ffi::OsStringExt;
+
+    let dir = std::env::temp_dir().join(format!("ms-cli-invalid-unicode-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("\u{fffd}.ms"), "").unwrap();
+
+    let invalid = std::ffi::OsString::from_vec(vec![0xff, b'.', b'm', b's']);
+    let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .arg("check")
+        .arg(invalid)
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(output.stdout.is_empty(), "{output:?}");
+    assert!(stderr.contains("argument is not valid UTF-8;"), "{stderr}");
+    assert!(
+        stderr.contains("pass UTF-8 command-line arguments"),
+        "{stderr}"
+    );
+
+    let valid = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .args(["check", "\u{fffd}.ms"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert!(valid.status.success(), "{valid:?}");
+    assert!(valid.stderr.is_empty(), "{valid:?}");
+    assert_eq!(
+        String::from_utf8(valid.stdout).unwrap(),
+        "Checked \u{fffd}.ms\n"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

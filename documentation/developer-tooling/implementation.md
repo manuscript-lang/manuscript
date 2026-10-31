@@ -23,6 +23,7 @@ ms profile ms.toml --out-dir capture --top 10 -- arg1
 ```
 
 - Bare `ms` prints help. `ms version` and `ms --version` print the compiler version.
+- Command-line arguments must be valid UTF-8; invalid OS arguments return usage status 2.
 - Long options take `--output path` or `--output=path`; only the first `=` splits, so `--output=api=v1.md` writes `api=v1.md`. Required values cannot be empty.
 - Arguments after `--` are forwarded to the application unchanged.
 - Commands taking one source input also accept a project directory with `ms.toml`. Native commands select one application entrypoint.
