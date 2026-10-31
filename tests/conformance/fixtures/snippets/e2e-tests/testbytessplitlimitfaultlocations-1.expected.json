@@ -1,0 +1,68 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"",
+        "position": {
+          "file": "testbytessplitlimitfaultlocations-1.ms",
+          "line": 5,
+          "column": 16,
+          "offset": 183
+        },
+        "fix": {
+          "position": {
+            "file": "testbytessplitlimitfaultlocations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "testbytessplitlimitfaultlocations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Bytes from \"@std/bytes.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"",
+        "position": {
+          "file": "testbytessplitlimitfaultlocations-1.ms",
+          "line": 6,
+          "column": 28,
+          "offset": 220
+        },
+        "fix": {
+          "position": {
+            "file": "testbytessplitlimitfaultlocations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "testbytessplitlimitfaultlocations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Bytes from \"@std/bytes.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testbytessplitlimitfaultlocations-1.ms:5:16: resolution: unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 5 |     let data = Bytes([])\n   |                ^\n<DIR>/testbytessplitlimitfaultlocations-1.ms:6:28: resolution: unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 6 |     let parts = data.split(Bytes([0]), -7)\n   |                            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
