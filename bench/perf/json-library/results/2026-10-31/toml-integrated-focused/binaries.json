@@ -1,0 +1,14 @@
+{
+  "baseline-a": {
+    "path": "/workspace/json-perf/.artifacts/toml-final/before",
+    "sha256": "ceb4ae86c0311f4101cd5d67470069d37a74a27e69000f2c313f6ecee0c607e3"
+  },
+  "baseline-b": {
+    "path": "/workspace/json-perf/.artifacts/toml-final/before",
+    "sha256": "ceb4ae86c0311f4101cd5d67470069d37a74a27e69000f2c313f6ecee0c607e3"
+  },
+  "candidate": {
+    "path": "/workspace/json-perf/.artifacts/toml-final/after",
+    "sha256": "926a12a93cfdb63cae8bc90b648490fe14f701b0081df2aec8960ef7470a6422"
+  }
+}

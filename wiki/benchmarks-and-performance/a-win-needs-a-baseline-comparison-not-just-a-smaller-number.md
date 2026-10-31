@@ -34,6 +34,14 @@ regressions of about 7–13%; isolated gains do not establish combined acceptanc
 See the [final replay](../../bench/perf/toml-quoting/final-main-replay.md).
 Evidence: [matched controls and rejected variants](../../bench/perf/toml-quoting/README.md).
 
+Shortest float round trips do not establish byte-identical serialization: equally
+close shortest decimals can use different tie rules. A JSON converter preserved
+its million-value oracle and gained1.84x on hard floats, but an actual pristine-graph
+comparison reproduced a modest1.5% tiny-read cost, so it was rejected. Identical
+binaries built with candidate manifests did not clear the actual dependency change.
+Keep small-decimal and5–15-digit controls too: removing the scaling path regressed
+them25–52%. Evidence: [JSON library study](../../bench/perf/json-library/README.md).
+
 Verified (2026-10-31, pure utilities): a path candidate combining parse-copy
 removal with a different reverse scan doubled long-basename parse time in all
 24 pairs. Restore that copy and scan before retaining separate extension,

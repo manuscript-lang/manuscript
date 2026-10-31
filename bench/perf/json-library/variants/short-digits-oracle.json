@@ -1,0 +1,8 @@
+{
+  "before_sha256": "5bcd38bdba0747ea6a073f899cf3360d0283eacb90987ed1eb1aba255c00f860",
+  "after_sha256": "5bcd38bdba0747ea6a073f899cf3360d0283eacb90987ed1eb1aba255c00f860",
+  "bytes": 36563797,
+  "values": 1000000,
+  "result": "complete byte equality confirmed with cmp",
+  "instruction_counts": "not captured; perf and valgrind unavailable; no installation, credentials or security settings changed"
+}
