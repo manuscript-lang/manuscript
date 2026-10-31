@@ -10,7 +10,8 @@ Verify: time and allocation counts before and after on one machine; behavior tes
 
 Verified (2026-10-31): adding a scalar prefix before vector byte search preserved
 nearby hits but regressed empty/end-start searches by 1–1.6 ns until an empty-range
-guard bypassed search setup. Include successful hits around the prefix boundary,
+guard bypassed search setup; a scalar-only one-byte miss still paid about 1 ns
+until its empty suffix bypassed vector search too. Include hits at the prefix boundary,
 nonzero starts, empty inputs and exact-end starts alongside long misses. The
 [byte-search report](../../bench/perf/bytes-index/README.md) retains the rejected
 candidate and all distributions; [called tests](../../tests/e2e/testdata/stdlib/bytes-index-search.ms)

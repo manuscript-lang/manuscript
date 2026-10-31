@@ -1486,10 +1486,12 @@ pub unsafe extern "C-unwind" fn msrt_bytes_index_of_byte(
         let tail = &s[from..];
         // Keep nearby hits cheap (for example, short CSV fields) before the vector search.
         let (near, rest) = tail.split_at(tail.len().min(16));
-        let found = near
-            .iter()
-            .position(|&x| x as i64 == value)
-            .or_else(|| memchr::memchr(value as u8, rest).map(|i| near.len() + i));
+        let found = near.iter().position(|&x| x as i64 == value).or_else(|| {
+            if rest.is_empty() {
+                return None;
+            }
+            memchr::memchr(value as u8, rest).map(|i| near.len() + i)
+        });
         match found {
             Some(i) => {
                 *out = (from + i) as i64;

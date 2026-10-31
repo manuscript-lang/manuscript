@@ -29,19 +29,21 @@ Six rounds describe these samples, not confidence intervals or other machines.
 
 | Case | Before ns | After ns | Rust ns | Median paired delta ns |
 | --- | ---: | ---: | ---: | ---: |
-| empty miss | 1.36 | 1.19 | 2.13 | -0.19 |
-| seven-byte miss | 3.68 | 4.17 | 3.92 | +0.52 |
-| first hit, 1 MiB | 1.62 | 1.80 | 2.70 | +0.21 |
-| miss, 4 KiB | 1055.31 | 26.40 | 17.48 | -1028.91 |
-| miss, 1 MiB | 402857.54 | 7433.88 | 7400.06 | -395505.11 |
-| last hit, 1 MiB | 480288.35 | 7539.49 | 7152.74 | -472747.16 |
+| empty miss | 1.37 | 1.12 | 2.03 | -0.24 |
+| one-byte miss | 1.63 | 1.57 | 2.47 | -0.06 |
+| seven-byte miss | 3.46 | 3.37 | 3.77 | -0.26 |
+| first hit, 1 MiB | 1.63 | 1.58 | 2.75 | -0.06 |
+| miss, 4 KiB | 1134.66 | 26.01 | 17.31 | -1108.45 |
+| miss, 1 MiB | 420014.82 | 7043.20 | 7135.99 | -413075.17 |
+| last hit, 1 MiB | 470790.04 | 6934.32 | 7177.75 | -463868.46 |
 
-The 1 MiB miss/late-hit medians improve about 54x/64x, with faster paired times
-in all six rounds. Small costs remain visible: the seven-byte miss adds about
-0.52 ns, and some first/second-byte hits add fractions of a nanosecond. No case's
-median paired penalty exceeds 1 ns. The 16-byte scalar prefix retains inexpensive
-nearby hits; long-input offsets 1, 7, 15, 16 and 17 are explicit controls.
-Search uses no new allocating call; allocation counts and RSS were not measured.
+The 1 MiB miss/late-hit medians improve about 60x/68x, with faster paired times
+in all six rounds. The scalar-only miss regression found in review is fixed;
+small first-hit costs remain visible in the complete table. The largest median
+paired penalty is 0.23 ns (`near16_64`).
+The 16-byte scalar prefix retains inexpensive nearby hits; long-input offsets
+1, 7, 15, 16 and 17 are explicit controls. Search uses no new allocating call;
+allocation counts and RSS were not measured.
 
 ## Broader and rejected controls
 
@@ -56,8 +58,14 @@ native archives. Final combined merged-main remeasurement remains pending merge.
 
 The [first 130-case candidate](results-2026-10-31/rejected-empty-end/record.json)
 regressed empty/end-start searches by roughly 1–1.6 ns in all six pairs because
-it reached vector search on an empty suffix. Its raw rows and exact production
-patch remain. The accepted guard rejects an empty searchable range first.
+it reached vector search on an empty suffix. The next candidate fixed those
+but regressed a one-byte miss from 1.64 to 2.65 ns (paired +0.97 ns, six of six
+slower pairs); independent review required this be disclosed. Its [raw evidence
+and exact patch](results-2026-10-31/rejected-short-miss/record.json) and
+[broader controls](results-2026-10-31/rejected-short-miss-controls/record.json)
+remain separate. The accepted candidate returns early for an empty searchable
+range and skips vector search after a scalar-only miss. No rejected phase is
+pooled with the accepted samples.
 [Exploratory 80-case phases](results-2026-10-31/exploratory-80/) stay separate;
 they predate the added near-hit controls and are not pooled with final evidence.
 
@@ -81,7 +89,7 @@ python3 bench/perf/bytes-index/compare.py BEFORE AFTER \
 
 The output directory must be new. Stop concurrent builds/CPU work before timing.
 The runner validates warmups and all measured producers before reporting complete
-results; failures leave complete=false and the available partial evidence.
+results; an empty-producer smoke test verifies failure without a summary. Other failures leave complete=false and the available partial evidence.
 `identities()` constructs its expected results with Python's independent byte search.
 The additional called source tests exercise boundaries, every hit offset through
 129 bytes, high-bit bytes, successful nonzero starts, earliest hits, and extreme starts.

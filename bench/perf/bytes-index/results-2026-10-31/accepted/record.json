@@ -3,9 +3,9 @@
   "argv": [
     "bench/perf/bytes-index/compare.py",
     "/workspace/byte-search-evidence/ms-before-final",
-    "/workspace/byte-search-evidence/ms-after-fixed",
+    "/workspace/byte-search-evidence/ms-after-short-fixed",
     "/workspace/perf-toolchain/bytes-index-rust-target/release/bytes-index-rust",
-    "/workspace/byte-search-evidence/fixed-130",
+    "/workspace/byte-search-evidence/short-fixed-130",
     "--cpu",
     "0"
   ],
@@ -26,8 +26,8 @@
       "sha256": "94b4decfdf1694c7fbf8e26e72f3d34d4bc07a752da9b5095803a476dcd55489"
     },
     "after": {
-      "path": "/workspace/byte-search-evidence/ms-after-fixed",
-      "sha256": "15b3209f8302e3870633ed2c0c814d9858cce5576075ab319ff2d0f5580bcc16"
+      "path": "/workspace/byte-search-evidence/ms-after-short-fixed",
+      "sha256": "b7efb1c96b586191af73564d7f717ff0d43b3c908e213e1f3301609ff968ee1c"
     },
     "rust": {
       "path": "/workspace/perf-toolchain/bytes-index-rust-target/release/bytes-index-rust",
