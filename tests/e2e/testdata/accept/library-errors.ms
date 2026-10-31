@@ -310,14 +310,14 @@ test "standard diagnostics preserve messages and wrapped causes":
 
 # The type-pattern rule also works for unrelated operation contracts.
 interface Label[T]:
-    fn label() ref T
+    fn label() T
 
 type Labelled[T]:
     value: T
 
 impl Label[String] for Labelled[String]:
-    fn label() ref String:
-        return self.value
+    fn label() String:
+        return self.value.clone()
 
 fn match_label(view: Label[String]) String:
     match view:

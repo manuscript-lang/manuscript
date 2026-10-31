@@ -2,15 +2,6 @@
 # conform: phase=test
 import expect_equal from "@std/test.ms"
 
-type Box:
-    name: String
-    items: List[Int]
-
-impl Box:
-    fn label() ref String: self.name
-
-    fn all() ref List[Int]: self.items
-
 # Churn that reuses freed memory, so a view of a value freed too early reads garbage.
 fn churn(n: Int) Int:
     var total = 0
@@ -34,15 +25,6 @@ test "a source whose last use is early is not needed by later work":
     let count = words.length()
     let n = churn(200)
     try expect_equal(count, 3)
-    try expect_equal(n > 0, true)
-
-test "a ref result borrows its argument until the result's last use":
-    let box = Box(name: "boxed".clone(), items: [1, 2, 3])
-    let label = box.label()
-    let items = box.all()
-    let n = churn(200)
-    try expect_equal(label, "boxed")
-    try expect_equal(items.length(), 3)
     try expect_equal(n > 0, true)
 
 test "a view carried around a loop stays valid":

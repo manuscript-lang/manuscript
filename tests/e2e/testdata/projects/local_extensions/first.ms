@@ -13,8 +13,8 @@ fn delta() Int:
     return 10
 
 impl Read[T] for Box[T]:
-    fn get() ref T:
-        return self.value
+    fn get() T:
+        return self.value.clone()
 
 impl Read[Int] for Choice:
     fn get() Int:

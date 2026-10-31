@@ -71,7 +71,7 @@ fn propagate_generic() Unit!:
     let completed = try decode_generically()
     return ok(unit)
 
-fn describe_error(cause: Error) ref String:
+fn describe_error(cause: Error) String:
     match cause:
         JsonError(json): return describe_json_error(json)
         IoError(io): return describe_io_error(io)
@@ -89,7 +89,7 @@ fn describe_io_error(cause: IoError) String:
         Failed(message): return "I/O: {message}"
         _: return cause.message()
 
-fn tagged_detail(cause: Error) ref String:
+fn tagged_detail(cause: Error) String:
     match cause:
         TaggedError[Int](item):
             return "integer {item.detail}"
@@ -218,7 +218,7 @@ fn generic_propagation[E: Error](cause: E) Unit!:
     let completed = try generic_failure(cause)
     return ok(unit)
 
-fn describe_direct(cause: Error) ref String:
+fn describe_direct(cause: Error) String:
     return cause.message()
 
 test "specific errors pass directly into Error boundaries":
@@ -321,16 +321,16 @@ test "standard diagnostics preserve messages and wrapped causes":
 
 # The type-pattern rule also works for unrelated operation contracts.
 interface Label[T]:
-    fn label() ref T
+    fn label() T
 
 type Labelled[T]:
     value: T
 
 impl Label[String] for Labelled[String]:
-    fn label() ref String:
+    fn label() String:
         return self.value
 
-fn match_label(view: Label[String]) ref String:
+fn match_label(view: Label[String]) String:
     match view:
         Labelled[String](receiver):
             return receiver.value

@@ -1,1 +1,1 @@
-error parse 2:9:36 "`ref` is written only before a result type; a binding of a place already borrows it, so drop `ref`"
+error parse 2:9:36 "`ref` was removed: a result or field owns its value, so drop `ref` and write `.clone()` where a function returns part of a parameter"

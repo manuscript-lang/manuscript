@@ -546,7 +546,7 @@ impl FnLower<'_> {
                         let this = b
                             .emit(Op::Load, &[ptr], Imm::Ty(recv_mty), Some(recv_mty))
                             .expect("load");
-                        let r = b.call_method_owned(iface, k as u32, this, &args[1..]);
+                        let r = b.call_method(iface, k as u32, this, &args[1..]);
                         b.ret(Some(r));
                         let f = b.into_func();
                         let id = self.b.m.add_func(f);
@@ -667,7 +667,7 @@ impl FnLower<'_> {
                     .expect("capture");
                 let rest = &args[1..];
                 let r = match callee {
-                    Err((iface, k)) => b.call_method_owned(iface, k, this, rest),
+                    Err((iface, k)) => b.call_method(iface, k, this, rest),
                     Ok((fid, false)) => {
                         let mut all = vec![this];
                         all.extend_from_slice(rest);
@@ -1157,7 +1157,7 @@ fn lower_iface_thunk(
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
     let vals: Vec<Value> = args.iter().map(|a| fl.borrow(a.val)).collect();
-    let r = fl.b.call_method_owned(job.iface, job.index, this, &vals);
+    let r = fl.b.call_method(job.iface, job.index, this, &vals);
     let out = fl.val(r, true);
     fl.emit_return(Some(out));
     Ok(())

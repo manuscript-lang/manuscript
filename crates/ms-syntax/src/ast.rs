@@ -129,8 +129,6 @@ pub struct Func {
     pub params: Vec<Param>,
     /// Declared result type (mandatory in source).
     pub result: TypeRef,
-    /// Written `ref T`: the result lends part of a borrowed parameter or receiver.
-    pub result_ref: bool,
     /// Body statements; may be empty for an empty declaration suite.
     pub body: Vec<Stmt>,
     /// `extern fn`: a native symbol with no body, named after the function.
@@ -273,9 +271,6 @@ pub struct Param {
     pub default: Option<Expr>,
     /// Declared `var name: Type`: the callee may change the argument.
     pub mutable: bool,
-    /// Declared `name: ref Type` on a record field: the field borrows its value from a place that
-    /// outlives the record instead of owning it.
-    pub by_ref: bool,
 }
 
 /// A generic parameter `T: Bound & Other = Default`.

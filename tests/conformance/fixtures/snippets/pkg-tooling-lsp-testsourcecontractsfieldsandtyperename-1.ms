@@ -2,16 +2,16 @@
 # conform: phase=check
 # conform: origin=pkg/tooling/lsp/features_test.go:118 TestSourceContractsFieldsAndTypeRename
 interface Reader:
-    fn read() ref String
+    fn read() String
 
 type Box:
     label: String
 
 impl Reader for Box:
-    fn read() ref String:
-        return self.label
+    fn read() String:
+        return self.label.clone()
 
-fn message(value: Reader) ref String:
+fn message(value: Reader) String:
     return value.read()
 
 fn make() Box:

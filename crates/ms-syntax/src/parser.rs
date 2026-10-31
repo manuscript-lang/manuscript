@@ -130,7 +130,7 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
             } else if found_text == "_" {
                 "; '_' is a reserved word and cannot be used as a name: loops, parameters and bindings need a real name such as item, unused or ignored".into()
             } else if found == Tok::Ref {
-                "; 'ref' appears only before a function's result type or on a record field's type (name: ref T); it cannot mark a parameter or a type nested inside another type".into()
+                "; 'ref' was removed: results and fields own their values".into()
             } else if found.as_str() == found_text && found_text.starts_with(|c: char| c.is_ascii_alphabetic()) {
                 format!("; '{}' is a reserved word and cannot be used as a name", found_text)
             } else {
@@ -649,7 +649,6 @@ impl<'a> Parser<'a> {
                     ty,
                     default,
                     mutable,
-                    by_ref: false,
                 });
                 if !self.take(Tok::Comma) {
                     break;
@@ -732,7 +731,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the type that follows a parameter list, rejecting the removed
     /// `->` and a missing type with the form to write instead.
-    fn result_type(&mut self) -> PResult<(bool, TypeRef)> {
+    fn result_type(&mut self) -> PResult<TypeRef> {
         let t = self.peek();
         if t.kind == Tok::Arrow {
             return self.fail_fix(
@@ -750,8 +749,8 @@ impl<'a> Parser<'a> {
                 "every fn declares its result type after the parameter list, e.g. fn f() Unit:",
             );
         }
-        let by_ref = self.take(Tok::Ref);
-        Ok((by_ref, self.typ()?))
+        self.no_ref()?;
+        self.typ()
     }
 
     /// Wraps `t` once per trailing suffix, left to right: `T?` is `Optional[T]`, `T!` is
@@ -818,7 +817,6 @@ impl<'a> Parser<'a> {
                         ty: Some(ty),
                         default: None,
                         mutable: false,
-                        by_ref: false,
                     });
                     if !self.take(Tok::Comma) {
                         break;
@@ -970,7 +968,7 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
         let params = self.parameters(true, false)?;
-        let (result_ref, result) = self.result_type()?;
+        let result = self.result_type()?;
         let body = if body {
             self.statement_suite(false, true)?
         } else {
@@ -985,7 +983,6 @@ impl<'a> Parser<'a> {
                 type_params,
                 params,
                 result,
-                result_ref,
                 body,
                 external: false,
             },
@@ -1045,14 +1042,13 @@ impl<'a> Parser<'a> {
                 let name = self.need(Tok::Name)?;
                 let type_params = self.type_params()?;
                 let params = self.parameters(true, false)?;
-                let (result_ref, result) = self.result_type()?;
+                let result = self.result_type()?;
                 let body = self.statement_suite(false, true)?;
                 DeclKind::Fn(Func {
                     name: self.sym(name),
                     type_params,
                     params,
                     result,
-                    result_ref,
                     body,
                     external: false,
                 })
@@ -1082,7 +1078,7 @@ impl<'a> Parser<'a> {
                 let name = self.need(Tok::Name)?;
                 let type_params = self.type_params()?;
                 let params = self.parameters(true, false)?;
-                let (result_ref, result) = self.result_type()?;
+                let result = self.result_type()?;
                 if self.kind() == Tok::Colon {
                     let t = self.peek();
                     return self.fail(t, "an extern fn has no body; remove the ':'");
@@ -1093,7 +1089,6 @@ impl<'a> Parser<'a> {
                     type_params,
                     params,
                     result,
-                    result_ref,
                     body: Vec::new(),
                     external: true,
                 })
@@ -1316,7 +1311,7 @@ impl<'a> Parser<'a> {
             } else {
                 let fname = self.need(Tok::Name)?;
                 self.need_name_colon(fname)?;
-                let by_ref = self.take(Tok::Ref);
+                self.no_ref()?;
                 let ty = self.typ()?;
                 let default = if self.take(Tok::Assign) {
                     Some(self.expression(0)?)
@@ -1331,7 +1326,6 @@ impl<'a> Parser<'a> {
                     ty: Some(ty),
                     default,
                     mutable: false,
-                    by_ref,
                 });
                 self.end()?;
             }
@@ -1438,18 +1432,23 @@ impl<'a> Parser<'a> {
         Ok(body)
     }
 
-    /// Rejects `ref` after `let`, `var`, `for` or `match`: binding a place already borrows it.
-    fn no_binding_ref(&mut self) -> PResult<()> {
+    /// Rejects `ref`, which the language no longer has: every result and field owns its value, and
+    /// a binding of a place already borrows it.
+    fn no_ref(&mut self) -> PResult<()> {
         if self.kind() == Tok::Ref {
             let at = self.peek();
-            return self.fail(at, "`ref` is written only before a result type; a binding of a place already borrows it, so drop `ref`");
+            return self.fail_fix(
+                at,
+                "`ref` was removed: a result or field owns its value, so drop `ref` and write `.clone()` where a function returns part of a parameter",
+                "",
+            );
         }
         Ok(())
     }
 
     /// Parses `pattern [: Type] = value` after let or var.
     fn binding(&mut self, mutable: bool, group: Option<Pos>, pos: Pos) -> PResult<Stmt> {
-        self.no_binding_ref()?;
+        self.no_ref()?;
         let pattern = self.pattern()?;
         let mut ty = None;
         if matches!(pattern.kind, PatternKind::Name(_)) && self.take(Tok::Colon) {
@@ -1514,15 +1513,7 @@ impl<'a> Parser<'a> {
                     return self.fail(b, "a local fn cannot take type parameters; declare a generic function at module level");
                 }
                 let params = self.parameters(true, false)?;
-                let at = self.peek();
-                let (by_ref, result) = self.result_type()?;
-                if by_ref {
-                    return self.fail(
-                        at,
-                        "a local fn cannot return a 'ref'; only a declared fn or method can lend",
-                    );
-                }
-                let result = Box::new(result);
+                let result = Box::new(self.result_type()?);
                 let body = self.statement_suite(true, false)?;
                 let pid = self.id();
                 let value = self.mk(
@@ -1615,7 +1606,7 @@ impl<'a> Parser<'a> {
                     let c = self.peek();
                     return self.fail(c, "for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in 0..n:' to count");
                 }
-                self.no_binding_ref()?;
+                self.no_ref()?;
                 let name = self.need(Tok::Name)?;
                 if self.kind() == Tok::Name && self.text(self.peek()) == "of" {
                     let c = self.peek();
@@ -2273,7 +2264,7 @@ impl<'a> Parser<'a> {
                 self.mk(t.pos, ExprKind::List(items))
             }
             Tok::Match => {
-                self.no_binding_ref()?;
+                self.no_ref()?;
                 let scrutinee = self.expression(0)?;
                 let arms = self.match_arms(t)?;
                 self.mk(
@@ -2331,7 +2322,6 @@ impl<'a> Parser<'a> {
                             ty: None,
                             default: None,
                             mutable: false,
-                            by_ref: false,
                         });
                         if !self.take(Tok::Comma) {
                             break;
@@ -2996,7 +2986,6 @@ impl<'a> Parser<'a> {
                             ty: p.ty.as_ref().map(|t| self.copy_type(t)),
                             default: p.default.clone(),
                             mutable: p.mutable,
-                            by_ref: false,
                         }
                     })
                     .collect(),

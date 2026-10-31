@@ -22,6 +22,7 @@ pub fn run(m: &mut Module) -> bool {
         changed |= borrow_str_phis(m, fi);
         changed |= unbox_dead_sources(m, fi);
         changed |= unbox_dead_options(&mut m.funcs[fi]);
+        changed |= borrow_opt_str_reads(m, fi);
     }
     changed
 }
@@ -732,6 +733,207 @@ fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
         }
     }
     remove_insts(f, &dead);
+    true
+}
+
+/// Removes `c = copy v; ... opt.unbox c ...; drop s` for an optional string `v` read out of a
+/// list when the copy only feeds `opt.is_some`, one `opt.unbox` whose string is only borrowed
+/// before its drop, and drops of `c` on the other paths: the payload is viewed in place instead.
+/// This is the shape of `if let item = container.at(index)` over a list of optionals, which
+/// would otherwise retain and release every element it visits. No instruction that can run while
+/// the copy is alive may write memory, adjust counts or call out, so the list cannot change.
+fn borrow_opt_str_reads(m: &mut Module, fi: usize) -> bool {
+    let f = &m.funcs[fi];
+    let nb = f.blocks.len();
+    let mut defs: Vec<Option<(usize, usize)>> = vec![None; f.values.len()];
+    // Operand uses of each value as (block, index); terminator uses are counted apart.
+    let mut at: Vec<Vec<(usize, usize)>> = vec![Vec::new(); f.values.len()];
+    let mut term_uses = vec![0u32; f.values.len()];
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (ii, inst) in b.insts.iter().enumerate() {
+            if let Some(r) = inst.res {
+                defs[r.index()] = Some((bi, ii));
+            }
+            for a in &inst.args {
+                at[a.index()].push((bi, ii));
+            }
+        }
+        b.term.for_each_use(|v| term_uses[v.index()] += 1);
+    }
+    let is_opt_str = |t| match m.types.kind(t) {
+        TyKind::Opt(inner) => matches!(m.types.kind(*inner), TyKind::Str),
+        _ => false,
+    };
+    let mut dead: Vec<(usize, usize)> = Vec::new();
+    let mut unboxed: Vec<(usize, usize, Value)> = Vec::new();
+    let mut alias: Vec<Option<Value>> = vec![None; f.values.len()];
+    'copies: for (bc, b) in f.blocks.iter().enumerate() {
+        for (i, inst) in b.insts.iter().enumerate() {
+            let (Op::Copy, Some(c)) = (inst.op, inst.res) else {
+                continue;
+            };
+            let v = inst.args[0];
+            if !is_opt_str(f.ty(v)) || alias[v.index()].is_some() || term_uses[c.index()] != 0 {
+                continue;
+            }
+            let Some((db, di)) = defs[v.index()] else {
+                continue;
+            };
+            let def = &f.blocks[db].insts[di];
+            if !matches!(def.op, Op::ListGet | Op::ListGetU | Op::ListGetNn) {
+                continue;
+            }
+            let root = def.args[0];
+            // The uses of the copy: tests, one unbox, and drops.
+            let mut unbox = None;
+            let mut releases: Vec<(usize, usize)> = Vec::new();
+            for &(ub, uk) in &at[c.index()] {
+                match f.blocks[ub].insts[uk].op {
+                    Op::OptIsSome => {}
+                    Op::OptUnbox if unbox.is_none() => unbox = Some((ub, uk)),
+                    Op::Drop => releases.push((ub, uk)),
+                    _ => continue 'copies,
+                }
+            }
+            let Some((bu, iu)) = unbox else { continue };
+            let s = f.blocks[bu].insts[iu].res.unwrap_or(c);
+            if s == c || term_uses[s.index()] != 0 {
+                continue;
+            }
+            // The string is borrowed until its one drop, later in the unbox's block.
+            let mut s_drop = None;
+            for &(sb, sk) in &at[s.index()] {
+                let n = &f.blocks[sb].insts[sk];
+                if n.op == Op::Drop && s_drop.is_none() && sb == bu && sk > iu {
+                    s_drop = Some(sk);
+                    continue;
+                }
+                let borrowed = n
+                    .args
+                    .iter()
+                    .zip(arg_modes(m, n))
+                    .all(|(a, mode)| *a != s || mode == Mode::Borrow);
+                if sb != bu || sk < iu || !borrowed {
+                    continue 'copies;
+                }
+            }
+            let Some(sd) = s_drop else { continue };
+            if releases.is_empty() {
+                continue;
+            }
+            // Where the copy dies: the unbox's block (up to the string's drop) and the drop blocks.
+            let mut ends: Vec<(usize, usize)> = releases.clone();
+            ends.push((bu, sd));
+            if ends.iter().any(|&(eb, _)| eb == bc) {
+                continue;
+            }
+            // Blocks the copy can reach before dying; reaching the copy again or leaving the
+            // function alive is not allowed.
+            let stop: Vec<bool> = (0..nb)
+                .map(|x| ends.iter().any(|&(eb, _)| eb == x))
+                .collect();
+            let mut seen = vec![false; nb];
+            let mut stack: Vec<usize> = Vec::new();
+            f.blocks[bc]
+                .term
+                .for_each_target(|t| stack.push(t.block.index()));
+            let mut ok = true;
+            while let Some(x) = stack.pop() {
+                if x == bc {
+                    ok = false;
+                    break;
+                }
+                if seen[x] {
+                    continue;
+                }
+                seen[x] = true;
+                if stop[x] {
+                    continue;
+                }
+                if matches!(f.blocks[x].term, crate::ir::Term::Ret(_)) {
+                    ok = false;
+                    break;
+                }
+                f.blocks[x]
+                    .term
+                    .for_each_target(|t| stack.push(t.block.index()));
+            }
+            if !ok || !stop.iter().zip(&seen).all(|(st, sn)| !*st || *sn) {
+                continue;
+            }
+            // Instructions that may run while the copy is alive.
+            let quiet = |n: &Inst| -> bool {
+                let e = n.op.info().effects;
+                let own = n.args.contains(&c) || n.args.contains(&s);
+                if own {
+                    return matches!(n.op, Op::OptIsSome | Op::OptUnbox | Op::Drop | Op::StrLen)
+                        || arg_modes(m, n)
+                            .iter()
+                            .zip(&n.args)
+                            .all(|(mode, a)| (*a != c && *a != s) || *mode == Mode::Borrow);
+                }
+                if (n.args.contains(&v) || n.args.contains(&root))
+                    && arg_modes(m, n)
+                        .iter()
+                        .zip(&n.args)
+                        .any(|(mode, a)| (*a == v || *a == root) && *mode != Mode::Borrow)
+                {
+                    return false;
+                }
+                !(e.writes || e.rc || e.io)
+            };
+            let mut span_ok = f.blocks[bc].insts[i + 1..].iter().all(&quiet);
+            for x in (0..nb).filter(|&x| seen[x]) {
+                let upto = ends
+                    .iter()
+                    .filter(|&&(eb, _)| eb == x)
+                    .map(|&(_, ek)| ek)
+                    .max()
+                    .unwrap_or(f.blocks[x].insts.len());
+                span_ok &= f.blocks[x].insts[..upto.min(f.blocks[x].insts.len())]
+                    .iter()
+                    .all(&quiet);
+                let mut term_bad = false;
+                f.blocks[x].term.for_each_use(|a| {
+                    term_bad |= a == c || a == s || a == v || a == root;
+                });
+                span_ok &= !term_bad;
+            }
+            let mut bc_term_bad = false;
+            f.blocks[bc].term.for_each_use(|a| {
+                bc_term_bad |= a == c || a == s || a == v || a == root;
+            });
+            if !span_ok || bc_term_bad {
+                continue;
+            }
+            alias[c.index()] = Some(v);
+            dead.push((bc, i));
+            dead.push((bu, sd));
+            for &(rb, rk) in &releases {
+                dead.push((rb, rk));
+            }
+            unboxed.push((bu, iu, v));
+        }
+    }
+    if dead.is_empty() {
+        return false;
+    }
+    let f = &mut m.funcs[fi];
+    for (bu, iu, v) in unboxed {
+        let n = &mut f.blocks[bu].insts[iu];
+        n.op = Op::OptGet;
+        n.args = vec![v];
+    }
+    remove_insts(f, &dead);
+    for b in &mut f.blocks {
+        for i in &mut b.insts {
+            for a in &mut i.args {
+                if let Some(t) = alias[a.index()] {
+                    *a = t;
+                }
+            }
+        }
+    }
     true
 }
 

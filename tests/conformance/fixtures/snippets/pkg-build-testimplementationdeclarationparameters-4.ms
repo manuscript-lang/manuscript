@@ -2,12 +2,12 @@
 # conform: phase=check
 # conform: origin=pkg/build/compiler_test.go:528 TestImplementationDeclarationParameters
 interface Read[V]:
-    fn get() ref V
+    fn get() V
 
-type Pair[A, B]:
+type Pair[A, B: Clonable]:
     left: A
     right: B
 
 impl Read[B] for Pair[Int, B]:
-    fn get() ref B:
-        return self.right
+    fn get() B:
+        return self.right.clone()

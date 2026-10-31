@@ -826,11 +826,8 @@ pub struct Func {
     pub name: String,
     /// Parameters; `blocks[0].params` define their values.
     pub params: Vec<Param>,
-    /// Result type; results are owned unless `ret_borrowed` says the function lends one.
+    /// Result type; results are owned.
     pub ret: Ty,
-    /// The result is a borrow of an argument that the caller keeps alive: returned without a
-    /// retain, and not released by the caller.
-    pub ret_borrowed: bool,
     /// Visibility.
     pub linkage: Linkage,
     /// Role of the function.
@@ -867,7 +864,6 @@ impl Func {
             name: name.to_string(),
             params: params.clone(),
             ret,
-            ret_borrowed: false,
             linkage: Linkage::Internal,
             kind: FuncKind::Normal,
             inline: InlineHint::Auto,
@@ -1339,16 +1335,6 @@ impl Module {
         let res = inst.res?;
         if !self.needs_drop(f.ty(res)) {
             return None;
-        }
-        if let (Op::Call, Imm::Func(g)) = (inst.op, inst.imm)
-            && self.funcs[g.index()].ret_borrowed
-        {
-            return Some(Mode::Borrow);
-        }
-        if let (Op::CallMethod, Imm::Method(i, k)) = (inst.op, inst.imm)
-            && self.ifaces[i.index()].methods[k as usize].ret_borrowed
-        {
-            return Some(Mode::Borrow);
         }
         Some(match inst.op {
             Op::RecGet

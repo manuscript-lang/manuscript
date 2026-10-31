@@ -265,15 +265,13 @@ Apply when: changing binding grammar, formatter layout of declarations, or destr
 Evidence: [grouping rules](../documentation/core-language/basics/bindings.md#grouping-bindings), [destructuring](../documentation/core-language/types/destructuring.md), [module constants](../documentation/core-language/modules/declarations.md), [binding groups fixture](../tests/e2e/testdata/accept/binding-groups.ms).
 Verify: `let (` entries evaluate in order with earlier ones in scope, `export let (` exports every entry, and `let (a, b) = pair` still fails with the not-a-binding-pattern diagnostic.
 
-### `ref` marks borrows; reference types stay out
+### `ref` is removed; results and fields own their value
 
-Decision: the reference-syntax spike recommended no marker (inference plus `Clonable` instead), and Chinmay overrode it: a result that lends part of a borrowed parameter is written `ref T`, and a binding that borrows a place is `let ref x = a.b` / `var ref x = xs[i]` (#1137, #1142). Loops and matches over a parameter borrow it unless a payload or loop variable is moved out (#1128). `ref` is not a type: it appears only in a declared result type or a binding, never in function types, fields, elements or type arguments, so there are no lifetimes to teach. The marker is staged: an unmarked lending function still lends by inference.
+Decision: Chinmay asked for `ref` to be removed after the one-borrow model left it as the last lending marker. A result and a record field own their value; a function that returns part of a parameter returns `.clone()`, and copy elision (a dead or read-only source is not copied) keeps the common getter free. `ref` stays a reserved word so the parser can say what to write. Bindings still borrow places without a marker (`let` shared, `var` exclusive), loops and matches over a parameter borrow it unless a payload moves out, and there are no lifetimes to teach. Everything resource-like is `Clonable` (sockets and file descriptors duplicate their handle), so `.clone()` is available wherever a body keeps a part.
 
-Update (2026-10-25): Chinmay folded aliasing, borrows and `ref` into one model ([one-borrow model](../proposals/one-borrow-model.md)): binding a place borrows with no marker (`let` shared, `var` exclusive, "doing that implicit is fine"), mutability is chosen by the caller's binding ("var ref on return is unnecessary, we should just do ref"), and `ref` is written only before a result type. `let ref`, `var ref`, `for ref` and `match ref` are parse errors.
-
-Apply when: changing result types, bindings, interface operation agreement, or the ownership pass.
-Evidence: [ownership notes](../crates/ms-check/OWNERSHIP.md), [grammar](../documentation/core-language/basics/grammar.md).
-Verify: `def list() -> ref List[Int]` must return part of a parameter; `let ref x = a.b` is a parse error, and an implementation that disagrees with the interface operation's `ref`-ness, are rejected.
+Apply when: changing result types, bindings, interface operation agreement, iteration protocols or the ownership pass. Do not reintroduce a lending marker, a borrowing record, or a result that views its argument; reach for copy elision or an index-based protocol first.
+Evidence: [remove-ref proposal](../proposals/remove-ref.md), [ownership notes](../crates/ms-check/OWNERSHIP.md), [references](../documentation/core-language/types/references.md).
+Verify: `fn list() ref List[Int]` is a parse error naming `.clone()`; `fn list() List[Int]: return self.items` is rejected with the `.clone()` remedy; `for item in deque` reads by index without copying the deque.
 
 ### `Clonable` replaces ad hoc copying in generic code
 
