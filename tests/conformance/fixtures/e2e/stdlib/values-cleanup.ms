@@ -4,7 +4,7 @@
 import expect_equal, expect_false, expect_not_equal, expect_ok, fail from "@std/test.ms"
 import Closeable from "@std/core.ms"
 import JsonError from "@std/json.ms"
-import filesystem from "@std/fs.ms"
+import read_file, temporary, write_file from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 type Key:
@@ -26,9 +26,8 @@ type Resource:
 # resource 1 notes whether resource 2 had already closed.
 impl Closeable for Resource:
     var fn close() Unit!:
-        let fs = filesystem()
-        let inner_closed = fs.read_file("{self.dir}/2").is_ok()
-        let _ = fs.write_file("{self.dir}/{self.id}", "{inner_closed}", true)
+        let inner_closed = read_file("{self.dir}/2").is_ok()
+        let _ = write_file("{self.dir}/{self.id}", "{inner_closed}", true)
         return ok(unit)
 
 fn leave(dir: String) Int:
@@ -77,9 +76,8 @@ test "custom equality and hashing define map key identity":
     try expect_false(map.length() != 1 or map.get(first) != "b")
 
 test "Closeable cleanup runs in reverse order before return delivery":
-    let fs = filesystem()
-    let temporary = fs.temporary("manuscript-cleanup-") | try expect_ok
+    let temporary = temporary("manuscript-cleanup-") | try expect_ok
     let dir = temporary.path()
     try expect_equal(leave(dir), 42)
-    try expect_equal((try fs.read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
-    try expect_equal((try fs.read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))
+    try expect_equal((try read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
+    try expect_equal((try read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))

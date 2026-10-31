@@ -358,14 +358,13 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
     let view = Label[String](Labelled("separate handler"))
     match_label(view) | try expect_equal("separate handler")
 
-import filesystem from "@std/fs.ms"
+import read_file, remove, stat, temporary_directory from "@std/fs.ms"
 
 fn check_missing_file() Unit!:
-    let fs = filesystem()
-    let directory = try fs.temporary_directory("manuscript-errors-")
+    let directory = try temporary_directory("manuscript-errors-")
     let missing = "{directory}/missing-secret-token"
 
-    let cause = match fs.read_file(path: missing):
+    let cause = match read_file(path: missing):
         ok(_):
             return fail(message: "missing file read succeeded")
         error(cause): cause
@@ -385,7 +384,7 @@ fn check_missing_file() Unit!:
         _:
             return fail(message: "missing file changed error case")
 
-    match fs.stat(path: missing, follow_links: true):
+    match stat(path: missing, follow_links: true):
         ok(_):
             return fail(message: "missing file stat succeeded")
         error(stat_cause):
@@ -393,7 +392,7 @@ fn check_missing_file() Unit!:
                 stat_cause.message(), "filesystem: file or directory not found"
             )
 
-    let removed = try fs.remove(path: directory, recursive: false)
+    let removed = try remove(path: directory, recursive: false)
     return ok(unit)
 
 test "missing file diagnostics preserve the filesystem case":

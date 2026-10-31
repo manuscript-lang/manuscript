@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/accept/standalone-try.ms
 import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test.ms"
 import Closeable from "@std/core.ms"
-import filesystem from "@std/fs.ms"
+import read_file, temporary, write_file from "@std/fs.ms"
 
 type State:
     calls: Int
@@ -18,7 +18,7 @@ impl Error for Failure:
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for State:
     var fn close() Unit!:
-        let _written = filesystem().write_file(self.marker, "closed", true)
+        let _written = write_file(self.marker, "closed", true)
         return ok(unit)
 
 fn operation(var state: State, fail: Bool) Unit!Failure:
@@ -39,19 +39,17 @@ fn widened(var state: State) Int!:
     return ok(0)
 
 fn closed(marker: String) Bool:
-    return filesystem().read_file(marker).is_ok()
+    return read_file(marker).is_ok()
 
 test "standalone try evaluates once and continues on Unit success":
-    let fs = filesystem()
-    let temporary = fs.temporary("manuscript-try-") | try expect_ok
+    let temporary = temporary("manuscript-try-") | try expect_ok
     let marker = "{temporary.path()}/marker"
     let value = try exact(State(0, marker.clone()), fail: false)
     try expect_equal(value, "done 11")
     try expect_true(closed(marker))
 
 test "standalone try propagates and cleans up before returning":
-    let fs = filesystem()
-    let temporary = fs.temporary("manuscript-try-") | try expect_ok
+    let temporary = temporary("manuscript-try-") | try expect_ok
     let marker = "{temporary.path()}/marker"
     let failed = exact(State(0, marker.clone()), fail: true)
     try expect_false(failed.is_ok())

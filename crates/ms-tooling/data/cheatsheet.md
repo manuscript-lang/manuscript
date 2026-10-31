@@ -4,7 +4,7 @@ Statically typed; native code. Four-space indentation, `#` comments. No `print`:
 
 <!-- complete -->
 ```manuscript
-import filesystem from "@std/fs.ms"
+import open from "@std/fs.ms"
 import stdout from "@std/io.ms"
 
 type Doc:
@@ -18,7 +18,7 @@ impl Doc:
         return self.lines[best].clone()
 
 fn load(path: String) Result[Doc, Error]:
-    let f = try filesystem().open(path, flags: "r", mode: 0)
+    let f = try open(path, flags: "r", mode: 0)
     let lines = try f.read_lines(max_lines: 1000) # Int passes as Int?
     return ok(Doc(lines)) # moves lines
 

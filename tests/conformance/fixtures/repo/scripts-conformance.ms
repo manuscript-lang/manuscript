@@ -4,7 +4,7 @@
 import expect_equal, expect_false, expect_some, expect_true, fail from "@std/test.ms"
 import stdout from "@std/io.ms"
 import arguments from "@std/process.ms"
-import filesystem from "@std/fs.ms"
+import glob from "@std/fs.ms"
 import commands from "@std/process.ms"
 import parse from "@std/json.ms"
 
@@ -65,15 +65,14 @@ fn validate(report: Report) Result[Unit, Error]:
     return ok(unit)
 
 fn inventory(suite: String) Result[List[String], Error]:
-    let fs = filesystem()
     var files: List[String] = []
 
     if suite == "all" or suite == "core":
-        let core = try fs.glob("tests/e2e/testdata/accept", "*.ms")
+        let core = try glob("tests/e2e/testdata/accept", "*.ms")
         core.is_empty() | try expect_false
         for file in core: files.append("tests/e2e/testdata/accept/{file}")
 
-        let projects = try fs.glob(
+        let projects = try glob(
             "tests/e2e/testdata/projects", "*/conformance_test.ms"
         )
         projects.is_empty() | try expect_false
@@ -86,7 +85,7 @@ fn inventory(suite: String) Result[List[String], Error]:
             files.append(file)
 
     if suite == "all" or suite == "stdlib":
-        let library = try fs.glob("tests/e2e/testdata/stdlib", "*.ms")
+        let library = try glob("tests/e2e/testdata/stdlib", "*.ms")
         library.is_empty() | try expect_false
         for file in library: files.append("tests/e2e/testdata/stdlib/{file}")
 

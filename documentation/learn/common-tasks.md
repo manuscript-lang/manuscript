@@ -98,12 +98,12 @@ Save as `read.ms`. `decode_utf8()` returns `none` for invalid UTF-8.
 <!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/process.ms"
-import filesystem, FileSystemError from "@std/fs.ms"
+import FileSystemError, read_file, write_file from "@std/fs.ms"
 import stdout from "@std/io.ms"
 
 fn run() Result[Unit, Error]:
     let path = try arguments().first().ok_or(FileSystemError.InvalidInput)
-    let text = try filesystem().read_file(path, max_bytes: 1048576)
+    let text = try read_file(path, max_bytes: 1048576)
         | .decode_utf8().ok_or(FileSystemError.InvalidData)
         | try
     try stdout().write(text)
@@ -129,11 +129,11 @@ Save as `write.ms`. `replace: false` fails if the file exists.
 <!-- manuscript-example: {"mode":"run","args":["saved.txt"],"want_files":{"saved.txt":"saved notes\n"},"cases":[{"args":["saved.txt"],"files":{"saved.txt":"keep me"},"want_files":{"saved.txt":"keep me"},"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/process.ms"
-import filesystem, FileSystemError from "@std/fs.ms"
+import FileSystemError, read_file, write_file from "@std/fs.ms"
 
 fn run() Result[Unit, Error]:
     let path = try arguments().first().ok_or(FileSystemError.InvalidInput)
-    return filesystem().write_file(path, "saved notes\n", replace: false)
+    return write_file(path, "saved notes\n", replace: false)
 
 export fn main() Int:
     if run().is_error():

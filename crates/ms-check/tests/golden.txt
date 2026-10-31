@@ -10,7 +10,8 @@ fn use(path: String) Int:
     match filesystem().stat(path: path, follow_links: true):
         error(NotFound): return 1
         ok(_): return 0
-import TextError from "@std/errors.ms"
+resolution	1	8	7	module does not export filesystem; @std/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/fs.ms"'
+resolution	3	11	72	unknown binding filesystem; declare it with 'let filesystem = ...' before use, define 'fn filesystem(...) T:', or import it from a moduleimport TextError from "@std/errors.ms"
 fn fail() Result[Int, TextError]:
     return error(TextError("boom"))
 fn use() Unit:
@@ -564,7 +565,7 @@ fn f() Int:
 parse	4	13	62	an arm value must be its final expressionimport filesystem, FileSystemError from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
 fn forward[T](item: T) T: item
-fn check() Unit: ...
+resolution	1	8	7	module does not export filesystem; @std/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/fs.ms"'fn check() Unit: ...
     import filesystem from "@std/fs.ms"
 fn explicit() Unit:
     let fs = filesystem()
@@ -573,20 +574,18 @@ fn explicit() Unit:
     fs.copy_tree("", "", false, max_entries: none, max_bytes: 3)
     fs.create_directory("", true)
     fs.remove("", false)
-type	4	5	86	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
-type	5	5	119	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
-type	6	5	150	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
-type	7	5	215	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
-type	8	5	249	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport panic from "@std/faults.ms"
+resolution	1	8	7	module does not export filesystem; @std/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/fs.ms"'
+resolution	3	14	69	unknown binding filesystem; declare it with 'let filesystem = ...' before use, define 'fn filesystem(...) T:', or import it from a module
+type	6	46	191	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingimport panic from "@std/faults.ms"
 type Override:
     received: Bool
 impl FileSystem for Override:
 resolution	1	8	7	unknown standard module @std/faults.ms
-resolution	4	6	74	unknown type FileSystem; add: import FileSystem from "@std/fs.ms"test "filesystem concrete overrides and interface defaults":
+resolution	4	6	74	unknown type FileSystem; declare it with 'type FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import ittest "filesystem concrete overrides and interface defaults":
     let item = Override(false)
     let view = FileSystem(item)
 resolution	2	16	76	unknown binding Override; declare it with 'let Override = ...' before use, define 'fn Override(...) T:', or import it from a module
-resolution	3	16	107	unknown binding FileSystem; add: import FileSystem from "@std/fs.ms"    view.%s(%s)
+resolution	3	16	107	unknown binding FileSystem; declare it with 'let FileSystem = ...' before use, define 'fn FileSystem(...) T:', or import it from a module    view.%s(%s)
     if item.received: return panic("interface default %s")
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport %s from "@std/%s.ms"
 test "reject":
@@ -5427,7 +5426,8 @@ fn classify(path: String) String:
     match filesystem().stat(path: path, follow_links: true):
         error(NotFound): return "missing"
         ok(_): return "exists"
-type Point:
+resolution	1	8	7	module does not export filesystem; @std/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/fs.ms"'
+resolution	3	11	80	unknown binding filesystem; declare it with 'let filesystem = ...' before use, define 'fn filesystem(...) T:', or import it from a moduletype Point:
     x: Int
     y: Int
 
@@ -5573,7 +5573,9 @@ test "source":
     else:
         return panic("library fixture cwd changed")
 resolution	1	8	7	unknown standard module @std/faults.ms
+resolution	2	8	42	module does not export filesystem; @std/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/fs.ms"'
 resolution	5	29	146	unknown binding panic; add: import panic from "@std/core.ms"
+resolution	6	19	183	unknown binding filesystem; declare it with 'let filesystem = ...' before use, define 'fn filesystem(...) T:', or import it from a module
 resolution	7	39	283	unknown binding panic; add: import panic from "@std/core.ms"
 resolution	9	16	336	unknown binding panic; add: import panic from "@std/core.ms"import parse, CsvOptions from "@std/csv.ms"
 import base64_encode, base64_decode from "@std/encoding.ms"
@@ -6210,7 +6212,8 @@ export fn main() Int:
     if fs.rename(source: "sentinel", destination: "") != invalid: return 6
     if fs.remove(path: "child", recursive: true).is_error(): return 7
     return 0
-type Counter:
+resolution	1	8	7	module does not export filesystem; @std/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/fs.ms"'
+resolution	4	14	89	unknown binding filesystem; declare it with 'let filesystem = ...' before use, define 'fn filesystem(...) T:', or import it from a moduletype Counter:
     value: Int
 
 impl Counter:
@@ -6609,7 +6612,8 @@ test "fixture next to the manifest":
                 return fail("wrong fixture size")
         error(_):
             return fail("fixture not found")
-import TestHooks, expect_equal, fail, skip from "@std/test.ms"
+resolution	1	8	7	module does not export filesystem; @std/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/fs.ms"'
+resolution	5	11	129	unknown binding filesystem; declare it with 'let filesystem = ...' before use, define 'fn filesystem(...) T:', or import it from a moduleimport TestHooks, expect_equal, fail, skip from "@std/test.ms"
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 fn println(message: String) Unit:

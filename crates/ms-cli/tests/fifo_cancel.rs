@@ -17,14 +17,7 @@ fn a_group_timeout_cancels_tasks_blocked_on_a_fifo() {
     let made = Command::new("mkfifo").arg(&fifo).status().unwrap();
     assert!(made.success());
     let source = dir.join("fifo.ms");
-    std::fs::write(
-        &source,
-        PROGRAM.replace(
-            "import filesystem from \"@std/fs.ms\"\n",
-            "import filesystem from \"@std/fs.ms\"\nimport arguments from \"@std/process.ms\"\n",
-        ),
-    )
-    .unwrap();
+    std::fs::write(&source, PROGRAM).unwrap();
     let binary = dir.join("fifo");
     let ms = Path::new(env!("CARGO_BIN_EXE_ms"));
     let built = Command::new(ms)

@@ -189,7 +189,7 @@ fn search_output_stays_bounded() {
 fn search_finds_apis_from_loose_queries() {
     let cases = [
         ("jsn parse", "@std/json.ms", "parse"),
-        ("read file", "@std/fs.ms", "FileSystem.read_file"),
+        ("read file", "@std/fs.ms", "read_file"),
         ("JSON PARSE", "@std/json.ms", "parse"),
         ("http server", "@std/http.ms", "HttpServer"),
         ("parse_int", "@std/math.ms", "parse_int"),

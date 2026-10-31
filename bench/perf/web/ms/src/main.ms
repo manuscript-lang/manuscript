@@ -1,6 +1,6 @@
 # Benchmark server: main <port> <data-dir> [threads]. With threads above 1 the main thread accepts and hands each connection, round robin, to one of that many serving workers. The Go server in ../go answers the same requests.
 import Bytes from "@std/bytes.ms"
-import filesystem from "@std/fs.ms"
+import read_file, write_file_bytes from "@std/fs.ms"
 import headers, HttpError, HttpExchange, HttpRequest, HttpResponse, buffered from "@std/http.ms"
 import network, serve_core, serve_cores from "@std/net.ms"
 import arguments from "@std/process.ms"
@@ -80,9 +80,8 @@ fn io_reply(dir: String, slot: String, payload: Bytes) HttpResponse:
     return reply(500, "lookup failed\n")
 
 fn write_and_read(path: String, payload: Bytes) Result[Bytes, Error]:
-    let fs = filesystem()
-    try fs.write_file_bytes(path, payload, replace: true)
-    return ok(try fs.read_file(path))
+    try write_file_bytes(path, payload, replace: true)
+    return ok(try read_file(path))
 
 # The benchmark endpoints.
 fn make_handler(dir: String) fn(HttpExchange) Result[Unit, HttpError]:

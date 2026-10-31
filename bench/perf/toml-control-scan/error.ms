@@ -1,6 +1,6 @@
 import parse from "@std/toml.ms"
 import arguments from "@std/process.ms"
-import filesystem from "@std/fs.ms"
+import read_file from "@std/fs.ms"
 import stdout from "@std/io.ms"
 import clock from "@std/time.ms"
 
@@ -11,7 +11,7 @@ fn diagnostic(text: String) String:
 
 export fn main() Int:
     let args = arguments()
-    let text = filesystem().read_file(args.get(0)).get().decode_utf8().get()
+    let text = read_file(args.get(0)).get().decode_utf8().get()
     let count = args.get(1).parse_int().get()
     let expected = diagnostic(text)
 
