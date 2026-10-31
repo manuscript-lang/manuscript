@@ -48,10 +48,10 @@ impl FnLower<'_> {
         result: MTy,
     ) -> Result<Val, Error> {
         let op = match native {
-            "random/secure_int" => Op::Int,
-            "random/uuid_v4" => Op::Uuid,
-            "random/float" => Op::Float,
-            "random/shuffle" => Op::Shuffle,
+            "random/draw_int" => Op::Int,
+            "random/draw_uuid" => Op::Uuid,
+            "random/draw_float" => Op::Float,
+            "random/draw_shuffle" => Op::Shuffle,
             _ => Op::Choice,
         };
         let find = |name: &str| args.iter().find(|a| a.name.as_str() == name).copied();

@@ -3,9 +3,9 @@ import panic from "@std/core.ms"
 import stderr from "@std/io.ms"
 import bit_xor, shift_right_unsigned, wrapping_add, wrapping_multiply, max_int from "@std/math.ms"
 import control from "@std/process.ms"
-import entropy, secure_int from "@std/random.ms"
+import secure_int from "@std/random.ms"
 import expect_fault, fail from "@std/test.ms"
-import clock, milliseconds from "@std/time.ms"
+import milliseconds, monotonic from "@std/time.ms"
 
 # Property-based testing for `test` blocks. A property is a function that must hold for every value a generator produces.
 # `check` runs it on many generated values and, on failure, shrinks the input to a small counterexample.
@@ -404,7 +404,7 @@ export fn check[T](
     if let given = chosen:
         base = given
     else:
-        base = try secure_int(entropy(), 0, max_int())
+        base = try secure_int(0, max_int())
 
     let fuzzing = config.fuzz_milliseconds > 0
     if fuzzing:
@@ -417,14 +417,13 @@ export fn check[T](
             .get()
         )
 
-    let clk = clock()
-    let deadline = clk.now().shift(milliseconds(config.fuzz_milliseconds))
+    let deadline = monotonic().shift(milliseconds(config.fuzz_milliseconds))
     var case_index = 0
     var executed = 0
     var discarded = 0
 
     while (
-        (fuzzing and clk.now().compare(deadline) < 0)
+        (fuzzing and monotonic().compare(deadline) < 0)
         or (not fuzzing and executed < config.runs)
     ):
         let case_seed = wrapping_add(base, case_index)

@@ -1,5 +1,5 @@
 import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import monotonic from "@std/time.ms"
 import StringError from "@std/string.ms"
 
 fn consume(result: Result[String, StringError], expected: String, status: Int) Int:
@@ -46,11 +46,11 @@ fn measure(
     if normalize_sum(text, form, has_max, max, expected, status) != expected_sum: return 1
 
     var checksum = 0
-    let started = clock().now()
+    let started = monotonic()
     for iteration in 0..iterations:
         checksum += normalize_sum(text, form, has_max, max, expected, status)
 
-    let elapsed = clock().now().difference(started).to_nanoseconds()
+    let elapsed = monotonic().difference(started).to_nanoseconds()
     if checksum != expected_sum * iterations: return 1
 
     let _written = stdout().write(

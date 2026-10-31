@@ -2,7 +2,7 @@ import sqrt from "@std/math.ms"
 import stdout from "@std/io.ms"
 import control from "@std/process.ms"
 import fail from "@std/test.ms"
-import clock from "@std/time.ms"
+import monotonic from "@std/time.ms"
 
 # Measurement driver for `bench` blocks. `ms bench` runs each block in its own process; the block's body is one iteration,
 # and this module repeats it, times it, and reports per-iteration statistics. The entry that `ms bench` builds calls
@@ -43,11 +43,10 @@ fn settings() Settings:
 
 # Runs `body` `count` times and returns the elapsed nanoseconds; the first failure stops the run and is returned.
 fn time_batch(body: fn() Unit!, count: Int) Int!:
-    let clk = clock()
-    let started = clk.now()
+    let started = monotonic()
     for unused in 0..count:
         try body()
-    return ok(clk.now().difference(started).to_nanoseconds())
+    return ok(monotonic().difference(started).to_nanoseconds())
 
 # Returns the iteration count whose sample should take about `target` nanoseconds, given that `count` took `elapsed`.
 fn next_count(count: Int, elapsed: Int, target: Int) Int:

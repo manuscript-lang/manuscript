@@ -1220,8 +1220,8 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
             fl.emit_return(Some(out));
             return Ok(());
         }
-        "random/secure_int" | "random/uuid_v4" | "random/float" | "random/shuffle"
-        | "random/choice" => {
+        "random/draw_int" | "random/draw_uuid" | "random/draw_float" | "random/draw_shuffle"
+        | "random/draw_choice" => {
             let out = fl.random_with(&job.native, &args, ret)?;
             fl.emit_return(Some(out));
             return Ok(());

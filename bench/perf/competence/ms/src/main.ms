@@ -1,5 +1,5 @@
 import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import monotonic from "@std/time.ms"
 import StringBuilder from "@std/string.ms"
 import parse_int from "@std/math.ms"
 
@@ -283,9 +283,9 @@ fn chars(n: Int) Int:
     return total
 
 fn timed(name: String, run: fn() Int) Unit:
-    let t = clock().now()
+    let t = monotonic()
     let r = run()
-    say("{name} {clock().now().difference(t).to_nanoseconds() / 1000} {r}\n")
+    say("{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
 
 export fn main() Int:
     timed("call_fib_36", fn() Int: return fib(36))

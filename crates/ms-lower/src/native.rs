@@ -115,6 +115,12 @@ const HAND_LOWERED: &[(&str, &str)] = &[
     ("msstd_io_stdout", "io/stdout"),
     ("msstd_io_terminal", "io/terminal"),
     ("msstd_process_commands", "process/commands"),
+    ("msstd_random_draw_choice", "random/draw_choice"),
+    ("msstd_random_draw_float", "random/draw_float"),
+    ("msstd_random_draw_int", "random/draw_int"),
+    ("msstd_random_draw_shuffle", "random/draw_shuffle"),
+    ("msstd_random_draw_uuid", "random/draw_uuid"),
+    ("msstd_random_entropy", "random/host_entropy"),
     ("msstd_process_control", "process/control"),
     ("msstd_process_system", "process/system"),
     ("msstd_time_clock", "time/clock"),
@@ -325,8 +331,8 @@ impl<'a> FnLower<'a> {
                 let want = self.emty(e)?;
                 self.fit_ty(r, &declared, want)
             }
-            "random/secure_int" | "random/uuid_v4" | "random/float" | "random/shuffle"
-            | "random/choice" => self.random_native(e, view, native),
+            "random/draw_int" | "random/draw_uuid" | "random/draw_float" | "random/draw_shuffle"
+            | "random/draw_choice" => self.random_native(e, view, native),
             "html/parse" => {
                 let mut args = self.native_args(view)?;
                 if self.dead {

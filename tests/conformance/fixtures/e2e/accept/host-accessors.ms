@@ -4,23 +4,23 @@
 import expect_equal, expect_false, fail from "@std/test.ms"
 import arguments, control from "@std/process.ms"
 import stdin, stdout, stderr from "@std/io.ms"
-import clock, wall_clock from "@std/time.ms"
-import entropy from "@std/random.ms"
+import monotonic, now from "@std/time.ms"
+import random_bytes from "@std/random.ms"
 import system from "@std/process.ms"
 import network from "@std/net.ms"
 
 fn check_services() Unit!:
     arguments().length() | try expect_equal(0)
 
-    let before = clock().now()
-    let after = clock().now()
+    let before = monotonic()
+    let after = monotonic()
     (after - before < 0.milliseconds) | try expect_false
-    (wall_clock().now().unix_seconds() <= 0) | try expect_false
+    (now().unix_seconds() <= 0) | try expect_false
     (system().info().cpu_count <= 0) | try expect_false
 
     let _variables = try control().environment()
 
-    match entropy().bytes(0):
+    match random_bytes(0):
         ok(data):
             try expect_equal(data.length(), 0)
         error(_):

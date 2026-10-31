@@ -143,7 +143,7 @@ impl Subprocess:
 # and finish shutdown work directly in the shielded close call after joining cancelled workers.
 export interface ProcessControl:
     # Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
-    # This is not Unix time or a Clock Instant; prefer clock().now().difference(start) for timing.
+    # This is not Unix time or a Clock Instant; prefer monotonic().difference(start) for timing.
     fn monotonic_time() Int
     # Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
     # Capacity must be 1..1048576; omission/none uses 128 buffered signals.

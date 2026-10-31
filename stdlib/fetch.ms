@@ -14,7 +14,7 @@ import (
 import IoError from "@std/io.ms"
 import JsonError, parse, stringify from "@std/json.ms"
 import Network, TlsOptions, network from "@std/net.ms"
-import Duration, Instant, clock, seconds from "@std/time.ms"
+import Duration, Instant, seconds, monotonic from "@std/time.ms"
 
 # Errors returned by fetch operations.
 export type FetchError:
@@ -147,7 +147,7 @@ impl Fetcher:
         url: String,
         options: FetchOptions = FetchOptions()
     ) FetchResponse!FetchError:
-        let started = clock().now()
+        let started = monotonic()
         let body = try self.stream(url, options.clone())
         return drain(body, options, started)
 
@@ -213,7 +213,7 @@ fn limit_exceeded(limit: Int?, total: Int) Bool:
 
 fn expired(timeout: Duration?, started: Instant) Bool:
     if let limit = timeout:
-        return clock().now().difference(started).compare(limit) >= 0
+        return monotonic().difference(started).compare(limit) >= 0
 
     return false
 

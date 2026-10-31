@@ -2,7 +2,7 @@ import read_file from "@std/fs.ms"
 import stdout from "@std/io.ms"
 import parse, stringify, JsonValue from "@std/json.ms"
 import arguments from "@std/process.ms"
-import clock from "@std/time.ms"
+import monotonic from "@std/time.ms"
 
 # Median-of-runs timing; mirrors node.js: warm-up, then at least `runs` runs and `budget` ns.
 fn median_ns(body: fn() Int, budget: Int, runs: Int) Int:
@@ -11,9 +11,9 @@ fn median_ns(body: fn() Int, budget: Int, runs: Int) Int:
     var total = 0
 
     while total < budget or samples.length() < runs:
-        let started = clock().now()
+        let started = monotonic()
         let _n = body()
-        let elapsed = clock().now().difference(started).to_nanoseconds()
+        let elapsed = monotonic().difference(started).to_nanoseconds()
         samples.append(elapsed)
         total += elapsed
 

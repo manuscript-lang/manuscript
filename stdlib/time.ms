@@ -90,7 +90,7 @@ export type TimeError:
     case OutOfRange
 
 # A monotonic clock whose readings are suitable for measuring elapsed time.
-export interface Clock:
+interface Clock:
     # Returns the current reading of this monotonic clock.
     # Readings are only comparable with others from the same clock and do not correspond to a calendar date.
     fn now() Instant
@@ -357,7 +357,7 @@ export type Calendar:
     zone: String
 
 # A clock that reports calendar time.
-export interface WallClock:
+interface WallClock:
     # Returns the current calendar time as a UTC Timestamp with nanosecond precision.
     # It can jump when the system clock is adjusted, so use Clock for elapsed time.
     fn now() Timestamp
@@ -449,10 +449,12 @@ impl Error for TimeError:
             InvalidData: return "time: invalid data"
             OutOfRange: return "time: value out of range"
 
-# Returns the monotonic clock used for elapsed-time measurements.
-export fn clock() Clock:
-    return msstd_time_clock()
+# Returns the current reading of the monotonic clock, for measuring elapsed time.
+# Readings are only comparable with others from this clock and do not correspond to a calendar date.
+export fn monotonic() Instant:
+    return msstd_time_clock().now()
 
-# Returns the wall clock used for calendar timestamps.
-export fn wall_clock() WallClock:
-    return msstd_time_wall_clock()
+# Returns the current calendar time as a UTC Timestamp with nanosecond precision.
+# It can jump when the system clock is adjusted, so use `monotonic` for elapsed time.
+export fn now() Timestamp:
+    return msstd_time_wall_clock().now()

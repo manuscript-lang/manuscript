@@ -1,5 +1,5 @@
 import arguments from "@std/process.ms"
-import clock from "@std/time.ms"
+import monotonic from "@std/time.ms"
 import stdout from "@std/io.ms"
 
 export fn main() Int:
@@ -19,7 +19,7 @@ export fn main() Int:
             int_map.add(i, i * 2)
             string_map.add(keys[i].clone(), i * 2)
 
-    let start = clock().now()
+    let start = monotonic()
     var checksum = 0
 
     for iteration in 0..repeats:
@@ -47,6 +47,6 @@ export fn main() Int:
         else:
             return 2
 
-    let elapsed = clock().now().difference(start).to_nanoseconds()
+    let elapsed = monotonic().difference(start).to_nanoseconds()
     stdout().write("{elapsed} {checksum}\n").get()
     return 0

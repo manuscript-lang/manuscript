@@ -1,10 +1,10 @@
 import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
 import control from "@std/process.ms"
 import arguments from "@std/process.ms"
-import entropy from "@std/random.ms"
+import random_bytes from "@std/random.ms"
 import append_file, open, read_file, remove, stat, watch_native, write_file from "@std/fs.ms"
 import system from "@std/process.ms"
-import wall_clock from "@std/time.ms"
+import now from "@std/time.ms"
 import uuid_v4 from "@std/random.ms"
 import secure_int from "@std/random.ms"
 import parse_timestamp from "@std/time.ms"
@@ -34,18 +34,16 @@ fn exercise(path: String) Unit!:
     info.size | try expect_equal(5)
     (not info.directory) | try expect_true
 
-    let bytes = try common_result(result: entropy().bytes(count: 16))
+    let bytes = try common_result(result: random_bytes(count: 16))
     bytes.length() | try expect_equal(16)
 
-    let identifier = try common_result(result: uuid_v4(entropy: entropy()))
+    let identifier = try common_result(result: uuid_v4())
     identifier.byte_length() | try expect_equal(36)
 
-    let random = try common_result(
-        result: secure_int(entropy: entropy(), min: -2, max_exclusive: 3)
-    )
+    let random = try common_result(result: secure_int(min: -2, max_exclusive: 3))
     (random >= -2 and random < 3) | try expect_true
 
-    let now = wall_clock().now()
+    let now = now()
     (try common_result(result: parse_timestamp(text: now.to_string()))) | try expect_equal(
         now
     )

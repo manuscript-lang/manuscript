@@ -2,7 +2,7 @@ import TomlValue, stringify from "@std/toml.ms"
 import arguments from "@std/process.ms"
 import read_file from "@std/fs.ms"
 import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import monotonic from "@std/time.ms"
 
 export fn main() Int:
     let args = arguments()
@@ -19,7 +19,7 @@ export fn main() Int:
         return 0
 
     var checksum = 0
-    let start = clock().now()
+    let start = monotonic()
 
     for unused in 0..count:
         let out = stringify(value).get()
@@ -27,6 +27,6 @@ export fn main() Int:
 
         checksum += out.byte_length()
 
-    let elapsed = clock().now().difference(start).to_nanoseconds()
+    let elapsed = monotonic().difference(start).to_nanoseconds()
     stdout().write("{elapsed}\t{checksum}\t{expected.byte_length()}\n").get()
     return 0

@@ -4,7 +4,7 @@ import Bytes, BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import monotonic from "@std/time.ms"
 
 export fn main() Int:
     let args = arguments()
@@ -26,9 +26,8 @@ export fn main() Int:
     json.append("]")
 
     let text = json.build()
-    let clk = clock()
     var checksum = 0
-    let start = clk.now()
+    let start = monotonic()
 
     for i in 0..rounds:
         let result = parse[List[Bytes]](text)
@@ -42,6 +41,6 @@ export fn main() Int:
 
             checksum += value.length()
 
-    let elapsed = clk.now().difference(start).to_nanoseconds()
+    let elapsed = monotonic().difference(start).to_nanoseconds()
     stdout().write("{length} {count} {rounds} {checksum} {elapsed}\n").get()
     return 0

@@ -1,5 +1,5 @@
 import arguments from "@std/process.ms"
-import clock from "@std/time.ms"
+import monotonic from "@std/time.ms"
 import stdout from "@std/io.ms"
 import infinity, nan from "@std/math.ms"
 
@@ -10,7 +10,6 @@ export fn main() Int:
     let count = args[3].parse_int().get()
     let expected_checksum = args[4].parse_int().get()
     let expected_last = args[5]
-    let timer = clock()
     var checksum = 0
     var last = ""
 
@@ -32,23 +31,23 @@ export fn main() Int:
                 return 1
 
         if operation == "signed":
-            let start = timer.now()
+            let start = monotonic()
 
             for i in 0..count:
                 last = values[i % 1000].to_string()
                 checksum += last.byte_length()
 
-            let elapsed = timer.now().difference(start).to_nanoseconds()
+            let elapsed = monotonic().difference(start).to_nanoseconds()
             stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
         else:
             var value = 0
-            let start = timer.now()
+            let start = monotonic()
 
             for i in 0..count:
                 value = texts[i % 1000].parse_int().get()
                 checksum += value % 997
 
-            let elapsed = timer.now().difference(start).to_nanoseconds()
+            let elapsed = monotonic().difference(start).to_nanoseconds()
             last = value.to_string()
             stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
     else if operation == "parse_float":
@@ -77,7 +76,7 @@ export fn main() Int:
                 return 1
 
         let length = texts.length()
-        let start = timer.now()
+        let start = monotonic()
 
         for i in 0..count:
             let index = i % length
@@ -85,13 +84,13 @@ export fn main() Int:
             if actual == values[index]:
                 checksum += 1
 
-        let elapsed = timer.now().difference(start).to_nanoseconds()
+        let elapsed = monotonic().difference(start).to_nanoseconds()
         last = "ok"
         stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
     else if operation == "float_special":
         let texts = ["Infinity", "-Infinity", "NaN"]
         let values = [infinity(), -infinity(), nan()]
-        let start = timer.now()
+        let start = monotonic()
 
         for i in 0..count:
             let index = i % 3
@@ -103,7 +102,7 @@ export fn main() Int:
             else if actual == values[index]:
                 checksum += 1
 
-        let elapsed = timer.now().difference(start).to_nanoseconds()
+        let elapsed = monotonic().difference(start).to_nanoseconds()
         last = "ok"
         stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
     else if operation == "float_error":
@@ -122,12 +121,12 @@ export fn main() Int:
         if not text.parse_float().is_none():
             return 1
 
-        let start = timer.now()
+        let start = monotonic()
         for unused in 0..count:
             if text.parse_float().is_none():
                 checksum += 1
 
-        let elapsed = timer.now().difference(start).to_nanoseconds()
+        let elapsed = monotonic().difference(start).to_nanoseconds()
         last = "none"
         stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
     else:

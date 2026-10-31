@@ -2,7 +2,7 @@ import Deque from "@std/deque.ms"
 import Queue, PriorityQueue from "@std/queue.ms"
 import stdout from "@std/io.ms"
 import arguments from "@std/process.ms"
-import clock from "@std/time.ms"
+import monotonic from "@std/time.ms"
 import keep from "@std/bench.ms"
 
 export fn main() Int:
@@ -29,7 +29,7 @@ export fn main() Int:
     var priority = PriorityQueue[Int]()
     var queue = Queue[Int]()
     var deque = Deque[Int]()
-    let started = clock().now()
+    let started = monotonic()
 
     for unused in 0..repeats:
         if operation == "priority":
@@ -54,6 +54,6 @@ export fn main() Int:
 
         keep(checksum).get()
 
-    let elapsed = clock().now().difference(started).to_nanoseconds()
+    let elapsed = monotonic().difference(started).to_nanoseconds()
     stdout().write("{elapsed} {checksum}\n").get()
     return 0

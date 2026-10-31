@@ -2,7 +2,7 @@ import parse, JsonError from "@std/json.ms"
 import StringBuilder from "@std/string.ms"
 import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import monotonic from "@std/time.ms"
 
 extern fn codec_bench_cpu_ns() Int
 
@@ -29,12 +29,11 @@ export fn main() Int:
 
     let wanted = expected.build()
     let text = input.build()
-    let clk = clock()
     var checksum = 0
     let cpu_start = codec_bench_cpu_ns()
     if cpu_start < 0: return 4
 
-    let start = clk.now()
+    let start = monotonic()
 
     for i in 0..rounds:
         if typed:
@@ -61,7 +60,7 @@ export fn main() Int:
 
         checksum += 1
 
-    let elapsed = clk.now().difference(start).to_nanoseconds()
+    let elapsed = monotonic().difference(start).to_nanoseconds()
     let cpu = codec_bench_cpu_ns() - cpu_start
     if cpu <= 0: return 6
 

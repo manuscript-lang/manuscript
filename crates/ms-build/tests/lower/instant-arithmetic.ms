@@ -3,10 +3,10 @@
 # expect-mir: "msstd_time_instant_difference"
 # expect-mir: "msstd_time_instant_unshift"
 
-import clock from "@std/time.ms"
+import monotonic from "@std/time.ms"
 
 export fn main() Int:
-    let a = clock().now()
+    let a = monotonic()
     let b = a + 5.seconds
     let d = b - a
     let c = b - 1.seconds

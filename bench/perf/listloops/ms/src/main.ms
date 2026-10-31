@@ -1,5 +1,5 @@
 import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import monotonic from "@std/time.ms"
 
 fn say(text: String) Unit:
     let _ignored = stdout().write(text)
@@ -70,39 +70,39 @@ export fn main() Int:
         io.append(0)
 
     let reps = 100000
-    var t = clock().now()
+    var t = monotonic()
     for _r in 0..reps:
         k_fma(f1, f2, var fo, n)
-    report("fma32", 2 * n, reps, clock().now().difference(t).to_nanoseconds())
-    t = clock().now()
+    report("fma32", 2 * n, reps, monotonic().difference(t).to_nanoseconds())
+    t = monotonic()
     for _r in 0..reps:
         k_scale64(d1, var d2, n)
-    report("scale64", n, reps, clock().now().difference(t).to_nanoseconds())
-    t = clock().now()
+    report("scale64", n, reps, monotonic().difference(t).to_nanoseconds())
+    t = monotonic()
     for _r in 0..reps:
         k_intadd(i1, i2, var io, n)
-    report("intadd", n, reps, clock().now().difference(t).to_nanoseconds())
-    t = clock().now()
+    report("intadd", n, reps, monotonic().difference(t).to_nanoseconds())
+    t = monotonic()
     for _r in 0..reps:
         k_stencil(f1, var fo, n)
-    report("stencil", n, reps, clock().now().difference(t).to_nanoseconds())
-    t = clock().now()
+    report("stencil", n, reps, monotonic().difference(t).to_nanoseconds())
+    t = monotonic()
     for _r in 0..reps:
         k_base(f1, f2, var fo, 8, n)
-    report("base", n, reps, clock().now().difference(t).to_nanoseconds())
-    t = clock().now()
+    report("base", n, reps, monotonic().difference(t).to_nanoseconds())
+    t = monotonic()
     for _r in 0..reps:
         k_clamp(f1, var fo, n)
-    report("clamp", n, reps, clock().now().difference(t).to_nanoseconds())
-    t = clock().now()
+    report("clamp", n, reps, monotonic().difference(t).to_nanoseconds())
+    t = monotonic()
     for _r in 0..reps:
         k_conv(i1, var d2, n)
-    report("conv", n, reps, clock().now().difference(t).to_nanoseconds())
-    t = clock().now()
+    report("conv", n, reps, monotonic().difference(t).to_nanoseconds())
+    t = monotonic()
 
     var s: Float32 = 0.0
     for _r in 0..reps:
         s = s + k_dot(f1, f2, n)
-    report("dot32", 2 * n, reps, clock().now().difference(t).to_nanoseconds())
+    report("dot32", 2 * n, reps, monotonic().difference(t).to_nanoseconds())
     say("check {fo[5]} {d2[5]} {io[5]} {s}\n")
     return 0

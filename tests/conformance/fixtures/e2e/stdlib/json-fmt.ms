@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/stdlib/json.ms
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test.ms"
 import parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode from "@std/json.ms"
-import timestamp, nanoseconds, clock, Timestamp, Duration, Instant from "@std/time.ms"
+import timestamp, nanoseconds, Timestamp, Duration, Instant, monotonic from "@std/time.ms"
 import Url from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
@@ -255,11 +255,11 @@ type Holder:
 
 test "JSON stringify omits interface values and monotonic instants":
     let who = Named(Person("p"))
-    let holder = Holder(who, clock().now(), unit)
+    let holder = Holder(who, monotonic(), unit)
     try expect_equal((try encoded(holder)), "\{\}")
 
     let invalid: String!JsonError = error(JsonError.InvalidData)
-    try expect_equal(stringify(clock().now()), invalid)
+    try expect_equal(stringify(monotonic()), invalid)
     try expect_equal(stringify(unit), invalid)
 
     let failed: Int!JsonError = error(JsonError.LimitExceeded)

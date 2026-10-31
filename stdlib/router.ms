@@ -14,8 +14,8 @@ import (
 import IoError from "@std/io.ms"
 import WebSocket, WebSocketError from "@std/net.ms"
 import Logger, LogLevel, record from "@std/log.ms"
-import entropy, uuid_v4 from "@std/random.ms"
-import clock from "@std/time.ms"
+import uuid_v4 from "@std/random.ms"
+import monotonic from "@std/time.ms"
 import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 
@@ -698,7 +698,7 @@ fn usable_id(id: String) Bool:
     )
 
 fn new_id() String!HttpError:
-    let made = uuid_v4(entropy())
+    let made = uuid_v4()
     if made.is_error(): return error(HttpError.Failed(made.err().message()))
 
     return ok(made.get().clone())
@@ -726,7 +726,7 @@ fn with_access_log(
     exchange: HttpExchange,
     next: fn(HttpExchange) Unit!HttpError
 ) Unit!HttpError:
-    let started = clock().now()
+    let started = monotonic()
     let method = exchange.method().text()
     let path = exchange.path()
     let protocol = exchange.protocol()
@@ -739,7 +739,7 @@ fn with_access_log(
     let entry = AccessEntry(
         method: method, path: path, protocol: protocol, status: status,
         bytes: sent.bytes,
-        duration_ms: clock().now().difference(started).to_milliseconds()
+        duration_ms: monotonic().difference(started).to_milliseconds()
     )
     let logged = record(logger, LogLevel.Info, "request", entry)
     return result
