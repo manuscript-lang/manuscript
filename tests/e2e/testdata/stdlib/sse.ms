@@ -17,7 +17,7 @@ impl ReadStream for Chunks:
         if self.index < self.parts.length():
             let part = self.parts.get(self.index)
             self.index += 1
-            return ok(some(part.clone()))
+            return ok(part.clone())
 
         if let cause = self.failure: return error(cause.clone())
 
@@ -152,27 +152,27 @@ test "invalid UTF-8 is InvalidData and final":
         )
 
 test "line and event budgets report LimitExceeded":
-    var tight = try decoder(SseLimits(some(7)))
+    var tight = try decoder(SseLimits(7))
     try expect_false(
         not is_case(
             tight.feed("data: 12\n\n".to_bytes()), SseError.LimitExceeded
         )
     )
 
-    var exact = try decoder(SseLimits(some(8)))
+    var exact = try decoder(SseLimits(8))
     try expect_equal((try exact.feed("data: 12\n\n".to_bytes())).length(), 1)
 
-    var event = try decoder(SseLimits(max_event_bytes: some(10)))
+    var event = try decoder(SseLimits(max_event_bytes: 10))
     let _event_batch = try event.feed("data: 1\n".to_bytes())
     try expect_false(
         not is_case(event.feed("data: 2\n".to_bytes()), SseError.LimitExceeded)
     )
 
-    var comments = try decoder(SseLimits(max_event_bytes: some(10)))
+    var comments = try decoder(SseLimits(max_event_bytes: 10))
     let _comment_events = try comments.feed(
         ": a long comment is not counted\ndata: 1\n\n".to_bytes()
     )
-    try expect_false(decoder(SseLimits(some(0))).is_ok())
+    try expect_false(decoder(SseLimits(0)).is_ok())
 
 test "truncated streams fail and clean ends succeed":
     for source in ["data: a\n", "data: a", "data: a\n\ndata", "id: 1\n"]:
@@ -212,15 +212,13 @@ test "reader reports truncation limits and read failures":
     let truncated = next_event(var cut)
     try expect_false(truncated.is_ok() or truncated.err() != SseError.Truncated)
 
-    var big = try reader(
-        stream(["data: abcdef\n\n".to_bytes()], none), SseLimits(some(4))
-    )
+    var big = try reader(stream(["data: abcdef\n\n".to_bytes()], none), SseLimits(4))
     let limited = next_event(var big)
     try expect_false(limited.is_ok() or limited.err() != SseError.LimitExceeded)
 
-    var broken = try reader(stream(["data: a\n\n".to_bytes()], some(IoError.Closed)))
+    var broken = try reader(stream(["data: a\n\n".to_bytes()], IoError.Closed))
     let _event = try next_event(var broken)
     let failed = next_event(var broken)
     try expect_false(failed.is_ok())
     try expect_equal(failed.err(), SseError.ReadFailed(IoError.Closed))
-    try expect_false(reader(stream([], none), chunk_bytes: some(0)).is_ok())
+    try expect_false(reader(stream([], none), chunk_bytes: 0).is_ok())

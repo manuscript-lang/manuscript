@@ -46,7 +46,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
         )
 
         match try socket_result(result: socket.receive()):
-            some(message):
+            message:
                 let _sent = try socket_result(
                     result: socket.send_bytes(
                         data: message.data, text: message.text
@@ -97,12 +97,10 @@ fn exercise() Result[Unit, Error]:
             return fail(message: "Unexpected case")
 
     match part:
-        some(data):
+        data:
             try expect_false(
                 not (
-                    data.decode_utf8() == some(
-                        "hello from streaming Manuscript"
-                    )
+                    data.decode_utf8() == "hello from streaming Manuscript"
                 )
             )
         none:
@@ -124,9 +122,9 @@ fn exercise() Result[Unit, Error]:
     let _sent = try socket_result(result: socket.send(data: "echo me"))
 
     match try socket_result(result: socket.receive()):
-        some(message):
+        message:
             (message.text) | try expect_true
-            try expect_equal(message.data.decode_utf8(), some("echo me"))
+            try expect_equal(message.data.decode_utf8(), "echo me")
         none:
             return fail(message: "Unexpected case")
 

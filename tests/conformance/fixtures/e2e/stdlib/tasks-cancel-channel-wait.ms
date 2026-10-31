@@ -34,7 +34,7 @@ fn cancel_sender() Unit:
 
 fn timeout_receiver() Unit:
     let group = TaskGroup[Int, Int, Int]()
-    let task = group.spawn(receiver, timeout: some(nanoseconds(1000000)))
+    let task = group.spawn(receiver, timeout: nanoseconds(1000000))
     let _ = task.result()
 
 fn churn() Int:

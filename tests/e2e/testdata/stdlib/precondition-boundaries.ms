@@ -54,7 +54,7 @@ test "radix formatting retains inclusive boundaries and parse errors":
 test "queue capacities retain omission none minimum maximum and full results":
     var queue = Queue[Int](1)
     try expect_false(not queue.enqueue(1) or queue.enqueue(2))
-    try expect_false(queue.dequeue() != some(1) or not queue.dequeue().is_none())
+    try expect_false(queue.dequeue() != 1 or not queue.dequeue().is_none())
 
     var unbounded = Queue[Int](none)
     var large = Queue[Int](9223372036854775807)

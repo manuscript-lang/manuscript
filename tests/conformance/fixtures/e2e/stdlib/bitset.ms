@@ -27,12 +27,12 @@ test "add remove contains across word boundaries":
 
 test "next finds the following member":
     let set = of([5, 64, 130])
-    try expect_equal(set.next(), some(5))
-    try expect_equal(set.next(5), some(5))
-    try expect_equal(set.next(6), some(64))
-    try expect_equal(set.next(65), some(130))
+    try expect_equal(set.next(), 5)
+    try expect_equal(set.next(5), 5)
+    try expect_equal(set.next(6), 64)
+    try expect_equal(set.next(65), 130)
     try expect_equal(set.next(131), none)
-    try expect_equal(set.next(-3), some(5))
+    try expect_equal(set.next(-3), 5)
     try expect_equal(BitSet().next(), none)
 
 test "set algebra matches Set":

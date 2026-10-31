@@ -851,7 +851,17 @@ impl Checker {
                         .next()
                         .is_some_and(|b| b.is_ascii_uppercase());
                     let names = case_names(&t);
-                    if arm.bindings.is_empty() && !name.is_empty() && !upper {
+                    if arm.bare {
+                        let binding = arm.bindings[0].name;
+                        self.res_error(
+                            arm.pos,
+                            format!(
+                                "'{binding}' is not a case of {}; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: {}",
+                                t.name,
+                                list(&names, 12)
+                            ),
+                        );
+                    } else if arm.bindings.is_empty() && !name.is_empty() && !upper {
                         self.res_error(
                             arm.pos,
                             format!(

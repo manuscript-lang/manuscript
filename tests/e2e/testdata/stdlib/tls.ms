@@ -136,8 +136,8 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
     try expect_equal((try response.read()).get(), "HTTP/2.0".to_bytes())
 
 fn answer_ping(var connection: Connection) Int:
-    let ping = connection.read(some(4), some(3.seconds))
-    let pong = connection.write("pong", some(3.seconds))
+    let ping = connection.read(4, 3.seconds)
+    let pong = connection.write("pong", 3.seconds)
     connection.close()
     if ping.is_error() or pong.is_error():
         return 0
@@ -145,7 +145,7 @@ fn answer_ping(var connection: Connection) Int:
     return 1
 
 fn serve_one_tls(listener: Shared[Listener]) Int:
-    match listener.get().accept(some(3.seconds)):
+    match listener.get().accept(3.seconds):
         ok(accepted):
             var connection = accepted
             return answer_ping(var connection)
@@ -163,19 +163,17 @@ test "raw TLS listeners and clients handshake and report negotiated details":
         private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: false
     )
     let listener: Shared[Listener] = share(
-        try net.listen_tls("127.0.0.1:0", server_tls, some(3.seconds))
+        try net.listen_tls("127.0.0.1:0", server_tls, 3.seconds)
     )
     var group = TaskGroup[Int]()
     let handle = listener
     group.spawn(fn ch: serve_one_tls(handle))
 
     var client = try net.connect_tls_config(
-        listener.get().address(), client_tls, some(3.seconds)
+        listener.get().address(), client_tls, 3.seconds
     )
-    try client.write("ping", some(3.seconds))
-    try expect_equal(
-        (try client.read(some(4), some(3.seconds))).get(), "pong".to_bytes()
-    )
+    try client.write("ping", 3.seconds)
+    try expect_equal((try client.read(4, 3.seconds)).get(), "pong".to_bytes())
 
     let info = try client.tls_info()
     try expect_false(info.version < 771)
@@ -202,21 +200,19 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
         private_key_pem: private_key(), alpn: [], require_client_certificate: false
     )
     let listener: Shared[Listener] = share(
-        try net.listen_tls("127.0.0.1:0", server_tls, some(3.seconds))
+        try net.listen_tls("127.0.0.1:0", server_tls, 3.seconds)
     )
     var group = TaskGroup[Int]()
     let handle = listener
     group.spawn(fn ch: serve_one_tls(handle))
 
     let _failure = try expect_error(
-        net.connect_tls(
-            listener.get().address(), "stdlib.test", some(3.seconds)
-        )
+        net.connect_tls(listener.get().address(), "stdlib.test", 3.seconds)
     )
     let _served = try group.results()
     group.close()
     listener.get().close()
 
     let plain = try net.listen("127.0.0.1:0")
-    let client = try net.connect(plain.address(), some(2.seconds))
+    let client = try net.connect(plain.address(), 2.seconds)
     try expect_false(client.tls_info().is_ok())

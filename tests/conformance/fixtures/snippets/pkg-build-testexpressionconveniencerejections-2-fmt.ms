@@ -5,7 +5,7 @@ fn f(x: Int?) Int:
     while true:
         while (
             match x:
-                some(n): true
+                n: true
                 none: break
         ):
             break

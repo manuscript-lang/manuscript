@@ -64,7 +64,7 @@ test "abs of the minimum overflows":
 test "negative split cap faults":
     let message = try expect_fault(
         fn:
-            let _ignored = "a,b".split(separator: ",", max_parts: some(0 - 1))
+            let _ignored = "a,b".split(separator: ",", max_parts: (0 - 1))
     )
     message | try expect_contains("max_parts must be nonnegative")
 

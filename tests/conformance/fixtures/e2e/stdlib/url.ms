@@ -17,7 +17,7 @@ import (
 
 test "URL canonicalization and relative references":
     let url = try parse("https://EXAMPLE.com:443/a/b?q=1#fragment")
-    try expect_false(url.host != "example.com" or url.port != some(443))
+    try expect_false(url.host != "example.com" or url.port != 443)
     try expect_equal((try format(url)), "https://example.com:443/a/b?q=1#fragment")
     try expect_equal(
         (url | try resolve("../c") | try format), "https://example.com:443/c"

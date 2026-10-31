@@ -114,7 +114,7 @@ test "list prefixes and Optional defaults keep overflow checks":
     (try expect_fault(fn: let ignored = optional_overflow(none))) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn: let ignored = optional_overflow(some(0)))) | try expect_contains(
+    (try expect_fault(fn: let ignored = optional_overflow(0))) | try expect_contains(
         "Int overflow;"
     )
 
@@ -159,8 +159,8 @@ fn scalar_append_overflow() Int:
 fn match_length() Int:
     var values: List[Int] = []
 
-    let ignored = match some(1):
-        some(n):
+    let ignored = match 1:
+        n:
             values.append(n)
             n
         none: 0

@@ -28,8 +28,8 @@ impl Disposable for Resource:
         panic("disposable")
 
 fn bound_cleanup[T: Disposable](resource: T) Unit:
-    let _item = resource
-    let _completed = unit
+    var item = resource
+    item.close()
 
 fn canonical_cleanup[T: Closeable](resource: T) Unit:
     let _item = resource

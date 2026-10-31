@@ -58,8 +58,8 @@ test "views, defaults, and reordered labels keep dispatch":
     let c = Counter(5)
     try expect_equal(through_view(c, 2), 7)
     try expect_equal(c.scale(2), 10)
-    try expect_equal(c.scale(offset: some(1), factor: 2), 11)
-    try expect_equal(c.scale(2, some(3)), 13)
+    try expect_equal(c.scale(offset: 1, factor: 2), 11)
+    try expect_equal(c.scale(2, 3), 13)
 
 type Parser:
     base: Int

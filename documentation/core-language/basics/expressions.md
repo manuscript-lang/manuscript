@@ -60,7 +60,7 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
 - `not a == b` means `not (a == b)`.
 - `try read() + 1` means `(try read()) + 1`; write `try (expression)` to propagate a larger expression.
 - Brackets after a generic declaration supply types (`identity[Int]`, `Box[String]`); after a list value they look up: `values[index]` equals `values.get(index)`, a `T` accepting negative indexes that faults out of range. `values[index] = x` and `values[index] += x` are the `set` mutator (`values.set(index, x)`); the receiver must be a `var`. Slicing is unsupported.
-- Calls take positional arguments and optional labels ([call rules](../functions/declarations-and-calls.md#argument-names)). Single-payload constructors may omit the label: `Box(3)`, `some(3)`. An interface is never constructed; see [interface conversion](../types/contracts.md#interface-conversion).
+- Calls take positional arguments and optional labels ([call rules](../functions/declarations-and-calls.md#argument-names)). Single-payload constructors may omit the label: `Box(3)`, `ok(3)`. An interface is never constructed; see [interface conversion](../types/contracts.md#interface-conversion).
 
 ## Pipe flows
 

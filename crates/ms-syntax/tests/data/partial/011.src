@@ -3,8 +3,8 @@ import expect_equal from "@std/test.ms"
 export fn main() Int:
     var number = 1
     let total = number + (
-        m$atch some(1):
-            some(value):
+        m$atch 1:
+            value:
                 number += 1
                 value
             none: 0

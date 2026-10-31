@@ -583,7 +583,7 @@ impl BigInt:
     fn to_float() Float?:
         let value = msstd_bigint_to_float(self)
         if value.is_finite():
-            return some(value)
+            return value
 
         return none
 

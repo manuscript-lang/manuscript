@@ -23,8 +23,8 @@ fn mark(var counter: Counter, digit: Int) Int:
 fn generic[T: Equal](left: T, right: T) Bool: left == right
 
 fn returning_match() Bool:
-    return true == match some(1):
-        some(_): return false
+    return true == match present(1):
+        _value: return false
         none: false
 
 test "primitive equality captures operands once in order":
@@ -33,8 +33,8 @@ test "primitive equality captures operands once in order":
     try expect_equal(counter.value, 12)
 
     var original = 1
-    let captured = original == match some(1):
-        some(value):
+    let captured = original == match present(1):
+        value:
             original = 2
             value
         none: 0
@@ -55,8 +55,8 @@ fn conditional(marker: String, take: Bool) Int:
     return 8
 
 fn matched(marker: String) Int:
-    return match some(1):
-        some(value):
+    return match present(1):
+        value:
             var _resource = Resource(marker.clone())
             return value
             0
@@ -64,8 +64,8 @@ fn matched(marker: String) Int:
 
 fn defaulted(
     marker: String,
-    value: Int = match some(2):
-        some(number):
+    value: Int = match present(2):
+        number:
             var _resource = Resource(marker.clone())
             let _used = unit
             _resource.close()
@@ -110,8 +110,8 @@ fn nested_results(marker: String) Result[Int, TextError]:
     return ok(value)
 
 fn statement_match_try(marker: String) Result[Int, TextError]:
-    match some(1):
-        some(_):
+    match present(1):
+        _value:
             let _resource = Resource(marker.clone())
             let value = try failed()
             return ok(value)
@@ -123,8 +123,8 @@ fn value_match_loop_try(marker: String) Result[Int, TextError]:
     var index = 0
 
     while index < 2:
-        let _selected = match some(index):
-            some(number):
+        let _selected = match present(index):
+            number:
                 var _resource = Resource(marker.clone())
                 let _value = try failed()
                 _resource.close()
@@ -187,3 +187,6 @@ test "cleanup remains owned by its source callable":
     try expect_true(closed("{dir}/loop1"))
     try expect_true(closed("{dir}/loop2"))
     try expect_false(closed("{dir}/loop3"))
+
+fn present[T](value: T) T?:
+    return value

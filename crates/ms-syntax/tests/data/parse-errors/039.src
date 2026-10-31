@@ -32,7 +32,7 @@ test "process environment reflects live changes":
     let name = "MANUSCRIPT_STDLIB_CONFORMANCE"
     let before = (try control().environment()).get(name)
     try control().set_environment(name, "stdlib")
-    try expect_equal((try control().environment()).get(name), some("stdlib"))
+    try expect_equal((try control().environment()).get(name), "stdlib")
     try control().set_environment(name, before)
 
 test "subprocess validation returns expected domain errors":

@@ -75,12 +75,12 @@ test "sum adds Int, Float and sized numerics":
 
 test "min and max return the first of equal elements and none when empty":
     let numbers = [3, 9, 2, 9, 2]
-    try expect_equal(numbers.min(), some(2))
-    try expect_equal(numbers.max(), some(9))
+    try expect_equal(numbers.min(), 2)
+    try expect_equal(numbers.max(), 9)
     try expect_true(List[Int]().min().is_none())
     try expect_true(List[String]().max().is_none())
-    try expect_equal(["pear", "apple", "fig"].min(), some("apple"))
-    try expect_equal([0.5, 2.5, -1.0].max(), some(2.5))
+    try expect_equal(["pear", "apple", "fig"].min(), "apple")
+    try expect_equal([0.5, 2.5, -1.0].max(), 2.5)
 
 test "min and max over user Comparable types keep the first equal element":
     let versions = [Version(2, "b"), Version(1, "x"), Version(2, "a"), Version(1, "y")]

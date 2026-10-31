@@ -24,12 +24,11 @@ fn import_statement(message: &str) -> Option<&str> {
 }
 
 /// The single spelling an `unknown binding` hint names for a habit from
-/// another language (`Some`, `Ok`, `Err`, `True`, `null`, `this`).
+/// another language (`Ok`, `Err`, `True`, `null`, `this`).
 fn habit_replacement(message: &str) -> Option<&'static str> {
     let rest = message.strip_prefix("unknown binding ")?;
     let (name, hint) = rest.split_once("; ")?;
     match name {
-        "Some" => Some("some"),
         "Ok" => Some("ok"),
         "Err" | "err" | "Error" => Some("error"),
         "True" => Some("true"),
@@ -240,13 +239,8 @@ mod tests {
     #[test]
     fn habit_names_are_fixed() {
         let pos = Pos::new(4, 1, 5);
-        let fix = fix_for(
-            "unknown binding Some; write the lowercase some(value) for a present Optional",
-            pos,
-            4,
-        )
-        .unwrap();
-        assert_eq!((fix.end.offset, fix.replacement.as_str()), (8, "some"));
+        let fix = fix_for("unknown binding True; write the lowercase true", pos, 4).unwrap();
+        assert_eq!((fix.end.offset, fix.replacement.as_str()), (8, "true"));
         let this = "unknown binding this; the receiver in an impl method is 'self'; write self instead of this";
         assert_eq!(fix_for(this, pos, 4).unwrap().replacement, "self");
         assert!(fix_for("unknown binding this; there is no 'this'", pos, 4).is_none());

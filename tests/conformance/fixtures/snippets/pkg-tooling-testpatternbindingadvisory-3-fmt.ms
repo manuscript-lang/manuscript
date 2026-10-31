@@ -3,5 +3,5 @@
 # conform: origin=pkg/tooling/pattern_lint_test.go:25 TestPatternBindingAdvisory
 fn use(value: Int?) Int:
     match value:
-        some(Int): return Int
+        int: return Int
         none: return 0

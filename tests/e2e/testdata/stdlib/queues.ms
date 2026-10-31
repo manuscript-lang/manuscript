@@ -5,8 +5,8 @@ test "FIFO capacity empty reads draining and reuse":
     var queue = Queue[Int](2)
     try expect_false(not queue.is_empty() or not queue.peek().is_none())
     try expect_false((not queue.enqueue(1) or not queue.enqueue(2) or queue.enqueue(3)))
-    try expect_false(queue.peek() != some(1) or queue.length() != 2)
-    try expect_false(queue.dequeue() != some(1) or queue.dequeue() != some(2))
+    try expect_false(queue.peek() != 1 or queue.length() != 2)
+    try expect_false(queue.dequeue() != 1 or queue.dequeue() != 2)
     try expect_false(not queue.dequeue().is_none() or not queue.enqueue(4))
 
 test "priority queue orders values and honors capacity":
@@ -15,9 +15,9 @@ test "priority queue orders values and honors capacity":
     queue.enqueue(1)
     queue.enqueue(2)
     try expect_false(queue.enqueue(0))
-    try expect_equal(queue.peek(), some(1))
+    try expect_equal(queue.peek(), 1)
     for expected in [1, 2, 3]:
-        try expect_equal(queue.dequeue(), some(expected))
+        try expect_equal(queue.dequeue(), expected)
     try expect_false(not queue.is_empty())
 
 test "priority queue sorts many values and copies are independent":
@@ -26,7 +26,7 @@ test "priority queue sorts many values and copies are independent":
         queue.enqueue((index * 37) % 101)
 
     var copy = queue.clone()
-    try expect_equal(copy.dequeue(), some(0))
+    try expect_equal(copy.dequeue(), 0)
     try expect_equal(queue.length(), 200)
 
     var previous = -1
@@ -43,6 +43,6 @@ test "ordered priority queue defaults to natural order and honors capacity":
     try expect_true(queue.enqueue("b"))
     try expect_true(queue.enqueue("a"))
     try expect_false(queue.enqueue("c"))
-    try expect_equal(queue.dequeue(), some("a"))
-    try expect_equal(queue.dequeue(), some("b"))
+    try expect_equal(queue.dequeue(), "a")
+    try expect_equal(queue.dequeue(), "b")
     try expect_equal(queue.dequeue(), none)

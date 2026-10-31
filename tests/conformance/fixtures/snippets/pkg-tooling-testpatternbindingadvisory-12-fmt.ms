@@ -3,5 +3,5 @@
 # conform: origin=pkg/tooling/pattern_lint_test.go:43 TestPatternBindingAdvisory
 fn use[T](value: T?) T:
     match value:
-        some(Value): return Value
+        value: return Value
         none: return panic(message: "empty")

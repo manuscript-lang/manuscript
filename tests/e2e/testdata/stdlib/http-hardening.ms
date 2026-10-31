@@ -122,7 +122,7 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
     let net = network()
     let server = net.serve(
         address: "127.0.0.1:0", handler: oversized,
-        options: HttpServerOptions(max_response_bytes: some(100))
+        options: HttpServerOptions(max_response_bytes: 100)
     ) | try expect_ok
     let client = net.connect(server.address(), 2.seconds) | try expect_ok
     client.write(

@@ -18,7 +18,7 @@ type Payload:
 export fn emit(logger: Logger) Result[Unit, LogError]:
     let child = try logger.child_json("\{\"request\":\"req-1\"\}")
     let fields = Payload(
-        count: 9007199254740993, ok: true, nested: [none, some(false)],
+        count: 9007199254740993, ok: true, nested: [none, false],
         service: "worker", level: 0, msg: "spoofed", time: 0
     )
     try child.debug("filtered")

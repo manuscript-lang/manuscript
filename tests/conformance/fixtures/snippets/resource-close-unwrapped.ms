@@ -27,7 +27,7 @@ fn via_get() Unit:
     stdout().write("body {r.name}\n").get()
 
 fn via_optional_get() Unit:
-    let o: Res? = some(Res("optional"))
+    let o: Res? = Res("optional")
     let r = o.get(Res("default"))
     stdout().write("body {r.name}\n").get()
 

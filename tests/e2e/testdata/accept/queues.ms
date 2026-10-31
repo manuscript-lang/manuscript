@@ -11,7 +11,7 @@ test "omitted capacity creates an unbounded queue":
         queue.length() | try expect_equal(5)
 
         for value in [1, 2, 3, 4, 5]:
-            let expected: Int? = some(value)
+            let expected: Int? = value
             queue.dequeue() | try expect_equal(expected)
 
         let missing: Int? = none
@@ -28,8 +28,8 @@ test "a copy is an independent queue":
     queue.enqueue(5) | try expect_false
 
     var copy = queue.clone()
-    let first: Int? = some(3)
-    let second: Int? = some(4)
+    let first: Int? = 3
+    let second: Int? = 4
     (copy.dequeue() == first and copy.length() == 1) | try expect_true
     (queue.peek() == first and queue.length() == 2) | try expect_true
     (queue.dequeue() == first and queue.dequeue() == second) | try expect_true
@@ -43,7 +43,7 @@ test "queue elements include ordinary functions":
     queue.enqueue(fn: return 7)
 
     match queue.dequeue():
-        some(callback):
+        callback:
             try expect_equal(callback(), 7)
         none:
             return fail("callback missing")

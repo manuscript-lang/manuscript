@@ -201,7 +201,7 @@ fn zip_draw[A, B, C](
     let {value: b, source} = second.make(middle)
     return Drawn(combine(a, b), source)
 
-# Generates `some(value)` or `none`, shrinking toward `none`.
+# Generates a value or `none`, shrinking toward `none`.
 export fn optionals[T](gen: Gen[T]) Gen[T?]:
     return Gen[T?](fn s: optional_draw(gen, s))
 

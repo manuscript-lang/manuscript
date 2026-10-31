@@ -59,8 +59,8 @@ fn hidden(n: Int) Result[Int, TextError]:
     if n < 0:
         return error(
             TextError(
-                match some(n):
-                    some(_value):
+                match present(n):
+                    _value:
                         return ok(9223372036854775807)
                     none: "negative"
             )
@@ -130,3 +130,6 @@ test "Result bounds preserve argument effects and cleanup":
     ordered(var visits) | try expect_equal(3)
     visits | try expect_equal([-1, 0, 1])
     cleanup(visits) | try expect_equal(500498)
+
+fn present[T](value: T) T?:
+    return value

@@ -21,7 +21,7 @@ fn work() Int:
     return 1
 
 export fn main() Int:
-    var group = TaskGroup[Int](timeout: some(nanoseconds(50000000)))
+    var group = TaskGroup[Int](timeout: nanoseconds(50000000))
     group.spawn(fn ch: work())
 
     let _ = group.wait()

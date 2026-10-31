@@ -7,7 +7,7 @@ import parse, stringify, CsvOptions, CsvError from "@std/csv.ms"
 test "CSV retains single empty fields and distinguishes empty rows":
     for ending in ["\n", "\r\n"]:
         for delimiter in [",", ";", "\t"]:
-            let options = CsvOptions(delimiter, ending)
+            let options = CsvOptions(delimiter.clone(), ending.clone())
             let rows = [["a"], [""], ["b"], [""], [""]]
             let expected = "a{ending}\"\"{ending}b{ending}\"\"{ending}\"\"{ending}"
             let text = try stringify(rows, options)
@@ -34,7 +34,7 @@ test "CSV retains single empty fields and distinguishes empty rows":
 
 test "CSV quoted empty fields respect exact row cell and byte budgets":
     for ending in ["\n", "\r\n"]:
-        let options = CsvOptions(",", ending)
+        let options = CsvOptions(",", ending.clone())
         let rows = [[""], ["a"], [""]]
         let text = "\"\"{ending}a{ending}\"\"{ending}"
         let bytes = text.byte_length()

@@ -54,7 +54,7 @@ test "an acceptor deals connections round robin to serving workers":
         var answer_bytes = ""
 
         while true:
-            let chunk = try clients[i].read(none, some(2.seconds))
+            let chunk = try clients[i].read(none, 2.seconds)
 
             if let data = chunk:
                 answer_bytes = "{answer_bytes}{data.decode_utf8().get("")}"

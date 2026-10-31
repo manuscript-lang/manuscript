@@ -17,7 +17,7 @@ fn first_kid(n: Node) ref Node?:
     if n.kids.length() == 0:
         return none
 
-    return some(n.kids[0])
+    return n.kids[0]
 
 fn descend(n: Node, d: Int) Int:
     if d == 0:

@@ -7,7 +7,7 @@ fn required(value: Int) Int: return value
 
 fn call(x: Int?) Int:
     let chosen = match x:
-        some(n): optional
+        n: optional
         none: required
 
     return chosen()

@@ -132,13 +132,13 @@ test "native watcher max_entries counts the paths under the root":
     try fs.write_file(path: "{t.path()}/a", data: "x", replace: false)
     try expect_fs_error(
         fs.watch_native(
-            path: t.path(), recursive: true, max_entries: some(1), overflow: "error"
+            path: t.path(), recursive: true, max_entries: 1, overflow: "error"
         ),
         FileSystemError.LimitExceeded
     )
 
     var w = try fs.watch_native(
-        path: t.path(), recursive: true, max_entries: some(2), overflow: "error"
+        path: t.path(), recursive: true, max_entries: 2, overflow: "error"
     )
     w.close()
 
