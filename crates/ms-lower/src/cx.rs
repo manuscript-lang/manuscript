@@ -402,12 +402,10 @@ impl Cx {
                             params.push(self.lower_ty(m, &p.ty)?);
                         }
                         let ret = self.lower_ty(m, &sig.result_ty())?;
-                        let ret_borrowed = false;
                         methods.push(MethodSig {
                             name: op.name.to_string(),
                             params,
                             ret,
-                            ret_borrowed,
                             self_params,
                         });
                     }

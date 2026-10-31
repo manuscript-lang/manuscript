@@ -400,9 +400,6 @@ pub struct MethodSig {
     pub params: Vec<Ty>,
     /// Result type.
     pub ret: Ty,
-    /// The operation lends its result (`ref`): implementations return a borrow of the
-    /// receiver or an argument, which the caller does not release.
-    pub ret_borrowed: bool,
     /// Parameters declared as the implementing type (`Self`): the table entry receives an
     /// interface value and passes the implementation the data inside it.
     pub self_params: Vec<bool>,

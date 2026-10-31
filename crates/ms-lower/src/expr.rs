@@ -45,18 +45,6 @@ impl<'a> FnLower<'a> {
         self.converting = saved;
         let x = x?;
         let x = match self.hir.info(e).wrap_some {
-            Some(_)
-                if !self.dead
-                    && self.lent_return
-                    && !x.own
-                    && self.lent_expr == Some(e as *const Expr as usize) =>
-            {
-                // A lending function wraps a borrow as a borrow, as `some(value)` does.
-                Val {
-                    v: self.b.opt_view(x.v),
-                    own: false,
-                }
-            }
             Some(_) if !self.dead => {
                 let o = self.owned(x);
                 Val {
