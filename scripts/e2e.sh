@@ -42,7 +42,8 @@ if [ "$#" -gt 0 ]; then
 else
     fixtures=
     skipped=0
-    for fixture in $(ls -d tests/e2e/testdata/accept/*.ms tests/e2e/testdata/stdlib/*.ms tests/e2e/testdata/reject/*.ms tests/e2e/testdata/projects/* tests/e2e/testdata/projects/*/reject_*.ms); do
+    for fixture in tests/e2e/testdata/accept/*.ms tests/e2e/testdata/stdlib/*.ms tests/e2e/testdata/reject/*.ms tests/e2e/testdata/projects/* tests/e2e/testdata/projects/*/reject_*.ms; do
+        [ -e "$fixture" ] || continue
         if covered_by_corpus "$fixture"; then
             skipped=$((skipped + 1))
         else
