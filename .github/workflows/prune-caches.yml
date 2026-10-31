@@ -3,7 +3,9 @@ name: Prune caches
 # Keeps one cache per name. A lockfile change writes a new cargo cache and nothing removes the old
 # one, so copies pile up until GitHub evicts at the 10 GB limit and takes live entries with it.
 # Only main saves caches; entries from pull request refs and from the earlier rust-cache and lld
-# keys are dead and go too.
+# keys are dead and go too. So is any entry nobody has restored for three days, which is what a
+# renamed key leaves behind (the per-part sccache split orphaned five 1-2 GB entries that no name
+# match could see). Pull requests only read: they restore what main saved and never write.
 
 on:
   push:
@@ -29,11 +31,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh cache list --limit 1000 --json id,key,ref,createdAt > caches.json
+          gh cache list --limit 1000 --json id,key,ref,createdAt,lastAccessedAt,sizeInBytes > caches.json
+          cutoff=$(date -u -d '3 days ago' +%Y-%m-%dT%H:%M:%SZ)
           # Newest first within each name (the key without its trailing hash); keep the first.
-          jq -r '
+          jq -r --arg cutoff "$cutoff" '
             def name: sub("-[0-9a-f]{16,}$"; "");
-            def dead: .ref != "refs/heads/main" or (.key | test("^(v0-rust-|lld-|cargo-rust-)"));
+            def dead: .ref != "refs/heads/main" or (.key | test("^(v0-rust-|lld-|cargo-rust-)")) or .lastAccessedAt < $cutoff;
             . as $all
             | [$all[] | select(dead)] as $dead
             | [$all[] | select(dead | not)] | sort_by(.createdAt) | reverse
@@ -42,3 +45,8 @@ jobs:
           echo "Deleting $(wc -l < stale.txt) of $(jq length caches.json) caches"
           while read -r id; do gh cache delete "$id"; done < stale.txt
           gh cache list --json key,ref,sizeInBytes --jq '.[] | [.key, .ref, .sizeInBytes] | @tsv'
+          # GitHub evicts least recently used entries past 10 GB, which can take a live sccache entry
+          # before a dead one; flag the run when the kept set gets close.
+          total=$(gh cache list --json sizeInBytes --jq 'map(.sizeInBytes) | add // 0')
+          echo "Cache total: $((total / 1048576)) MiB of 10240 MiB"
+          if [ "$total" -gt 9663676416 ]; then echo "::warning::Actions caches use more than 9 GiB of the 10 GiB limit"; fi
