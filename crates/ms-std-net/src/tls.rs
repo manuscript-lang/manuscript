@@ -240,6 +240,17 @@ pub fn server_config(o: &TlsOptions) -> Result<Arc<ServerConfig>, NetErr> {
     Ok(Arc::new(config))
 }
 
+/// Server settings for raw TLS listeners. It sends no TLS 1.3 session tickets: the caller never
+/// reads them, and a ticket reaching a peer that has already closed draws a reset that discards
+/// bytes the peer wrote just before closing.
+pub fn stream_server_config(o: &TlsOptions) -> Result<Arc<ServerConfig>, NetErr> {
+    let mut config = server_config(o)?;
+    if let Some(c) = Arc::get_mut(&mut config) {
+        c.send_tls13_tickets = 0;
+    }
+    Ok(config)
+}
+
 #[derive(Debug)]
 struct FixedIdentity(Arc<CertifiedKey>);
 
