@@ -18,3 +18,10 @@ short tails; a byte count is not a safe Unicode character-width lower bound.
 Compare complete baseline output around the cutoff and stop boundaries, and
 measure tiny ordinary calls and lists as well as long flows. A fast long case
 does not excuse common-path regressions. See the [measured matrix](../../bench/perf/formatter-flow/results-2026-10-31.md).
+
+For chain wrapping, only the first eligible nontrivial call prefix determines
+whether a call can fit. Later openers contain that prefix plus nonnegative widths,
+so none can fit if the first overflows. Continue scanning the full expression for
+later operators; only prefix-width measurement stops early. The [boundary
+regression](../../crates/ms-syntax/tests/format_edits.rs) pins exact-fit/overflow,
+Unicode, nested calls, clauses and LF/CRLF behavior.

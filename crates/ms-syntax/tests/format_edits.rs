@@ -99,3 +99,16 @@ fn syntax_shape(module: &ms_syntax::Module) -> String {
         .collect::<Vec<_>>()
         .join(" ")
 }
+
+#[test]
+fn chain_hugging_preserves_first_call_width_and_later_operators() {
+    let file: Arc<str> = Arc::from("call-prefix.ms");
+    let source = include_str!("format_edits/call_prefix.src");
+    let expected = include_str!("format_edits/call_prefix.expected");
+    for input in [source.to_string(), source.replace('\n', "\r\n")] {
+        ms_syntax::parser::parse(&file, &input).unwrap();
+        let actual = ms_syntax::format(&file, &input).unwrap();
+        assert_eq!(actual, expected);
+        assert_eq!(ms_syntax::format(&file, &actual).unwrap(), actual);
+    }
+}
