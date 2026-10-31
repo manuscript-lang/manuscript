@@ -1632,3 +1632,7 @@ pub fn self_variable(owner: Name) -> Ty {
         Kind::Variable,
     ))
 }
+
+#[cfg(test)]
+#[path = "operation_bounds_tests.rs"]
+mod operation_bounds_tests;
