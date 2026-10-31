@@ -1,0 +1,9 @@
+import expect_equal from "@std/test.ms"
+import parse, stringify from "@std/json.ms"
+
+test "JSON floats retain halfway ties and notation boundaries":
+    let input = "[1658206780088562.25,-1658206780088562.25,2.98023223876953125e-8,-2.98023223876953125e-8,1e-6,1e21,-0.0]"
+    let values = try parse[List[Float]](input)
+    let text = try stringify(values)
+    try expect_equal(text, "[1658206780088562.3,-1658206780088562.3,2.9802322387695313e-8,-2.9802322387695313e-8,0.000001,1e+21,0]")
+    try expect_equal((try parse[List[Float]](text)), values)

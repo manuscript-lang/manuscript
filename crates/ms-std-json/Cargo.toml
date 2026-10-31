@@ -8,6 +8,7 @@ description = "Native implementation of @std/json.ms (strict parser and serializ
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-rt = { path = "../ms-rt" }
+zmij = "=1.0.23"
 
 
 [lints]
