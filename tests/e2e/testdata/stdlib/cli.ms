@@ -8,7 +8,7 @@ type ServeOptions:
     verbose: Bool
     tags: List[String]
 
-fn serve(options: ServeOptions) Result[Int, Error]:
+fn serve(options: ServeOptions) Int!:
     return ok(options.port)
 
 fn common_flags() List[Flag]:
@@ -64,7 +64,7 @@ fn app() Command:
         children: [serve_command(), remote_group()]
     )
 
-fn run(argv: List[String]) Result[Matches, CliError]:
+fn run(argv: List[String]) Matches!CliError:
     let parsed = app().parse(argv)
     if parsed.is_error(): return error(parsed.err().clone())
 
@@ -72,7 +72,7 @@ fn run(argv: List[String]) Result[Matches, CliError]:
         Run(_, matches): return ok(matches.clone())
         Help(text): return ok(Matches(path: [text.clone()]))
 
-fn failure(argv: List[String]) Result[String, Error]:
+fn failure(argv: List[String]) String!:
     let result = app().parse(argv)
     if result.is_ok(): return error(CliError.InvalidSchema("accepted"))
 
@@ -209,7 +209,7 @@ test "schema mistakes are reported before parsing":
         "bad command name help"
     )
 
-fn handled(argv: List[String]) Result[Int, Error]:
+fn handled(argv: List[String]) Int!:
     let parsed = app().parse(argv)
     if parsed.is_error(): return error(parsed.err().clone())
 

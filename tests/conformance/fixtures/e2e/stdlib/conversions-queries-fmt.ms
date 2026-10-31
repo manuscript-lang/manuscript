@@ -20,13 +20,13 @@ fn counted(var counter: Counter) Counter:
     counter.calls = counter.calls + 1
     return counter
 
-fn require_value[T, E: Error](value: T?, cause: E) Result[T, E]:
+fn require_value[T, E: Error](value: T?, cause: E) T!E:
     return value.ok_or(cause)
 
-fn require_lazy[T, E: Error](value: T?, create: fn() E) Result[T, E]:
+fn require_lazy[T, E: Error](value: T?, create: fn() E) T!E:
     return value.ok_or_else[E](create)
 
-fn success_only[T, E: Error](value: Result[T, E]) T?:
+fn success_only[T, E: Error](value: T!E) T?:
     if let item = value:
         return item
 
@@ -52,7 +52,7 @@ test "conversions and collection queries are callable":
         missing.ok_or_else(fn: TextError("absent")).err().message(), "absent"
     )
 
-    let failed: Result[Int, TextError] = error(TextError("failed"))
+    let failed: Int!TextError = error(TextError("failed"))
     (failed.to_optional().is_none()) | try expect_true
 
     let entries: Map[String, Int] = {"b": 2, "a": 1}
@@ -95,10 +95,10 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     let bound_lazy = missing.ok_or_else[Counter]
     bound_lazy(create).err().calls | try expect_equal(10)
 
-    let failure: Result[Counter, Pending] = error(Pending([1, 2]))
+    let failure: Counter!Pending = error(Pending([1, 2]))
     (success_only(failure).is_none()) | try expect_true
 
-    let success: Result[Counter, TextError] = ok(counter.clone())
+    let success: Counter!TextError = ok(counter.clone())
     let extract = success.to_optional
     var extracted = extract().get().clone()
     extracted.calls = 7
@@ -114,7 +114,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     let unit_value: Unit? = unit
     (unit_value.ok_or(TextError("absent")).to_optional().is_some()) | try expect_true
 
-    let nested_result: Result[Int, TextError]? = error(TextError("nested"))
+    let nested_result: Int!TextError? = error(TextError("nested"))
     nested_result.ok_or(
         TextError("absent")
     ).to_optional().get().err().message() | try expect_equal("nested")
@@ -159,7 +159,7 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
     initial.length() | try expect_equal(0)
     untouched | try expect_equal(["empty copy"])
 
-    let success: Result[Int, Counter] = ok(2)
+    let success: Int!Counter = ok(2)
     var chain_1 = Map[String, Int]()
     chain_1.add("a", 3)
 
@@ -514,20 +514,20 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         )
     )
 
-fn find_port(port: Int?) Result[Int, Error]:
+fn find_port(port: Int?) Int!:
     let value = try port.ok_or()
     return ok(value)
 
 test "ok_or without a cause records the calling file and line":
     let absent: Int? = none
-    let direct: Result[Int, MissingValue] = absent.ok_or()
+    let direct: Int!MissingValue = absent.ok_or()
     (direct.err().message().contains("conversions-queries.ms:")) | try expect_true
 
     let message = find_port(none).err().message()
     (message.starts_with("missing value at ")) | try expect_true
     find_port(8080).get() | try expect_equal(8080)
 
-    let named: Result[Int, TextError] = absent.ok_or(TextError("port"))
+    let named: Int!TextError = absent.ok_or(TextError("port"))
     named.err().message() | try expect_equal("port")
 
     let missing_port = find_port(none)

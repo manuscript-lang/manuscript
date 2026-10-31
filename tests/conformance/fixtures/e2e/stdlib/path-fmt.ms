@@ -31,6 +31,6 @@ test "module dirname and basename_without follow the host dialect":
     try expect_equal(basename_without("dir/file.txt", ".md"), "file.txt")
 
 test "glob matching rejects NUL in the path as it does in the pattern":
-    let invalid: Result[Bool, PathError] = error(PathError.InvalidInput)
+    let invalid: Bool!PathError = error(PathError.InvalidInput)
     try expect_equal(posix().matches_glob("a\u{0}b", "*"), invalid)
     try expect_equal(posix().matches_glob("ab", "*\u{0}"), invalid)

@@ -14,18 +14,18 @@ test "big integers exceed machine range without losing precision":
     try expect_equal(from_int(5).bit_xor(from_int(3)).to_int(), 6)
 
 test "big integers validate digits budgets and zero divisors":
-    let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
+    let invalid: BigInt!BigIntError = error(BigIntError.InvalidInput)
     try expect_equal(from_int(1).divide(from_int(0)), invalid)
 
-    let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
+    let limited: BigInt!BigIntError = error(BigIntError.LimitExceeded)
     try expect_equal(parse("123", 10, 2), limited)
 
-    let malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
+    let malformed: BigInt!BigIntError = error(BigIntError.InvalidData)
     try expect_equal(parse("1_0", 10), malformed)
 
 test "big integer budgets exclude at most one leading sign before validation":
-    let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
-    let malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
+    let limited: BigInt!BigIntError = error(BigIntError.LimitExceeded)
+    let malformed: BigInt!BigIntError = error(BigIntError.InvalidData)
 
     for text in ["+-1", "-+1", "++1", "--1"]:
         if parse(text, 10, 1) != limited: return fail(
@@ -56,10 +56,10 @@ test "big integers support sign pow shifts and conversion":
         (try from_int(1).shift_left(70)).to_float(), 1180591620717411303424.0
     )
 
-    let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
+    let invalid: BigInt!BigIntError = error(BigIntError.InvalidInput)
     try expect_equal(five.pow(-1), invalid)
     try expect_equal(five.shift_left(-1), invalid)
 
-    let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
+    let limited: BigInt!BigIntError = error(BigIntError.LimitExceeded)
     try expect_equal(from_int(2).pow(100000000), limited)
     try expect_equal(five.shift_left(100000000), limited)

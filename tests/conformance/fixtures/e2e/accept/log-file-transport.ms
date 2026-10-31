@@ -11,7 +11,7 @@ type Service:
 type Request:
     request: Int
 
-fn lines(path: String) Result[String, Error]:
+fn lines(path: String) String!:
     let data = try filesystem().read_file(path)
     return ok(data.decode_utf8().get(""))
 
@@ -48,10 +48,10 @@ test "limits, invalid levels, and closed transports are errors":
     )
     try logger.info("x")
 
-    let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
+    let limited: Unit!LogError = error(LogError.LimitExceeded)
     try expect_equal(logger.info("xx"), limited)
 
-    let invalid: Result[Unit, LogError] = error(LogError.InvalidInput)
+    let invalid: Unit!LogError = error(LogError.InvalidInput)
     try expect_equal(logger.log(LogLevel.Silent, "bad"), invalid)
     try expect_equal(
         try expect_error(create(try file_transport(path), max_bytes: -1)),
@@ -60,7 +60,7 @@ test "limits, invalid levels, and closed transports are errors":
     logger.close()
     logger.close()
 
-    let closed: Result[Unit, LogError] = error(LogError.Closed)
+    let closed: Unit!LogError = error(LogError.Closed)
     try expect_equal(logger.info("x"), closed)
     try expect_equal(logger.flush(), closed)
     try expect_equal(try lines(path), line)

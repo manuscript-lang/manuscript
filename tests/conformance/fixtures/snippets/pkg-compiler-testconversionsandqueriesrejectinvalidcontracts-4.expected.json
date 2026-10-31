@@ -7,32 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "declaration Result reuses a prelude name; rename it, because Result always refers to the standard declaration",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected ':', found '!'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body",
         "position": {
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms",
           "line": 4,
-          "column": 1,
-          "offset": 229
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "String does not satisfy Error; use a type that implements it",
-        "position": {
+          "column": 7,
+          "offset": 235
+        },
+        "end": {
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms",
-          "line": 8,
-          "column": 1,
-          "offset": 296
+          "line": 4,
+          "column": 8,
+          "offset": 236
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms:4:1: resolution: declaration Result reuses a prelude name; rename it, because Result always refers to the standard declaration\n   |\n 4 | type Result[T, E]:\n   | ^\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms:8:1: type: String does not satisfy Error; use a type that implements it\n   |\n 8 | fn wrong(value: Result[Int, String]) Int?: value.to_optional()\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms:4:7: parse: expected ':', found '!'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body\n   |\n 4 | type T!E:\n   |       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

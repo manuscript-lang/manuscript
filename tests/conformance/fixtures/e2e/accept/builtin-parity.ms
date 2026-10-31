@@ -34,14 +34,14 @@ fn compare(left: Int, right: Int) Int:
 
     return 0
 
-fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
+fn common_result[T, E: Error](result: T!E) T!:
     match result:
         ok(value):
             return ok(value)
         error(cause):
             return error(cause)
 
-fn checked_expansion() Result[Unit, Error]:
+fn checked_expansion() Unit!:
     (
         not (
             try common_result(
@@ -340,10 +340,10 @@ test "growth limits and invalid inputs return values":
     "x".pad_start(target_length: -1, padding: " ") | try expect_equal("x")
     "x".pad_end(target_length: 4, padding: "") | try expect_equal("x")
 
-    let list_limit: Result[List[Int], CollectionError] = error(
+    let list_limit: List[Int]!CollectionError = error(
         CollectionError.LimitExceeded
     )
-    let list_invalid: Result[List[Int], CollectionError] = error(
+    let list_invalid: List[Int]!CollectionError = error(
         CollectionError.InvalidInput
     )
     range_by(start: 0, end: 4, step: 1, max_items: 3) | try expect_equal(list_limit)
@@ -390,7 +390,7 @@ test "grouping and lazy map defaults":
     original.values() | try expect_equal([1])
     calls.length() | try expect_equal(0)
 
-fn verify_text_and_numbers() Result[Unit, Error]:
+fn verify_text_and_numbers() Unit!:
     (try common_result(result: "é".normalize(form: "NFC", max_bytes: 2))) | try expect_equal(
         "é"
     )
@@ -433,12 +433,12 @@ test "normalization, empty separators, and precision formatting":
     "".replace_first(old: "", new: "-") | try expect_equal("-")
     "é".concat(other: "🙂") | try expect_equal("é🙂")
 
-    let invalid: Result[String, StringError] = error(StringError.InvalidInput)
-    let limit: Result[String, StringError] = error(StringError.LimitExceeded)
+    let invalid: String!StringError = error(StringError.InvalidInput)
+    let limit: String!StringError = error(StringError.LimitExceeded)
     "é".normalize(form: "invalid", max_bytes: 8) | try expect_equal(invalid)
     "é".normalize(form: "NFD", max_bytes: 2) | try expect_equal(limit)
 
-fn verify_bigint_and_regex() Result[Unit, Error]:
+fn verify_bigint_and_regex() Unit!:
     let a = from_int(value: 12)
     let b = from_int(value: 5)
     a.add(other: b).to_string_radix(radix: 10) | try expect_equal("17")

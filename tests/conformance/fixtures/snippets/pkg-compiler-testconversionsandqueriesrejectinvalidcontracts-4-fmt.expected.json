@@ -3,7 +3,26 @@
   "phase": "parse",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "diagnostics": [],
-    "fmt": "type Result[T, E]:\n    case ok(value: T)\n    case error(cause: E)\n\nfn wrong(value: Result[Int, String]) Int?: value.to_optional()\n"
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected ':', found '!'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body",
+        "position": {
+          "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4-fmt.ms",
+          "line": 4,
+          "column": 7,
+          "offset": 240
+        },
+        "end": {
+          "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4-fmt.ms",
+          "line": 4,
+          "column": 8,
+          "offset": 241
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
   }
 }

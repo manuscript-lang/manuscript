@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-compiler-testresultargumentinferencerejects-2.ms",
           "line": 4,
-          "column": 27,
-          "offset": 211
+          "column": 19,
+          "offset": 203
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "pkg-compiler-testresultargumentinferencerejects-2.ms",
           "line": 6,
           "column": 18,
-          "offset": 247
+          "offset": 238
         }
       },
       {
@@ -36,14 +36,14 @@
           "file": "pkg-compiler-testresultargumentinferencerejects-2.ms",
           "line": 6,
           "column": 25,
-          "offset": 254
+          "offset": 245
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-2.ms:4:27: resolution: unknown type E2; declare it with 'type E2:' / 'interface E2:', declare it as a type parameter, or import it\n   |\n 4 | fn domain[T](r: Result[T, E2]) Unit: return\n   |                           ^\n<DIR>/pkg-compiler-testresultargumentinferencerejects-2.ms:6:18: type: cannot infer type argument T for domain; write domain[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 6 | fn first() Unit: domain(f())\n   |                  ^\n<DIR>/pkg-compiler-testresultargumentinferencerejects-2.ms:6:25: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 6 | fn first() Unit: domain(f())\n   |                         ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-2.ms:4:19: resolution: unknown type E2; declare it with 'type E2:' / 'interface E2:', declare it as a type parameter, or import it\n   |\n 4 | fn domain[T](r: T!E2) Unit: return\n   |                   ^\n<DIR>/pkg-compiler-testresultargumentinferencerejects-2.ms:6:18: type: cannot infer type argument T for domain; write domain[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 6 | fn first() Unit: domain(f())\n   |                  ^\n<DIR>/pkg-compiler-testresultargumentinferencerejects-2.ms:6:25: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 6 | fn first() Unit: domain(f())\n   |                         ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

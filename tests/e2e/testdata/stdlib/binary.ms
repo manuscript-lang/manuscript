@@ -60,8 +60,8 @@ test "append_bytes appends many and append one":
     try expect_equal(out.build(), Bytes([7, 1, 2, 3, 4]))
 
 test "reads past the end or before the start are out of range":
-    let range_error8: Result[UInt8, BinaryError] = error(BinaryError.OutOfRange)
-    let range_error32: Result[UInt32, BinaryError] = error(BinaryError.OutOfRange)
+    let range_error8: UInt8!BinaryError = error(BinaryError.OutOfRange)
+    let range_error32: UInt32!BinaryError = error(BinaryError.OutOfRange)
     try expect_equal(Bytes([0]).uint8(-1), range_error8)
     try expect_equal(Bytes([0]).uint8(1), range_error8)
     try expect_equal(Bytes([0, 0, 0]).uint32_le(0), range_error32)

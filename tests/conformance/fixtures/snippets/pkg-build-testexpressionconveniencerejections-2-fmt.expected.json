@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(x: Int?) Int:\n    while true:\n        while (\n            match x:\n                some(n): true\n                none: break\n        ):\n            break\n"
+    "fmt": "fn f(x: Int?) Int:\n    while true:\n        while (\n            match x:\n                n: true\n                none: break\n        ):\n            break\n"
   }
 }

@@ -7,5 +7,5 @@ fn crash(cause: TextError) Int:
     return 1 / "".byte_length()
 
 export fn main() Int:
-    let value: Result[Int, TextError] = error(TextError("expected failure"))
+    let value: Int!TextError = error(TextError("expected failure"))
     return value.get_or_else(crash)

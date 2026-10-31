@@ -281,7 +281,7 @@ type Outcome:
     source: Source
     failure: String?
 
-fn run_case[T](gen: Gen[T], property: fn(T) Result[Unit, Error], s: Source) Outcome:
+fn run_case[T](gen: Gen[T], property: fn(T) Unit!, s: Source) Outcome:
     let {value, source} = gen.make(s)
     if source.invalid:
         return Outcome(source, none)
@@ -304,7 +304,7 @@ fn run_case[T](gen: Gen[T], property: fn(T) Result[Unit, Error], s: Source) Outc
 
 let property_failed = "property returned an error"
 
-fn run_property[T](property: fn(T) Result[Unit, Error], value: T) Unit:
+fn run_property[T](property: fn(T) Unit!, value: T) Unit:
     if property(value).is_error():
         panic(property_failed)
 
@@ -318,17 +318,13 @@ fn simpler(candidate: List[Int], current: List[Int]) Bool:
             return candidate[i] < current[i]
     return false
 
-fn replay[T](
-    gen: Gen[T],
-    property: fn(T) Result[Unit, Error],
-    choices: List[Int]
-) Outcome:
+fn replay[T](gen: Gen[T], property: fn(T) Unit!, choices: List[Int]) Outcome:
     return run_case(gen, property, Source(choices.clone(), 0, 0, false, false))
 
 # Tries `candidate`; returns the used draws when it still fails and is simpler than `current`.
 fn attempt[T](
     gen: Gen[T],
-    property: fn(T) Result[Unit, Error],
+    property: fn(T) Unit!,
     candidate: List[Int],
     current: List[Int]
 ) List[Int]?:
@@ -345,7 +341,7 @@ fn attempt[T](
 # Shrinks failing `choices`: deletes spans, then lowers values, until a full pass makes no progress or `budget` replays run.
 fn shrink[T](
     gen: Gen[T],
-    property: fn(T) Result[Unit, Error],
+    property: fn(T) Unit!,
     choices: List[Int],
     budget: Int
 ) List[Int]:
@@ -394,10 +390,10 @@ fn shrink[T](
 export fn check[T](
     name: String,
     gen: Gen[T],
-    property: fn(T) Result[Unit, Error],
+    property: fn(T) Unit!,
     runs: Int = 100,
     seed: Int?
-) Result[Unit, Error]:
+) Unit!:
     let config = settings(runs)
     var chosen = seed
     if chosen.is_none():
@@ -456,12 +452,12 @@ export fn check[T](
 fn report[T](
     name: String,
     gen: Gen[T],
-    property: fn(T) Result[Unit, Error],
+    property: fn(T) Unit!,
     failing: Source,
     message: String,
     seed: Int,
     executed: Int
-) Result[Unit, Error]:
+) Unit!:
     let used = failing.choices.take(failing.pos)
     let small = shrink(gen, property, used, 2000)
     let final = replay(gen, property, small)

@@ -7,5 +7,5 @@ fn crash(value: Int) Int:
     return 1 / value
 
 export fn main() Int:
-    let value: Result[Int, TextError] = ok(0)
+    let value: Int!TextError = ok(0)
     return value.map(crash).get()

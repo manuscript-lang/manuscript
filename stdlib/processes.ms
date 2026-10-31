@@ -38,7 +38,7 @@ extern fn msstd_process_fork(
     stdin: Stdio,
     stdout: Stdio,
     stderr: Stdio
-) Result[NativeProcess, CommandError]
+) NativeProcess!CommandError
 
 extern fn msstd_process_forked_link(process: NativeProcess) NativeLink
 
@@ -49,7 +49,7 @@ extern fn msstd_process_forked_output(process: NativeProcess, which: Int) ReadSt
 extern fn msstd_process_forked_wait(
     process: NativeProcess,
     timeout_ns: Int
-) Result[Int, CommandError]
+) Int!CommandError
 
 extern fn msstd_process_forked_signal(process: NativeProcess, force: Bool) Unit
 
@@ -133,14 +133,14 @@ fn frame(kind: Int, body: String) Bytes:
     out.append_bytes(data)
     return out.build()
 
-fn encode[T: Data](value: T) Result[String, ChannelError]:
+fn encode[T: Data](value: T) String!ChannelError:
     match stringify(Envelope[T](value: value)):
         ok(text): return ok(text)
         error(e): return error(
             ChannelError.Broken("cannot encode the value: " + e.message())
         )
 
-fn decode[T: Data](body: String) Result[T, ChannelError]:
+fn decode[T: Data](body: String) T!ChannelError:
     match parse[Envelope[T]](body):
         ok(envelope):
             let {value} = envelope
@@ -152,7 +152,7 @@ fn decode[T: Data](body: String) Result[T, ChannelError]:
 # The next whole frame, waiting for more bytes as needed; `none` once the other process closed
 # the pipe or is gone. One task reads the pipe at a time: another waits, then returns a `RETRY`
 # frame so its caller sees what the reader recorded (a `RESULT` or `CLOSE`) before reading again.
-fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Result[Frame?, ChannelError]:
+fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Frame?!ChannelError:
     while true:
         var state = lock(inbox)
         let available = state.value.pending.length()
@@ -210,7 +210,7 @@ type ProcessTransport[In: Data, Out: Data]:
     inbox: Shared[Inbox]
 
 impl Transport[In, Out] for ProcessTransport[In, Out]:
-    fn send(value: In) Result[Unit, ChannelError]:
+    fn send(value: In) Unit!ChannelError:
         let state = self.inbox.get()
         if state.closed or state.finished:
             return error(ChannelError.Closed)
@@ -221,7 +221,7 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
 
         return ok(unit)
 
-    fn receive() Result[Out?, ChannelError]:
+    fn receive() Out?!ChannelError:
         let state = self.inbox.get()
         if state.closed:
             return error(ChannelError.Closed)
@@ -290,7 +290,7 @@ fn wait_result[T: Data](
     native: NativeProcess,
     link: NativeLink,
     inbox: Shared[Inbox]
-) Result[T, ProcessError]:
+) T!ProcessError:
     while true:
         if let body = inbox.get().result.clone():
             match decode[T](body):
@@ -350,7 +350,7 @@ impl Process[T, In, Out]:
     # Waits for the entry to return and gives its result, or `Exited` with the status of a child
     # that ended first. Another task may receive from the channel meanwhile; one task reads the
     # pipe at a time and the other waits. Messages the child sent and the parent has not received are dropped.
-    fn result() Result[T, ProcessError]:
+    fn result() T!ProcessError:
         return wait_result[T](self.native, self.link, self.inbox)
 
     # The child's standard input, when spawned with `stdin: Stdio.Pipe`; otherwise already closed,
@@ -370,7 +370,7 @@ impl Process[T, In, Out]:
 
     # Waits for the child to exit and returns its exit status. Returns `Timeout` if `timeout`
     # elapses first, leaving the child running.
-    fn wait(timeout: Duration?) Result[Int, CommandError]:
+    fn wait(timeout: Duration?) Int!CommandError:
         return msstd_process_forked_wait(self.native, nanos(timeout))
 
     # Asks the child to stop (SIGTERM on Unix; Windows ends the whole tree). Does not wait.
@@ -416,7 +416,7 @@ impl ProcessGroup[T, In, Out]:
         stdin: Stdio = Stdio.Inherit,
         stdout: Stdio = Stdio.Inherit,
         stderr: Stdio = Stdio.Inherit
-    ) Result[Process[T, In, Out], ProcessError]:
+    )(Process[T, In, Out])!ProcessError:
         let runner: fn() Unit = fn: serve(entry)
         let native = try msstd_process_fork(runner, stdin, stdout, stderr).map_error(
             not_started
@@ -449,7 +449,7 @@ impl ProcessGroup[T, In, Out]:
 
     # Waits for every open process's result in start order, or returns the first error.
     # Closed processes are not included.
-    fn results() Result[List[T], ProcessError]:
+    fn results() List[T]!ProcessError:
         let count = self.processes.get().length()
         var values = List[T]()
 

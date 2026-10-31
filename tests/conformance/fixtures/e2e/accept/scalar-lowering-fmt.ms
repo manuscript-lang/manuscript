@@ -79,26 +79,26 @@ fn nested(counter: Counter) Unit:
 
     callback()
 
-fn failed() Result[Int, TextError]: error(TextError("expected"))
+fn failed() Int!TextError: error(TextError("expected"))
 
-fn propagate(counter: Counter) Result[Int, TextError]:
+fn propagate(counter: Counter) Int!TextError:
     var _resource = Resource(counter)
     let value = try failed()
     return ok(value)
     return ok(0)
 
-fn bare_propagate() Result[Int, TextError]:
+fn bare_propagate() Int!TextError:
     let value = try failed()
     return ok(value)
 
-fn equality_propagate() Result[Bool, TextError]:
+fn equality_propagate() Bool!TextError:
     let matches = (try failed()) == 0
     return ok(matches)
 
-fn bool_failed() Result[Bool, TextError]: error(TextError("expected"))
+fn bool_failed() Bool!TextError: error(TextError("expected"))
 
-fn nested_results(counter: Counter) Result[Int, TextError]:
-    let child = fn() Result[Bool, TextError]:
+fn nested_results(counter: Counter) Int!TextError:
+    let child = fn() Bool!TextError:
         var _resource = Resource(counter)
         let value = try bool_failed()
         return ok(value)
@@ -108,7 +108,7 @@ fn nested_results(counter: Counter) Result[Int, TextError]:
     let value = try failed()
     return ok(value)
 
-fn statement_match_try(counter: Counter) Result[Int, TextError]:
+fn statement_match_try(counter: Counter) Int!TextError:
     match present(1):
         _value:
             let _resource = Resource(counter)
@@ -118,7 +118,7 @@ fn statement_match_try(counter: Counter) Result[Int, TextError]:
 
     return ok(-1)
 
-fn value_match_loop_try(counter: Counter) Result[Int, TextError]:
+fn value_match_loop_try(counter: Counter) Int!TextError:
     var index = 0
 
     while index < 2:

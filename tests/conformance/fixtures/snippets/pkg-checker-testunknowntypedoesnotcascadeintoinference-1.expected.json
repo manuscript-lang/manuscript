@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
           "line": 6,
-          "column": 33,
-          "offset": 273
+          "column": 25,
+          "offset": 265
         }
       },
       {
@@ -24,8 +24,8 @@
         "position": {
           "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
           "line": 7,
-          "column": 19,
-          "offset": 305
+          "column": 11,
+          "offset": 288
         }
       },
       {
@@ -35,8 +35,8 @@
         "position": {
           "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
           "line": 12,
-          "column": 63,
-          "offset": 456
+          "column": 55,
+          "offset": 430
         }
       },
       {
@@ -47,14 +47,14 @@
           "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
           "line": 14,
           "column": 26,
-          "offset": 514
+          "offset": 487
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:6:33: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 6 |     step: fn(T) Result[List[U], MissingError]\n   |                                 ^\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:7:19: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 7 | ) Result[List[U], MissingError]:\n   |                   ^\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:12:63: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n    |\n 12 |         items: [1, 2], step: fn(value: Int) Result[List[Int], MissingError]: ok([value])\n    |                                                               ^\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:14:26: type: expected Int, found String (in the initializer of 'unrelated')\n    |\n 14 |     let unrelated: Int = \"wrong\"\n    |                          ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:6:25: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 6 |     step: fn(T) List[U]!MissingError\n   |                         ^\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:7:11: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 7 | ) List[U]!MissingError:\n   |           ^\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:12:55: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n    |\n 12 |         items: [1, 2], step: fn(value: Int) List[Int]!MissingError: ok([value])\n    |                                                       ^\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:14:26: type: expected Int, found String (in the initializer of 'unrelated')\n    |\n 14 |     let unrelated: Int = \"wrong\"\n    |                          ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -15,7 +15,7 @@ test "integer division retains signed boundary and remainder rules":
     try expect_equal(1d / -1d, -1d)
     try expect_false((1.0 / 0.0).is_finite() or not (0.0 / 0.0).is_nan())
 
-    let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
+    let invalid: BigInt!BigIntError = error(BigIntError.InvalidInput)
     try expect_equal(from_int(1).divide(from_int(0)), invalid)
     try expect_equal(from_int(1).remainder(from_int(0)), invalid)
 

@@ -11,4 +11,4 @@ impl Error for Failure:
 export type Item:
     value: Int
 
-export fn fail() Result[Int, Failure]: error(Failure.Denied("denied"))
+export fn fail() Int!Failure: error(Failure.Denied("denied"))

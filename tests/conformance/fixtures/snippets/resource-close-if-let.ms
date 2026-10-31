@@ -17,7 +17,7 @@ impl Closeable for Res:
 fn maybe(name: String, present: Bool) Res?:
     return if present: Res(name) else: none
 
-fn make(name: String) Result[Res, TextError]:
+fn make(name: String) Res!TextError:
     return ok(Res(name))
 
 fn keep(r: Res) Res:

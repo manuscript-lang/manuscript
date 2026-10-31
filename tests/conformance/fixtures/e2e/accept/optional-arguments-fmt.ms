@@ -15,7 +15,7 @@ fn list_size(value: List[Int]?) Int: value.get().length()
 
 fn flag(value: Bool?) Bool: value.get()
 
-fn success(value: Result[Int, TextError]?) Int:
+fn success(value: Int!TextError?) Int:
     return value.get().get(-1)
 
 fn context[T](value: T?, fallback: T) T:

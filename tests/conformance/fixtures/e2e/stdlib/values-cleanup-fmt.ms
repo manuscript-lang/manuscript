@@ -35,7 +35,7 @@ fn leave(dir: String) Int:
     let _inner = Resource(dir, 2)
     return 42
 
-fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
+fn propagate(result: Int!JsonError) Int!JsonError:
     let found = try result
     return ok(found + 1)
 
@@ -50,11 +50,11 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
     try expect_false(not nested.is_some() or not nested.get().is_none())
 
 test "Result propagation and Error views preserve concrete causes":
-    let failed: Result[Int, JsonError] = error(JsonError.InvalidData)
+    let failed: Int!JsonError = error(JsonError.InvalidData)
     try expect_equal(propagate(failed), failed)
 
-    let success: Result[Int, JsonError] = ok(3)
-    let expected: Result[Int, JsonError] = ok(4)
+    let success: Int!JsonError = ok(3)
+    let expected: Int!JsonError = ok(4)
     try expect_equal(propagate(success), expected)
 
     let view = Error(JsonError.InvalidData)

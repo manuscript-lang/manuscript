@@ -8,9 +8,9 @@ fn apply[T, U](value: T, transform: fn(T) U) U: transform(value)
 
 fn chain[T, U](first: fn() T, second: fn(T) U) U: second(first())
 
-fn with_result[T](transform: fn() Result[T, TextError]) Result[T, TextError]: transform()
+fn with_result[T](transform: fn() T!TextError) T!TextError: transform()
 
-fn checked() Result[Int, TextError]: ok(3)
+fn checked() Int!TextError: ok(3)
 
 type Box[T]:
     value: T
