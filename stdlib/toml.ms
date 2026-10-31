@@ -1035,10 +1035,11 @@ type Writer:
     out: StringBuilder
     started: Bool
 
+# Only ASCII controls use the four-digit escape form below.
 fn hex4(code: Int) String:
-    var digits = code.to_string_radix(16)
-    while digits.length() < 4: digits = "0".concat(digits)
-    return digits
+    return "00".concat("0123456789abcdef".get(code / 16)).concat(
+        "0123456789abcdef".get(code % 16)
+    )
 
 fn quote_text(text: String) String:
     var result = StringBuilder()
