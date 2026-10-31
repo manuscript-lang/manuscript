@@ -139,14 +139,6 @@ impl fmt::Display for Type {
                 write!(f, "{inner}?")
             };
         }
-        if self.is_std("Result") && self.args.len() == 2 && self.args[1].is_std("Error") {
-            let ok = &self.args[0];
-            return if ok.kind == Kind::Function {
-                write!(f, "({ok})!")
-            } else {
-                write!(f, "{ok}!")
-            };
-        }
         f.write_str(self.name.as_str())?;
         if !self.args.is_empty() {
             f.write_char('[')?;
