@@ -40,7 +40,7 @@ fn flag(b: bool) -> String {
 }
 
 #[test]
-fn matches_go() {
+fn matches_oracle() {
     let data = include_str!("oracle/crypto_asym.tsv");
     let mut keys: HashMap<String, (Vec<u8>, Vec<u8>)> = HashMap::new();
     let mut n = 0;

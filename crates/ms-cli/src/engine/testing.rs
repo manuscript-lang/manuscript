@@ -1070,7 +1070,7 @@ esac
         let statuses: Vec<_> = document.tests.iter().map(|t| t.status.as_str()).collect();
         assert_eq!(statuses, ["passed", "failed", "failed", "failed"]);
         assert_eq!(document.count(Status::Failed), 3);
-        let json = document.to_json().pretty_line(ms_json::Escape::GoHtml);
+        let json = document.to_json().pretty_line(ms_json::Escape::HtmlSafe);
         assert!(json.contains("\"position\""), "{json}");
     }
 
@@ -1095,7 +1095,7 @@ esac
             "2 tests, 0 failed, 1 skipped\n",
         ];
         assert_eq!(text, expected.concat());
-        let json = document.to_json().pretty_line(ms_json::Escape::GoHtml);
+        let json = document.to_json().pretty_line(ms_json::Escape::HtmlSafe);
         assert!(json.contains("\"status\": \"skipped\""), "{json}");
         assert!(json.contains("\"skipped\": 1"), "{json}");
         assert!(json.contains("\"not_run\": 0"), "{json}");

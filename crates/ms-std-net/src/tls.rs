@@ -761,11 +761,13 @@ pub struct TlsIo {
     verified: bool,
 }
 
-fn go_handshake_error(e: &rustls::Error) -> String {
+fn handshake_error_text(e: &rustls::Error) -> String {
     match e {
         rustls::Error::General(m) => m.clone(),
-        rustls::Error::AlertReceived(a) => format!("remote error: tls: {}", alert_text(a)),
-        other => format!("tls: {other}"),
+        rustls::Error::AlertReceived(a) => {
+            format!("TLS handshake: peer sent alert: {}", alert_text(a))
+        }
+        other => format!("TLS handshake: {other}"),
     }
 }
 
@@ -835,7 +837,7 @@ impl TlsIo {
                 Ok(false) => return Handshake::WantRead,
                 Err(HandshakeFail::Tls(e)) => {
                     let _ = self.write_pending();
-                    return Handshake::Failed(NetErr::Failed(go_handshake_error(&e)));
+                    return Handshake::Failed(NetErr::Failed(handshake_error_text(&e)));
                 }
                 Err(HandshakeFail::Io(e)) => {
                     return Handshake::Failed(NetErr::Failed(describe_io_error(&e)));
@@ -943,7 +945,7 @@ impl Io for TlsIo {
                 Err(HandshakeFail::Io(e)) => return Step::Err(e),
                 Err(HandshakeFail::Tls(e)) => {
                     let _ = self.write_pending();
-                    return Step::Err(io::Error::other(go_handshake_error(&e)));
+                    return Step::Err(io::Error::other(handshake_error_text(&e)));
                 }
             }
         }
@@ -1030,7 +1032,7 @@ pub fn connect(
 ) -> Result<Box<dyn Io>, NetErr> {
     let name = server_name_for(server_name)?;
     let conn = rustls::ClientConnection::new(config, name)
-        .map_err(|e| NetErr::Failed(go_handshake_error(&e)))?;
+        .map_err(|e| NetErr::Failed(handshake_error_text(&e)))?;
     let io = TlsIo::handshake(sock, rustls::Connection::Client(conn), deadline, true)?;
     Ok(Box::new(io))
 }
@@ -1048,7 +1050,7 @@ pub fn accept(
     verified_clients: bool,
 ) -> Result<Box<dyn Io>, NetErr> {
     let conn = rustls::ServerConnection::new(config)
-        .map_err(|e| NetErr::Failed(go_handshake_error(&e)))?;
+        .map_err(|e| NetErr::Failed(handshake_error_text(&e)))?;
     let io = TlsIo::handshake(sock, rustls::Connection::Server(conn), deadline, false)?;
     // A server verified the client when one presented a certificate.
     let verified = verified_clients && io.state.borrow().peer_certificates().is_some();
