@@ -12,6 +12,9 @@ import gen_c16 from "./challenges/c16-maze-bfs/gen.ms"
 import gen_c18 from "./challenges/c18-cron-next-runs/gen.ms"
 import gen_c25 from "./challenges/c25-log-analyzer/gen.ms"
 import gen_c36 from "./challenges/c36-bank-ledger/gen.ms"
+import gen_c44 from "./challenges/c44-unified-diff/gen.ms"
+import gen_c51 from "./challenges/c51-lisp-interpreter/gen.ms"
+import gen_c52 from "./challenges/c52-sql-engine/gen.ms"
 
 export fn main() Int:
     let args = arguments()
@@ -47,6 +50,15 @@ export fn main() Int:
         ran += 1
     if which == "c36" or which == "all":
         gen_c36()
+        ran += 1
+    if which == "c44" or which == "all":
+        gen_c44()
+        ran += 1
+    if which == "c51" or which == "all":
+        gen_c51()
+        ran += 1
+    if which == "c52" or which == "all":
+        gen_c52()
         ran += 1
     if ran == 0:
         stderr().write("unknown challenge {which}\n").get()

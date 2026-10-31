@@ -45,3 +45,17 @@ export fn solve_with(oracle: String, stdin: String) String:
     if ran.code != 0: panic("oracle failed (exit {ran.code}): {ran.err.take(500)}")
 
     return ran.out
+
+# The cases of a large challenge: inputs supplied by the generator, outputs from its Go oracle.
+export type Cases:
+    oracle: String
+    list: List[GenCase] = []
+
+impl Cases:
+    # Appends a case whose expected output is the oracle's answer for `stdin`.
+    var fn push(name: String, stdin: String) Unit:
+        self.list.append(make_case(name, stdin, solve_with(self.oracle, stdin)))
+
+    # The case made from `stdin` without recording it, for the example lists.
+    fn make(name: String, stdin: String) GenCase:
+        return make_case(name, stdin, solve_with(self.oracle, stdin))
