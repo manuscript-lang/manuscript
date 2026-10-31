@@ -461,7 +461,7 @@ impl Checker {
             self.type_error(
                 s.pos,
                 format!(
-                    "for requires List, Set, Map, an Iterator, or an Iterable, found {t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var fn next() ref T?', or Iterable with 'fn iter() I' for a container whose iterator I borrows from it"
+                    "for requires List, Set, Map, an Iterator, or an Iterable, found {t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var fn next() T?', or Iterable with 'fn length() Int' and 'fn at(index: Int) T?'"
                 ),
             );
         }
@@ -599,9 +599,9 @@ impl Checker {
         self.block(&expansion, false)
     }
 
-    /// Whether `t` implements `Iterable[I]`, the contract of iterating a container by borrow.
+    /// Whether `t` implements `Iterable[T]`, the contract of iterating a container by position.
     fn is_iterable(&self, t: &Ty) -> bool {
-        self.methods(t, n("iter")).into_iter().any(|m| {
+        self.methods(t, n("at")).into_iter().any(|m| {
             m.contract
                 .as_ref()
                 .is_some_and(|contract| contract.is_std("Iterable"))
@@ -609,9 +609,9 @@ impl Checker {
     }
 
     /// `for name in container:` over an `Iterable` container is checked as
-    /// `for name in container.iter():`, so the iterator borrows the container for the loop and
-    /// each item borrows the container, never the iterator. A container that is not a place is
-    /// held in a hidden `let` first.
+    /// `for $i in 0..container.length(): if let name = container.at($i): body`, so the container is
+    /// read in place and never copied. A container that is not a place is held in a hidden `let`
+    /// first.
     fn check_iterable_for(
         &mut self,
         s: &Stmt,
@@ -627,17 +627,22 @@ impl Checker {
             end: iter.pos,
             kind,
         };
-        let mut prefix: Vec<Stmt> = Vec::new();
-        let holder = if is_place_path(iter) {
-            iter.clone()
-        } else {
-            let hidden = n(&format!("$iterable{}", s.id.0));
+        let mut expansion: Vec<Stmt> = Vec::new();
+        let holder = |c: &Self, hidden: Name| {
+            if is_place_path(iter) {
+                iter.clone()
+            } else {
+                expr(c, ExprKind::Name(hidden))
+            }
+        };
+        let hidden = n(&format!("$iterable{}", s.id.0));
+        if !is_place_path(iter) {
             let pattern = Pattern {
                 id: id(self),
                 pos,
                 kind: PatternKind::Name(hidden),
             };
-            prefix.push(Stmt {
+            expansion.push(Stmt {
                 id: id(self),
                 pos,
                 kind: StmtKind::Bind {
@@ -648,23 +653,85 @@ impl Checker {
                     group: None,
                 },
             });
-            expr(self, ExprKind::Name(hidden))
+        }
+        let index = n(&format!("$index{}", s.id.0));
+        let method = |c: &Self, member: &str, args: Vec<Expr>| {
+            let callee = expr(
+                c,
+                ExprKind::Member {
+                    left: Box::new(holder(c, hidden)),
+                    name: n(member),
+                },
+            );
+            expr(
+                c,
+                ExprKind::Call {
+                    callee: Box::new(callee),
+                    args: args
+                        .into_iter()
+                        .map(|value| Argument {
+                            pos: value.pos,
+                            name: None,
+                            value,
+                            mutable: false,
+                        })
+                        .collect(),
+                },
+            )
         };
-        let callee = expr(
-            self,
-            ExprKind::Member {
-                left: Box::new(holder),
-                name: n("iter"),
+        expansion.push(Stmt {
+            id: id(self),
+            pos,
+            kind: StmtKind::For {
+                name: index,
+                iter: {
+                    let callee = expr(self, ExprKind::Name(n("..")));
+                    let zero = expr(self, ExprKind::Number(n("0")));
+                    let length = method(self, "length", Vec::new());
+                    expr(
+                        self,
+                        ExprKind::Call {
+                            callee: Box::new(callee),
+                            args: [zero, length]
+                                .into_iter()
+                                .map(|value| Argument {
+                                    pos: value.pos,
+                                    name: None,
+                                    value,
+                                    mutable: false,
+                                })
+                                .collect(),
+                        },
+                    )
+                },
+                body: vec![Stmt {
+                    id: id(self),
+                    pos,
+                    kind: StmtKind::If {
+                        binding: Some(Pattern {
+                            id: id(self),
+                            pos,
+                            kind: PatternKind::Name(name),
+                        }),
+                        mutable: false,
+                        cond: {
+                            let position = expr(self, ExprKind::Name(index));
+                            method(self, "at", vec![position])
+                        },
+                        body: body.to_vec(),
+                        else_body: Vec::new(),
+                    },
+                }],
             },
-        );
-        let call = expr(
-            self,
-            ExprKind::Call {
-                callee: Box::new(callee),
-                args: Vec::new(),
-            },
-        );
-        self.check_iterator_for(s, name, &call, body, prefix)
+        });
+        let expansion = Rc::new(expansion);
+        self.m()
+            .facts_mut()
+            .stmts
+            .entry(s.id)
+            .or_default()
+            .expansion = Some(expansion.clone());
+        self.block(&expansion, false)
     }
 
     /// The `close() -> Unit` operations of `t`: the standard `Closeable` one when it has it.

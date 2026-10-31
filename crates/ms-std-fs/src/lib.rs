@@ -306,6 +306,11 @@ native! {
         fs_status(opened).map(Object)
     }
 
+    /// `FileHandle.clone`: a second handle over a duplicate of the descriptor.
+    fn msstd_fs_file_clone(h: ObjRef<Stream>) -> Result<Object<Stream>, StatusCode> {
+        fs_status(file::duplicate(&h)).map(Object)
+    }
+
     /// The stream view of a file handle: the same handle, retained for the caller.
     fn msstd_fs_file_reader(h: ObjShare<Stream>) -> ObjShare<Stream> {
         h

@@ -45,6 +45,15 @@ pub fn open(path: &[u8], flags: i64, mode: i64) -> Res<Stream> {
     Ok(Stream::file_handle(fd, flags, path))
 }
 
+/// `FileHandle.clone`: a second handle over the same open file, closed on its own.
+pub fn duplicate(file: &Stream) -> Res<Stream> {
+    if file.is_closed() {
+        return Err(Fail::status(STATUS_CLOSED));
+    }
+    file.duplicate()
+        .map_err(|e| Fail::errno(e, "duplicate", &file.name))
+}
+
 fn offset_ok(offset: i64) -> Res<()> {
     if offset < 0 {
         return Err(Fail::invalid());

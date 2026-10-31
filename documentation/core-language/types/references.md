@@ -31,7 +31,7 @@ fn grow(var b: Box) Int:
     xs.append(1)
     return b.items.length()
 ```
-
+The standard library lends nothing: `trim`, `List.first`, `Map.get` and `Optional.get` return owned values, and a read-only use of one is not copied. `Error.message` owns its result, so an implementation may build the text; one that returns a stored field writes `.clone()`.
 The standard library declares its lending natives the same way (`List.first`, `Map.get`, `Optional.get`). `Error.message` owns its result, so an implementation may build the text; one that returns a stored field writes `.clone()`.
 
 ## Reassignment

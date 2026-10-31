@@ -512,7 +512,19 @@ impl Scanner<'_> {
                     self.emit(kind, start, start + 2, p);
                     continue;
                 }
+                // `!` directly after a type-ending character is the Result suffix of `T!`
+                // or `T!E`; anywhere else it stays the removed negation.
+                let result_suffix = b == b'!'
+                    && self.offset > 0
+                    && self.tokens.last().is_some_and(|t| {
+                        matches!(
+                            t.kind,
+                            Tok::Name | Tok::RBracket | Tok::RParen | Tok::Question | Tok::Bang
+                        )
+                    })
+                    && matches!(self.src[self.offset - 1], b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_' | b']' | b')' | b'?' | b'!');
                 let kind = match b {
+                    b'!' if result_suffix => Tok::Bang,
                     b'(' => Tok::LParen,
                     b')' => Tok::RParen,
                     b'[' => Tok::LBracket,

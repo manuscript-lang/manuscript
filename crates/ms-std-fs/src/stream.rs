@@ -196,6 +196,18 @@ impl Stream {
         s
     }
 
+    /// A second handle over a duplicate of this file's descriptor, closed on its own. It shares
+    /// the file position, but not bytes this handle already read ahead.
+    pub fn duplicate(&self) -> Result<Stream, sys::Errno> {
+        let fd = sys::duplicate(self.fd)?;
+        let mut s = Stream::with_pollable(fd, true, self.name.clone(), self.pollable);
+        s.no_read = self.no_read;
+        s.no_write = self.no_write;
+        s.append = self.append;
+        s.file = self.file;
+        Ok(s)
+    }
+
     pub fn is_closed(&self) -> bool {
         self.closed
     }

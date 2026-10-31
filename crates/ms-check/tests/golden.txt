@@ -6179,7 +6179,7 @@ export fn main() Int:
     return value.get()
 export fn main() Int:
     return extract[Int](none)
-type	1	26	25	`extract` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`interface Crash:
+interface Crash:
     fn run() Int
 type Item:
     value: Int
@@ -6498,8 +6498,7 @@ export fn main() Int:
         _:
             return 2
 
-type	25	33	539	cannot move `file` out: it only borrows its value (a borrow); use `file.clone()` to get an owned copy
-type	27	10	605	cannot change `copy.label`: `copy` is declared with let, which is immutable including its contents; declare it `var copy` to change ittest %q:
+type	27	10	605	cannot change `copy.label`: `copy` is declared with let, which is immutable including its contents; declare it `var copy` to change ittest %q:
     let minimum = nanoseconds(-9223372036854775808)
     let maximum = nanoseconds(9223372036854775807)
     let divide = minimum.divide
