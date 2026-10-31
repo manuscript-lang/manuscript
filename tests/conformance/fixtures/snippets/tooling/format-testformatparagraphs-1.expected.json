@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module",
+        "position": {
+          "file": "format-testformatparagraphs-1.ms",
+          "line": 7,
+          "column": 9,
+          "offset": 245
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module",
+        "position": {
+          "file": "format-testformatparagraphs-1.ms",
+          "line": 9,
+          "column": 9,
+          "offset": 288
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding acquire; declare it with 'let acquire = ...' before use, define 'fn acquire(...) T:', or import it from a module",
+        "position": {
+          "file": "format-testformatparagraphs-1.ms",
+          "line": 10,
+          "column": 20,
+          "offset": 317
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module",
+        "position": {
+          "file": "format-testformatparagraphs-1.ms",
+          "line": 11,
+          "column": 5,
+          "offset": 331
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/format-testformatparagraphs-1.ms:7:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module\n   |\n 7 |         run(count)\n   |         ^\n<DIR>/format-testformatparagraphs-1.ms:9:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module\n   |\n 9 |         run(item)\n   |         ^\n<DIR>/format-testformatparagraphs-1.ms:10:20: resolution: unknown binding acquire; declare it with 'let acquire = ...' before use, define 'fn acquire(...) T:', or import it from a module\n    |\n 10 |     var resource = acquire()\n    |                    ^\n<DIR>/format-testformatparagraphs-1.ms:11:5: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module\n    |\n 11 |     run(resource)\n    |     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

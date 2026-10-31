@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3080",
+        "phase": "type",
+        "message": "cannot infer type argument T for same; write same[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
+        "position": {
+          "file": "testresultargumentinferencerejects-3.ms",
+          "line": 6,
+          "column": 18,
+          "offset": 262
+        }
+      },
+      {
+        "code": "MS3080",
+        "phase": "type",
+        "message": "cannot infer type argument E for same; write same[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter",
+        "position": {
+          "file": "testresultargumentinferencerejects-3.ms",
+          "line": 6,
+          "column": 18,
+          "offset": 262
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module",
+        "position": {
+          "file": "testresultargumentinferencerejects-3.ms",
+          "line": 6,
+          "column": 30,
+          "offset": 274
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding other; declare it with 'let other = ...' before use, define 'fn other(...) T:', or import it from a module",
+        "position": {
+          "file": "testresultargumentinferencerejects-3.ms",
+          "line": 6,
+          "column": 43,
+          "offset": 287
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testresultargumentinferencerejects-3.ms:6:18: type: cannot infer type argument T for same; write same[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 6 | fn first() Unit: same(first: f(), second: other())\n   |                  ^\n<DIR>/testresultargumentinferencerejects-3.ms:6:18: type: cannot infer type argument E for same; write same[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter\n   |\n 6 | fn first() Unit: same(first: f(), second: other())\n   |                  ^\n<DIR>/testresultargumentinferencerejects-3.ms:6:30: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 6 | fn first() Unit: same(first: f(), second: other())\n   |                              ^\n<DIR>/testresultargumentinferencerejects-3.ms:6:43: resolution: unknown binding other; declare it with 'let other = ...' before use, define 'fn other(...) T:', or import it from a module\n   |\n 6 | fn first() Unit: same(first: f(), second: other())\n   |                                           ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
