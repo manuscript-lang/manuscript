@@ -1,10 +1,9 @@
 name: CI/CD
 
 on:
-  # A push to main publishes the docs and runs the language checks; the Rust platform matrix runs on
-  # pull requests (Linux), merge groups, by hand, and every hour on main, which also refreshes the
-  # sccache caches that pull requests restore. Per-push platform runs queued behind each other for
-  # an hour and were replaced before they finished, so they never saved a cache.
+  # Every push to main runs the full platform matrix. The hourly run exists to refresh the sccache
+  # caches: push runs queue behind each other and are often replaced before they finish, and only a
+  # finished run on main saves a cache.
   push:
     branches: [main]
   pull_request:
@@ -53,9 +52,6 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           rust=true
-          if [ "$EVENT" = push ]; then
-            rust=false
-          fi
           if [ "$EVENT" = pull_request ]; then
             if ! git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qvE '^(documentation/|website/|blog/|proposals/|skills/|extensions/|.*\.md$)'; then
               rust=false
