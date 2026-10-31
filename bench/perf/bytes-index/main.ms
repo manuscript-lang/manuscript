@@ -29,7 +29,8 @@ export fn main() Int:
     for n in [0, 1, 7, 15, 31, 32, 64, 256, 4096, 1048576]:
         for kind in [
             "miss", "first", "middle", "last", "negative", "past", "equal", "offset",
-            "near1", "near7", "near15", "near16", "near17"
+            "near1", "near7", "near8", "near9", "near15", "near16", "near17", "near18",
+            "near23", "near24", "near25", "near31", "near32", "near33"
         ]:
             var data = "a".repeat(n).get().to_bytes()
             var pos = -1
@@ -37,9 +38,18 @@ export fn main() Int:
             if kind == "first" or kind == "negative" or kind == "past": pos = 0
             if kind == "near1": pos = 1
             if kind == "near7": pos = 7
+            if kind == "near8": pos = 8
+            if kind == "near9": pos = 9
             if kind == "near15": pos = 15
             if kind == "near16": pos = 16
             if kind == "near17": pos = 17
+            if kind == "near18": pos = 18
+            if kind == "near23": pos = 23
+            if kind == "near24": pos = 24
+            if kind == "near25": pos = 25
+            if kind == "near31": pos = 31
+            if kind == "near32": pos = 32
+            if kind == "near33": pos = 33
             if kind.starts_with("near") and pos >= n: pos = n - 1
             if kind == "middle": pos = n / 2
             if kind == "last" or kind == "offset": pos = n - 1

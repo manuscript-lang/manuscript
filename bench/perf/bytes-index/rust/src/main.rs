@@ -14,7 +14,8 @@ fn main() {
     for n in [0usize, 1, 7, 15, 31, 32, 64, 256, 4096, 1048576] {
         for kind in [
             "miss", "first", "middle", "last", "negative", "past", "equal", "offset", "near1",
-            "near7", "near15", "near16", "near17",
+            "near7", "near8", "near9", "near15", "near16", "near17", "near18", "near23", "near24",
+            "near25", "near31", "near32", "near33",
         ] {
             let mut data = vec![b'a'; n];
             let mut pos = -1i64;

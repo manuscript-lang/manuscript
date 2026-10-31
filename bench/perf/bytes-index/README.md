@@ -1,103 +1,115 @@
 # Byte search: 2026-10-31
 
-`Bytes.index_of_byte` scanned every byte individually. On this Linux x86_64 host,
-long misses and late hits were much slower than an optimized Rust `memchr` baseline.
-The focused change scans the first 16 bytes as before, then delegates the remaining
-suffix to the already locked memchr 2.8.3 dependency. Empty/end-start searches
-return absence before any search. Public signatures, byte values, absolute offsets,
-negative starts and absence behavior are unchanged.
+`Bytes.index_of_byte` scanned every byte individually. The final candidate checks
+the first byte directly, scans the next 16 bytes with the existing word-at-a-time
+helper, then uses the already locked memchr 2.8.3 dependency for the suffix. It
+returns absence before searching an empty range/suffix. Public signatures, byte
+values, earliest absolute offsets, negative starts and absence behavior stay unchanged.
 
-Baseline main: `d4a94aa9283348133542078e22ccaa3b2c9dc348`. Rust 1.99.1; host and
-compiler/native/executable hashes are in [environment.json](results-2026-10-31/environment.json)
-and [host.txt](results-2026-10-31/host.txt). Manuscript was built with the normal
-Release command; companion metadata reports `cranelift`. No backend investigation
-was performed. Rust uses Cargo release, checked arithmetic and the repository's
-frame-pointer flags. Its non-inlined wrapper and black_box guards prevent work
-elimination; their overhead matters for tiny calls, so those numbers do not establish
-universal language parity. Neither side includes input setup or output in timing.
+On the final integrated 220-case comparison, 1 MiB misses and late hits improve
+about 31x while preserving inexpensive nearby hits. The earlier scalar-prefix
+candidate is rejected after a combined-main replay exposed boundary-hit costs.
+All original and unfavorable measurements remain separately labeled below.
 
-## Accepted comparison
+## Final integrated comparison
 
-[All 130 distributions and paired deltas](results-2026-10-31/accepted/summary.csv)
-and [all 2,340 raw rows](results-2026-10-31/accepted/samples.csv) are retained.
+Base main: `3cfde58b6216ae4db54aeb3ae4e22ee7d527e323`; native sources match the
+original baseline `d4a94aa92` through that main revision. Rust 1.99.1; Linux x86_64
+host details are in [host.txt](results-2026-10-31/host.txt).
+[Environment and exact patch](results-2026-10-31/word-prefix-final/environment.json)
+and [producer record](results-2026-10-31/word-prefix-final/byte220/record.json)
+retain compiler, native archive, program, source, validator and input hashes.
+Manuscript uses the normal Release command; its companion metadata reports
+`cranelift`. No backend investigation was performed. Rust uses Cargo release,
+checked arithmetic and the repository's frame-pointer flags. Its non-inlined
+wrapper and black_box guards prevent work elimination; that overhead matters for
+tiny calls, so tiny numbers alone do not establish language parity.
+
 One checked warmup per side precedes all six permutations of before/after/Rust,
-pinned to CPU 0, with builds complete. Each side appears twice in each order position.
-Every producer's complete case inventory, byte sizes, iteration counts and checksums
-passed the independent Python bytearray.find oracle. All results feed a checked
-checksum. Median time ratios and median paired deltas are distinct statistics.
-Six rounds describe these samples, not confidence intervals or other machines.
+pinned to CPU 0, after builds finish. Each side appears twice in each position.
+[All 3,960 raw rows](results-2026-10-31/word-prefix-final/byte220/samples.csv) and
+[all 220 distributions/paired deltas](results-2026-10-31/word-prefix-final/byte220/summary.csv)
+are retained. The independent Python bytearray.find oracle validates each case's
+input bytes, iteration count and checksum; missing/duplicate cases or failed
+producers reject. Untimed preflights check exact Optional presence and offsets;
+timed results feed the checked checksum. Setup and output are outside timing.
+A ratio of medians differs from a median paired delta. Six rounds describe these
+samples, not confidence intervals or other machines.
 
 | Case | Before ns | After ns | Rust ns | Median paired delta ns |
 | --- | ---: | ---: | ---: | ---: |
-| empty miss | 1.37 | 1.12 | 2.03 | -0.24 |
-| one-byte miss | 1.63 | 1.57 | 2.47 | -0.06 |
-| seven-byte miss | 3.46 | 3.37 | 3.77 | -0.26 |
-| first hit, 1 MiB | 1.63 | 1.58 | 2.75 | -0.06 |
-| miss, 4 KiB | 1134.66 | 26.01 | 17.31 | -1108.45 |
-| miss, 1 MiB | 420014.82 | 7043.20 | 7135.99 | -413075.17 |
-| last hit, 1 MiB | 470790.04 | 6934.32 | 7177.75 | -463868.46 |
+| one-byte miss | 1.69 | 1.80 | 2.25 | 0.11 |
+| seven-byte miss | 3.14 | 3.14 | 3.71 | -0.00 |
+| second-byte hit, 1 MiB | 2.12 | 2.44 | 2.42 | 0.31 |
+| offset 8 hit, 1 MiB | 3.65 | 2.40 | 2.39 | -1.24 |
+| offset 9 hit, 1 MiB | 3.97 | 2.75 | 2.42 | -1.20 |
+| offset 16 hit, 1 MiB | 5.54 | 2.74 | 2.47 | -2.54 |
+| offset 17 hit, 1 MiB | 5.52 | 4.26 | 2.44 | -1.26 |
+| miss, 1 MiB | 238307.19 | 7638.38 | 7268.63 | -230434.83 |
+| last hit, 1 MiB | 238390.83 | 7577.23 | 7529.56 | -230499.38 |
 
-The 1 MiB miss/late-hit medians improve about 60x/68x, with faster paired times
-in all six rounds. The scalar-only miss regression found in review is fixed;
-small first-hit costs remain visible in the complete table. The largest median
-paired penalty is 0.23 ns (`near16_64`).
-The 16-byte scalar prefix retains inexpensive nearby hits; long-input offsets
-1, 7, 15, 16 and 17 are explicit controls. Search uses no new allocating call;
-allocation counts and RSS were not measured.
+At 1 MiB, misses/late hits and the tested offsets 7, 8, 9 and 15–18 improve
+in all six paired rounds. Small
+costs remain: the second-byte hit adds about 0.31 ns in the 1 MiB case, and the
+one-byte miss adds about 0.11 ns. The largest median paired penalty is 0.33 ns (`near1_4096`).
+These tradeoffs are retained, not relabeled as noise or universal parity. Search
+introduces no allocating call; allocation counts and RSS were not measured.
 
-## Broader and rejected controls
+## Broader controls and checks
 
-[Broader controls](results-2026-10-31/controls/record.json) ran six alternating pairs
-on CPU 0: line splitting 16 cases/192 rows, normalization 100/1,200, reversal
-83/996. All output/status/checksum guards passed. No case exceeded both 5% slower
-median and 1 ns median paired cost with at least five of six slower pairs. That
-is a descriptive screening rule, not a CI threshold or a claim that every case
-improved; all raw samples and summaries, including unfavorable medians, are retained.
-These programs use unchanged source and the same compiler, with matched before/after
-native archives. Final combined merged-main remeasurement remains pending merge.
+[Final broader controls](results-2026-10-31/word-prefix-final/controls/record.json)
+run six alternating pairs on CPU 0: line splitting 16 cases/192 rows,
+normalization 100/1,200, reversal 83/996. All output/status/checksum guards pass.
+No case exceeds both 5% slower median and 1 ns median paired cost with at least
+five of six slower pairs. This is a descriptive screen, not a CI threshold or a
+claim that every case improves. All distributions, including adverse medians,
+remain. Sources, executables, compiler, native archives and build selections are
+recorded for every suite. The [200-case word-prefix exploration](results-2026-10-31/word-prefix-final/exploratory200/record.json)
+stays separate from the final phase adding word-boundary offsets 8/9. Its exact
+Manuscript/Rust source snapshots were not fully retained; original hashes and
+reconstruction checks remain. The complete final 220-case inputs are provided.
 
-The [first 130-case candidate](results-2026-10-31/rejected-empty-end/record.json)
-regressed empty/end-start searches by roughly 1–1.6 ns in all six pairs because
-it reached vector search on an empty suffix. The next candidate fixed those
-but regressed a one-byte miss from 1.64 to 2.65 ns (paired +0.97 ns, six of six
-slower pairs); independent review required this be disclosed. Its [raw evidence
-and exact patch](results-2026-10-31/rejected-short-miss/record.json) and
-[broader controls](results-2026-10-31/rejected-short-miss-controls/record.json)
-remain separate. The accepted candidate returns early for an empty searchable
-range and skips vector search after a scalar-only miss. No rejected phase is
-pooled with the accepted samples.
-[Exploratory 80-case phases](results-2026-10-31/exploratory-80/) stay separate;
-they predate the added near-hit controls and are not pooled with final evidence.
+The two called source tests pass in Debug and Release with the candidate runtime:
+`byte search preserves offsets across scanner boundaries` checks empty through
+129-byte inputs, every hit offset, high-bit bytes, boundary/extreme starts and
+successful nonzero starts; `byte search returns the earliest hit at or after start`
+checks repeated hits. Five scoped pure-search nextest model tests and workspace
+all-target Clippy with warnings denied pass; Rust formatting and repository
+invariants pass. An empty-producer smoke check rejects with complete=false and
+no summary. Full workspace nextest/conformance was not run locally because this
+campaign excludes denied ownership/lifetime mechanisms. Required CI stays enabled.
+A final merged-main campaign replay remains pending merge; this is a pinned,
+integrated current-main branch replay.
 
-## Integration with main 3cfde58b6
+## Retained rejected and earlier phases
 
-The branch was merged with main `3cfde58b6216ae4db54aeb3ae4e22ee7d527e323`,
-the compiler rebuilt, and both native source tests rerun in Debug and Release.
-The intervening main commits change no native runtime sources; the original
-baseline archive remains source-matched. [Integration records](results-2026-10-31/integration-main-3cf/environment.json)
-retain the new compiler and all program/source/archive hashes, both byte phases,
-and the full 16/100/83 control rerun. All inventories, outputs and checksums pass;
-no broader control crosses the same descriptive screen. Final byte warmups now
-check Optional presence separately, so a hypothetical invalid Some(length) cannot
-masquerade as absence through the checksum sentinel. The timed work is unchanged.
-
-| Integrated case | Before ns | After ns | Rust ns | Paired delta ns |
-| --- | ---: | ---: | ---: | ---: |
-| miss_1 | 1.65 | 1.57 | 2.46 | -0.08 |
-| miss_7 | 2.92 | 3.14 | 3.80 | 0.23 |
-| first_1048576 | 1.83 | 1.78 | 2.71 | -0.12 |
-| miss_1048576 | 237347.21 | 7582.82 | 7170.72 | -229744.83 |
-| last_1048576 | 236543.03 | 7472.85 | 7187.90 | -229206.67 |
-
-These integrated distributions stay separate from the earlier accepted and
-rejected phases. Required CI and a merged-main campaign replay remain pending.
+- [First scalar prefix](results-2026-10-31/rejected-empty-end/record.json):
+  empty/end-start searches added roughly 1–1.6 ns in every pair by reaching vector
+  search on an empty suffix. Exact patch and raw data remain.
+- [Second scalar candidate](results-2026-10-31/rejected-short-miss/record.json):
+  fixing empty ranges still regressed a one-byte miss 1.64→2.65 ns, paired +0.97 ns,
+  slower in six of six rounds. Its [broader controls](results-2026-10-31/rejected-short-miss-controls/record.json)
+  remain separate.
+- [Subsequent scalar phase](results-2026-10-31/accepted/record.json), historically
+  named accepted: the empty suffix fix initially left only fractional-nanosecond
+  costs; it was not final integration evidence. Its [199 broader controls](results-2026-10-31/controls/record.json)
+  remain intact.
+- [Scalar integration with main 3cf](results-2026-10-31/integration-main-3cf/environment.json):
+  the final exact-preflight phase exposed +1.1–1.3 ns at several offsets 16–17,
+  with five/six or six/six slower pairs. This candidate was held and replaced by
+  the shared word-prefix algorithm. Both byte phases and all broader controls
+  remain; no compiler/placement cause is claimed.
+- [Initial 80-case exploration](results-2026-10-31/exploratory-80/): predated the
+  added near-hit controls. None of these historical phases are pooled with the
+  final 220-case comparison. The original native/compiler result metadata stays
+  attached to its own phase; absolute times and speed ratios vary between phases.
 
 ## Reproduce
 
 Build the compiler/runtime normally, preserve the baseline native archive, and
-build this exact source with that compiler and archive. Apply the focused patch,
-rebuild the runtime and preserve a second program built with that archive. Use
-MS_RT_LIB to select each archive, keeping compiler/source fixed:
+build this exact source with that compiler/archive. Apply the focused patch,
+rebuild the runtime, and build a second program with that archive. Keep compiler
+and source fixed, using MS_RT_LIB to select each archive:
 
 ```sh
 MS_RT_LIB=BASELINE_ARCHIVE target/release/ms build \
@@ -110,13 +122,8 @@ python3 bench/perf/bytes-index/compare.py BEFORE AFTER \
   /tmp/bytes-index-rust/release/bytes-index-rust NEW_OUTPUT_DIRECTORY --cpu 0
 ```
 
-The output directory must be new. Stop concurrent builds/CPU work before timing.
-The runner validates warmups and all measured producers before reporting complete
-results; an empty-producer smoke test verifies failure without a summary. Other failures leave complete=false and the available partial evidence.
-`identities()` constructs its expected results with Python's independent byte search.
-The additional called source tests exercise boundaries, every hit offset through
-129 bytes, high-bit bytes, successful nonzero starts, earliest hits, and extreme starts.
-Both Release and Debug pass with the candidate archive. Workspace Clippy, Rust
-formatting, repository checks, and five scoped pure-search nextest tests pass.
-Full workspace nextest/conformance was not run locally because this campaign
-excludes denied ownership/lifetime mechanisms. Required CI remains in force.
+The output directory must be new. Stop concurrent local builds/CPU work before
+timing. The runner validates warmups and every measured producer before marking
+results complete; failures leave complete=false and available partial evidence.
+The scoped .gitattributes preserves original CSV producer line endings; the
+manifest hashes exact committed bytes. No executable or native archive is published.
