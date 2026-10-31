@@ -683,10 +683,15 @@ impl Checker {
                     stdlib::standard_module_symbol(pn, item.name)
                 }
             } else {
-                self.imports
-                    .get(module.file, item.id)
-                    .and_then(|target| self.p.symbols.get(&target).cloned())
-                    .and_then(|names| names.borrow().get(&item.name).cloned())
+                self.imports.get(module.file, item.id).and_then(|target| {
+                    self.p.symbols.get(&target).and_then(|names| {
+                        names
+                            .borrow()
+                            .get(&item.name)
+                            .filter(|symbol| symbol.module == target)
+                            .cloned()
+                    })
+                })
             };
             let usable = found.as_ref().filter(|f| f.export).cloned();
             let Some(found) = usable else {
