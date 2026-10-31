@@ -35,11 +35,10 @@ pub fn exported_names(source: &str) -> Vec<String> {
             .or_else(|| rest.strip_prefix("opaque "))
             .unwrap_or(rest)
             .trim_start();
-        let Some((keyword, rest)) = rest.split_once(char::is_whitespace) else {
-            continue;
-        };
-        let rest = rest.trim_start();
-        if keyword == "let" && rest.starts_with('(') {
+        if rest
+            .strip_prefix("let")
+            .is_some_and(|tail| tail.trim_start().starts_with('('))
+        {
             let Some(groups) = groups.get_or_insert_with(|| grouped_exports(source)) else {
                 // Keep valid neighboring exports when lexing an incomplete file fails.
                 return parsed_exported_names(source);
@@ -49,6 +48,10 @@ pub fn exported_names(source: &str) -> Vec<String> {
             }
             continue;
         }
+        let Some((keyword, rest)) = rest.split_once(char::is_whitespace) else {
+            continue;
+        };
+        let rest = rest.trim_start();
         if !matches!(keyword, "fn" | "type" | "interface" | "let") {
             continue;
         }

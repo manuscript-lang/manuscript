@@ -27,16 +27,17 @@ fn incomplete_neighbors_do_not_hide_valid_exports() {
 #[test]
 fn grouped_export_hints_skip_nested_initializer_names() {
     let source = include_str!("export_names/nested_groups.ms");
-    let file = "nested_groups.ms".into();
-    ms_syntax::parser::parse(&file, source).expect("valid grouped constants");
-    assert_eq!(
-        exported_names(source),
-        ["LOW", "HIGH", "FLAGS", "ITEMS", "LAST"]
-    );
-    assert_eq!(
-        exported_names(&source.replace('\n', "\r\n")),
-        ["LOW", "HIGH", "FLAGS", "ITEMS", "LAST"]
-    );
+    for header in ["export let(", "export let (", "export   let    ("] {
+        let varied = source.replace("export let (", header);
+        for source in [varied.clone(), varied.replace('\n', "\r\n")] {
+            let file = "nested_groups.ms".into();
+            ms_syntax::parser::parse(&file, &source).expect("valid grouped constants");
+            assert_eq!(
+                exported_names(&source),
+                ["LOW", "HIGH", "FLAGS", "ITEMS", "LAST"]
+            );
+        }
+    }
 }
 
 #[test]
