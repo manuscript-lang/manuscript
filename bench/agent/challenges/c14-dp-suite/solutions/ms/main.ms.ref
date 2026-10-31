@@ -13,7 +13,7 @@ fn parse_num(s: String) Int?:
 
         n = n * 10 + (c - 48)
 
-    return some(n)
+    return n
 
 fn min_int(a: Int, b: Int) Int:
     if a < b:
