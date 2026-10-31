@@ -35,7 +35,7 @@ fn diagnostics(source: &str) -> Vec<String> {
 }
 
 #[test]
-fn matches_go_oracle() {
+fn matches_oracle() {
     // Deeply nested sources need more stack than a test thread has.
     let handle = std::thread::Builder::new()
         .stack_size(256 << 20)

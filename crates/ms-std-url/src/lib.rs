@@ -1,4 +1,4 @@
-//! `@std/net.ms` natives, built on the byte-oriented parser in [`gourl`].
+//! `@std/net.ms` natives, built on the byte-oriented parser in [`parser`].
 #![no_std]
 
 // Links the msrt_* runtime symbols into this crate's test binaries.
@@ -8,12 +8,12 @@ use ms_rt as _;
 extern crate alloc;
 
 pub mod ffi;
-pub mod gourl;
+pub mod parser;
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use gourl::{S, Url};
 use ms_rt::ffi::Fail;
+use parser::{S, Url};
 
 /// The `Url` record of `@std/net.ms`.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -82,7 +82,7 @@ pub fn encode_component(text: &str) -> String {
 
 /// Decodes `%XX` escapes; `+` stays a plus; the result must be valid UTF-8.
 pub fn decode_component(text: &str) -> Result<String, Fail> {
-    let b = gourl::path_unescape(text.as_bytes()).map_err(|_| Fail::InvalidData)?;
+    let b = parser::path_unescape(text.as_bytes()).map_err(|_| Fail::InvalidData)?;
     string(b)
 }
 
@@ -145,7 +145,7 @@ fn components(u: &Url) -> Result<Components, Fail> {
 
 /// Parses an absolute URL; user information, opaque URLs and a missing scheme are rejected.
 pub fn parse(text: &str) -> Result<Components, Fail> {
-    let u = gourl::parse(text.as_bytes()).map_err(|_| Fail::InvalidData)?;
+    let u = parser::parse(text.as_bytes()).map_err(|_| Fail::InvalidData)?;
     if u.scheme.is_empty() || u.has_user() {
         return Err(Fail::InvalidData);
     }
@@ -182,7 +182,7 @@ fn go_url(v: &Components) -> Option<Url> {
     if host.is_empty() && !raw.is_empty() && raw[0] != b'/' {
         return None;
     }
-    let decoded = gourl::path_unescape(raw).ok()?;
+    let decoded = parser::path_unescape(raw).ok()?;
     if !valid_utf8(&decoded) {
         return None;
     }
@@ -198,7 +198,7 @@ fn go_url(v: &Components) -> Option<Url> {
         fragment: v.fragment.as_bytes().to_vec(),
         ..Url::default()
     };
-    let parsed = gourl::parse(&u.render()).ok()?;
+    let parsed = parser::parse(&u.render()).ok()?;
     if parsed.scheme.is_empty()
         || !parsed.scheme.eq_ignore_ascii_case(&u.scheme)
         || !parsed.opaque.is_empty()
@@ -230,7 +230,7 @@ pub fn format(v: &Components) -> Result<String, Fail> {
 /// Resolves a relative reference against `base` (RFC 3986 section 5.2 as in Go).
 pub fn resolve(base: &Components, reference: &str) -> Result<Components, Fail> {
     let b = go_url(base).ok_or(Fail::InvalidInput)?;
-    let r = gourl::parse(reference.as_bytes()).map_err(|_| Fail::InvalidData)?;
+    let r = parser::parse(reference.as_bytes()).map_err(|_| Fail::InvalidData)?;
     if r.has_user() {
         return Err(Fail::InvalidData);
     }
@@ -257,8 +257,8 @@ pub fn parse_query(text: &str, max_entries: Option<i64>) -> Result<Vec<(String, 
         }
         let (k, v) = part.split_once('=').unwrap_or((part, ""));
         let (k, v) = match (
-            gourl::query_unescape(k.as_bytes()),
-            gourl::query_unescape(v.as_bytes()),
+            parser::query_unescape(k.as_bytes()),
+            parser::query_unescape(v.as_bytes()),
         ) {
             (Ok(k), Ok(v)) => (string(k)?, string(v)?),
             _ => return Err(Fail::InvalidData),
@@ -276,9 +276,9 @@ pub fn format_query<K: AsRef<str>, V: AsRef<str>>(entries: &[(K, V)]) -> String 
             out.push('&');
         }
         for part in [
-            gourl::query_escape(k.as_ref().as_bytes()),
+            parser::query_escape(k.as_ref().as_bytes()),
             alloc::vec![b'='],
-            gourl::query_escape(v.as_ref().as_bytes()),
+            parser::query_escape(v.as_ref().as_bytes()),
         ] {
             out.push_str(core::str::from_utf8(&part).unwrap_or(""));
         }

@@ -1,0 +1,91 @@
+{
+  "method": "All compiler variants built sequentially in the same checkout, cwd, target directory and flags. Same saved benchmark source. No extra layout/flag trials.",
+  "cwd": "/workspace/manuscript",
+  "harness_sha256": "2e94054104cf84571bdefcbc8d785a32b2e31019a87d1ede5d668cec760557c3",
+  "builds": [
+    {
+      "label": "pre_perf",
+      "revision": "d4a94aa9283348133542078e22ccaa3b2c9dc348",
+      "library_sha256": "5ea9c5689074836f4f7f11ba8317f96aef7c347917e8dd9221e51cc06d390087",
+      "binary_sha256": "4fbdfa86c97544f1f69e6561c5f3f8e229869d6b7bc3e97b70ecc60c00512552",
+      "command": [
+        "rustc",
+        "--edition=2024",
+        "-O",
+        "-D",
+        "warnings",
+        "-C",
+        "debuginfo=1",
+        "-C",
+        "panic=abort",
+        "-C",
+        "force-frame-pointers=yes",
+        "--extern",
+        "ms_syntax=target/release/libms_syntax.rlib",
+        "-L",
+        "dependency=target/release/deps",
+        "/workspace/perf-parser-evidence/final-accepted-replay/bench.rs",
+        "-o",
+        "/workspace/perf-parser-evidence/final-accepted-replay/pre_perf/bench"
+      ],
+      "parser_sha256": "f684535a1aa951cbe27ba857faec481c853972d38fff46fc561107b26f16afda",
+      "lexer_sha256": "f38f61186fba1c1601b4862318b952e901d211e9faebc4e83df695ea9b70ceeb"
+    },
+    {
+      "label": "suffix_only",
+      "revision": "649ddeb9a2fb91eb36d1eb074842eaaa4ee370fc",
+      "library_sha256": "ed356d814cbaf3e48ba8f742e7688c2da45ca48987ed6b285401a2092739c848",
+      "binary_sha256": "2a4af4a6e856a9c71500bdeffc3c2d1da9d36397133093bbd15bd5accd2a11c9",
+      "command": [
+        "rustc",
+        "--edition=2024",
+        "-O",
+        "-D",
+        "warnings",
+        "-C",
+        "debuginfo=1",
+        "-C",
+        "panic=abort",
+        "-C",
+        "force-frame-pointers=yes",
+        "--extern",
+        "ms_syntax=target/release/libms_syntax.rlib",
+        "-L",
+        "dependency=target/release/deps",
+        "/workspace/perf-parser-evidence/final-accepted-replay/bench.rs",
+        "-o",
+        "/workspace/perf-parser-evidence/final-accepted-replay/suffix_only/bench"
+      ],
+      "parser_sha256": "cae01de886fe725067923b0c2b10b8e9ad2b19a4e1d6e5aa429d1f93eb8e0a66",
+      "lexer_sha256": "d68d0bd8956b75bb8c4fe17a8c27175eeb0520b64fbcadfe998d40d9646de362"
+    },
+    {
+      "label": "combined",
+      "revision": "e9e03b4f331edb9e9e03adcf623bdc8a38781527",
+      "library_sha256": "82cb428597ef161a9bc9383d7444aca52204cca2efb7d6ec1a2ba274a9890e0c",
+      "binary_sha256": "b382d40150df4d766474ec58c758f07e38421f2c8df059c13d6174bb05df80a1",
+      "command": [
+        "rustc",
+        "--edition=2024",
+        "-O",
+        "-D",
+        "warnings",
+        "-C",
+        "debuginfo=1",
+        "-C",
+        "panic=abort",
+        "-C",
+        "force-frame-pointers=yes",
+        "--extern",
+        "ms_syntax=target/release/libms_syntax.rlib",
+        "-L",
+        "dependency=target/release/deps",
+        "/workspace/perf-parser-evidence/final-accepted-replay/bench.rs",
+        "-o",
+        "/workspace/perf-parser-evidence/final-accepted-replay/combined/bench"
+      ],
+      "parser_sha256": "faff9436f85674deba31a34b3ed357cd5dee4694e6688002c28f51a4e6c952a0",
+      "lexer_sha256": "d68d0bd8956b75bb8c4fe17a8c27175eeb0520b64fbcadfe998d40d9646de362"
+    }
+  ]
+}

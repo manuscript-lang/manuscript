@@ -1,0 +1,107 @@
+[
+  {
+    "file": "discovery-path.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "7f2cdc17de6a0058c85cf6471dbf357c33cdffaf0431daf37c04b1a575352a81",
+    "gzip_sha256": "8d403a3293c21b37bc5ef42db4f3cdb221c6c35431a23799e1ed248abb5aa8cb",
+    "sample_count": 2808
+  },
+  {
+    "file": "discovery-url.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "1bc96f0f948d3dcaa7da1f7c6e08eb1f0df093eb1f0b80ed2908792ed8e020d2",
+    "gzip_sha256": "966231a192643522e578003a11799788a3929acf506fabeb46a9d5292416cd43",
+    "sample_count": 1716
+  },
+  {
+    "file": "rejected-path-components.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "5537244af1bf06bcc5765f996d8f753505912f271e2acf2666a9da7a534d8387",
+    "gzip_sha256": "ecce162b59c5ae09f64807d6417204676784c9c92478a7de7f956ca634759546",
+    "sample_count": 7200
+  },
+  {
+    "file": "rejected-path-combined.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "301c639df96327188995b200cee073c10418abfd5da5288856e724ffc87619c9",
+    "gzip_sha256": "cfc3f82bf8190706eacbb6f2b5a0b434cfdc4f8a723f0500e33bedaa1c7eca22",
+    "sample_count": 7200
+  },
+  {
+    "file": "rejected-url-shortcut.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "356824858bbf9ddc7bda08c5f7cd22c3c7c1a7ebe72dec2fc70e714a6c68d6bf",
+    "gzip_sha256": "440b7251b088e23a480b5154207915935412b3e06d9736a6e5ebc249d4be6c8d",
+    "sample_count": 4400
+  },
+  {
+    "file": "rejected-url-preflight.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "b4d4d75cce882014cad11fa3defdee2140942d6851c3a2cf1a7ef169984006c8",
+    "gzip_sha256": "5887d4411e10ce1ae02f6cc098afc00e53881ac546e1abb38bf3a36c74fdd341",
+    "sample_count": 468
+  },
+  {
+    "file": "rejected-url-bounded.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "412724f9ee9ce8f4469657a5eaa84083c1017e0c198f37db56bffceccc709d72",
+    "gzip_sha256": "322f75edd6c1e3375c83bf42601f14e84242f61cbba380a4240860dfb55d30fa",
+    "sample_count": 702
+  },
+  {
+    "file": "path-isolation-controls.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "4d191a8cc306c707ada98e2272264d5c8e9d6c782083ab0038017675ef7d2dac",
+    "gzip_sha256": "9a26a6a1e893a5988b4f45879c92dad3ca08cf52355b47880ee29ef364484a80",
+    "sample_count": 273
+  },
+  {
+    "file": "allocations-stream-rejection.jsonl.gz",
+    "role": "allocation",
+    "raw_sha256": "47abb9a230cc9dfcd153303347f3b83d934c69610036b0639c4e1f232eb06235",
+    "gzip_sha256": "d42b7743defe4b226417ea7a5dcc6c6ca40b43a897979dc1125a48efb4abcafa",
+    "sample_count": 720
+  },
+  {
+    "file": "allocations-stale.jsonl.gz",
+    "role": "invalid",
+    "raw_sha256": "aa7e6a1a47fb4b7723cb510c30bd7226af31d3c8ee7555634ca46bdaa12a5cf7",
+    "gzip_sha256": "e127259e1fc7650e63e6543f2aa735469f79516bdba8cbf0a299c264bae4304e",
+    "sample_count": 720
+  },
+  {
+    "file": "allocations-preflight-corrected.jsonl.gz",
+    "role": "allocation",
+    "raw_sha256": "7e47bf30c62f3655dbfded010d2cd8dbae1895ce8e7ccc6cfb2b628338a06ebc",
+    "gzip_sha256": "6c90d7b07fe0528df2c7350a7cc6c1f48b1c2344100bee7d5598f2052e548b82",
+    "sample_count": 776
+  },
+  {
+    "file": "integrated-path-final.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "ecc6885385bf2f98690a48c8d5ad0e6ec621843c900eb375fdaf6fcf6e44fe0e",
+    "gzip_sha256": "1a205b4e2acd9850289e5362997538cc558677a5527bc78ee624cfc50c2dad56",
+    "sample_count": 7200
+  },
+  {
+    "file": "integrated-url-final.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "b5e786a8d6f534dc84ed1ab2892d8059b446a1755446c67684fc0d42fe833b61",
+    "gzip_sha256": "fb80bf49e6196e045d26704f2bfe9d4e27fa12ffb5595e50547fe4670d85e51c",
+    "sample_count": 7900
+  },
+  {
+    "file": "integrated-parse-confirmation.jsonl.gz",
+    "role": "timing",
+    "raw_sha256": "9a4bb641ee1062b9c1ce6cf5f5448c9726201a1447865e4f3e5115745be59b57",
+    "gzip_sha256": "5f205773dff006bcb1b202bafa0af32770e175ea2c3302fa851d2199be9a924c",
+    "sample_count": 225
+  },
+  {
+    "file": "integrated-native-allocations.jsonl.gz",
+    "role": "allocation",
+    "raw_sha256": "1abae307283a9ed930d467864ff377d85816cc51bae62db0b2552717d2fe4ae4",
+    "gzip_sha256": "94a7e46ef2c9199328baa2c13d849092a5e28a983b9895ae3b4571858818978f",
+    "sample_count": 1000
+  }
+]

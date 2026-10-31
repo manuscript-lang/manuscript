@@ -32,6 +32,17 @@ standalone from combined-change controls. A textual proof that the old fallback
 is unchanged does not establish performance equivalence for other operations.
 Evidence: [four-state reversal rejection](../../bench/perf/string-reverse-standard/README.md).
 
+Verified (2026-10-31, pure utilities): a path candidate combining parse-copy
+removal with a different reverse scan doubled long-basename parse time in all
+24 pairs. Restore that copy and scan before retaining separate extension,
+dot-count and normalization improvements. URL shortcuts also improved long
+literal inputs while regressing small escaped inputs; a streaming decoder added
+an allocation on malformed escapes that previously allocated nothing. Keep
+short/long, sparse/dense, early/late error and allocation controls together.
+An initial allocation replay copied a stale executable from another Cargo
+target directory; use the explicit build target and verify artifact identities.
+Evidence: [complete utility controls and rejected candidates](../../bench/perf/pure-utilities/README.md).
+
 Verified (2026-10-31, normalization): ASCII identity shortcuts can win over 200x
 on ASCII while slowing Unicode controls by several percent. A content-based
 first-byte gate removed one flag but exposed other NFD costs; both were rejected.

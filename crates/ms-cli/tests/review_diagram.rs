@@ -1,15 +1,11 @@
 //! Review and diagram must be usable through the installed CLI surface.
 
-use ms_json::Json;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+mod common;
 
-fn scratch(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("ms-review-diagram-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
-}
+use common::scratch;
+use ms_json::Json;
+use std::path::Path;
+use std::process::{Command, Output};
 
 fn ms(dir: &Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_ms"))

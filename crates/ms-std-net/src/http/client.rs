@@ -1157,10 +1157,7 @@ impl Client {
                             .next()
                             .unwrap_or_default();
                         let line = String::from_utf8_lossy(line);
-                        format!(
-                            "malformed HTTP response {}",
-                            crate::error::go_quote(line.trim_end())
-                        )
+                        format!("malformed HTTP response {:?}", line.trim_end())
                     };
                     return Err(Fail::Err(HttpErr::Failed(text)));
                 }
@@ -1298,8 +1295,7 @@ fn referer_for(last: &Url, next: &Url, initial: &[(String, Vec<u8>)]) -> Option<
 
 fn location_error(location: &str) -> HttpErr {
     HttpErr::Failed(format!(
-        "failed to parse Location header {}: invalid redirect target",
-        crate::error::go_quote(location)
+        "failed to parse Location header {location:?}: invalid redirect target"
     ))
 }
 

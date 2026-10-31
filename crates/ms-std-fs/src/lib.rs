@@ -1,7 +1,7 @@
 //! `@std/fs` natives for path-based operations. Symbols are `msstd_fs_<name>`.
 //!
 //! Paths arrive as strings; fallible functions return a `STATUS_*` code (`0` ok) and write results
-//! only on success. For `STATUS_FAILED` the Go-style diagnostic text is available from
+//! only on success. For `STATUS_FAILED` the diagnostic text is available from
 //! `msstd_fs_failure_message` until the next fallible call. `FileInfo` is flattened into
 //! [`InfoOut`]; optional limits are a present flag plus an `i64`.
 // `libc::statfs` field widths differ per target, so the portable casts look redundant on Linux.
