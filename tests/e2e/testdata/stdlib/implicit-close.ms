@@ -25,9 +25,9 @@ fn returns_early(dir: String, early: Bool) Int:
 
     return r.id
 
-fn propagates(dir: String) Result[Int, TextError]:
+fn propagates(dir: String) Int!TextError:
     let r = Resource(dir, 3)
-    let failed: Result[Int, TextError] = error(TextError("boom"))
+    let failed: Int!TextError = error(TextError("boom"))
     let v = try failed
     return ok(v + r.id)
 

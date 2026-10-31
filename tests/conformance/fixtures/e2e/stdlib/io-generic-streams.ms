@@ -9,7 +9,7 @@ type Mem:
     closed: Bool
 
 impl ReadStream for Mem:
-    var fn read(max_bytes: Int?) Result[Bytes?, IoError]:
+    var fn read(max_bytes: Int?) Bytes?!IoError:
         if self.offset == self.data.length(): return ok(none)
 
         let count = max_bytes.get(self.data.length() - self.offset)
@@ -23,14 +23,14 @@ impl ReadStream for Mem:
     var fn close() Unit: self.closed = true
 
 impl WriteStream for Mem:
-    var fn write(data: String) Result[Unit, IoError]:
+    var fn write(data: String) Unit!IoError:
         return self.write_bytes(data.to_bytes())
 
-    var fn write_bytes(data: Bytes) Result[Unit, IoError]:
+    var fn write_bytes(data: Bytes) Unit!IoError:
         self.data = self.data.concat(data)
         return ok(unit)
 
-    fn flush() Result[Unit, IoError]: return ok(unit)
+    fn flush() Unit!IoError: return ok(unit)
 
     var fn close() Unit: self.closed = true
 

@@ -4,7 +4,7 @@
 import TextError from "@std/core.ms"
 import expect_true from "@std/test.ms"
 
-fn step(var log: List[String], name: String, n: Int) Result[Int, TextError]:
+fn step(var log: List[String], name: String, n: Int) Int!TextError:
     log.append(value: name.clone())
     if n < 0:
         return error(cause: TextError(name))
@@ -14,7 +14,7 @@ fn step(var log: List[String], name: String, n: Int) Result[Int, TextError]:
 fn add(x: Int, y: Int) Int:
     return x + y
 
-fn sum(var log: List[String], a: Int, b: Int) Result[Int, TextError]:
+fn sum(var log: List[String], a: Int, b: Int) Int!TextError:
     let v = (
         (try step(log: var log, name: "a", n: a))
         + (try step(log: var log, name: "b", n: b))
@@ -22,7 +22,7 @@ fn sum(var log: List[String], a: Int, b: Int) Result[Int, TextError]:
     log.append(value: "done")
     return ok(value: v)
 
-fn arguments(var log: List[String], a: Int, b: Int) Result[Int, TextError]:
+fn arguments(var log: List[String], a: Int, b: Int) Int!TextError:
     return ok(
         value: add(
             x: try step(log: var log, name: "x", n: a),
@@ -30,13 +30,13 @@ fn arguments(var log: List[String], a: Int, b: Int) Result[Int, TextError]:
         )
     )
 
-fn effect_first(var log: List[String], a: Int) Result[Int, TextError]:
+fn effect_first(var log: List[String], a: Int) Int!TextError:
     log.append(value: "before")
 
     let v = add(x: 1, y: try step(log: var log, name: "s", n: a))
     return ok(value: v)
 
-fn loop(var log: List[String], n: Int) Result[Int, TextError]:
+fn loop(var log: List[String], n: Int) Int!TextError:
     var total = 0
     var i = 0
 
@@ -46,7 +46,7 @@ fn loop(var log: List[String], n: Int) Result[Int, TextError]:
 
     return ok(value: total)
 
-fn joined(var log: List[String]) Result[String, TextError]:
+fn joined(var log: List[String]) String!TextError:
     return ok(
         value: "{try step(log: var log, name: "p", n: 1)}-{try step(log: var log, name: "q", n: -1)}"
     )

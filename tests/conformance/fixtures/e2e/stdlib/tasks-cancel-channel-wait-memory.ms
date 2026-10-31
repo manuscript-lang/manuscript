@@ -25,7 +25,7 @@ fn waiting(ready: Channel[Unit, Unit], ch: Channel[Int, Int]) Unit:
     var end = ch
     let _ignored = end.receive()
 
-fn cancel_one(ch: Channel[Int, Int]) Result[Unit, Error]:
+fn cancel_one(ch: Channel[Int, Int]) Unit!:
     var group = TaskGroup[Unit]()
     let end = ch.clone()
     var task = group.spawn(fn ready: waiting(ready, end.clone()))

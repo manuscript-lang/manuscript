@@ -10,13 +10,13 @@ impl Error for Failure:
     fn message() String:
         return self.message_text.clone()
 
-fn success() Result[Int?, Error]:
+fn success() Int?!:
     return ok(7)
 
-fn failure() Result[Int, Failure]:
+fn failure() Int!Failure:
     return error(Failure("failed"))
 
-fn propagated() Result[Int, Error]:
+fn propagated() Int!:
     return ok(try failure())
 
 test "prelude cases and optional methods need no imports":

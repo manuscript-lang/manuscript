@@ -10,7 +10,7 @@ type MemoryStream:
     closed: Bool
 
 impl ReadStream for MemoryStream:
-    var fn read(max_bytes: Int?) Result[Bytes?, IoError]:
+    var fn read(max_bytes: Int?) Bytes?!IoError:
         if self.closed: return error(IoError.Closed)
         if self.offset == self.data.length(): return ok(none)
 

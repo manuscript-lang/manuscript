@@ -14,7 +14,7 @@
           "file": "pkg-compiler-testresultargumentinferencerejects-4.ms",
           "line": 6,
           "column": 18,
-          "offset": 262
+          "offset": 248
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "pkg-compiler-testresultargumentinferencerejects-4.ms",
           "line": 6,
           "column": 26,
-          "offset": 270
+          "offset": 256
         }
       }
     ],

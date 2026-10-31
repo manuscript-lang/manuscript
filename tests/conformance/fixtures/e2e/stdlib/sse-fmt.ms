@@ -16,7 +16,7 @@ impl ReadStream for Chunks:
     var fn close() Unit:
         self.closed = true
 
-    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
+    var fn read(max_bytes: Int? = none) Bytes?!IoError:
         if self.index < self.parts.length():
             let part = self.parts.get(self.index)
             self.index += 1
@@ -45,7 +45,7 @@ fn splits(source: Bytes) List[List[Bytes]]:
     all.append(single)
     return all
 
-fn decode(parts: List[Bytes]) Result[List[SseEvent], SseError]:
+fn decode(parts: List[Bytes]) List[SseEvent]!SseError:
     var created = try decoder()
     var events = List[SseEvent]()
 
@@ -63,7 +63,7 @@ fn summary(events: List[SseEvent]) String:
         .join(";")
     )
 
-fn expect(source: String, want: String) Result[Unit, Error]:
+fn expect(source: String, want: String) Unit!:
     for parts in splits(source.to_bytes()):
         let events = try decode(parts)
         let got = summary(events)
@@ -132,7 +132,7 @@ fn invalid_bytes() Bytes:
     builder.append_bytes("\n\n".to_bytes())
     return builder.build()
 
-fn is_case(result: Result[List[SseEvent], SseError], want: SseError) Bool:
+fn is_case(result: List[SseEvent]!SseError, want: SseError) Bool:
     if not result.is_error(): return false
 
     return result.err() == want

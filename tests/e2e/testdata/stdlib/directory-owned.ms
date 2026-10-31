@@ -2,7 +2,7 @@ import filesystem from "@std/fs.ms"
 import expect_equal, expect_false, expect_ok, expect_true from "@std/test.ms"
 
 # `Directory` and `TemporaryDirectory` are nominal types with `impl Closeable`, so a binding owns them.
-fn leaves_a_temporary() Result[String, Error]:
+fn leaves_a_temporary() String!:
     let temporary = try filesystem().temporary("manuscript-owned-")
     let path = temporary.path()
     try filesystem().write_file("{path}/a.txt", "x", true)
@@ -12,7 +12,7 @@ test "a temporary directory binding is removed when its scope ends":
     let path = leaves_a_temporary() | try expect_ok
     try expect_false(filesystem().stat(path, true).is_ok())
 
-fn counts_entries(path: String) Result[Int, Error]:
+fn counts_entries(path: String) Int!:
     let cursor = try filesystem().open_directory(path)
     var seen = 0
 

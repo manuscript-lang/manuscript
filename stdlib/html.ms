@@ -2,7 +2,7 @@ extern fn msrt_html_escape(text: String) String
 
 extern fn msrt_html_unescape(text: String) String
 
-extern fn msrt_html_parse(text: String, limits: HtmlLimits?) Result[HtmlNode, HtmlError]
+extern fn msrt_html_parse(text: String, limits: HtmlLimits?) HtmlNode!HtmlError
 
 # Errors returned for malformed HTML or parser resource limits.
 export type HtmlError:
@@ -81,7 +81,7 @@ export fn unescape(text: String) String:
     return msrt_html_unescape(text)
 
 # Parses HTML into a normalized tree and applies the supplied resource limits.
-export fn parse(text: String, limits: HtmlLimits?) Result[HtmlNode, HtmlError]:
+export fn parse(text: String, limits: HtmlLimits?) HtmlNode!HtmlError:
     return msrt_html_parse(text, limits)
 
 impl Error for HtmlError:

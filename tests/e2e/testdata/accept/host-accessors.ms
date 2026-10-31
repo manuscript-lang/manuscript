@@ -6,7 +6,7 @@ import entropy from "@std/random.ms"
 import system from "@std/process.ms"
 import network from "@std/net.ms"
 
-fn check_services() Result[Unit, Error]:
+fn check_services() Unit!:
     arguments().length() | try expect_equal(0)
 
     let before = clock().now()

@@ -1,7 +1,7 @@
 import TextError from "@std/core.ms"
 import expect_equal, expect_false from "@std/test.ms"
 
-fn parse(text: String) Result[Int, TextError]:
+fn parse(text: String) Int!TextError:
     if text == "-":
         return error(TextError("n"))
     if text == "big":
@@ -13,23 +13,23 @@ fn double(n: Int) Int: n * 2
 
 fn add(n: Int, by: Int) Int: n + by
 
-fn check(n: Int) Result[Int, TextError]:
+fn check(n: Int) Int!TextError:
     if n > 100:
         return error(TextError("big"))
 
     return ok(n)
 
-fn flow(text: String) Result[Int, TextError]:
+fn flow(text: String) Int!TextError:
     let n = try parse(text)
         | double
         | add(3)
         | try check
     return ok(n)
 
-fn bare(text: String) Result[Int, TextError]:
+fn bare(text: String) Int!TextError:
     return ok(try parse(text) | double | check | try)
 
-fn describe(text: String) Result[String, TextError]:
+fn describe(text: String) String!TextError:
     let label = try parse(text)
         | try check
         | add(1)
@@ -43,7 +43,7 @@ fn trace(var log: List[String], name: String) Int:
     log.append(name)
     return 1
 
-fn code(r: Result[Int, TextError]) Int:
+fn code(r: Int!TextError) Int:
     if let v = r:
         return v
 

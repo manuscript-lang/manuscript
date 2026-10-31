@@ -20,20 +20,20 @@ impl Closeable for State:
     var fn close() Unit:
         let _written = filesystem().write_file(self.marker, "closed", true)
 
-fn operation(var state: State, fail: Bool) Result[Unit, Failure]:
+fn operation(var state: State, fail: Bool) Unit!Failure:
     state.calls += 1
     if fail: return error(Failure(42))
 
     return ok(unit)
 
-fn exact(state: State, fail: Bool) Result[String, Failure]:
+fn exact(state: State, fail: Bool) String!Failure:
     let resource = state
     var work = State(resource.calls, resource.marker.clone())
     try operation(var work, fail)
     work.calls += 10
     return ok("done {work.calls}")
 
-fn widened(var state: State) Result[Int, Error]:
+fn widened(var state: State) Int!:
     try operation(var state, fail: true)
     return ok(0)
 
@@ -72,7 +72,7 @@ test "standalone try preserves concrete errors at Error boundaries":
     try expect_equal(state.calls, 1)
 
 test "standalone try in closure returns from that closure":
-    let callback = fn() Result[Unit, Failure]:
+    let callback = fn() Unit!Failure:
         var inner = State(0, "")
         if true: try operation(var inner, fail: true)
         return ok(unit)

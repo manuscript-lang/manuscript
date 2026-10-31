@@ -6,14 +6,14 @@ import decoder from "@std/jsonstream.ms"
 import stringify, JsonValue, JsonLimits, JsonError from "@std/json.ms"
 import Bytes from "@std/bytes.ms"
 
-fn texts(values: List[JsonValue]) Result[List[String], Error]:
+fn texts(values: List[JsonValue]) List[String]!:
     var result: List[String] = []
     for item in values:
         result.append(try stringify(item))
     return ok(result)
 
 # Feeds the input in chunks of `size` bytes and returns every decoded value as text.
-fn decode(input: Bytes, size: Int) Result[List[String], Error]:
+fn decode(input: Bytes, size: Int) List[String]!:
     var reader = try decoder()
     var result: List[String] = []
     var offset = 0
@@ -40,7 +40,7 @@ test "JSON decoder preserves values split at every chunk size":
         if (try decode(input, size)) != expected: return fail("chunk size {size}")
 
 test "JSON decoder reports truncated and malformed input":
-    let invalid: Result[List[JsonValue], JsonError] = error(JsonError.InvalidData)
+    let invalid: List[JsonValue]!JsonError = error(JsonError.InvalidData)
 
     for text in ["\{\"a\":[1", "\"open", "x", "[1]]", "truex y"]:
         var reader = try decoder()
@@ -53,8 +53,8 @@ test "JSON decoder reports truncated and malformed input":
         )
 
 test "JSON decoder rejects invalid UTF-8 and stays failed":
-    let invalid: Result[List[JsonValue], JsonError] = error(JsonError.InvalidData)
-    let closed: Result[List[JsonValue], JsonError] = error(JsonError.InvalidInput)
+    let invalid: List[JsonValue]!JsonError = error(JsonError.InvalidData)
+    let closed: List[JsonValue]!JsonError = error(JsonError.InvalidInput)
     var reader = try decoder()
     let bad = "\"a\"".to_bytes()
     try expect_equal(reader.feed(bad.with_value(1, 255)), invalid)
@@ -66,7 +66,7 @@ test "JSON decoder rejects invalid UTF-8 and stays failed":
     try expect_equal(ended.finish(), closed)
 
 test "JSON decoder applies per-value budgets":
-    let limited: Result[List[JsonValue], JsonError] = error(JsonError.LimitExceeded)
+    let limited: List[JsonValue]!JsonError = error(JsonError.LimitExceeded)
     var bytes = try decoder(JsonLimits(5))
     try expect_not_equal(bytes.feed("[1,2]".to_bytes()), limited)
     try expect_equal(bytes.feed("[1,2,3]".to_bytes()), limited)

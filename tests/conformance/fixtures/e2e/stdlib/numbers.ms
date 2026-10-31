@@ -13,16 +13,16 @@ test "numbers radix and signed boundaries":
     try expect_equal(1.9.truncate_to_int(), 1)
 
 test "numbers reject whitespace separators overflow and invalid radix":
-    let invalid: Result[Int, NumberError] = error(NumberError.InvalidData)
+    let invalid: Int!NumberError = error(NumberError.InvalidData)
     for text in [" 1", "1_0", "0x10", "+", "١"]:
         try expect_equal(parse_int(text, 10), invalid)
 
-    let overflow: Result[Int, NumberError] = error(NumberError.OutOfRange)
+    let overflow: Int!NumberError = error(NumberError.OutOfRange)
     try expect_equal(parse_int("9223372036854775808", 10), overflow)
 
-    let radix_error: Result[Int, NumberError] = error(NumberError.InvalidInput)
+    let radix_error: Int!NumberError = error(NumberError.InvalidInput)
     try expect_equal(parse_int("1", 1), radix_error)
 
-    let float_error: Result[Float, NumberError] = error(NumberError.InvalidData)
+    let float_error: Float!NumberError = error(NumberError.InvalidData)
     for text in [" 1.0", "1_0", "1.", "0x1p2"]:
         try expect_equal(parse_float(text), float_error)

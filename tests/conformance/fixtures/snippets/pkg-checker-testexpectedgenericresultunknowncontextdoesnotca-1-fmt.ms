@@ -3,6 +3,6 @@
 # conform: origin=pkg/checker/contextual_inference_test.go:74 TestExpectedGenericResultUnknownContextDoesNotCascade
 import TextError from "@std/core.ms"
 
-fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
+fn fail[T](message: String) T!TextError: error(TextError(message))
 
-fn first() Result[Int, Missing]: fail("empty")
+fn first() Int!Missing: fail("empty")

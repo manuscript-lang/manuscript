@@ -7,7 +7,7 @@ import expect_true, fail from "@std/test.ms"
 interface Shape:
     fn area() Int
     fn scaled(by: Int) Int
-    fn checked(limit: Int) Result[Int, TextError]
+    fn checked(limit: Int) Int!TextError
     fn grow(depth: Int) Int
 
 type Rect:
@@ -25,7 +25,7 @@ impl Shape for Rect:
     fn scaled(by: Int) Int:
         return self.area() * by
 
-    fn checked(limit: Int) Result[Int, TextError]:
+    fn checked(limit: Int) Int!TextError:
         if self.area() > limit:
             return error(cause: TextError("too big"))
 
@@ -46,7 +46,7 @@ impl Shape for Sign:
     fn scaled(by: Int) Int:
         return self.area() * by
 
-    fn checked(limit: Int) Result[Int, TextError]:
+    fn checked(limit: Int) Int!TextError:
         return ok(value: self.area())
 
     fn grow(depth: Int) Int:
@@ -55,7 +55,7 @@ impl Shape for Sign:
 fn through(shape: Shape) Int:
     return shape.scaled(by: 2)
 
-fn tried(rect: Rect, limit: Int) Result[Int, TextError]:
+fn tried(rect: Rect, limit: Int) Int!TextError:
     let first = try rect.checked(limit: limit)
     return ok(value: first + (try rect.checked(limit: limit + 100)))
 

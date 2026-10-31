@@ -43,10 +43,10 @@ export type SseLimits:
 export interface SseDecoder:
     # Decodes one chunk and returns the events it completed, in order.
     # An error is final for the decoder, which returns it again on later calls.
-    var fn feed(chunk: Bytes) Result[List[SseEvent], SseError]
+    var fn feed(chunk: Bytes) List[SseEvent]!SseError
     # Ends the stream. A stream with no partial line and no unfinished event ends cleanly;
     # otherwise the result is Truncated and the unfinished event is never dispatched.
-    var fn finish() Result[Unit, SseError]
+    var fn finish() Unit!SseError
     # Returns the latest valid `retry:` value in milliseconds, or none if the stream sent none.
     fn retry() Int?
 
@@ -90,7 +90,7 @@ impl Error for SseError:
             ReadFailed(cause): return "SSE read failed: {cause.message()}"
 
 # Creates a decoder. Supplied limits must be positive.
-export fn decoder(limits: SseLimits = SseLimits()) Result[SseDecoder, SseError]:
+export fn decoder(limits: SseLimits = SseLimits()) SseDecoder!SseError:
     if not positive(limits.max_line_bytes): return error(SseError.InvalidInput)
     if not positive(limits.max_event_bytes): return error(SseError.InvalidInput)
 
@@ -116,7 +116,7 @@ fn exceeds(value: Int, limit: Int?) Bool:
     return false
 
 impl SseDecoder for Decoder:
-    var fn feed(chunk: Bytes) Result[List[SseEvent], SseError]:
+    var fn feed(chunk: Bytes) List[SseEvent]!SseError:
         var events = List[SseEvent]()
         if let failure = self.failure: return error(failure.clone())
         if self.closed: return error(SseError.InvalidInput)
@@ -160,7 +160,7 @@ impl SseDecoder for Decoder:
 
         return ok(events)
 
-    var fn finish() Result[Unit, SseError]:
+    var fn finish() Unit!SseError:
         if let failure = self.failure: return error(failure.clone())
         if self.closed: return error(SseError.InvalidInput)
 
@@ -176,7 +176,7 @@ impl SseDecoder for Decoder:
         return self.retry_ms
 
 # Buffers the unterminated tail of a chunk as part of the line being assembled.
-fn hold(var decoder: Decoder, segment: Bytes) Result[Unit, SseError]:
+fn hold(var decoder: Decoder, segment: Bytes) Unit!SseError:
     decoder.line_bytes += segment.length()
     if exceeds(decoder.line_bytes, decoder.limits.max_line_bytes): return error(
         SseError.LimitExceeded
@@ -188,7 +188,7 @@ fn hold(var decoder: Decoder, segment: Bytes) Result[Unit, SseError]:
 # Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any bytes held from earlier chunks.
 fn complete(
     var decoder: Decoder, chunk: Bytes, start: Int, end: Int, var events: List[SseEvent]
-) Result[Unit, SseError]:
+) Unit!SseError:
     if decoder.line_bytes == 0:
         if exceeds(end - start, decoder.limits.max_line_bytes): return error(
             SseError.LimitExceeded
@@ -204,7 +204,7 @@ fn complete(
 
 fn end_line(
     var decoder: Decoder, bytes: Bytes, start: Int, end: Int, var events: List[SseEvent]
-) Result[Unit, SseError]:
+) Unit!SseError:
     var from = start
 
     if not decoder.started:
@@ -284,7 +284,7 @@ impl ReadStream for OwnedBody:
     var fn close() Unit:
         self.body.close()
 
-    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
+    var fn read(max_bytes: Int? = none) Bytes?!IoError:
         return self.body.read(max_bytes)
 
 # Turns an HTTP response body into a ReadStream that owns it. Closing the stream closes the body.
@@ -312,7 +312,7 @@ export fn reader(
     input: ReadStream,
     limits: SseLimits = SseLimits(),
     chunk_bytes: Int?
-) Result[SseReader, SseError]:
+) SseReader!SseError:
     if not positive(chunk_bytes): return error(SseError.InvalidInput)
 
     let created = try decoder(limits)
@@ -330,7 +330,7 @@ impl Closeable for SseReader:
 
 # Returns the next event, or none after a clean end of stream.
 # A read failure, malformed line, exceeded limit or truncated event is an error.
-export fn next_event(var reader: SseReader) Result[SseEvent?, SseError]:
+export fn next_event(var reader: SseReader) SseEvent?!SseError:
     while true:
         if reader.next < reader.ready.length():
             let event = reader.ready.get(reader.next)

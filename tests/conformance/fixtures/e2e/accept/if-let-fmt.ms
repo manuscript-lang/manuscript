@@ -17,7 +17,7 @@ fn total(items: List[Int?]) Int:
             sum = sum + value
     return sum
 
-fn check(value: Bool, message: String) Result[Unit, Error]:
+fn check(value: Bool, message: String) Unit!:
     (value) | try expect_true
     return ok(unit)
 
@@ -37,7 +37,7 @@ test "if let takes else when absent and keeps falsy payloads":
     let empty: List[Int] = []
     if let value = empty.first(): return fail(message: "unexpected {value}")
 
-fn parse(text: String) Result[Int, TextError]:
+fn parse(text: String) Int!TextError:
     if text == "":
         return error(TextError("empty"))
 

@@ -1,4 +1,4 @@
 # conform: tags=formatter,parser,tier-core,try-result
 # conform: phase=parse
 # conform: origin=pkg/tooling/result_lint_test.go:27 TestDiscardedResultLint
-fn caller() Result[Int, Error]: operation()
+fn caller() Int!: operation()

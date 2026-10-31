@@ -38,8 +38,8 @@ test "direct append preserves checked argument conversions":
     errors.append(Failure(1))
     try expect_equal(errors.get(0).message(), "failure")
 
-    var results: List[Result[Int, Error]?] = []
-    let failed: Result[Int, Failure] = error(Failure(2))
+    var results: List[Int!?] = []
+    let failed: Int!Failure = error(Failure(2))
     results.append(failed)
 
     let widened = results.get(0).get()

@@ -25,9 +25,9 @@ impl Error for ChannelError:
 # How one end of a channel moves values. Each kind of group provides its own; use `Channel`.
 export interface Transport[In, Out]:
     # Sends `value`, waiting while the other end has too many unread values.
-    fn send(value: In) Result[Unit, ChannelError]
+    fn send(value: In) Unit!ChannelError
     # Waits for the next value. `ok(none)` means the other end closed and every value was read.
-    fn receive() Result[Out?, ChannelError]
+    fn receive() Out?!ChannelError
     # Closes this end. Safe to call again.
     var fn close() Unit
 
@@ -43,12 +43,12 @@ export type Channel[In, Out]:
 impl Channel[In, Out]:
     # Sends `value` to the other end, waiting while it has many unread values.
     # Gives `Closed` once either end is closed.
-    fn send(value: In) Result[Unit, ChannelError]:
+    fn send(value: In) Unit!ChannelError:
         return self.transport.send(value)
 
     # Waits for the next value from the other end. Gives `ok(none)` once the other end closed and
     # every value it sent was read, and `Closed` once this end is closed.
-    fn receive() Result[Out?, ChannelError]:
+    fn receive() Out?!ChannelError:
         return self.transport.receive()
 
     # Closes this end: the other end reads what is left, then `ok(none)`. Safe to call again.

@@ -5,7 +5,7 @@ import network from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 import control from "@std/process.ms"
 
-fn faulting(exchange: HttpExchange) Result[Unit, HttpError]:
+fn faulting(exchange: HttpExchange) Unit!HttpError:
     let big = "x".repeat(1000000).get("")
     let xs: List[Int] = []
     let n = xs[big.length()]

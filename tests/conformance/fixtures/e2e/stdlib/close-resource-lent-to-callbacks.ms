@@ -18,7 +18,7 @@ fn say(s: String) Unit:
 fn maybe(n: String) Door?:
     return Door(n)
 
-fn open(n: String) Result[Door, TextError]:
+fn open(n: String) Door!TextError:
     return ok(Door(n))
 
 export fn main() Int:
@@ -30,7 +30,7 @@ export fn main() Int:
     let size = open("result").map(fn d: d.name.length())
     say("--fallback")
 
-    let failed: Result[Door, TextError] = error(TextError("no"))
+    let failed: Door!TextError = error(TextError("no"))
     let fallback = failed.get_or_else(fn cause: Door("fallback"))
     say("end {doors.length()} {name.get()} {size.get()} {fallback.name}")
     return 0

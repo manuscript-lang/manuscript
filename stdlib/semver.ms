@@ -56,7 +56,7 @@ export fn format(version: Version) String:
     return text
 
 # Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are rejected.
-export fn parse(text: String) Result[Version, SemverError]:
+export fn parse(text: String) Version!SemverError:
     let build_parts = split_first(text, "+")
     let core_and_pre = split_first(build_parts[0].clone(), "-")
     let numbers = core_and_pre[0].split(".")

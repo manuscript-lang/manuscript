@@ -54,13 +54,13 @@ impl Error for Oops:
 fn say(s: String) Unit:
     stdout().write("{s}\n").get()
 
-fn check(fail: Bool) Result[Int, Oops]:
+fn check(fail: Bool) Int!Oops:
     if fail:
         return error(Oops("no"))
 
     return ok(1)
 
-fn after_move(r: Room, fail: Bool) Result[List[Door], Oops]:
+fn after_move(r: Room, fail: Bool) List[Door]!Oops:
     var xs: List[Door] = []
     xs.append(r.first)
 
@@ -68,7 +68,7 @@ fn after_move(r: Room, fail: Bool) Result[List[Door], Oops]:
     say("after_move: ok")
     return ok(xs)
 
-fn before_move(r: Room, fail: Bool) Result[List[Door], Oops]:
+fn before_move(r: Room, fail: Bool) List[Door]!Oops:
     let _n = try check(fail)
     var xs: List[Door] = []
     xs.append(r.second)

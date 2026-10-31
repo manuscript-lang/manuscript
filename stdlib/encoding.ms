@@ -15,7 +15,7 @@ export fn base64_decode(
     text: String,
     url_safe: Bool = false,
     max_bytes: Int?
-) Result[Bytes, EncodingError]:
+) Bytes!EncodingError:
     let limit = budget(max_bytes)
     if limit < 0: return error(EncodingError.InvalidInput)
 
@@ -124,7 +124,7 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
     return out.build()
 
 # Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
-export fn hex_decode(text: String, max_bytes: Int?) Result[Bytes, EncodingError]:
+export fn hex_decode(text: String, max_bytes: Int?) Bytes!EncodingError:
     let limit = budget(max_bytes)
     if limit < 0: return error(EncodingError.InvalidInput)
 
@@ -218,7 +218,7 @@ export fn utf16_decode(
     data: Bytes,
     little_endian: Bool = true,
     max_bytes: Int?
-) Result[String, EncodingError]:
+) String!EncodingError:
     let limit = budget(max_bytes)
     if limit < 0: return error(EncodingError.InvalidInput)
 
@@ -261,10 +261,10 @@ export fn utf16_decode(
     return ok(text_of(scalars))
 
 # Encodes text as ISO-8859-1, one byte per scalar. A scalar above U+00FF returns InvalidData.
-export fn latin1_encode(text: String) Result[Bytes, EncodingError]:
+export fn latin1_encode(text: String) Bytes!EncodingError:
     return narrow(text, 255)
 
-fn narrow(text: String, maximum: Int) Result[Bytes, EncodingError]:
+fn narrow(text: String, maximum: Int) Bytes!EncodingError:
     var out = BytesBuilder()
 
     for scalar in text.scalar_values():
@@ -279,11 +279,11 @@ export fn latin1_decode(data: Bytes) String:
     return text_of(data.values().map(fn b: b.to_int()))
 
 # Encodes text as 7-bit ASCII. A scalar above U+007F returns InvalidData.
-export fn ascii_encode(text: String) Result[Bytes, EncodingError]:
+export fn ascii_encode(text: String) Bytes!EncodingError:
     return narrow(text, 127)
 
 # Decodes 7-bit ASCII bytes. A byte above 0x7F returns InvalidData.
-export fn ascii_decode(data: Bytes) Result[String, EncodingError]:
+export fn ascii_decode(data: Bytes) String!EncodingError:
     let bytes = data.values()
     for byte in bytes:
         if byte > 127: return error(EncodingError.InvalidData)

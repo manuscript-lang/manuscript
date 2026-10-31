@@ -8,9 +8,9 @@ import files, read_all, IoError from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 
 fn expect_fs_error[T](
-    outcome: Result[T, FileSystemError],
+    outcome: T!FileSystemError,
     expected: FileSystemError
-) Result[Unit, Error]:
+) Unit!:
     match outcome:
         ok(_): return error(TextError("filesystem misuse succeeded"))
         error(cause):
@@ -102,10 +102,10 @@ test "filesystem scoped temporary directories and bounded file reads":
         "hello".to_bytes()
     )
 
-    let limited: Result[Bytes, FileSystemError] = error(FileSystemError.LimitExceeded)
+    let limited: Bytes!FileSystemError = error(FileSystemError.LimitExceeded)
     fs.read_file(path: path, max_bytes: 4) | try expect_equal(limited)
 
-    let exists: Result[Unit, FileSystemError] = error(FileSystemError.AlreadyExists)
+    let exists: Unit!FileSystemError = error(FileSystemError.AlreadyExists)
     ((fs.write_file(path: path, data: "changed", replace: false) != exists)) | try expect_false
     (fs.stat(path: path, follow_links: true) | try expect_ok).size | try expect_equal(5)
     (fs.list(path: directory) | try expect_ok).length() | try expect_equal(1)
@@ -147,13 +147,13 @@ test "file handles positional I/O stream adapters and closed errors":
     )
     handle.close()
 
-    let closed: Result[Bytes, FileSystemError] = error(FileSystemError.Closed)
+    let closed: Bytes!FileSystemError = error(FileSystemError.Closed)
     handle.read_at(offset: 0, max_bytes: 1) | try expect_equal(closed)
     handle.close()
 
 test "empty paths are rejected instead of resolving to the working directory":
     let fs = filesystem()
-    let invalid: Result[Unit, FileSystemError] = error(
+    let invalid: Unit!FileSystemError = error(
         cause: FileSystemError.InvalidInput
     )
     fs.remove(path: "", recursive: true) | try expect_equal(invalid)

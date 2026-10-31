@@ -19,7 +19,7 @@ type Done:
     id: Int
     count: Int
 
-fn square_each(var ch: Channel[Int, Int]) Result[Unit, ChannelError]:
+fn square_each(var ch: Channel[Int, Int]) Unit!ChannelError:
     while true:
         if let n = try ch.receive():
             try ch.send(n * n)
@@ -96,7 +96,7 @@ fn sum_until_closed() Unit:
             let _ = ch.send(total)
             return
 
-fn ask(group: WorkerGroup[Int, Int], value: Int) Result[Int, WorkerError]:
+fn ask(group: WorkerGroup[Int, Int], value: Int) Int!WorkerError:
     var worker = try group.spawn(squares)
     let _ = worker.channel.send(value)
     var answer = -1

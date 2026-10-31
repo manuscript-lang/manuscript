@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,match,optional,tier-core,try-result
 # conform: phase=check
 # conform: origin=pkg/compiler/result_bounds_test.go:73 TestSuccessfulResultBoundsRejectDifferentReturns
-fn affine(n: Int) Result[Int, Cause]:
+fn affine(n: Int) Int!Cause:
     if n < 0:
         return error(
             Cause(
