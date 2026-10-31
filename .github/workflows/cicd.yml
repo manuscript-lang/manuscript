@@ -332,6 +332,7 @@ jobs:
         if: always()
         run: sccache --show-stats
       - uses: ./.github/actions/sccache-save
+        if: ${{ !cancelled() }}
         with:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
@@ -397,6 +398,7 @@ jobs:
           make book
           node --test tests/docs/publication.test.cjs
       - uses: ./.github/actions/sccache-save
+        if: ${{ !cancelled() }}
         with:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
