@@ -1,0 +1,26 @@
+{
+  "baseline_revision": "d4a94aa9283348133542078e22ccaa3b2c9dc348",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "rust_settings": "Cargo release, overflow-checks=true; repository force-frame-pointers=yes",
+  "manuscript_settings": "normal --build-type Release; companion metadata reports cranelift; no backend investigation performed",
+  "compiler_sha256": "e0f8d0152bf68b04e9f0a6fc2ca876d4c51328d2e58b94dcac322b2c5b71daeb",
+  "baseline_archive_sha256": "4ef63cd2ca0418a2b7b4d9590d001af06bd51413af8b1861228da795f80356be",
+  "candidate_archive_sha256": "51064bdfa7bd90b113ca5b0f116c6e29eeb21a6141b9134e6d7c40a23dcfd75a",
+  "production_patch_sha256": "557d231db477e6638accda3cdcedfcefc20a76c029102c7c5dfbee0f1bbdab5e",
+  "checks": {
+    "byte_source_tests_Release": "2 passed with candidate MS_RT_LIB",
+    "byte_source_tests_Debug": "2 passed with candidate MS_RT_LIB",
+    "cargo_fmt_all_check": "passed",
+    "clippy_workspace_all_targets": "passed",
+    "repo_check": "passed",
+    "pure_search_nextest": "5 passed; remaining tests intentionally excluded from this scoped invocation",
+    "benchmark_empty_producer": "rejected with complete=false, no validated producers and no summary"
+  },
+  "limits": [
+    "No full workspace nextest/conformance run locally because campaign excludes denied ownership/lifetime mechanisms.",
+    "No allocation/RSS measurements; search introduces no allocating call.",
+    "Exploratory 80-case phases preceded the added reviewer controls; not pooled with accepted 130-case phase.",
+    "Final merged-main remeasurement is pending merge; this is matched current-main branch evidence."
+  ]
+}
