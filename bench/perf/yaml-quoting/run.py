@@ -27,7 +27,7 @@ required_sources = {
     "bench/perf/yaml-quoting/main.ms", "bench/perf/yaml-quoting/run.py",
     "bench/perf/yaml-quoting/rust/Cargo.toml", "bench/perf/yaml-quoting/rust/Cargo.lock",
     "bench/perf/yaml-quoting/rust/src/main.rs", "Cargo.lock", "rust-toolchain.toml",
-    "scripts/lld.lock", "target/ms-native/libms_native.a",
+    "toolchain/lld.lock", "target/ms-native/libms_native.a",
 }
 if set(provenance["source_and_runtime_sha256"]) != required_sources:
     raise ValueError("incomplete source/runtime provenance")

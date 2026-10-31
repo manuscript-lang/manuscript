@@ -1,4 +1,4 @@
-# Pinned static lld from https://github.com/manuscript-lang/llvm-bundle, checked by scripts/fetch-lld.sh.
+# Pinned static lld from https://github.com/manuscript-lang/llvm-bundle, downloaded by `ms` on first use.
 # Update the tag and every digest together; digests are the release's SHA256SUMS.
 tag llvm-23.1.1-r3
 version 23.1.1

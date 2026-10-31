@@ -35,7 +35,7 @@ def main():
     assert args.count > 0 and args.count % 2 == 0
     os.sched_setaffinity(0, {args.cpu})
     root = pathlib.Path(__file__).resolve().parents[3]
-    paths = ["crates/ms-std-time/src/core_time.rs", "scripts/lld.lock", "rust-toolchain.toml",
+    paths = ["crates/ms-std-time/src/core_time.rs", "toolchain/lld.lock", "rust-toolchain.toml",
              "bench/perf/timestamp-format/main.ms", "bench/perf/timestamp-format/rust/src/main.rs",
              "bench/perf/timestamp-format/rust/Cargo.toml", "bench/perf/timestamp-format/rust/Cargo.lock",
              "bench/perf/timestamp-format/repeat.py"]

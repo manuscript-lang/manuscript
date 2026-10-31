@@ -1,6 +1,6 @@
 //! Bundles what linking needs so `ms build` runs no C toolchain: on Linux, the self-contained musl startup objects and libc
 //! that Rust's musl target carries, or, on Windows, the mingw-w64 startup object, libraries and import
-//! libraries of the pinned llvm-mingw release (`scripts/fetch-mingw.sh`). It also pins the downloads
+//! libraries of the pinned llvm-mingw release (`toolchain/fetch-mingw.sh`). It also pins the downloads
 //! (`lld`, the LLVM tools) that `ms` fetches on first use, so they stay out of the binary.
 
 use std::path::{Path, PathBuf};
@@ -92,18 +92,18 @@ fn main() {
     println!("cargo:rustc-env=MS_LINKER_ID={id:016x}");
 }
 
-/// Pins the `kind` archive (`lld` or `llvm-tools`) that `scripts/lld.lock` names for this target as
+/// Pins the `kind` archive (`lld` or `llvm-tools`) that `toolchain/lld.lock` names for this target as
 /// `<prefix>_URL` and `<prefix>_SHA256`, so `ms` can fetch and check it on first use. Unlisted targets
 /// get empty values.
 fn pin_download(kind: &str, prefix: &str, target_os: &str) {
-    let lock = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts/lld.lock");
+    let lock = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../toolchain/lld.lock");
     println!("cargo:rerun-if-changed={}", lock.display());
-    let text = std::fs::read_to_string(&lock).expect("read scripts/lld.lock");
+    let text = std::fs::read_to_string(&lock).expect("read toolchain/lld.lock");
     let field = |key: &str| {
         text.lines()
             .find_map(|l| l.strip_prefix(key)?.strip_prefix(' '))
             .map(str::trim)
-            .unwrap_or_else(|| panic!("scripts/lld.lock has no {key}"))
+            .unwrap_or_else(|| panic!("toolchain/lld.lock has no {key}"))
     };
     let (tag, version) = (field("tag"), field("version"));
     let os = if target_os == "macos" {
@@ -215,7 +215,7 @@ fn strip_members(archive: &Path) {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// `MS_MINGW`, else the llvm-mingw tree `scripts/fetch-mingw.sh` leaves in `target/llvm-bundle/mingw`.
+/// `MS_MINGW`, else the llvm-mingw tree `toolchain/fetch-mingw.sh` leaves in `target/llvm-bundle/mingw`.
 fn mingw() -> PathBuf {
     let root = std::env::var_os("MS_MINGW").map_or_else(
         || Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/llvm-bundle/mingw"),
@@ -223,7 +223,7 @@ fn mingw() -> PathBuf {
     );
     assert!(
         root.join("bin").is_dir(),
-        "no llvm-mingw to bundle: run `sh scripts/fetch-mingw.sh` or set MS_MINGW to its root"
+        "no llvm-mingw to bundle: run `sh toolchain/fetch-mingw.sh` or set MS_MINGW to its root"
     );
     root
 }

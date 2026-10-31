@@ -47,7 +47,8 @@ domains:
     file: repository/index.md
     topics: [repository cleanup, publication, CI, releases, repo checks]
     paths:
-      - "scripts/**"
+      - "tools/**"
+      - "toolchain/**"
       - ".github/workflows/**"
       - "documentation/developer-tooling/implementation.md"
       - "documentation/contributing/**"
