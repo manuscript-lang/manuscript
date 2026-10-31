@@ -678,6 +678,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
 
                 quoted_key = cur(flow) == 34 or cur(flow) == 39
 
+                let key_start = flow.pos
                 let parsed_key = try flow_value(var flow, level, key: true)
 
                 match parsed_key:
@@ -700,6 +701,19 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
                 if step(var flow) != 58: return error(
                     flow_invalid(flow, "expected mapping colon")
                 )
+
+                # A colon makes this an implicit key: validate physical source lines, not
+                # decoded text, which may legitimately contain an escaped newline.
+                var key_at = key_start
+
+                while key_at < flow.pos:
+                    if flow.codes.get(key_at) == 10: return error(
+                        flow_invalid(
+                            flow, "an implicit mapping key must stay on one line"
+                        )
+                    )
+
+                    key_at += 1
 
                 phase = 0
                 continue
