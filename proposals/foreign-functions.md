@@ -1,21 +1,20 @@
-# Integrating external software: child process options and C libraries
+# Foreign functions: binding C libraries such as libuv
 
 ## Summary
 
-- Problem: a program can run another program but not in another directory or with a chosen environment, and it cannot call a C library such as libuv: `extern fn` takes only `Int`, `Float`, `Bool` and borrowed `String`, so every pointer, `int`, struct and callback needs a hand-written C shim against `ms_abi.h`.
-- Change, processes: `Commands.run` and `Commands.spawn` gain `directory: String?` and `environment: Map[String, String]?`; `Subprocess` gains `pid()`. No new type.
-- Change, C libraries: user `extern fn` accepts the sized numeric types and a new `Pointer` scalar; a new `@std/native.ms` adds `Pointer` reads and writes, an owned `Memory` block, `callback(f)` (a C function pointer for a top-level `fn` or an extern), a way to hand a `Shared[T]` to C as `void *` user data, and `on_stop` so a stop request can wake a loop blocked in C. All of it is ordinary Manuscript over about a dozen small runtime primitives. Linking stays `--link`.
+- Problem: a program cannot call a C library such as libuv: `extern fn` takes only `Int`, `Float`, `Bool` and borrowed `String`, so every pointer, `int`, struct and callback needs a hand-written C shim against `ms_abi.h`.
+- Change: user `extern fn` accepts the sized numeric types and a new `Pointer` scalar; a new `@std/native.ms` adds `Pointer` reads and writes, an owned `Memory` block, `callback(f)` (a C function pointer for a top-level `fn` or an extern), a way to hand a `Shared[T]` to C as `void *` user data, and `on_stop` so a stop request can wake a loop blocked in C. All of it is ordinary Manuscript over about a dozen small runtime primitives. Linking stays `--link`.
 - Cost: one scalar type, one checker rule (`callback` names a top-level `fn` or an extern), a C-ABI entry per callback function, extension attributes on narrow integer arguments, one stdlib module. No new syntax, keyword or manifest table.
 - Decision requested: approve the design and the four open questions (whether `Pointer` is a new type, `Pointer` method names, cancellation inside callbacks, and how bindings declare their native inputs).
 
 ## Status
 
 - Proposal, 2026-10-31, checked against `d4a94aa9`. Nothing implemented.
-- Request (Chinmay, 2026-10-31): "design a process /ffi to enable integrating with other external software"; "use case could be to integrate with libuv for instance". libuv is the worked example and the acceptance test.
+- Request (Chinmay, 2026-10-31): "design a process /ffi to enable integrating with other external software"; "use case could be to integrate with libuv for instance"; "by process i meant a way for manuscript to do this, not a computer running [processes]". So this covers the FFI only; child processes are out of scope. libuv is the worked example and the acceptance test.
 - Standing direction: Manuscript first (stdlib `.ms`, Rust only for small general primitives); Linux, macOS and Windows parity; native identity is the declared name (`bindings.json` removed, "the Manuscript name is the symbol, no `as`"); one `Closeable` whose `close()` returns `Unit!`; `T!E` result shorthand.
 - Builds on: `extern fn` (#1136, #1138; `documentation/core-language/functions/native-functions.md`), sized and unsigned numeric types (`proposals/sized-numeric-types.md`, `proposals/unsigned-integer-types.md`), `Shared[T]` (`stdlib/shared.ms`), workers (`proposals/worker-threads.md`), the bundled linker (`proposals/bundled-linker.md`), and the earlier extern review, whose "narrow v1" (scalars and borrowed strings) this extends.
 - Prior open idea, "generic extern fn and a callback marker": resolved below with no new language feature (see Design, "Generic externs and kept callbacks").
-- Skeptical review, 2026-10-31 (independent subagent, against source): build with changes. Folded in: the isolate check uses the isolate registration (`msrt_isolate_hdr` never returns null, `crates/ms-rt/src/fault.rs:100`); `on_stop` added because a loop blocked in C never polls cancellation; `Memory.release` is a `var fn` that empties the block, like `SharedGuard`; a callback fault is a barrier, not a guard; pins are generation-tagged handles, so a double take faults; the `[link]` table is dropped (the manifest reader takes only string values in `[project]`/`[aliases]`, and the program's manifest, not the binding's, would carry it); process options use `Command::current_dir`/`env_clear` and define directory, PATH and error behavior so all three platforms agree; the example closes the handle through the loop when `uv_timer_start` fails. Part 1 is independent of Part 2 and ships as its own stage.
+- Skeptical review, 2026-10-31 (independent subagent, against source): build with changes. Folded in: the isolate check uses the isolate registration (`msrt_isolate_hdr` never returns null, `crates/ms-rt/src/fault.rs:100`); `on_stop` added because a loop blocked in C never polls cancellation; `Memory.release` is a `var fn` that empties the block, like `SharedGuard`; a callback fault is a barrier, not a guard; pins are generation-tagged handles, so a double take faults; the `[link]` table is dropped (the manifest reader takes only string values in `[project]`/`[aliases]`, and the program's manifest, not the binding's, would carry it); the example closes the handle through the loop when `uv_timer_start` fails.
 
 ## Problem
 
@@ -30,7 +29,6 @@
 - Verified: there is no way to get a C function pointer for a Manuscript function. libuv reports every event through one (`uv_timer_cb`, `uv_connection_cb`, `uv_read_cb`, `uv_close_cb`).
 - Verified: there is no memory a C library may keep. `Bytes` and `List` move bitwise and reallocate (ABI.md section 4), so their address is not stable; libuv keeps a `uv_tcp_t *` until its close callback runs.
 - Verified: native inputs come only from `--link <file>` on each command (`crates/ms-cli/src/invocation.rs:36`). That is enough for one program; how a reusable binding declares its archives is left open (Open question 4).
-- Verified: `Commands.run`/`spawn` (`stdlib/process.ms:65-80`) take no working directory and no environment. A program must `change_directory` for the whole process, which races with tasks, and cannot clear a secret from a child's environment. `Subprocess` has no `pid()`.
 - Consequence: integrating libuv, SQLite, libcurl, zlib or a vendor SDK today means writing and compiling C for every function that touches a pointer. That is the opposite of Manuscript first, and an agent writing the binding needs two languages and a C toolchain.
 - Non-goals:
   - Structs passed or returned by value, variadic functions (`printf`), C `long` (32-bit on Windows, 64-bit elsewhere), and bitfields. These keep using a C shim.
@@ -38,33 +36,13 @@
   - Dynamic loading (`dlopen`, `LoadLibrary`). Linux executables are static musl without `dlopen` (`proposals/bundled-linker.md`), so it cannot be at parity.
   - Generating bindings from C headers. A later tool can emit the `.ms` this design defines.
   - Exposing Manuscript functions to C programs that link a Manuscript library.
+  - Child processes (`@std/process.ms`, `@std/processes.ms`): unchanged.
 
 ## Design
 
 The rule: **a C library is bound in Manuscript.** A binding module declares the library's functions as `extern fn` with their real C types, keeps them private, and exports ordinary Manuscript types and functions over them. `@std/native.ms` supplies the few things Manuscript cannot express itself: an address, memory at a stable address, a function pointer, and a reference that C can hold.
 
-### Part 1: child process options
-
-```manuscript
-import commands, control from "@std/process.ms"
-
-export fn status(repo: String) String!Error:
-    var env = try control().environment()
-    env["GIT_PAGER"] = "cat"
-    let out = try commands().run("git", ["status", "--short"], directory: repo, environment: env)
-    return ok(out.stdout.decode_utf8().get(""))
-```
-
-- `directory: String?` on `run` and `spawn`: the child starts there; none keeps the parent's. Checked before starting: a missing or non-directory path is `CommandError.Unavailable` on every platform (Windows would otherwise report `ERROR_DIRECTORY` as `Failed`).
-- `environment: Map[String, String]?`: when given it is the child's whole environment; none inherits the parent's. One rule, no merge semantics: to add a variable, copy `control().environment()` and change it, as above. A key that is empty or contains `=` or NUL is `InvalidInput`. Nothing is added silently; the doc comment warns that many Windows programs need `SystemRoot`.
-- Program lookup is done by `ms-std-process`, not left to the platform, so it is the same everywhere: a `program` containing a path separator is resolved against the parent's working directory (not `directory`); otherwise it is searched on the `PATH` the child will see (the given `environment`'s, else the parent's). No `PATH` and no match is `Unavailable`.
-- `Subprocess.pid() Int`: the operating system's process id, for logs and for `control().send_signal`.
-- Rust: `crates/ms-std-process/src/spawn.rs` (`start`, called by `spawn_with` in `command.rs:289`) builds a `std::process::Command`; it gains `current_dir`, `env_clear` plus `envs`, and the lookup above. The existing extra variables for `ProcessGroup` are added after the given environment.
-- Unchanged: `Stdio`, streams, timeouts, process-group kill on close and cancellation, `ProcessGroup`.
-
-### Part 2: C libraries
-
-#### Types that cross
+### Types that cross
 
 | Manuscript | C |
 | --- | --- |
@@ -80,7 +58,7 @@ export fn status(repo: String) String!Error:
 - An extern still cannot be generic, take defaults or `var` parameters, or be a method (`native-functions.md`).
 - Everything else is rejected with the existing diagnostic, whose list of types grows.
 
-#### `@std/native.ms`
+### `@std/native.ms`
 
 ```manuscript
 # A machine address. Copying it copies the address; it owns nothing.
@@ -129,7 +107,7 @@ export type StopHook                                # Closeable
 - `NativeValue` is a marker interface (like `Copy`) implemented by the numeric types, `Bool` and `Pointer`; it is how `read[Int32]` is limited to scalars without a method per type.
 - Implemented in `.ms` over runtime primitives: `msrt_native_alloc`, `msrt_native_free`, `msrt_native_load_<n>`/`store_<n>` (1, 2, 4, 8 bytes), `msrt_native_strlen`, `msrt_native_copy_bytes`, `msrt_native_pin`, `msrt_native_pinned`, `msrt_native_unpin`, `msrt_native_on_stop`, `msrt_native_stop_hook_close`. Bounds checks, `c_string`, string decoding and `Memory` are Manuscript. Hot loads can become intrinsics later, after a measurement.
 
-#### Callbacks
+### Callbacks
 
 ```manuscript
 fn on_tick(timer: Pointer) Unit:       # a top-level fn whose types all cross
@@ -147,35 +125,35 @@ uv_timer_start(timer, callback(on_tick), 10, 10)
 - A callback may park (wait on a channel, sleep): tasks are stackful, so the C frames below it stay intact. Another task may then call into the same library; whether that is safe is the library's rule, and the binding documents it.
 - Fault traces: frames are walked by frame pointer; C code built without them truncates the trace at the C frame. Documented, not fixed.
 
-#### Handing state to C
+### Handing state to C
 
 - `to_pointer(box)` gives C one reference to a `Shared[T]` and returns a handle, not an address: an index into a per-isolate pin table plus a generation, packed into the pointer's bits. The entry records the box and `T`'s type descriptor (descriptors are interned per type, `desc_ids` in `crates/ms-clif/src/cg.rs`; generic bundled externs already receive them, ABI.md section 8).
 - `pointer.to_shared[T]()` returns a new reference and leaves C's in place (for callbacks that run many times). `pointer.take_shared[T]()` returns C's reference to Manuscript and retires the entry (for the last callback, typically close).
 - Both fault, with no memory read outside the table, when the handle belongs to another isolate or an earlier occupant of its slot (the generation differs; `Shared` counts are not atomic), was already taken, or was made for another `T`. A wrong cast or a double take is a fault, never memory corruption.
 - A pin that is never taken leaks one reference, like a `Shared` cycle (ABI.md section 2).
 
-#### Calls that block
+### Calls that block
 
 - An extern call runs to completion on the calling isolate's thread. A call that blocks, such as `uv_run` or `sqlite3_step`, stalls every task on that isolate, and cancellation waits for it to return.
 - The answer is the existing one: run the library in a worker (`WorkerGroup.spawn`), and talk to it over the worker's channel. No blocking-call marker or thread hand-off is added, because callbacks must run on the isolate that called in.
 - For libuv specifically, the main isolate wakes a loop running in a worker with `uv_async_send`, the one libuv function that is safe from any thread.
 
-#### Stopping a loop blocked in C
+### Stopping a loop blocked in C
 
 - A stop request (SIGINT, SIGTERM, `Worker.cancel`, a task group's cancellation of the worker) only sets a flag that Manuscript code polls (ABI.md section 7). Code blocked in `uv_run` never polls, so without help every Ctrl-C ends in the 30 s forced exit.
 - `on_stop(function, argument)` registers a C function that the runtime calls as `function(argument)` at the moment a stop is requested for this isolate, from the requesting context: the signal handler for signals, the cancelling thread for `Worker.cancel`. It must therefore be async-signal-safe and thread-safe; `uv_async_send` is documented as both. Closing the `StopHook` unregisters it.
 - libuv pattern: an `uv_async_t` whose callback calls `uv_stop(loop)`, registered with `on_stop(callback(uv_async_send), wake)`. `uv_run` returns, the extern call returns, and the next poll unwinds with the usual cleanups.
 - A Manuscript `callback` pointer passed as `function` faults when called (the entry's thread check), since a stop hook runs outside the isolate.
 
-#### Linking
+### Linking
 
 - Unchanged: `--link <file>` (repeatable) names objects and static archives. Archives must match the bundled toolchain: musl on Linux, mingw (`gnullvm`, UCRT) on Windows (`proposals/bundled-linker.md`). A Windows archive built against `msvcrt.dll` would `free` from another heap.
-- Windows: the bundle embeds a fixed set of import libraries (`crates/ms-clif/src/link/lld.rs:240`); libuv also needs `iphlpapi`, `psapi` and `ole32`. Stage 4 adds those three from the same llvm-mingw release; a general way to name system libraries is Open question 4.
+- Windows: the bundle embeds a fixed set of import libraries (`crates/ms-clif/src/link/lld.rs:240`); libuv also needs `iphlpapi`, `psapi` and `ole32`. Stage 3 adds those three from the same llvm-mingw release; a general way to name system libraries is Open question 4.
 - macOS: undefined symbols bind to libSystem unless they start with `_Sec` or `_CF` (`crates/ms-clif/src/link/macos_stubs.rs:32`). libuv needs nothing else; a library using another framework (IOKit, SystemConfiguration) is not supported yet and the documentation says so.
 - The documentation gives the libuv `cmake` line per platform.
 - libuv installs `SIGCHLD` handling for `uv_spawn` and `SIGINT` handling for `uv_signal_t`; the documentation says to use `@std/process.ms` for child processes and signals instead, so the runtime's handlers stay in charge.
 
-#### Worked example: a libuv timer
+### Worked example: a libuv timer
 
 Checked with `ms check` against stubs (externs written as placeholder `fn`s, since today's checker rejects their types; `@std/native.ms` stubbed as a local module).
 
@@ -253,7 +231,7 @@ export fn count_ticks(limit: Int, every_ms: UInt64) Int!UvError:
 - `uv_handle_set_data`/`get_data` (libuv 1.19+) avoid hard-coding the `data` field offset. Where a layout must be written by hand (`uv_buf_t` is `{base, len}` on Unix and `{ULONG len, base}` on Windows), the binding branches on `os_type()`; parity of the binding is the binding's job, parity of the mechanism is ours.
 - If `uv_timer_init` fails, `memory` is still owned and its scope end frees it. Once init succeeds the loop lists the handle, so it is released at once and every later path, including a failed `uv_timer_start`, ends in `uv_close` and `on_closed`.
 - The example uses `uv_default_loop()` for brevity; in a worker, a binding allocates its own loop with `uv_loop_init` on `Memory`, since the default loop is one per process.
-- A TCP echo server adds `uv_tcp_t`, `uv_buf_t` and the read and write callbacks with the same tools; with a worker-hosted loop and `on_stop` it is the stage 4 fixture.
+- A TCP echo server adds `uv_tcp_t`, `uv_buf_t` and the read and write callbacks with the same tools; with a worker-hosted loop and `on_stop` it is the stage 3 fixture.
 
 ```text
  Manuscript task stack                          C (libuv)
@@ -276,14 +254,13 @@ export fn count_ticks(limit: Int, every_ms: UInt64) Int!UvError:
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `stdlib/process.ms`, `crates/ms-std-process` | `directory`, `environment`, `pid()`; program lookup in Rust so it matches on all three platforms | `tests/e2e/testdata/stdlib/process.ms` cases: temp directory, missing directory is `Unavailable`, replaced environment and its `PATH`, relative program path, pid matches the child's report |
 | `stdlib/native.ms` (new) | `Pointer` methods, `Memory`, `allocate`, `c_string`, `free`, `to_pointer`, `callback`, `on_stop`, `StopHook`, `NativeValue` | new stdlib fixture with a C helper archive (`tests/e2e/testdata/native/`) |
 | `stdlib/intrinsics.ms` | `Pointer` scalar and its `NativeValue` impls | checker tests |
 | `crates/ms-rt` | `msrt_native_*` primitives (alloc, free, loads, stores, strlen, copy, pin table, stop hooks); callback entry helper (isolate registration check, shield, fault barrier); stop hooks called from the signal handler and `msrt_worker_cancel` | unit tests per primitive; foreign-thread, double-take and stop-hook tests |
 | `crates/ms-check` | extern argument and result types grow (`checker.rs:1268`); `callback` argument rule; `NativeValue` bound | conformance accept and reject cases with exact diagnostics |
 | `crates/ms-lower`, `crates/ms-mir` | `Pointer` lowers as `I64`; `callback(f)` lowers to the address of `f`'s C entry | lowering snapshot |
 | `crates/ms-clif` (Cranelift and LLVM) | sign/zero extension for 8/16/32-bit extern arguments and results; one C-ABI entry per callback function, emitted with frame pointers | ABI test calling a C function with every type, both backends, all three platforms |
-| `crates/ms-clif/src/link` | Windows: embed `iphlpapi`, `psapi`, `ole32` import libraries (stage 4) | Windows libuv example links |
+| `crates/ms-clif/src/link` | Windows: embed `iphlpapi`, `psapi`, `ole32` import libraries (stage 3) | Windows libuv example links |
 | `crates/ms-driver` manifest, `--link` | unchanged | |
 | `ms-lsp`, formatter, lint | unchanged (no syntax); `ms review` labels `@std/native.ms` importers | review snapshot |
 | `documentation/core-language/functions/native-functions.md` | rewritten around binding a C library; libuv build lines per platform | `make docs`, example checks |
@@ -308,12 +285,11 @@ export fn count_ticks(limit: Int, every_ms: UInt64) Int!UvError:
 
 Each stage lands green on Linux, macOS and Windows; no platform skips.
 
-1. **Child process options.** `directory`, `environment`, `pid()`. Gate: process fixtures pass on all three platforms.
-2. **Scalars and pointers.** Sized types and `Pointer` in externs, extension attributes, `@std/native.ms` without callbacks or pins. Gate: an ABI test archive (C, compiled per target in CI) round-trips every type on both backends.
-3. **Callbacks, pins and stop hooks.** `callback`, entry helper, pin table, `on_stop`. Gate: fixture where C calls back into Manuscript; a fault in a callback runs outer cleanups and exits 67 with a trace; a foreign-thread call, a double take and a wrong-type pin each fault; SIGINT to a program blocked in a C loop exits 130 through its hook.
-4. **libuv.** `examples/libuv-timer` and a TCP echo server built against libuv 1.x archives fetched by checksum in CI; Windows import libraries added. Gate: both run on all three platforms; a worker-hosted loop is woken by `uv_async_send` and stopped by `Worker.cancel`.
-- Go/no-go after stage 3: if the callback entry needs changes to the fault or task machinery beyond the entry helper, stop and report before stage 4.
-- Checks per stage: `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo nextest run --workspace`, `make verify`, plus `make verify-full` before stage 4 merges.
+1. **Scalars and pointers.** Sized types and `Pointer` in externs, extension attributes, `@std/native.ms` without callbacks or pins. Gate: an ABI test archive (C, compiled per target in CI) round-trips every type on both backends.
+2. **Callbacks, pins and stop hooks.** `callback`, entry helper, pin table, `on_stop`. Gate: fixture where C calls back into Manuscript; a fault in a callback runs outer cleanups and exits 67 with a trace; a foreign-thread call, a double take and a wrong-type pin each fault; SIGINT to a program blocked in a C loop exits 130 through its hook.
+3. **libuv.** `examples/libuv-timer` and a TCP echo server built against libuv 1.x archives fetched by checksum in CI; Windows import libraries added. Gate: both run on all three platforms; a worker-hosted loop is woken by `uv_async_send` and stopped by `Worker.cancel`.
+- Go/no-go after stage 2: if the callback entry needs changes to the fault or task machinery beyond the entry helper, stop and report before stage 3.
+- Checks per stage: `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo nextest run --workspace`, `make verify`, plus `make verify-full` before stage 3 merges.
 
 ## Open questions
 
