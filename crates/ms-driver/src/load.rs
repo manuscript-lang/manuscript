@@ -374,7 +374,7 @@ impl Loader<'_> {
             .imports
             .iter()
             .filter(|item| item.path.starts_with("@std/"))
-            .map(|item| (item.path.as_str(), item.pos));
+            .map(|item| (&*item.path, item.pos));
         for (target, pos) in standard.chain(externs.map(|pos| ("extern", pos))) {
             if let Err(message) = crate::project::check_import(self.config, canonical, target) {
                 let failure = Failure::diagnostic(Box::new(resolution(file, pos, message)));
