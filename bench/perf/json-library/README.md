@@ -254,3 +254,19 @@ additional float cases 1.834–7.585×. The tiny-parse marginal variation persis
 (about 3.5% in this short run); the longer identical-binary controls above remain
 important context and do not establish a material regression. No Rust parser
 comparison is claimed. Required CI must pass on the updated PR head.
+
+
+Main `024af5e2e544f7c9d2ccccc1c333b92b70db0ef3` was merged into validation head
+`63f6886c8d2709633e28d328fa7b6ca5c4228075`, preserving the newer YAML comment,
+encoding, visibility and bench-maintenance changes. The independent performance
+lessons were preserved during wiki conflict resolution. Both component controls
+were rebuilt on this tree and are byte-identical to the earlier reviewed binaries
+(before SHA256 `1e9aff4b43d124362184f88966097b7c214ca6d475fc90575fbc2f2c8d78e3ed`,
+after `519584d9194280815925c6b4488d70f98d165e5ca832369a4df2d794b9747e49`).
+Fresh balanced [full](results/2026-10-31/main-024-replay/summary.json) and
+[edge](results/2026-10-31/main-024-edges/summary.json) replays retain all720 observations:
+hard floats improve1.842x; additional float cases1.852–7.557x. Short common write
+medians show no new material regression; earlier long controls apply to these
+exact same binaries. All22 scoped JSON Rust tests and the normal native/CLI build
+pass on this integrated tree. Required CI must rerun on the updated PR head;
+post-merge combined-main replay remains required.
