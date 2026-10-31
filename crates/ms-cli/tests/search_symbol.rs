@@ -3,6 +3,27 @@
 use std::process::Command;
 
 #[test]
+fn standard_signatures_use_accepted_optional_source_syntax() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-search-types-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let (status, text) = ms(&dir, &["fs.read_file"]);
+    assert_eq!(status, 0, "{text}");
+    assert!(text.contains("max_bytes: Int?"), "{text}");
+    let (status, text) = ms(&dir, &["fs.read_file", "--json"]);
+    assert_eq!(status, 0, "{text}");
+    let document = ms_json::parse(&text).unwrap();
+    let matches = document.get("matches").unwrap().as_array().unwrap();
+    let read_file = matches
+        .iter()
+        .find(|entry| entry.get("name").and_then(ms_json::Json::as_str) == Some("fs.read_file"))
+        .unwrap();
+    let signature = read_file.get("type").unwrap().as_str().unwrap();
+    assert!(signature.contains("max_bytes: Int?"), "{signature}");
+    assert!(!signature.contains("Optional["), "{signature}");
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
 fn symbol_limit_bounds_the_combined_result_list() {
     let dir = std::env::temp_dir().join(format!("ms-cli-search-limit-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
