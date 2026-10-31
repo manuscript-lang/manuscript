@@ -149,6 +149,15 @@ pub fn parse_invocation(args: &[String], io: &mut Io) -> Result<Invocation, i32>
     }
     inv.targets = vec![inv.filename.clone()];
     parse_options(&mut inv, args, first, positional, io)?;
+    if inv.analysis && inv.targets.iter().any(String::is_empty) {
+        return Err(usage_error(
+            io,
+            format!(
+                "ms {}: an input argument is empty; pass a .ms file, directory, or ms.toml",
+                inv.command
+            ),
+        ));
+    }
     Ok(inv)
 }
 

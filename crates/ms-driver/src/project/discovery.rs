@@ -12,24 +12,39 @@ fn skipped_name(name: &str) -> bool {
 }
 
 fn is_test_name(name: &str) -> bool {
-    name == "test.ms"
-        || name.ends_with("_test.ms")
-        || name == "bench.ms"
-        || name.ends_with("_bench.ms")
+    is_test_name_bytes(name.as_bytes())
+}
+
+fn is_test_name_bytes(name: &[u8]) -> bool {
+    name == b"test.ms"
+        || name.ends_with(b"_test.ms")
+        || name == b"bench.ms"
+        || name.ends_with(b"_bench.ms")
 }
 
 /// `filepath.WalkDir` semantics: lexical order, symlinks are not followed
 /// (a symlink is a non-directory entry), the root is `lstat`ed first.
-fn walk(root: &str, visit: &mut dyn FnMut(&str, &str, bool) -> bool) -> Result<(), ProjectError> {
+fn walk(
+    root: &str,
+    include_source: bool,
+    visit: &mut dyn FnMut(&str, &str, bool) -> bool,
+) -> Result<(), ProjectError> {
     let meta =
         std::fs::symlink_metadata(root).map_err(|e| ProjectError::path("lstat", root, &e))?;
-    walk_entry(root, &pathops::base(root), meta.is_dir(), visit)
+    walk_entry(
+        root,
+        &pathops::base(root),
+        meta.is_dir(),
+        include_source,
+        visit,
+    )
 }
 
 fn walk_entry(
     path: &str,
     name: &str,
     is_dir: bool,
+    include_source: bool,
     visit: &mut dyn FnMut(&str, &str, bool) -> bool,
 ) -> Result<(), ProjectError> {
     // `visit` returns false to skip a directory.
@@ -46,18 +61,36 @@ fn walk_entry(
         // A symlink to a directory is skipped, even when its name ends in `.ms`.
         let linked_dir =
             file_type.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|m| m.is_dir());
-        entries.push((
-            entry.file_name().to_string_lossy().into_owned(),
-            file_type.is_dir(),
-            linked_dir,
-        ));
-    }
-    entries.sort();
-    for (child, child_is_dir, linked_dir) in entries {
         if linked_dir {
             continue;
         }
-        walk_entry(&pathops::join(&[path, &child]), &child, child_is_dir, visit)?;
+        let native_name = entry.file_name();
+        let Some(name) = native_name.to_str() else {
+            let bytes = native_name.as_encoded_bytes();
+            if file_type.is_dir() && bytes.starts_with(b".") {
+                continue;
+            }
+            if !file_type.is_dir()
+                && !(is_test_name_bytes(bytes) || (include_source && bytes.ends_with(b".ms")))
+            {
+                continue;
+            }
+            return Err(ProjectError::msg(format!(
+                "discovered source path {:?} is not valid UTF-8; rename the file or directory using valid UTF-8",
+                entry.path()
+            )));
+        };
+        entries.push((name.to_string(), file_type.is_dir()));
+    }
+    entries.sort();
+    for (child, child_is_dir) in entries {
+        walk_entry(
+            &pathops::join(&[path, &child]),
+            &child,
+            child_is_dir,
+            include_source,
+            visit,
+        )?;
     }
     Ok(())
 }
@@ -73,7 +106,7 @@ pub fn discover_modules(
 ) -> Result<Vec<String>, ProjectError> {
     let mut files = BTreeSet::new();
     let mut scan = |root: &str, all: bool| {
-        walk(root, &mut |path, name, is_dir| {
+        walk(root, all, &mut |path, name, is_dir| {
             if is_dir {
                 // The source walk already collected its tests and modules.
                 if include_source && !all && path == project.source {

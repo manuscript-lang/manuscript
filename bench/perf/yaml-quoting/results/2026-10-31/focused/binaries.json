@@ -1,0 +1,14 @@
+{
+  "baseline-a": {
+    "path": "/workspace/yaml-perf/.artifacts/yaml-quoting/before",
+    "sha256": "93f194794f911c314080762e1bcbbdc12d202dc87945d715c4a89d7ae40f332b"
+  },
+  "baseline-b": {
+    "path": "/workspace/yaml-perf/.artifacts/yaml-quoting/before",
+    "sha256": "93f194794f911c314080762e1bcbbdc12d202dc87945d715c4a89d7ae40f332b"
+  },
+  "candidate": {
+    "path": "/workspace/yaml-perf/.artifacts/yaml-quoting/after",
+    "sha256": "ce7f0c149e5694511f892dfa2c1dc6c965e507dc93e3c910fff2cc24b4af0b85"
+  }
+}

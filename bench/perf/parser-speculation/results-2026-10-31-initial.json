@@ -1,0 +1,5587 @@
+{
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "cpu_affinity": [
+    0
+  ],
+  "revision": "adb3c12a71432cc1f7b4bbd243e05f239adde763",
+  "baseline_revision": "adb3c12a71432cc1f7b4bbd243e05f239adde763",
+  "baseline_parser_sha256": "cae01de886fe725067923b0c2b10b8e9ad2b19a4e1d6e5aa429d1f93eb8e0a66",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "binaries": {
+    "baseline": "73044ebf9b652dc6306b8b18f4018567d6b1c1dfdd17a07f8c2700ada9c6f3a5",
+    "candidate": "0939a2c8df9a4de8dd31b9d7624d48d13fb802be10e6f65f7bb140b6ab0a4db2"
+  },
+  "parser_sha256": "faff9436f85674deba31a34b3ed357cd5dee4694e6688002c28f51a4e6c952a0",
+  "validation": {
+    "tiny": {
+      "tree_sha256": "c383dab26ed834e6292852d19def9817852b0742bb27be66977e3b0dd7c5e059",
+      "inputs": [
+        {
+          "path": "tiny.ms",
+          "sha256": "49b3ad174ff21b8516cef778facc81f0cd902cc25cd8ae6d6fe9d3798a0c6fad",
+          "bytes": 40
+        }
+      ]
+    },
+    "plain-256": {
+      "tree_sha256": "c4c30aba513058117d82ce2e278b77b8b8665ad20f3f47130b5aaaa9fd7a7738",
+      "inputs": [
+        {
+          "path": "plain-256.ms",
+          "sha256": "969271dfd20efedde27344087c2f2094d7285ea75a93dd96286f0697473f9902",
+          "bytes": 10642
+        }
+      ]
+    },
+    "generic-optional-256": {
+      "tree_sha256": "b9bde348d223aceba6956f249ad4bbe3cd4d6253fe24fec25494ffef159c7f36",
+      "inputs": [
+        {
+          "path": "generic-optional-256.ms",
+          "sha256": "de80a804ed3d1d4a35e19b6fc893ddc604b3c3b6873c02112924c35aa704a6dc",
+          "bytes": 17298
+        }
+      ]
+    },
+    "index-1": {
+      "tree_sha256": "5752a9998e8aeb4062b1666f0ed13f2fdcd8900852d9cbefbf9f708fa88f4a2b",
+      "inputs": [
+        {
+          "path": "index-1.ms",
+          "sha256": "a7b5b37db6c58e27b151b689d85d7cf2065f039dbc325498aacee31e5ba45584",
+          "bytes": 46
+        }
+      ]
+    },
+    "index-2": {
+      "tree_sha256": "845da2a72124f6a62cd241e6a30510b17659d344bac5e5831f2f1da8ff1c88c4",
+      "inputs": [
+        {
+          "path": "index-2.ms",
+          "sha256": "77f003bcea77470e4330c2f6bf9bb8df56f97df98a10bdc00c1dc1b66019ccf4",
+          "bytes": 52
+        }
+      ]
+    },
+    "index-4": {
+      "tree_sha256": "b72ea27c2c1fd5a6c5d6b0e9eddf92bf23c1bae00856c9c2eeb67b36ba1f7581",
+      "inputs": [
+        {
+          "path": "index-4.ms",
+          "sha256": "80920a112238117cb500c6e32b361818b1ca1b96433a4d06ec2b0c39fb054fca",
+          "bytes": 64
+        }
+      ]
+    },
+    "index-8": {
+      "tree_sha256": "6c077a0059eb9e8ebecfb7af686e5dc450afd4c7e8d4eb7b6ffcc8b06f9ffefb",
+      "inputs": [
+        {
+          "path": "index-8.ms",
+          "sha256": "9995492b2f42c2dc628aff4d0f7f04a8050198a3cb4c2bc756f34c212b4d4629",
+          "bytes": 88
+        }
+      ]
+    },
+    "index-16": {
+      "tree_sha256": "b8c7fe950e44a24671503346e6ce15710b68e80a299662ec15c198382a1e4d37",
+      "inputs": [
+        {
+          "path": "index-16.ms",
+          "sha256": "8ce921b6179102d23134fe458c7da0f1ac81a58f2624aa445a55d766169bd382",
+          "bytes": 136
+        }
+      ]
+    },
+    "index-64": {
+      "tree_sha256": "b3e7a8a97ff42b0a00b346feac2cff0232aaedb628531ab34359c05d4c905d45",
+      "inputs": [
+        {
+          "path": "index-64.ms",
+          "sha256": "86fa02dce2001daed58c052e4985c815224435cff8600712aa535a4a22dbc18f",
+          "bytes": 424
+        }
+      ]
+    },
+    "index-128": {
+      "tree_sha256": "debec92b5a51492da6eba44e942fd98fd8b2a988f82c06eef812ad6c2e94e17f",
+      "inputs": [
+        {
+          "path": "index-128.ms",
+          "sha256": "ee4b723737190bd39d1a9c09ee04e6e551a7d56a88137dc6b80362deb0780d37",
+          "bytes": 808
+        }
+      ]
+    },
+    "index-256": {
+      "tree_sha256": "9168a6c05b438c194771442d5c13c986b613f73e4953e3d9b4351dd6db37b1b3",
+      "inputs": [
+        {
+          "path": "index-256.ms",
+          "sha256": "2c5df33c6aa06028287631d2100a736bab4a22cd965248e2aa159f5e50f6ae8b",
+          "bytes": 1576
+        }
+      ]
+    },
+    "flat-name": {
+      "tree_sha256": "c893e08e96ee32cc587ced61ec599039dd9905edd763cce039ccde8d8f670aa6",
+      "inputs": [
+        {
+          "path": "flat-name.ms",
+          "sha256": "5645f90e6d3ab81b3bc0a32a70718baf93fa15433324d0d8606259cd88415ca6",
+          "bytes": 62
+        }
+      ]
+    },
+    "flat-value": {
+      "tree_sha256": "7ac8fe88f9a8465b88d364ca7914f6d26e7003b4e52ef3277ac6b5dcec4975d1",
+      "inputs": [
+        {
+          "path": "flat-value.ms",
+          "sha256": "93f7597f4c0c6c24e4a6a7d1b14b8112835da416cbd695ae2e66ba0973321638",
+          "bytes": 66
+        }
+      ]
+    },
+    "mixed-flat-after-nested": {
+      "tree_sha256": "4d6c36d54b2ce5f347606beaad07ca3b6b6b46675ad4c8b47d9e7f895597db5c",
+      "inputs": [
+        {
+          "path": "mixed-flat-after-nested.ms",
+          "sha256": "19bea6cc8b72a275599f386bc64de7e31bbc485eedbfe0592363b13fba4fcf53",
+          "bytes": 4252
+        }
+      ]
+    },
+    "nested-type-16": {
+      "tree_sha256": "0dfcbf9c29ce51bf5736a89bf6f066774672bdcf835f4b79fda9875c2c7da4b0",
+      "inputs": [
+        {
+          "path": "nested-type-16.ms",
+          "sha256": "d1db4c46ab86ae65c39060a6243010cedd1f97f3f5f9b70ce417774ec94d4c96",
+          "bytes": 2182
+        }
+      ]
+    },
+    "generic-apply-16": {
+      "tree_sha256": "5ccf574185c6fd9c5dce6eb5e7463a5e39dc6138c3b346b933d34fe11ca0696e",
+      "inputs": [
+        {
+          "path": "generic-apply-16.ms",
+          "sha256": "85eda01ad80b10a7d1a507e269b19c7d06780bb12538a530cab34b4ef7445dba",
+          "bytes": 130
+        }
+      ]
+    },
+    "nested-type-32": {
+      "tree_sha256": "c9bc568a163d746c412e4f77fbc44b3fc8f8d4b1c7764cd7ddbb33c2eb617ae0",
+      "inputs": [
+        {
+          "path": "nested-type-32.ms",
+          "sha256": "e3778e397350dc2ea3121326f36149fa807b62fadace0b2445d8fb4dcebf38d6",
+          "bytes": 3718
+        }
+      ]
+    },
+    "generic-apply-32": {
+      "tree_sha256": "9cc989e215fcc38625491d2bc51d7640c998b7f8b3cff3609d8d7d469e999c1b",
+      "inputs": [
+        {
+          "path": "generic-apply-32.ms",
+          "sha256": "a2ba17bd1f9f2257115c843e5121d9658d8c106131b418004ec3faf6a8ebbc33",
+          "bytes": 226
+        }
+      ]
+    },
+    "nested-type-64": {
+      "tree_sha256": "c25f6478442c706b78a56cbd19a5773638a9ddb9742e3d087cd47b15c393615f",
+      "inputs": [
+        {
+          "path": "nested-type-64.ms",
+          "sha256": "25cfc798fbc934bc804f32e66dd63e25757aa78bc11e58b3acf3c90e9d9920ea",
+          "bytes": 6790
+        }
+      ]
+    },
+    "generic-apply-64": {
+      "tree_sha256": "79f9284edf50d2a408de79341573d7e1a71bbdc4f5cf483ad35fb158e56d3b66",
+      "inputs": [
+        {
+          "path": "generic-apply-64.ms",
+          "sha256": "7ff8a0c1f59cd814b788f7581ca06d725a69da4ff31c322092fe4112bcfba95e",
+          "bytes": 418
+        }
+      ]
+    },
+    "stdlib": {
+      "tree_sha256": "cd93c597879df20b4e3eb0ec943c89d77f8b231847c3ccd13946329870387c41",
+      "inputs": [
+        {
+          "path": "stdlib/archive.ms",
+          "sha256": "646fe9c1ebb9c071bdc9f5fd30cb9727d738559517d2d1ec41c6445b223c0719",
+          "bytes": 8527
+        },
+        {
+          "path": "stdlib/bench.ms",
+          "sha256": "1182189fcdad6583b3c02789093d3beb6e3cfe63cce003893aae6c33af63031f",
+          "bytes": 5633
+        },
+        {
+          "path": "stdlib/bitset.ms",
+          "sha256": "fa4260c2f429ee1f5ab9e22415fb535a60a94a3526b8b33bad6af9f6116e9af4",
+          "bytes": 5587
+        },
+        {
+          "path": "stdlib/bytes.ms",
+          "sha256": "340e0989fb1cd6baa6e23045c37da641b1e6867e1a40df5fc9e24b5c03928a14",
+          "bytes": 13764
+        },
+        {
+          "path": "stdlib/channels.ms",
+          "sha256": "a78425c1a1ff9f5ad868751b5c23f947061bd757189d3d500d3542f1a6b09cff",
+          "bytes": 2788
+        },
+        {
+          "path": "stdlib/cli.ms",
+          "sha256": "fb72a78b335b2ac5207080aaae67e271b310ad7022f88bfce4720f8c73de287a",
+          "bytes": 26938
+        },
+        {
+          "path": "stdlib/collections.ms",
+          "sha256": "729b7bf80566a52f3ccf422d83964111da00791569541f99599ae63cd957d500",
+          "bytes": 30005
+        },
+        {
+          "path": "stdlib/core.ms",
+          "sha256": "d64152d69f3e02f0f4722bb66180d256a063128e74a17d299bf1e9cf6ba42f37",
+          "bytes": 9344
+        },
+        {
+          "path": "stdlib/crypto.ms",
+          "sha256": "2700df85d2cd6aab9705ee9c8604b235e8c7c6bf3fc43616e3d5a8670a6e0112",
+          "bytes": 12815
+        },
+        {
+          "path": "stdlib/csv.ms",
+          "sha256": "bcb1edfb379ee26c01bf7add0f77648696629cf3a98443f4059eae65bc33761d",
+          "bytes": 9265
+        },
+        {
+          "path": "stdlib/decimal.ms",
+          "sha256": "4266d654ee8f014c6415fa95bdf51ed9caac4501963da42b5cf38580a412d26a",
+          "bytes": 3612
+        },
+        {
+          "path": "stdlib/deque.ms",
+          "sha256": "e2fbc8577bdbe945e6563659df2dc309662bbd20e71caadebd87365b8555f50f",
+          "bytes": 4113
+        },
+        {
+          "path": "stdlib/encoding.ms",
+          "sha256": "5b0ec361dcab8a46148e049484c99fe592a91a24ca3f70c94d6be6844a0f426f",
+          "bytes": 9669
+        },
+        {
+          "path": "stdlib/fetch.ms",
+          "sha256": "583bd24aaebe159de7717095a59fb3b31e46b00ffbde800865c282371c7ccfd6",
+          "bytes": 10035
+        },
+        {
+          "path": "stdlib/fs.ms",
+          "sha256": "cd1dabe5a880488c474ac42bee864cf13e4d2d07b371cf2979b92b728e587f57",
+          "bytes": 36296
+        },
+        {
+          "path": "stdlib/html.ms",
+          "sha256": "d14e35273f74a79bef82c905f7d4c852c1241e65c2d0512e6097fd204c933956",
+          "bytes": 4120
+        },
+        {
+          "path": "stdlib/http.ms",
+          "sha256": "e38ae4fbdd63675aee975956b5b2311495376c6d17cfce2e22e9ba8d5877e178",
+          "bytes": 24732
+        },
+        {
+          "path": "stdlib/intrinsics.ms",
+          "sha256": "fa1da9779075ef3b914f67bdde0c275852bef4e022b02d26a9df4c2f9d766922",
+          "bytes": 22116
+        },
+        {
+          "path": "stdlib/io.ms",
+          "sha256": "73d52d6e1de4781fb63c272d27f21c9387d76d831d7568e534724999c4e23c64",
+          "bytes": 16122
+        },
+        {
+          "path": "stdlib/iterable.ms",
+          "sha256": "dab670f496df5fad09ac4938e6c2cab27d38fcb7a73f2c84d1eba061313fbe4e",
+          "bytes": 429
+        },
+        {
+          "path": "stdlib/json.ms",
+          "sha256": "edaacf22d6a1e34762559239eb0bb5d306f4ce41230ca36e656fd0b4ea9a67aa",
+          "bytes": 13356
+        },
+        {
+          "path": "stdlib/jsonstream.ms",
+          "sha256": "ef961024cbc19b9867236d0065249980b58bd7e718e9b210d12a32b4d395ca1f",
+          "bytes": 6252
+        },
+        {
+          "path": "stdlib/log.ms",
+          "sha256": "edfb24e9ca77ba4f43469c0163a2963855b7cdb8624ea524b319df0c12184c09",
+          "bytes": 12725
+        },
+        {
+          "path": "stdlib/logcore.ms",
+          "sha256": "b7a3edfbbe2a7b144b617e8ff8bde516e24318e154c79dd3e9832e04cfdd042b",
+          "bytes": 3742
+        },
+        {
+          "path": "stdlib/math.ms",
+          "sha256": "f7f9b051bf1cb124c6d70ef30e03f07cd5b602ab167b82a24ad368cc6ecc1280",
+          "bytes": 21197
+        },
+        {
+          "path": "stdlib/net.ms",
+          "sha256": "22c08b6cc93a98cc46310bcafd3318f42bc975aeae82754bae00891f040127c5",
+          "bytes": 38333
+        },
+        {
+          "path": "stdlib/ordering.ms",
+          "sha256": "d6f6a314ea3b3810fbb1d69338779b3ec901dd17e444f594a7a00d6af2fd0177",
+          "bytes": 9611
+        },
+        {
+          "path": "stdlib/process.ms",
+          "sha256": "5d533e7c2554bd63c2125d15482335defd915ba917e52d01efa3442534677e62",
+          "bytes": 28436
+        },
+        {
+          "path": "stdlib/processes.ms",
+          "sha256": "bdd517d38ce7c846a7e12861fd02ecec2f091c62ac0519c2efd8241c975ee5d3",
+          "bytes": 18103
+        },
+        {
+          "path": "stdlib/queue.ms",
+          "sha256": "89841c33abd7a6f57d2ab2a9c7d3d7f8b93c81c9c0ca4fd720c21db148a28ae9",
+          "bytes": 6887
+        },
+        {
+          "path": "stdlib/random.ms",
+          "sha256": "df7b60df61ad1a2a5c715a71fa4fdec62d6973a6d0a7e1066151c5df6188700a",
+          "bytes": 2092
+        },
+        {
+          "path": "stdlib/router.ms",
+          "sha256": "5c71754ae1d275dccf3fc8257207a89c8cf618ff8294961e46065f70c171107e",
+          "bytes": 27020
+        },
+        {
+          "path": "stdlib/semver.ms",
+          "sha256": "3c69d27a8bda07c072ecfdafc748731b97ca72a3344340ae6f2b59e3420b46a4",
+          "bytes": 6038
+        },
+        {
+          "path": "stdlib/shared.ms",
+          "sha256": "f645acae961ec03665db6475e5fe8316dd2291eb35d0142bd314608784bc6670",
+          "bytes": 1433
+        },
+        {
+          "path": "stdlib/sorted.ms",
+          "sha256": "bd594197424cbe17aa4f4fe1e58e3a2cbe154d1106e3a030b03b312a58f65c48",
+          "bytes": 13410
+        },
+        {
+          "path": "stdlib/sse.ms",
+          "sha256": "ec4a8eadbe5af2163333c6745244b915e4cc2a91a38903ee9e5117185aa8b789",
+          "bytes": 13343
+        },
+        {
+          "path": "stdlib/streams.ms",
+          "sha256": "8b130bf3b6ffde20a5c8467949d39fdd81a3140802430a52c94c35a3fc88bf38",
+          "bytes": 6291
+        },
+        {
+          "path": "stdlib/string.ms",
+          "sha256": "b15a88de4243d777450c689e505171287d4082a7668756262709ea7f1f4aa2e9",
+          "bytes": 4828
+        },
+        {
+          "path": "stdlib/sync.ms",
+          "sha256": "207cd898e789c79530c8966f7c7c17d9f34db4a19c3f146b0a5a656db3387a23",
+          "bytes": 2281
+        },
+        {
+          "path": "stdlib/tasks.ms",
+          "sha256": "accf589ae8e7b4555df5c4c9b5d3487cc8897c46b0f3a92a9609d47272f83eff",
+          "bytes": 17184
+        },
+        {
+          "path": "stdlib/test.ms",
+          "sha256": "bb3f536b4abda636888f6f94d4e431ea0a5690e54d1937ad2e18ddac11c987f4",
+          "bytes": 4261
+        },
+        {
+          "path": "stdlib/time.ms",
+          "sha256": "99773de2c84e7cc37cdc57985569fc457a2615b1dee73d22e6025ed337186132",
+          "bytes": 16672
+        },
+        {
+          "path": "stdlib/toml.ms",
+          "sha256": "79b719c6bfab6b57566bebb644b7523c172f74d610dd2778e051b76c674ab522",
+          "bytes": 40086
+        },
+        {
+          "path": "stdlib/workers.ms",
+          "sha256": "3d05e19bf17628aba8e91130d02a042a4bb57df2d96c20f81b12277b7827219c",
+          "bytes": 10560
+        },
+        {
+          "path": "stdlib/yaml.ms",
+          "sha256": "cffa0966dc53a6e3e90f24c356f841c74808914ef62f5d4c81dc33e2959d40cf",
+          "bytes": 60892
+        }
+      ]
+    }
+  },
+  "samples": [
+    {
+      "elapsed_ns": 100013518,
+      "passes": 95824,
+      "units": 14,
+      "checksum": 1341536,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100010034,
+      "passes": 92352,
+      "units": 14,
+      "checksum": 1292928,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100043264,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100364773,
+      "passes": 3472,
+      "units": 263,
+      "checksum": 913136,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100227137,
+      "passes": 960,
+      "units": 1120,
+      "checksum": 1075200,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100550650,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100077494,
+      "passes": 14080,
+      "units": 39,
+      "checksum": 549120,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100012668,
+      "passes": 25408,
+      "units": 39,
+      "checksum": 990912,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100436910,
+      "passes": 3504,
+      "units": 664,
+      "checksum": 2326656,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100020479,
+      "passes": 3584,
+      "units": 664,
+      "checksum": 2379776,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100744509,
+      "passes": 1056,
+      "units": 2344,
+      "checksum": 2475264,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100803577,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100024726,
+      "passes": 38224,
+      "units": 23,
+      "checksum": 879152,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100016613,
+      "passes": 47616,
+      "units": 23,
+      "checksum": 1095168,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100001341,
+      "passes": 137744,
+      "units": 9,
+      "checksum": 1239696,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100007339,
+      "passes": 139984,
+      "units": 9,
+      "checksum": 1259856,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100005687,
+      "passes": 102240,
+      "units": 13,
+      "checksum": 1329120,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100010214,
+      "passes": 100640,
+      "units": 13,
+      "checksum": 1308320,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100094840,
+      "passes": 10928,
+      "units": 208,
+      "checksum": 2273024,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100009994,
+      "passes": 10720,
+      "units": 208,
+      "checksum": 2229760,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100178715,
+      "passes": 1120,
+      "units": 135,
+      "checksum": 151200,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100124094,
+      "passes": 6928,
+      "units": 135,
+      "checksum": 935280,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100008131,
+      "passes": 105856,
+      "units": 11,
+      "checksum": 1164416,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100006067,
+      "passes": 103328,
+      "units": 11,
+      "checksum": 1136608,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100742306,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100263772,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100007450,
+      "passes": 185920,
+      "units": 6,
+      "checksum": 1115520,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100004475,
+      "passes": 177312,
+      "units": 6,
+      "checksum": 1063872,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 109985496,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100199446,
+      "passes": 1776,
+      "units": 519,
+      "checksum": 921744,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100007108,
+      "passes": 75248,
+      "units": 15,
+      "checksum": 1128720,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100006779,
+      "passes": 77232,
+      "units": 15,
+      "checksum": 1158480,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100440505,
+      "passes": 3168,
+      "units": 352,
+      "checksum": 1115136,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100303812,
+      "passes": 3200,
+      "units": 352,
+      "checksum": 1126400,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100525973,
+      "passes": 1792,
+      "units": 608,
+      "checksum": 1089536,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100849996,
+      "passes": 1808,
+      "units": 608,
+      "checksum": 1099264,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100170543,
+      "passes": 1040,
+      "units": 1579,
+      "checksum": 1642160,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100392118,
+      "passes": 1040,
+      "units": 1579,
+      "checksum": 1642160,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100274418,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 101495443,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 152185766,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 152766403,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 0
+    },
+    {
+      "elapsed_ns": 100007399,
+      "passes": 139760,
+      "units": 9,
+      "checksum": 1257840,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100010360,
+      "passes": 143104,
+      "units": 9,
+      "checksum": 1287936,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100693783,
+      "passes": 1776,
+      "units": 519,
+      "checksum": 921744,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 111793082,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100134740,
+      "passes": 6880,
+      "units": 135,
+      "checksum": 928800,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100534156,
+      "passes": 1104,
+      "units": 135,
+      "checksum": 149040,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 102710971,
+      "passes": 512,
+      "units": 2816,
+      "checksum": 1441792,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 102191977,
+      "passes": 512,
+      "units": 2816,
+      "checksum": 1441792,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100046668,
+      "passes": 10688,
+      "units": 208,
+      "checksum": 2223104,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100058596,
+      "passes": 10928,
+      "units": 208,
+      "checksum": 2273024,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100007369,
+      "passes": 104016,
+      "units": 11,
+      "checksum": 1144176,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100013800,
+      "passes": 106064,
+      "units": 11,
+      "checksum": 1166704,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100003514,
+      "passes": 76656,
+      "units": 15,
+      "checksum": 1149840,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100007941,
+      "passes": 75056,
+      "units": 15,
+      "checksum": 1125840,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100200618,
+      "passes": 3104,
+      "units": 352,
+      "checksum": 1092608,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100070814,
+      "passes": 3120,
+      "units": 352,
+      "checksum": 1098240,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100410171,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100598541,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100611040,
+      "passes": 1808,
+      "units": 608,
+      "checksum": 1099264,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100585661,
+      "passes": 1792,
+      "units": 608,
+      "checksum": 1089536,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100750819,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100602847,
+      "passes": 1056,
+      "units": 2344,
+      "checksum": 2475264,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100085356,
+      "passes": 3504,
+      "units": 263,
+      "checksum": 921552,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100826661,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100000382,
+      "passes": 179792,
+      "units": 6,
+      "checksum": 1078752,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100004384,
+      "passes": 185392,
+      "units": 6,
+      "checksum": 1112352,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100229089,
+      "passes": 3584,
+      "units": 664,
+      "checksum": 2379776,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100270882,
+      "passes": 3520,
+      "units": 664,
+      "checksum": 2337280,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100017514,
+      "passes": 48304,
+      "units": 23,
+      "checksum": 1110992,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100021620,
+      "passes": 38544,
+      "units": 23,
+      "checksum": 886512,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100036832,
+      "passes": 25472,
+      "units": 39,
+      "checksum": 993408,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100093712,
+      "passes": 14352,
+      "units": 39,
+      "checksum": 559728,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100063653,
+      "passes": 960,
+      "units": 1120,
+      "checksum": 1075200,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101342530,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 101021871,
+      "passes": 1088,
+      "units": 1579,
+      "checksum": 1717952,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100643087,
+      "passes": 1056,
+      "units": 1579,
+      "checksum": 1667424,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 152156373,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 152272355,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100004325,
+      "passes": 95312,
+      "units": 14,
+      "checksum": 1334368,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100005807,
+      "passes": 96096,
+      "units": 14,
+      "checksum": 1345344,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100010193,
+      "passes": 96416,
+      "units": 13,
+      "checksum": 1253408,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 100011545,
+      "passes": 99808,
+      "units": 13,
+      "checksum": 1297504,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 1
+    },
+    {
+      "elapsed_ns": 107576426,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100232825,
+      "passes": 1792,
+      "units": 519,
+      "checksum": 930048,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100831848,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100225744,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100000279,
+      "passes": 103232,
+      "units": 13,
+      "checksum": 1342016,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100004535,
+      "passes": 103424,
+      "units": 13,
+      "checksum": 1344512,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100000318,
+      "passes": 76208,
+      "units": 15,
+      "checksum": 1143120,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100009522,
+      "passes": 77936,
+      "units": 15,
+      "checksum": 1169040,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 102595875,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 102769648,
+      "passes": 512,
+      "units": 2816,
+      "checksum": 1441792,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100359444,
+      "passes": 3552,
+      "units": 664,
+      "checksum": 2358528,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100391812,
+      "passes": 3616,
+      "units": 664,
+      "checksum": 2401024,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101289961,
+      "passes": 1136,
+      "units": 135,
+      "checksum": 153360,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100198754,
+      "passes": 6880,
+      "units": 135,
+      "checksum": 928800,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100002261,
+      "passes": 94720,
+      "units": 14,
+      "checksum": 1326080,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100006108,
+      "passes": 95072,
+      "units": 14,
+      "checksum": 1331008,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100268879,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100974551,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100575186,
+      "passes": 1776,
+      "units": 608,
+      "checksum": 1079808,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100266885,
+      "passes": 1792,
+      "units": 608,
+      "checksum": 1089536,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100012687,
+      "passes": 107200,
+      "units": 11,
+      "checksum": 1179200,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100006668,
+      "passes": 100752,
+      "units": 11,
+      "checksum": 1108272,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100008330,
+      "passes": 185040,
+      "units": 6,
+      "checksum": 1110240,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100001831,
+      "passes": 178736,
+      "units": 6,
+      "checksum": 1072416,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100009012,
+      "passes": 134992,
+      "units": 9,
+      "checksum": 1214928,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100000048,
+      "passes": 118688,
+      "units": 9,
+      "checksum": 1068192,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100007579,
+      "passes": 36048,
+      "units": 23,
+      "checksum": 829104,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100000999,
+      "passes": 45264,
+      "units": 23,
+      "checksum": 1041072,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100005456,
+      "passes": 12736,
+      "units": 39,
+      "checksum": 496704,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100020749,
+      "passes": 22624,
+      "units": 39,
+      "checksum": 882336,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101111636,
+      "passes": 976,
+      "units": 1579,
+      "checksum": 1541104,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100248769,
+      "passes": 944,
+      "units": 1579,
+      "checksum": 1490576,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101744028,
+      "passes": 9152,
+      "units": 208,
+      "checksum": 1903616,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100510550,
+      "passes": 8400,
+      "units": 208,
+      "checksum": 1747200,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101275650,
+      "passes": 2560,
+      "units": 352,
+      "checksum": 901120,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100486439,
+      "passes": 2848,
+      "units": 352,
+      "checksum": 1002496,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 155948578,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 160329040,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 102556661,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100049862,
+      "passes": 3504,
+      "units": 263,
+      "checksum": 921552,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100679451,
+      "passes": 928,
+      "units": 1120,
+      "checksum": 1039360,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 101491982,
+      "passes": 960,
+      "units": 1120,
+      "checksum": 1075200,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 2
+    },
+    {
+      "elapsed_ns": 100383119,
+      "passes": 1728,
+      "units": 519,
+      "checksum": 896832,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 111956036,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 101441388,
+      "passes": 1040,
+      "units": 1579,
+      "checksum": 1642160,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100018195,
+      "passes": 1008,
+      "units": 1579,
+      "checksum": 1591632,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100036493,
+      "passes": 47840,
+      "units": 23,
+      "checksum": 1100320,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100039086,
+      "passes": 37744,
+      "units": 23,
+      "checksum": 868112,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100045045,
+      "passes": 3440,
+      "units": 263,
+      "checksum": 904720,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 102337915,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100001801,
+      "passes": 92608,
+      "units": 14,
+      "checksum": 1296512,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100000599,
+      "passes": 92144,
+      "units": 14,
+      "checksum": 1290016,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100113497,
+      "passes": 10544,
+      "units": 208,
+      "checksum": 2193152,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100013749,
+      "passes": 10576,
+      "units": 208,
+      "checksum": 2199808,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 102362560,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 102654627,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 158517741,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 157345745,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100214212,
+      "passes": 1056,
+      "units": 2344,
+      "checksum": 2475264,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100093763,
+      "passes": 1056,
+      "units": 2344,
+      "checksum": 2475264,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100054595,
+      "passes": 25440,
+      "units": 39,
+      "checksum": 992160,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100038971,
+      "passes": 13968,
+      "units": 39,
+      "checksum": 544752,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100048875,
+      "passes": 944,
+      "units": 1120,
+      "checksum": 1057280,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 101513601,
+      "passes": 960,
+      "units": 1120,
+      "checksum": 1075200,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100000093,
+      "passes": 180064,
+      "units": 6,
+      "checksum": 1080384,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100004430,
+      "passes": 180512,
+      "units": 6,
+      "checksum": 1083072,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100155094,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 101568794,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100002526,
+      "passes": 76864,
+      "units": 15,
+      "checksum": 1152960,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100008566,
+      "passes": 74848,
+      "units": 15,
+      "checksum": 1122720,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100009677,
+      "passes": 136560,
+      "units": 9,
+      "checksum": 1229040,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100005741,
+      "passes": 137008,
+      "units": 9,
+      "checksum": 1233072,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100337476,
+      "passes": 3552,
+      "units": 664,
+      "checksum": 2358528,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100364878,
+      "passes": 3312,
+      "units": 664,
+      "checksum": 2199168,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100322755,
+      "passes": 3152,
+      "units": 352,
+      "checksum": 1109504,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100183246,
+      "passes": 3168,
+      "units": 352,
+      "checksum": 1115136,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100855198,
+      "passes": 1808,
+      "units": 608,
+      "checksum": 1099264,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100029026,
+      "passes": 1728,
+      "units": 608,
+      "checksum": 1050624,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100169997,
+      "passes": 6896,
+      "units": 135,
+      "checksum": 930960,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100690474,
+      "passes": 1120,
+      "units": 135,
+      "checksum": 151200,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100001195,
+      "passes": 101456,
+      "units": 13,
+      "checksum": 1318928,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100015245,
+      "passes": 98320,
+      "units": 13,
+      "checksum": 1278160,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100007834,
+      "passes": 101232,
+      "units": 11,
+      "checksum": 1113552,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100011049,
+      "passes": 105968,
+      "units": 11,
+      "checksum": 1165648,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 3
+    },
+    {
+      "elapsed_ns": 100005400,
+      "passes": 94624,
+      "units": 14,
+      "checksum": 1324736,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100015986,
+      "passes": 93360,
+      "units": 14,
+      "checksum": 1307040,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100290486,
+      "passes": 1040,
+      "units": 1579,
+      "checksum": 1642160,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100707239,
+      "passes": 1072,
+      "units": 1579,
+      "checksum": 1692688,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100595191,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100680018,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100008605,
+      "passes": 141376,
+      "units": 9,
+      "checksum": 1272384,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100005280,
+      "passes": 138848,
+      "units": 9,
+      "checksum": 1249632,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100036157,
+      "passes": 13232,
+      "units": 39,
+      "checksum": 516048,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100028576,
+      "passes": 25696,
+      "units": 39,
+      "checksum": 1002144,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100003818,
+      "passes": 184640,
+      "units": 6,
+      "checksum": 1107840,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100002266,
+      "passes": 180000,
+      "units": 6,
+      "checksum": 1080000,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100060904,
+      "passes": 1056,
+      "units": 2344,
+      "checksum": 2475264,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100566368,
+      "passes": 1008,
+      "units": 2344,
+      "checksum": 2362752,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100014365,
+      "passes": 38448,
+      "units": 23,
+      "checksum": 884304,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100010438,
+      "passes": 47584,
+      "units": 23,
+      "checksum": 1094432,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100001645,
+      "passes": 106272,
+      "units": 11,
+      "checksum": 1168992,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100012353,
+      "passes": 101360,
+      "units": 11,
+      "checksum": 1114960,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100067745,
+      "passes": 944,
+      "units": 1536,
+      "checksum": 1449984,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100382976,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 110810815,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100741329,
+      "passes": 1776,
+      "units": 519,
+      "checksum": 921744,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 102230279,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100229426,
+      "passes": 3504,
+      "units": 263,
+      "checksum": 921552,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100074495,
+      "passes": 10336,
+      "units": 208,
+      "checksum": 2149888,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100093574,
+      "passes": 10784,
+      "units": 208,
+      "checksum": 2243072,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100011331,
+      "passes": 100560,
+      "units": 13,
+      "checksum": 1307280,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100010230,
+      "passes": 100832,
+      "units": 13,
+      "checksum": 1310816,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100048837,
+      "passes": 1792,
+      "units": 608,
+      "checksum": 1089536,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100332379,
+      "passes": 1760,
+      "units": 608,
+      "checksum": 1070080,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 101537847,
+      "passes": 880,
+      "units": 1120,
+      "checksum": 985600,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 101313162,
+      "passes": 960,
+      "units": 1120,
+      "checksum": 1075200,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100772136,
+      "passes": 1120,
+      "units": 135,
+      "checksum": 151200,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100092432,
+      "passes": 6480,
+      "units": 135,
+      "checksum": 874800,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100426630,
+      "passes": 3488,
+      "units": 664,
+      "checksum": 2316032,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100087634,
+      "passes": 3552,
+      "units": 664,
+      "checksum": 2358528,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 158084452,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 154920334,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100019673,
+      "passes": 75264,
+      "units": 15,
+      "checksum": 1128960,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100019063,
+      "passes": 76000,
+      "units": 15,
+      "checksum": 1140000,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100264038,
+      "passes": 3184,
+      "units": 352,
+      "checksum": 1120768,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100378218,
+      "passes": 3136,
+      "units": 352,
+      "checksum": 1103872,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 4
+    },
+    {
+      "elapsed_ns": 100544676,
+      "passes": 1056,
+      "units": 2344,
+      "checksum": 2475264,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101154657,
+      "passes": 1056,
+      "units": 2344,
+      "checksum": 2475264,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100014676,
+      "passes": 46992,
+      "units": 23,
+      "checksum": 1080816,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100023228,
+      "passes": 36880,
+      "units": 23,
+      "checksum": 848240,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 155016517,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 153894288,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100051337,
+      "passes": 10608,
+      "units": 208,
+      "checksum": 2206464,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100099229,
+      "passes": 10976,
+      "units": 208,
+      "checksum": 2283008,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100001603,
+      "passes": 94768,
+      "units": 14,
+      "checksum": 1326752,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100016285,
+      "passes": 95360,
+      "units": 14,
+      "checksum": 1335040,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 102625877,
+      "passes": 512,
+      "units": 2816,
+      "checksum": 1441792,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 103158210,
+      "passes": 512,
+      "units": 2816,
+      "checksum": 1441792,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100324015,
+      "passes": 3104,
+      "units": 352,
+      "checksum": 1092608,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100232688,
+      "passes": 3200,
+      "units": 352,
+      "checksum": 1126400,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100012750,
+      "passes": 103088,
+      "units": 13,
+      "checksum": 1340144,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100005240,
+      "passes": 101760,
+      "units": 13,
+      "checksum": 1322880,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100329052,
+      "passes": 1792,
+      "units": 608,
+      "checksum": 1089536,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100000372,
+      "passes": 1776,
+      "units": 608,
+      "checksum": 1079808,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100314200,
+      "passes": 1072,
+      "units": 1579,
+      "checksum": 1692688,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101213641,
+      "passes": 1056,
+      "units": 1579,
+      "checksum": 1667424,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100005850,
+      "passes": 139136,
+      "units": 9,
+      "checksum": 1252224,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100006701,
+      "passes": 142736,
+      "units": 9,
+      "checksum": 1284624,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100007543,
+      "passes": 104048,
+      "units": 11,
+      "checksum": 1144528,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100009595,
+      "passes": 106816,
+      "units": 11,
+      "checksum": 1174976,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100059520,
+      "passes": 25632,
+      "units": 39,
+      "checksum": 999648,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100096224,
+      "passes": 14320,
+      "units": 39,
+      "checksum": 558480,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100515390,
+      "passes": 1776,
+      "units": 519,
+      "checksum": 921744,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 109168363,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100213070,
+      "passes": 3584,
+      "units": 664,
+      "checksum": 2379776,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100413027,
+      "passes": 3536,
+      "units": 664,
+      "checksum": 2347904,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100017868,
+      "passes": 77440,
+      "units": 15,
+      "checksum": 1161600,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100001954,
+      "passes": 74768,
+      "units": 15,
+      "checksum": 1121520,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 101467459,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100954214,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100019680,
+      "passes": 3520,
+      "units": 263,
+      "checksum": 925760,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100200380,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100221151,
+      "passes": 6928,
+      "units": 135,
+      "checksum": 935280,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100024198,
+      "passes": 1136,
+      "units": 135,
+      "checksum": 153360,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100004448,
+      "passes": 181088,
+      "units": 6,
+      "checksum": 1086528,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100003036,
+      "passes": 184960,
+      "units": 6,
+      "checksum": 1109760,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100774457,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100760124,
+      "passes": 960,
+      "units": 1120,
+      "checksum": 1075200,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 5
+    },
+    {
+      "elapsed_ns": 100005460,
+      "passes": 76288,
+      "units": 15,
+      "checksum": 1144320,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100011919,
+      "passes": 77488,
+      "units": 15,
+      "checksum": 1162320,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 154725764,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 153235892,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100092198,
+      "passes": 3536,
+      "units": 664,
+      "checksum": 2347904,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100181112,
+      "passes": 3584,
+      "units": 664,
+      "checksum": 2379776,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100210576,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100520187,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100068433,
+      "passes": 960,
+      "units": 1120,
+      "checksum": 1075200,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100799613,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100946813,
+      "passes": 1152,
+      "units": 135,
+      "checksum": 155520,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100037818,
+      "passes": 6912,
+      "units": 135,
+      "checksum": 933120,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100012730,
+      "passes": 38352,
+      "units": 23,
+      "checksum": 882096,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100004929,
+      "passes": 47152,
+      "units": 23,
+      "checksum": 1084496,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100022004,
+      "passes": 1056,
+      "units": 2344,
+      "checksum": 2475264,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101295082,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 104540592,
+      "passes": 304,
+      "units": 263,
+      "checksum": 79952,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100331535,
+      "passes": 3568,
+      "units": 263,
+      "checksum": 938384,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100357485,
+      "passes": 3184,
+      "units": 352,
+      "checksum": 1120768,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100287619,
+      "passes": 3216,
+      "units": 352,
+      "checksum": 1132032,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 101489042,
+      "passes": 1056,
+      "units": 1579,
+      "checksum": 1667424,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100994154,
+      "passes": 1088,
+      "units": 1579,
+      "checksum": 1717952,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 102488071,
+      "passes": 512,
+      "units": 2816,
+      "checksum": 1441792,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100613466,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 109127942,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100650912,
+      "passes": 1808,
+      "units": 519,
+      "checksum": 938352,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100002325,
+      "passes": 101664,
+      "units": 13,
+      "checksum": 1321632,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100003027,
+      "passes": 102448,
+      "units": 13,
+      "checksum": 1331824,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100004247,
+      "passes": 107488,
+      "units": 11,
+      "checksum": 1182368,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100007643,
+      "passes": 102784,
+      "units": 11,
+      "checksum": 1130624,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100000451,
+      "passes": 139584,
+      "units": 9,
+      "checksum": 1256256,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100003456,
+      "passes": 140192,
+      "units": 9,
+      "checksum": 1261728,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100059911,
+      "passes": 13840,
+      "units": 39,
+      "checksum": 539760,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100011609,
+      "passes": 25568,
+      "units": 39,
+      "checksum": 997152,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100520598,
+      "passes": 1776,
+      "units": 608,
+      "checksum": 1079808,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100731742,
+      "passes": 1808,
+      "units": 608,
+      "checksum": 1099264,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100007152,
+      "passes": 185200,
+      "units": 6,
+      "checksum": 1111200,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100001924,
+      "passes": 179264,
+      "units": 6,
+      "checksum": 1075584,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100005312,
+      "passes": 84288,
+      "units": 14,
+      "checksum": 1180032,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100012712,
+      "passes": 93840,
+      "units": 14,
+      "checksum": 1313760,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100060724,
+      "passes": 10992,
+      "units": 208,
+      "checksum": 2286336,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100043208,
+      "passes": 10656,
+      "units": 208,
+      "checksum": 2216448,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 6
+    },
+    {
+      "elapsed_ns": 100001145,
+      "passes": 136928,
+      "units": 9,
+      "checksum": 1232352,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100001235,
+      "passes": 140032,
+      "units": 9,
+      "checksum": 1260288,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100009267,
+      "passes": 3184,
+      "units": 352,
+      "checksum": 1120768,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100419743,
+      "passes": 3216,
+      "units": 352,
+      "checksum": 1132032,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100007194,
+      "passes": 104240,
+      "units": 11,
+      "checksum": 1146640,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100011791,
+      "passes": 107696,
+      "units": 11,
+      "checksum": 1184656,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100004270,
+      "passes": 25760,
+      "units": 39,
+      "checksum": 1004640,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100104229,
+      "passes": 14256,
+      "units": 39,
+      "checksum": 555984,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100112090,
+      "passes": 1808,
+      "units": 519,
+      "checksum": 938352,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 109625254,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100203386,
+      "passes": 6944,
+      "units": 135,
+      "checksum": 937440,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100810371,
+      "passes": 1136,
+      "units": 135,
+      "checksum": 153360,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100247352,
+      "passes": 3616,
+      "units": 664,
+      "checksum": 2401024,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100214058,
+      "passes": 3376,
+      "units": 664,
+      "checksum": 2241664,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 101101164,
+      "passes": 1760,
+      "units": 608,
+      "checksum": 1070080,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100370586,
+      "passes": 1744,
+      "units": 608,
+      "checksum": 1060352,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100007715,
+      "passes": 175200,
+      "units": 6,
+      "checksum": 1051200,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100006243,
+      "passes": 184592,
+      "units": 6,
+      "checksum": 1107552,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100014625,
+      "passes": 46992,
+      "units": 23,
+      "checksum": 1080816,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100034155,
+      "passes": 37904,
+      "units": 23,
+      "checksum": 871792,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 161874366,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 156068376,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100613147,
+      "passes": 1056,
+      "units": 2344,
+      "checksum": 2475264,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100171489,
+      "passes": 1040,
+      "units": 2344,
+      "checksum": 2437760,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100389794,
+      "passes": 928,
+      "units": 1120,
+      "checksum": 1039360,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100339129,
+      "passes": 944,
+      "units": 1120,
+      "checksum": 1057280,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100011761,
+      "passes": 76848,
+      "units": 15,
+      "checksum": 1152720,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100008736,
+      "passes": 72560,
+      "units": 15,
+      "checksum": 1088400,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 101428822,
+      "passes": 1056,
+      "units": 1579,
+      "checksum": 1667424,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 101751562,
+      "passes": 960,
+      "units": 1579,
+      "checksum": 1515840,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100455181,
+      "passes": 880,
+      "units": 1536,
+      "checksum": 1351680,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100627809,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100049377,
+      "passes": 10624,
+      "units": 208,
+      "checksum": 2209792,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100101605,
+      "passes": 10768,
+      "units": 208,
+      "checksum": 2239744,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100403975,
+      "passes": 3504,
+      "units": 263,
+      "checksum": 921552,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 102619962,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100015836,
+      "passes": 94784,
+      "units": 14,
+      "checksum": 1326976,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100004880,
+      "passes": 93824,
+      "units": 14,
+      "checksum": 1313536,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100011160,
+      "passes": 100192,
+      "units": 13,
+      "checksum": 1302496,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100011981,
+      "passes": 99696,
+      "units": 13,
+      "checksum": 1296048,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100440200,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100054434,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 7
+    },
+    {
+      "elapsed_ns": 100052140,
+      "passes": 138864,
+      "units": 9,
+      "checksum": 1249776,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100009278,
+      "passes": 138272,
+      "units": 9,
+      "checksum": 1244448,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101041967,
+      "passes": 1008,
+      "units": 1579,
+      "checksum": 1591632,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101445639,
+      "passes": 1056,
+      "units": 1579,
+      "checksum": 1667424,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 111520922,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100869900,
+      "passes": 1760,
+      "units": 519,
+      "checksum": 913440,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100315434,
+      "passes": 1104,
+      "units": 135,
+      "checksum": 149040,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100200282,
+      "passes": 6832,
+      "units": 135,
+      "checksum": 922320,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100013043,
+      "passes": 92048,
+      "units": 14,
+      "checksum": 1288672,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100005101,
+      "passes": 93600,
+      "units": 14,
+      "checksum": 1310400,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100410024,
+      "passes": 3072,
+      "units": 352,
+      "checksum": 1081344,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100433980,
+      "passes": 3136,
+      "units": 352,
+      "checksum": 1103872,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100111339,
+      "passes": 1024,
+      "units": 2344,
+      "checksum": 2400256,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101370748,
+      "passes": 1056,
+      "units": 2344,
+      "checksum": 2475264,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100825124,
+      "passes": 1744,
+      "units": 608,
+      "checksum": 1060352,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100579578,
+      "passes": 1728,
+      "units": 608,
+      "checksum": 1050624,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 104377410,
+      "passes": 288,
+      "units": 263,
+      "checksum": 75744,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100133532,
+      "passes": 3408,
+      "units": 263,
+      "checksum": 896304,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100357386,
+      "passes": 928,
+      "units": 1120,
+      "checksum": 1039360,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100790111,
+      "passes": 960,
+      "units": 1120,
+      "checksum": 1075200,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100029597,
+      "passes": 38000,
+      "units": 23,
+      "checksum": 874000,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100008005,
+      "passes": 47792,
+      "units": 23,
+      "checksum": 1099216,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100008586,
+      "passes": 106608,
+      "units": 11,
+      "checksum": 1172688,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100047599,
+      "passes": 97584,
+      "units": 11,
+      "checksum": 1073424,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100015676,
+      "passes": 14288,
+      "units": 39,
+      "checksum": 557232,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100001686,
+      "passes": 25616,
+      "units": 39,
+      "checksum": 999024,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100005972,
+      "passes": 186672,
+      "units": 6,
+      "checksum": 1120032,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100000574,
+      "passes": 177728,
+      "units": 6,
+      "checksum": 1066368,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100011791,
+      "passes": 102128,
+      "units": 13,
+      "checksum": 1327664,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100013669,
+      "passes": 103232,
+      "units": 13,
+      "checksum": 1342016,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100286734,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 102322679,
+      "passes": 512,
+      "units": 2816,
+      "checksum": 1441792,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100112536,
+      "passes": 10944,
+      "units": 208,
+      "checksum": 2276352,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100080369,
+      "passes": 10704,
+      "units": 208,
+      "checksum": 2226432,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101573053,
+      "passes": 992,
+      "units": 1536,
+      "checksum": 1523712,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 101646171,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 153538980,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 153792858,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100004125,
+      "passes": 75184,
+      "units": 15,
+      "checksum": 1127760,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100014180,
+      "passes": 77488,
+      "units": 15,
+      "checksum": 1162320,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100168220,
+      "passes": 3552,
+      "units": 664,
+      "checksum": 2358528,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100091886,
+      "passes": 3600,
+      "units": 664,
+      "checksum": 2390400,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 8
+    },
+    {
+      "elapsed_ns": 100007571,
+      "passes": 180592,
+      "units": 6,
+      "checksum": 1083552,
+      "case": "tiny",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100006520,
+      "passes": 187696,
+      "units": 6,
+      "checksum": 1126176,
+      "case": "tiny",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100075462,
+      "passes": 960,
+      "units": 1536,
+      "checksum": 1474560,
+      "case": "plain-256",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100233177,
+      "passes": 976,
+      "units": 1536,
+      "checksum": 1499136,
+      "case": "plain-256",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100338634,
+      "passes": 1808,
+      "units": 608,
+      "checksum": 1099264,
+      "case": "nested-type-32",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100760722,
+      "passes": 1808,
+      "units": 608,
+      "checksum": 1099264,
+      "case": "nested-type-32",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100214859,
+      "passes": 3536,
+      "units": 263,
+      "checksum": 929968,
+      "case": "index-128",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 104244061,
+      "passes": 304,
+      "units": 263,
+      "checksum": 79952,
+      "case": "index-128",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100045457,
+      "passes": 10720,
+      "units": 208,
+      "checksum": 2229760,
+      "case": "generic-apply-16",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100001777,
+      "passes": 10992,
+      "units": 208,
+      "checksum": 2286336,
+      "case": "generic-apply-16",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100419573,
+      "passes": 3232,
+      "units": 352,
+      "checksum": 1137664,
+      "case": "nested-type-16",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100149309,
+      "passes": 3184,
+      "units": 352,
+      "checksum": 1120768,
+      "case": "nested-type-16",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 152217530,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 152401073,
+      "passes": 32,
+      "units": 46661,
+      "checksum": 1493152,
+      "case": "stdlib",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100004132,
+      "passes": 136880,
+      "units": 9,
+      "checksum": 1231920,
+      "case": "index-1",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100009661,
+      "passes": 141904,
+      "units": 9,
+      "checksum": 1277136,
+      "case": "index-1",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100116079,
+      "passes": 6688,
+      "units": 135,
+      "checksum": 902880,
+      "case": "index-64",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100016000,
+      "passes": 1120,
+      "units": 135,
+      "checksum": 151200,
+      "case": "index-64",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100017111,
+      "passes": 25408,
+      "units": 39,
+      "checksum": 990912,
+      "case": "index-16",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100093485,
+      "passes": 14208,
+      "units": 39,
+      "checksum": 554112,
+      "case": "index-16",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100018183,
+      "passes": 77808,
+      "units": 15,
+      "checksum": 1167120,
+      "case": "index-4",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100014768,
+      "passes": 75600,
+      "units": 15,
+      "checksum": 1134000,
+      "case": "index-4",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100683294,
+      "passes": 1792,
+      "units": 519,
+      "checksum": 930048,
+      "case": "index-256",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 109453181,
+      "passes": 80,
+      "units": 519,
+      "checksum": 41520,
+      "case": "index-256",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100859808,
+      "passes": 1072,
+      "units": 1579,
+      "checksum": 1692688,
+      "case": "mixed-flat-after-nested",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 101378942,
+      "passes": 1056,
+      "units": 1579,
+      "checksum": 1667424,
+      "case": "mixed-flat-after-nested",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100009660,
+      "passes": 48000,
+      "units": 23,
+      "checksum": 1104000,
+      "case": "index-8",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100023471,
+      "passes": 38464,
+      "units": 23,
+      "checksum": 884672,
+      "case": "index-8",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100969602,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 101109921,
+      "passes": 976,
+      "units": 1120,
+      "checksum": 1093120,
+      "case": "nested-type-64",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100006596,
+      "passes": 102768,
+      "units": 13,
+      "checksum": 1335984,
+      "case": "flat-name",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100005114,
+      "passes": 102160,
+      "units": 13,
+      "checksum": 1328080,
+      "case": "flat-name",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 102671549,
+      "passes": 512,
+      "units": 2816,
+      "checksum": 1441792,
+      "case": "generic-optional-256",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100872637,
+      "passes": 496,
+      "units": 2816,
+      "checksum": 1396736,
+      "case": "generic-optional-256",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100689374,
+      "passes": 1072,
+      "units": 2344,
+      "checksum": 2512768,
+      "case": "generic-apply-64",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100202688,
+      "passes": 1056,
+      "units": 2344,
+      "checksum": 2475264,
+      "case": "generic-apply-64",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100006256,
+      "passes": 103840,
+      "units": 11,
+      "checksum": 1142240,
+      "case": "index-2",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100010081,
+      "passes": 106912,
+      "units": 11,
+      "checksum": 1176032,
+      "case": "index-2",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100056249,
+      "passes": 3616,
+      "units": 664,
+      "checksum": 2401024,
+      "case": "generic-apply-32",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100270980,
+      "passes": 3552,
+      "units": 664,
+      "checksum": 2358528,
+      "case": "generic-apply-32",
+      "which": "baseline",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100011353,
+      "passes": 95104,
+      "units": 14,
+      "checksum": 1331456,
+      "case": "flat-value",
+      "which": "candidate",
+      "trial": 9
+    },
+    {
+      "elapsed_ns": 100016410,
+      "passes": 95232,
+      "units": 14,
+      "checksum": 1333248,
+      "case": "flat-value",
+      "which": "baseline",
+      "trial": 9
+    }
+  ],
+  "outcome_parity": [
+    {
+      "depth": 1,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "ce83158c216215c5ca6939cdeb32785a538098a124d3c7601c8b82ccf52dd533"
+    },
+    {
+      "depth": 1,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "78e719d37184b92c63ec95a37368e0171f68f2644fde215b0aeb8ac66384111f"
+    },
+    {
+      "depth": 1,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "029c10eca6fd47358b5388c4710f753537a64025e812e6d32f2ff383e2bcbd11"
+    },
+    {
+      "depth": 1,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "e060d99cc81e507235928f55b41cffe24970f7d4a4b0f3038c8870cf1644b7d8"
+    },
+    {
+      "depth": 1,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "e1aae6494ca5ae10c1f7a25f94a822e4a807e00a5183f35b9a2e82d6e17dbd0d"
+    },
+    {
+      "depth": 1,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "36ece5d798df9a920e286b88887bf832a5ffdb1d703612fec1509bd99f8deae9"
+    },
+    {
+      "depth": 1,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "ca6f3457b12d98a7377f0a6a95b44b5464b9deea387d6151087ee306efd07c6a"
+    },
+    {
+      "depth": 1,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "4e0a066cba36858f01797006c37f4a22da092d9b5beb7b8a9a17dbbacba94c67"
+    },
+    {
+      "depth": 1,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "d030bf0caef6a5c0dbd3888b2f400c05cac93aec027a3989f31d6fb9421bdb95"
+    },
+    {
+      "depth": 1,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "809db673e2d89776b120afe31a353629eae6ca599b8ff18a4f06880f33628cbb"
+    },
+    {
+      "depth": 1,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "3a95e3ab4b637c43d5855b96b1d2179d109b47168df4d258085c768c219d4fbb"
+    },
+    {
+      "depth": 1,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "4a0bd70fa39e4eb5ca71526461621278c050fde24957fee2c4202a1138163dc7"
+    },
+    {
+      "depth": 1,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "99200b43797f8bed171cd89a10cc592b50c2c7d4a382c7f9d0cc1f9ad2d6ed10"
+    },
+    {
+      "depth": 1,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "acf7b9af8578ffd3cdefaf281bacd1e4b876a7155dca115c01c8dc685c4fabf2"
+    },
+    {
+      "depth": 1,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "615517f3914d0a565cee2fe0e34461d670190dd95014795f087c06cefcf8ba9f"
+    },
+    {
+      "depth": 1,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "f4b11a7ea30f9c213996307b664e9917a26457904124f0162ced5f926fc5f4f2"
+    },
+    {
+      "depth": 1,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "9c0c80f6e651324ae20b15e4a83c623663ac99cfba9fb3bc822cdef4d12eb903"
+    },
+    {
+      "depth": 1,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "9bd75ec128dab8b4600765d547c868fe30238d3b242fe15842daf4579110a99d"
+    },
+    {
+      "depth": 1,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "9e91346c623480a62f65ed0eb4e96188a9e171cfb9d22473121ac0df5d265318"
+    },
+    {
+      "depth": 1,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "3adbee894b1f6081e1580a056d429c919395469d25dc7db9779524c9ac9d53ec"
+    },
+    {
+      "depth": 1,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "7cb7fe366a1807f64420f4d653cded177e01425a495c1dd89483678daa7d8f23"
+    },
+    {
+      "depth": 1,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "a020e8f53a268b5dafba056eb0d312168b4423cf7e1565d302cc81968404a475"
+    },
+    {
+      "depth": 2,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "5eea1fe29015795e5b3a3ce2d882baa02629644b0b28933a2a11e85e77c1ca54"
+    },
+    {
+      "depth": 2,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "0e1274edf7689303ac8a85ab5063f5fcc98e134b6bc702dacd51c70a53ee5670"
+    },
+    {
+      "depth": 2,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "59a08e70bde9f572c6759c8c85e0dbb2357f74c4f64d9900b4db54f78072142a"
+    },
+    {
+      "depth": 2,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "bf6bd49ec5cd09db234dac29c8e335eef37ab0e3629d267e51f33986100ab912"
+    },
+    {
+      "depth": 2,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "dfa7938aec489d5a8b50b0732693d1c98368b91bd13caac8980cb7cc45c9b17f"
+    },
+    {
+      "depth": 2,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "587bd94db889a58e7b3ef2e450dc22d741a1733e6d0a8bb3a165d852ff13c780"
+    },
+    {
+      "depth": 2,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "8027e8141fba1c5e4412eb8408476c789593e60e27d3fddbc46c51858fbfb5fe"
+    },
+    {
+      "depth": 2,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "449049cc61a0543b01f672bb7dab7d5092ef9556360bbf7f1af6fa39f13e545e"
+    },
+    {
+      "depth": 2,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "eece7a3b272966ff3110c685d868df6efe4c326166bdf78764ee8898dde9b15c"
+    },
+    {
+      "depth": 2,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "176146e0934bdb5975fc70ac88fccbc2538d43e394f35741b3aace0f2beb937f"
+    },
+    {
+      "depth": 2,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "3a0d9460fe830a0c9530e651cb367a63f13d3ffab70eccceb8b975ab92beedf8"
+    },
+    {
+      "depth": 2,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "1a992d15bb67fa7e0cd4530fde02bf5c98648d3f6cff97e00f3e722cd4a85060"
+    },
+    {
+      "depth": 2,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "1e24b6fe7535e912089aeeb6fcf5c9fc5c1d53d16ede0e98cdd86d92faeee94d"
+    },
+    {
+      "depth": 2,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "c674a6660188165c739fc99e093a02f17971ee52acf674cc151801216e9a1c4d"
+    },
+    {
+      "depth": 2,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "7f3f8c5bb6571529941f73603af04b4ea708f7ae1133c1c99f158c6a714b36b7"
+    },
+    {
+      "depth": 2,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "9feb6fb33c8f681b475c9f0f6410920e1b36ad24c161b120d2fbe83c2e9afda2"
+    },
+    {
+      "depth": 2,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "ae4bbba4e72fba5fcd0d8f63c1e7d580d55bd516dcdaa255f8956518d344894e"
+    },
+    {
+      "depth": 2,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "e1851d7415f15ce8e40bab869745fdc00e9ee92c90d0ab3ae7dec8b281aac516"
+    },
+    {
+      "depth": 2,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "08a4909a3ff8427c05c60c08171fa0283eb4d8a87c7f26139adba93bfca38858"
+    },
+    {
+      "depth": 2,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "415e05d138a4f79e777f67434fae1a3fca433a48d6a76097f1b926c2c4c14019"
+    },
+    {
+      "depth": 2,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "abef70cdaa95ad5513f4b45bd6960409a070bf2eb00f8b520a3f83c1ddb53264"
+    },
+    {
+      "depth": 2,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "1405435281c4dd7e8f75e6ba718757374a9218a88b9d046a8791889940b6a04c"
+    },
+    {
+      "depth": 4,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "54ab3ddb086a211695110f1312a36b9c5ab8cd220297edf676f8477c1b665d71"
+    },
+    {
+      "depth": 4,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "2530bcbc935c5b0e071af43cba59c3b91f088816dec967bfcb8fbb7ff29f5e90"
+    },
+    {
+      "depth": 4,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "bcd38e864d1bdbe6dc53a64e9101bb79fde8c3f846d9be78d6715df474fe1155"
+    },
+    {
+      "depth": 4,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "1df8178322b7519c96dba5a706cdabd8bd9df9f890d967fa8a51b1636366cd6c"
+    },
+    {
+      "depth": 4,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "34ca3646536cf351df035691cf8fce4681e9f599dc260f319de71905dfdfdce6"
+    },
+    {
+      "depth": 4,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "bfe8969795be7fbcd190a749519dc1605e143cedc6a0a9f80f71633a459bdc92"
+    },
+    {
+      "depth": 4,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "7843fb019aa4d2b2ffc604e7ab9b577b81ec8fa1261e385129eb84cfac17e6c9"
+    },
+    {
+      "depth": 4,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "3f264d2be32d4fa60cfadd54fbea42522048d72f496c26b42a80a78c5095fcd8"
+    },
+    {
+      "depth": 4,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "9a9c10706a24938d5579a6734cfc9cbeadb35899acc9a50186ef5d45d680d218"
+    },
+    {
+      "depth": 4,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "b82fa131b54f186d76af103d97628d1bc4fade9c7b02ca9567e94bb9dc827ad6"
+    },
+    {
+      "depth": 4,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "cc245b12a71fe30b1149243d1e25bd9410b31bba13c11a77057084235010b1bd"
+    },
+    {
+      "depth": 4,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "98fc6fa7b1e51a5ea1df667cd236ebcea3bbf71ec4702e4241b375192edf9b96"
+    },
+    {
+      "depth": 4,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "2fb4cc2a8f2918b094080a589974b6bb5536f040ebc68aa70594cc531d7ed83b"
+    },
+    {
+      "depth": 4,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "fdaf5cec3c32367127ade0951a42bcd0c123f19a2f653b2ea5aef5ce5d13e7f5"
+    },
+    {
+      "depth": 4,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "9a0ba8636bc6b8deb04b371afe4612f3d729d068e62903e07156e5af1cf24303"
+    },
+    {
+      "depth": 4,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "e64205ad7b20f9a834c71867d0af301a5443ef7f3c997a7f32fead129024fd12"
+    },
+    {
+      "depth": 4,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "0ccb469987b8889bc315bc01ee1c77da743d9afc2b0a0bb00836e0df8a45c95e"
+    },
+    {
+      "depth": 4,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "bfd24c816f2bd31b2774b19972d27e09702ed80498dbc77452fc593d006276bd"
+    },
+    {
+      "depth": 4,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "2e700b27b4614217915f5e924c21d4f6ff298ee8f9be45c2262a01fbe9bdde15"
+    },
+    {
+      "depth": 4,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "f0391c274ff875e7505fecc674116ed5e208a50b80ec5ca07f93b0084448c0af"
+    },
+    {
+      "depth": 4,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "f12145c7c70b357365f1d3cd7ce6ae29865f44ad354781a210673442d95d8480"
+    },
+    {
+      "depth": 4,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "d4597b5d04053c21f7500fc0cca9f49cce2ec75c0a3379994867b077635e9598"
+    },
+    {
+      "depth": 16,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "fe0fe2de96bfda0cd481614ae710e4a1ec8d4dcd102ca713b4c666043ceb57e4"
+    },
+    {
+      "depth": 16,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "122f27f27407fab3e23fb923993f441e839a6a68850b14514c276f6e48758f7d"
+    },
+    {
+      "depth": 16,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "cd2db5245756bbd4e012e14611c735c3ee357ae9717fb633c6ae9bf5d02bc4e8"
+    },
+    {
+      "depth": 16,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "ff1d01ec0ea601e470a1c290735792220bdd4a68c3a8c26e1145026f0f9a841d"
+    },
+    {
+      "depth": 16,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "9e3283b4768fff07bacc4ad80e006fd89263a73011b6eb153ebf94cd29bbb226"
+    },
+    {
+      "depth": 16,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "61a68fd25efdb6ec027f45801cc5aee54b51387cafe34027b0c45bb0eac5090d"
+    },
+    {
+      "depth": 16,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "276f7a461fac416f9716e4f942a8214465a1a38e6c3b82220aa1df2e05bb5c0c"
+    },
+    {
+      "depth": 16,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "46f7237af9f9c82144836e8a96e21df542f8334a59ee0a9a5a8e99ec752ead5e"
+    },
+    {
+      "depth": 16,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "4331cd58e19e78bd20bdec1d7ead8320f833485625d24c97f083b7cbd93cabde"
+    },
+    {
+      "depth": 16,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "71314f5da329c39bf168b21b10d45137e2e521f94036deca1dd1117ef2bb6c11"
+    },
+    {
+      "depth": 16,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "95c21d7c142a40e4448056b2260d7553b492ca79d4430be624af23ee7820f769"
+    },
+    {
+      "depth": 16,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "ea1cd7895e425aedbff334153edd3b5820f595eca8c55d9efd94cdaedb10b69d"
+    },
+    {
+      "depth": 16,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "8b0af1eacfd7b2abbcd230268217f07e9ad468e139e7480d27dd24d692cae693"
+    },
+    {
+      "depth": 16,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "3907532789a4f3f0164861502f05dc01da50801980e1b1908c4984ff03bc2bd0"
+    },
+    {
+      "depth": 16,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "753ebfa9aeb961637836744e7a761881730cc4e3547fa79a52597e1c8f8ead19"
+    },
+    {
+      "depth": 16,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "e3f870d99a8228740a9f6e593a62367c524c18da6ec69f9082bc66e9a4267505"
+    },
+    {
+      "depth": 16,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "44e4efe238eff29032b2d81af6685f63dd8805252dc0fe36bdd06709831bfcc6"
+    },
+    {
+      "depth": 16,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "62f8b96eff671c32ffd177f0d4a67c5fe2e7fa0451b3d1ccc53669c23ddd1308"
+    },
+    {
+      "depth": 16,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "d6645e037717d6e453cc25d2fe099e53ab6ac6a1100064c9839783d3961c8629"
+    },
+    {
+      "depth": 16,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "b253320efb415a1634e17f7754ea94a4bbf5affebec1a1aebfc0499ef25b719c"
+    },
+    {
+      "depth": 16,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "be035912613c05be25f884e695770850aa3bfa452c6ff8d308d5e9f17973b235"
+    },
+    {
+      "depth": 16,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "071d322421ad9dcd177ca80464d35c869928d6913e7317ebed6f8ec710164b45"
+    },
+    {
+      "depth": 64,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "441fa57b010b021c24ef093d0f39fff500ef936e62b3c7b0f1ad3a876034d8ad"
+    },
+    {
+      "depth": 64,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "3d6f63afb8f3a9cef6e6e14540e2dc1aeacb6fdd565faf3fb158bbee43859a4a"
+    },
+    {
+      "depth": 64,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "080af4cdcade39518cab784affa6512a6455846b58b225bd1050c7a4a24b8e4e"
+    },
+    {
+      "depth": 64,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "fe09d16afcd2683f41891d1575d6833acfb24e5ba46954b0ffaa5a9bde15fc48"
+    },
+    {
+      "depth": 64,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "c2faafa17012a74e884070b55f35dfd8cdceb19c63da07e49f2a15f61d4530e8"
+    },
+    {
+      "depth": 64,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "ff91ae9332c4fda5e002dc7fe6784f8bf2303ceb555306a4397323bc0d608e30"
+    },
+    {
+      "depth": 64,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "5336844fba3667e109ffe6838932149148f5af73ecc2dd77bcafc248db386a42"
+    },
+    {
+      "depth": 64,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "5e598368b899470b4b01ac6049cf0937d84a74540c00d106021864580d38e397"
+    },
+    {
+      "depth": 64,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "3ea99728c1c2357bbd893c219ddfebc095b7c29ceda4b0ad1e9c60c9a30e9758"
+    },
+    {
+      "depth": 64,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "c03a6fa499803abf0b234946d5029c6c9e6466051125c810b8412223354fadd3"
+    },
+    {
+      "depth": 64,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "815806ad4c32d11e74662a0db48e4b35a0de93f5ac41fb8694b712764c5f35f2"
+    },
+    {
+      "depth": 64,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "666910bce8963e1f6d035098e0b544e552b38cc90ed8d80d211b671834cffe57"
+    },
+    {
+      "depth": 64,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "5b5c60ff6b9e0c16aaa8a74bfb1a17893811bbbb7adaeacb1521edd50759f191"
+    },
+    {
+      "depth": 64,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "1faa8cc7b8abf0c16d29689753e7d74c48601149e8e8fddc2b687a3103d3bc72"
+    },
+    {
+      "depth": 64,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "0f33416a745b5fdae7af6ad26d577d71bf8b80e8b0aaab918433a4d79c7dbcb5"
+    },
+    {
+      "depth": 64,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "f7b141862c2820033e3c991a852b67b461f201b9b7109b03334b98ef2108e3c6"
+    },
+    {
+      "depth": 64,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "6c94115e394bac099c7a1d18c333ea1b9336a680647fcb429887fee8cb585533"
+    },
+    {
+      "depth": 64,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "f181e6b47b73fc5e69d3dbbe7e5098f9499ea4816a2a4ecac3a9ab7e0cb82ae1"
+    },
+    {
+      "depth": 64,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "e5d16331515f3019ff4358a37360fc5744bec0cbe80a3a0896b69c59325c6212"
+    },
+    {
+      "depth": 64,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "4240c8e0ad64b8878d5b659fef1848486a7937226f87d36c1d01e7a5794af78f"
+    },
+    {
+      "depth": 64,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "eedb65a593b73cb75c845bc1d61feb0a94e4dbc5f907ed264dd4fcfc3af065bd"
+    },
+    {
+      "depth": 64,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "3186f614879787b3acb5ce1b40ee116054b5430d1509613a660d1ebc3a08452a"
+    },
+    {
+      "depth": 256,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "2b54c9b0e0d6fc813e0af8bac95c2cf1cf440533c89a624b109661ff6fc1a2c8"
+    },
+    {
+      "depth": 256,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "87a4c94926964ec279591dae02790a31a74a8e46b7f280604a7f05877eb78d4d"
+    },
+    {
+      "depth": 256,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "fe1071bf5835227c9b0ab64f58358dc808d066407bba44b763c4de631e4e6e96"
+    },
+    {
+      "depth": 256,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "fc527f748af13bb0afe246415f633cf74eb88a153274c7418e895878da0c50bf"
+    },
+    {
+      "depth": 256,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "abcb2a88e34b31ddda26a106c3441b9add1948f013bfbf0c01e175afe871e1d4"
+    },
+    {
+      "depth": 256,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "4412f9d4d4b92677fa5c4f8e6b9eaab7c550d536cc86cec4ce06163c9fb8da73"
+    },
+    {
+      "depth": 256,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "39b829b3f20b994db217ba2f0e7b9f8fcdaa72357bc0df9bd1a3acab5112aa6a"
+    },
+    {
+      "depth": 256,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "a5d30b49b4827705acbf623e59b8d7af1ebb7f45369f7d26595f414e463025a1"
+    },
+    {
+      "depth": 256,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "3b8d65ee8782b43d15f35eb11fd21612cb1c2ac84fda87d0e7f0aeb3b19e0361"
+    },
+    {
+      "depth": 256,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "1e75dcd3e3c65605747646db1366ff27a4217bc8b62add59eb4829f5a3305d28"
+    },
+    {
+      "depth": 256,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "a829fed701980fc9a3169e7f65e2c335108c3dfcd8aedb33af1c362e7e02fb1d"
+    },
+    {
+      "depth": 256,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "ca9c6ab6bcb636b4d09d4f3631c6f5338393b2a8a18f8f999d4937a9c03a4c51"
+    },
+    {
+      "depth": 256,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "0edc8ad38b37a77de68675d229b3a49c081e8949e03c22d6546ed4486324c024"
+    },
+    {
+      "depth": 256,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "827b8c8d716de2fe61e8ac60ad9d9b48a6acbc6253d400b4c478ebe02659dfaf"
+    },
+    {
+      "depth": 256,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "6f5f1f1bb5d3c840d3b9ceecfa3f5484cd8a59413c7dbb95280ad10d2e8a4fda"
+    },
+    {
+      "depth": 256,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "04437cd2396760349befa24a910c6a907b86576afb8bb66dd6f06f748225df22"
+    },
+    {
+      "depth": 256,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "e20ee6dcee80a09e5090438c0ac79fec691ab6437f86d13b385c6da9e27189a3"
+    },
+    {
+      "depth": 256,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "bc1735b4c4fd82913e39a1e5059df7a9d70f6af4917e57dbee70f23f97687830"
+    },
+    {
+      "depth": 256,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "778c3ea1d795095af0d7d32c7628652768cbadb8d3486fd59bd365d072e60461"
+    },
+    {
+      "depth": 256,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "922994968e318d8f042e7f0459244d7601af4d9cac21951c17501b53067fe82e"
+    },
+    {
+      "depth": 256,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "d6fc1b12b3c11277cbaa53c165c7445cf6361d298beeff840f0f40adeec60fa3"
+    },
+    {
+      "depth": 256,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "df0ccf5ef44bd8699e407b301ad372892639cf4b37ba31e35cd2f8ece377f9a5"
+    },
+    {
+      "depth": 990,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "4b340144b0ecc27d33cc9f3516b77e40fd1dcc0f5649d3bdfd1bde71a407c138"
+    },
+    {
+      "depth": 990,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "be4d685b6466da777e0c4f58598fdfe49106ef332f0d0f74887bbd41fe830f2e"
+    },
+    {
+      "depth": 990,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "d9089813a4328ba0b264faa4e5e18efd5226d5b2191ce0c37492efbe0fa2e8e0"
+    },
+    {
+      "depth": 990,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "95cd8ddb76e7a55f5d4b0655d4471442312b0ddf3047b03a9bdd9ef3d41da32d"
+    },
+    {
+      "depth": 990,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "713dd8f51c6948c1950b719fee16d31be4876f3a50dce6e0b621edbb90877778"
+    },
+    {
+      "depth": 990,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "df02a4090bf000721a92ed741f3d3a25c4876573bbd98e882fdb7e3c94cd0ac0"
+    },
+    {
+      "depth": 990,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "edc31f9a7611a9d2075358dbbcc9835c991a122e6b0a69a4b6567f9c48b2f821"
+    },
+    {
+      "depth": 990,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "19d3140970be453d6d1cbdd7e5b994b1c30927c0adef66e095c7125caac80151"
+    },
+    {
+      "depth": 990,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "881cc14b7abc0c5cef46da7e2e0627170aa414e95f815fd33582c5947daffe8a"
+    },
+    {
+      "depth": 990,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "a51a671fa69590549a3e40b004549343c99a9b76bc4a9fc7e7807a5268774000"
+    },
+    {
+      "depth": 990,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "926385f7edc0b66015ae0617494808195e8f4a0d568e8a16cd903ccfc3fa4c7a"
+    },
+    {
+      "depth": 990,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "9e073645f838ee3dfb33d91c79e3ed448bdbffb6b31272257226666619ccbd5e"
+    },
+    {
+      "depth": 990,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "a2b886af9ab35aa4e1777aff01834c7bd9a8ed122843e3c1c9865022cec9313c"
+    },
+    {
+      "depth": 990,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "2820b9f2815497c6e77baa920f68538a08f76163d0fcaeb6ba0c6f4d0db6252b"
+    },
+    {
+      "depth": 990,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "9985094a7db2bed1ee92959a0be79d83a2a3a419cd3aaf43c389ee8c4a7bf232"
+    },
+    {
+      "depth": 990,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "4abdcced6b3bd0bc9f4210a5adc73970f9d7c314daaeb850d8fa7f6a9505818b"
+    },
+    {
+      "depth": 990,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "11b23e610eed00d81360698d9f6a2fa3ced8493e722185af66012fe976c132e5"
+    },
+    {
+      "depth": 990,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "773637e2cbc4c9036a535650c74f266f9968824d6a9f7684c1d6ac2b126731b1"
+    },
+    {
+      "depth": 990,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "226599022a5c486fde63e6b878dc24913ecdbce8835e3c3cb2c7d13f6e57133e"
+    },
+    {
+      "depth": 990,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "83f8e51f37fbdf700d261baef5be2703833ad1dc16f77626b8882e4fd5caab88"
+    },
+    {
+      "depth": 990,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "9e9342b0d9a24a14493569a8e57916f48e2a86389dd5bb96387286fda705714c"
+    },
+    {
+      "depth": 990,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "661f77aabee3cb00bed5b7211c53214ea66a8edc6721d3d2a53cca7e29cac13c"
+    },
+    {
+      "depth": 999,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 999,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 999,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 999,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 999,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 999,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 999,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 999,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 999,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 999,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 999,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 999,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 999,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 999,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 999,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 999,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 999,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 999,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 999,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "e9b6c12e0a01be61a722571e8e7804ae6bab6d019af72ebb57f15b63401671c2"
+    },
+    {
+      "depth": 999,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "b40e2a9cabcde6c628cf7c90d35a2c948499dee62c2579c57b13ec44aef8c15e"
+    },
+    {
+      "depth": 999,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 999,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1000,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1000,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1000,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1000,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1000,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1000,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1000,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1000,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1000,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1000,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1000,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1000,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1000,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1000,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1000,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1000,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1000,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1000,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1000,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "7ac0206816754b8ca958f6b9ce6a760e939fd6e16fc80075358dc713f2fdd80d"
+    },
+    {
+      "depth": 1000,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "a4b338aa808acadea5ec139a5422ff42063908dbd3de9d5869e023e94da76f94"
+    },
+    {
+      "depth": 1000,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1000,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1001,
+      "atom": "0",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1001,
+      "atom": "0",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1001,
+      "atom": "index",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1001,
+      "atom": "index",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1001,
+      "atom": "index + 1",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1001,
+      "atom": "index + 1",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1001,
+      "atom": "Box[Int]",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1001,
+      "atom": "Box[Int]",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1001,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1001,
+      "atom": "Box[Int, 0]",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1001,
+      "atom": "fn(Int) Int",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1001,
+      "atom": "fn(Int) Int",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1001,
+      "atom": "fn(Int) ",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1001,
+      "atom": "fn(Int) ",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1001,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1001,
+      "atom": "(fn(Int) Int)?",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1001,
+      "atom": "Int!E",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1001,
+      "atom": "Int!E",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    },
+    {
+      "depth": 1001,
+      "atom": "List[Int",
+      "ending": "'\\n'",
+      "sha256": "d20949dee821dbfe083f7032d1738f6d63ecaf8c87f996ae1ccddb0f11939425"
+    },
+    {
+      "depth": 1001,
+      "atom": "List[Int",
+      "ending": "'\\r\\n'",
+      "sha256": "08a9530c2dcf70f4bd04ebb0cacbf6b887cb631e68cbf8d5880bb4866220026b"
+    },
+    {
+      "depth": 1001,
+      "atom": "(index + 1)",
+      "ending": "'\\n'",
+      "sha256": "167ca2d0e9838e8a7953c65824573f511c2e1c0d4f782685b95f7f8f65f899d5"
+    },
+    {
+      "depth": 1001,
+      "atom": "(index + 1)",
+      "ending": "'\\r\\n'",
+      "sha256": "359d38e8d906d47a6711df4fb2be8bf28c7be2fcfcb2f6ca39a929b110c77618"
+    }
+  ],
+  "recovery_parity": [
+    {
+      "depth": 2,
+      "ending": "'\\n'",
+      "sha256": "ab72f7d3f8bca38b8cb27f2b8c3fe90d72ba1b1aa69ca289ca3b92143739a9a9"
+    },
+    {
+      "depth": 2,
+      "ending": "'\\r\\n'",
+      "sha256": "2f08e1c5f2cac14333440a14a4ad3105da45b622490d0921bffa90be00e079b4"
+    },
+    {
+      "depth": 16,
+      "ending": "'\\n'",
+      "sha256": "cc9d45f43bd0c58847c6015689ac1d18a551b6563e9c2e8538ae3ec98335685c"
+    },
+    {
+      "depth": 16,
+      "ending": "'\\r\\n'",
+      "sha256": "6f151e28ee9bbc1ae66106c8f943b76252fd2d26352836b8f1a6943ad7eb620a"
+    },
+    {
+      "depth": 64,
+      "ending": "'\\n'",
+      "sha256": "de3b06890652abca0ccd298174e2d961bd9307c48ef6a46709f93aeaccdcbb18"
+    },
+    {
+      "depth": 64,
+      "ending": "'\\r\\n'",
+      "sha256": "9397f2d781d8346a38803064234d674f5a5eb9534c30aa0830c9b5789312b78a"
+    }
+  ],
+  "candidate_source_commit": "7bacce99517c45fcefb7efad9fb075e8d8ba1fc3",
+  "measurement_checkout_was_dirty": true,
+  "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+  "compiler_flags": "cargo build --release --locked -p ms-syntax; harness --edition=2024 -O -D warnings -C debuginfo=1 -C panic=abort -C force-frame-pointers=yes"
+}

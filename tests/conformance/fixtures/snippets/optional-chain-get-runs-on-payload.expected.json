@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member get on Int; available: abs, clamp, compare, max, min, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8; this call is part of the `?.` chain, so it runs on the present value; to use the optional's get on the whole chain, parenthesize it: (a?.b()).get(...)",
+        "position": {
+          "file": "optional-chain-get-runs-on-payload.ms",
+          "line": 5,
+          "column": 21,
+          "offset": 157
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/optional-chain-get-runs-on-payload.ms:5:21: resolution: unknown or ambiguous member get on Int; available: abs, clamp, compare, max, min, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8; this call is part of the `?.` chain, so it runs on the present value; to use the optional's get on the whole chain, parenthesize it: (a?.b()).get(...)\n   |\n 5 |     return x?.abs().get(0)\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

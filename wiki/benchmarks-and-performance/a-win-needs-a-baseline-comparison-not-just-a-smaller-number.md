@@ -7,3 +7,9 @@ Verified: keep the raw hand-written baseline (the C controls in `bench/perf/kern
 Apply when: optimizing a helper, a lowering path, or a runtime routine.
 Evidence: [program results](../../bench/perf/programs/results.md), [kernel baselines](../../bench/perf/kernels/README.md).
 Verify: time and allocation counts before and after on one machine; behavior tests unchanged.
+
+Verified (2026-10-31, TOML quoting): batching UTF-8 runs improved ASCII timing by
+6.9x but raised whole-process peak RSS by 64% for a large string with one late
+escape. Retain large sparse-escape memory controls alongside timing; the accepted
+change only removes general radix formatting for known ASCII control escapes.
+Evidence: [matched controls and rejected variants](../../bench/perf/toml-quoting/README.md).
