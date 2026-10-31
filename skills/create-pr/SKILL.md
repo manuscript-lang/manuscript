@@ -9,7 +9,7 @@ Use when opening a PR or rewriting a PR body. Run the checks from [development c
 
 ## Body
 
-`.github/pull_request_template.md` already holds these four sections; fill it in, in this order, and keep its Documentation and Compatibility lines only where they apply. A harness-required attribution block or footer goes around the sections (marker lines first, footer last) and never replaces them: a Summary-only body does not satisfy this skill.
+Use these four sections, in this order, then Documentation and Compatibility lines only where they apply. A harness-required attribution block or footer goes around the sections (marker lines first, footer last) and never replaces them: a Summary-only body does not satisfy this skill.
 
 1. **Problem**: what is wrong or missing, who hits it, and a concrete trigger (input, command, or diagnostic). Not a restatement of the diff.
 2. **Proposed change**: what the PR does and why that fixes the problem. Name the behavior that changes, not every file touched.
