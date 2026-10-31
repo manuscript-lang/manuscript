@@ -28,6 +28,7 @@ pub(crate) enum CapturedStep {
     Field(ct::Name),
     Index(usize),
     Key(usize),
+    Some,
 }
 
 impl FnLower<'_> {
@@ -159,6 +160,10 @@ impl FnLower<'_> {
             let (value, is_key) = match step {
                 crate::alias::AStep::Field(name) => {
                     steps.push(CapturedStep::Field(name));
+                    continue;
+                }
+                crate::alias::AStep::Some => {
+                    steps.push(CapturedStep::Some);
                     continue;
                 }
                 crate::alias::AStep::Index(value) => (value, false),
@@ -1412,6 +1417,7 @@ pub(crate) fn restore_alias_capture(
         .iter()
         .map(|step| match step {
             CapturedStep::Field(name) => crate::alias::AStep::Field(*name),
+            CapturedStep::Some => crate::alias::AStep::Some,
             CapturedStep::Index(index) => crate::alias::AStep::Index(values[*index]),
             CapturedStep::Key(index) => {
                 let value = values[*index];

@@ -6,7 +6,7 @@ Worker threads and processes are a separate proposal (`WorkerGroup`); nothing he
 
 ## Problem
 
-User code cannot run two things at once. The runtime already has stackful coroutines (`crates/ms-rt/src/task.rs`), but only the standard-library I/O uses them. `crates/DESIGN.md` decision 4 said the language has no `spawn`; this proposal reverses that for scoped tasks only, and DESIGN.md, VISION.md and `.experts/runtime.md` say so.
+User code cannot run two things at once. The runtime already has stackful coroutines (`crates/ms-rt/src/task.rs`), but only the standard-library I/O uses them. `crates/DESIGN.md` decision 4 said the language has no `spawn`; this proposal reverses that for scoped tasks only, and DESIGN.md, VISION.md and `wiki/runtime/index.md` say so.
 
 ## What is included
 

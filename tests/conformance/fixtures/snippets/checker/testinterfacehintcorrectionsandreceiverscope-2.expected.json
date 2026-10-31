@@ -1,0 +1,53 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "testinterfacehintcorrectionsandreceiverscope-2.ms",
+          "line": 4,
+          "column": 12,
+          "offset": 174
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Shape; did you mean 'shape'?",
+        "position": {
+          "file": "testinterfacehintcorrectionsandreceiverscope-2.ms",
+          "line": 4,
+          "column": 19,
+          "offset": 181
+        },
+        "fix": {
+          "position": {
+            "file": "testinterfacehintcorrectionsandreceiverscope-2.ms",
+            "line": 4,
+            "column": 19,
+            "offset": 181
+          },
+          "end": {
+            "file": "testinterfacehintcorrectionsandreceiverscope-2.ms",
+            "line": 4,
+            "column": 24,
+            "offset": 186
+          },
+          "replacement": "shape"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testinterfacehintcorrectionsandreceiverscope-2.ms:4:12: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n   |\n 4 | fn shape() Shape: Shape(value: Sq(2))\n   |            ^\n<DIR>/testinterfacehintcorrectionsandreceiverscope-2.ms:4:19: resolution: unknown binding Shape; did you mean 'shape'?\n   |\n 4 | fn shape() Shape: Shape(value: Sq(2))\n   |                   ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

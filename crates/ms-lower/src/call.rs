@@ -403,7 +403,7 @@ impl<'a> FnLower<'a> {
             if vars.len() == 1
                 && !a.own
                 && let Some(place) = args.places.get(i).cloned().flatten()
-                && !matches!(place.kind, ExprKind::Name(_))
+                && (!matches!(place.kind, ExprKind::Name(_)) || self.is_alias_name(&place))
                 && self.is_place(&place)
                 && self.place_is_owned(&place)
             {
@@ -475,6 +475,11 @@ impl<'a> FnLower<'a> {
             }
         }
         Ok(self.val(v, true))
+    }
+
+    /// Whether `e` names an exclusive borrow of another place (`if var x = ...`, `c?.f()`).
+    fn is_alias_name(&self, e: &Expr) -> bool {
+        matches!(self.hir.resolution(e), ms_check::hir::Resolution::Local(b) if self.aliases.contains_key(&b.uid))
     }
 
     // ------------------------------------------------------------- methods

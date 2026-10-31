@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Int, found String (in the return value)",
+        "position": {
+          "file": "lsp-testsnapshotreachablegenerationandderivedreu-4.ms",
+          "line": 4,
+          "column": 24,
+          "offset": 186
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/lsp-testsnapshotreachablegenerationandderivedreu-4.ms:4:24: type: expected Int, found String (in the return value)\n   |\n 4 | export fn value() Int: \"private error\"\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

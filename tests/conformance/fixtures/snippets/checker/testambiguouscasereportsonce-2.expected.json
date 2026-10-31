@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "ambiguous alternative case X; qualify it with its type, e.g. Type.X",
+        "position": {
+          "file": "testambiguouscasereportsonce-2.ms",
+          "line": 11,
+          "column": 13,
+          "offset": 247
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testambiguouscasereportsonce-2.ms:11:13: resolution: ambiguous alternative case X; qualify it with its type, e.g. Type.X\n    |\n 11 |     let a = X(n: 1)\n    |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

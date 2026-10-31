@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface",
+        "position": {
+          "file": "checkinvalidbounds-1.ms",
+          "line": 4,
+          "column": 17,
+          "offset": 192
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
+        "position": {
+          "file": "checkinvalidbounds-1.ms",
+          "line": 7,
+          "column": 1,
+          "offset": 218
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "extra operation message; Error declares:  (remove it or add it to the interface)",
+        "position": {
+          "file": "checkinvalidbounds-1.ms",
+          "line": 8,
+          "column": 8,
+          "offset": 252
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member message on Error; this type has no fields or operations",
+        "position": {
+          "file": "checkinvalidbounds-1.ms",
+          "line": 8,
+          "column": 37,
+          "offset": 281
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/checkinvalidbounds-1.ms:4:17: type: a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface\n   |\n 4 | type Box[Error: Error]:\n   |                 ^\n<DIR>/checkinvalidbounds-1.ms:7:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n   |\n 7 | impl Error for Box[Error]:\n   | ^\n<DIR>/checkinvalidbounds-1.ms:8:8: type: extra operation message; Error declares:  (remove it or add it to the interface)\n   |\n 8 |     fn message() String: self.cause.message()\n   |        ^\n<DIR>/checkinvalidbounds-1.ms:8:37: resolution: unknown or ambiguous member message on Error; this type has no fields or operations\n   |\n 8 |     fn message() String: self.cause.message()\n   |                                     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

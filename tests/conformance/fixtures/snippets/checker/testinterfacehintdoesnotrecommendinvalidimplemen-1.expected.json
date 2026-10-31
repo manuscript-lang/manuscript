@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Shape, found Int (in the return value); use a concrete value implementing Shape",
+        "position": {
+          "file": "testinterfacehintdoesnotrecommendinvalidimplemen-1.ms",
+          "line": 7,
+          "column": 15,
+          "offset": 243
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testinterfacehintdoesnotrecommendinvalidimplemen-1.ms:7:15: type: expected Shape, found Int (in the return value); use a concrete value implementing Shape\n   |\n 7 | fn f() Shape: 1\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

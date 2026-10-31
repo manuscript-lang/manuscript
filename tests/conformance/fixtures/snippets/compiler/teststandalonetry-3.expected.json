@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Int does not satisfy Error; use a type that implements it",
+        "position": {
+          "file": "teststandalonetry-3.ms",
+          "line": 4,
+          "column": 26,
+          "offset": 172
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for it",
+        "position": {
+          "file": "teststandalonetry-3.ms",
+          "line": 7,
+          "column": 5,
+          "offset": 199
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/teststandalonetry-3.ms:4:26: type: Int does not satisfy Error; use a type that implements it\n   |\n 4 | fn operation() Unit!Int: ok(unit)\n   |                          ^\n<DIR>/teststandalonetry-3.ms:7:5: type: try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for it\n   |\n 7 |     try operation()\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
