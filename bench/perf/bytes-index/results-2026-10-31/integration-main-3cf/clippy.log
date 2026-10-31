@@ -1,0 +1,10 @@
+    Checking ms-syntax v0.0.0 (/workspace/manuscript/crates/ms-syntax)
+    Checking ms-check v0.0.0 (/workspace/manuscript/crates/ms-check)
+    Checking ms-tooling v0.0.0 (/workspace/manuscript/crates/ms-tooling)
+    Checking ms-driver v0.0.0 (/workspace/manuscript/crates/ms-driver)
+    Checking ms-lower v0.0.0 (/workspace/manuscript/crates/ms-lower)
+    Checking ms-lsp v0.0.0 (/workspace/manuscript/crates/ms-lsp)
+    Checking ms-build v0.0.0 (/workspace/manuscript/crates/ms-build)
+    Checking ms-cli v0.1.0 (/workspace/manuscript/crates/ms-cli)
+    Checking ms-repo-check v0.0.0 (/workspace/manuscript/crates/ms-repo-check)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.30s

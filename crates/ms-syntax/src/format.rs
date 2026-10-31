@@ -281,7 +281,12 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
         // Per-line spacing cannot see a `(` on an earlier line; keep the authored gap.
         return closes_parameter_list(&tokens[..at]).unwrap_or(tokens[at].lo != tokens[at - 1].hi);
     }
-    if current == Tok::LBracket && matches!(previous, Tok::Name | Tok::SelfKw | Tok::RBracket) {
+    if current == Tok::LBracket
+        && matches!(
+            previous,
+            Tok::Name | Tok::SelfKw | Tok::RBracket | Tok::RParen
+        )
+    {
         return false;
     }
     if previous == Tok::Minus

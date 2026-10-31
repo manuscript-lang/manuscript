@@ -1,0 +1,40 @@
+{
+  "baseline": "3cfde58b6216ae4db54aeb3ae4e22ee7d527e323",
+  "candidate": "2fef66f08e0bf2db2ae6179d46ad318c7eb01524",
+  "stage": "PR branch combined with fresh main; post-merge final-main replay still pending",
+  "build_root": "Both native archives rebuilt sequentially in /workspace/decimal-perf, switching pinned revisions, same toolchain/flags; programs use one saved unchanged combined compiler",
+  "artifacts": {
+    "compiler": {
+      "sha256": "c682613c42e137987384a2ea1a3b85c40de23527ecc07316b4902b21841c75d1",
+      "bytes": 127443656
+    },
+    "before_runtime": {
+      "sha256": "f9efb1ebd944ed2489790149342064a6bdc324f0826d5af3d9dc45920b83355d",
+      "bytes": 47127354
+    },
+    "after_runtime": {
+      "sha256": "3af0e4b720bb6c32f388a4b0e9f8bd8c856645808f619ca48d10f8ffeb8b533c",
+      "bytes": 47127938
+    },
+    "before_program": {
+      "sha256": "bc069c64aba9af830e3f93a38ac95f261a6371e2da34a17df03929077d6530f5",
+      "bytes": 710224
+    },
+    "after_program": {
+      "sha256": "228852a36d2cd7719db5e8312493bccbd901b22bc71a8975efc72526046635b9",
+      "bytes": 658928
+    },
+    "before_control": {
+      "sha256": "7625d6830854e7bb1c45a769a09e65071337f6b5539c4214d92de1e48c86b269",
+      "bytes": 766360
+    },
+    "after_control": {
+      "sha256": "ab6a9b3880df06eb6529b8da08a2c3d7f783c62033090facfb207f79e83b6487",
+      "bytes": 766360
+    },
+    "rust_reference": {
+      "sha256": "27affc38197b137d1523c7f79e2b9ce62fde8e6e81479d3bc9b42e41f16e6713",
+      "bytes": 510264
+    }
+  }
+}

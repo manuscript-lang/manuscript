@@ -1,0 +1,23 @@
+[
+  [
+    "python3",
+    "bench/perf/string-normalize-ascii/compare_matrix.py",
+    "/workspace/normalization-evidence/factorial-protocol/reverse-programs.json",
+    "bench/perf/string-normalization-rollback/inputs/reverse-full-identities.json",
+    "/workspace/normalization-evidence/reverse-repeat-1"
+  ],
+  [
+    "python3",
+    "bench/perf/string-normalize-ascii/compare_matrix.py",
+    "/workspace/normalization-evidence/factorial-protocol/reverse-aa-programs.json",
+    "bench/perf/string-normalization-rollback/inputs/reverse-full-identities.json",
+    "/workspace/normalization-evidence/reverse-aa"
+  ],
+  [
+    "python3",
+    "bench/perf/string-normalize-ascii/compare_matrix.py",
+    "/workspace/normalization-evidence/factorial-protocol/reverse-programs.json",
+    "bench/perf/string-normalization-rollback/inputs/reverse-full-identities.json",
+    "/workspace/normalization-evidence/reverse-repeat-2"
+  ]
+]

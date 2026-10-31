@@ -287,34 +287,32 @@ impl Dec {
     }
 
     pub fn compare(&self, other: &Dec) -> i64 {
-        let (a, b) = (self.coefficient(), other.coefficient());
-        match (a.sign(), b.sign()) {
-            (Sign::NoSign, Sign::NoSign) => return 0,
-            (Sign::Minus, Sign::NoSign | Sign::Plus) | (Sign::NoSign, Sign::Plus) => return -1,
-            (Sign::Plus, Sign::NoSign | Sign::Minus) | (Sign::NoSign, Sign::Minus) => return 1,
-            _ => {}
+        let a = (i128::from(self.hi) << 64) | i128::from(self.lo);
+        let b = (i128::from(other.hi) << 64) | i128::from(other.lo);
+        if self.exp == other.exp || a.signum() != b.signum() || a == 0 {
+            return a.cmp(&b) as i64;
         }
-        let ordering = if self.exp == other.exp {
-            a.cmp(&b)
-        } else if (self.exp - other.exp).abs() >= DIGITS {
-            // Nonzero coefficients have 1..=34 digits. Beyond that gap,
-            // the higher quantum has the greater magnitude, regardless of digits.
-            let magnitude = self.exp.cmp(&other.exp);
-            if a.is_negative() {
-                magnitude.reverse()
-            } else {
-                magnitude
-            }
+        let negative = a < 0;
+        let (a, b) = (a.unsigned_abs(), b.unsigned_abs());
+        let (a_digits, b_digits) = (a.ilog10(), b.ilog10());
+        let a_exponent = i128::from(self.exp) + i128::from(a_digits);
+        let b_exponent = i128::from(other.exp) + i128::from(b_digits);
+        let magnitude = if a_exponent != b_exponent {
+            a_exponent.cmp(&b_exponent)
+        } else if a_digits < b_digits {
+            // Equal leading exponents need at most 33 places of alignment for Decimal.
+            // Checked multiplication also handles arbitrary public i128 coefficient bits.
+            a.checked_mul(10_u128.pow(b_digits - a_digits))
+                .map_or(core::cmp::Ordering::Greater, |scaled| scaled.cmp(&b))
         } else {
-            let exp = self.exp.min(other.exp);
-            let (x, y) = (a * pow10(self.exp - exp), b * pow10(other.exp - exp));
-            x.cmp(&y)
+            b.checked_mul(10_u128.pow(a_digits - b_digits))
+                .map_or(core::cmp::Ordering::Less, |scaled| a.cmp(&scaled))
         };
-        match ordering {
-            core::cmp::Ordering::Less => -1,
-            core::cmp::Ordering::Equal => 0,
-            core::cmp::Ordering::Greater => 1,
-        }
+        (if negative {
+            magnitude.reverse()
+        } else {
+            magnitude
+        }) as i64
     }
 
     /// The text of interpolation: at most 34 significant digits.
@@ -663,6 +661,82 @@ mod tests {
                 }
             );
         }
+    }
+
+    #[test]
+    fn fixed_width_comparison_matches_exact_alignment() {
+        let check = |a: Dec, b: Dec| {
+            let exp = a.exp.min(b.exp);
+            let expected = (a.coefficient() * pow10(a.exp - exp))
+                .cmp(&(b.coefficient() * pow10(b.exp - exp))) as i64;
+            assert_eq!(a.compare(&b), expected, "{a:?} vs {b:?}");
+            assert_eq!(b.compare(&a), -expected, "{b:?} vs {a:?}");
+        };
+        let maximum = 10_i128.pow(34) - 1;
+        let coefficients = [
+            0,
+            1,
+            -1,
+            9,
+            -9,
+            10,
+            -10,
+            maximum,
+            -maximum,
+            i128::MIN,
+            i128::MAX,
+        ];
+        for a in coefficients {
+            for b in coefficients {
+                for exp in [-6176, -39, -34, -33, -1, 0, 1, 33, 34, 39, 6111] {
+                    check(Dec::pack_wide(a, exp), Dec::pack_wide(b, 0));
+                }
+            }
+        }
+        for digits in 0..=33 {
+            let coefficient = 10_i128.pow(digits) + 1;
+            let gap = 33 - coefficient.ilog10() as i64;
+            check(Dec::pack_wide(coefficient, gap), Dec::pack_wide(maximum, 0));
+            check(
+                Dec::pack_wide(-coefficient, gap),
+                Dec::pack_wide(-maximum, 0),
+            );
+        }
+        check(Dec::pack_wide(1, 1), Dec::pack_wide(10, 0));
+        check(Dec::pack_wide(9, 38), Dec::pack_wide(i128::MAX, 0));
+        check(Dec::pack_wide(-9, 38), Dec::pack_wide(i128::MIN, 0));
+        assert_eq!(
+            Dec {
+                exp: i64::MAX,
+                ..Dec::ZERO
+            }
+            .compare(&Dec::ZERO),
+            0
+        );
+        let mut sample = 0x9e3779b97f4a7c15_u128;
+        for _ in 0..1000 {
+            sample = sample.wrapping_mul(6364136223846793005).wrapping_add(1);
+            let a = (sample % maximum as u128) as i128 + 1;
+            sample = sample.wrapping_mul(6364136223846793005).wrapping_add(1);
+            let b = (sample % maximum as u128) as i128 + 1;
+            for gap in -34..=34 {
+                check(Dec::pack_wide(a, gap), Dec::pack_wide(b, 0));
+                check(Dec::pack_wide(-a, gap), Dec::pack_wide(-b, 0));
+            }
+            // Equal leading exponents exercise alignment rather than its early exit.
+            let gap = b.ilog10() as i64 - a.ilog10() as i64;
+            check(Dec::pack_wide(a, gap), Dec::pack_wide(b, 0));
+            check(Dec::pack_wide(-a, gap), Dec::pack_wide(-b, 0));
+        }
+        // Exponent comparisons must not overflow, including for raw Rust field values.
+        assert_eq!(
+            Dec::pack_wide(1, i64::MIN).compare(&Dec::pack_wide(1, i64::MAX)),
+            -1
+        );
+        assert_eq!(
+            Dec::pack_wide(-1, i64::MIN).compare(&Dec::pack_wide(-1, i64::MAX)),
+            1
+        );
     }
 
     #[test]
