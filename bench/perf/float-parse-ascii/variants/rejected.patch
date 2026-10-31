@@ -1,0 +1,101 @@
+diff --git a/crates/ms-rt/src/num.rs b/crates/ms-rt/src/num.rs
+index 4565cb55f..bdacb5f77 100644
+--- a/crates/ms-rt/src/num.rs
++++ b/crates/ms-rt/src/num.rs
+@@ -144,7 +144,9 @@ pub fn parse_float(text: &[u8]) -> Result<f64, u8> {
+     if !float_syntax(text) {
+         return Err(STATUS_INVALID_DATA);
+     }
+-    let s = core::str::from_utf8(text).map_err(|_| STATUS_INVALID_DATA)?;
++    // SAFETY: float_syntax accepts only ASCII syntax bytes and consumes the
++    // entire slice on success, so every byte is ASCII and therefore valid UTF-8.
++    let s = unsafe { core::str::from_utf8_unchecked(text) };
+     match s.parse::<f64>() {
+         Ok(v) if v.is_infinite() => Err(STATUS_OUT_OF_RANGE),
+         Ok(v) => Ok(v),
+@@ -153,6 +155,7 @@ pub fn parse_float(text: &[u8]) -> Result<f64, u8> {
+ }
+
+ /// `^[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$`
++/// Success also proves that the complete slice is ASCII.
+ fn float_syntax(t: &[u8]) -> bool {
+     let mut i = 0;
+     if i < t.len() && (t[i] == b'+' || t[i] == b'-') {
+@@ -937,6 +940,44 @@ mod tests {
+         );
+     }
+
++    #[test]
++    fn float_syntax_rejects_every_non_ascii_byte_before_conversion() {
++        for seed in [
++            b"0".as_slice(),
++            b"-0",
++            b"+1.25",
++            b"1e308",
++            b"1E-324",
++            b"12345.6789e+25",
++            b"NaN",
++            b"Infinity",
++            b"-Infinity",
++        ] {
++            for index in 0..=seed.len() {
++                for byte in 128..=255u8 {
++                    let mut text = seed.to_vec();
++                    text.insert(index, byte);
++                    // Check the UTF-8 precondition before calling the parser:
++                    // a future grammar change must preserve its ASCII proof.
++                    assert!(!float_syntax(&text), "{text:?}");
++                    assert_eq!(parse_float(&text), Err(STATUS_INVALID_DATA), "{text:?}");
++                }
++            }
++            for index in 0..seed.len() {
++                for byte in 128..=255u8 {
++                    let mut text = seed.to_vec();
++                    text[index] = byte;
++                    assert!(!float_syntax(&text), "{text:?}");
++                    assert_eq!(parse_float(&text), Err(STATUS_INVALID_DATA), "{text:?}");
++                }
++            }
++        }
++        for text in ["١", "１", "1.٢", "1e٣", "−1", "1\u{00a0}"] {
++            assert!(!float_syntax(text.as_bytes()), "{text:?}");
++            assert_eq!(parse_float(text.as_bytes()), Err(STATUS_INVALID_DATA));
++        }
++    }
++
+     #[test]
+     fn float_parsing() {
+         let _g = crate::testutil::lock();
+diff --git a/tests/e2e/testdata/stdlib/float-parse-ascii.ms b/tests/e2e/testdata/stdlib/float-parse-ascii.ms
+new file mode 100644
+index 000000000..1fe5c0105
+--- /dev/null
++++ b/tests/e2e/testdata/stdlib/float-parse-ascii.ms
+@@ -0,0 +1,27 @@
++import expect_equal from "@std/test.ms"
++import parse_float, NumberError from "@std/math.ms"
++
++test "float parsing keeps ASCII signs decimals and exponents":
++    for text in ["1.25", "+1.25", "125e-2", "0.125E+1"]:
++        try expect_equal(text.parse_float().get(), 1.25)
++        try expect_equal((try parse_float(text)), 1.25)
++
++    try expect_equal("-0".parse_float().get().to_string(), "-0")
++    try expect_equal((try parse_float("-0")).to_string(), "-0")
++
++test "float parsing rejects Unicode syntax and malformed or overflowing text":
++    let invalid: Float!NumberError = error(NumberError.InvalidData)
++
++    for text in ["١", "１", "1.٢", "1e٣", "−1", "1 ", ".5", "1.", "1e+", " 1", "1_0"]:
++        try expect_equal(text.parse_float(), none)
++        try expect_equal(parse_float(text), invalid)
++
++    try expect_equal("1e400".parse_float(), none)
++
++    let overflow: Float!NumberError = error(NumberError.OutOfRange)
++    try expect_equal(parse_float("1e400"), overflow)
++
++    let huge = "9".repeat(4096).get()
++    try expect_equal(huge.parse_float(), none)
++    try expect_equal(parse_float(huge), overflow)
++    try expect_equal(parse_float("{huge}!"), invalid)
