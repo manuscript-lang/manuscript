@@ -9,5 +9,5 @@ type Second:
 
 fn use(value: Int?) Int:
     match value:
-        some(Ready): return Ready
+        ready: return Ready
         none: return 0

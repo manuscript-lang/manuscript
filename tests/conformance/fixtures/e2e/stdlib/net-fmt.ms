@@ -50,7 +50,6 @@ test "UDP loopback preserves datagram data and sender":
 
 test "network restriction denies admission and close rejects acquisitions":
     let restricted = try network().restrict([], [], allow_listen: false)
-    var _scoped = restricted
     try expect_false(
         (
             (
@@ -58,7 +57,7 @@ test "network restriction denies admission and close rejects acquisitions":
             ) != NetworkError.PermissionDenied
         )
     )
-    _scoped.close()
+    restricted.close()
     try expect_false(
         (
             (

@@ -35,7 +35,7 @@ test "callback inference retains captures and contextual metadata":
     try expect_equal(callback.transform(3), 10)
     try expect_equal(optional(value: 5, transform: fn item: item + offset), 12)
 
-    let missing = choose(first: fn: none, second: fn: some(3))
+    let missing = choose(first: fn: none, second: fn() Int?: 3)
     try expect_false(not missing.is_none())
 
     let failure = with_result(
@@ -62,7 +62,8 @@ test "later returns repair incomplete and convertible evidence":
         fn:
             if true: return absent()
 
-            return some(1)
+            let one: Int? = 1
+            return one
     )
 
     try expect_false(not value.is_none())

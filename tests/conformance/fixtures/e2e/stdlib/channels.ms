@@ -118,14 +118,14 @@ test "an end used after closing it gives Closed":
     task.channel.close()
 
 test "a task cancelled while it waits closes its end":
-    let group = TaskGroup[Int, Unit, Int](timeout: some(nanoseconds(20000000)))
+    let group = TaskGroup[Int, Unit, Int](timeout: nanoseconds(20000000))
     var task = group.spawn(wait_for_one)
     try expect_equal(drain(var task.channel), ["end"])
     task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "a task cancelled before it first ran closes its end":
     let group = TaskGroup[Int, Unit, Int]()
-    var task = group.spawn(produce, timeout: some(nanoseconds(0)))
+    var task = group.spawn(produce, timeout: nanoseconds(0))
     try expect_equal(drain(var task.channel), ["end"])
     task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 

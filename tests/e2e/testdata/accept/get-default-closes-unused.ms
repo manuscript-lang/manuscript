@@ -13,7 +13,7 @@ impl Closeable for Door:
         seen.value.append(self.id)
 
 fn present(log: Shared[List[Int]]) Int:
-    let held = some(Door(1, log))
+    let held: Door? = Door(1, log)
     let door = held.get(Door(2, log))
     return door.id
 
@@ -23,7 +23,7 @@ fn absent(log: Shared[List[Int]]) Int:
     return door.id
 
 fn named(log: Shared[List[Int]]) Int:
-    let held = some(Door(4, log))
+    let held: Door? = Door(4, log)
     let spare = Door(5, log)
     let door = held.get(spare)
     return door.id + spare.id

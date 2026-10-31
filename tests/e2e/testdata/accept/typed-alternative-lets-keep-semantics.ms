@@ -5,7 +5,7 @@ fn halve(n: Int) Int?:
     if n % 2 != 0:
         return none
 
-    return some(value: n / 2)
+    return (n / 2)
 
 fn parse(n: Int) Result[Int, TextError]:
     if n < 0:
@@ -17,7 +17,7 @@ fn matched(n: Int) Int:
     let found = halve(n: n)
 
     match found:
-        some(v):
+        v:
             return v
         none:
             return 0 - 1
@@ -27,13 +27,13 @@ fn twice(n: Int) Int:
     var total = 0
 
     match found:
-        some(v):
+        v:
             total = total + v
         none:
             total = total + 100
 
     match found:
-        some(v):
+        v:
             total = total + v
         none:
             total = total + 1000
@@ -57,7 +57,7 @@ fn captured(n: Int) Int:
     let found = halve(n: n)
     let read = fn() Int:
         match found:
-            some(v):
+            v:
                 return v
             none:
                 return 0 - 1

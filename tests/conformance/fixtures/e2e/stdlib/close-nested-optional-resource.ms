@@ -13,7 +13,8 @@ impl Closeable for Door:
         stdout().write("closed {self.name}\n").get()
 
 fn nested(n: String) Door??:
-    return some(some(Door(n)))
+    let inner: Door? = Door(n)
+    return inner
 
 export fn main() Int:
     let bound = nested("bound")

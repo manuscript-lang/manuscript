@@ -40,7 +40,7 @@ test "an opaque value lives in collections and optionals":
     all.length() | try expect_equal(2)
     entity(all[1]) | try expect_equal("u2")
 
-    let maybe: Approved? = some(approve("u3"))
+    let maybe: Approved? = approve("u3")
 
     if let found = maybe:
         entity(found) | try expect_equal("u3")

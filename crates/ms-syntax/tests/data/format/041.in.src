@@ -29,6 +29,6 @@ fn example() Unit:
     consume(
         fn:
             return match value:
-                some(number): number
+                number: number
                 none: 0
     )

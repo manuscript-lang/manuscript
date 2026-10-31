@@ -59,5 +59,5 @@ test "float shuffle and choice use the supplied entropy":
     try expect_equal(
         shuffled.sorted(fn(left: Int, right: Int) Int: left - right), [1, 2, 3, 4, 5]
     )
-    try expect_equal(try choice(zero, [7, 8, 9]), some(7))
+    try expect_equal(try choice(zero, [7, 8, 9]), 7)
     try expect_equal(try choice(entropy(), List[Int]()), none)

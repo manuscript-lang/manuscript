@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "'other' is not a case of S; use '_' for a catch-all arm (it cannot bind a name); cases: A, B",
+        "message": "'other' is not a case of S; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: A, B",
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-43.ms",
           "line": 12,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-43.ms:12:9: resolution: 'other' is not a case of S; use '_' for a catch-all arm (it cannot bind a name); cases: A, B\n    |\n 12 |         other:\n    |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-43.ms:12:9: resolution: 'other' is not a case of S; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: A, B\n    |\n 12 |         other:\n    |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

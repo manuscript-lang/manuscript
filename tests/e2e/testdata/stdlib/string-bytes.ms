@@ -36,8 +36,8 @@ test "bytes copy slice search and UTF8 validation":
     let data = Bytes([0, 1, 255, 1])
     try expect_equal(data.get(-1), 1)
     try expect_equal(data.get(4, default: 7), 7)
-    try expect_equal(data.index_of(Bytes([1])), some(1))
-    try expect_equal(data.last_index_of(Bytes([1])), some(3))
+    try expect_equal(data.index_of(Bytes([1])), 1)
+    try expect_equal(data.last_index_of(Bytes([1])), 3)
     try expect_equal(data.slice(1, 3).get(), Bytes([1, 255]))
     try expect_equal(data.slice(-3, -1).get(), Bytes([1, 255]))
 
@@ -49,7 +49,7 @@ test "bytes copy slice search and UTF8 validation":
     let copied = data.clone().with_value(0, 42)
     try expect_false(copied.get(0) != 42 or data.get(0) != 0)
     try expect_false(not Bytes([255]).decode_utf8().is_none())
-    try expect_equal("é".to_bytes().decode_utf8(), some("é"))
+    try expect_equal("é".to_bytes().decode_utf8(), "é")
 
 test "Bytes values direct bound and free calls return independent lists":
     var input: List[UInt8] = [0, 1, 255]
@@ -81,7 +81,7 @@ test "String slice uses Unicode scalars with relative bounds and OutOfRange erro
     try expect_equal(text.slice(-2, 10), out_of_range)
     try expect_equal(text.slice(-100, 4), out_of_range)
     try expect_equal(text.slice(3, 1), out_of_range)
-    try expect_false(text.index_of("🙂") != some(2) or text.last_index_of("") != some(4))
+    try expect_false(text.index_of("🙂") != 2 or text.last_index_of("") != 4)
 
     let invalid: Result[String, StringError] = error(StringError.OutOfRange)
     try expect_equal(text.slice_scalars(-2, 4), invalid)

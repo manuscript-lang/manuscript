@@ -14,7 +14,7 @@ impl Closeable for Door:
 
 fn keep_if(d: Door, keep: Bool) Door?:
     if keep:
-        return some(d)
+        return d
 
     return none
 

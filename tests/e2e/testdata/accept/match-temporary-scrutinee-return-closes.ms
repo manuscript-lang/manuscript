@@ -13,11 +13,11 @@ impl Closeable for Door:
         seen.value.append(self.id)
 
 fn open(id: Int, log: Shared[List[Int]]) Door?:
-    return some(Door(id, log))
+    return Door(id, log)
 
 fn early(log: Shared[List[Int]]) Int:
     match open(1, log):
-        some(d):
+        d:
             if d.id == 1:
                 return 10
 
@@ -27,14 +27,14 @@ fn early(log: Shared[List[Int]]) Int:
 
 fn late(log: Shared[List[Int]]) Int:
     let n = match open(2, log):
-        some(d): d.id
+        d: d.id
         none: 0
 
     return n
 
 fn hand_on(log: Shared[List[Int]]) Door?:
     match open(3, log):
-        some(d): return some(d)
+        d: return d
         none: return none
 
 test "a payload moved out of the arm is not closed by the match":

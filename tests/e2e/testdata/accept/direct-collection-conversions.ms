@@ -70,8 +70,8 @@ test "direct calls capture receiver and arguments in written order":
     var receiver = first.clone()
     receiver.append(
         (
-            match some(7):
-                some(value):
+            match present(7):
+                value:
                     receiver = second.clone()
                     value
                 none: 0
@@ -84,8 +84,8 @@ test "direct calls capture receiver and arguments in written order":
     entries.add(
         key,
         (
-            match some(7):
-                some(value):
+            match present(7):
+                value:
                     key = 2
                     value
                 none: 0
@@ -94,3 +94,6 @@ test "direct calls capture receiver and arguments in written order":
     try expect_false(
         (entries.get(1).get().get() != 7 or entries.contains(2) or key != 2)
     )
+
+fn present[T](value: T) T?:
+    return value

@@ -30,7 +30,7 @@ test "an over-budget line stops the loop and sets the error":
     for line in reader:
         seen.append(line.clone())
     try expect_equal(seen, ["ok"])
-    try expect_equal(reader.error(), some(IoError.LimitExceeded))
+    try expect_equal(reader.error(), IoError.LimitExceeded)
 
 test "a closed stream ends the loop with its error":
     var reader = lines(MemoryStream("a\n".to_bytes(), 0, closed: true))
@@ -38,7 +38,7 @@ test "a closed stream ends the loop with its error":
     for line in reader:
         count += 1
     try expect_equal(count, 0)
-    try expect_equal(reader.error(), some(IoError.Closed))
+    try expect_equal(reader.error(), IoError.Closed)
 
 test "break and continue work in an iterator loop":
     var reader = lines(MemoryStream("1\nskip\n3\n4\n".to_bytes(), 0, closed: false))
@@ -63,7 +63,7 @@ impl Iterator[Int] for Countdown:
             return none
 
         self.left -= 1
-        return some(self.left + 1)
+        return (self.left + 1)
 
 test "any Iterator implementation works, including a temporary":
     var total = 0

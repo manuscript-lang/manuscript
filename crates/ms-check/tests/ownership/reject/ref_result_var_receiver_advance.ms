@@ -6,7 +6,7 @@ impl Words:
     var fn next() ref String?:
         self.count += 1
         self.current = "w"
-        return some(self.current)
+        return self.current
 
 fn f(var w: Words) Int:
     let first = w.next()

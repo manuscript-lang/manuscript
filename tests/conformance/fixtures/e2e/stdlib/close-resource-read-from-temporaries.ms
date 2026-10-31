@@ -24,7 +24,7 @@ type Pair:
     b: Door
 
 fn maybe(n: String) Door?:
-    return some(Door(n))
+    return Door(n)
 
 fn doors() List[Door]:
     return [Door("l1"), Door("l2")]

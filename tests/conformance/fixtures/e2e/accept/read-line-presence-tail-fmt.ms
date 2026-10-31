@@ -41,7 +41,7 @@ type LineTailCleanup:
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for LineTailCleanup:
     var fn close() Unit:
-        let written = filesystem().write_file(self.marker, "closed", true)
+        let _written = filesystem().write_file(self.marker, "closed", true)
 
 fn with_cleanup(var input: ReadStream, marker: String) Bool:
     let _resource = LineTailCleanup(marker)
@@ -68,7 +68,7 @@ test "presence keeps custom EOF empty CRLF and following text":
     let source = MemoryStream("\r\nλ\nlast".to_bytes(), 0, false)
     let input: ReadStream = source
     present(input) | try expect_true
-    (try read_line(input)) | try expect_equal(some("λ"))
+    (try read_line(input)) | try expect_equal("λ")
     present(input) | try expect_true
     present(input) | try expect_false
 
@@ -89,20 +89,20 @@ test "presence retains written argument order and cleanup":
     let temporary = fs.temporary("manuscript-presence-") | try expect_ok
     let first = "{temporary.path()}/first"
     let second = "{temporary.path()}/second"
-    with_cleanup(var input, first) | try expect_true
+    with_cleanup(var input, first.clone()) | try expect_true
     fs.read_file(first).is_ok() | try expect_true
     fs.read_file(second).is_ok() | try expect_false
-    with_cleanup(var input, second) | try expect_false
+    with_cleanup(var input, second.clone()) | try expect_false
     fs.read_file(second).is_ok() | try expect_true
 
 test "presence and text reads share buffered consumption":
     let fs = filesystem()
     let temporary = fs.temporary("manuscript-presence-") | try expect_ok
     let path = "{temporary.path()}/lines"
-    let written = fs.write_file(path, "\nλ\r\nlast") | try expect_ok
+    let _written = fs.write_file(path, "\nλ\r\nlast") | try expect_ok
     let handle = fs.open(path, "r", 384) | try expect_ok
     let input = handle.reader()
     present(input) | try expect_true
-    (try read_line(input)) | try expect_equal(some("λ"))
+    (try read_line(input)) | try expect_equal("λ")
     present(input) | try expect_true
     present(input) | try expect_false

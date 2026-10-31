@@ -600,6 +600,9 @@ pub struct Arm {
     pub value: Option<Expr>,
     /// The arm is a branch of an `if` expression written `if c: a else: b`.
     pub from_if: bool,
+    /// The arm was written as a lone lowercase name, which binds an Optional's
+    /// payload; the parser spells it as the `some` case with that binding.
+    pub bare: bool,
 }
 
 /// A payload binding in a match arm.

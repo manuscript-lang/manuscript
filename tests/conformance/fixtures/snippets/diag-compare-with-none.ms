@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=ms-check/tests/messages.rs
 export fn main() Int:
-    let r: Int? = some(1)
+    let r: Int? = 1
     if r == none:
         return 1
 

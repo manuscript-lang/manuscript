@@ -7,11 +7,11 @@ fn pair(a: Int, b: Int) Int: a * 10 + b
 
 test "arguments":
     var value = 1
-    let option: Int? = some(2)
+    let option: Int? = 2
     let result = pair(
         a: value,
         b: match option:
-            some(i):
+            i:
                 value = 9
                 i
             none: 0

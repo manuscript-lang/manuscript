@@ -263,8 +263,6 @@ pub struct Info {
     pub optional_argument: Option<Ty>,
     /// Wraps this value once into this Optional where a binding, return, field or element expects it.
     pub wrap_some: Option<Ty>,
-    /// A written `some(x)` where a plain `x` would be wrapped to the same Optional.
-    pub redundant_some: bool,
     /// A compile-time Bool constant.
     pub folded: bool,
     /// Its value.

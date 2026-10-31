@@ -108,12 +108,12 @@ test "list growth and saved clone methods preserve current contents":
     let copy = clone()
     values.append(2048)
     values.set(0, -1)
-    try expect_false(not (values.length() == 2049 and values.last() == some(2048)))
+    try expect_false(not (values.length() == 2049 and values.last() == 2048))
     try expect_false(
         not (
             copy.length() == 2048
-            and copy.first() == some(0)
-            and copy.last() == some(2047)
+            and copy.first() == 0
+            and copy.last() == 2047
         )
     )
 

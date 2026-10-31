@@ -22,5 +22,5 @@ test "dynamic mutable data and explicit copies":
     var updated = original.clone()
     updated.add("b", 2)
     updated.add("a", 3)
-    try expect_equal(original.get("a"), some(1))
-    try expect_equal(updated.get("a"), some(3))
+    try expect_equal(original.get("a"), 1)
+    try expect_equal(updated.get("a"), 3)

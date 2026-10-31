@@ -3,7 +3,26 @@
   "phase": "parse",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "diagnostics": [],
-    "fmt": "fn some(value: Int) Int: value\n"
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected '(', found name 'Int'; a call or parameter list starts with '('",
+        "position": {
+          "file": "pkg-compiler-testpreludenamescannotberedeclared-7-fmt.ms",
+          "line": 4,
+          "column": 8,
+          "offset": 168
+        },
+        "end": {
+          "file": "pkg-compiler-testpreludenamescannotberedeclared-7-fmt.ms",
+          "line": 4,
+          "column": 11,
+          "offset": 171
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
   }
 }

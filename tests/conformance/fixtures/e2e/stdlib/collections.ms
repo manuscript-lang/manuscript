@@ -16,14 +16,9 @@ fn parity(value: Int) Int: value % 2
 
 test "list search callbacks empty identities and folding":
     let list = [-1, 2, 0, 3]
+    try expect_false((list.find(positive) != 2 or list.find_last(positive) != 3))
     try expect_false(
-        (list.find(positive) != some(2) or list.find_last(positive) != some(3))
-    )
-    try expect_false(
-        (
-            list.find_index(positive) != some(1)
-            or list.find_last_index(positive) != some(3)
-        )
+        (list.find_index(positive) != 1 or list.find_last_index(positive) != 3)
     )
     try expect_equal(list.filter(positive).map(twice), [4, 6])
     try expect_equal(([1, 2]).flat_map(duplicate), [1, 1, 2, 2])
@@ -34,7 +29,7 @@ test "list search callbacks empty identities and folding":
     try expect_false(not empty.first().is_none() or not empty.last().is_none())
 
     let groups = ([1, 2, 3]).group_by(parity)
-    try expect_false(groups.get(1) != some([1, 3]) or groups.get(0) != some([2]))
+    try expect_false(groups.get(1) != [1, 3] or groups.get(0) != [2])
 
 test "group_by keeps first-seen key order and element order across few and many buckets":
     let values = 0..600
@@ -55,12 +50,12 @@ test "group_by keeps first-seen key order and element order across few and many 
 
     let words = ["b", "a", "b", "c", "a", "b"].group_by(fn(w: String) String: w)
     try expect_equal(words.keys(), ["b", "a", "c"])
-    try expect_equal(words.get("b"), some(["b", "b", "b"]))
-    try expect_equal(words.get("c"), some(["c"]))
+    try expect_equal(words.get("b"), ["b", "b", "b"])
+    try expect_equal(words.get("c"), ["c"])
 
     let unique = values.group_by(fn(x: Int) Int: x)
     try expect_equal(unique.length(), 600)
-    try expect_equal(unique.get(599), some([599]))
+    try expect_equal(unique.get(599), [599])
 
 test "list mutation and clone keep separate storage":
     let original = [1, 2, 3]
@@ -79,7 +74,7 @@ test "maps preserve insertion order and overwrite duplicate keys":
     var map = map_from_entries(entries)
     try expect_false(map.keys() != ["a", "b"] or map.values() != [3, 2])
     map.add_default("a", 99)
-    try expect_equal(map.get("a"), some(3))
+    try expect_equal(map.get("a"), 3)
 
     var copy = map.clone()
     copy.remove("a")

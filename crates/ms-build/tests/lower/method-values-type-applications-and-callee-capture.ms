@@ -14,11 +14,14 @@ export fn main() Int:
     let same = identity[Int]
     var selected = identity[Int]
     let n = selected(
-        match some(0):
-            some(_):
+        match present(0):
+            _value:
                 selected = fn(value: Int): value + 1
                 3
             none: 3
     )
     let _r = stdout().write("{lookup(1)} {n} {run(same)} {count(fn(x: Int): x > 4)}\n")
     return 0
+
+fn present[T](value: T) T?:
+    return value

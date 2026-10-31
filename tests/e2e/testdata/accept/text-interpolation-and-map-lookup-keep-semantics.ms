@@ -8,11 +8,11 @@ fn halve(n: Int) Int?:
     if n % 2 != 0:
         return none
 
-    return some(value: n / 2)
+    return (n / 2)
 
 fn describe(key: Point, m: Map[Point, String]) String:
     match m.get(key: key):
-        some(v):
+        v:
             return "found {v}"
         none:
             return "missing"
@@ -39,13 +39,13 @@ test "map lookup":
     m.add(key: 1, value: 10)
 
     match m.get(key: 1):
-        some(v):
+        v:
             try expect_true((v == 10))
         none:
             return fail("expected value")
 
     match m.get(key: 2):
-        some(v):
+        v:
             return fail("unexpected {v}")
         none:
             unit

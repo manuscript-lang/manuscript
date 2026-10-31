@@ -2,7 +2,7 @@ import expect_true from "@std/test.ms"
 
 fn lookup(m: Map[String, Int], key: String) Int:
     match m.get(key: key):
-        some(v):
+        v:
             return v
         none:
             return -1

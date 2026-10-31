@@ -72,7 +72,7 @@ test "collections and lookup":
 
 - List, Map, and Set need no import. Updates mutate in place.
 - Collections have one owner; `.clone()` makes a deep copy. Use `var` to mutate a collection.
-- Map lookup returns an `Optional` (`some(value)` or `none`); `get(0)` supplies a fallback when the key is absent. `if let` binds a present value when you want a branch; see [Optional values](../core-language/types/optionals.md).
+- Map lookup returns an `Optional` (a value or `none`); `get(0)` supplies a fallback when the key is absent. `if let` binds a present value when you want a branch; see [Optional values](../core-language/types/optionals.md).
 
 ## Conditions and loops
 

@@ -95,7 +95,7 @@ fn c8(text: String) Int:
 fn c9(text: String)(fn() Int)?:
     var r: (fn() Int)? = none
     for p in text.split(","):
-        r = some(fn() Int: return p.length())
+        r = fn() Int: return p.length()
     return r
 
 test "closures that outlive their statement keep what they captured":

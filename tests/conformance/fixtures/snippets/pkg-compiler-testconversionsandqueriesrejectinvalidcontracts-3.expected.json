@@ -25,7 +25,7 @@
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-3.ms",
           "line": 8,
           "column": 50,
-          "offset": 335
+          "offset": 322
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-3.ms",
           "line": 8,
           "column": 1,
-          "offset": 286
+          "offset": 273
         }
       }
     ],

@@ -20,7 +20,7 @@ fn get(address: String) String:
     var text = ""
 
     while true:
-        let chunk = client.read(none, some(2.seconds))
+        let chunk = client.read(none, 2.seconds)
         if chunk.is_error():
             break
 

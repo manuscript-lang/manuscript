@@ -3,7 +3,7 @@
 # conform: origin=pkg/parser/empty_declarations_test.go:13 TestEmptyFunctionDeclarations
 type Optional[T]:
     case none
-    case some(value: T)
+    case T
 
 impl T?:
     fn get() T: ...

@@ -14,7 +14,7 @@ fn items(value: TomlValue) Result[List[TomlValue], Error]:
         _: return error(TextError("expected TOML array"))
 
 fn limits(bytes: Int?, depth: Int?, values: Int?) TomlLimits?:
-    return some(TomlLimits(max_bytes: bytes, max_depth: depth, max_values: values))
+    return TomlLimits(max_bytes: bytes, max_depth: depth, max_values: values)
 
 test "TOML scalars quoted keys comments exact integers and dates":
     let source = "title = \"é🙂 # text\" # comment\n'' = 'literal\\n'\nbool = true\nlarge = 9007199254740993\nhex = 0xDEAD_BEEF\noct = 0o755\nbin = 0b1010\nfloat = -1_2.5e+2\ndate = 2024-02-29\ntime = 07:32:00.123\nstamp = 1979-05-27 07:32:00-07:00\n"
@@ -208,12 +208,8 @@ test "TOML errors report the offending line and column":
 
 test "TOML limits fields default to none":
     let limited: Result[TomlValue, TomlError] = error(TomlError.LimitExceeded)
-    parse(text: "a=1", limits: some(TomlLimits(max_bytes: 2))) | try expect_equal(
-        limited
-    )
-    parse(text: "a=1", limits: some(TomlLimits())) | try expect_equal(
-        parse(text: "a=1")
-    )
+    parse(text: "a=1", limits: TomlLimits(max_bytes: 2)) | try expect_equal(limited)
+    parse(text: "a=1", limits: TomlLimits()) | try expect_equal(parse(text: "a=1"))
 
 test "TOML stringify round trips scalars tables and arrays of tables":
     let source = "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], \{a = 1\}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
@@ -278,7 +274,7 @@ test "TOML deeply nested inline tables parse in linear time":
     let n = 6000
     let text = "a = " + "\{ b = ".repeat(n).get() + "1" + " \}".repeat(n).get()
     let started = clock().now()
-    let parsed = parse(text, some(TomlLimits()))
+    let parsed = parse(text, TomlLimits())
     let elapsed = clock().now().difference(started).to_milliseconds()
     let value = try parsed
     try expect_true(entries(value).is_ok())
@@ -288,5 +284,5 @@ test "TOML parse without limits stops deep nesting and an empty limits record li
     let deep = "a = " + "[".repeat(20000).get() + "]".repeat(20000).get()
     if parse(deep).is_ok(): return fail("nesting over the default depth was accepted")
 
-    let lifted = parse(deep, some(TomlLimits()))
+    let lifted = parse(deep, TomlLimits())
     try expect_true(lifted.is_ok())

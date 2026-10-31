@@ -9,7 +9,7 @@ fn record(var into: List[Int], value: Int) Unit:
 test "map callbacks":
     let m = {"a": 1, "bb": 2, "ccc": 3}
     let sums = m.map(fn(key: String, value: Int) Int: key.length() + value)
-    try expect_true((sums.get("bb") == some(4)))
+    try expect_true((sums.get("bb") == 4))
     try expect_true(
         (m.filter(fn(key: String, value: Int) Bool: value > 1).length() == 2)
     )

@@ -34,7 +34,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 
     var counter = Counter(0)
     values.add_default("a", eager(var counter))
-    try expect_false(counter.calls != 1 or values.get("a") != some(1))
+    try expect_false(counter.calls != 1 or values.get("a") != 1)
     values.add("b", 2)
     try expect_equal(values.keys(), ["a", "b"])
 
@@ -56,7 +56,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
     let legacy: fn(String, Int) Unit = values.add_default
     legacy("a", 100)
     values.add_default_from("ff", key_length)
-    try expect_false(counter.calls != 1 or values.get("a") != some(1))
+    try expect_false(counter.calls != 1 or values.get("a") != 1)
     try expect_equal(values.keys(), ["a", "b", "ccc", "d", "ff"])
 
 test "text and byte builders keep Unit mutation function types":

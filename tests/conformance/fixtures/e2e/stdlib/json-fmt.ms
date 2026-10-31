@@ -80,13 +80,13 @@ test "JSON stringify encodes records in declaration order and omits none fields"
     var request = Request("m", stream: true, none, 0.5, ["a", "b"])
     let expected = "\{\"model\":\"m\",\"stream\":true,\"temperature\":0.5,\"tags\":[\"a\",\"b\"]\}"
     try expect_equal((try encoded(request)), expected)
-    request.user = some("u")
+    request.user = "u"
 
     let named = "\{\"model\":\"m\",\"stream\":true,\"user\":\"u\",\"temperature\":0.5,\"tags\":[\"a\",\"b\"]\}"
     try expect_equal((try encoded(request)), named)
     try expect_equal((try encoded(Box[Int](1, none))), "\{\"first\":1\}")
     try expect_equal(
-        (try encoded(Box[Int](1, some(2)))), "\{\"first\":1,\"second\":2\}"
+        (try encoded(Box[Int](1, 2))), "\{\"first\":1,\"second\":2\}"
     )
 
 test "JSON stringify encodes alternatives and nested optionals":
@@ -94,7 +94,7 @@ test "JSON stringify encodes alternatives and nested optionals":
     let expected = "\{\"shape\":\{\"Circle\":\{\"radius\":2\}\},\"shapes\":[\"Dot\",\{\"Rect\":\{\"width\":1,\"height\":2\}\}]\}"
     try expect_equal((try encoded(scene)), expected)
 
-    let sparse: List[Int?] = [some(1), none]
+    let sparse: List[Int?] = [1, none]
     try expect_equal((try encoded(sparse)), "[1,null]")
 
     let missing: Int? = none
@@ -166,9 +166,9 @@ type Tagged:
 test "JSON stringify omits values without a JSON form and writes null for list elements":
     var handler = Handler("h", one, none, none)
     try expect_equal((try encoded(handler)), "\{\"name\":\"h\"\}")
-    handler.retries = some(none)
+    handler.retries = none
     try expect_equal((try encoded(handler)), "\{\"name\":\"h\",\"retries\":null\}")
-    handler.retries = some(some(3))
+    handler.retries = 3
     try expect_equal((try encoded(handler)), "\{\"name\":\"h\",\"retries\":3\}")
 
     let callbacks = [one, one]
@@ -183,7 +183,7 @@ test "JSON stringify omits values without a JSON form and writes null for list e
 
 test "JSON stringify encodes standard-library values":
     let at = try timestamp(1700000000, 500000000)
-    let link = Url("https", "example.com", some(8080), "/a", "x=1", "")
+    let link = Url("https", "example.com", 8080, "/a", "x=1", "")
     let item = Stamped(at, nanoseconds(1500), "hi".to_bytes(), link)
     let expected = "\{\"at\":\"2023-11-14T22:13:20.5Z\",\"took\":1500,\"data\":\"aGk=\",\"link\":\"https://example.com:8080/a?x=1\"\}"
     try expect_equal((try encoded(item)), expected)
@@ -437,7 +437,7 @@ test "JSON parse inverts stringify and works in generic code":
     var chain_1 = Map[String, Int]()
     chain_1.add("k", 1)
 
-    let profile = Profile("Ada", 20, some("a"), [0.5], chain_1, Set[Int]([2]))
+    let profile = Profile("Ada", 20, "a", [0.5], chain_1, Set[Int]([2]))
     let text = try stringify(profile)
     let again: Profile = try decoded[Profile](text)
     try expect_equal((try stringify(again)), text)
@@ -469,7 +469,7 @@ test "JSON parse takes its type from an explicit argument, the expected result o
 
 test "JSON parse reads what stringify writes for standard values and scalar map keys":
     let at = try timestamp(1700000000, 500000000)
-    let link = Url("https", "example.com", some(8080), "/a", "x=1", "")
+    let link = Url("https", "example.com", 8080, "/a", "x=1", "")
     let item = Stamped(at, nanoseconds(1500), "hi".to_bytes(), link)
     let text = try stringify(item)
     let back: Stamped = try parse[Stamped](text)
@@ -544,7 +544,7 @@ type Wrap:
 test "JSON stringify fails on nesting deeper than parse accepts":
     var head = Link(none, 0)
     for i in 1..300000:
-        head = Link(some(head), i)
+        head = Link(head, i)
 
     let r = stringify(head)
     try expect_false(r.is_ok())
@@ -564,7 +564,7 @@ test "JSON round trips generic records alternatives and Duration keys":
     chain_2.add(nanoseconds(5), "five")
 
     let w = Wrap(
-        [Op.Add(1, 2), Op.Neg(none), Op.Neg(some(3)), Op.Nop], [Pair(1, Op.Nop)],
+        [Op.Add(1, 2), Op.Neg(none), Op.Neg(3), Op.Nop], [Pair(1, Op.Nop)],
         chain_2
     )
     let t = try stringify(w)

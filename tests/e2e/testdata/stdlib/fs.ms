@@ -38,11 +38,8 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
     let entries = (
         try expect_ok(
             fs.glob_entries(
-                path: root,
-                options: options.clone(),
-                exclude: some(
-                    fn(entry: PathEntry) Bool: entry.path == "missing.txt"
-                )
+                path: root, options: options.clone(),
+                exclude: fn(entry: PathEntry) Bool: entry.path == "missing.txt"
             )
         )
     )

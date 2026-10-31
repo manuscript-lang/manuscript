@@ -18,8 +18,8 @@ fn mixed(var counter: Counter) List[Int]:
         counter.value,
         advance(var counter),
         value,
-        match some(2):
-            some(number):
+        match present(2):
+            number:
                 value = number
                 advance(var counter)
             none: 0
@@ -48,3 +48,6 @@ test "pending captures grow beyond the small buffer":
     let separate = [copy.value, advance(var copy), copy.value]
     if separate != [1, 2, 2]: return panic("copy lost its own mutations")
     if counter.value != 1: return panic("copy changed the original")
+
+fn present[T](value: T) T?:
+    return value

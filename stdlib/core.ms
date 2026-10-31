@@ -73,7 +73,7 @@ export interface Iterator[T]:
     # (an iterator over a container borrows from the container instead).
     var fn next() ref T?
 
-# Represents a value that may be absent: `some(value)` or `none`.
+# Represents a value that may be absent: a `T` or `none`; a plain `T` converts where a `T?` is expected.
 export type Optional[T]:
     # A present payload, retained by reference when T is mutable.
     case some(
@@ -84,7 +84,7 @@ export type Optional[T]:
     case none
 
 impl T?:
-    # Returns True for some(value), and False for none.
+    # Returns True when a value is present, and False for none.
     fn is_some() Bool: ...
 
     # Reports whether this value is absent.

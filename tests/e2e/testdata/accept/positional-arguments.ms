@@ -6,7 +6,7 @@ fn first[T](left: T, right: T) T: left
 
 fn pick[T](items: List[T], keep: fn(T) Bool) T?:
     for item in items:
-        if keep(item): return some(item)
+        if keep(item): return item
     return none
 
 type Counter:
@@ -151,8 +151,8 @@ test "written order before omitted defaults and body":
     var early = 7
     let selected = first(
         early,
-        match some(0):
-            some(_):
+        match present(0):
+            _value:
                 early = 9
                 0
             none: 0
@@ -161,8 +161,8 @@ test "written order before omitted defaults and body":
 
     var receiver = Offset(3)
     let result = receiver.subtract(
-        match some(0):
-            some(_):
+        match present(0):
+            _value:
                 receiver = Offset(9)
                 10
             none: 10
@@ -177,8 +177,8 @@ test "callable expression precedes positional arguments":
 test "mutable callable value is captured before arguments":
     var selected = subtract
     let result = selected(
-        match some(0):
-            some(_):
+        match present(0):
+            _value:
                 selected = fn(amount: Int, deduction: Int) Int: (amount + deduction)
                 10
             none: 10
@@ -186,3 +186,6 @@ test "mutable callable value is captured before arguments":
         3
     )
     try expect_equal(result, 7)
+
+fn present[T](value: T) T?:
+    return value

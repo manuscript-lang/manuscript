@@ -6,5 +6,5 @@ type Node:
 
 export fn main() Int:
     let node = Node(none)
-    node.next = some(node)
+    node.next = node
     return node.hash()

@@ -26,17 +26,17 @@ impl Shelf:
         if index < 0 or index >= self.names.length():
             return none
 
-        return some(self.names.get(index))
+        return self.names.get(index)
 
 impl Item:
     fn text() ref String?:
         match self:
-            Named(text, _): return some(text)
+            Named(text, _): return text
             _: return none
 
     fn tags() ref List[String]?:
         match self:
-            Named(_, tags): return some(tags)
+            Named(_, tags): return tags
             _: return none
 
 interface Names:
@@ -61,7 +61,7 @@ impl Holder:
 
     fn maybe(flag: Bool) ref List[String]?:
         if flag:
-            return some(self.inner.names)
+            return self.inner.names
 
         return none
 

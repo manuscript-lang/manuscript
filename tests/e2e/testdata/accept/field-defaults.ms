@@ -31,7 +31,7 @@ fn unit_default(var calls: List[Int]) Unit:
 type Explicit:
     calls: List[Int]
     nothing: Unit = unit_default(calls)
-    option: Int? = some(9)
+    option: Int? = 9
 
 test "record defaults and explicit overrides":
     let data = Data()

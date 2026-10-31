@@ -29,7 +29,7 @@ fn add(box: Shared[List[Int]], value: Int) Int:
 test "a task cancelled while holding the lock puts the payload back":
     let box: Shared[List[Int]] = share([1])
     let mine = box
-    var group = TaskGroup[Int](timeout: some(nanoseconds(20000000)))
+    var group = TaskGroup[Int](timeout: nanoseconds(20000000))
     group.spawn(fn ch: hold(mine))
 
     let _ignored = group.wait()

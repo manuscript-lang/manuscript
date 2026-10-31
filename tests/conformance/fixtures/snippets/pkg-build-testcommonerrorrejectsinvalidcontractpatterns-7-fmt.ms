@@ -9,7 +9,7 @@ type LocalError:
 
 impl Diagnostic for LocalError:
     fn message() String:
-        return self.detail
+        return self.detail.clone()
 
 fn wrong(value: LocalError) Diagnostic:
     return value

@@ -22,8 +22,8 @@ fn mark(var counter: Counter, digit: Int) Int:
 fn generic[T: Equal](left: T, right: T) Bool: left == right
 
 fn returning_match() Bool:
-    return true == match some(1):
-        some(_): return false
+    return true == match 1:
+        _value: return false
         none: false
 
 test "primitive equality captures operands once in order":
@@ -32,8 +32,8 @@ test "primitive equality captures operands once in order":
     try expect_equal(counter.value, 12)
 
     var original = 1
-    let captured = original == match some(1):
-        some(value):
+    let captured = original == match 1:
+        value:
             original = 2
             value
         none: 0
@@ -54,8 +54,8 @@ fn conditional(counter: Counter, take: Bool) Int:
     return 8
 
 fn matched(counter: Counter) Int:
-    return match some(1):
-        some(value):
+    return match 1:
+        value:
             var _resource = Resource(counter)
             return value
             0
@@ -63,8 +63,8 @@ fn matched(counter: Counter) Int:
 
 fn defaulted(
     counter: Counter,
-    value: Int = match some(2):
-        some(number):
+    value: Int = match 2:
+        number:
             var _resource = Resource(counter)
             let _used = unit
             _resource.close()
@@ -109,8 +109,8 @@ fn nested_results(counter: Counter) Result[Int, TextError]:
     return ok(value)
 
 fn statement_match_try(counter: Counter) Result[Int, TextError]:
-    match some(1):
-        some(_):
+    match present(1):
+        _value:
             let _resource = Resource(counter)
             let value = try failed()
             return ok(value)
@@ -122,8 +122,8 @@ fn value_match_loop_try(counter: Counter) Result[Int, TextError]:
     var index = 0
 
     while index < 2:
-        let _selected = match some(index):
-            some(number):
+        let _selected = match index:
+            number:
                 var _resource = Resource(counter)
                 let _value = try failed()
                 _resource.close()
@@ -195,3 +195,6 @@ test "cleanup remains owned by its source callable":
         if index == 2: break
 
     try expect_equal(counter.value, 7)
+
+fn present[T](value: T) T?:
+    return value
