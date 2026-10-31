@@ -2,7 +2,7 @@ name: Cache maintenance
 
 # Two jobs. `warm` starts a manual CI/CD run on main every hour, because only a finished manual run
 # saves the sccache caches (push runs are replaced before they finish, and a `schedule` trigger on
-# cicd.yml never fired). `prune` keeps one cache per name.
+# cicd.yml never fired, see #2158). `prune` keeps one cache per name.
 #
 # Keeps one cache per name. A lockfile change writes a new cargo cache and nothing removes the old
 # one, so copies pile up until GitHub evicts at the 10 GB limit and takes live entries with it.
