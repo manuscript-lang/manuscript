@@ -4,6 +4,8 @@
 
 Formatter, LSP, CLI, diagnostics, documentation, site.
 
+- [Bound navigation coordinate work to the query](bound-navigation-coordinate-work-to-the-query.md): avoid repeated prefix scans while preserving malformed snapshots and early-reference costs.
+
 - [Agent help is CLI commands, not a protocol server](agent-help-is-cli-commands-not-a-protocol-server.md): the user evaluated an MCP server (PR #528), judged the CLI the better surface for coding agents, and had it removed.
 - [Agents get machine-applicable fixes, structured faults and named replacements](agents-get-machine-applicable-fixes-structured-faults-and-na.md): diagnostics carry a `fix` field when the repair is mechanical (nearest-name misspellings, missing imports), and `ms check --fix` / `ms lint…
 - [Diagnostics are `<cause>; <fix>`, and tools key on the cause](diagnostics-are-cause-fix-and-tools-key-on-the-cause.md): agents act on a diagnostic only when it names the cause, the location, and a concrete fix (nearest name, import line, valid options).
