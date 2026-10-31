@@ -153,6 +153,9 @@ fn inferred_callbacks_at_column_zero_remain_continuations() {
         "fn value : value",
         "fn left, right: left + right",
         "fn: 1",
+        "fn value\n: value",
+        "fn value # comment\n: value",
+        "fn left # comment\n, right: left + right",
     ] {
         for ending in ["\n", "\r\n"] {
             for surround in [

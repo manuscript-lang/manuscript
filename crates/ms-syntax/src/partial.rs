@@ -250,9 +250,9 @@ fn partial_root_start(source: &str) -> bool {
             .bytes()
             .take_while(|b| b.is_ascii_alphanumeric() || *b == b'_')
             .count();
-        // An inferred callback writes `fn value:` or `fn left, right:`;
-        // a named function needs its parameter list after the name.
-        name_start && !rest[name_end..].trim_start().starts_with([':', ','])
+        // A named function needs a parameter or type-parameter list after
+        // its name. Inferred callbacks can continue their header on later lines.
+        name_start && rest[name_end..].trim_start().starts_with(['(', '['])
     }) || after_keyword(source, "bench").is_some_and(|rest| rest.trim_start().starts_with('"'))
         || after_keyword(source, "opaque")
             .is_some_and(|rest| after_keyword(rest.trim_start(), "type").is_some())
