@@ -339,8 +339,9 @@ export type RawTerminal:
 
 impl Closeable for RawTerminal:
     # Restores the terminal; closing again does nothing.
-    var fn close() Unit:
+    var fn close() Unit!:
         msstd_terminal_raw_terminal_close(self.native)
+        return ok(unit)
 
 impl RawTerminal:
     # Waits for the next event; none means the timeout elapsed. Waits honor cancellation and concurrent callers are serialized.

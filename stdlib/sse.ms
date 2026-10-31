@@ -282,7 +282,7 @@ type OwnedBody:
 
 impl ReadStream for OwnedBody:
     var fn close() Unit:
-        self.body.close()
+        self.body.close().get(none)
 
     var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
         return self.body.read(max_bytes)
@@ -325,8 +325,9 @@ export fn reader(
 
 impl Closeable for SseReader:
     # Closes the stream the reader owns; reads after a close fail with ReadFailed.
-    var fn close() Unit:
+    var fn close() Unit!:
         self.input.close()
+        return ok(unit)
 
 # Returns the next event, or none after a clean end of stream.
 # A read failure, malformed line, exceeded limit or truncated event is an error.

@@ -6668,7 +6668,8 @@ test "first request":
 test "second request uses same server":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
-type	9	80	461	expected fn(HttpExchange) Result[Unit, HttpError], found fn(HttpRequest) HttpResponse (in argument 'handler' of serve)export fn helper() Unit:
+type	9	80	461	expected fn(HttpExchange) Result[Unit, HttpError], found fn(HttpRequest) HttpResponse (in argument 'handler' of serve)
+type	12	9	540	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeexport fn helper() Unit:
     return
 test "interruptible":
     println("READY")

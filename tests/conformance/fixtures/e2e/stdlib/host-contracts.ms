@@ -121,7 +121,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
     let closed_read: Result[Bytes, FileSystemError] = error(FileSystemError.Closed)
     try expect_equal(handle.read_at(0), closed_read)
     try expect_equal((try expect_error(reader.read())), IoError.Closed)
-    handle.close()
+    try handle.close()
 
     let missing = "{temporary.path()}/missing"
     try expect_equal(

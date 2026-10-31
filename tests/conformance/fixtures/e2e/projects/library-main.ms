@@ -73,7 +73,7 @@ fn exercise(path: String) Result[Unit, Error]:
     let _synced = try common_result(result: file.sync())
     let _resized = try common_result(result: file.truncate(size: 3))
     (try common_result(result: file.stat())).size | try expect_equal(3)
-    file.close()
+    try file.close()
 
     var watcher = try common_result(
         result: filesystem().watch_native(
@@ -86,7 +86,7 @@ fn exercise(path: String) Result[Unit, Error]:
     )
     let events = try common_result(result: watcher.next())
     (events.length() > 0) | try expect_true
-    watcher.close()
+    try watcher.close()
 
     let paths = posix()
     try expect_false(

@@ -4,8 +4,8 @@ type Res:
     id: Int
 
 impl Closeable for Res:
-    var fn close() Unit:
-        return
+    var fn close() Unit!:
+        return ok(unit)
 
 type Holder:
     case Has(r: Res)

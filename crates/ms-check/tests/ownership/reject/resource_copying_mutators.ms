@@ -4,8 +4,8 @@ type Res:
     name: String
 
 impl Closeable for Res:
-    var fn close() Unit:
-        return unit
+    var fn close() Unit!:
+        return ok(unit)
 
 # fill, copy_within and merge store copies of what they are given.
 fn main() Int:

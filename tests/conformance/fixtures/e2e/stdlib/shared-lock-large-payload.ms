@@ -29,5 +29,5 @@ export fn main() Int:
 
     let results = group.results().get([])
     stdout().write("tasks {results.length()} last {results[19999]}\n").get()
-    group.close()
+    group.close().get(none)
     return 0

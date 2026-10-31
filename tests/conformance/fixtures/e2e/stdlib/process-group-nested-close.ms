@@ -24,7 +24,7 @@ fn middle(ch: Channel[Unit, Unit]) Int:
     var _spin = 0
     while true:
         _spin += 1
-    group.close()
+    group.close().get(none)
     return 0
 
 fn top(ch: Channel[Unit, Unit]) Int:
@@ -33,7 +33,7 @@ fn top(ch: Channel[Unit, Unit]) Int:
     var c = ch
     let _ = c.send(unit)
     sleep(nanoseconds(300000000))
-    group.close()
+    group.close().get(none)
 
     # Leaving the block closed the middle process; the leaf must be gone with it.
     sleep(nanoseconds(3000000000))
@@ -45,7 +45,7 @@ export fn main() Int:
     var c = group.spawn(top).get()
     let _ = c.channel.receive()
     c.result().get()
-    group.close()
+    group.close().get(none)
     stdout().write(
         "leaf survived: " + filesystem().read_file(
             marker()

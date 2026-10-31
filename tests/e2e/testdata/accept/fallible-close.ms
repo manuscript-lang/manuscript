@@ -1,12 +1,12 @@
-import expect_equal, expect_error from "@std/test.ms"
-import FallibleCloseable, TextError from "@std/core.ms"
+import expect_equal, expect_error, expect_fault from "@std/test.ms"
+import Closeable, TextError from "@std/core.ms"
 
 type Gate:
     name: String
     fails: Bool
 
-impl FallibleCloseable for Gate:
-    var fn close() Result[Unit, Error]:
+impl Closeable for Gate:
+    var fn close() Unit!:
         if self.fails:
             return error(TextError("close {self.name}"))
 
@@ -62,3 +62,28 @@ test "an explicit close consumes the binding":
 test "leaving a loop with break closes and returns the error":
     let failure = try expect_error(loop_exit())
     try expect_equal(failure.message(), "close loop")
+
+type Holder:
+    gate: Gate
+
+fn plain(fails: Bool) Int:
+    let _gate = Gate("plain", fails)
+    return 1
+
+fn hold(fails: Bool) Int:
+    let _holder = Holder(Gate("held", fails))
+    return 2
+
+test "a function that cannot return an error faults on a failed close":
+    let message = try expect_fault(fn: let _ = plain(true))
+    try expect_equal(
+        message, "a resource could not be closed: its close returned an error"
+    )
+    try expect_equal(plain(false), 1)
+
+test "a holder closing a part faults on a failed close":
+    let message = try expect_fault(fn: let _ = hold(true))
+    try expect_equal(
+        message, "a resource could not be closed: its close returned an error"
+    )
+    try expect_equal(hold(false), 2)

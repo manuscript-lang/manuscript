@@ -13,8 +13,9 @@ type Reporter:
     name: String
 
 impl Closeable for Reporter:
-    var fn close() Unit:
+    var fn close() Unit!:
         say("{self.name} cleanup sees cancelled: {cancelled()}")
+        return ok(unit)
 
 fn sleep_with_reporter() Int:
     let _reporter = Reporter("timeout")
@@ -33,11 +34,11 @@ export fn main() Int:
     group.spawn(fn ch: returns_normally())
 
     let _ = group.results()
-    group.close()
+    group.close().get(none)
 
     var group2 = TaskGroup[Int](timeout: nanoseconds(20000000))
     group2.spawn(fn ch: sleep_with_reporter())
 
     let _ = group2.wait()
-    group2.close()
+    group2.close().get(none)
     return 0

@@ -10,8 +10,9 @@ type Tracked:
     id: Int
 
 impl Closeable for Tracked:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _ = filesystem().append_file(self.log, "{self.id},")
+        return ok(unit)
 
 fn closed(log: String) String:
     if let bytes = filesystem().read_file(log):
@@ -33,7 +34,7 @@ fn locked_then_dropped(log: String) Int:
     let box = share(Tracked(log, 1))
     var guard = lock(box)
     guard.value.id += 0
-    guard.close()
+    guard.close().get(none)
     return 0
 
 test "the last holder closes the payload":

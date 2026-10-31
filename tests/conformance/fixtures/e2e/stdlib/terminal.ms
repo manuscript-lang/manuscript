@@ -14,7 +14,7 @@ test "redirected streams report no terminal and refuse raw mode":
     match terminal().raw_mode(alternate_screen: false):
         ok(active):
             var raw = active
-            raw.close()
+            try raw.close()
             return fail("raw mode on redirected input")
         error(cause):
             try expect_equal(cause, TerminalError.NotTerminal)

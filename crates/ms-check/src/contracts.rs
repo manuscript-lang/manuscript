@@ -715,7 +715,7 @@ impl Checker {
     fn clonable(&self, t: &Ty, state: &mut PropertyState) -> bool {
         match t.kind {
             Kind::Variable => return t.bounds().iter().any(implies_clonable),
-            Kind::Contract => return !t.is_close_contract(),
+            Kind::Contract => return !t.is_std("Closeable"),
             Kind::Function | Kind::Primitive => return true,
             _ => {}
         }
@@ -768,7 +768,7 @@ impl Checker {
         seen.push(key);
         let closeable = self.p.methods.iter().any(|m| {
             self.method_visible(m)
-                && m.contract.as_ref().is_some_and(|c| c.is_close_contract())
+                && m.contract.as_ref().is_some_and(|c| c.is_std("Closeable"))
                 && unify(
                     &m.receiver,
                     t,
@@ -783,51 +783,6 @@ impl Checker {
                     || cases(t)
                         .iter()
                         .any(|c| c.fields.iter().any(|f| self.holds_resource(&f.ty, seen)))))
-    }
-
-    /// Whether `t` implements `FallibleCloseable` itself.
-    pub(crate) fn fallible_closeable(&self, t: &Ty) -> bool {
-        self.methods_by_receiver
-            .get(&t.id)
-            .into_iter()
-            .flatten()
-            .map(|&at| &self.p.methods[at])
-            .any(|m| {
-                self.method_visible(m)
-                    && m.contract
-                        .as_ref()
-                        .is_some_and(|c| c.is_std("FallibleCloseable"))
-                    && unify(
-                        &m.receiver,
-                        t,
-                        &variable_set(&m.variables),
-                        &mut Subst::new(),
-                    )
-            })
-    }
-
-    /// Whether `t` holds, in a field, case field or type argument, a value whose close can fail.
-    /// The holder's close would have nowhere to return that error.
-    pub(crate) fn holds_fallible_part(&self, t: &Ty, seen: &mut Vec<String>) -> bool {
-        // Types that grow with every level (a recursive generic) never repeat, so the walk is
-        // bounded by depth as well as by the types already visited.
-        const DEPTH: usize = 12;
-        let key = type_key(t);
-        if seen.contains(&key) || seen.len() >= DEPTH {
-            return false;
-        }
-        seen.push(key);
-        let part = |x: &Ty, seen: &mut Vec<String>| {
-            self.fallible_closeable(x) || self.holds_fallible_part(x, seen)
-        };
-        let found = t.args.iter().any(|a| part(a, seen))
-            || (t.def.is_some()
-                && (fields(t).iter().any(|f| part(&f.ty, seen))
-                    || cases(t)
-                        .iter()
-                        .any(|c| c.fields.iter().any(|f| part(&f.ty, seen)))));
-        seen.pop();
-        found
     }
 
     /// Whether an `impl Data for` the type exists.
@@ -1205,7 +1160,6 @@ impl Checker {
                 .any(|m| m.ty.params.is_empty() && is_close_result(&m.ty.result_ty()));
         }
         self.implements(t, &standard("Closeable", vec![]))
-            || self.implements(t, &standard("FallibleCloseable", vec![]))
     }
 
     /// Checks every bound reachable from `t`. `seen` is keyed by pointer: a

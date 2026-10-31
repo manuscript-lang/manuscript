@@ -12,8 +12,9 @@ type Resource:
     counter: Counter
 
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         self.counter.value += 1
+        return ok(unit)
 
 fn mark(var counter: Counter, digit: Int) Int:
     counter.value = counter.value * 10 + digit
@@ -67,7 +68,7 @@ fn defaulted(
         number:
             var _resource = Resource(counter)
             let _used = unit
-            _resource.close()
+            _resource.close().get(none)
             number
         none: 0
 ) Int: value
@@ -126,7 +127,7 @@ fn value_match_loop_try(counter: Counter) Result[Int, TextError]:
             number:
                 var _resource = Resource(counter)
                 let _value = try failed()
-                _resource.close()
+                try _resource.close()
                 number
             none: 0
 

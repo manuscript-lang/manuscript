@@ -30,7 +30,7 @@ test "file-system calls from concurrent tasks":
     let b = group.spawn(fn ch: churn(second, "two"))
     try a.result() | try expect_equal(2)
     try b.result() | try expect_equal(2)
-    group.close()
+    try group.close()
 
     let text = try fs.read_file("{root}/one/c.txt")
     text | try expect_equal("one!".to_bytes())

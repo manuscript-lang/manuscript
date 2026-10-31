@@ -9,8 +9,9 @@ type Door:
     name: String
 
 impl Closeable for Door:
-    var fn close() Unit:
+    var fn close() Unit!:
         stdout().write("closed {self.name}\n").get()
+        return ok(unit)
 
 type Wrap[T]:
     value: T

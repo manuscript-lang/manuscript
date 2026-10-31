@@ -14,7 +14,7 @@ fn open_then_read(path: String) Int:
 
     if var file = opened:
         let _data = file.read_file()
-        file.close()
+        file.close().get(none)
         return 1
 
     return -1
@@ -46,5 +46,5 @@ export fn main() Int:
         )
         .get()
     )
-    group.close()
+    group.close().get(none)
     return 0

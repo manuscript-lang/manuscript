@@ -130,8 +130,9 @@ export type Connection:
 impl Closeable for Connection:
     # Closes the socket, interrupting calls in progress, and waits for them to stop.
     # Safe to call repeatedly; later calls wait for the first. Reads and writes afterwards return Closed.
-    var fn close() Unit:
+    var fn close() Unit!:
         msrt_net_connection_close(self.native)
+        return ok(unit)
 
 impl Connection:
     # Returns this end's address as `host:port` text, with IPv6 hosts in brackets; for Unix sockets it is the socket path.
@@ -213,8 +214,9 @@ export type DatagramSocket:
 impl Closeable for DatagramSocket:
     # Closes the socket, interrupting calls in progress, and waits for them to stop.
     # Safe to call repeatedly.
-    var fn close() Unit:
+    var fn close() Unit!:
         msrt_net_datagram_close(self.native)
+        return ok(unit)
 
 impl DatagramSocket:
     # Returns the bound local address as `host:port` text, which reveals the port chosen when binding port 0.
@@ -355,8 +357,9 @@ export type Listener:
 impl Closeable for Listener:
     # Stops accepting, interrupts a pending `accept`, and waits for it to stop.
     # Safe to call repeatedly; connections already accepted stay open.
-    var fn close() Unit:
+    var fn close() Unit!:
         msrt_net_listener_close(self.native)
+        return ok(unit)
 
 impl Listener:
     # Waits for the next incoming connection and returns it. A timeout returns Timeout and a closed listener returns Closed.
@@ -726,8 +729,9 @@ export type WebSocket:
 impl Closeable for WebSocket:
     # Sends a normal-closure frame, waiting at most about 100 ms to write it, then closes the connection and waits for in-flight calls to stop.
     # Safe to call repeatedly; later calls wait for the first.
-    var fn close() Unit:
+    var fn close() Unit!:
         msrt_websocket_close(self.native)
+        return ok(unit)
 
 impl WebSocket:
     # Sends a ping frame carrying `data`, which must be at most 125 bytes, with a one-second write deadline.
@@ -833,5 +837,5 @@ export fn serve_core(
 
         break
 
-    server.close()
+    server.close().get(none)
     return ok(unit)

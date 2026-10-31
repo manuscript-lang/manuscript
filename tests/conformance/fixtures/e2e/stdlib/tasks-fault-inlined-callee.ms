@@ -17,5 +17,5 @@ export fn main() Int:
     group.spawn(fn ch: boom())
 
     let _ = group.results()
-    group.close()
+    group.close().get(none)
     return 0

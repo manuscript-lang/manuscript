@@ -80,4 +80,4 @@ export fn bench_fs() Unit:
     if var dir = fs.temporary("ms-bench-"):
         run(fs, dir.path())
         log_run("{dir.path()}/log.txt")
-        dir.close()
+        dir.close().get(none)

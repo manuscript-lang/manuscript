@@ -6,7 +6,7 @@ export fn main() Int:
     var outer = lock(box)
     var inner = lock(box)
     inner.value += 1
-    inner.close()
+    inner.close().get(none)
     outer.value += 1
-    outer.close()
+    outer.close().get(none)
     return 0

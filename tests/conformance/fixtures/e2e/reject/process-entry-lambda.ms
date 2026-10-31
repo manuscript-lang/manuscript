@@ -6,5 +6,5 @@ export fn main() Int:
     let base = 3
     var group = ProcessGroup[Int]()
     let child = group.spawn(fn ch: base)
-    group.close()
+    group.close().get(none)
     return 0

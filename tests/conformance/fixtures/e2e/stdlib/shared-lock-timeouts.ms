@@ -10,13 +10,13 @@ import nanoseconds, milliseconds, sleep from "@std/time.ms"
 fn holder(box: Shared[Int], nap: Int) Int:
     var _g = lock(box)
     sleep(nanoseconds(nap))
-    _g.close()
+    _g.close().get(none)
     return 0
 
 fn waiter(box: Shared[Int]) Int:
     var g = lock(box)
     g.value = g.value + 1
-    g.close()
+    g.close().get(none)
     return 1
 
 export fn main() Int:

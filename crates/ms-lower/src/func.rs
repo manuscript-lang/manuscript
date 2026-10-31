@@ -90,8 +90,6 @@ pub(crate) struct FnLower<'a> {
     pub lent_expr: Option<usize>,
     /// A lent instance returned an owned value, which its caller would not free.
     pub lent_violation: bool,
-    /// A failing scope-end close could not return its error (the function's error is not `Error`).
-    pub close_error_misfit: bool,
     /// The value `return` is carrying while the scopes unwind, which a close error replaces.
     pub pending_return: Option<Value>,
     /// `return` already ran its var-slot, temporary and fixture handling on this path.
@@ -437,16 +435,9 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     let mut fl = FnLower::new(cx, b, hir, jsubst, file, proto.ret);
     let result = fl.lower_callable(&c);
     let violated = fl.lent_violation;
-    let misfit = fl.close_error_misfit;
     let mut func = fl.b.into_func();
     func.ret_borrowed = proto.ret_borrowed;
     result?;
-    if misfit {
-        return Err(Error::new(format!(
-            "`{}` closes a binding whose close can fail, but its error is not `Error`",
-            c.name
-        )));
-    }
     if violated {
         return Err(Error::new(format!(
             "`{}` returns `ref` but some path returns an owned value; return a part of a parameter on every path",
@@ -487,7 +478,6 @@ impl<'a> FnLower<'a> {
             lent_return: false,
             lent_expr: None,
             lent_violation: false,
-            close_error_misfit: false,
             pending_return: None,
             prologue_done: false,
             closed_on_path: HashSet::new(),

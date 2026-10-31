@@ -251,15 +251,17 @@ impl WorkerGroup[In, Out]:
         let worker = Worker(handle, channel, near, ended)
         var started = lock(self.workers)
         started.value.append(worker.clone())
-        started.close()
+        started.close().get(none)
         return ok(worker)
 
 impl Closeable for WorkerGroup[In, Out]:
     # Cancels workers that have not ended, closes their channels, and waits for them. Safe to call again.
-    var fn close() Unit:
+    var fn close() Unit!:
         var started = lock(self.workers)
 
         for index in 0..started.value.length():
             started.value[index].cancel()
 
             let _ = started.value[index].wait()
+
+        return ok(unit)

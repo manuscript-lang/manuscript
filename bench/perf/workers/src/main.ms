@@ -36,7 +36,7 @@ fn run(workers: Int, jobs: Int, n: Int) Result[Int, Error]:
             total += value
     for i in 0..workers:
         try handles[i].wait()
-    group.close()
+    try group.close()
     return ok(total)
 
 export fn main() Int:

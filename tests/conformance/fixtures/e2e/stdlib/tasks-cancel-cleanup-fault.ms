@@ -9,11 +9,12 @@ type Bad:
     tag: Int
 
 impl Closeable for Bad:
-    var fn close() Unit:
+    var fn close() Unit!:
         stdout().write("cleanup faulting\n").get()
 
         let xs = List[Int]()
         stdout().write("{xs[3]}\n").get()
+        return ok(unit)
 
 fn work() Int:
     let _b = Bad(1)
@@ -25,5 +26,5 @@ export fn main() Int:
     group.spawn(fn ch: work())
 
     let _ = group.wait()
-    group.close()
+    group.close().get(none)
     return 0

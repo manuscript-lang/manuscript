@@ -10,8 +10,9 @@ type Watch:
     count: Count
 
 impl Closeable for Watch:
-    fn close() Unit:
+    fn close() Unit!:
         self.count.total += 10
+        return ok(unit)
 
 fn next(count: Count) Int:
     let _watch = Watch(count)

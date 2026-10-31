@@ -14,8 +14,9 @@ type WorkerCleanup:
     label: String
 
 impl Closeable for WorkerCleanup:
-    fn close() Unit:
+    fn close() Unit!:
         say("{self.label} stopped\n")
+        return ok(unit)
 
 type Server:
     listener: Listener
@@ -23,12 +24,12 @@ type Server:
     closed: Bool = false
 
 impl Closeable for Server:
-    var fn close() Unit:
+    var fn close() Unit!:
         if self.closed:
-            return
+            return ok(unit)
 
         self.closed = true
-        self.listener.close()
+        try self.listener.close()
         sleep(10.milliseconds)
 
         let farewell = self.client.write("farewell\n", timeout: 1.seconds)
@@ -38,7 +39,8 @@ impl Closeable for Server:
         else:
             say("farewell sent\n")
 
-        self.client.close()
+        try self.client.close()
+        return ok(unit)
 
 fn serve() Result[Unit, Error]:
     let signals = try control().watch_signals([2, 15])

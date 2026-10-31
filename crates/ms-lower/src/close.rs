@@ -137,11 +137,50 @@ struct SplitItem {
     flag: Option<ms_mir::builder::Var>,
 }
 
-/// Calls the close operation on `v` of type `ty` and drops what it returns: a close that can
-/// fail has its error dropped here, so only the sites that propagate it use [`close_call_result`].
+/// Calls the close operation on `v` of type `ty`. A close that fails here has nowhere to return
+/// its error (a part of a holder, a temporary, a replaced value), so it faults; only the scope-end
+/// close of a binding propagates it, through [`close_call_result`].
 fn close_call(b: &mut FuncBuilder<'_>, kind: &CloseKind, v: Value, ty: MTy) {
     let r = close_call_result(b, kind, v, ty);
+    close_error_fault(b, r);
+}
+
+/// Calls the close operation and drops its result: for the cleanup stack a fault runs, where the
+/// failure is already being reported.
+fn close_call_silent(b: &mut FuncBuilder<'_>, kind: &CloseKind, v: Value, ty: MTy) {
+    let r = close_call_result(b, kind, v, ty);
     if b.m.needs_drop(b.ty(r)) {
+        b.emit(Op::Drop, &[r], Imm::None, None);
+    }
+}
+
+/// Faults when `r`, the `Result` of a close, is an error; otherwise releases it.
+fn close_error_fault(b: &mut FuncBuilder<'_>, r: Value) {
+    let rty = b.ty(r);
+    let TyKind::Alt(a) = b.m.types.kind(rty).clone() else {
+        return;
+    };
+    let Some(err) = b.m.alts[a.index()]
+        .cases
+        .iter()
+        .position(|c| c.name == "error")
+    else {
+        return;
+    };
+    let tag = b.alt_tag(r);
+    let k = b.iconst(err as i64);
+    let is_err = b.icmp(Cc::Eq, tag, k);
+    let (bad, good) = (b.new_block(), b.new_block());
+    b.br_if(is_err, bad, &[], good, &[]);
+    b.seal_block(bad);
+    b.seal_block(good);
+    b.switch_to(bad);
+    let msg = b.str_lit("a resource could not be closed: its close returned an error");
+    let ext = crate::text::runtime_fn(b.m, "msrt_fault_string", &[MTy::STR], MTy::UNIT);
+    b.call_rt(ext, &[msg]);
+    b.unreachable();
+    b.switch_to(good);
+    if b.m.needs_drop(rty) {
         b.emit(Op::Drop, &[r], Imm::None, None);
     }
 }
@@ -654,7 +693,7 @@ impl FnLower<'_> {
             .iter()
             .find(|m| {
                 m.name().is_some_and(|n| n.as_str() == "close")
-                    && m.contract.as_ref().is_some_and(|c| c.is_close_contract())
+                    && m.contract.as_ref().is_some_and(|c| c.is_std("Closeable"))
                     && ct::unify(
                         &m.receiver,
                         ty,
@@ -866,7 +905,7 @@ impl FnLower<'_> {
         if in_slot {
             v = b.emit(Op::Load, &[v], Imm::Ty(ty), Some(ty)).expect("load");
         }
-        close_call(&mut b, kind, v, ty);
+        close_call_silent(&mut b, kind, v, ty);
         let u = b.unit();
         b.ret(Some(u));
         let f = b.into_func();
@@ -1081,34 +1120,35 @@ impl FnLower<'_> {
     /// is still open, like `try value.close()`. A close that fails while an error is already on its
     /// way out is dropped, so the first error is the one returned.
     fn propagate_close_error(&mut self, uid: usize, r: Value) {
-        let rty = self.b.ty(r);
-        let (TyKind::Alt(a), TyKind::Alt(ra)) = (
-            self.b.m.types.kind(rty).clone(),
-            self.b.m.types.kind(self.result_ty()).clone(),
-        ) else {
-            self.close_error_misfit = true;
+        if self.returning_close_error {
             self.drop_value(r);
             return;
-        };
+        }
+        let rty = self.b.ty(r);
         let case_of = |m: &ms_mir::ir::Module, alt: AltId, name: &str| {
             m.alts[alt.index()]
                 .cases
                 .iter()
                 .position(|c| c.name == name)
         };
-        let (Some(err), Some(ret_err)) = (
-            case_of(self.b.m, a, "error"),
-            case_of(self.b.m, ra, "error"),
-        ) else {
-            self.close_error_misfit = true;
-            self.drop_value(r);
+        let TyKind::Alt(a) = self.b.m.types.kind(rty).clone() else {
             return;
         };
-        if self.returning_close_error {
-            self.drop_value(r);
+        let err = case_of(self.b.m, a, "error").expect("a close returns a Result");
+        // A function that cannot return the close's `Error` faults on a failed close instead.
+        let returned = match self.b.m.types.kind(self.result_ty()).clone() {
+            TyKind::Alt(ra) => case_of(self.b.m, ra, "error")
+                .filter(|&e| {
+                    self.b.m.alts[ra.index()].cases[e].fields[0].1
+                        == self.b.m.alts[a.index()].cases[err].fields[0].1
+                })
+                .map(|e| (ra, e)),
+            _ => None,
+        };
+        let Some((ra, ret_err)) = returned else {
+            close_error_fault(&mut self.b, r);
             return;
-        }
-        let want = self.b.m.alts[ra.index()].cases[ret_err].fields[0].1;
+        };
         let tag = self.b.alt_tag(r);
         let k = self.b.iconst(err as i64);
         let is_err = self.b.icmp(Cc::Eq, tag, k);
@@ -1119,9 +1159,6 @@ impl FnLower<'_> {
 
         self.enter(errb);
         let payload = self.b.alt_get(a, err as u32, 0, r);
-        if self.ty_of(payload) != want {
-            self.close_error_misfit = true;
-        }
         let po = self.owned(crate::func::Val {
             v: payload,
             own: false,

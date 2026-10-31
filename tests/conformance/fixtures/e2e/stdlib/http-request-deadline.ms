@@ -29,7 +29,7 @@ fn fetch(address: String, path: String) String:
 
             break
 
-        conn.close()
+        conn.close().get(none)
         return text
 
     return "connect failed"
@@ -53,7 +53,7 @@ fn run(label: String, grace_ms: Int) Bool:
         let _fast = stdout().write(
             "{label} fast: {fast.starts_with("HTTP/1.1 200 OK")}\n"
         )
-        server.close()
+        server.close().get(none)
         return true
 
     return false

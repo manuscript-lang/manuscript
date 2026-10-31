@@ -9,8 +9,9 @@ type Door:
     name: String
 
 impl Closeable for Door:
-    var fn close() Unit:
+    var fn close() Unit!:
         stdout().write("closed {self.name}\n").get()
+        return ok(unit)
 
 interface Labeled:
     fn label() String
@@ -38,10 +39,13 @@ fn show(l: Labeled) String:
 export fn main() Int:
     let present = maybe("optional").is_some()
     stdout().write("--list\n").get()
-    let second = doors()[1].label()
+
+    let second = doors() [1].label()
     stdout().write("--field\n").get()
+
     let first = pair().a.label()
     stdout().write("--interface\n").get()
+
     let shown = show(Door("converted"))
     stdout().write("end {present} {second} {first} {shown}\n").get()
     return 0

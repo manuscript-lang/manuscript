@@ -24,11 +24,13 @@ export type SharedGuard[T]:
 impl Closeable for SharedGuard[T]:
     # Returns the payload to the box, also when the task is cancelled or faults inside the block.
     # Closing again does nothing.
-    var fn close() Unit:
+    var fn close() Unit!:
         if self.held:
             self.held = false
             self.box.put(self.value)
             msrt_waitq_wake(self.box.id())
+
+        return ok(unit)
 
 # A waiting task's place in the queue of a box. Closing it matters only when the wait was cut short.
 type Ticket:
@@ -42,10 +44,11 @@ type Ticket:
 impl Closeable for Ticket:
     # A task cancelled while parked leaves the queue, or, when a release had already chosen it,
     # passes that wake on so it is not lost.
-    var fn close() Unit:
+    var fn close() Unit!:
         if self.parked:
             if msrt_waitq_remove(self.key, self.token) == 0:
                 msrt_waitq_wake(self.key)
+        return ok(unit)
 
 # Locks `box` and returns the guard that holds its payload. Waits while another guard holds it,
 # and stops waiting if the task is cancelled. Bind it with `var`; the scope end closes the guard:

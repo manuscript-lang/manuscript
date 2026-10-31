@@ -60,8 +60,9 @@ type TailCleanup:
 
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for TailCleanup:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _written = filesystem().write_file(self.marker, "closed", true)
+        return ok(unit)
 
 fn tail_cleanup(
     result: Result[Int, TextError],

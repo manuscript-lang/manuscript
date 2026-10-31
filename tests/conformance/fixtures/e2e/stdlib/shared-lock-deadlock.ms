@@ -11,13 +11,13 @@ fn holder(box: Shared[Int], chan: Channel[Unit, Unit]) Int:
     var ch = chan.clone()
     var _g = lock(box)
     let _never = ch.receive()
-    _g.close()
+    _g.close().get(none)
     return 0
 
 fn waiter(box: Shared[Int]) Int:
     var g = lock(box)
     g.value = 1
-    g.close()
+    g.close().get(none)
     return 1
 
 export fn main() Int:
@@ -29,5 +29,5 @@ export fn main() Int:
     let w = g.spawn(fn ch: waiter(box))
     let _ = stdout().write("waiting\n")
     let _ = w.result()
-    g.close()
+    g.close().get(none)
     return 0

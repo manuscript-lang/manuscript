@@ -8,8 +8,9 @@ type Res:
     name: String
 
 impl Closeable for Res:
-    var fn close() Unit:
+    var fn close() Unit!:
         stdout().write("close {self.name}\n").get()
+        return ok(unit)
 
 fn make(name: String) Result[Res, TextError]:
     return ok(Res(name))

@@ -8,5 +8,5 @@ fn work(count: Int) Unit:
 fn start(count: Int) Int:
     var group = WorkerGroup[Int, Int]()
     let _ = group.spawn(fn: work(count))
-    group.close()
+    group.close().get(none)
     return 0

@@ -14,15 +14,16 @@ type Reporter:
     name: String
 
 impl Closeable for Reporter:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _line = stdout().write(
             "{self.name} cleanup sees cancelled: {cancelled()}\n"
         )
+        return ok(unit)
 
 fn handle(request: HttpRequest) HttpResponse:
     var _reporter = Reporter("handler")
     sleep(nanoseconds(30000000000))
-    _reporter.close()
+    _reporter.close().get(none)
     return HttpResponse(200, headers(), "late\n".to_bytes())
 
 export fn main() Int:
@@ -34,11 +35,11 @@ export fn main() Int:
 
             # Let the handler start, then leave without waiting for the response.
             sleep(nanoseconds(100000000))
-            conn.close()
+            conn.close().get(none)
             sleep(nanoseconds(500000000))
 
             let _done = stdout().write("done\n")
-            server.close()
+            server.close().get(none)
             return 0
 
     return 1

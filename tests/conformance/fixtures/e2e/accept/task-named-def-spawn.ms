@@ -19,5 +19,5 @@ export fn main() Int:
             0
         ].to_string() + "\n"
     )
-    g.close()
+    g.close().get(none)
     return 0

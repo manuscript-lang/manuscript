@@ -41,8 +41,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
     let entries = (
         try expect_ok(
             fs.glob_entries(
-                path: root,
-                options: options.clone(),
+                path: root, options: options.clone(),
                 exclude: fn(entry: PathEntry) Bool: entry.path == "missing.txt"
             )
         )
@@ -82,7 +81,7 @@ test "ordinary filesystem misuse retains typed cases":
     reader.seek(offset: 0, origin: 3) | try expect_fs_error(
         FileSystemError.InvalidInput
     )
-    reader.close()
+    try reader.close()
 
     let writer = fs.open(path: file, flags: "a", mode: 384) | try expect_ok
     writer.read(1) | try expect_fs_error(FileSystemError.InvalidInput)
@@ -112,7 +111,7 @@ test "filesystem scoped temporary directories and bounded file reads":
 
     let input = files().open(path) | try expect_ok
     (input.read(5) | try expect_ok).get() | try expect_equal("hello".to_bytes())
-    temporary.close()
+    try temporary.close()
 
     match fs.stat(path: directory, follow_links: true):
         ok(_): return fail("temporary directory not removed")
@@ -136,20 +135,16 @@ test "file handles positional I/O stream adapters and closed errors":
     (handle.stat() | try expect_ok).size | try expect_equal(4)
 
     let _sought = handle.seek(offset: 0, origin: 0) | try expect_ok
-    handle.read_lines(max_bytes: -1) | try expect_fs_error(
-        FileSystemError.InvalidInput
-    )
-    handle.read_lines(max_lines: -1) | try expect_fs_error(
-        FileSystemError.InvalidInput
-    )
+    handle.read_lines(max_bytes: -1) | try expect_fs_error(FileSystemError.InvalidInput)
+    handle.read_lines(max_lines: -1) | try expect_fs_error(FileSystemError.InvalidInput)
     read_all(input: handle.reader()) | try expect_ok | try expect_equal(
         "aXYd".to_bytes()
     )
-    handle.close()
+    try handle.close()
 
     let closed: Result[Bytes, FileSystemError] = error(FileSystemError.Closed)
     handle.read_at(offset: 0, max_bytes: 1) | try expect_equal(closed)
-    handle.close()
+    try handle.close()
 
 test "empty paths are rejected instead of resolving to the working directory":
     let fs = filesystem()

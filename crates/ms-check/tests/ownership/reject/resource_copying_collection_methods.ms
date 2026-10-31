@@ -4,8 +4,8 @@ type Res:
     name: String
 
 impl Closeable for Res:
-    var fn close() Unit:
-        return unit
+    var fn close() Unit!:
+        return ok(unit)
 
 # Methods that return an owned collection or element built from the receiver's elements copy them.
 fn main() Int:

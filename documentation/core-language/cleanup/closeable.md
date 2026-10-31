@@ -9,7 +9,7 @@ Import `Closeable` from `@std/core.ms` to name or implement it. Scope-end cleanu
 
 ```manuscript
 interface Closeable:
-    var fn close() Unit
+    var fn close() Unit!
 ```
 
 A binding is closed only when it holds a value whose type implements `Closeable`:
@@ -17,7 +17,7 @@ A binding is closed only when it holds a value whose type implements `Closeable`
 - A concrete value with an explicit `Closeable` implementation; the compiler registers that `close` when the binding is created.
 - A generic parameter bounded by `Closeable`; `close` dispatches directly.
 
-An interface value is never closed automatically, even when its interface declares `var fn close() Unit` or is `Closeable` itself: only the concrete type's `Closeable` implementation opts in, and the interface hides it. Bind the concrete type, or call `close()` yourself.
+An interface value is never closed automatically, even when its interface declares `var fn close() Unit!` or is `Closeable` itself: only the concrete type's `Closeable` implementation opts in, and the interface hides it. Bind the concrete type, or call `close()` yourself.
 
 The standard handles a caller owns are nominal types with that implementation, such as `FileHandle`, so a binding of one is checked and closed like your own. A stream interface such as `ReadStream` or `WriteStream` is never owned by its holder, because `stdout()` and a file's `writer()` share one type.
 
@@ -27,7 +27,7 @@ A resource has one owner and is never copied implicitly, and it is not `Clonable
 
 ## Records and collections close what they hold
 
-A record, alternative, `Optional`, `List` or `Map` that holds a `Closeable` value is itself a resource: it moves, it cannot be cloned, and when its scope ends without anything taking it, the compiler closes what it holds. The type's own `close`, if it has one, runs first; then its parts close in reverse order of acquisition.
+A record, alternative, `Optional`, `List` or `Map` that holds a `Closeable` value is itself a resource: it moves, it cannot be cloned, and when its scope ends without anything taking it, the compiler closes what it holds. The type's own `close`, if it has one, runs first; then its parts close in reverse order of acquisition. A part whose close fails faults, because the holder has no error to return.
 
 | Holder | Close order |
 | --- | --- |
@@ -45,35 +45,33 @@ A similarly named method without `impl Closeable`, or an unconstrained type para
 
 `close()` is idempotent, may suspend, and finishes the object's release before returning. Repeated or concurrent calls release the handle once. Implementations coordinate ongoing access with closure and report closed state afterward.
 
-Expected failures belong to explicit operations such as `commit()`, `flush()`, or `finish()` returning `Result`. The automatic close returns `Unit`; an unexpected release failure is a cleanup fault.
+## A close returns a Result
 
-## A close that can fail
-
-Implement `FallibleCloseable` instead of `Closeable` when releasing the resource can fail:
+`close()` returns `Unit!`, which is `Result[Unit, Error]`: releasing a resource can fail, and the failure is a value. A type whose release cannot fail returns `ok(unit)`.
 
 ```manuscript
-import FallibleCloseable, TextError from "@std/core.ms"
+import Closeable, TextError from "@std/core.ms"
 
 type Gate:
     fails: Bool
 
-impl FallibleCloseable for Gate:
-    var fn close() Result[Unit, Error]:
+impl Closeable for Gate:
+    var fn close() Unit!:
         if self.fails:
             return error(TextError("gate stuck"))
         return ok(unit)
 
-fn use_gate(fails: Bool) Result[Int, Error]:
+fn use_gate(fails: Bool) Unit!:
     let _gate = Gate(fails)
-    return ok(7)
+    return ok(unit)
 ```
 
 The scope-end close behaves like `try gate.close()`: a failed close becomes the function's error, after the other bindings of the scopes it leaves have closed. This holds for every exit, including `break`, `continue` and `return`.
 
-- The enclosing function must return `Result[_, Error]`; otherwise the checker rejects the binding and asks for an explicit `close()`.
-- Call `close()` yourself to handle the failure; the binding is then consumed and closes nothing more.
-- If the scope is already returning an error, that error stays and a close failure after it is dropped. A fault or cancellation runs the close without returning its error.
-- A record, alternative or collection cannot hold a value whose close can fail, because closing the holder would drop the error. Bind the value on its own.
+- If the scope is already returning an error, that error is kept and a close error after it is dropped.
+- Call `close()` yourself to handle the failure; the binding is then consumed and closes nothing more. Like any `Result`, the call needs `try`, `match` or `let _ =`.
+- A close with nowhere to return its error is a fault, never silently ignored: a function that does not return `Unit!` (`Result[_, Error]`), a part of a holder, a replaced or temporary value.
+- A fault or cancellation runs each close and discards its result; the failure being reported takes precedence.
 
 A close failure does not skip other actions. After a failed release, leave the object unusable or quarantined; faults and remaining obligations go to the host.
 

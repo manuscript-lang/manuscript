@@ -164,8 +164,8 @@ impl Fetcher:
 
 impl Closeable for Fetcher:
     # Cancels in-flight requests and drops pooled connections; later calls return `Http(Closed)`.
-    var fn close() Unit:
-        self.client.close()
+    var fn close() Unit!:
+        return self.client.close()
 
 # Reads the body to its end within the options' size limit, then closes it.
 fn drain(

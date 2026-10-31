@@ -158,7 +158,7 @@ fn close_end[A, B](outgoing: Shared[Lane[A]], incoming: Shared[Lane[B]]) Unit:
     var sending = lock(outgoing)
     sending.value.sender_closed = true
     sending.value.wake()
-    sending.close()
+    sending.close().get(none)
 
     var receiving = lock(incoming)
     receiving.value.receiver_closed = true
@@ -174,7 +174,7 @@ type WaitTicket[T]:
 
 impl Closeable for WaitTicket[T]:
     # A normal wake already cleared the entry. Cancellation must remove it here instead.
-    var fn close() Unit:
+    var fn close() Unit!:
         var lane = lock(self.lane)
 
         for index in 0..lane.value.waiting.length():
@@ -184,6 +184,7 @@ impl Closeable for WaitTicket[T]:
 
         if lane.value.waiting.is_empty():
             lane.value.waiting = List[Int]()
+        return ok(unit)
 
 # One end of a channel between tasks on the runtime thread. Values move from one end to the other;
 # a task that must wait parks until the other end posts its token.
@@ -235,7 +236,7 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
         var lane = lock(self.outgoing)
         lane.value.back.append(value)
         lane.value.wake()
-        lane.close()
+        lane.close().get(none)
         return ok(unit)
 
     fn receive() Result[Out?, ChannelError]:
@@ -253,7 +254,7 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
 
             let token = msrt_channel_token()
             lane.value.waiting.append(token)
-            lane.close()
+            lane.close().get(none)
 
             let ticket = WaitTicket[Out](lane: self.incoming, token: token)
             msrt_channel_park(token)
@@ -265,8 +266,9 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
 
 impl Closeable for TaskTransport[In, Out]:
     # Closes this end. Safe to call again.
-    var fn close() Unit:
+    var fn close() Unit!:
         close_end(self.outgoing, self.incoming)
+        return ok(unit)
 
 # The body of a task: runs `entry` on the task's end of its channel and stores its one result in
 # `slot`. The end closes when the task ends, however it ends.
@@ -325,7 +327,7 @@ fn collect[T](scope: Int, handle: Int, values: Shared[List[T]]) Result[T, TaskEr
     if let value = finished.value.pop():
         return ok(value)
 
-    finished.close()
+    finished.close().get(none)
     panic("Task: the result was already taken")
 
 # A started task that returns a `T`, with the group's end of its channel.
@@ -404,7 +406,7 @@ impl TaskGroup[T, In, Out]:
         started.value[handle] = Entry(
             handle, values, group_end(down, up, lifetime.clone())
         )
-        started.close()
+        started.close().get(none)
         return Task(
             self.scope, handle, self.tasks, values, group_end(down, up, lifetime)
         )
@@ -431,7 +433,7 @@ impl TaskGroup[T, In, Out]:
 
 impl Closeable for TaskGroup[T, In, Out]:
     # Cancels tasks that have not ended, waits for them, and closes every channel. Safe to call again.
-    var fn close() Unit:
+    var fn close() Unit!:
         msrt_scope_close(self.scope)
         msrt_channel_group_close(self.channels)
 
@@ -439,3 +441,4 @@ impl Closeable for TaskGroup[T, In, Out]:
         for handle in started.value.keys():
             if var entry = started.value[handle]?:
                 entry.channel.close()
+        return ok(unit)

@@ -30,7 +30,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
                 )
             )
         )
-        socket.close()
+        socket.close().get(none)
         return ok(unit)
 
     var chain_1 = Map[String, List[String]]()
@@ -74,7 +74,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     body.metadata().status | try expect_equal(201)
     (body.read(5) | try expect_ok).get() | try expect_equal("hello".to_bytes())
     ((body.read(5) | try expect_ok).is_none()) | try expect_true
-    client.close()
+    try client.close()
 
     let _limited: Result[Unit, HttpError] = error(HttpError.LimitExceeded)
 

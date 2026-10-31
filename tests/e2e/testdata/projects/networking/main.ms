@@ -52,7 +52,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
             none:
                 return ok(unit)
 
-        socket.close()
+        socket.close().get(none)
         return ok(unit)
 
     var fields = headers()
@@ -103,7 +103,7 @@ fn exercise() Result[Unit, Error]:
         none:
             return fail(message: "Unexpected case")
 
-    client.close()
+    try client.close()
 
     let websocket_options = WebSocketOptions(
         max_message_bytes: 1024, timeout: 2.seconds, tls: tls, compression: false
@@ -125,7 +125,7 @@ fn exercise() Result[Unit, Error]:
         none:
             return fail(message: "Unexpected case")
 
-    server.close()
+    try server.close()
     return ok(unit)
 
 export fn main() Int:

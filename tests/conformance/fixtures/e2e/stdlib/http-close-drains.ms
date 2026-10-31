@@ -23,7 +23,7 @@ export fn main() Int:
             sleep(nanoseconds(50000000))
 
             let start = control().monotonic_time()
-            server.close()
+            server.close().get(none)
 
             let close_ms = (control().monotonic_time() - start) / 1000000
             var text = ""
@@ -36,7 +36,7 @@ export fn main() Int:
 
                 break
 
-            conn.close()
+            conn.close().get(none)
 
             let _status = stdout().write(
                 "answered: {text.starts_with("HTTP/1.1 200 OK")}\n"

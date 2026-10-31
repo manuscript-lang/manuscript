@@ -4,8 +4,8 @@ type Door:
     id: Int
 
 impl Closeable for Door:
-    var fn close() Unit:
-        return
+    var fn close() Unit!:
+        return ok(unit)
 
 fn dupe[T](xs: List[T]) Int:
     let ys = xs.reversed()  # error: reversed requires T to be Clonable

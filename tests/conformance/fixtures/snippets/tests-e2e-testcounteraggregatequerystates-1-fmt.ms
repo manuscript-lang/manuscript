@@ -7,8 +7,9 @@ type AggregateResource:
     visits: List[Int]
 
 impl Closeable for AggregateResource:
-    var fn close() Unit:
+    var fn close() Unit!:
         self.visits.append(1)
+        return ok(unit)
 
 interface AggregateCounter:
     var fn bump(by: Int) Int

@@ -13,12 +13,13 @@ type Resource:
 # Idempotent, as the Closeable contract requires: the block that ends early closes by hand and
 # the scope closes again.
 impl Closeable for Resource:
-    var fn close() Unit:
-        if self.done: return
+    var fn close() Unit!:
+        if self.done: return ok(unit)
 
         self.done = true
 
         let _ = self.output.write(data: "close {self.label}\n")
+        return ok(unit)
 
 type Pair:
     first: Int
@@ -74,7 +75,7 @@ fn exercise() Result[Int, Error]:
 
     var _resource = Resource(label: "normal", output: stdout())
     let _completed = unit
-    _resource.close()
+    try _resource.close()
 
     let _ = stdout().write(data: "after normal\n")
     var count = 0

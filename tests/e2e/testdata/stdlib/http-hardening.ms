@@ -62,7 +62,7 @@ test "close cancels a handler that outlives the grace period":
     let client = net.connect(server.address(), 2.seconds) | try expect_ok
     client.write("GET / HTTP/1.1\r\nHost: t\r\n\r\n", 2.seconds) | try expect_ok
     sleep(100.milliseconds)
-    server.close()
+    try server.close()
 
     # An error here is the connection ending (a reset on macOS); only a served reply fails.
     if let reply = client.read(timeout: 5.seconds):
@@ -112,8 +112,8 @@ test "serve answers requests while handlers read and write files":
     ) | try expect_ok
     try expect_file_reply(a)
     try expect_file_reply(b)
-    server.close()
-    dir.close()
+    try server.close()
+    try dir.close()
 
 fn oversized(exchange: HttpExchange) Result[Unit, HttpError]:
     return reply(exchange, text(200, "z".repeat(5000).get("")))

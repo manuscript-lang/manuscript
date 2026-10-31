@@ -200,8 +200,9 @@ export type HttpClient:
 impl Closeable for HttpClient:
     # Cancels in-flight requests, closes open response bodies, and drops idle pooled connections.
     # Safe to call repeatedly; later requests return Closed.
-    var fn close() Unit:
+    var fn close() Unit!:
         msrt_http_client_close(self.native)
+        return ok(unit)
 
 impl HttpClient:
     # Sends the UTF-8 text body and returns a scoped streaming response body.
@@ -347,8 +348,9 @@ impl Closeable for HttpServer:
     # Stops accepting connections, waits up to the grace period for in-flight requests, then cancels the rest and waits for them.
     # SIGINT/SIGTERM drains the same way when grace is nonzero: in-flight requests finish within the grace period before the program exits 130/143.
     # Safe to call repeatedly. A request handler calling close on its own server faults, and a shutdown error is raised as a fault.
-    var fn close() Unit:
+    var fn close() Unit!:
         msrt_http_server_close(self.native)
+        return ok(unit)
 
 impl HttpServer:
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
@@ -404,8 +406,9 @@ export type ResponseBody:
 impl Closeable for ResponseBody:
     # Cancels the rest of the response and releases its connection.
     # Safe to call repeatedly; reads afterwards return Closed. A fully read body lets the connection be reused.
-    var fn close() Unit:
+    var fn close() Unit!:
         msrt_http_body_close(self.native)
+        return ok(unit)
 
 impl ResponseBody:
     # Returns the response head (status and headers) without copying; it stays available after close.

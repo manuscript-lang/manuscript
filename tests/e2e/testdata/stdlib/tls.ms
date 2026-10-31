@@ -138,7 +138,7 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
 fn answer_ping(var connection: Connection) Int:
     let ping = connection.read(4, 3.seconds)
     let pong = connection.write("pong", 3.seconds)
-    connection.close()
+    connection.close().get(none)
     if ping.is_error() or pong.is_error():
         return 0
 
@@ -186,12 +186,12 @@ test "raw TLS listeners and clients handshake and report negotiated details":
     more.append(more[0].clone())
     try expect_equal(more.length(), 2)
     try expect_equal(more[1].length(), more[0].length())
-    client.close()
+    try client.close()
 
     let served = try group.results()
     try expect_equal(served[0], 1)
-    group.close()
-    listener.get().close()
+    try group.close()
+    try listener.get().close()
 
 test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
     let net = network()
@@ -210,8 +210,8 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
         net.connect_tls(listener.get().address(), "stdlib.test", 3.seconds)
     )
     let _served = try group.results()
-    group.close()
-    listener.get().close()
+    try group.close()
+    try listener.get().close()
 
     let plain = try net.listen("127.0.0.1:0")
     let client = try net.connect(plain.address(), 2.seconds)

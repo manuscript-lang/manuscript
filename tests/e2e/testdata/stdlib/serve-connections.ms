@@ -25,7 +25,7 @@ fn serves_handed() Unit:
 
             break
 
-        server.close()
+        server.close().get(none)
 
 test "an acceptor deals connections round robin to serving workers":
     let net = network()

@@ -10,7 +10,7 @@ test "writing to a closed connection returns an error":
     let listener = net.listen("127.0.0.1:0") | try expect_ok
     var client = net.connect(listener.address(), 2.seconds) | try expect_ok
     let accepted = listener.accept(2.seconds) | try expect_ok
-    client.close()
+    try client.close()
 
     var attempts = 0
 

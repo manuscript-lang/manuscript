@@ -14,13 +14,14 @@ type Holder:
 
 # Close records itself by writing a marker file named after the holder.
 impl Closeable for Holder:
-    var fn close() Unit:
+    var fn close() Unit!:
         if self.pause:
             sleep(nanoseconds(5000000))
 
         let _ = filesystem().write_file("{self.dir}/{self.id}", "closed", true)
         if self.breaks:
             panic("close fault")
+        return ok(unit)
 
 fn closed(dir: String, id: Int) Bool:
     return filesystem().read_file("{dir}/{id}").is_ok()
@@ -79,7 +80,7 @@ test "a faulted task closes its binding before the group reports":
     group.spawn(fn ch: hold_and_fault(mine.clone(), 4))
 
     let _reason = group.wait() | try expect_error
-    group.close()
+    try group.close()
     try expect_true(closed(dir, 4))
 
 test "a fault in close on a normal return is the fault":

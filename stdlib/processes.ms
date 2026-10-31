@@ -173,7 +173,7 @@ fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Result[Frame?, ChannelErro
 
                 return error(ChannelError.Broken("a frame is not UTF-8"))
 
-        state.close()
+        state.close().get(none)
         if msstd_process_ipc_wait_reader(link):
             return ok(Frame(kind: RETRY, body: ""))
 
@@ -200,7 +200,7 @@ fn close_end(link: NativeLink, inbox: Shared[Inbox], notify: Bool = true) Unit:
     var state = lock(inbox)
     first = not state.value.closed
     state.value.closed = true
-    state.close()
+    state.close().get(none)
     if first and notify:
         msstd_process_ipc_write(link, frame(CLOSE, ""))
 
@@ -383,7 +383,7 @@ impl Process[T, In, Out]:
 
 impl Closeable for Process[T, In, Out]:
     # Closes the channel, then stops and joins the child. Call `result` first to keep it. Safe to call again.
-    var fn close() Unit:
+    var fn close() Unit!:
         stop_child(self.link, self.inbox, self.native)
 
         var all = lock(self.registry)
@@ -392,6 +392,8 @@ impl Closeable for Process[T, In, Out]:
             if all.value[index].id == self.id:
                 all.value.remove(index)
                 break
+
+        return ok(unit)
 
 # A scope that owns the child processes started in it. Each runs an entry returning `T` and has a
 # two-way channel to the group: the child sends `Out` values and receives `In` values, both
@@ -427,11 +429,11 @@ impl ProcessGroup[T, In, Out]:
         var next = lock(self.started)
         id = next.value
         next.value = id + 1
-        next.close()
+        next.close().get(none)
 
         var all = lock(self.processes)
         all.value.append(Open(id, native.clone(), link.clone(), inbox))
-        all.close()
+        all.close().get(none)
         return ok(
             Process[T, In, Out](
                 native: native,
@@ -461,9 +463,10 @@ impl ProcessGroup[T, In, Out]:
 
 impl Closeable for ProcessGroup[T, In, Out]:
     # Closes every open process: its channel, then the child, which is stopped and joined. Safe to call again.
-    var fn close() Unit:
+    var fn close() Unit!:
         var all = lock(self.processes)
         for index in 0..all.value.length():
             stop_child(
                 all.value[index].link, all.value[index].inbox, all.value[index].native
             )
+        return ok(unit)

@@ -132,7 +132,7 @@ test "a task cancelled before it first ran closes its end":
 test "closing the group closes every channel":
     var group = TaskGroup[Int, Unit, Int]()
     var task = group.spawn(produce)
-    group.close()
+    try group.close()
     try expect_equal(drain(var task.channel), ["closed"])
 
     var late = group.spawn(produce)

@@ -9,8 +9,9 @@ type Counter:
     id: Int
 
 impl Closeable for Counter:
-    var fn close() Unit:
+    var fn close() Unit!:
         stdout().write("closed {self.id}\n").get()
+        return ok(unit)
 
 impl Counter:
     fn value() Int:

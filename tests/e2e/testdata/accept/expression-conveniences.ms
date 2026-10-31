@@ -11,8 +11,9 @@ type Resource:
 
 # Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _written = filesystem().write_file(self.marker, "closed", true)
+        return ok(unit)
 
 fn closed(marker: String) Bool: filesystem().read_file(marker).is_ok()
 
@@ -107,7 +108,7 @@ test "match expressions preserve returns and cleanup":
     let invalid = amount(text: "invalid", marker: "{dir}/invalid")
     (invalid != Result[Int, TextError].error(cause: TextError("Invalid amount"))) | try expect_false
     closed("{dir}/invalid") | try expect_true
-    temporary.close()
+    try temporary.close()
 
     let nested = match present:
         value:

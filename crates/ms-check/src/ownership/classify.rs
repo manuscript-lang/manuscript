@@ -32,7 +32,7 @@ impl Classifier {
         let closeable = p
             .methods
             .iter()
-            .filter(|m| m.contract.as_ref().is_some_and(|c| c.is_close_contract()))
+            .filter(|m| m.contract.as_ref().is_some_and(|c| c.is_std("Closeable")))
             .map(|m| m.receiver.id)
             .collect();
         let copyable = p
@@ -62,7 +62,7 @@ impl Classifier {
             Kind::Primitive if t.id.as_str() == "String" => Class::Move,
             Kind::Primitive => Class::Copy,
             Kind::Variable => {
-                if t.bounds().iter().any(|b| b.is_close_contract()) {
+                if t.bounds().iter().any(|b| b.is_std("Closeable")) {
                     Class::Resource
                 } else {
                     Class::Move
@@ -70,7 +70,7 @@ impl Classifier {
             }
             // A `Closeable` value owns what it was made from and closes it. Other interfaces
             // with a `close` (a channel's transport) are handles their holders close explicitly.
-            Kind::Contract if t.is_close_contract() => Class::Resource,
+            Kind::Contract if t.is_std("Closeable") => Class::Resource,
             Kind::Function | Kind::Contract => Class::Move,
             Kind::Native => self.native(t, visiting),
             Kind::Record | Kind::Alternative => self.nominal(t, visiting),
