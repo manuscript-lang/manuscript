@@ -215,15 +215,10 @@ impl<'a> FnLower<'a> {
                 })
             }
             AStep::Some => {
-                // An optional has no slot to move the payload out of, so the payload is copied,
-                // changed, and rewrapped; the old optional is released.
-                let view = self.b.opt_get(obj);
-                let payload = self.owned(Val {
-                    v: view,
-                    own: false,
-                });
+                // The match showed the optional present: its payload moves out, changes, and
+                // moves back in; nothing is copied.
+                let payload = self.b.opt_unbox(obj);
                 let inner = self.update_steps(payload, rest, f)?;
-                self.drop_value(obj);
                 Ok(self.b.opt_some(inner))
             }
             AStep::Key(var, at) => {

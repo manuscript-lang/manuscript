@@ -123,7 +123,7 @@ fn city_length(user: User?) Int?:
 
 A chain cannot move a field out of the optional it reads, so end an owned `String` or record field with `.clone()`.
 
-A chain borrows the optional it starts from. When that place is a `var` (a `var` binding or parameter, or a field of one), the chain may call a `var fn` or change the payload, and the change lands in the optional itself; on `none` nothing runs:
+A chain borrows the optional it starts from. When that place is a `var` (a `var` binding or parameter, or a field of one), the chain may call a `var fn` or change the payload, and the change lands in the optional itself, in place; on `none` nothing runs:
 
 ```manuscript
 type Counter:
