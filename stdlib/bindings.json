@@ -19,6 +19,11 @@
     "UInt64": "UInt64Operations",
     "UInt8": "UInt8Operations"
   },
+  "kept_callbacks": {
+    "extern:msstd_process_fork": "",
+    "extern:msrt_channel_group_add": "",
+    "extern:msrt_scope_spawn": ""
+  },
   "native_types": {
     "@std/bytes.ms/Bytes": "native",
     "@std/bytes.ms/BytesBuilder": "native",
