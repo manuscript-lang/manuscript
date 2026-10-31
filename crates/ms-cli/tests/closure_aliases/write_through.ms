@@ -54,7 +54,7 @@ export fn main() Int:
     let _ = stdout().write("{box.items}\n")
     var entries = Map[String, List[Int]]()
     entries.add("dynamic-1", [5])
-    if var value = entries.get("dynamic-{calls}"):
+    if var value = entries["dynamic-{calls}"]?:
         invoke(fn: value.append(value.length()))
 
     let _ = stdout().write("{entries}\n")

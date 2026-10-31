@@ -12,7 +12,7 @@ fn count_placed(orders: Map[String, Order]) Int:
     return n
 
 fn ship(var orders: Map[String, Order], id: String) Bool:
-    if var o = orders.get(id):
+    if var o = orders[id]?:
         o.status = "shipped"
         o.items.append("label")
         return true
@@ -87,11 +87,11 @@ test "if var changes a map entry in place":
     var counts = Map[String, Int]()
     counts.add(key: "a", value: 1)
 
-    if var n = counts.get("a"):
+    if var n = counts["a"]?:
         n += 4
         n *= 2
 
-    if var n = counts.get("missing"):
+    if var n = counts["missing"]?:
         n += 1
     try expect_equal(counts.get_or(key: "a", fallback: 0), 10)
     try expect_equal(counts.length(), 1)

@@ -312,6 +312,21 @@ impl D {
                 &[],
                 &[],
             ),
+            ExprKind::Probe(target) => self.expr_fields(
+                e,
+                "probe",
+                "",
+                Some(target),
+                None,
+                &[],
+                &[],
+                &[],
+                &[],
+                &[],
+                None,
+                &[],
+                &[],
+            ),
             ExprKind::List(items) => {
                 let els: Vec<&Expr> = items.iter().collect();
                 self.expr_fields(

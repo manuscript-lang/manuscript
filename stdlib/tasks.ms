@@ -434,5 +434,5 @@ impl Closeable for TaskGroup[T, In, Out]:
 
         var started = lock(self.tasks)
         for handle in started.value.keys():
-            if var entry = started.value.get(handle):
+            if var entry = started.value[handle]?:
                 entry.channel.close()

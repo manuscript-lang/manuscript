@@ -1283,7 +1283,11 @@ impl Walker<'_> {
         let arm_mark = self.active.len();
         match binding {
             Some(p) => {
-                let scrutinee = self.scrutinee(s.id, cond);
+                let probed = match &cond.kind {
+                    ExprKind::Probe(target) if mutable => Some(&**target),
+                    _ => None,
+                };
+                let scrutinee = self.scrutinee(s.id, probed.unwrap_or(cond));
                 if mutable {
                     self.mutable_payload(p, cond, &scrutinee);
                     self.payload_resource(s, p, cond, &scrutinee);
@@ -2063,6 +2067,11 @@ impl Walker<'_> {
         let Some(b) = self.cx.m.pattern_binding(p) else {
             return;
         };
+        let probe = matches!(value.kind, ExprKind::Probe(_));
+        let value = match &value.kind {
+            ExprKind::Probe(target) => &**target,
+            _ => value,
+        };
         let named = self.root_name(value);
         let root = named.and_then(|n| match self.cx.m.resolution(n) {
             Resolution::Local(r) => Some((r, n.id)),
@@ -2080,17 +2089,11 @@ impl Walker<'_> {
             projection: true,
             through_ref: None,
         };
-        let reads_in_place = matches!(
-            &value.kind,
-            ExprKind::Call { callee, .. }
-                if matches!(&callee.kind, ExprKind::Member { name, .. }
-                    if matches!(name.as_str(), "get" | "first" | "last"))
-        );
-        if !reads_in_place {
+        if !probe {
             self.error(
                 p.pos,
                 format!(
-                    "`if var` borrows the payload of `get` on a map or list, or `first` or `last` on a list, but `{}` is neither; bind a copy with `if let`, then `var x = x.clone()`, or write the changed value back",
+                    "`if var` borrows an entry written as `place[key]?`, but `{}` is not one; bind a copy with `if let`, then `var x = x.clone()`, or write the changed value back",
                     info.text
                 ),
             );
@@ -2307,6 +2310,10 @@ impl Walker<'_> {
         }
         match &e.kind {
             ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Unit => {}
+            ExprKind::Probe(_) => self.error(
+                e.pos,
+                "`?` after an index is only written as `if var name = place[key]?`, where it borrows the entry in place",
+            ),
             ExprKind::Text(parts) => {
                 for part in parts {
                     if let TextPart::Interp(i) = part {

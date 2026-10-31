@@ -257,6 +257,7 @@ impl Checker {
                     child(self, left);
                     child(self, index);
                 }
+                ExprKind::Probe(target) => child(self, target),
                 ExprKind::Unary { operand, .. } => child(self, operand),
                 ExprKind::Binary { left, right, .. } => {
                     child(self, left);
@@ -314,6 +315,7 @@ impl Checker {
             ExprKind::Text(parts) => return self.infer_text(parts, i),
             ExprKind::Name(name) => return self.infer_name(e, *name, expected, i),
             ExprKind::Index { left, index } => return self.index(e, left, index),
+            ExprKind::Probe(target) => return self.probe(e, target),
             ExprKind::Match { .. } => return self.match_expression(e, expected, false),
             ExprKind::Apply { left, types, value } => {
                 return self.infer_apply(e, left, types, value.as_deref(), expected, i);

@@ -1623,6 +1623,7 @@ fn alias_origin(fl: &FnLower<'_>, e: &Expr) -> Option<usize> {
             Some(b.uid)
         }
         ExprKind::Member { left, .. } => alias_origin(fl, left),
+        ExprKind::Probe(target) => alias_origin(fl, target),
         ExprKind::Call { callee, args } => {
             let source = match (&callee.kind, fl.hir.resolution(e)) {
                 (ExprKind::Member { left, .. }, ms_check::hir::Resolution::Method(_)) => &**left,
