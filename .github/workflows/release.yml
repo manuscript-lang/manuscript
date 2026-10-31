@@ -57,7 +57,8 @@ jobs:
         run: |
           set -eu
           tar -xzf dist/manuscript-rust-linux-amd64.tar.gz -C dist
-          MS="$PWD/dist/manuscript-rust-linux-amd64/ms" sh bench/perf/listloops/run.sh 5 | tee listloops.txt
+          ms="$PWD/dist/manuscript-rust-linux-amd64/ms"
+          MS="$ms" "$ms" run bench/tools/listloops.ms -- 5 | tee listloops.txt
       - uses: actions/upload-artifact@v7
         with:
           name: listloops-${{ github.ref_name }}

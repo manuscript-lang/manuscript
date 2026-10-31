@@ -95,7 +95,7 @@ fn bench_text(
 
 # Decodes to a record with no fields, so only the document build and its release are timed.
 type Nothing:
-    placeholder: Optional[Int] = none
+    placeholder: Int? = none
 
 fn doc_body(text: String) fn() Int:
     return fn() Int:

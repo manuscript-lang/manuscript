@@ -110,7 +110,9 @@ bench-check: build
 	@for t in $$(find bench/perf -name ms.toml | sort); do \
 		(cd $$(dirname $$t) && "$(RELEASE_MS)" check ms.toml) || exit 1; \
 	done
+	@for t in bench/tools/*.ms; do "$(RELEASE_MS)" check $$t || exit 1; done
+	@for t in bench/tools/*_test.ms; do "$(RELEASE_MS)" test $$t || exit 1; done
 
 # Runs the bench blocks of bench/perf/stdlib; BENCHREPEATS is the sample count per case.
 stdlib-bench: build
-	MS="$(RELEASE_MS)" bench/perf/stdlib-bench.sh $(BENCHREPEATS) $(BENCHFILTER)
+	MS="$(RELEASE_MS)" "$(RELEASE_MS)" run bench/tools/stdlib_bench.ms -- $(BENCHREPEATS) $(BENCHFILTER)
