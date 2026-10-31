@@ -29,5 +29,8 @@ Use these four sections, in this order, then Documentation and Compatibility lin
 
 - Open every PR ready for review, not as a draft, and enable squash auto-merge in the same step so it lands when required checks pass. The owner does not review PRs; an independent reviewer subagent challenges a structural proposal before implementation (see [AGENTS.md](../../AGENTS.md#shared-guidance-and-checks)).
 - Auto-merge only waits for green CI, so keep the PR green: watch it, merge or rebase `main` on conflicts, and fix failures from the cause rather than re-running.
+- PR checks skip the Windows tests, so a PR can pass while Windows fails. For runtime, networking, path, linker, or process changes, dispatch the full `cicd.yml` matrix on the branch (`workflow_dispatch`) and read the Windows result before closing the issue. If a platform fails, fix it; never gate the test.
+- A perf PR cites a before/after run against the latest dated baseline in `bench/perf/`; one that slows a suite is revised or closed.
+- If the user holds a PR (a proposal awaiting sign-off, a language-design change), turn off its auto-merge and say so; do not merge on green CI.
 - A merge queue may be required. Do not bypass it or merge by hand while checks are pending.
 - Keep a PR small enough that its CI stays meaningful: the corpus runs in four shards and tests in two partitions, so a PR that touches many crates waits on the slowest job.
