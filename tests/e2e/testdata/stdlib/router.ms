@@ -15,7 +15,7 @@ import (
     HttpServerOptions
 ) from "@std/http.ms"
 import IoError, read_all from "@std/io.ms"
-import network from "@std/net.ms"
+import http_client, serve from "@std/net.ms"
 import create, LogError, Transport from "@std/log.ms"
 import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
@@ -269,8 +269,8 @@ test "in-process reads reject nonpositive sizes without consuming input":
 
 test "the router serves over a socket":
     let handler = router().handler()
-    let server = try network().serve("127.0.0.1:0", handler, HttpServerOptions())
-    let client = try network().http_client(HttpClientOptions())
+    let server = try serve("127.0.0.1:0", handler, HttpServerOptions())
+    let client = try http_client(HttpClientOptions())
     let response = try client.request(
         HttpMethod.Get, "http://{server.address()}/users/9", headers()
     )

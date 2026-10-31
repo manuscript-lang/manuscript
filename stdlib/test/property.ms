@@ -2,7 +2,7 @@ import Pair from "@std/collections.ms"
 import panic from "@std/core.ms"
 import stderr from "@std/io.ms"
 import bit_xor, shift_right_unsigned, wrapping_add, wrapping_multiply, max_int from "@std/math.ms"
-import control from "@std/process.ms"
+import environment from "@std/process.ms"
 import secure_int from "@std/random.ms"
 import expect_fault, fail from "@std/test.ms"
 import milliseconds, monotonic from "@std/time.ms"
@@ -267,7 +267,7 @@ export type Settings:
 # Returns defaults with `ms test` flag overrides (`MS_TEST_RUNS`, `MS_TEST_SEED`, `MS_TEST_FUZZ_MS`) applied.
 export fn settings(runs: Int = 100) Settings:
     var found = Settings(runs, none, 0)
-    let environment = control().environment().get(Map[String, String]())
+    let environment = environment().get(Map[String, String]())
     if let text = environment.get("MS_TEST_RUNS"):
         found.runs = text.parse_int().get(runs)
     if let text = environment.get("MS_TEST_SEED"):

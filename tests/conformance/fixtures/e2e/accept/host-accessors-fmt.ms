@@ -2,12 +2,11 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/host-accessors.ms
 import expect_equal, expect_false, fail from "@std/test.ms"
-import arguments, control from "@std/process.ms"
+import arguments, environment from "@std/process.ms"
 import stdin, stdout, stderr from "@std/io.ms"
 import monotonic, now from "@std/time.ms"
 import random_bytes from "@std/random.ms"
-import system from "@std/process.ms"
-import network from "@std/net.ms"
+import system_info from "@std/process.ms"
 
 fn check_services() Unit!:
     arguments().length() | try expect_equal(0)
@@ -16,9 +15,9 @@ fn check_services() Unit!:
     let after = monotonic()
     (after - before < 0.milliseconds) | try expect_false
     (now().unix_seconds() <= 0) | try expect_false
-    (system().info().cpu_count <= 0) | try expect_false
+    (system_info().cpu_count <= 0) | try expect_false
 
-    let _variables = try control().environment()
+    let _variables = try environment()
 
     match random_bytes(0):
         ok(data):
@@ -36,7 +35,6 @@ test "closing a standard stream leaves the process stream open":
     stdin().close()
     stdout().close()
     stderr().close()
-    network().close()
 
     match stdout().write(""):
         ok(_):

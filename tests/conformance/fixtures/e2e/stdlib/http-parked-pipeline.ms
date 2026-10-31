@@ -5,8 +5,8 @@
 # the handler's response is sent, not after a timeout.
 import headers, HttpRequest, HttpResponse, buffered from "@std/http.ms"
 import stdout from "@std/io.ms"
-import network from "@std/net.ms"
-import control from "@std/process.ms"
+import connect, serve from "@std/net.ms"
+import monotonic_time from "@std/process.ms"
 import nanoseconds, sleep from "@std/time.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
@@ -15,7 +15,7 @@ fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "ok {request.path}\n".to_bytes())
 
 fn exchange(address: String) String:
-    if var conn = network().connect(address):
+    if var conn = connect(address):
         let _first = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
         # The slow handler is parked by now; the second request arrives while it waits.
@@ -40,11 +40,11 @@ fn exchange(address: String) String:
     return "connect failed"
 
 export fn main() Int:
-    if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
+    if let acquired = serve(address: "127.0.0.1:0", handler: buffered(handle)):
         var server = acquired
-        let start = control().monotonic_time()
+        let start = monotonic_time()
         let text = exchange(server.address())
-        let elapsed_ms = (control().monotonic_time() - start) / 1000000
+        let elapsed_ms = (monotonic_time() - start) / 1000000
         let _count = stdout().write(
             "responses: {text.split("HTTP/1.1 200 OK").length() - 1}\n"
         )

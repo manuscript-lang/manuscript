@@ -2,7 +2,7 @@
 import Bytes from "@std/bytes.ms"
 import read_file, write_file_bytes from "@std/fs.ms"
 import headers, HttpError, HttpExchange, HttpRequest, HttpResponse, buffered from "@std/http.ms"
-import network, serve_core, serve_cores from "@std/net.ms"
+import serve_core, serve_cores, listen, lookup, serve from "@std/net.ms"
 import arguments from "@std/process.ms"
 
 fn score(id: Int) Int:
@@ -70,7 +70,7 @@ fn user_reply(path: String) HttpResponse:
 
 # Resolve localhost, write 1 MiB to the connection's own file, read it back.
 fn io_reply(dir: String, slot: String, payload: Bytes) HttpResponse:
-    if let addresses = network().lookup("localhost"):
+    if let addresses = lookup("localhost"):
         let path = "{dir}/m{slot}.bin"
         if let got = write_and_read(path, payload):
             return reply(200, "{addresses.length()} {got.length()}\n")
@@ -111,9 +111,7 @@ fn make_handler(dir: String) fn(HttpExchange) Result[Unit, HttpError]:
 
 # Serves the benchmark endpoints on 127.0.0.1:<port> until the server stops.
 fn serve_here(port: String, dir: String) Int:
-    if let acquired = network().serve(
-        address: "127.0.0.1:{port}", handler: make_handler(dir)
-    ):
+    if let acquired = serve(address: "127.0.0.1:{port}", handler: make_handler(dir)):
         let server = acquired
         let _ignored = server.wait()
         return 0
@@ -127,7 +125,7 @@ fn serve_worker() Unit:
 
 # Accepts on the main thread and deals the connections to `threads` workers.
 fn serve_threads(port: String, threads: Int) Int:
-    if let bound = network().listen("127.0.0.1:{port}"):
+    if let bound = listen("127.0.0.1:{port}"):
         let _ = serve_cores(bound, serve_worker, threads)
     return 1
 

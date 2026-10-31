@@ -1,6 +1,6 @@
 import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
 import headers, HttpMethod, buffered from "@std/http.ms"
-import network from "@std/net.ms"
+import http_client, serve, web_socket from "@std/net.ms"
 import HttpError from "@std/http.ms"
 import WebSocketError from "@std/net.ms"
 import IoError from "@std/io.ms"
@@ -74,14 +74,14 @@ fn exercise() Unit!:
         max_requests: 8, max_body_bytes: 1024, max_response_bytes: 1024,
         max_header_bytes: 65536, timeout: 3.seconds, grace: 0.milliseconds, tls: none
     )
-    var server = try network().serve(
+    var server = try serve(
         address: "127.0.0.1:0", handler: echo, options: server_options
     )
     let client_options = HttpClientOptions(
         max_redirects: 2, max_idle_connections: 4, max_header_bytes: 65536,
         idle_timeout: 10.seconds, decompress: true, cookies: true, tls: tls.clone()
     )
-    var client = try network().http_client(options: client_options)
+    var client = try http_client(options: client_options)
     let response = try client.request(
         method: HttpMethod.Get, url: "http://{server.address()}/", headers: headers(),
         body: "", max_response_bytes: 1024, timeout: 2.seconds
@@ -109,7 +109,7 @@ fn exercise() Unit!:
         max_message_bytes: 1024, timeout: 2.seconds, tls: tls, compression: false
     )
     let socket = try socket_result(
-        result: network().web_socket(
+        result: web_socket(
             url: "ws://{server.address()}/ws", headers: headers(),
             subprotocols: ["echo"], options: websocket_options
         )

@@ -15,7 +15,7 @@ import (
     HttpClientOptions,
     HttpHeaders
 ) from "@std/http.ms"
-import network from "@std/net.ms"
+import http_client, request, serve from "@std/net.ms"
 import TlsOptions from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 
@@ -47,7 +47,7 @@ fn stream_route(exchange: HttpExchange) Unit!HttpError:
     return ok(unit)
 
 fn check_route(url: String, expected: String) Unit!:
-    let response = network().request(
+    let response = request(
         method: HttpMethod.Get, url: url,
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
     ) | try expect_ok
@@ -61,7 +61,7 @@ fn check_route(url: String, expected: String) Unit!:
     return ok(unit)
 
 fn check_rejected(url: String) Unit!:
-    let response = network().request(
+    let response = request(
         method: HttpMethod.Get, url: url,
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
     ) | try expect_ok
@@ -82,13 +82,13 @@ fn check_paths(base: String) Unit!:
     return ok(unit)
 
 test "buffered routes validate original input and decode once":
-    let server = network().serve(
+    let server = serve(
         address: "127.0.0.1:0", handler: buffered(route)
     ) | try expect_ok
     (try check_paths("http://{server.address()}"))
 
 test "streaming routes validate original input and decode once":
-    let server = network().serve(
+    let server = serve(
         address: "127.0.0.1:0", handler: stream_route,
         options: HttpServerOptions(tls: none)
     ) | try expect_ok
@@ -107,7 +107,7 @@ fn expect_http_error[T](outcome: T!HttpError) Unit!:
 test "buffered and reusable clients reject malformed ports as InvalidInput":
     let headers = (try text_headers(Map[String, String]()))
     let body = ""
-    network().request(
+    request(
         method: HttpMethod.Get, url: "http://127.0.0.1:99999/", headers: headers,
         body: body
     ) | try expect_http_error
@@ -116,7 +116,7 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
         server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
         alpn: [], require_client_certificate: false
     )
-    let client = network().http_client(
+    let client = http_client(
         HttpClientOptions(decompress: false, cookies: false, tls: tls)
     ) | try expect_ok
     client.request(

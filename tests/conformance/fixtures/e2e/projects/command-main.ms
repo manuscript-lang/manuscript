@@ -3,11 +3,11 @@
 # conform: origin=tests/e2e/testdata/projects/command/main.ms
 import expect_equal from "@std/test.ms"
 import stderr from "@std/io.ms"
-import commands from "@std/process.ms"
+import run from "@std/process.ms"
 import stdout from "@std/io.ms"
 
 fn exercise() Int!:
-    match commands().run(
+    match run(
         program: "/bin/printf", arguments: ["hello"], input: "".to_bytes(),
         max_output_bytes: 64, timeout: 1.seconds
     ):

@@ -1,5 +1,5 @@
 import Channel from "@std/channels.ms"
-import control from "@std/process.ms"
+import memory_usage from "@std/process.ms"
 import TaskError, TaskGroup from "@std/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test.ms"
 
@@ -90,17 +90,17 @@ test "cancelled receives retain no more storage than the woken control":
         try cancel_receive(woken.channel.clone())
         try wake_receiver(woken.channel.clone())
 
-    let before = control().memory_usage() | try expect_ok
+    let before = memory_usage() | try expect_ok
     for index in 0..32:
         try cancel_receive(task.channel.clone())
 
-    let retained = control().memory_usage() | try expect_ok
+    let retained = memory_usage() | try expect_ok
 
     for index in 0..32:
         try cancel_receive(woken.channel.clone())
         try wake_receiver(woken.channel.clone())
 
-    let cleared = control().memory_usage() | try expect_ok
+    let cleared = memory_usage() | try expect_ok
     (
         retained.heap_used - before.heap_used | try expect_equal(
             cleared.heap_used - retained.heap_used
@@ -123,17 +123,17 @@ test "cancelled sends retain no more storage than the woken control":
         try cancel_send(woken.channel.clone())
         try wake_sender(woken.channel.clone())
 
-    let before = control().memory_usage() | try expect_ok
+    let before = memory_usage() | try expect_ok
     for index in 0..32:
         try cancel_send(task.channel.clone())
 
-    let retained = control().memory_usage() | try expect_ok
+    let retained = memory_usage() | try expect_ok
 
     for index in 0..32:
         try cancel_send(woken.channel.clone())
         try wake_sender(woken.channel.clone())
 
-    let cleared = control().memory_usage() | try expect_ok
+    let cleared = memory_usage() | try expect_ok
     (
         retained.heap_used - before.heap_used | try expect_equal(
             cleared.heap_used - retained.heap_used

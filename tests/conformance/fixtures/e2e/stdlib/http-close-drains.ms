@@ -4,8 +4,8 @@
 # Closing a server lets a response in progress finish, and returns as soon as it has.
 import headers, HttpRequest, HttpResponse, buffered from "@std/http.ms"
 import stdout from "@std/io.ms"
-import network from "@std/net.ms"
-import control from "@std/process.ms"
+import connect, serve from "@std/net.ms"
+import monotonic_time from "@std/process.ms"
 import nanoseconds, sleep from "@std/time.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
@@ -13,19 +13,19 @@ fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "done\n".to_bytes())
 
 export fn main() Int:
-    if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
+    if let acquired = serve(address: "127.0.0.1:0", handler: buffered(handle)):
         var server = acquired
 
-        if var conn = network().connect(server.address()):
+        if var conn = connect(server.address()):
             let _sent = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
             # Let the handler start.
             sleep(nanoseconds(50000000))
 
-            let start = control().monotonic_time()
+            let start = monotonic_time()
             server.close().get(none)
 
-            let close_ms = (control().monotonic_time() - start) / 1000000
+            let close_ms = (monotonic_time() - start) / 1000000
             var text = ""
 
             while true:

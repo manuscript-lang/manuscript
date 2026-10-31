@@ -64,7 +64,7 @@ fn serving_worker() Unit:
     let _ = serve_core(buffered(app))
 
 fn main() Int:
-    let listener = network().listen("0.0.0.0:8080").get(none)
+    let listener = listen("0.0.0.0:8080").get(none)
     let _ = serve_cores(listener, serving_worker, 4)
     return 0
 ```

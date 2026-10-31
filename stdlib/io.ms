@@ -34,7 +34,7 @@ export interface File:
 
 # Opens read-only file resources using the current host's default filesystem.
 # Native open failures (including missing paths and permission denial) become IoError.Unavailable.
-export interface Files:
+interface Files:
     # Opens path for read-only access; native missing, denied, and other open failures become Unavailable.
     fn open(path: String) File!IoError
 
@@ -179,7 +179,7 @@ export fn redirect_to_null(stream: StdStream) Unit!IoError:
     return msstd_io_redirect_null(which)
 
 # Returns file operations for the current host.
-export fn files() Files:
+fn host_files() Files:
     return msstd_io_files()
 
 # Errors returned by terminal queries and raw-mode operations.
@@ -266,7 +266,7 @@ export type EraseRegion:
     case LineStart
 
 # Queries the terminal and enters raw input mode.
-export interface Terminal:
+interface Terminal:
     # Reports terminal availability and color support without changing terminal state.
     fn capabilities() TerminalCapabilities
     # Returns the terminal size, or `NotTerminal` when output is redirected.
@@ -397,5 +397,21 @@ impl Error for TerminalError:
             Failed(message): return message.clone()
 
 # Returns terminal operations for the current process.
-export fn terminal() Terminal:
+fn host_terminal() Terminal:
     return msstd_io_terminal()
+
+# Reports terminal availability and color support without changing terminal state.
+export fn terminal_capabilities() TerminalCapabilities:
+    return host_terminal().capabilities()
+
+# Returns the terminal size, or `NotTerminal` when output is redirected.
+export fn terminal_size() TerminalSize!TerminalError:
+    return host_terminal().size()
+
+# Acquires raw input with an optional alternate screen; returns `Busy` while another raw terminal is open and `NotTerminal` when streams are redirected.
+export fn raw_mode(alternate_screen: Bool) RawTerminal!TerminalError:
+    return host_terminal().raw_mode(alternate_screen)
+
+# Opens path for read-only access; native missing, denied, and other open failures become Unavailable.
+export fn open_read(path: String) File!IoError:
+    return host_files().open(path)

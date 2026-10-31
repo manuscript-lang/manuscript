@@ -1,5 +1,5 @@
 import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/http.ms"
-import network from "@std/net.ms"
+import serve from "@std/net.ms"
 import stdout from "@std/io.ms"
 import sleep, nanoseconds from "@std/time.ms"
 
@@ -8,7 +8,7 @@ fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "done".to_bytes())
 
 export fn main() Int:
-    if let acquired = network().serve(
+    if let acquired = serve(
         address: "127.0.0.1:0", handler: buffered(handle),
         options: HttpServerOptions(grace: nanoseconds(10000000000))
     ):

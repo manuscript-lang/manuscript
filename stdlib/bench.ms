@@ -1,6 +1,6 @@
 import sqrt from "@std/math.ms"
 import stdout from "@std/io.ms"
-import control from "@std/process.ms"
+import environment, set_environment from "@std/process.ms"
 import fail from "@std/test.ms"
 import monotonic from "@std/time.ms"
 
@@ -31,7 +31,7 @@ fn min(left: Int, right: Int) Int:
 let max_iterations = 100000000
 
 fn settings() Settings:
-    let environment = control().environment().get(Map[String, String]())
+    let environment = environment().get(Map[String, String]())
     var found = Settings(100 * 1000000, 10, 0)
     if let text = environment.get("MS_BENCH_TIME_MS"):
         found.target_nanoseconds = max(text.parse_int().get(100), 1) * 1000000
@@ -88,7 +88,7 @@ export fn measure(operations: Int, work: fn() Unit!) Unit!:
     let median = (sorted[last / 2] + sorted[(last + 1) / 2]) / 2.0
     let line = "MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)}\}\n"
     stdout().write(line).get()
-    control().set_environment(measured_flag, "1").get()
+    set_environment(measured_flag, "1").get()
     return ok(unit)
 
 # Set once a body has timed its own work with `measure`.
@@ -99,7 +99,7 @@ let measured_flag = "MS_BENCH_MEASURED"
 export fn run_bench_block(body: fn() Unit!, operations: Int) Unit!:
     try body()
 
-    let environment = control().environment().get(Map[String, String]())
+    let environment = environment().get(Map[String, String]())
     if environment.get(measured_flag).get("") == "1":
         return ok(unit)
 

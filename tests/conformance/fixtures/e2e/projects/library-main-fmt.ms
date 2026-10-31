@@ -2,11 +2,11 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/library/main.ms
 import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
-import control from "@std/process.ms"
+import memory_usage, process_info from "@std/process.ms"
 import arguments from "@std/process.ms"
 import random_bytes from "@std/random.ms"
 import append_file, open, read_file, remove, stat, watch_native, write_file from "@std/fs.ms"
-import system from "@std/process.ms"
+import system_info from "@std/process.ms"
 import now from "@std/time.ms"
 import uuid_v4 from "@std/random.ms"
 import secure_int from "@std/random.ms"
@@ -56,7 +56,7 @@ fn exercise(path: String) Unit!:
     (try common_result(result: parse_timestamp(text: now.to_string()))) | try expect_equal(
         now
     )
-    (system().info().cpu_count > 0) | try expect_true
+    (system_info().cpu_count > 0) | try expect_true
 
     var file = try common_result(
         result: open(path: path, flags: "r+", mode: 384)
@@ -102,10 +102,10 @@ fn exercise(path: String) Unit!:
     let windows = win32()
     windows.parse("C:/work/file.txt").extension | try expect_equal(".txt")
 
-    let process_info = try common_result(result: control().info())
+    let process_info = try common_result(result: process_info())
     (process_info.pid > 0) | try expect_true
 
-    let memory = try common_result(result: control().memory_usage())
+    let memory = try common_result(result: memory_usage())
     (memory.heap_system > 0) | try expect_true
 
     let _removed = try common_result(

@@ -4,7 +4,7 @@
 import expect_equal, expect_false, expect_ok, fail from "@std/test.ms"
 import TextError from "@std/core.ms"
 import FileSystemError, FileHandle, GlobOptions, PathEntry, create_directory, glob, glob_entries, list, open, read_file, remove, stat, temporary, write_file from "@std/fs.ms"
-import files, read_all, IoError from "@std/io.ms"
+import read_all, IoError, open_read from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 
 fn expect_fs_error[T](
@@ -106,7 +106,7 @@ test "filesystem scoped temporary directories and bounded file reads":
     (stat(path: path, follow_links: true) | try expect_ok).size | try expect_equal(5)
     (list(path: directory) | try expect_ok).length() | try expect_equal(1)
 
-    let input = files().open(path) | try expect_ok
+    let input = open_read(path) | try expect_ok
     (input.read(5) | try expect_ok).get() | try expect_equal("hello".to_bytes())
     try temporary.close()
 

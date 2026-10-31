@@ -1,6 +1,6 @@
 import expect_equal, expect_false, expect_ok, expect_true from "@std/test.ms"
 import TextError from "@std/core.ms"
-import control, ControlError from "@std/process.ms"
+import ControlError, cpu_usage, groups, memory_usage, process_info, replace, resource_usage, set_groups, set_identity from "@std/process.ms"
 import FileSystemError, FileEvent, FileWatcher, join, create_directory, stat_filesystem, temporary, watch, watch_native, write_file from "@std/fs.ms"
 import milliseconds, sleep from "@std/time.ms"
 import TaskGroup from "@std/tasks.ms"
@@ -23,60 +23,53 @@ fn expect_fs_error[T](outcome: T!FileSystemError, expected: FileSystemError) Uni
     return ok(unit)
 
 test "process usage records report this process":
-    let process = control()
-    let cpu = try process.cpu_usage()
+    let cpu = try cpu_usage()
     try expect_false(cpu.user_microseconds < 0 or cpu.system_microseconds < 0)
 
-    let resources = try process.resource_usage()
+    let resources = try resource_usage()
     try expect_false(resources.max_resident_bytes <= 0)
     try expect_false(
         resources.user_microseconds < 0 or resources.involuntary_switches < 0
     )
 
-    let memory = try process.memory_usage()
+    let memory = try memory_usage()
     try expect_false(memory.heap_used <= 0 or memory.resident <= 0)
     try expect_false(memory.heap_total < memory.heap_used)
 
 test "set_identity and set_groups validate input and apply or refuse":
-    let process = control()
     try expect_process_error(
-        process.set_identity(kind: "nope", id: 0), ControlError.InvalidInput
+        set_identity(kind: "nope", id: 0), ControlError.InvalidInput
     )
-    try expect_process_error(
-        process.set_groups(groups: [-1]), ControlError.InvalidInput
-    )
+    try expect_process_error(set_groups(groups: [-1]), ControlError.InvalidInput)
 
-    let info = try process.info()
+    let info = try process_info()
 
     if info.uid < 0:
         # Windows has no ids.
         try expect_process_error(
-            process.set_identity(kind: "uid", id: 0), ControlError.Unsupported
+            set_identity(kind: "uid", id: 0), ControlError.Unsupported
         )
-        try expect_process_error(
-            process.set_groups(groups: [0]), ControlError.Unsupported
-        )
+        try expect_process_error(set_groups(groups: [0]), ControlError.Unsupported)
     else:
         # Setting the identity it already has changes nothing and needs no privilege.
-        try process.set_identity(kind: "uid", id: info.uid)
-        try process.set_identity(kind: "gid", id: info.gid)
-        try process.set_identity(kind: "euid", id: info.effective_uid)
-        try process.set_identity(kind: "egid", id: info.effective_gid)
+        try set_identity(kind: "uid", id: info.uid)
+        try set_identity(kind: "gid", id: info.gid)
+        try set_identity(kind: "euid", id: info.effective_uid)
+        try set_identity(kind: "egid", id: info.effective_gid)
 
-        let groups = try process.groups()
+        let groups = try groups()
 
         if info.effective_uid == 0:
-            try process.set_groups(groups: groups)
+            try set_groups(groups: groups)
         else:
             try expect_process_error(
-                process.set_groups(groups: groups), ControlError.PermissionDenied
+                set_groups(groups: groups), ControlError.PermissionDenied
             )
 
 test "replace rejects invalid programs before leaving this process":
-    let process = control()
-    let info = try process.info()
-    let empty = process.replace(program: "", arguments: ["x"], environment: {})
-    let missing = process.replace(
+    let info = try process_info()
+    let empty = replace(program: "", arguments: ["x"], environment: {})
+    let missing = replace(
         program: "/definitely/not/a/program", arguments: ["x"], environment: {}
     )
 

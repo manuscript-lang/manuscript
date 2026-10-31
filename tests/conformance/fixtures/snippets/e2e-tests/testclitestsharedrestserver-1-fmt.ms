@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/test_fixture_test.go:140 TestCLITestSharedRESTServer
 import TestHooks, expect_equal, expect_ok from "@std/test.ms"
 import HttpServer, HttpRequest, HttpResponse, HttpMethod, headers, buffered from "@std/http.ms"
-import network from "@std/net.ms"
+import request, serve from "@std/net.ms"
 
 type ApiFixture:
     server: HttpServer
@@ -13,7 +13,7 @@ fn handle(request: HttpRequest) HttpResponse:
 
 fn make_fixture() ApiFixture:
     return ApiFixture(
-        server: network().serve(
+        server: serve(
             address: "127.0.0.1:0", handler: buffered(handle)
         ).get()
     )
@@ -24,7 +24,7 @@ impl TestHooks for ApiFixture:
 
 test "first request":
     let response = try expect_ok(
-        network().request(
+        request(
             method: HttpMethod.Get, url: "http://{fixture.server.address()}/",
             headers: headers(), body: ""
         )
@@ -33,7 +33,7 @@ test "first request":
 
 test "second request uses same server":
     let response = try expect_ok(
-        network().request(
+        request(
             method: HttpMethod.Get, url: "http://{fixture.server.address()}/",
             headers: headers(), body: ""
         )

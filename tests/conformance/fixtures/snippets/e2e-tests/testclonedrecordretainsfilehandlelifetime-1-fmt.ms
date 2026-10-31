@@ -1,7 +1,7 @@
 # conform: tags=aliasing,control-flow,faults,formatter,match,modules,optional,parser,records,stdlib-io,strings,tier-core
 # conform: phase=parse
 # conform: origin=tests/e2e/mutation_test.go:49 TestClonedRecordRetainsFileHandleLifetime
-import files from "@std/io.ms"
+import open_read from "@std/io.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
 
@@ -10,7 +10,7 @@ type Holder:
     label: String
 
 export fn main() Int:
-    let opened = files().open("data.txt")
+    let opened = open_read("data.txt")
     if opened.is_error():
         return 4
 

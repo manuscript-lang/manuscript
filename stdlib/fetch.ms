@@ -13,7 +13,7 @@ import (
 ) from "@std/http.ms"
 import IoError from "@std/io.ms"
 import JsonError, parse, stringify from "@std/json.ms"
-import Network, TlsOptions, network from "@std/net.ms"
+import Network, TlsOptions, http_client from "@std/net.ms"
 import Duration, Instant, seconds, monotonic from "@std/time.ms"
 
 # Errors returned by fetch operations.
@@ -242,16 +242,21 @@ fn outgoing(options: FetchOptions) Outgoing:
         let _ignored = fields.append("Content-Type", kind)
     return Outgoing(headers: fields, body: data)
 
-# Creates a reusable fetcher on `net`, whose restrictions apply to every request and redirect.
+# Creates a reusable fetcher on `net`, whose restrictions apply to every request and redirect; none uses the host network.
 export fn fetcher(
     options: FetcherOptions = FetcherOptions(),
-    net: Network = network()
+    net: Network? = none
 ) Fetcher!FetchError:
     let settings = HttpClientOptions(
         max_redirects: options.max_redirects, decompress: options.decompress,
         cookies: options.cookies, tls: options.tls.clone()
     )
-    let client = try net.http_client(settings).map_error(http_failure)
+
+    if let restricted = net:
+        let client = try restricted.http_client(settings).map_error(http_failure)
+        return ok(Fetcher(client: client))
+
+    let client = try http_client(settings).map_error(http_failure)
     return ok(Fetcher(client: client))
 
 # Performs one buffered request on a one-shot client.

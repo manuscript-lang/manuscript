@@ -11,7 +11,7 @@ import (
     HttpServerOptions
 ) from "@std/http.ms"
 import body_stream, reader, next_event from "@std/sse.ms"
-import network from "@std/net.ms"
+import http_client, serve from "@std/net.ms"
 
 # Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
 fn stream_events(exchange: HttpExchange) Unit!HttpError:
@@ -25,8 +25,8 @@ fn stream_events(exchange: HttpExchange) Unit!HttpError:
     return ok(unit)
 
 test "HTTP response bodies decode as SSE and close with the reader":
-    let server = try network().serve("127.0.0.1:0", stream_events, HttpServerOptions())
-    let client = try network().http_client(HttpClientOptions())
+    let server = try serve("127.0.0.1:0", stream_events, HttpServerOptions())
+    let client = try http_client(HttpClientOptions())
     let response = try client.request(
         HttpMethod.Get, "http://{server.address()}/", headers()
     )

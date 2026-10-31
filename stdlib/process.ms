@@ -49,7 +49,7 @@ export type CommandOutput:
     stderr: Bytes
 
 # Where a child's standard input, output, or error goes, chosen per stream.
-# `commands().spawn("make", [], stdout: Stdio.Inherit, stderr: Stdio.Inherit)` lets the child's output reach the parent's terminal while stdin stays piped.
+# `spawn("make", [], stdout: Stdio.Inherit, stderr: Stdio.Inherit)` lets the child's output reach the parent's terminal while stdin stays piped.
 export type Stdio:
     # An OS pipe to the parent, read or written through the Subprocess's stream.
     case Pipe
@@ -58,7 +58,7 @@ export type Stdio:
     # The null device: input is at end of file, output is discarded.
     case Null
 
-# Runs child programs with empty input by default, optional output bounds and timeout.
+# The shape of `run` and `spawn`, for code that takes child-process operations as a parameter so a test can pass a fake. Programs call the module functions `run` and `spawn` directly.
 export interface Commands:
     # Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
     # Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
@@ -141,7 +141,7 @@ impl Subprocess:
 # `watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.
 # `next()` and code following it have no shutdown guarantee. Register `Closeable` cleanup
 # and finish shutdown work directly in the shielded close call after joining cancelled workers.
-export interface ProcessControl:
+interface ProcessControl:
     # Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
     # This is not Unix time or a Clock Instant; prefer monotonic().difference(start) for timing.
     fn monotonic_time() Int
@@ -337,8 +337,8 @@ impl Error for CommandError:
             OutputLimit: return "command: output limit exceeded"
             Failed(message): return message.clone()
 
-# Returns child-process operations for the current host.
-export fn commands() Commands:
+# The child-process operations of the current host.
+fn host_commands() Commands:
     return msstd_process_commands()
 
 # Returns the host-supplied startup arguments, excluding the executable path.
@@ -346,13 +346,13 @@ export fn commands() Commands:
 export fn arguments() List[String]:
     return msrt_args()
 
-# Returns controls and process information for the current process.
-export fn control() ProcessControl:
+# The controls and process information of the current process.
+fn host_control() ProcessControl:
     return msstd_process_control()
 
 # Canonical standard-library declarations. Implementations are native.
 # Read-only host details and selected controls for the current operating system.
-export interface System:
+interface System:
     # Returns the operating system name, processor architecture, and logical CPU count for this host.
     fn info() SystemInfo
     # Reads the live native directory; an OS query failure faults because this API has no Result.
@@ -522,6 +522,198 @@ impl Error for SystemError:
             Closed: return "system: resource is closed"
             Failed(message): return message.clone()
 
-# Returns system information and controls for the current host.
-export fn system() System:
+# The system information and controls of the current host.
+fn host_system() System:
     return msstd_process_system()
+
+# Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
+# Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
+export fn run(
+    program: String,
+    arguments: List[String],
+    input: Bytes = "".to_bytes(),
+    max_output_bytes: Int?,
+    timeout: Duration?
+) CommandOutput!CommandError:
+    return host_commands().run(program, arguments, input, max_output_bytes, timeout)
+
+# Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
+export fn spawn(
+    program: String,
+    arguments: List[String],
+    stdin: Stdio = Stdio.Pipe,
+    stdout: Stdio = Stdio.Pipe,
+    stderr: Stdio = Stdio.Pipe
+) Subprocess!CommandError:
+    return host_commands().spawn(program, arguments, stdin, stdout, stderr)
+
+# Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
+# This is not Unix time or a Clock Instant; prefer monotonic().difference(start) for timing.
+export fn monotonic_time() Int:
+    return host_control().monotonic_time()
+
+# Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must be nonempty.
+# Capacity must be 1..1048576; omission/none uses 128 buffered signals.
+# Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
+# Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
+export fn watch_signals(signals: List[Int], capacity: Int?) SignalStream!ControlError:
+    return host_control().watch_signals(signals, capacity)
+
+# Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0 when no limit applies or the platform has no such limit.
+export fn constrained_memory() Int!ControlError:
+    return host_control().constrained_memory()
+
+# Returns bytes available to new allocations: the host's available memory, reduced to the remaining headroom when a Linux cgroup memory limit applies.
+export fn available_memory() Int!ControlError:
+    return host_control().available_memory()
+
+# Returns the current process title.
+# Platforms that cannot read it return Unsupported.
+export fn title() String!ControlError:
+    return host_control().title()
+
+# Sets the process title shown by tools such as `ps`.
+# A title with NUL or newline returns InvalidInput, and platforms that cannot rename a process return Unsupported.
+export fn set_title(title: String) Unit!ControlError:
+    return host_control().set_title(title)
+
+# Replaces the supplementary group list with the groups of `username` from the account database plus `gid` first. Requires privilege.
+# A failed user lookup returns Failed, a `gid` outside 0 through 2147483647 returns InvalidInput, and a lack of privilege returns PermissionDenied.
+export fn initialize_groups(username: String, gid: Int) Unit!ControlError:
+    return host_control().initialize_groups(username, gid)
+
+# Replaces the running process image with `program` using exactly the given `arguments` as argv, where `arguments[0]` is the program name, and exactly the given `environment`. On success it never returns.
+# `program` is a path, not a PATH lookup. An empty program, an empty argument list, or NUL bytes return InvalidInput, and exec failures return NotFound, PermissionDenied, or Failed. Unsupported on Windows.
+export fn replace(
+    program: String,
+    arguments: List[String],
+    environment: Map[String, String]
+) Unit!ControlError:
+    return host_control().replace(program, arguments, environment)
+
+# Returns the process id, parent id, executable path, arguments, platform, and real and effective user and group ids.
+# Text that is not valid UTF-8 returns Unsupported.
+export fn process_info() ProcessInfo!ControlError:
+    return host_control().info()
+
+# Returns heap and resident memory statistics for this process, in bytes.
+export fn memory_usage() MemoryUsage!ControlError:
+    return host_control().memory_usage()
+
+# Returns cumulative user and kernel CPU time consumed by this process in microseconds.
+# Platforms without resource accounting return Unsupported.
+export fn cpu_usage() CpuUsage!ControlError:
+    return host_control().cpu_usage()
+
+# Returns elapsed Duration since runtime initialization, rather than host boot.
+export fn uptime() Duration!ControlError:
+    return host_control().uptime()
+
+# Reads a fresh live process environment map; non-UTF-8 entries return Unsupported.
+export fn environment() Map[String, String]!ControlError:
+    return host_control().environment()
+
+# Sets environment variable `name` for this process to `value`, or removes it when `value` is none.
+# An empty name, or a name or value with `=` or NUL, returns InvalidInput. The change is visible to child processes started afterwards.
+export fn set_environment(name: String, value: String?) Unit!ControlError:
+    return host_control().set_environment(name, value)
+
+# Reads `KEY=value` lines from the file at `path` and sets each variable that is not already present in the environment. Existing variables keep their values.
+# Blank lines, `#` comments, an `export ` prefix, and single-, double-, or backtick-quoted values spanning lines are accepted. The whole file is validated first, so a malformed or non-UTF-8 file returns InvalidData and changes nothing. A file larger than `max_bytes` returns LimitExceeded.
+export fn load_environment(path: String, max_bytes: Int?) Unit!ControlError:
+    return host_control().load_environment(path, max_bytes)
+
+# Reads the live process directory, preserving OS failures as ControlError.
+export fn working_directory() String!ControlError:
+    return host_control().working_directory()
+
+# Changes the working directory of the whole process, affecting relative paths everywhere.
+# A missing path returns NotFound, a path containing NUL returns InvalidInput, and a denied path returns PermissionDenied.
+export fn change_directory(path: String) Unit!ControlError:
+    return host_control().change_directory(path)
+
+# Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.
+# Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination.
+export fn send_signal(pid: Int, signal: Int) Unit!ControlError:
+    return host_control().send_signal(pid, signal)
+
+# Returns the numeric ids of the supplementary groups of the process.
+# Windows returns Unsupported.
+export fn groups() List[Int]!ControlError:
+    return host_control().groups()
+
+# Returns kernel resource counters for this process: CPU times, peak resident size, page faults, block I/O, and context switches.
+# Platforms without them return Unsupported.
+export fn resource_usage() ResourceUsage!ControlError:
+    return host_control().resource_usage()
+
+# Sets mask 0..511 (0777) and returns the previous mask; Unsupported on Windows.
+export fn umask(mask: Int) Int!ControlError:
+    return host_control().umask(mask)
+
+# Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return InvalidInput.
+# Identity changes require OS permission and are Unsupported on Windows.
+export fn set_identity(kind: String, id: Int) Unit!ControlError:
+    return host_control().set_identity(kind, id)
+
+# Replaces the supplementary group list with the given numeric ids, each 0 through 2147483647. Requires privilege.
+# Invalid ids return InvalidInput, a lack of privilege returns PermissionDenied, and Windows returns Unsupported.
+export fn set_groups(groups: List[Int]) Unit!ControlError:
+    return host_control().set_groups(groups)
+
+# Returns the operating system name, processor architecture, and logical CPU count for this host.
+export fn system_info() SystemInfo:
+    return host_system().info()
+
+# Returns the host's name as reported by the operating system.
+# A name that is not valid UTF-8 returns Unsupported.
+export fn hostname() String!SystemError:
+    return host_system().hostname()
+
+# Returns the current user's home directory path, from the host's environment or account database.
+# A path that is not valid UTF-8 returns Unsupported.
+export fn home_directory() String!SystemError:
+    return host_system().home_directory()
+
+# Returns the current user's name, numeric ids, home directory, and login shell.
+# The shell is empty when the host does not record one, and text that is not valid UTF-8 returns Unsupported.
+export fn user_info() UserInfo!SystemError:
+    return host_system().user_info()
+
+# Returns one NetworkInterface for every address on every interface, including loopback.
+# An interface name that is not valid UTF-8 returns Unsupported.
+export fn network_interfaces() List[NetworkInterface]!SystemError:
+    return host_system().network_interfaces()
+
+# Returns one CpuInfo per logical CPU with its model, clock speed, and cumulative time counters.
+export fn cpus() List[CpuInfo]!SystemError:
+    return host_system().cpus()
+
+# Returns memory sizes in bytes, host uptime, load averages, and available parallelism in one snapshot.
+# A host query failure returns the matching SystemError.
+export fn metrics() SystemMetrics!SystemError:
+    return host_system().metrics()
+
+# Returns the kernel release string, such as `6.1.0-18-amd64`, with surrounding whitespace removed.
+# Returns Unsupported where the host does not expose it.
+export fn os_release() String!SystemError:
+    return host_system().os_release()
+
+# Returns the kernel build or version string, such as `#1 SMP Debian`, with surrounding whitespace removed.
+# Returns Unsupported where the host does not expose it.
+export fn os_version() String!SystemError:
+    return host_system().os_version()
+
+# Returns the hardware architecture in `uname -m` style, such as `x86_64`, `aarch64`, or `i686`; other architectures use the target's architecture name.
+export fn machine() String!SystemError:
+    return host_system().machine()
+
+# Returns the scheduling priority of process `pid` (0 means the calling process) as a nice-style value, from -20 for highest to 19 for lowest. Windows maps its priority classes onto this range.
+# A pid outside 0 through 2147483647 returns InvalidInput, and platforms without priorities return Unsupported.
+export fn get_priority(pid: Int) Int!SystemError:
+    return host_system().get_priority(pid)
+
+# Accepts pid 0..2147483647 and priority -20..19 (lower is higher priority).
+# Unix uses nice values; Windows maps ranges to native priority classes.
+export fn set_priority(pid: Int, priority: Int) Unit!SystemError:
+    return host_system().set_priority(pid, priority)

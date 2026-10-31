@@ -2,7 +2,7 @@
 # conform: phase=run
 import Channel from "@std/channels.ms"
 import stdout from "@std/io.ms"
-import control from "@std/process.ms"
+import memory_usage from "@std/process.ms"
 import TaskError, TaskGroup from "@std/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test.ms"
 
@@ -44,14 +44,14 @@ export fn main() Int:
         task.channel.send(0).get()
         task.channel.receive().get()
 
-    let before = control().memory_usage().get()
+    let before = memory_usage().get()
 
     for index in 0..32:
         cancel_one(task.channel.clone()).get()
         task.channel.send(0).get()
         task.channel.receive().get()
 
-    let after = control().memory_usage().get()
+    let after = memory_usage().get()
     stdout().write("growth {after.heap_used - before.heap_used}\n").get()
     owner.close().get(none)
     return 0

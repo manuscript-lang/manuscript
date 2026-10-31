@@ -3,7 +3,7 @@
 # conform: origin=pkg/build/native_defaults_test.go:11 TestNativeDefaultCallableBoundaries
 import base64_encode, base64_decode from "@std/encoding.ms"
 import parse, CsvOptions from "@std/csv.ms"
-import commands, Commands, CommandOutput, CommandError from "@std/process.ms"
+import Commands, CommandOutput, CommandError from "@std/process.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 

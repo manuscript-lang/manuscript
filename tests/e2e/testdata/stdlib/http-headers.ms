@@ -11,7 +11,7 @@ import (
     HttpClientOptions,
     HttpServerOptions
 ) from "@std/http.ms"
-import network from "@std/net.ms"
+import http_client, request, serve from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 
 fn repeated_headers() HttpHeaders!:
@@ -42,11 +42,11 @@ fn handle_headers(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: fields, body: "ok".to_bytes())
 
 test "one header type preserves repeated values through buffered requests":
-    let server = network().serve(
+    let server = serve(
         address: "127.0.0.1:0", handler: buffered(handle_headers),
         options: HttpServerOptions(max_requests: 2)
     ) | try expect_ok
-    let response = network().request(
+    let response = request(
         method: HttpMethod.Get, url: "http://{server.address()}/",
         headers: (try repeated_headers()), body: ""
     ) | try expect_ok
@@ -82,11 +82,11 @@ fn echo_headers(exchange: HttpExchange) Unit!HttpError:
     return exchange.send_headers(status: 200, headers: output)
 
 test "streaming proxy uses the same byte-valued header type":
-    let server = network().serve(
+    let server = serve(
         address: "127.0.0.1:0", handler: echo_headers,
         options: HttpServerOptions(tls: none)
     ) | try expect_ok
-    let response = network().request(
+    let response = request(
         method: HttpMethod.Get, url: "http://{server.address()}/",
         headers: (try repeated_headers()), body: ""
     ) | try expect_ok
@@ -129,10 +129,10 @@ test "empty options and an omitted request body use checked defaults":
     (client_options.decompress or client_options.cookies) | try expect_false
     (HttpServerOptions().tls.is_none()) | try expect_true
 
-    let server = network().serve(
+    let server = serve(
         address: "127.0.0.1:0", handler: echo_headers, options: HttpServerOptions()
     ) | try expect_ok
-    let client = network().http_client(options: HttpClientOptions()) | try expect_ok
+    let client = http_client(options: HttpClientOptions()) | try expect_ok
     let response = client.request(
         method: HttpMethod.Get, url: "http://{server.address()}/",
         headers: (try repeated_headers())

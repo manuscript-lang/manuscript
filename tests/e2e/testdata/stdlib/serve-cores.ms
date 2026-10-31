@@ -1,5 +1,5 @@
 import HttpRequest, HttpResponse, buffered, headers from "@std/http.ms"
-import Listener, NetworkError, serve_cores, network, serve_core from "@std/net.ms"
+import Listener, NetworkError, serve_cores, serve_core, connect, listen from "@std/net.ms"
 import TaskGroup from "@std/tasks.ms"
 import expect_true from "@std/test.ms"
 
@@ -14,8 +14,7 @@ fn run(listener: Listener) Unit!NetworkError:
     return serve_cores(listener, core, 3)
 
 fn get(address: String) String:
-    let net = network()
-    var client = net.connect(address, 2.seconds).get()
+    var client = connect(address, 2.seconds).get()
     let _ = client.write("GET /x HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
     var text = ""
 
@@ -33,8 +32,7 @@ fn get(address: String) String:
     return text
 
 test "serve_cores serves clients across workers and fails when accepting fails":
-    let net = network()
-    let listener = try net.listen("127.0.0.1:0")
+    let listener = try listen("127.0.0.1:0")
     let address = listener.address()
     var group = TaskGroup[Unit!NetworkError]()
     group.spawn(fn ch: run(listener))
@@ -47,6 +45,6 @@ test "serve_cores serves clients across workers and fails when accepting fails":
     try group.close()
 
 test "serve_cores rejects fewer than one core":
-    let listener = try network().listen("127.0.0.1:0")
+    let listener = try listen("127.0.0.1:0")
     let outcome = serve_cores(listener, core, 0)
     try expect_true(outcome.is_error())

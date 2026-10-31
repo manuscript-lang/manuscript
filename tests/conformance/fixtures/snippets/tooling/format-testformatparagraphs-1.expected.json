@@ -9,23 +9,53 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module",
+        "message": "unknown binding run; add: import run from \"@std/process.ms\"",
         "position": {
           "file": "format-testformatparagraphs-1.ms",
           "line": 7,
           "column": 9,
           "offset": 245
+        },
+        "fix": {
+          "position": {
+            "file": "format-testformatparagraphs-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "format-testformatparagraphs-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import run from \"@std/process.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module",
+        "message": "unknown binding run; add: import run from \"@std/process.ms\"",
         "position": {
           "file": "format-testformatparagraphs-1.ms",
           "line": 9,
           "column": 9,
           "offset": 288
+        },
+        "fix": {
+          "position": {
+            "file": "format-testformatparagraphs-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "format-testformatparagraphs-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import run from \"@std/process.ms\"\n"
         }
       },
       {
@@ -42,19 +72,34 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module",
+        "message": "unknown binding run; add: import run from \"@std/process.ms\"",
         "position": {
           "file": "format-testformatparagraphs-1.ms",
           "line": 11,
           "column": 5,
           "offset": 331
+        },
+        "fix": {
+          "position": {
+            "file": "format-testformatparagraphs-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "format-testformatparagraphs-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import run from \"@std/process.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/format-testformatparagraphs-1.ms:7:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module\n   |\n 7 |         run(count)\n   |         ^\n<DIR>/format-testformatparagraphs-1.ms:9:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module\n   |\n 9 |         run(item)\n   |         ^\n<DIR>/format-testformatparagraphs-1.ms:10:20: resolution: unknown binding acquire; declare it with 'let acquire = ...' before use, define 'fn acquire(...) T:', or import it from a module\n    |\n 10 |     var resource = acquire()\n    |                    ^\n<DIR>/format-testformatparagraphs-1.ms:11:5: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module\n    |\n 11 |     run(resource)\n    |     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/format-testformatparagraphs-1.ms:7:9: resolution: unknown binding run; add: import run from \"@std/process.ms\"\n   |\n 7 |         run(count)\n   |         ^\n<DIR>/format-testformatparagraphs-1.ms:9:9: resolution: unknown binding run; add: import run from \"@std/process.ms\"\n   |\n 9 |         run(item)\n   |         ^\n<DIR>/format-testformatparagraphs-1.ms:10:20: resolution: unknown binding acquire; declare it with 'let acquire = ...' before use, define 'fn acquire(...) T:', or import it from a module\n    |\n 10 |     var resource = acquire()\n    |                    ^\n<DIR>/format-testformatparagraphs-1.ms:11:5: resolution: unknown binding run; add: import run from \"@std/process.ms\"\n    |\n 11 |     run(resource)\n    |     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

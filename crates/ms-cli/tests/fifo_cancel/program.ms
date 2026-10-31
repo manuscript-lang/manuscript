@@ -1,6 +1,6 @@
 import open, read_file from "@std/fs.ms"
 import arguments from "@std/process.ms"
-import stdout, files from "@std/io.ms"
+import stdout, open_read from "@std/io.ms"
 import TaskGroup from "@std/tasks.ms"
 
 fn read_whole(path: String) Int:
@@ -21,7 +21,7 @@ fn open_then_read(path: String) Int:
     return -1
 
 fn open_io_then_read(path: String) Int:
-    let opened = files().open(path)
+    let opened = open_read(path)
 
     if let file = opened:
         let _data = file.read()
