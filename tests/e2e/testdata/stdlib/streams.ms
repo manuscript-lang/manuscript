@@ -66,7 +66,7 @@ test "compression streams round trip all formats":
         )
 
     let limited = CompressionFormat.Gzip.decompress_stream(
-        CompressionFormat.Gzip.compress_stream(from_bytes(text.clone())), some(4)
+        CompressionFormat.Gzip.compress_stream(from_bytes(text.clone())), 4
     )
     if read_all(limited).is_ok(): return panic("decompression budget")
 
@@ -84,16 +84,14 @@ test "take rejects a negative limit and read_line counts the terminator":
     if (zero.read() | try expect_ok).is_some(): return panic("zero take")
 
     var terminated = from_bytes("abc\nx".to_bytes())
-    if read_line(terminated, some(3)).is_ok(): return panic(
-        "terminated line at the limit"
-    )
+    if read_line(terminated, 3).is_ok(): return panic("terminated line at the limit")
 
     var roomy = from_bytes("abc\nx".to_bytes())
-    if (read_line(roomy, some(4)) | try expect_ok) != some("abc"): return panic(
+    if (read_line(roomy, 4) | try expect_ok) != "abc": return panic(
         "line under the limit"
     )
 
     var unterminated = from_bytes("abc".to_bytes())
-    if (read_line(unterminated, some(3)) | try expect_ok) != some("abc"): return panic(
+    if (read_line(unterminated, 3) | try expect_ok) != "abc": return panic(
         "final line at the limit"
     )

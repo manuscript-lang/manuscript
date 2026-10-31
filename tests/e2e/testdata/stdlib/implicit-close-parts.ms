@@ -66,7 +66,7 @@ fn holds_nested(log: String) Int:
 fn holds_optional(log: String, present: Bool) Int:
     var _held: Tracked? = none
     if present:
-        _held = some(track(log, 1))
+        _held = track(log, 1)
     return 0
 
 fn holds_alternative(log: String) Int:

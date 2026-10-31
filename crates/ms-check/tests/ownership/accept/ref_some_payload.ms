@@ -6,17 +6,17 @@ type Shape:
 impl Shape:
     fn text() ref String?:
         match self:
-            Label(text): return some(text)
+            Label(text): return text
             _: return none
 
     fn names() ref List[String]?:
         match self:
-            Names(items): return some(items)
+            Names(items): return items
             _: return none
 
-    fn first() ref String?:
+    fn first() String?:
         match self:
-            Names(items): return some(items.get(0))
+            Names(items): return items.get(0)
             _: return none
 
 fn label_length(shape: Shape) Int:

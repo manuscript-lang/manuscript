@@ -73,6 +73,7 @@ struct World {
     operation_variables: HashMap<String, Vec<Ty>>,
     receiver_bindings: HashMap<String, Name>,
     runtime_symbols: HashMap<String, String>,
+    kept_callbacks: HashSet<String>,
     done: HashMap<Name, Rc<StdResult>>,
     checking: HashSet<Name>,
 }
@@ -92,6 +93,7 @@ struct Bindings {
     intrinsic_receivers: HashMap<String, String>,
     contract_methods: HashMap<String, String>,
     runtime_symbols: HashMap<String, String>,
+    kept_callbacks: HashMap<String, String>,
 }
 
 fn read_bindings() -> Result<Bindings, String> {
@@ -114,6 +116,7 @@ fn read_bindings() -> Result<Bindings, String> {
         intrinsic_receivers: strings("intrinsic_receivers"),
         contract_methods: strings("contract_methods"),
         runtime_symbols: strings("runtime_symbols"),
+        kept_callbacks: strings("kept_callbacks"),
     })
 }
 
@@ -201,6 +204,13 @@ pub fn native_for_symbol(symbol: &str) -> Option<String> {
         let first = bound.next()?;
         bound.next().is_none().then_some(first)
     })
+}
+
+/// Whether a native function (`module/name`, or `extern:name`) keeps the function values it is given instead of
+/// running them before it returns, as bindings.json declares under `kept_callbacks`.
+pub fn keeps_callbacks(native: &str) -> bool {
+    ensure_standard();
+    world(|w| w.kept_callbacks.contains(native))
 }
 
 /// The runtime symbol that implements a native function (`module/name`), as bindings.json names it.
@@ -936,7 +946,10 @@ fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
 
 fn load() -> Result<(), String> {
     let bindings = read_bindings()?;
-    world(|w| w.runtime_symbols = bindings.runtime_symbols.clone());
+    world(|w| {
+        w.runtime_symbols = bindings.runtime_symbols.clone();
+        w.kept_callbacks = bindings.kept_callbacks.keys().cloned().collect();
+    });
     let mut modules: Vec<ModRef> = Vec::new();
     for (name, source) in SOURCES {
         let file: Arc<str> = Arc::from(format!("@std/{name}").as_str());

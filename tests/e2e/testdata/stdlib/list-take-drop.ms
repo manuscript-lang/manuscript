@@ -60,13 +60,13 @@ test "List take and drop copy payloads before changing them":
     copied.set(0, inner)
     try expect_false(nested != [1] or lists.get(0) != nested or copied.get(0) != [1, 2])
 
-fn copy_window[T](values: List[T], first: Int, skip: Int) List[T]:
+fn copy_window[T: Clonable](values: List[T], first: Int, skip: Int) List[T]:
     return values.take(first).drop(skip)
 
 test "List take and drop support generic and nested values":
     try expect_equal(copy_window[String](["a", "b", "c"], 2, 1), ["b"])
 
-    let values: List[Result[Int?, TextError]] = [ok(some(1)), error(TextError("cause"))]
+    let values: List[Result[Int?, TextError]] = [ok(1), error(TextError("cause"))]
     try expect_equal(copy_window(values, 2, 1).get(0).err().message(), "cause")
 
     let callbacks = [fn(value: Int) Int: value + 1]

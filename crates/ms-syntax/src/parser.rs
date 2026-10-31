@@ -754,23 +754,44 @@ impl<'a> Parser<'a> {
         Ok((by_ref, self.typ()?))
     }
 
-    /// Wraps `t` once per trailing `?`: `T?` is `Optional[T]`. A function type
-    /// needs parentheses first, since its result type takes the `?`.
-    fn optional_suffix(&mut self, mut t: TypeRef) -> TypeRef {
-        while self.kind() == Tok::Question {
-            self.at += 1;
+    /// Wraps `t` once per trailing suffix, left to right: `T?` is `Optional[T]`, `T!` is
+    /// `Result[T, Error]`, and `T!E` (E directly after the bang) is `Result[T, E]`. A function
+    /// type needs parentheses first, since its result type takes the suffix.
+    fn type_suffix(&mut self, mut t: TypeRef) -> PResult<TypeRef> {
+        loop {
+            let (name, args) = if self.take(Tok::Question) {
+                ("Optional", vec![t.clone()])
+            } else if self.take(Tok::Bang) {
+                let bang = self.previous();
+                let next = self.peek();
+                let error = if next.kind == Tok::Name && next.lo == bang.hi {
+                    self.named_type()?
+                } else {
+                    let id = self.id();
+                    TypeRef {
+                        id,
+                        pos: t.pos,
+                        kind: TypeKind::Named {
+                            name: Symbol::intern("Error"),
+                            args: Vec::new(),
+                        },
+                    }
+                };
+                ("Result", vec![t.clone(), error])
+            } else {
+                return Ok(t);
+            };
             let id = self.id();
             let pos = t.pos;
             t = TypeRef {
                 id,
                 pos,
                 kind: TypeKind::Named {
-                    name: Symbol::intern("Optional"),
-                    args: vec![t],
+                    name: Symbol::intern(name),
+                    args,
                 },
             };
         }
-        t
     }
 
     fn typ(&mut self) -> PResult<TypeRef> {
@@ -823,7 +844,7 @@ impl<'a> Parser<'a> {
         } else {
             self.named_type()?
         };
-        Ok(self.optional_suffix(t))
+        self.type_suffix(t)
     }
 
     // ---- declarations ----
@@ -1096,10 +1117,10 @@ impl<'a> Parser<'a> {
                 // `impl Contract for Type:` implements a contract; `impl Type:`
                 // declares the type's own methods.
                 let first = self.named_type()?;
-                let first = self.optional_suffix(first);
+                let first = self.type_suffix(first)?;
                 let (contract, receiver) = if self.take(Tok::For) {
                     let receiver = self.named_type()?;
-                    (Some(first), self.optional_suffix(receiver))
+                    (Some(first), self.type_suffix(receiver)?)
                 } else {
                     (None, first)
                 };
@@ -2417,6 +2438,10 @@ impl<'a> Parser<'a> {
                         args,
                     },
                 );
+            } else if self.kind() == Tok::Question && index_parts(&e).is_some() {
+                self.at += 1;
+                let pos = e.pos;
+                e = self.mk(pos, ExprKind::Probe(Box::new(e)));
             } else {
                 break;
             }
@@ -2451,6 +2476,7 @@ impl<'a> Parser<'a> {
                 value: Some(value),
                 from_if: false,
                 chain: true,
+                bare: false,
             });
         }
         self.mk(
@@ -2671,6 +2697,7 @@ impl<'a> Parser<'a> {
                 value: Some(branch),
                 from_if: true,
                 chain: false,
+                bare: false,
             });
         }
         Ok(self.mk(
@@ -2708,13 +2735,37 @@ impl<'a> Parser<'a> {
             let literal = matches!(k, Tok::Number | Tok::True | Tok::False | Tok::String)
                 || (k == Tok::Minus && self.ahead(1).kind == Tok::Number);
             let mut bindings = Vec::new();
+            let mut bare = false;
             let path;
             if literal {
                 path = self.expression(0)?;
             } else if self.take(Tok::Underscore) {
                 path = self.mk(start.pos, ExprKind::Name(Symbol::intern("_")));
             } else {
-                path = self.case_path()?;
+                let mut written = self.case_path()?;
+                if let ExprKind::Name(n) = &written.kind
+                    && n.as_str() == "some"
+                    && self.kind() == Tok::LParen
+                    && self.speculative == 0
+                {
+                    let t = self.peek();
+                    return self.fail(t, "there is no some pattern; write the payload name alone, e.g. 'value:' beside 'none:'");
+                }
+                if let ExprKind::Name(n) = &written.kind
+                    && self.kind() != Tok::LParen
+                    && n.as_str() != "none"
+                    && n.as_str()
+                        .starts_with(|c: char| c.is_ascii_lowercase() || c == '_')
+                {
+                    // A lone lowercase name binds an Optional's payload.
+                    bindings.push(ArmBinding {
+                        name: *n,
+                        pos: start.pos,
+                    });
+                    written = self.mk(start.pos, ExprKind::Name(Symbol::intern("some")));
+                    bare = true;
+                }
+                path = written;
                 if self.take(Tok::LParen) {
                     loop {
                         let tok = self.peek();
@@ -2749,6 +2800,7 @@ impl<'a> Parser<'a> {
                 value: None,
                 from_if: false,
                 chain: false,
+                bare,
             };
             self.value_arm(&mut arm)?;
             arms.push(arm);

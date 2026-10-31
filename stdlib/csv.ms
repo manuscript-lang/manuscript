@@ -151,7 +151,7 @@ fn read_record(var reader: Reader) Result[List[String]?, CsvError]:
         let text = text_between(reader, reader.at, last)
         reader.at = line
         if line < reader.total: reader.at = line + 1
-        return ok(some(text.split(reader.delimiter_text)))
+        return ok(text.split(reader.delimiter_text))
 
     var row = List[String]()
 
@@ -183,7 +183,7 @@ fn read_record(var reader: Reader) Result[List[String]?, CsvError]:
             if at >= reader.total or ended > at:
                 row.append(cell)
                 reader.at = ended
-                return ok(some(row))
+                return ok(row)
 
             if reader.bytes[at] != reader.delimiter: return error(CsvError.InvalidData)
 
@@ -204,7 +204,7 @@ fn read_record(var reader: Reader) Result[List[String]?, CsvError]:
             row.append(text_between(reader, at, last))
             reader.at = end
             if end < reader.total: reader.at = end + 1
-            return ok(some(row))
+            return ok(row)
 
         row.append(text_between(reader, at, end))
         reader.at = end + 1

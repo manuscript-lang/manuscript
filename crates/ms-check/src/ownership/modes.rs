@@ -53,9 +53,6 @@ pub struct Summary {
     pub params: Vec<(Name, ParamMode)>,
     /// What the result borrows from.
     pub result: ResultOrigin,
-    /// Type parameters whose values the body may copy (`xs.reversed()` on a `List[T]`): an
-    /// instance that binds one of them to a resource would close each copy.
-    pub copies: Vec<Name>,
 }
 
 impl Summary {
@@ -86,7 +83,6 @@ impl Summary {
                 })
                 .collect(),
             result: ResultOrigin::default(),
-            copies: Vec::new(),
         }
     }
 
@@ -196,12 +192,9 @@ pub fn call_modes(
                     from_summary(summaries, s.module, &func, args.len(), label, None)
                 }
                 None => {
-                    // A native function keeps function arguments it is given, except the
-                    // testing helpers, which run them at once, and the worker start, which
-                    // copies the code pointer of a capture-free entry and keeps nothing else.
-                    let runs_now = s.module.as_str() == "@std/test.ms"
-                        || (s.module.as_str() == "@std/workers.ms"
-                            && s.name.as_str() == "msrt_worker_start");
+                    // A native runs the function arguments it is given before it returns,
+                    // unless bindings.json declares it keeps them.
+                    let runs_now = !crate::stdlib::keeps_callbacks(s.native.as_str());
                     let params = s.ty().params.clone();
                     CallModes {
                         arguments: (0..args.len())
@@ -325,33 +318,6 @@ fn method_modes(
     native_method_modes(method, count, label)
 }
 
-/// The summary of the source callable `call` runs, with the callee's type, its type variables,
-/// and the receiver type of a method, so a caller can bind the callee's type parameters.
-pub fn callee_summary<'s>(
-    m: &ModuleHir,
-    call: &Expr,
-    summaries: &'s Summaries,
-) -> Option<(&'s Summary, Ty, Vec<Ty>, Option<Ty>)> {
-    match m.resolution(call) {
-        Resolution::Function(s) if s.native.as_str().is_empty() => {
-            let func = FuncRef::of_decl(s.decl.clone()?);
-            let summary = summaries.get(&(s.module, func.id()))?;
-            Some((summary, s.ty_opt()?, s.variables.borrow().clone(), None))
-        }
-        Resolution::Method(method) if method.native.as_str().is_empty() => {
-            let func = method.decl.as_ref()?;
-            let summary = summaries.get(&(method.module, func.id()))?;
-            Some((
-                summary,
-                method.ty.clone(),
-                method.variables.clone(),
-                Some(method.receiver.clone()),
-            ))
-        }
-        _ => None,
-    }
-}
-
 /// How a method treats its receiver, for a method used as a value.
 pub fn receiver_mode(summaries: &Summaries, method: &MethodRef) -> Option<ParamMode> {
     method_modes(summaries, method, 0, |_| None).receiver
@@ -370,16 +336,6 @@ fn native_unknown(count: usize) -> CallModes {
     }
 }
 
-/// Collections run their callbacks immediately; other natives may keep them.
-fn runs_callbacks(receiver: &Ty) -> bool {
-    receiver.is_std("List")
-        || receiver.is_std("Map")
-        || receiver.is_std("Set")
-        || receiver.is_std("Optional")
-        || receiver.is_std("Result")
-        || receiver.is_std("String")
-}
-
 fn native_method_modes(
     method: &MethodRef,
     count: usize,
@@ -387,7 +343,8 @@ fn native_method_modes(
 ) -> CallModes {
     let receiver = &method.receiver;
     let mutator = collection_mutation(method);
-    let callbacks_borrowed = runs_callbacks(receiver);
+    // A native method runs its callbacks before it returns.
+    let callbacks_borrowed = true;
     let params = &method.ty.params;
     let result = method.ty.result_ty();
     let mut retained = vec![false; count];

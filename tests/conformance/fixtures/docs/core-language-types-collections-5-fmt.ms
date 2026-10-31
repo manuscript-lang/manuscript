@@ -22,7 +22,7 @@ test "dynamic mutable data and explicit copies":
     var updated = original.clone()
     updated.add("b", 2)
     updated.add("a", 3)
-    if not (original.get("a") == some(1)):
+    if not (original.get("a") == 1):
         return panic("check failed")
-    if not (updated.get("a") == some(3)):
+    if not (updated.get("a") == 3):
         return panic("check failed")

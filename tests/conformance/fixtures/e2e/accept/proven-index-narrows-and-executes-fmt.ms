@@ -30,5 +30,5 @@ test "guarded and looped lookups":
     try expect_equal(read([1, 2, 3], 3), -1)
     try expect_equal(read([1, 2, 3], -1), -1)
     try expect_equal(total([1, 2, 3]), 6)
-    try expect_equal(nested([some(1), none], 1), none)
-    try expect_equal(nested([some(1), none], 0), some(1))
+    try expect_equal(nested([1, none], 1), none)
+    try expect_equal(nested([1, none], 0), 1)

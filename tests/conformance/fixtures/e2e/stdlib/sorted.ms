@@ -9,10 +9,10 @@ test "add get replace remove":
         map.add(key, "v{key}")
     try expect_equal(map.keys(), [1, 3, 5, 7, 9])
     try expect_equal(map.values(), ["v1", "v3", "v5", "v7", "v9"])
-    try expect_equal(map.get(3), some("v3"))
+    try expect_equal(map.get(3), "v3")
     try expect_equal(map.get(4), none)
     map.add(3, "three")
-    try expect_equal(map.get(3), some("three"))
+    try expect_equal(map.get(3), "three")
     try expect_equal(map.length(), 5)
     map.remove(3)
     map.remove(100)
@@ -82,7 +82,7 @@ test "many random operations agree with Map":
 
     for entry in sorted.entries():
         try expect_true(entry.key > previous)
-        try expect_equal(plain.get(entry.key), some(entry.value))
+        try expect_equal(plain.get(entry.key), entry.value)
         previous = entry.key
 
     for key in 0..2000:
@@ -91,10 +91,10 @@ test "many random operations agree with Map":
         var expected: Int? = none
         for candidate in sorted.keys():
             if candidate <= key:
-                expected = some(candidate)
+                expected = candidate
 
         if let found = sorted.floor(key):
-            try expect_equal(some(found.key), expected)
+            try expect_equal(found.key, expected)
         else:
             try expect_equal(expected, none)
 
@@ -114,13 +114,13 @@ test "sorted set keeps unique ordered members":
     try expect_equal(set.values(), [1, 2, 4, 9])
     try expect_equal(set.length(), 4)
     try expect_true(set.contains(9))
-    try expect_equal(set.first(), some(1))
-    try expect_equal(set.last(), some(9))
-    try expect_equal(set.floor(3), some(2))
-    try expect_equal(set.ceiling(5), some(9))
+    try expect_equal(set.first(), 1)
+    try expect_equal(set.last(), 9)
+    try expect_equal(set.floor(3), 2)
+    try expect_equal(set.ceiling(5), 9)
     try expect_equal(set.range(2, 9), [2, 4])
-    try expect_equal(set.pop_first(), some(1))
-    try expect_equal(set.pop_last(), some(9))
+    try expect_equal(set.pop_first(), 1)
+    try expect_equal(set.pop_last(), 9)
     set.remove(4)
     set.remove(77)
     try expect_equal(set.values(), [2])

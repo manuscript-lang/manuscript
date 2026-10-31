@@ -40,13 +40,13 @@ fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
     return ok(found + 1)
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
-    let create = fn: some(42)
-    let present: Int? = some(0)
+    let create = fn: 42
+    let present: Int? = 0
     let missing: Int? = none
     try expect_equal(present.or_else(create).get(), 0)
     try expect_equal(missing.or_else(create).get(), 42)
 
-    let nested: Int?? = some(missing)
+    let nested: Int?? = missing
     try expect_false(not nested.is_some() or not nested.get().is_none())
 
 test "Result propagation and Error views preserve concrete causes":
@@ -73,7 +73,7 @@ test "custom equality and hashing define map key identity":
     var map = Map[Key, String]()
     map.add(first, "a")
     map.add(second, "b")
-    try expect_false(map.length() != 1 or map.get(first) != some("b"))
+    try expect_false(map.length() != 1 or map.get(first) != "b")
 
 test "Closeable cleanup runs in reverse order before return delivery":
     let fs = filesystem()

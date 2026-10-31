@@ -21,7 +21,7 @@ fn limits(
     depth: Int?,
     values: Int?
 ) YamlLimits?:
-    return some(YamlLimits(max_bytes: bytes, max_depth: depth, max_values: values))
+    return YamlLimits(max_bytes: bytes, max_depth: depth, max_values: values)
 
 type ScalarCase:
     text: String
@@ -485,10 +485,10 @@ test "YAML merge and block header errors name their own line":
 
 test "YAML limits fields default to none":
     let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
-    parse(text: "a: 1", limits: some(YamlLimits(max_bytes: 2))) | try expect_equal(
+    parse(text: "a: 1", limits: YamlLimits(max_bytes: 2)) | try expect_equal(
         limited
     )
-    parse(text: "a: 1", limits: some(YamlLimits())) | try expect_equal(
+    parse(text: "a: 1", limits: YamlLimits()) | try expect_equal(
         parse(text: "a: 1")
     )
 
@@ -678,7 +678,7 @@ test "YAML flow mapping keys without a colon map to null":
         ok(_): return fail("duplicate null keys")
         error(_): let _ignored = unit
 
-    let limited = limits(bytes: none, depth: none, values: some(2))
+    let limited = limits(bytes: none, depth: none, values: 2)
 
     match parse(text: "\{a, b, c\}", limits: limited):
         ok(_): return fail("null keys count against the value limit")
@@ -744,7 +744,7 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
 
     let depth = 3000
     var source = "{repeated(text: "- ", count: depth)}x\n"
-    var root = (parse(text: source, limits: some(YamlLimits())) | try expect_ok)
+    var root = (parse(text: source, limits: YamlLimits()) | try expect_ok)
 
     for level in 1..depth:
         let inner = (try items(root))
@@ -773,5 +773,5 @@ test "YAML parse without limits stops alias bombs and deep nesting":
     let nested = parse(deep)
     if nested.is_ok(): return fail("nesting over the default depth was accepted")
 
-    let lifted = parse(deep, some(YamlLimits()))
+    let lifted = parse(deep, YamlLimits())
     try expect_true(lifted.is_ok())

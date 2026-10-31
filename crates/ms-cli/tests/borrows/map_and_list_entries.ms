@@ -24,7 +24,7 @@ export fn main() Int:
     var m = Map[String, Counter]()
     m.add("a", Counter(count: 10, tags: []))
 
-    if var e = m.get("a"):
+    if var e = m["a"]?:
         e.count = e.count + 5
         e.tags.append("t")
 
@@ -33,7 +33,7 @@ export fn main() Int:
         got = e.count
 
     var xs = [[1, 2], [3]]
-    if var last = xs.last():
+    if var last = xs[xs.length() - 1]?:
         last.append(4)
 
     let _ = stdout().write(

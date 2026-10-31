@@ -73,7 +73,7 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
         total = total + 1
     if let value = items.first():
         total = value
-    if var value = items.first():
+    if var value = items[0]?:
         value += 1
 
     var resource = acquire()

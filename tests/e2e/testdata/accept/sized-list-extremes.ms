@@ -1,38 +1,38 @@
 import expect_equal from "@std/test.ms"
 
 fn first_copy[T: Clonable](xs: List[T]) T?:
-    return some(xs[0].clone())
+    return xs[0].clone()
 
 test "min and max keep the element width":
     let small: List[Int8] = [5, -3, 7]
     let mid: List[Int16] = [300, -300, 7]
     let wide: List[Int32] = [2147483647, -2147483648, 0]
     let floats: List[Float32] = [3.5, 1.25, -0.5]
-    let want_small_max: Int8? = some(7)
+    let want_small_max: Int8? = 7
     try expect_equal(small.max(), want_small_max)
 
-    let want_small_min: Int8? = some(-3)
+    let want_small_min: Int8? = -3
     try expect_equal(small.min(), want_small_min)
 
-    let want_mid_max: Int16? = some(300)
+    let want_mid_max: Int16? = 300
     try expect_equal(mid.max(), want_mid_max)
 
-    let want_mid_min: Int16? = some(-300)
+    let want_mid_min: Int16? = -300
     try expect_equal(mid.min(), want_mid_min)
 
-    let want_wide_max: Int32? = some(2147483647)
+    let want_wide_max: Int32? = 2147483647
     try expect_equal(wide.max(), want_wide_max)
 
-    let want_wide_min: Int32? = some(-2147483648)
+    let want_wide_min: Int32? = -2147483648
     try expect_equal(wide.min(), want_wide_min)
 
-    let want_floats_max: Float32? = some(3.5)
+    let want_floats_max: Float32? = 3.5
     try expect_equal(floats.max(), want_floats_max)
 
-    let want_floats_min: Float32? = some(-0.5)
+    let want_floats_min: Float32? = -0.5
     try expect_equal(floats.min(), want_floats_min)
 
 test "clone of a generic sized number keeps its width":
     let small: List[Int8] = [5, 3]
-    let want: Int8? = some(5)
+    let want: Int8? = 5
     try expect_equal(first_copy(small), want)

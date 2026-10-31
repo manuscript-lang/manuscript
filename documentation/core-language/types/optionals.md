@@ -5,10 +5,10 @@ weight = 4
 
 # Optional values
 
-`T?` makes absence part of the declared type: `some(value: ...)` holds a `T`, `none` holds nothing. All three names are in the prelude.
+`T?` makes absence part of the declared type: it holds a `T` or `none`. There is no `some`: a plain `T` converts wherever a `T?` is expected, and `some(...)` is rejected. `none` is in the prelude.
 
 ```manuscript
-let present: String? = some("Ada")
+let present: String? = "Ada"
 let missing: String? = none
 ```
 
@@ -16,10 +16,9 @@ let missing: String? = none
 
 A parameter or record field of type `T?` with no default is `none` when omitted, so `= none` is never written; a plain `T` passed for it wraps without `some`.
 
-`T?` is an invariant alternative. `some` and `none` use the expected type or infer `T` from a `some` payload; `none` needs the type written on its binding.
+`T?` is an invariant alternative. `none` takes its type from the expected type, so the type is written on the binding; a bare `let x = 1` is an `Int`, not an `Int?`.
 
 ```manuscript
-let inferred = some(1)  # Int?
 let explicit: String? = none
 # Rejected: no type determines the absent payload.
 let unknown = none
@@ -31,7 +30,7 @@ There is no implicit unwrapping or flattening: `Int??` differs from `Int?`. `Res
 
 ## Passing optional arguments
 
-An argument for a standard `T?` parameter may be a plain `T`; it is wrapped as `some(value: ...)`. An argument already `T?` passes unchanged, including `none`.
+An argument for a standard `T?` parameter may be a plain `T`; it is wrapped as the present case. An argument already `T?` passes unchanged, including `none`.
 
 ```manuscript
 import Queue from "@std/queue.ms"
@@ -45,8 +44,8 @@ fn main() Unit:
 - Wraps exactly one layer: an `Int?` fits `Int??`, a bare `Int` does not.
 - The expression evaluates once, in argument order. Zero, `false`, and empty values stay present.
 - Generic inference matches either the whole optional or its payload: `fn present[T](value: T?) T?` infers `T = Int` from `present(4)`. The payload type also gives context to an empty list or incomplete constructor.
-- An `T?` parameter is still required unless it has a default or a library omission permission.
-- The same wrapping applies wherever a `T?` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`let id: Int? = 3`). A user-defined `Optional` gets no wrapping. Write the plain value there; `some(value)` is also accepted, and `ms lint` reports the redundant form as the warning **MSL113** (`ms lint --fix` removes it).
+- A `T?` parameter or field with no default is `none` when omitted.
+- The same wrapping applies wherever a `T?` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`let id: Int? = 3`). A user-defined `Optional` gets no wrapping.
 
 See [declarations and calls](../functions/declarations-and-calls.md#argument-names).
 
@@ -105,7 +104,7 @@ fn display_name(name: String?) String:
     return "Anonymous"
 ```
 
-A [match](../control-flow/pattern-matching.md) with only `some` and `none` arms is reported by `ms lint` as MSL108. Use [Result](../errors/results.md) when failure needs an explanation; `try` propagates only `Result` errors.
+A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `none:`; `v:` binds the payload. A two-arm match is reported by `ms lint` as MSL108. Use [Result](../errors/results.md) when failure needs an explanation; `try` propagates only `Result` errors.
 
 ## Optional chaining
 

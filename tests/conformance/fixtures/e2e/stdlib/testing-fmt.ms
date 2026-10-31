@@ -31,7 +31,7 @@ test "testing assertions":
     try expect_close(1.01, 1.0, 0.02)
     "Manuscript" | try expect_contains("script")
 
-    let present: Int? = some(7)
+    let present: Int? = 7
     let absent: Int? = none
     ((present | try expect_some)) | try expect_equal(7)
     absent | try expect_none

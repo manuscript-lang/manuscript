@@ -8,5 +8,5 @@ fn use(value: Int?) Int:
     let _Flag = 2
 
     match value:
-        some(Ready): return Ready
+        ready: return Ready
         none: return 0

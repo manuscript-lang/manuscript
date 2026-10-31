@@ -1,0 +1,10 @@
+fn a(x: Int) Int!:
+    return ok(x)
+
+fn b(x: Int) Int!MyErr:
+    return ok(x)
+
+fn c() Int?!:
+    return ok(none)
+
+let f: fn() Int! = fn: ok(1)

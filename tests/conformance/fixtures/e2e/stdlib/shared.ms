@@ -101,22 +101,23 @@ test "a box dropped while its payload is locked does not free the payload twice"
     try expect_equal(second, [5, 6, 7, 8])
 
 test "an optional payload keeps its value through lock":
-    let shared: Shared[Int?] = share(some(5))
-    try expect_equal(shared.get(), some(5))
+    let five: Int? = 5
+    let shared: Shared[Int?] = share(five)
+    try expect_equal(shared.get(), 5)
 
     var held = lock(shared)
     held.value = held.value
     held.close()
-    try expect_equal(shared.get(), some(5))
+    try expect_equal(shared.get(), 5)
 
 type Pair:
     flag: Bool
     value: Int?
 
 test "a record payload with an optional field after a flag survives lock":
-    let shared = share(Pair(flag: 1 == 1, value: some(5)))
+    let shared = share(Pair(flag: 1 == 1, value: 5))
     var pair = lock(shared)
     pair.value = Pair(flag: 1 == 2, value: pair.value.value)
     pair.close()
-    try expect_equal(shared.get().value, some(5))
+    try expect_equal(shared.get().value, 5)
     try expect_equal(shared.get().flag, 1 == 2)

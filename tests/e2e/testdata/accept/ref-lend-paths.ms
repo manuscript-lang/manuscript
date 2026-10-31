@@ -23,12 +23,12 @@ fn either(a: Shelf, b: Shelf, flag: Bool) ref List[String]:
 
 fn stocked(h: Holder) ref Shelf?:
     match h.item:
-        Stocked(shelf): return some(shelf)
+        Stocked(shelf): return shelf
         Plain: return none
 
 fn first_stocked(h: Holder) ref Shelf?:
     match h.items[0]:
-        Stocked(shelf): return some(shelf)
+        Stocked(shelf): return shelf
         Plain: return none
 
 fn last_name(h: Holder) ref String:
@@ -52,14 +52,14 @@ fn chosen_list(a: Shelf, b: Shelf) ref List[String]:
     let names = either(a, b, false)
     return names
 
-fn first_name(s: Shelf) ref String?:
+fn first_name(s: Shelf) String?:
     let name = s.names.first()
     return name
 
-fn last_of(s: Shelf) ref String?:
+fn last_of(s: Shelf) String?:
     return s.names.last()
 
-fn age(s: Shelf, key: String) ref String?:
+fn age(s: Shelf, key: String) String?:
     let found = s.ages.get(key)
     return found
 
@@ -97,17 +97,17 @@ test "let bindings of lending calls and accessors are lent":
     let a = shelf(["ada"])
     let b = shelf(["grace", "hopper"])
     try expect_equal(chosen_list(a, b), ["grace", "hopper"])
-    try expect_equal(first_name(b), some("grace"))
-    try expect_equal(last_of(b), some("hopper"))
+    try expect_equal(first_name(b), "grace")
+    try expect_equal(last_of(b), "hopper")
     try expect_true(first_name(shelf([])).is_none())
     try expect_true(last_of(shelf([])).is_none())
-    try expect_equal(age(a, "ada"), some("36"))
+    try expect_equal(age(a, "ada"), "36")
     try expect_true(age(a, "grace").is_none())
 
 fn find(items: List[Shelf], first: String) ref Shelf?:
     for s in items:
         if s.names[0] == first:
-            return some(s)
+            return s
     return none
 
 test "a lent result keeps its argument alive after the argument's last use":

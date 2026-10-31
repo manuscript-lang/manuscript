@@ -42,7 +42,7 @@ fn settings() Settings:
     return found
 
 # Runs `body` `count` times and returns the elapsed nanoseconds; the first failure stops the run and is returned.
-fn time_batch(body: fn() Result[Unit, Error], count: Int) Result[Int, Error]:
+fn time_batch(body: fn() Unit!, count: Int) Int!:
     let clk = clock()
     let started = clk.now()
     for unused in 0..count:
@@ -60,7 +60,7 @@ fn next_count(count: Int, elapsed: Int, target: Int) Int:
 #       let data = ints(100000)
 #       try measure(100000, fn: keep(data.sorted().length()))
 # Everything the body does before `measure` runs once, untimed.
-export fn measure(operations: Int, work: fn() Result[Unit, Error]) Result[Unit, Error]:
+export fn measure(operations: Int, work: fn() Unit!) Unit!:
     let body = work
     let config = settings()
     var count = max(config.iterations, 1)
@@ -89,7 +89,7 @@ export fn measure(operations: Int, work: fn() Result[Unit, Error]) Result[Unit, 
     let median = (sorted[last / 2] + sorted[(last + 1) / 2]) / 2.0
     let line = "MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)}\}\n"
     stdout().write(line).get()
-    control().set_environment(measured_flag, some("1")).get()
+    control().set_environment(measured_flag, "1").get()
     return ok(unit)
 
 # Set once a body has timed its own work with `measure`.
@@ -97,10 +97,7 @@ let measured_flag = "MS_BENCH_MEASURED"
 
 # The entry `ms bench` builds calls this with each block's body; programs do not. The body runs once first (the
 # warmup); a body that called `measure` has reported already, and any other body is one iteration to repeat and time.
-export fn run_bench_block(
-    body: fn() Result[Unit, Error],
-    operations: Int
-) Result[Unit, Error]:
+export fn run_bench_block(body: fn() Unit!, operations: Int) Unit!:
     try body()
 
     let environment = control().environment().get(Map[String, String]())
@@ -111,7 +108,7 @@ export fn run_bench_block(
 
 # Consumes a bench's result so the work that computed it stays observable; returns an error only for the one value
 # no workload should produce (the smallest Int), so the check cannot be optimized away or tripped by accident.
-export fn keep(checksum: Int) Result[Unit, Error]:
+export fn keep(checksum: Int) Unit!:
     if checksum == -9223372036854775807 - 1:
         return fail(
             "bench result is the smallest Int; the workload is probably degenerate"

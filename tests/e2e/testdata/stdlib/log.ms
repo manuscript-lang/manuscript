@@ -35,13 +35,11 @@ test "logger writes typed escaped records and protects metadata":
     let path = "{directory.path()}/out.ndjson"
     let file = try filesystem().open(path: path, flags: "w", mode: 420)
     var logger = try create(stream_transport(file.writer()), timestamp: false)
-    let fields = Payload(
-        9007199254740993, ok: true, Items([none, some(1)]), 0, "fake", 0
-    )
+    let fields = Payload(9007199254740993, ok: true, Items([none, 1]), 0, "fake", 0)
     try record(logger, LogLevel.Info, "say \"hi\"\nnext", fields)
 
     let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
-    try expect_equal((try written(path)), some(expected))
+    try expect_equal((try written(path)), expected)
     try logger.flush()
     logger.close()
     file.append_file("x") | try expect_ok
@@ -55,7 +53,7 @@ test "non-object values are written under data":
     try record(logger, LogLevel.Warn, "l", ["a", "b"])
 
     let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
-    try expect_equal((try written(path)), some(expected))
+    try expect_equal((try written(path)), expected)
 
 test "levels filter methods and function values":
     let directory = try filesystem().temporary("manuscript-log-")
@@ -68,7 +66,7 @@ test "levels filter methods and function values":
     try logger.trace("filtered")
     try logger.debug("filtered")
     try logger.info("filtered")
-    try expect_equal((try written(path)), some(""))
+    try expect_equal((try written(path)), "")
     try logger.warn("warn")
 
     let error_log = logger.error
@@ -81,7 +79,7 @@ test "levels filter methods and function values":
     try logger.info("info")
 
     let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"error\"\}\n\{\"level\":60,\"msg\":\"fatal\"\}\n\{\"level\":10,\"msg\":\"trace\"\}\n\{\"level\":20,\"msg\":\"debug\"\}\n\{\"level\":30,\"msg\":\"info\"\}\n"
-    try expect_equal((try written(path)), some(expected))
+    try expect_equal((try written(path)), expected)
     logger.set_level(LogLevel.Silent)
     try expect_false(
         (logger.enabled(LogLevel.Fatal) or logger.enabled(LogLevel.Silent))
@@ -113,7 +111,7 @@ test "child bindings snapshot values and merge without mutating inputs":
     try logger.fatal("parent")
 
     let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
-    try expect_equal((try written(path)), some(expected))
+    try expect_equal((try written(path)), expected)
 
 test "limits and unencodable values reject before writing":
     let directory = try filesystem().temporary("manuscript-log-")
@@ -125,7 +123,7 @@ test "limits and unencodable values reject before writing":
         max_bytes: (line.to_bytes().length())
     )
     try logger.info("x")
-    try expect_equal((try written(path)), some(line))
+    try expect_equal((try written(path)), line)
 
     let before = try written(path)
     let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
@@ -187,9 +185,7 @@ test "file transport appends and flushes with scoped cleanup":
     let data = try fs.read_file(path)
     try expect_false(
         (
-            data.decode_utf8() != some(
-                "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
-            )
+            data.decode_utf8() != "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
         )
     )
     try expect_false(
@@ -244,7 +240,7 @@ test "source transports receive complete records and close through their contrac
     try logger.flush()
     try expect_equal(
         (fs.read_file(path) | try expect_ok).decode_utf8(),
-        some("\{\"level\":30,\"msg\":\"source transport\"\}\n")
+        "\{\"level\":30,\"msg\":\"source transport\"\}\n"
     )
     logger.close()
     try expect_true(fs.read_file("{path}.closed").is_ok())
@@ -260,9 +256,9 @@ test "log_json and child_json accept only JSON objects":
         try expect_equal(logger.log_json(LogLevel.Info, "m", text), invalid)
         try expect_false(logger.child_json(text).is_ok())
 
-    try expect_equal((try written(path)), some(""))
+    try expect_equal((try written(path)), "")
     try logger.log_json(LogLevel.Info, "m", "\{\"a\":1\}")
     try record(logger, LogLevel.Info, "m", [1])
 
     let expected = "\{\"level\":30,\"msg\":\"m\",\"a\":1\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
-    try expect_equal((try written(path)), some(expected))
+    try expect_equal((try written(path)), expected)

@@ -62,8 +62,8 @@ test "constructor arguments retain written order and capture snapshots":
                 let nested = fn() Int: value
                 return nested()
         ),
-        match some(2):
-            some(number):
+        match present(2):
+            number:
                 value = 70
                 mark(var log, "first;", number)
             none: 0
@@ -100,8 +100,8 @@ test "source constructors with callable defaults prepare once":
 test "match receiver side effects and callable body remain ordered":
     var log = Log("")
 
-    let view: Read[Int] = match some(mark(var log, "select;", 1)):
-        some(_):
+    let view: Read[Int] = match present(mark(var log, "select;", 1)):
+        _value:
             mark(var log, "chosen;", 0)
             Reader(fn() Int: 9)
         none:
@@ -110,3 +110,6 @@ test "match receiver side effects and callable body remain ordered":
 
     try expect_equal(log.events, "select;chosen;")
     try expect_equal(view.read(), 9)
+
+fn present[T](value: T) T?:
+    return value

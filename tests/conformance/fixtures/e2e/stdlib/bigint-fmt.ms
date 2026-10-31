@@ -7,11 +7,11 @@ import parse, from_int, BigInt, BigIntError from "@std/math.ms"
 test "big integers exceed machine range without losing precision":
     let big = try parse("9223372036854775808", 10)
     try expect_false(not big.to_int().is_none())
-    try expect_equal(big.subtract(from_int(1)).to_int(), some(9223372036854775807))
+    try expect_equal(big.subtract(from_int(1)).to_int(), 9223372036854775807)
     try expect_equal(from_int(7).multiply(from_int(6)).to_string_radix(10), "42")
-    try expect_equal((try from_int(-7).divide(from_int(3))).to_int(), some(-2))
-    try expect_equal((try from_int(-7).remainder(from_int(3))).to_int(), some(-1))
-    try expect_equal(from_int(5).bit_xor(from_int(3)).to_int(), some(6))
+    try expect_equal((try from_int(-7).divide(from_int(3))).to_int(), -2)
+    try expect_equal((try from_int(-7).remainder(from_int(3))).to_int(), -1)
+    try expect_equal(from_int(5).bit_xor(from_int(3)).to_int(), 6)
 
 test "big integers validate digits budgets and zero divisors":
     let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
@@ -41,19 +41,19 @@ test "big integer budgets exclude at most one leading sign before validation":
 
 test "big integers support sign pow shifts and conversion":
     let five = from_int(5)
-    try expect_equal(five.negate().to_int(), some(-5))
-    try expect_equal(five.negate().abs().to_int(), some(5))
+    try expect_equal(five.negate().to_int(), -5)
+    try expect_equal(five.negate().abs().to_int(), 5)
     try expect_equal(five.negate().sign(), -1)
     try expect_equal(from_int(0).sign(), 0)
-    try expect_equal(five.bit_not().to_int(), some(-6))
+    try expect_equal(five.bit_not().to_int(), -6)
     try expect_equal(
         (try from_int(2).pow(100)).to_string_radix(10),
         "1267650600228229401496703205376"
     )
-    try expect_equal((try five.shift_left(3)).to_int(), some(40))
-    try expect_equal((try from_int(-5).shift_right(1)).to_int(), some(-3))
+    try expect_equal((try five.shift_left(3)).to_int(), 40)
+    try expect_equal((try from_int(-5).shift_right(1)).to_int(), -3)
     try expect_equal(
-        (try from_int(1).shift_left(70)).to_float(), some(1180591620717411303424.0)
+        (try from_int(1).shift_left(70)).to_float(), 1180591620717411303424.0
     )
 
     let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)

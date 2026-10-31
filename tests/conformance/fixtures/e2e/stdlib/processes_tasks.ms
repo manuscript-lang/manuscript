@@ -57,7 +57,7 @@ test "a task cancelled in a channel read releases the link":
     let group = ProcessGroup[Int, Unit, Int]()
     var child = group.spawn(late).get()
     let reader = child.channel.clone()
-    var tasks = TaskGroup[Int](timeout: some(nanoseconds(50000000)))
+    var tasks = TaskGroup[Int](timeout: nanoseconds(50000000))
     tasks.spawn(fn ch: first(reader.clone()))
     try expect_equal(tasks.wait().is_error(), true)
     tasks.close()
@@ -101,7 +101,7 @@ test "the process listing command runs":
         try expect_ok(commands().run("pgrep", ["-f", "sleep 30.717"]))
 
 test "cancelling a task inside commands().run kills the child":
-    var group = TaskGroup[Int](timeout: some(nanoseconds(200000000)))
+    var group = TaskGroup[Int](timeout: nanoseconds(200000000))
     let t = group.spawn(fn ch: run_long())
     try expect_equal(t.result().is_ok(), false)
     group.close()
@@ -113,7 +113,7 @@ fn wait_long() Int:
     return child.wait().get(-1)
 
 test "cancelling a task inside Subprocess.wait kills the child":
-    var group = TaskGroup[Int](timeout: some(nanoseconds(200000000)))
+    var group = TaskGroup[Int](timeout: nanoseconds(200000000))
     let t = group.spawn(fn ch: wait_long())
     try expect_equal(t.result().is_ok(), false)
     group.close()
@@ -124,7 +124,7 @@ test "cancelling a task inside Subprocess.wait kills the child":
 # value to drop: only Subprocess.wait's own cleanup stops it.
 test "cancelling a task inside Subprocess.wait stops a child the task was handed":
     let child = commands().spawn(long_program(), long_args()).get()
-    var group = TaskGroup[Int](timeout: some(nanoseconds(200000000)))
+    var group = TaskGroup[Int](timeout: nanoseconds(200000000))
     let t = group.spawn(fn ch: child.wait().get(-1))
     try expect_equal(t.result().is_ok(), false)
     group.close()

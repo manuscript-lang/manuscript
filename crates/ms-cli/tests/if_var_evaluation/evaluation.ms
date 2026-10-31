@@ -10,7 +10,7 @@ fn key(var count: Int) String:
     return "key-{count}"
 
 fn early(var entries: Map[String, List[Int]], var count: Int) Unit:
-    if var item = entries.get(key(var count)):
+    if var item = entries[key(var count)]?:
         item.append(7)
         return
 
@@ -19,13 +19,13 @@ export fn main() Int:
     var entries = Map[String, List[Int]]()
     entries.add("key-1", [1])
     entries.add("key-2", [2])
-    if var item = entries.get(key(var count)):
+    if var item = entries[key(var count)]?:
         item.append(9)
 
     let _ = stdout().write("{count} {entries}\n")
     count = 2
 
-    if var item = entries.get(key(var count)):
+    if var item = entries[key(var count)]?:
         item.append(99)
     else:
         let _ = stdout().write("missing {count}\n")
@@ -36,25 +36,25 @@ export fn main() Int:
     let _ = stdout().write("early {count} {entries}\n")
     count = 0
     for value in [4, 5, 6]:
-        if var item = entries.get(key(var count)):
+        if var item = entries[key(var count)]?:
             item.append(value)
 
     let _ = stdout().write("loop {count} {entries}\n")
     var rows = [[[1]], [[2]]]
     count = 0
-    if var item = rows[next(var count)].first():
+    if var item = rows[next(var count)][0]?:
         item.append(9)
 
     let _ = stdout().write("{count} {rows}\n")
     count = 0
-    if var item = rows[next(var count)].last():
+    if var item = rows[next(var count)][0]?:
         item.append(10)
 
     let _ = stdout().write("{count} {rows}\n")
     var empty: List[List[List[Int]]] = [[], [[2]]]
     count = 0
 
-    if var item = empty[next(var count)].first():
+    if var item = empty[next(var count)][0]?:
         item.append(99)
     else:
         let _ = stdout().write("empty {count} {empty}\n")

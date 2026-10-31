@@ -29,7 +29,7 @@ tokens! {
     Type => "type", Unit => "unit", Var => "var", While => "while", Underscore => "_",
     LParen => "(", RParen => ")", LBracket => "[", RBracket => "]", LBrace => "{", RBrace => "}",
     Colon => ":", Comma => ",", Dot => ".", Plus => "+", Minus => "-", Star => "*", Slash => "/",
-    Percent => "%", Lt => "<", Gt => ">", Assign => "=", Amp => "&", Pipe => "|", Ellipsis => "...", DotDot => "..", Question => "?",
+    Percent => "%", Lt => "<", Gt => ">", Assign => "=", Amp => "&", Pipe => "|", Ellipsis => "...", DotDot => "..", Question => "?", Bang => "!",
     Arrow => "->", EqEq => "==", NotEq => "!=", Le => "<=", Ge => ">=",
 }
 

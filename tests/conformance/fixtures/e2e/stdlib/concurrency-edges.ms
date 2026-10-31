@@ -94,19 +94,19 @@ test "spawning into a closed group never runs the task":
     try expect_equal(t.channel.send(unit).is_ok(), false)
 
 test "a zero timeout cancels the task instead of running it":
-    var group = TaskGroup[Int](timeout: some(nanoseconds(0)))
+    var group = TaskGroup[Int](timeout: nanoseconds(0))
     let t = group.spawn(fn ch: quick())
     try expect_equal(t.result().is_ok(), false)
     group.close()
 
     let group2 = TaskGroup[Int]()
-    let t2 = group2.spawn(fn ch: quick(), timeout: some(nanoseconds(0)))
+    let t2 = group2.spawn(fn ch: quick(), timeout: nanoseconds(0))
     try expect_equal(t2.result().is_ok(), false)
 
 test "a task waiting on a task of another group sees it time out":
     var seen = 0
     var a = TaskGroup[Int]()
-    let b = TaskGroup[Int](timeout: some(nanoseconds(50000000)))
+    let b = TaskGroup[Int](timeout: nanoseconds(50000000))
     let tb = b.spawn(fn ch: slow())
     let waiting = a.spawn(fn ch: waiter(tb))
     seen = waiting.result().get(-1)
@@ -114,7 +114,7 @@ test "a task waiting on a task of another group sees it time out":
     try expect_equal(seen, "task: timed out".length())
 
 test "a send to a task cancelled by its group ends with closed":
-    let group = TaskGroup[Int, Int, Unit](timeout: some(nanoseconds(100000000)))
+    let group = TaskGroup[Int, Int, Unit](timeout: nanoseconds(100000000))
     var t = group.spawn(deaf)
     var sent = 0
     var stopped = false
@@ -131,7 +131,7 @@ test "a send to a task cancelled by its group ends with closed":
     try expect_equal(stopped, true)
 
 test "a receive from a task cancelled by its group ends with none":
-    let group = TaskGroup[Int, Unit, Int](timeout: some(nanoseconds(100000000)))
+    let group = TaskGroup[Int, Unit, Int](timeout: nanoseconds(100000000))
     var t = group.spawn(mute)
     let r = t.channel.receive()
     try expect_equal(r.is_ok(), true)
@@ -140,7 +140,7 @@ test "a receive from a task cancelled by its group ends with none":
 test "handles of a closed worker group answer instead of faulting":
     var kept: Worker[Int, Int]? = none
     var group = WorkerGroup[Int, Int]()
-    kept = some(group.spawn(waits).get())
+    kept = group.spawn(waits).get()
     group.close()
 
     if let worker = kept:

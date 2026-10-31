@@ -11,7 +11,7 @@ fn outcome_value(outcome: Result[Int, TextError]) Int:
     return outcome.get(-1)
 
 test "data constructor context":
-    let _input = Input([none, some("Ada")])
+    let _input = Input([none, "Ada"])
     let success: Result[Int, TextError] = ok(3)
     let failure: Result[Int, TextError] = error(TextError("unavailable"))
     let _absent: Int? = none
@@ -30,7 +30,7 @@ fn select[T](first: T, second: T) T:
 
 test "nested constructor arguments receive inferred context":
     let request = Request(Box(none))
-    let provided = some(3)
+    let provided: Int? = 3
     let selected = select(Box(none), Box(provided))
     try expect_false(not selected.value.is_none())
     try expect_false(not request.box.value.is_none())

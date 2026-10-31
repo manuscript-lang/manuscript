@@ -1,10 +1,10 @@
-# expect-debug: allocs=22 alloc_bytes=1814
-# expect-release: allocs=22 alloc_bytes=1854
-# Trimming through a `ref` result: no copy. The floor for view_via_clone.ms.
+# expect-debug: allocs=42 alloc_bytes=2964
+# expect-release: allocs=42 alloc_bytes=3004
+# Trimming through a function whose owned result is a trim of its parameter.
 type Line:
     text: String
 
-fn body(l: Line) ref String:
+fn body(l: Line) String:
     return l.text.trim()
 
 fn size(l: Line) Int:

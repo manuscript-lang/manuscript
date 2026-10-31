@@ -112,8 +112,8 @@ export type ClientResponse:
 impl ClientResponse:
     # Borrows the current response metadata.
     # Clone the result for an independent owned value, including its headers.
-    fn metadata() ref HttpResponseMetadata:
-        return self.head
+    fn metadata() HttpResponseMetadata:
+        return self.head.clone()
 
 # Known HTTP methods, plus extension tokens validated by outgoing operations.
 export type HttpMethod:

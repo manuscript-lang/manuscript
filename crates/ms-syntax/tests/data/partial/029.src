@@ -2,7 +2,7 @@ import expect_true from "@std/test.ms"
 
 fn parsed(text: String) Int:
     match text.parse_int():
-        some(v):
+        v:
            return v
         none:
             return 0 - 1

@@ -3,8 +3,8 @@
 # conform: origin=internal/cli/advisory_lint_test.go:16 TestSafetyAdvisoriesDoNotBecomeCheckErrors
 fn use(value: Int?) Unit:
     match value:
-        some(_):
+        _value:
             match value:
-                some(_): unit
+                _value: unit
                 none: unit
         none: unit

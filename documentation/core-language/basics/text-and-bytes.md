@@ -127,12 +127,12 @@ import Bytes from "@std/bytes.ms"
 test "explicit byte conversion":
     if not ("é".byte_length() == 2):
         return panic("check failed")
-    if not ("é".to_bytes().decode_utf8() == some("é")):
+    if not ("é".to_bytes().decode_utf8() == "é"):
         return panic("check failed")
     let invalid: String? = none
     if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")
-    if not ("-007".parse_int() == some(-7)):
+    if not ("-007".parse_int() == -7):
         return panic("check failed")
 ```
 
@@ -184,7 +184,7 @@ Formatting never depends on locale or host settings.
 | Decimal | Exact numerical decimal value, normalized as below; no significance/scale padding |
 | Record | `Type(field: value, ...)`, with fields sorted by name and values recursively converted |
 | Alternative | `Type.Case` for a nullary case; `Type.Case(value, ...)` for payloads in declaration order |
-| Optional | `Optional.some(value)` or `Optional.none`; for example, `some(42)` formats as `Optional.some(42)` |
+| Optional | `Optional.some(value)` or `Optional.none`; for example, an `Int?` holding 42 formats as `Optional.some(42)` |
 | Result | `Result.ok(value)` or `Result.error(cause)`; for example, `ok(42)` formats as `Result.ok(42)` |
 | List | `[value, ...]` in element order |
 | Map | `Map(key: value, ...)` in insertion order |

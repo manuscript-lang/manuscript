@@ -71,9 +71,9 @@ export interface Closeable:
 export interface Iterator[T]:
     # Returns the next item, or none when no items remain. The item borrows from the iterator
     # (an iterator over a container borrows from the container instead).
-    var fn next() ref T?
+    var fn next() T?
 
-# Represents a value that may be absent: `some(value)` or `none`.
+# Represents a value that may be absent: a `T` or `none`; a plain `T` converts where a `T?` is expected.
 export type Optional[T]:
     # A present payload, retained by reference when T is mutable.
     case some(
@@ -84,7 +84,7 @@ export type Optional[T]:
     case none
 
 impl T?:
-    # Returns True for some(value), and False for none.
+    # Returns True when a value is present, and False for none.
     fn is_some() Bool: ...
 
     # Reports whether this value is absent.
@@ -92,7 +92,7 @@ impl T?:
 
     # Returns the payload, or `default` when this is `none`; pass a default or unwrap with `if let value = optional:` unless absence is a bug.
     # Without a default, `none` raises a fault.
-    fn get(default: T?) ref T: ...
+    fn get(default: T?) T: ...
 
     # Transforms a present payload; none remains absent.
     fn map[U](transform: fn(T) U) U?: ...
@@ -135,10 +135,10 @@ impl Result[T, E]:
 
     # Returns the successful payload, or `default` when this is an error; pass a default or propagate with `try` unless failure is a bug.
     # Without a default, an error raises a fault.
-    fn get(default: T?) ref T: ...
+    fn get(default: T?) T: ...
 
     # Returns the error payload; check `is_error()` first, because a successful result raises a fault.
-    fn err() ref E: ...
+    fn err() E: ...
 
     # Returns the successful payload, or calls create once with the original error and returns its value.
     fn get_or_else(create: fn(E) T) T: ...
@@ -182,6 +182,11 @@ export interface Clonable:
 # only `List` is, when its element is. A `Map` or `Set` is never `Data`, nor is a `Closeable` type or an `opaque type`; `JsonValue`
 # is `Data` by declaration, so a JSON object travels as a `JsonValue`.
 export interface Data: ...
+
+# A type whose values are plain words in the runtime, so passing one duplicates it with a bit copy and
+# the original stays usable. Only an extern type in the standard library declares it, with `impl Copy for T:`;
+# records and alternatives are copied when every field is, and every other native moves.
+export interface Copy: ...
 
 # A type with a stable hash consistent with its `Equal` implementation.
 export interface Hashable:

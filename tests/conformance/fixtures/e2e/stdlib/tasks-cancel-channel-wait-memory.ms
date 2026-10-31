@@ -29,7 +29,7 @@ fn cancel_one(ch: Channel[Int, Int]) Result[Unit, Error]:
     var group = TaskGroup[Unit]()
     let end = ch.clone()
     var task = group.spawn(fn ready: waiting(ready, end.clone()))
-    task.channel.receive() | try expect_ok | try expect_equal(some(unit))
+    task.channel.receive() | try expect_ok | try expect_equal(unit)
     group.close()
     task.result() | try expect_error | try expect_equal(TaskError.Closed)
     group.close()

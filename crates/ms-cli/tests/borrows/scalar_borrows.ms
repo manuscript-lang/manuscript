@@ -15,7 +15,7 @@ export fn main() Int:
 
     var m = Map[String, Int]()
     m.add("a", 1)
-    if var x = m.get("a"):
+    if var x = m["a"]?:
         x += 1
 
     var cs = [1, 2, 3]

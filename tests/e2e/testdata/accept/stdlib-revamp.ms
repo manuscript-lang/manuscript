@@ -28,7 +28,7 @@ test "domain equality and hashing select interfaces":
     values.add(a.clone(), "a")
     values.add(b.clone(), "b")
     try expect_equal(values.length(), 1)
-    try expect_equal(values.get(a), some("b"))
+    try expect_equal(values.get(a), "b")
     try expect_false(not ([a.clone()].contains(b)))
 
     let view: Equal = a
@@ -67,17 +67,17 @@ impl ReadStream for EchoReader:
         let requested = max_bytes.get(0)
         if requested == 1: return error(IoError.InvalidInput)
 
-        return ok(some(Bytes([requested.to_uint8().get(0)])))
+        return ok(Bytes([requested.to_uint8().get(0)]))
 
     fn close() Unit: unit
 
 test "native compositions preserve Optional arguments for source implementations":
     var stream: ReadStream = EchoReader(0)
     let omitted: Result[Bytes?, IoError] = stream.read()
-    try expect_equal(omitted, ok(some(Bytes([0]))))
+    try expect_equal(omitted, ok(Bytes([0])))
 
     let supplied: Result[Bytes?, IoError] = stream.read(8)
-    try expect_equal(supplied, ok(some(Bytes([8]))))
+    try expect_equal(supplied, ok(Bytes([8])))
 
     let line = read_line(stream)
     try expect_false(line.is_ok())

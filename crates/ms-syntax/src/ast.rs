@@ -389,6 +389,9 @@ pub enum ExprKind {
         /// Index expression.
         index: Box<Expr>,
     },
+    /// `left[index]?`: the entry of a map or list when it exists, as an `Optional`. Only
+    /// `if var` accepts it, where the present entry is borrowed in place.
+    Probe(Box<Expr>),
     /// `[a, b]`.
     List(Vec<Expr>),
     /// `{k: v, ...}`.
@@ -436,6 +439,7 @@ impl Expr {
             | ExprKind::Apply { left, .. }
             | ExprKind::Index { left, .. }
             | ExprKind::Binary { left, .. } => left.start(),
+            ExprKind::Probe(target) => target.start(),
             ExprKind::Call { callee, .. } => callee.start(),
             _ => self.pos,
         }
@@ -605,6 +609,9 @@ pub struct Arm {
     /// result is the present arm's type made optional (not wrapped again when
     /// it already is), and the `none` arm yields `none`.
     pub chain: bool,
+    /// The arm was written as a lone lowercase name, which binds an Optional's
+    /// payload; the parser spells it as the `some` case with that binding.
+    pub bare: bool,
 }
 
 /// A payload binding in a match arm.

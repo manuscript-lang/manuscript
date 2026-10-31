@@ -25,7 +25,7 @@ fn require_lazy[T, E: Error](value: T?, create: fn() E) Result[T, E]:
 
 fn success_only[T, E: Error](value: Result[T, E]) T?:
     if let item = value:
-        return some(item)
+        return item
 
     return none
 
@@ -35,11 +35,14 @@ fn reduce_map[K: Hashable, V, A](values: Map[K, V], initial: A, step: fn(A, K, V
 fn reduce_set[T: Hashable, A](values: Set[T], initial: A, step: fn(A, T) A) A:
     return values.fold(initial, step)
 
-fn locate[K: Hashable, V](values: Map[K, V], predicate: fn(K, V) Bool) MapEntry[K, V]?:
+fn locate[K: Hashable, V: Clonable](
+    values: Map[K, V],
+    predicate: fn(K, V) Bool
+) MapEntry[K, V]?:
     return values.find(predicate)
 
 test "conversions and collection queries are callable":
-    let present: Int? = some(2)
+    let present: Int? = 2
     let missing: Int? = none
     present.ok_or(TextError("absent")).get() | try expect_equal(2)
     try expect_equal(
@@ -63,7 +66,7 @@ test "conversions and collection queries are callable":
 
 test "conversions retain unconstrained payloads nesting and lazy counts":
     var counter = Counter(0)
-    let present: Int? = some(0)
+    let present: Int? = 0
     let missing: Int? = none
     (require_value(present, counted(var counter)).get() != 0 or counter.calls != 1) | try expect_false
 
@@ -98,17 +101,19 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     extracted.calls = 7
     counter.calls | try expect_equal(1)
 
-    let nested: Int?? = some(none)
+    let nested_none: Int? = none
+    let nested: Int?? = nested_none
     let converted = nested.ok_or(TextError("absent"))
     (not (converted.is_ok()) or not (converted.to_optional().get().is_none())) | try expect_false
 
-    let false_value: Bool? = some(false)
+    let false_value: Bool? = false
     false_value.ok_or(TextError("absent")).to_optional().get() | try expect_false
 
-    let unit_value: Unit? = some(unit)
+    let unit_value: Unit? = unit
     (unit_value.ok_or(TextError("absent")).to_optional().is_some()) | try expect_true
 
-    let nested_result: Result[Int, TextError]? = some(error(TextError("nested")))
+    let nested_inner: Result[Int, TextError] = error(TextError("nested"))
+    let nested_result: Result[Int, TextError]? = nested_inner
     nested_result.ok_or(
         TextError("absent")
     ).to_optional().get().err().message() | try expect_equal("nested")
@@ -212,11 +217,11 @@ test "Map predicates short circuit over snapshots including empty receivers":
     var empty_calls: List[Int] = []
     var values: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
     var seen: List[String] = []
-    let some = values.any
+    let any_of = values.any
     try expect_false(
         (
             not (
-                some(
+                any_of(
                     fn k,
                     v:
                         seen.append(k)
@@ -365,11 +370,11 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     var empty_calls: List[Int] = []
     var values = Set[Int]([2, 1, 3])
     var seen: List[Int] = []
-    let some = values.any
+    let any_of = values.any
     try expect_false(
         (
             not (
-                some(
+                any_of(
                     fn v:
                         seen.append(v)
                         values.remove(1)
@@ -523,7 +528,7 @@ test "ok_or without a cause records the calling file and line":
 
     let message = find_port(none).err().message()
     (message.starts_with("missing value at ")) | try expect_true
-    find_port(some(8080)).get() | try expect_equal(8080)
+    find_port(8080).get() | try expect_equal(8080)
 
     let named: Result[Int, TextError] = absent.ok_or(TextError("port"))
     named.err().message() | try expect_equal("port")

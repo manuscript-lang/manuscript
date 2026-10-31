@@ -3,13 +3,69 @@
   "phase": "check",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "format": 1,
-    "diagnostics": [],
+    "diagnostics": [
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else",
+        "position": {
+          "file": "pkg-tooling-testnestedmatchlint-5.ms",
+          "line": 10,
+          "column": 9,
+          "offset": 272
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a literal arm has no payload to bind",
+        "position": {
+          "file": "pkg-tooling-testnestedmatchlint-5.ms",
+          "line": 10,
+          "column": 9,
+          "offset": 272
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else",
+        "position": {
+          "file": "pkg-tooling-testnestedmatchlint-5.ms",
+          "line": 11,
+          "column": 9,
+          "offset": 285
+        }
+      },
+      {
+        "code": "MS3050",
+        "phase": "type",
+        "message": "non-exhaustive match on Int; add a final '_:' arm",
+        "position": {
+          "file": "pkg-tooling-testnestedmatchlint-5.ms",
+          "line": 5,
+          "column": 12,
+          "offset": 191
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding x; declare it with 'let x = ...' before use, define 'fn x(...) T:', or import it from a module",
+        "position": {
+          "file": "pkg-tooling-testnestedmatchlint-5.ms",
+          "line": 10,
+          "column": 12,
+          "offset": 275
+        }
+      }
+    ],
     "text": {
-      "exit_code": 0,
-      "stdout": "Checked pkg-tooling-testnestedmatchlint-5.ms\n",
-      "stderr": ""
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/pkg-tooling-testnestedmatchlint-5.ms:10:9: type: a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else\n    |\n 10 |         x: x\n    |         ^\n<DIR>/pkg-tooling-testnestedmatchlint-5.ms:10:9: type: a literal arm has no payload to bind\n    |\n 10 |         x: x\n    |         ^\n<DIR>/pkg-tooling-testnestedmatchlint-5.ms:11:9: type: a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else\n    |\n 11 |         none: 0\n    |         ^\n<DIR>/pkg-tooling-testnestedmatchlint-5.ms:5:12: type: non-exhaustive match on Int; add a final '_:' arm\n   |\n 5 |     return match (\n   |            ^\n<DIR>/pkg-tooling-testnestedmatchlint-5.ms:10:12: resolution: unknown binding x; declare it with 'let x = ...' before use, define 'fn x(...) T:', or import it from a module\n    |\n 10 |         x: x\n    |            ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

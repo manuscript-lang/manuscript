@@ -52,7 +52,7 @@ All five results are `7`. Arguments resolve left to right and labels do not rese
 
 The rule covers functions, generics, methods, function values, library APIs, and constructors. A method's receiver is evaluated before its arguments and takes no positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Function-type identity depends on ordered parameter types and the result type; parameter names are not part of [type identity](function-values-and-closures.md).
 
-A parameter with a default may be omitted; others are required, including `T?` without a default (pass `none`). A supplied `T` is wrapped once as `some(value: ...)` ([optional arguments](../types/optionals.md#passing-optional-arguments)). Variadics and spreading are unsupported. Match bindings such as `some(value):` are [patterns](../control-flow/pattern-matching.md), not calls.
+A parameter with a default may be omitted; others are required, except `T?`, which defaults to `none`. A supplied `T` is wrapped once as the present case ([optional arguments](../types/optionals.md#passing-optional-arguments)). Variadics and spreading are unsupported. Match bindings such as `value:` beside `none:` are [patterns](../control-flow/pattern-matching.md), not calls.
 
 ## Default arguments
 

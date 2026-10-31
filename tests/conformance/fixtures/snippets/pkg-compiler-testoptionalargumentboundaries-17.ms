@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=pkg/compiler/optional_test.go:53 TestOptionalArgumentBoundaries
 type Optional[T]:
-    case some(value: T)
+    case T
     case none
 
 fn f(value: Int?) Unit: return

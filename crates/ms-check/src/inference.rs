@@ -291,6 +291,23 @@ impl Checker {
         {
             return;
         }
+        // A `T?` argument after a plain value widens the variable to the optional.
+        if vars.contains(&pattern.id)
+            && actual_ty.is_std("Optional")
+            && actual_ty.args.len() == 1
+            && !substituted.is_std("Optional")
+            && compatible(&Some(substituted.clone()), &actual_ty.args[0])
+        {
+            s.insert(pattern.id, actual_ty.clone());
+            return;
+        }
+        // A plain value beside an inferred `T?` wraps into it, as at a typed binding.
+        if substituted.is_std("Optional")
+            && substituted.args.len() == 1
+            && compatible(&Some(actual_ty.clone()), &substituted.args[0])
+        {
+            return;
+        }
         let hint = if mentions_variable(&pattern, vars) {
             arity_mismatch_hint(&actual_ty, &substituted)
         } else {

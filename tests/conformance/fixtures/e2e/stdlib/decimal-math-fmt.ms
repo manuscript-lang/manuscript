@@ -8,8 +8,8 @@ import ceil, floor, round, truncate, sqrt, hypot, pow, log2, min, max, sin, cos,
 test "decimal arithmetic is exact and conversion truncates":
     try expect_equal(0.1d + 0.2d, 0.3d)
     try expect_equal(1.00d, 1d)
-    try expect_equal((-1.9d).truncate_to_int(), some(-1))
-    try expect_equal(2d.to_float(), some(2.0))
+    try expect_equal((-1.9d).truncate_to_int(), -1)
+    try expect_equal(2d.to_float(), 2.0)
     try expect_equal(1e400d.to_float(), none)
     try expect_equal(123.to_decimal(), 123d)
 

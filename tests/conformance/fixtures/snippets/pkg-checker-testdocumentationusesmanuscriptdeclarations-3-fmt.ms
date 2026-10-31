@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=pkg/checker/documentation_test.go:89 TestDocumentationUsesManuscriptDeclarations
 type Optional[T]:
-    case some(value: T)
+    case T
     case none
 
 impl T?:

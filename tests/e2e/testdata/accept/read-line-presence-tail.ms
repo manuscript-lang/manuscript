@@ -65,7 +65,7 @@ test "presence keeps custom EOF empty CRLF and following text":
     let source = MemoryStream("\r\nλ\nlast".to_bytes(), 0, false)
     var input: ReadStream = source
     present(input) | try expect_true
-    (try read_line(input)) | try expect_equal(some("λ"))
+    (try read_line(input)) | try expect_equal("λ")
     present(input) | try expect_true
     present(input) | try expect_false
 
@@ -100,6 +100,6 @@ test "presence and text reads share buffered consumption":
     let handle = fs.open(path, "r", 384) | try expect_ok
     let input = handle.reader()
     present(input) | try expect_true
-    (try read_line(input)) | try expect_equal(some("λ"))
+    (try read_line(input)) | try expect_equal("λ")
     present(input) | try expect_true
     present(input) | try expect_false

@@ -85,9 +85,9 @@ test "list names mutate in place and retain shallow copies":
     items.append(9)
     try expect_equal(items, [9])
 
-    var optional: List[Int?] = [some(1)]
+    var optional: List[Int?] = [1]
     optional.set(0, 7)
-    try expect_equal(optional.get(0), some(7))
+    try expect_equal(optional.get(0), 7)
 
     var nested = [[1]]
     let outer_copy = nested.clone()
@@ -114,7 +114,9 @@ test "set names mutate in place keep order and no-op membership":
     optional.add(7)
     optional.add(9)
     optional.remove(7)
-    try expect_equal(optional.values(), [some(9)])
+
+    let expected_values: List[Int?] = [9]
+    try expect_equal(optional.values(), expected_values)
 
 interface FirstReplacement:
     fn replace_first(old: String, new: String) String
@@ -200,14 +202,14 @@ test "regex replace_all preserves literal text and exact output budgets":
 test "new direct keyed calls evaluate arguments after the receiver is chosen":
     var items = Set[Int]([1])
     items.add(
-        match some(0):
-            some(_): 2
+        match present(0):
+            _value: 2
             none: 3
     )
     try expect_equal(items.values(), [1, 2])
     items.remove(
-        match some(0):
-            some(_): 1
+        match present(0):
+            _value: 1
             none: 2
     )
     try expect_equal(items.values(), [2])
@@ -296,3 +298,6 @@ test "byte reversal names copy across direct bound and view calls":
             or Bytes([1]).reversed() != Bytes([1])
         )
     )
+
+fn present[T](value: T) T?:
+    return value

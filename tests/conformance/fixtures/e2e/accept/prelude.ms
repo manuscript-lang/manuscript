@@ -11,7 +11,7 @@ impl Error for Failure:
         return self.message_text.clone()
 
 fn success() Result[Int?, Error]:
-    return ok(some(7))
+    return ok(7)
 
 fn failure() Result[Int, Failure]:
     return error(Failure("failed"))
@@ -20,7 +20,7 @@ fn propagated() Result[Int, Error]:
     return ok(try failure())
 
 test "prelude cases and optional methods need no imports":
-    let inferred = some(3)
+    let inferred: Int? = 3
     let absent: Int? = none
     let qualified: Int? = 5
     try expect_false(not inferred.is_some() or not absent.is_none())
@@ -29,7 +29,7 @@ test "prelude cases and optional methods need no imports":
         (
             absent.get(9) != 9
             or absent.or_else(
-                fn() Int?: return some(11)
+                fn() Int?: return 11
             ).get() != 11
         )
     )

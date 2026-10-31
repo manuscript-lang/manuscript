@@ -11,7 +11,7 @@ fn bump(factor: Int) Int:
 fn lookup(limit: Int) Int:
     let find = fn(key: Int) Int?:
         if key < limit:
-            return some(key * 2)
+            return (key * 2)
 
         return none
 
@@ -20,7 +20,7 @@ fn lookup(limit: Int) Int:
 
     while i < 5:
         match find(key: i):
-            some(found):
+            found:
                 total = total + found
             none:
                 total = total + 100

@@ -13,7 +13,7 @@ export fn main() Int:
     var cnt = Map[String, Int]()
 
     for w in ["a", "b", "a", "c", "b", "a"]:
-        if var n = cnt.get(w):
+        if var n = cnt[w]?:
             n += 1
         else:
             cnt.add(w, 1)

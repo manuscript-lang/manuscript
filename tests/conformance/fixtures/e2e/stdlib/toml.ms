@@ -20,7 +20,7 @@ fn limits(
     depth: Int?,
     values: Int?
 ) TomlLimits?:
-    return some(TomlLimits(max_bytes: bytes, max_depth: depth, max_values: values))
+    return TomlLimits(max_bytes: bytes, max_depth: depth, max_values: values)
 
 test "TOML scalars quoted keys comments exact integers and dates":
     let source = "title = \"é🙂 # text\" # comment\n'' = 'literal\\n'\nbool = true\nlarge = 9007199254740993\nhex = 0xDEAD_BEEF\noct = 0o755\nbin = 0b1010\nfloat = -1_2.5e+2\ndate = 2024-02-29\ntime = 07:32:00.123\nstamp = 1979-05-27 07:32:00-07:00\n"
@@ -220,10 +220,10 @@ test "TOML errors report the offending line and column":
 
 test "TOML limits fields default to none":
     let limited: Result[TomlValue, TomlError] = error(TomlError.LimitExceeded)
-    parse(text: "a=1", limits: some(TomlLimits(max_bytes: 2))) | try expect_equal(
+    parse(text: "a=1", limits: TomlLimits(max_bytes: 2)) | try expect_equal(
         limited
     )
-    parse(text: "a=1", limits: some(TomlLimits())) | try expect_equal(
+    parse(text: "a=1", limits: TomlLimits()) | try expect_equal(
         parse(text: "a=1")
     )
 

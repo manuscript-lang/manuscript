@@ -198,9 +198,9 @@ test "a whole in-process response rejects subsequent writes":
     try expect_equal(body_of(try r.call(get("/empty"))), "")
 
 fn small_reads(exchange: HttpExchange, params: RouteParams) Result[Unit, HttpError]:
-    let first = try exchange.read(some(1)).map_error(from_io)
-    let second = try exchange.read(some(2)).map_error(from_io)
-    let end = try exchange.read(some(1)).map_error(from_io)
+    let first = try exchange.read(1).map_error(from_io)
+    let second = try exchange.read(2).map_error(from_io)
+    let end = try exchange.read(1).map_error(from_io)
     let a = first.get(Bytes([])).decode_utf8().get("")
     let b = second.get(Bytes([])).decode_utf8().get("")
     return reply(exchange, text(200, "{a}|{b}|{end.is_none()}"))
@@ -218,7 +218,7 @@ test "in-process reads retain the unread body after a bounded chunk":
     try expect_equal(body_of(response), "a|bc|true")
 
 fn read_sizes(exchange: HttpExchange, params: RouteParams) Result[Unit, HttpError]:
-    let limit = if params.get_or("mode", "") == "default": none else: some(100000)
+    let limit: Int? = if params.get_or("mode", "") == "default": none else: 100000
 
     let first = try exchange.read(limit).map_error(from_io)
     let second = try exchange.read(limit).map_error(from_io)
@@ -252,7 +252,7 @@ test "in-process reads report EOF immediately for an empty body":
 
 fn invalid_reads(exchange: HttpExchange, params: RouteParams) Result[Unit, HttpError]:
     for limit in [0, -1]:
-        let read = exchange.read(some(limit))
+        let read = exchange.read(limit)
         if read.is_ok(): return error(HttpError.Failed("invalid read size accepted"))
         if read.err() != IoError.InvalidInput: return error(
             HttpError.Failed("wrong read error")
@@ -392,7 +392,7 @@ fn logged(lines: Shared[List[String]]) String:
 
 test "access_log writes one record per request":
     let lines = share(List[String]())
-    let logger = (create(Sink(lines: lines), timestamp: some(false))).get()
+    let logger = (create(Sink(lines: lines), timestamp: false)).get()
     var r = Router()
     r.use(access_log(logger))
     r.get("/a", say("hello")).get()

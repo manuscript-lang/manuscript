@@ -35,7 +35,7 @@ export fn main() Int:
     let _ = group.results()
     group.close()
 
-    var group2 = TaskGroup[Int](timeout: some(nanoseconds(20000000)))
+    var group2 = TaskGroup[Int](timeout: nanoseconds(20000000))
     group2.spawn(fn ch: sleep_with_reporter())
 
     let _ = group2.wait()

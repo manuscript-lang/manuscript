@@ -155,7 +155,19 @@ impl FnLower<'_> {
             let v = self.testing_fail(rty, m.v)?;
             return Ok(Val { v, own: true });
         }
-        let vals: Vec<Value> = args.iter().map(|a| self.borrow(a.val)).collect();
+        // A plain value compared with an optional is wrapped to the shared `T?`.
+        let equality = matches!(name.as_str(), "expect_equal" | "expect_not_equal");
+        let vals: Vec<Value> = args
+            .iter()
+            .map(|a| {
+                if equality && a.wrapped {
+                    let o = self.owned(a.val);
+                    let v = self.b.opt_some(o);
+                    return self.borrow(Val { v, own: true });
+                }
+                self.borrow(a.val)
+            })
+            .collect();
         match name.as_str() {
             "expect_true" | "expect_false" => {
                 let want = name == "expect_true";

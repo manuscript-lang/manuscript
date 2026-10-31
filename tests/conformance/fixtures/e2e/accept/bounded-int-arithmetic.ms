@@ -84,8 +84,9 @@ fn expression_overflow() Int:
     var i = 0
 
     while i < 1:
-        let value = match some(1):
-            some(n):
+
+        let value = match present(1):
+            n:
                 sum = 9223372036854775807
                 n
             none: 0
@@ -157,3 +158,6 @@ test "bounded multiplication keeps its operator and operand effects":
     var visits: List[Int] = []
     (zero_effect(var visits) * 0) | try expect_equal(0)
     visits | try expect_equal([1])
+
+fn present[T](value: T) T?:
+    return value

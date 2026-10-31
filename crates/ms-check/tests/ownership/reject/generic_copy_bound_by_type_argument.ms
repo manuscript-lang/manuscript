@@ -19,8 +19,8 @@ impl Sink[T] for Bin[T]:
         return xs.length()
 
 fn wrap[T]() Sink[T]:
-    return Bin[T](0)
+    return Bin[T](0)  # error: so it copies values of `T`, which may be a resource; declare `T: Clonable`
 
 fn f() Int:
-    let s = wrap[Door]()  # error: `wrap` copies values of its type parameter `T`
+    let s = wrap[Door]()
     return s.put(Door(1))

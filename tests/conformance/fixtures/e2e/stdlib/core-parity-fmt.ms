@@ -49,11 +49,11 @@ test "core parity operations are callable":
     let chained: Result[String, TextError] = success.and_then(fn n: ok(n.to_string()))
     try expect_equal(chained.get(), "2")
 
-    let present: Int? = some(2)
+    let present: Int? = 2
     let missing: Int? = none
     try expect_equal(present.map(fn n: n + 1).get(), 3)
-    try expect_equal(present.and_then(fn n: some(n.to_string())).get(), "2")
-    try expect_equal(missing.or_else(fn: some(4)).get(), 4)
+    try expect_equal(present.and_then(fn(n: Int) String?: n.to_string()).get(), "2")
+    try expect_equal(missing.or_else(fn: 4).get(), 4)
 
     let values: Map[String, Int] = {"a": 1, "b": 2}
     try expect_false(values.is_empty() or values.get_or("absent", 8) != 8)
@@ -114,11 +114,11 @@ test "Result preserves unconstrained payloads and success-only composition":
     let limits = JsonLimits(-1)
     let record: Result[JsonLimits, TextError] = ok(limits.clone())
     var changed = record.clone().map(fn value: value).get().clone()
-    changed.max_values = some(7)
+    changed.max_values = 7
     try expect_equal(changed.max_values.get(), 7)
     try expect_false(limits.max_values.is_some())
 
-    let nested = success.clone().map(fn n: some(n))
+    let nested = success.clone().map(fn(n: Int) Int?: n)
     try expect_equal(nested.get().get(), 0)
 
     let unit_result: Result[Unit, TextError] = ok(unit)
@@ -152,7 +152,7 @@ test "Result fallbacks are eager or lazy and bound methods keep receivers":
 
 test "Optional composition keeps nesting identity and lazy callback counts":
     let counter = Counter(0)
-    let present: Counter? = some(counter.clone())
+    let present: Counter? = counter.clone()
     let missing: Counter? = none
     let transform = fn(value: Counter) Counter:
         return Counter(value.calls + 1)
@@ -167,13 +167,13 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     edited.calls = 2
     try expect_equal(mapped.get().calls, 1)
 
-    let chained = present.clone().and_then(fn value: some(value))
+    let chained = present.clone().and_then(fn(value: Counter) Counter?: value)
     try expect_equal(chained.get().calls, 0)
 
     let absent = present.clone().and_then(fn(unused: Counter) Int?: none)
     try expect_false(not (absent.is_none()))
 
-    let create = fn() Counter?: some(Counter(5))
+    let create = fn() Counter?: Counter(5)
     let unexpected_create = fn() Counter?: panic("fallback must stay lazy")
     let bound = present.clone().or_else
     try expect_equal(bound(unexpected_create).get().calls, 0)
@@ -188,7 +188,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     try expect_equal(bound_map(fn value: value.calls.to_string()).get(), "1")
 
     let bound_chain = missing.clone().and_then[String]
-    try expect_false(not (bound_chain(fn unused: some("unexpected")).is_none()))
+    try expect_false(not (bound_chain(fn unused: "unexpected").is_none()))
 
 test "Map filter copies ordered membership and get_or never inserts":
     var counter = Counter(0)
