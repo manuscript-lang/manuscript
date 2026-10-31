@@ -99,6 +99,9 @@ type Flow:
     line: Int
     context: Context
     delimited: Bool
+    # Scalar offsets where stripped comments terminate an already-started plain leaf.
+    stops: List[Int] = []
+    next_stop: Int = 0
 
 # YAML separates tokens with only space and tab; Unicode spaces such as U+00A0 are scalar content.
 fn blank(code: Int) Bool:
@@ -485,8 +488,14 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
     if c == 34 or c == 39: return ok(YamlValue.StringValue(try quoted(var flow)))
 
     let start = flow.pos
+    while (
+        flow.next_stop < flow.stops.length()
+        and flow.stops.get(flow.next_stop) <= start
+    ): flow.next_stop += 1
 
-    while true:
+    let stop = flow.stops.get(flow.next_stop, default: flow.chars.length())
+
+    while flow.pos < stop:
         let code = cur(flow)
         if code == 0: break
         if (
@@ -1088,6 +1097,11 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
         or text.starts_with("'")
         or text.starts_with("&")
     )
+    var stops: List[Int] = []
+    if (
+        structured
+        and boundary(context.lines.get(context.index - 1), colon: false) >= 0
+    ): stops.append(joined.scalar_length())
 
     while (
         structured
@@ -1101,7 +1115,9 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
         let comment = boundary(combined, colon: false)
 
         if comment < 0: joined = combined
-        else: joined = combined.slice(0, comment).get("")
+        else:
+            stops.append(comment)
+            joined = combined.slice(0, comment).get("")
 
         context.index += 1
 
@@ -1118,7 +1134,8 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
             anchors: context.anchors.clone(), sizes: context.sizes.clone(), simple: [],
             blank: [], dash: [], ind: [], col: []
         ),
-        delimited: false
+        delimited: false,
+        stops: stops
     )
     let result = try flow_value(var flow, depth, key: false)
     flow_space(var flow)
@@ -1295,7 +1312,17 @@ fn block_value(
         if not structured_lead(lead):
             remainder = blank_trim_end(remainder).clone()
 
-            if may_continue(context, base):
+            # An inline comment ends a nonempty plain scalar, even when the next line
+            # would otherwise have continuation indentation. Simple lines contain no comments.
+            if (
+                (
+                    context.simple.get(context.index - 1)
+                    or boundary(
+                        context.lines.get(context.index - 1), colon: false
+                    ) < 0
+                )
+                and may_continue(context, base)
+            ):
                 var joined = StringBuilder()
                 joined.append(remainder)
 
@@ -1339,6 +1366,10 @@ fn block_value(
                     joined.append(blank_trim(next))
                     probe += 1
                     context.index = probe
+                    if (
+                        not context.simple.get(probe - 1)
+                        and boundary(line, colon: false) >= 0
+                    ): break
 
                 remainder = joined.build()
 
@@ -1448,13 +1479,15 @@ fn sequence_items(
                 frames.append([])
                 level += 1
 
+            # Keep comments in the virtual source line so plain continuation can see them.
+            let raw = context.lines.get(context.index)
             context.simple.set(context.index, false)
             context.lines.set(
                 context.index,
                 pad(innermost).concat(
                     (
-                        line
-                        .slice(innermost, line.scalar_length())
+                        raw
+                        .slice(innermost, raw.scalar_length())
                         .get("")
                     )
                 )
@@ -1503,7 +1536,17 @@ fn sequence_items(
                     context.index, false
                 )
 
-            context.lines.set(context.index, pad(column).concat(item))
+            var rewritten = pad(column).concat(item)
+
+            if not fast:
+                let raw = context.lines.get(context.index)
+                rewritten = rewritten.concat(
+                    raw.slice(
+                        line.scalar_length(), raw.scalar_length()
+                    ).get("")
+                )
+
+            context.lines.set(context.index, rewritten)
             values.append(try block(var context, column, (depth + 1)))
         else:
             context.index += 1
