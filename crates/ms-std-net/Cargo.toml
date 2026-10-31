@@ -11,6 +11,7 @@ crate-type = ["staticlib", "rlib"]
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-rt = { path = "../ms-rt" }
+ms-std-encoding = { path = "../ms-std-encoding" }
 mio = { version = "1", default-features = false, features = ["os-poll", "os-ext", "net"] }
 socket2 = { version = "0.6", features = ["all"] }
 
@@ -18,7 +19,6 @@ rustls = { version = "0.23", default-features = false, features = ["std", "ring"
 rustls-pki-types = { version = "1", features = ["std"] }
 rustls-native-certs = "0.8"
 x509-parser = { version = "0.18", features = ["verify"] }
-base64 = "0.23"
 httparse = "1"
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 psl = "2"
