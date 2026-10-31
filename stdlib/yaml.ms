@@ -99,6 +99,9 @@ type Flow:
     line: Int
     context: Context
     delimited: Bool
+    # Scalar offsets where stripped comments terminate an already-started plain leaf.
+    stops: List[Int] = []
+    next_stop: Int = 0
 
 # YAML separates tokens with only space and tab; Unicode spaces such as U+00A0 are scalar content.
 fn blank(code: Int) Bool:
@@ -470,8 +473,14 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
     if c == 34 or c == 39: return ok(YamlValue.StringValue(try quoted(var flow)))
 
     let start = flow.pos
+    while (
+        flow.next_stop < flow.stops.length()
+        and flow.stops.get(flow.next_stop) <= start
+    ): flow.next_stop += 1
 
-    while true:
+    let stop = flow.stops.get(flow.next_stop, default: flow.chars.length())
+
+    while flow.pos < stop:
         let code = cur(flow)
         if code == 0: break
         if (
@@ -1009,6 +1018,11 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
         or text.starts_with("'")
         or text.starts_with("&")
     )
+    var stops: List[Int] = []
+    if (
+        structured
+        and boundary(context.lines.get(context.index - 1), colon: false) >= 0
+    ): stops.append(joined.scalar_length())
 
     while (
         structured
@@ -1022,7 +1036,9 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
         let comment = boundary(combined, colon: false)
 
         if comment < 0: joined = combined
-        else: joined = combined.slice(0, comment).get("")
+        else:
+            stops.append(comment)
+            joined = combined.slice(0, comment).get("")
 
         context.index += 1
 
@@ -1039,7 +1055,8 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
             anchors: context.anchors.clone(), sizes: context.sizes.clone(), simple: [],
             blank: [], dash: [], ind: [], col: []
         ),
-        delimited: false
+        delimited: false,
+        stops: stops
     )
     let result = try flow_value(var flow, depth, key: false)
     flow_space(var flow)
