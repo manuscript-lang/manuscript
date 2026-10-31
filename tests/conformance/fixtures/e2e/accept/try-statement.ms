@@ -4,50 +4,50 @@
 import TextError from "@std/core.ms"
 import expect_equal from "@std/test.ms"
 
-fn parse(n: Int) Result[Int, TextError]:
+fn parse(n: Int) Int!TextError:
     if n < 0:
         return error(TextError("neg"))
 
     return ok(n)
 
-fn bound(n: Int) Result[Int, TextError]:
+fn bound(n: Int) Int!TextError:
     let v = try parse(n)
     return ok(v + 1)
 
-fn reassigned(n: Int) Result[Int, TextError]:
+fn reassigned(n: Int) Int!TextError:
     var total = 1
     total = try parse(n)
     return ok(total * 2)
 
-fn check(n: Int) Result[Unit, TextError]:
+fn check(n: Int) Unit!TextError:
     if n < 0:
         return error(TextError("neg"))
 
     return ok(unit)
 
-fn discarded(n: Int) Result[Int, TextError]:
+fn discarded(n: Int) Int!TextError:
     try check(n)
     return ok(7)
 
-fn code(r: Result[Int, TextError]) Int:
+fn code(r: Int!TextError) Int:
     return r.get(-1)
 
-fn nested(n: Int) Result[Int, TextError]:
+fn nested(n: Int) Int!TextError:
     return ok((try parse(n)) + (try parse(n - 5)))
 
-fn chained(n: Int) Result[Int, TextError]:
+fn chained(n: Int) Int!TextError:
     let a = try bound(n)
     let b = try reassigned(a - 10)
     return ok(b)
 
-fn in_loop(values: List[Int]) Result[Int, TextError]:
+fn in_loop(values: List[Int]) Int!TextError:
     var sum = 0
     for v in values:
         sum += try parse(v)
     return ok(sum)
 
-fn in_lambda(n: Int) Result[Int, TextError]:
-    let inner = fn() Result[Int, TextError]:
+fn in_lambda(n: Int) Int!TextError:
+    let inner = fn() Int!TextError:
         let v = try parse(n)
         return ok(v * 10)
 

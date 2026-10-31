@@ -11,7 +11,7 @@ fn choose[T](first: fn() T, second: fn() T) T: first()
 fn optional[T, U](value: T, transform: (fn(T) U)?) U:
     return transform.get()(value)
 
-fn with_result[T](transform: fn() Result[T, TextError]) Result[T, TextError]: transform()
+fn with_result[T](transform: fn() T!TextError) T!TextError: transform()
 
 type Callback[T, U]:
     transform: fn(T) U
@@ -50,7 +50,7 @@ test "callback inference retains captures and contextual metadata":
 
     try expect_equal(failure, Result[Int, TextError].error(TextError("expected")))
 
-    let failed: Result[Int, Error] = apply(
+    let failed: Int! = apply(
         value: 9, transform: fn item: error(Failure(item))
     )
     try expect_false(failed.is_ok())
@@ -80,7 +80,7 @@ test "later returns repair incomplete and convertible evidence":
 
     try expect_equal(cause.message(), "2")
 
-fn operation() Result[Int, TextError]: ok(4)
+fn operation() Int!TextError: ok(4)
 
 test "try rechecks the inferred enclosing result":
     let value = from_callback(

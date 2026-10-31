@@ -1,7 +1,4 @@
-extern fn msrt_logcore_child(
-    value: LogState,
-    fields: String
-) Result[LogState, LogCoreError]
+extern fn msrt_logcore_child(value: LogState, fields: String) LogState!LogCoreError
 
 extern fn msrt_logcore_enabled(value: LogState, level: Int) Bool
 
@@ -14,7 +11,7 @@ extern fn msrt_logcore_line(
     level: Int,
     message: String,
     now_ms: Int
-) Result[String, LogCoreError]
+) String!LogCoreError
 
 extern fn msrt_logcore_line_json(
     value: LogState,
@@ -22,13 +19,13 @@ extern fn msrt_logcore_line_json(
     message: String,
     fields: String,
     now_ms: Int
-) Result[String, LogCoreError]
+) String!LogCoreError
 
 extern fn msrt_logcore_new_state(
     level: Int?,
     timestamp: Bool?,
     max_bytes: Int?
-) Result[LogState, LogCoreError]
+) LogState!LogCoreError
 
 extern fn msrt_logcore_shut(value: LogGate) Unit
 
@@ -53,7 +50,7 @@ export extern type LogState
 
 impl LogState:
     # Returns state that adds the members of the JSON object text `fields` to each record.
-    fn child(fields: String) Result[LogState, LogCoreError]:
+    fn child(fields: String) LogState!LogCoreError:
         return msrt_logcore_child(self, fields)
 
     # Tests whether a record at the level index would be written.
@@ -69,7 +66,7 @@ impl LogState:
         msrt_logcore_set_level(self, level)
 
     # Encodes a record line, or returns empty text when the level is below the threshold.
-    fn line(level: Int, message: String, now_ms: Int) Result[String, LogCoreError]:
+    fn line(level: Int, message: String, now_ms: Int) String!LogCoreError:
         return msrt_logcore_line(self, level, message, now_ms)
 
     # Encodes a record line with the members of the JSON object text `fields` added.
@@ -78,7 +75,7 @@ impl LogState:
         message: String,
         fields: String,
         now_ms: Int
-    ) Result[String, LogCoreError]:
+    ) String!LogCoreError:
         return msrt_logcore_line_json(self, level, message, fields, now_ms)
 
 # Creates state from optional level index, timestamp setting, and record byte limit.
@@ -86,7 +83,7 @@ export fn new_state(
     level: Int?,
     timestamp: Bool?,
     max_bytes: Int?
-) Result[LogState, LogCoreError]:
+) LogState!LogCoreError:
     return msrt_logcore_new_state(level, timestamp, max_bytes)
 
 # A flag every copy of a transport shares; once shut it stays shut.

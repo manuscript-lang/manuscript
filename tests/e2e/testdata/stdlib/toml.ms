@@ -3,12 +3,12 @@ import TextError from "@std/core.ms"
 import parse, stringify, TomlValue, TomlError, TomlLimits from "@std/toml.ms"
 import clock from "@std/time.ms"
 
-fn entries(value: TomlValue) Result[Map[String, TomlValue], Error]:
+fn entries(value: TomlValue)(Map[String, TomlValue])!:
     match value:
         TableValue(values): return ok(values)
         _: return error(TextError("expected TOML table"))
 
-fn items(value: TomlValue) Result[List[TomlValue], Error]:
+fn items(value: TomlValue) List[TomlValue]!:
     match value:
         ArrayValue(values): return ok(values)
         _: return error(TextError("expected TOML array"))
@@ -113,8 +113,8 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
             _: return fail("wrong TOML error")
 
 test "TOML optional limits include implicit tables and zero":
-    let limited: Result[TomlValue, TomlError] = error(TomlError.LimitExceeded)
-    let invalid: Result[TomlValue, TomlError] = error(TomlError.InvalidInput)
+    let limited: TomlValue!TomlError = error(TomlError.LimitExceeded)
+    let invalid: TomlValue!TomlError = error(TomlError.InvalidInput)
     try expect_false(
         (
             parse(
@@ -207,7 +207,7 @@ test "TOML errors report the offending line and column":
     failure("x = 1\ny = 1e") | try expect_equal("TOML 2:5: invalid exponent")
 
 test "TOML limits fields default to none":
-    let limited: Result[TomlValue, TomlError] = error(TomlError.LimitExceeded)
+    let limited: TomlValue!TomlError = error(TomlError.LimitExceeded)
     parse(text: "a=1", limits: TomlLimits(max_bytes: 2)) | try expect_equal(limited)
     parse(text: "a=1", limits: TomlLimits()) | try expect_equal(parse(text: "a=1"))
 
@@ -221,14 +221,14 @@ test "TOML stringify round trips scalars tables and arrays of tables":
     )
 
 test "TOML stringify requires a table root and honors max_bytes":
-    let wrong: Result[String, TomlError] = error(TomlError.InvalidInput)
-    let limited: Result[String, TomlError] = error(TomlError.LimitExceeded)
+    let wrong: String!TomlError = error(TomlError.InvalidInput)
+    let limited: String!TomlError = error(TomlError.LimitExceeded)
     stringify(value: TomlValue.IntValue(1)) | try expect_equal(wrong)
 
     let root = (parse(text: "a = 1") | try expect_ok)
     stringify(value: root, max_bytes: 3) | try expect_equal(limited)
 
-    let exact: Result[String, TomlError] = ok("a = 1\n")
+    let exact: String!TomlError = ok("a = 1\n")
     stringify(value: root, max_bytes: 6) | try expect_equal(exact)
     stringify(value: root, max_bytes: -1) | try expect_equal(wrong)
 
@@ -253,7 +253,7 @@ test "TOML long strings parse and stringify in linear time":
     parse(text: text) | try expect_ok | try expect_equal(root)
 
 test "TOML stringify rejects invalid date-time text":
-    let invalid: Result[String, TomlError] = error(TomlError.InvalidInput)
+    let invalid: String!TomlError = error(TomlError.InvalidInput)
 
     for text in ["bogus", "", "2024-13-01", "1979-05-27T07:32:00 junk"]:
         var table = Map[String, TomlValue]()

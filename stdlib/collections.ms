@@ -269,11 +269,7 @@ export type ListEntry[T]:
     value: T
 
 # Creates a list containing `value` repeated `count` times.
-export fn filled[T](
-    value: T,
-    count: Int,
-    max_items: Int?
-) Result[List[T], CollectionError]: ...
+export fn filled[T](value: T, count: Int, max_items: Int?) List[T]!CollectionError: ...
 
 # Creates the integers from `start` up to but excluding `end`, counting by one. Written `start..end`; the name `range` is not importable. The list is empty when `end <= start`. `for index in 0..count:` runs as a counter loop without allocating the list. As a stored list, more than about 268 million items is a fault; use `range_by` to bound the size with an error value.
 fn range(start: Int, end: Int) List[Int]: ...
@@ -284,7 +280,7 @@ export fn range_by(
     end: Int,
     step: Int,
     max_items: Int?
-) Result[List[Int], CollectionError]: ...
+) List[Int]!CollectionError: ...
 
 # Builds a map from entries. Later entries replace earlier values for duplicate keys.
 export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) Map[K, V]: ...
@@ -402,7 +398,7 @@ impl ListFloat32Sum for List[Float32]:
 # Operations that copy elements. A copy of a resource would be closed twice, so the elements must be Clonable.
 interface ListCopies[T: Clonable]:
     fn clone() List[T]
-    fn slice(start: Int, end: Int) Result[List[T], CollectionError]
+    fn slice(start: Int, end: Int) List[T]!CollectionError
     fn take(count: Int) List[T]
     fn drop(count: Int) List[T]
     fn chunks(size: Int) List[List[T]]
@@ -424,7 +420,7 @@ impl ListCopies[T] for List[T]:
 
     # Returns a new owned List containing copies of the elements in [start, end).
     # Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
-    fn slice(start: Int, end: Int) Result[List[T], CollectionError]: ...
+    fn slice(start: Int, end: Int) List[T]!CollectionError: ...
 
     # Copies the first min(count, length) elements into fresh owned List storage.
     # Leaves the receiver unchanged; negative count is a programming fault.

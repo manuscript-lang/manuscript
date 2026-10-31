@@ -4,5 +4,5 @@
 fn work(
     first: Int,
     second: String
-) Result[Map[String, String]?, ApplicationError]:
+) (Map[String, String]?)!ApplicationError:
     return error(cause)

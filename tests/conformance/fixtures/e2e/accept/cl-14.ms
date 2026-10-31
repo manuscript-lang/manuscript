@@ -12,17 +12,17 @@ impl Error for Problem:
 type OtherProblem:
     case Invalid(reason: String)
 
-fn checked(value: Int) Result[Int, Problem]:
+fn checked(value: Int) Int!Problem:
     if value < 0:
         return error(Problem.Missing("negative"))
 
     return ok(value)
 
-fn doubled(value: Int) Result[Int, Problem]:
+fn doubled(value: Int) Int!Problem:
     let accepted = try checked(value)
     return ok(accepted * 2)
 
-fn summarize(outcome: Result[Int, Problem]) Int:
+fn summarize(outcome: Int!Problem) Int:
     return outcome.get(-1)
 
 test "unchanged propagated error":

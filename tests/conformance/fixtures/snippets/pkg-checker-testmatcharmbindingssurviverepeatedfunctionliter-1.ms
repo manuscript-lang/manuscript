@@ -4,7 +4,7 @@
 fn call[T](operation: fn() T) T:
     return operation()
 
-fn get() Result[Int, Error]: return ok(value: 1)
+fn get() Int!: return ok(value: 1)
 
 fn note() Unit: return unit
 

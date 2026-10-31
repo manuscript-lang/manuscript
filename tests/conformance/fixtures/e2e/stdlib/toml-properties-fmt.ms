@@ -31,7 +31,7 @@ fn table(var rng: Rng, depth: Int) TomlValue:
         entries.add(text(var rng), generated(var rng, depth))
     return TomlValue.TableValue(entries)
 
-fn check_round_trip(seed: Int, original: TomlValue) Result[Unit, Error]:
+fn check_round_trip(seed: Int, original: TomlValue) Unit!:
     let rendered = try stringify(original)
     if (try parse(rendered)) != original: return fail(
         "seed {seed}: changed\n{rendered}"
@@ -39,7 +39,7 @@ fn check_round_trip(seed: Int, original: TomlValue) Result[Unit, Error]:
 
     return ok(unit)
 
-fn check_stable(seed: Int, mutated: String, first: TomlValue) Result[Unit, Error]:
+fn check_stable(seed: Int, mutated: String, first: TomlValue) Unit!:
     let again = try stringify(first)
     if (try parse(again)) != first: return fail(
         "seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"

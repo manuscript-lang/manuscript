@@ -15,8 +15,8 @@ export fn second_mapped() Set[Key]:
     let values = Set[Int]([1, 2])
     return transform_set(values, fn n: Key(0, n.to_string()))
 
-export fn second_failure(cause: Cause) Result[String, Error]:
-    let value: Result[Int, Error] = error(cause)
+export fn second_failure(cause: Cause) String!:
+    let value: Int! = error(cause)
     return value.and_then(fn n: Result[String, Error].ok(n.to_string()))
 
 export fn second_queries() Bool:
@@ -30,7 +30,7 @@ export fn second_queries() Bool:
         and locate_set(set, Key(5, "different")).is_none()
     )
 
-export fn second_converted(cause: Cause) Result[Int, Error]:
+export fn second_converted(cause: Cause) Int!:
     let missing: Int? = none
     return convert(missing, fn() Error: cause)
 

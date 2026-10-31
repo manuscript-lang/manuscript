@@ -11,7 +11,7 @@ import network from "@std/net.ms"
 import timestamp from "@std/time.ms"
 import certificate, private_key from "./support/certificates.ms"
 
-fn hello(exchange: HttpExchange) Result[Unit, HttpError]:
+fn hello(exchange: HttpExchange) Unit!HttpError:
     let started = try exchange.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
@@ -38,7 +38,7 @@ test "TLS certificate parsing verification hostname and expiration":
             server_name: "stdlib.test", now: now
         ) | try expect_ok
     )
-    let failed: Result[Unit, TlsError] = error(TlsError.AuthenticationFailed)
+    let failed: Unit!TlsError = error(TlsError.AuthenticationFailed)
     try expect_false(
         (
             verify_certificates(
@@ -59,10 +59,10 @@ test "TLS certificate parsing verification hostname and expiration":
     )
 
 test "TLS rejects malformed PEM and certificate budgets":
-    let invalid: Result[List[CertificateInfo], TlsError] = error(TlsError.InvalidData)
+    let invalid: List[CertificateInfo]!TlsError = error(TlsError.InvalidData)
     parse_certificates(pem: "not PEM") | try expect_equal(invalid)
 
-    let limited: Result[List[CertificateInfo], TlsError] = error(TlsError.LimitExceeded)
+    let limited: List[CertificateInfo]!TlsError = error(TlsError.LimitExceeded)
     parse_certificates(pem: certificate(), max_certificates: 0) | try expect_equal(
         limited
     )
@@ -100,7 +100,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
         )
     )
 
-fn report_protocol(exchange: HttpExchange) Result[Unit, HttpError]:
+fn report_protocol(exchange: HttpExchange) Unit!HttpError:
     let started = try exchange.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )

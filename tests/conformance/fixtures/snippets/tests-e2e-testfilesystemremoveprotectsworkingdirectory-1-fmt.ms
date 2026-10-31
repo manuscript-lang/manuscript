@@ -5,7 +5,7 @@ import filesystem, FileSystemError from "@std/fs.ms"
 
 export fn main() Int:
     let fs = filesystem()
-    let invalid: Result[Unit, FileSystemError] = error(FileSystemError.InvalidInput)
+    let invalid: Unit!FileSystemError = error(FileSystemError.InvalidInput)
     if fs.remove(path: "", recursive: true) != invalid: return 1
     if fs.remove(path: ".", recursive: true) != invalid: return 2
     if fs.remove(path: "child/..", recursive: true) != invalid: return 3

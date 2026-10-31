@@ -20,7 +20,7 @@ test "raw monotonic nanoseconds share the typed process uptime origin":
 
 test "closed codec strings reject spelling changes with their domain errors":
     let data = "text".to_bytes()
-    let normalization_error: Result[String, StringError] = error(
+    let normalization_error: String!StringError = error(
         StringError.InvalidInput
     )
     for form in ["nfc", "NFC ", ""]:
@@ -28,7 +28,7 @@ test "closed codec strings reject spelling changes with their domain errors":
     for form in ["NFC", "NFD", "NFKC", "NFKD"]:
         try expect_equal((try "text".normalize(form)), "text")
 
-    let compression_error: Result[Bytes, CompressionError] = error(
+    let compression_error: Bytes!CompressionError = error(
         CompressionError.Unsupported
     )
 
@@ -47,14 +47,14 @@ test "closed codec strings reject spelling changes with their domain errors":
                 data
             )
 
-    let level_error: Result[Bytes, CompressionError] = error(
+    let level_error: Bytes!CompressionError = error(
         CompressionError.InvalidInput
     )
     for level in [-1, 10]:
         try expect_equal(compress(data, "gzip", level), level_error)
 
-    let pack_error: Result[Bytes, ArchiveError] = error(ArchiveError.Unsupported)
-    let unpack_error: Result[List[ArchiveEntry], ArchiveError] = error(
+    let pack_error: Bytes!ArchiveError = error(ArchiveError.Unsupported)
+    let unpack_error: List[ArchiveEntry]!ArchiveError = error(
         ArchiveError.Unsupported
     )
 
@@ -118,7 +118,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
     var reader = handle.reader()
     writer.close()
 
-    let closed_read: Result[Bytes, FileSystemError] = error(FileSystemError.Closed)
+    let closed_read: Bytes!FileSystemError = error(FileSystemError.Closed)
     try expect_equal(handle.read_at(0), closed_read)
     try expect_equal((try expect_error(reader.read())), IoError.Closed)
     handle.close()

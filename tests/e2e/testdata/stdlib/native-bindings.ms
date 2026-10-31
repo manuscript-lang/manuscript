@@ -6,10 +6,7 @@ import milliseconds, sleep from "@std/time.ms"
 import TaskGroup from "@std/tasks.ms"
 import Shared, share from "@std/shared.ms"
 
-fn expect_process_error[T](
-    outcome: Result[T, ControlError],
-    expected: ControlError
-) Result[Unit, Error]:
+fn expect_process_error[T](outcome: T!ControlError, expected: ControlError) Unit!:
     match outcome:
         ok(_): return error(TextError("process misuse succeeded"))
         error(cause):
@@ -17,10 +14,7 @@ fn expect_process_error[T](
 
     return ok(unit)
 
-fn expect_fs_error[T](
-    outcome: Result[T, FileSystemError],
-    expected: FileSystemError
-) Result[Unit, Error]:
+fn expect_fs_error[T](outcome: T!FileSystemError, expected: FileSystemError) Unit!:
     match outcome:
         ok(_): return error(TextError("filesystem misuse succeeded"))
         error(cause):

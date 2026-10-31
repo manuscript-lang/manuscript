@@ -5,4 +5,4 @@ type Optional[T]:
     case T
     case none
 
-fn wrong(value: Int?) Result[Int, String]: value.ok_or("missing")
+fn wrong(value: Int?) Int!String: value.ok_or("missing")

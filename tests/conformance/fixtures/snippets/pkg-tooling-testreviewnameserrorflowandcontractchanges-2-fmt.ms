@@ -1,5 +1,5 @@
 # conform: tags=formatter,parser,tier-core,try-result
 # conform: phase=parse
 # conform: origin=pkg/tooling/review_test.go:54 TestReviewNamesErrorFlowAndContractChanges
-export fn load(n: Int) Result[Int, Error]:
+export fn load(n: Int) Int!:
     return ok(n)

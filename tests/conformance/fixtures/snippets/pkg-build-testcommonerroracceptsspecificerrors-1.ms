@@ -7,15 +7,15 @@ import hex_decode from "@std/encoding.ms"
 fn general(cause: JsonError) Error:
     return cause
 
-fn failed() Result[Unit, JsonError]:
+fn failed() Unit!JsonError:
     return error(cause: JsonError.InvalidData)
 
-fn forwarded() Result[Unit, Error]:
+fn forwarded() Unit!:
     return failed()
 
-fn propagated() Result[Unit, Error]:
+fn propagated() Unit!:
     let _bytes = try hex_decode(text: "zz")
     return ok(value: unit)
 
-fn constructed() Result[Unit, Error]:
+fn constructed() Unit!:
     return error(cause: JsonError.InvalidData)

@@ -1,9 +1,9 @@
 import TextError from "@std/core.ms"
 import expect_equal, expect_false from "@std/test.ms"
 
-fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
+fn fail[T](message: String) T!TextError: error(TextError(message))
 
-fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
+fn fail_cause[T, E: Error](cause: E) T!E: error(cause)
 
 fn absent[T]() T?: none
 
@@ -19,9 +19,9 @@ type Failure:
 impl Error for Failure:
     fn message() String: self.detail.clone()
 
-fn first() Result[List[Int], TextError]: fail("empty")
+fn first() List[Int]!TextError: fail("empty")
 
-fn failed() Result[Int, Error]: fail_cause(Failure("domain"))
+fn failed() Int!: fail_cause(Failure("domain"))
 
 fn forward[T]() T?: absent()
 
@@ -39,7 +39,7 @@ fn combine[T](var events: Events, first: T?, second: T?) T?:
     return first
 
 test "expected generic results preserve behavior and call order":
-    let result: Result[List[Int], TextError] = first()
+    let result: List[Int]!TextError = first()
     try expect_false(result.is_ok())
     try expect_equal(result.err().message(), "empty")
 

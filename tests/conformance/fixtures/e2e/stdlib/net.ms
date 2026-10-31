@@ -75,6 +75,6 @@ test "typed addresses preserve normalization and reject zones":
     try expect_ip_error("fe80::1%eth0")
     try expect_false((try contains_ip(try parse_cidr("::ffff:192.0.2.0/120"), ip)))
 
-fn expect_ip_error(input: String) Result[Unit, Error]:
+fn expect_ip_error(input: String) Unit!:
     try expect_equal((try expect_error(parse_ip(input))), NetworkError.InvalidData)
     return ok(unit)

@@ -5,20 +5,20 @@ extern fn msrt_archive_pack(
     entries: List[ArchiveEntry],
     format: String,
     max_bytes: Int?
-) Result[Bytes, ArchiveError]
+) Bytes!ArchiveError
 
 extern fn msrt_archive_unpack(
     data: Bytes,
     format: String,
     limits: ArchiveLimits?
-) Result[List[ArchiveEntry], ArchiveError]
+) List[ArchiveEntry]!ArchiveError
 
 extern fn msrt_compress_compress(
     data: Bytes,
     format: String,
     level: Int,
     max_bytes: Int?
-) Result[Bytes, CompressionError]
+) Bytes!CompressionError
 
 extern fn msstd_archive_compress_stream(
     format: String,
@@ -36,7 +36,7 @@ extern fn msrt_compress_decompress(
     data: Bytes,
     format: String,
     max_bytes: Int?
-) Result[Bytes, CompressionError]
+) Bytes!CompressionError
 
 # Errors returned when an archive cannot be read or written.
 export type ArchiveError:
@@ -77,7 +77,7 @@ export fn pack(
     entries: List[ArchiveEntry],
     format: String,
     max_bytes: Int?
-) Result[Bytes, ArchiveError]:
+) Bytes!ArchiveError:
     return msrt_archive_pack(entries, format, max_bytes)
 
 # Decodes exactly `zip` or `tar` (case-sensitive); other formats return Unsupported.
@@ -86,7 +86,7 @@ export fn unpack(
     data: Bytes,
     format: String,
     limits: ArchiveLimits?
-) Result[List[ArchiveEntry], ArchiveError]:
+) List[ArchiveEntry]!ArchiveError:
     return msrt_archive_unpack(data, format, limits)
 
 impl Error for ArchiveError:
@@ -114,14 +114,11 @@ fn archive_format_name(format: ArchiveFormat) String:
 
 impl ArchiveFormat:
     # Packs entries with the same optional output budget and path validation as pack.
-    fn pack(entries: List[ArchiveEntry], max_bytes: Int?) Result[Bytes, ArchiveError]:
+    fn pack(entries: List[ArchiveEntry], max_bytes: Int?) Bytes!ArchiveError:
         return pack(entries, archive_format_name(self), max_bytes)
 
     # Unpacks in memory with the same entry/byte limits and domain errors as unpack.
-    fn unpack(
-        data: Bytes,
-        limits: ArchiveLimits?
-    ) Result[List[ArchiveEntry], ArchiveError]:
+    fn unpack(data: Bytes, limits: ArchiveLimits?) List[ArchiveEntry]!ArchiveError:
         return unpack(data, archive_format_name(self), limits)
 
 # Errors returned when compressed data is unsupported, invalid, or exceeds a limit.
@@ -149,7 +146,7 @@ export fn compress(
     format: String,
     level: Int = 6,
     max_bytes: Int?
-) Result[Bytes, CompressionError]:
+) Bytes!CompressionError:
     return msrt_compress_compress(data, format, level, max_bytes)
 
 # Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return Unsupported.
@@ -158,7 +155,7 @@ export fn decompress(
     data: Bytes,
     format: String,
     max_bytes: Int?
-) Result[Bytes, CompressionError]:
+) Bytes!CompressionError:
     return msrt_compress_decompress(data, format, max_bytes)
 
 impl Error for CompressionError:
@@ -190,15 +187,11 @@ fn compression_format_name(format: CompressionFormat) String:
 impl CompressionFormat:
     # Compresses with level 6 by default; explicit levels remain 0..9 (0 stores data).
     # Uses the same optional output budget/domain errors as compress.
-    fn compress(
-        data: Bytes,
-        level: Int = 6,
-        max_bytes: Int?
-    ) Result[Bytes, CompressionError]:
+    fn compress(data: Bytes, level: Int = 6, max_bytes: Int?) Bytes!CompressionError:
         return compress(data, compression_format_name(self), level, max_bytes)
 
     # Decompresses with the same cumulative output limit and validation as decompress.
-    fn decompress(data: Bytes, max_bytes: Int?) Result[Bytes, CompressionError]:
+    fn decompress(data: Bytes, max_bytes: Int?) Bytes!CompressionError:
         return decompress(data, compression_format_name(self), max_bytes)
 
     # Returns a stream of this format's compressed bytes, reading `input` chunk by chunk.

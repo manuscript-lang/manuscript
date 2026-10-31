@@ -35,7 +35,7 @@ fn waiter(t: Task[Int]) Int:
 
     return r.err().message().length()
 
-fn echo(ch: Channel[Int, Int]) Result[Int, ChannelError]:
+fn echo(ch: Channel[Int, Int]) Int!ChannelError:
     var c = ch
     var n = 0
 
@@ -51,7 +51,7 @@ fn echo(ch: Channel[Int, Int]) Result[Int, ChannelError]:
 test "many tasks echo through their channels without losing a value":
     var total = 0
     var counts = 0
-    var group = TaskGroup[Result[Int, ChannelError], Int, Int]()
+    var group = TaskGroup[Int!ChannelError, Int, Int]()
 
     for t in 0..20:
         var task = group.spawn(echo)

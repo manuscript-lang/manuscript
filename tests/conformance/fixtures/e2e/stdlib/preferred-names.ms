@@ -54,7 +54,7 @@ interface RegexReplacement:
         text: String,
         replacement: String,
         max_bytes: Int?
-    ) Result[String, RegexError]
+    ) String!RegexError
 
 type RegexAdapter:
     pattern: Regex
@@ -64,7 +64,7 @@ impl RegexReplacement for RegexAdapter:
         text: String,
         replacement: String,
         max_bytes: Int?
-    ) Result[String, RegexError]:
+    ) String!RegexError:
         return self.pattern.replace_all(text, replacement, max_bytes)
 
 fn add_generic[T: Hashable](var items: Set[T], value: T) Unit:
@@ -177,8 +177,8 @@ test "regex replace_all preserves literal text and exact output budgets":
     try expect_equal((try all(replacement: "$1", "aa")), "$1$1")
     try expect_equal((try pattern.replace_all("aa", "é", 4)), "éé")
 
-    let limited: Result[String, RegexError] = error(RegexError.LimitExceeded)
-    let invalid: Result[String, RegexError] = error(RegexError.InvalidInput)
+    let limited: String!RegexError = error(RegexError.LimitExceeded)
+    let invalid: String!RegexError = error(RegexError.InvalidInput)
     try expect_equal(pattern.replace_all("aa", "é", 3), limited)
     try expect_equal(all("a", "", -1), invalid)
     try expect_equal((try all("a", "", 0)), "")

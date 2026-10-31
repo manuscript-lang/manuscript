@@ -14,7 +14,7 @@ impl ReadStream for BytesSource:
         self.offset = self.data.length()
         return unit
 
-    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
+    var fn read(max_bytes: Int? = none) Bytes?!IoError:
         let remaining = self.data.length() - self.offset
         if remaining <= 0: return ok(none)
 
@@ -41,7 +41,7 @@ impl ReadStream for MappedStream:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
+    var fn read(max_bytes: Int? = none) Bytes?!IoError:
         while true:
             let chunk = try self.input.read(max_bytes)
 
@@ -67,7 +67,7 @@ impl ReadStream for LimitedStream:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
+    var fn read(max_bytes: Int? = none) Bytes?!IoError:
         if self.remaining < 0: return error(IoError.InvalidInput)
         if self.remaining == 0: return ok(none)
 
@@ -105,7 +105,7 @@ impl ReadStream for ConcatStream:
         self.index = self.inputs.length()
         return unit
 
-    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
+    var fn read(max_bytes: Int? = none) Bytes?!IoError:
         while self.index < self.inputs.length():
             # Read the stored stream in place: a stream is a value, so a local copy would lose its position.
             let chunk = try self.inputs[self.index].read(max_bytes)
@@ -128,7 +128,7 @@ impl ReadStream for TeeStream:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
+    var fn read(max_bytes: Int? = none) Bytes?!IoError:
         let chunk = try self.input.read(max_bytes)
 
         if let bytes = chunk:
@@ -150,13 +150,13 @@ impl WriteStream for MappedWriter:
     var fn close() Unit:
         return self.output.close()
 
-    var fn flush() Result[Unit, IoError]:
+    var fn flush() Unit!IoError:
         return self.output.flush()
 
-    var fn write(data: String) Result[Unit, IoError]:
+    var fn write(data: String) Unit!IoError:
         return self.write_bytes(data.to_bytes())
 
-    var fn write_bytes(data: Bytes) Result[Unit, IoError]:
+    var fn write_bytes(data: Bytes) Unit!IoError:
         let mapped = self.transform(data)
         if mapped.length() == 0: return ok(unit)
 
@@ -168,7 +168,7 @@ export fn map_writer(output: WriteStream, transform: fn(Bytes) Bytes) WriteStrea
     return MappedWriter(output, transform)
 
 # Reads `input` to its end and returns its digest, hashing chunk by chunk so memory stays bounded.
-export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Result[Bytes, IoError]:
+export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Bytes!IoError:
     let hasher = algorithm.hasher()
 
     while true:
@@ -182,7 +182,7 @@ export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Result[Bytes, 
     return ok(hasher.finish())
 
 # Reads every remaining line from `input`, omitting line endings. `max_bytes` bounds each line, as in `read_line`.
-export fn read_lines(input: ReadStream, max_bytes: Int?) Result[List[String], IoError]:
+export fn read_lines(input: ReadStream, max_bytes: Int?) List[String]!IoError:
     var lines = List[String]()
 
     while true:

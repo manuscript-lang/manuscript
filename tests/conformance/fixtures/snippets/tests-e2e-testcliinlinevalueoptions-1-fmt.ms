@@ -5,11 +5,11 @@ import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"
 import stderr from "@std/io.ms"
 
-fn write_line(text: String) Result[Unit, Error]:
+fn write_line(text: String) Unit!:
     try stdout().write(data: "{text}\n")
     return ok(unit)
 
-fn exercise() Result[Int, Error]:
+fn exercise() Int!:
     let args = arguments()
     var index = 0
 

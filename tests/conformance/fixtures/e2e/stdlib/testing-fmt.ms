@@ -36,8 +36,8 @@ test "testing assertions":
     ((present | try expect_some)) | try expect_equal(7)
     absent | try expect_none
 
-    let success: Result[Int, TextError] = ok(9)
-    let failure: Result[Int, TextError] = error(TextError("bad"))
+    let success: Int!TextError = ok(9)
+    let failure: Int!TextError = error(TextError("bad"))
     ((success | try expect_ok)) | try expect_equal(9)
     ((failure | try expect_error)) | try expect_equal(TextError("bad"))
 

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test.ms\"\n\ntype Failure:\n    code: Int\n\nimpl Error for Failure:\n    fn message() String:\n        return \"failure \" + self.code.to_string()\n\nfn failing() Result[Int, Failure]:\n    return error(Failure(7))\n\nfn succeeding() Result[Int, Failure]:\n    return ok(3)\n\nfn describe[T](r: Result[T, Error]) String:\n    if r.is_error():\n        return r.err().message()\n\n    return \"ok\"\n\ntest \"a generic Result[T, Error] parameter infers T and widens a domain error\":\n    try expect_equal(describe(failing()), \"failure 7\")\n    try expect_equal(describe(succeeding()), \"ok\")\n"
+    "fmt": "import expect_equal from \"@std/test.ms\"\n\ntype Failure:\n    code: Int\n\nimpl Error for Failure:\n    fn message() String:\n        return \"failure \" + self.code.to_string()\n\nfn failing() Int!Failure:\n    return error(Failure(7))\n\nfn succeeding() Int!Failure:\n    return ok(3)\n\nfn describe[T](r: T!) String:\n    if r.is_error():\n        return r.err().message()\n\n    return \"ok\"\n\ntest \"a generic T! parameter infers T and widens a domain error\":\n    try expect_equal(describe(failing()), \"failure 7\")\n    try expect_equal(describe(succeeding()), \"ok\")\n"
   }
 }

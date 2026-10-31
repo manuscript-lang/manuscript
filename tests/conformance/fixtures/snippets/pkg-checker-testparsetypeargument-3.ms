@@ -4,5 +4,5 @@
 type Request:
     model: String
 
-fn f(text: String) Result[Request, JsonError]:
+fn f(text: String) Request!JsonError:
     return parse(text)

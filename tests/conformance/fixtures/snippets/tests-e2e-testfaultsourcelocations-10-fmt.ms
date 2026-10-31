@@ -4,6 +4,6 @@
 import TextError from "@std/core.ms"
 
 export fn main() Int:
-    let value: Result[Int, TextError] = ok(0)
+    let value: Int!TextError = ok(0)
     let extract = value.err
     return extract().text.scalar_length()

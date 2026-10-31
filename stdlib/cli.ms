@@ -216,7 +216,7 @@ export type Parsed:
 impl Command:
     # Checks the tree, resolves the subcommand chain, and validates flags and arguments.
     # Returns `Help` for `-h`, `--help`, a leading `help` word, or a group invoked without a subcommand.
-    fn parse(argv: List[String]) Result[Parsed, CliError]:
+    fn parse(argv: List[String]) Parsed!CliError:
         try check_schema(self, [], [self.name.clone()])
         return walk(self, argv)
 
@@ -296,7 +296,7 @@ export fn command[T: Data](
     )
 
 # Builds `T` from the JSON literals of the supplied values.
-fn decode[T: Data](matches: Matches) Result[T, CliError]:
+fn decode[T: Data](matches: Matches) T!CliError:
     var members: List[String] = []
     for entry in matches.fields.entries():
         members.append(stringify(entry.key.clone()).get() + ":" + entry.value)
@@ -395,18 +395,14 @@ fn fits(flag: Flag, value: String) Bool:
         _: return true
 
 # Checks one flag name or short against names already seen.
-fn claim(var seen: List[String], key: String, label: String) Result[Unit, CliError]:
+fn claim(var seen: List[String], key: String, label: String) Unit!CliError:
     if seen.contains(key): return error(CliError.InvalidSchema("duplicate {label}"))
 
     seen.append(key)
     return ok(unit)
 
 # Validates a node and everything below it; `inherited` holds ancestors' persistent flags.
-fn check_schema(
-    node: Command,
-    inherited: List[Flag],
-    path: List[String]
-) Result[Unit, CliError]:
+fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!CliError:
     let where = path.join(" ")
     var names: List[String] = []
     var shorts: List[String] = []
@@ -514,7 +510,7 @@ fn store(var values: Map[String, List[String]], flag: Flag, value: String) Resul
     return ok(unit)
 
 # Resolves subcommands, flags and positionals from `argv`.
-fn walk(root: Command, argv: List[String]) Result[Parsed, CliError]:
+fn walk(root: Command, argv: List[String]) Parsed!CliError:
     var node = root.clone()
     var path = [root.name.clone()]
     var inherited: List[Flag] = []
@@ -626,7 +622,7 @@ fn bind(
     words: List[String],
     var values: Map[String, List[String]],
     path: List[String]
-) Result[Unit, CliError]:
+) Unit!CliError:
     var next = 0
 
     for arg in node.args:
@@ -657,7 +653,7 @@ fn bind(
     return ok(unit)
 
 # Applies the default of an absent flag or reports a missing required one.
-fn fill(var values: Map[String, List[String]], flag: Flag) Result[Unit, CliError]:
+fn fill(var values: Map[String, List[String]], flag: Flag) Unit!CliError:
     if values.contains(flag.name): return ok(unit)
 
     if let text = flag.default:

@@ -20,7 +20,7 @@ import network from "@std/net.ms"
 fn echo(request: HttpRequest) HttpResponse:
     return text(201, "{request.path}:{request.body.decode_utf8().get("")}")
 
-fn exchange_echo(exchange: HttpExchange) Result[Unit, HttpError]:
+fn exchange_echo(exchange: HttpExchange) Unit!HttpError:
     let body = try read_body(exchange, 8)
     return reply(exchange, text(200, "{body.length()}"))
 
