@@ -99,7 +99,7 @@ full [reversal](results-2026-10-31/reverse-paired.csv),
 | word→both / repetitive contains near miss | 1,483.72 | 1,618.65 | +9.09% | +119.01 | 10/10 |
 
 Other empty/one-byte reversal cases also added roughly 2.5–3.6 ns in every pair.
-The standalone 65,536-byte ASCII NFKC control rose 7.00%, eight of eight slower
+The standalone 65,536-copy (320 KiB) ASCII NFKC control rose 7.00%, eight of eight slower
 pairs. Full byte/line distributions are retained even where changes are small,
 mixed in sign or below these selected costs. The experiment does not identify
 the mechanism behind unrelated control changes, nor claim the word candidate
