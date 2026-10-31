@@ -27,5 +27,9 @@ fi
 
 "target/debug/ms-conform$exe" lint
 "target/debug/ms-conform$exe" run --ms "$repository/target/debug/ms$exe" \
-    --phase parse,run,check,test --exclude-tag aliasing --expect-fail "$allow" --strict \
+    --phase run,check,test --exclude-tag aliasing --expect-fail "$allow" --strict \
     --shard "${CONFORM_SHARD:-0/1}" --quiet --markdown .artifacts/conform.md "$@"
+# Parsing and formatting do not depend on aliasing, so the parse phase replays every fixture.
+"target/debug/ms-conform$exe" run --ms "$repository/target/debug/ms$exe" \
+    --phase parse --expect-fail "$allow" --strict \
+    --shard "${CONFORM_SHARD:-0/1}" --quiet --markdown .artifacts/conform-parse.md "$@"

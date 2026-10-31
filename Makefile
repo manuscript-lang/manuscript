@@ -49,7 +49,7 @@ test: unit conform
 build: runtime
 	cargo build --release --locked -p ms-cli
 
-# The parse, run, check and test phases of the frozen conformance corpus against the Rust `ms`, excluding fixtures whose
+# The run, check and test phases of the frozen conformance corpus against the Rust `ms`, excluding fixtures whose
 # answer depends on aliasing; known differences are listed in tests/conformance/expect-fail.txt.
 # CONFORM_SHARD=i/n splits the run.
 conform:
