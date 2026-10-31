@@ -84,3 +84,17 @@ let limited = try narrow.http_client(HttpClientOptions())
 3. `net`, with `restrict` as a function. `make verify`.
 4. Constants as exported values (small language change). `make verify-full`.
 5. Private helpers with a leading `var` receiver become `var fn` methods on that type (`csv` `Reader`: `next_quote`, `next_delimiter`, `next_line`, `read_record`; the same shape in `toml`, `sse`, `jsonstream`, `bytes`, `encoding`, `cli`). Behaviour-preserving; `ms check` accepts `impl Reader:` with `var fn` (scratch project). Own PR. `make verify`.
+6. Group modules into packages under `stdlib/<package>/`, as `stdlib/test/` already does; imports become `@std/net/http.ms`. No old-path aliases (the stdlib ships with the compiler). One mechanical PR: `git mv`, import rewrite, `crates/ms-check/src/stdlib.rs` list, docs, fixtures; recorded expectations that embed paths are re-recorded. Proposed packages:
+
+| Package | Modules |
+| --- | --- |
+| `net/` | `net`, `http`, `fetch`, `router`, `sse` |
+| `io/` | `io`, `streams`, `archive`, `channels` |
+| `os/` | `fs`, `process`, `processes`, `time`, `random` |
+| `data/` | `json`, `jsonstream`, `csv`, `toml`, `yaml`, `encoding`, `html`, `semver` |
+| `collections/` | `collections`, `deque`, `queue`, `sorted`, `bitset`, `iterable`, `ordering` |
+| `concurrency/` | `tasks`, `sync`, `shared`, `workers` |
+| `math/` | `math`, `decimal` |
+| `test/` | `test`, `bench` (existing `test/` contents stay) |
+| top level | `core`, `string`, `bytes`, `crypto`, `log`, `cli` |
+
