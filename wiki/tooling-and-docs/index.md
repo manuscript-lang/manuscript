@@ -17,6 +17,7 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [Profile native programs by Manuscript position](profile-native-programs-by-manuscript-position.md): `ms profile` replaces the debugger (the debugger and DAP are dropped).
 - [Project review must keep library internals behind their boundary](project-review-must-keep-library-internals-behind-their-boun.md): inspection deliberately includes bundled standard source modules.
 - [Readable formatting needs paragraphs while retaining inline guards](readable-formatting-needs-paragraphs-while-retaining-inline.md): the user's formatter request keeps inline `if` bodies and introduces natural reading boundaries around declarations, guard sections, substan…
+- [Select boundaries before scanning default ranges](select-boundaries-before-scanning-default-ranges.md): avoid multiplying discarded EOF scans when choosing outline ranges.
 - [Sell the language through a story and concrete proof](sell-the-language-through-a-story-and-concrete-proof.md): preserve the prominent tagline, “The language for the agentic era.”, and lead with agents writing correct, fast programs that are easy to review.
 - [Shared editor analysis must preserve selected roots and overlays](shared-editor-analysis-must-preserve-selected-roots-and-over.md): resolve the nearest manifest before sharing analysis.
 - [Signature labels follow checked callees](signature-labels-follow-checked-callees.md): use checked callee spans and retain grouped receiver boundaries inside interpolation.
