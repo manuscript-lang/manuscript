@@ -1,0 +1,25 @@
+{
+  "binaries": {
+    "before": {
+      "path": "/workspace/yaml-perf/.artifacts/yaml-quoting/before",
+      "sha256": "93f194794f911c314080762e1bcbbdc12d202dc87945d715c4a89d7ae40f332b"
+    },
+    "after": {
+      "path": "/workspace/yaml-perf/.artifacts/yaml-quoting/after",
+      "sha256": "ce7f0c149e5694511f892dfa2c1dc6c965e507dc93e3c910fff2cc24b4af0b85"
+    },
+    "rust": {
+      "path": "/workspace/yaml-perf/bench/perf/yaml-quoting/rust/target/release/yaml-quoting-control",
+      "sha256": "32397f01bcd614273fb2bb458e77a95db956250c3581296fda54e40bb245deb2"
+    }
+  },
+  "timing_environment_sha256": "1bcf2158118526f2d7626a04960a161eb6b9a59b78da6a29f9d5dfe6914cd322",
+  "runner_sha256": "c3d7c149d1a112e751220abcac4fe9808939d9b009b18561a476ad71e1ba33d6",
+  "rss_launcher": {
+    "path": "/workspace/serialization-perf/.artifacts/toml-quoting/rss",
+    "sha256": "09441b9246dd4d6a5b1454b9d3652f8a8b3dc1b1f925218d00fa91d3fdc98347"
+  },
+  "rss_source_sha256": "c671c66114469e2438d3486a19f5826d25cac131405eda0b43cfc5980af62a34",
+  "repeats": 6,
+  "note": "Whole-process peak RSS; setup, warm-up and one guarded call included. Not allocation counts or timing evidence."
+}
