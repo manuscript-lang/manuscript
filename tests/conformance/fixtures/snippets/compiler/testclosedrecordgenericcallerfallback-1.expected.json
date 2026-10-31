@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Cell; declare it with 'let Cell = ...' before use, define 'fn Cell(...) T:', or import it from a module",
+        "position": {
+          "file": "testclosedrecordgenericcallerfallback-1.ms",
+          "line": 5,
+          "column": 16,
+          "offset": 237
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testclosedrecordgenericcallerfallback-1.ms:5:16: resolution: unknown binding Cell; declare it with 'let Cell = ...' before use, define 'fn Cell(...) T:', or import it from a module\n   |\n 5 |     let cell = Cell(0)\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -139,16 +139,16 @@ test('shared nested rules scope escapes, interpolation expressions and nested st
   ]);
 });
 
-test('parser fixture covers declarations, ref results, implicit borrows, lambdas and patterns', () => {
+test('parser fixture covers declarations, implicit borrows, lambdas and patterns', () => {
   const source = fs.readFileSync(path.join(__dirname, 'syntax.ms'), 'utf8');
   assertScopes(source, [
     ['extern', 'k'], ['type', 'k'], ['Box', 'nc'], ['interface', 'k'], ['Reader', 'nc'],
-    ['impl', 'k'], ['identity', 'nf'], ['ref', 'k'], ['self', 'k'], ['replace', 'nf'],
+    ['impl', 'k'], ['identity', 'nf'], ['self', 'k'], ['replace', 'nf'],
     ['var', 'k'], ['let', 'k'], ['fn', 'k'],
     ['match', 'k'], ['case', 'k'], ['Ready', 'nc'],
     ['borrowed', ''], ['exclusive', ''], ['specialized', ''], ['...', 'o'],
   ]);
-  assertScopes('fn Uppercase() Int: 1\ntype lowercase: ...\ninterface readable:\n    fn get() ref String\n', [
+  assertScopes('fn Uppercase() Int: 1\ntype lowercase: ...\ninterface readable:\n    fn get() String\n', [
     ['Uppercase', 'nf'], ['lowercase', 'nc'], ['readable', 'nc'], ['get', 'nf'],
   ]);
   assertScopes('identity[List[Map[String, Int]]](items)', [['identity', 'nf'], ['List', 'nc'], ['Map', 'nc']]);

@@ -394,8 +394,7 @@ impl Read[T] for Box[T]:
         return self.value
 fn read[T](value: Box[T]) T:
     return value.get()
-type	11	14	239	`get` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`
-type	13	27	294	`read` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`interface Read[V]:
+type	12	21	262	cannot move `self.value` out of `self`: only a whole variable can move; take an owned copy with `self.value.clone()`interface Read[V]:
     fn get() V
 type Box[T]:
     value: T
@@ -410,7 +409,7 @@ type Pair[A, B]:
 impl Read[B] for Pair[Int, B]:
     fn get() B:
         return self.right
-type	7	14	120	`get` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`interface Read[V]:
+type	8	21	143	cannot move `self.right` out of `self`: only a whole variable can move; take an owned copy with `self.right.clone()`interface Read[V]:
     fn get() V
 type Box[T]:
     value: T
@@ -623,7 +622,7 @@ impl Diagnostic for LocalError:
         return self.detail
 fn wrong(value: LocalError) Diagnostic:
     return value
-type	6	18	131	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`type Impostor:
+type	7	21	159	cannot move `self.detail` out of `self`: only a whole variable can move; take an owned copy with `self.detail.clone()`type Impostor:
     detail: String
 fn wrong(value: Impostor) Error:
     return Error(value: value)
@@ -922,7 +921,7 @@ impl Error for Failure:
     fn message() String: self.detail
 fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 fn first() Result[Int, Error]: fail_cause(Failure("empty"))
-type	4	18	74	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`fn from_callback[T](factory: fn() T) T: factory()
+type	4	31	87	cannot move `self.detail` out of `self`: only a whole variable can move; take an owned copy with `self.detail.clone()`fn from_callback[T](factory: fn() T) T: factory()
 fn first() Unit:
     let callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)
 type	3	9	75	local binding callback is never read; remove it, use it, or name it with a leading '_' to ignore itimport TextError from "@std/errors.ms"
@@ -1497,7 +1496,7 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T: self.item
 fn read() Read[Int]: Box(1)
-type	6	14	97	`get` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`type E:
+type	6	22	105	cannot move `self.item` out of `self`: only a whole variable can move; take an owned copy with `self.item.clone()`type E:
     text: String
 impl Error for E:
     fn message() String: this.text
@@ -1519,7 +1518,7 @@ resolution	1	19	18	unknown binding Shape; did you mean 'shape'?type E:
 impl Error for E:
     fn message() String: self.text
 fn error_value() Error: E("bad input")
-type	4	18	60	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`fn identity(this: Int) Int: this
+type	4	31	73	cannot move `self.text` out of `self`: only a whole variable can move; take an owned copy with `self.text.clone()`fn identity(this: Int) Int: this
 fn f() Int: this
 resolution	1	13	12	unknown binding this; there is no 'this'; inside an impl method the receiver is 'self'export type Sq:
     s: Int
@@ -2921,7 +2920,7 @@ fn wrapped(n: Int) Result[Int, Cause]:
 fn twice(n: Int) Result[Int, Cause]:
     let value = try wrapped(n)
     return ok(value)
-type	4	18	68	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`let alias = affine
+type	4	31	81	cannot move `self.text` out of `self`: only a whole variable can move; take an owned copy with `self.text.clone()`let alias = affine
     resolution	1	13	12	unknown binding affine; declare it with 'let affine = ...' before use, define 'fn affine(...) T:', or import it from a modulefn probe(value: Int) Int: ...
     type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)var sum = 0
     var i = 0
@@ -2958,7 +2957,7 @@ resolution	2	28	65	unknown binding Cause; declare it with 'let Cause = ...' befo
     text: String
 impl Error for Cause:
     fn message() String: self.text
-type	4	18	68	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`fn probe() Int:
+type	4	31	81	cannot move `self.text` out of `self`: only a whole variable can move; take an owned copy with `self.text.clone()`fn probe() Int:
     var sum = 0
     var i = -1
     while i < 1000:
@@ -3529,7 +3528,7 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T:
         return self.value
-type	6	14	112	`get` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`type Read:
+type	7	21	135	cannot move `self.value` out of `self`: only a whole variable can move; take an owned copy with `self.value.clone()`type Read:
     fn get() Int
 parse	2	5	15	a type declares only fields or cases; write its methods in an 'impl Read:' block, or implement an interface with 'impl <Interface> for Read:'interface Read:
     value: Int
@@ -5005,7 +5004,7 @@ fn message(value: Reader) String:
     return value.read()
 fn make() Box:
     return Box(label: "value")
-type	6	15	102	`read` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`fn answer() Int:
+type	7	21	130	cannot move `self.label` out of `self`: only a whole variable can move; take an owned copy with `self.label.clone()`fn answer() Int:
     let number = 42
     return number
 fn later() Int:

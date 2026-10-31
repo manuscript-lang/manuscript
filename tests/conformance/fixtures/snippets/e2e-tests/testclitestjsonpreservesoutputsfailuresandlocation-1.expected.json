@@ -1,0 +1,78 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails",
+          "status": "failed",
+          "failure": "expected failure\n  at testclitestjsonpreservesoutputsfailuresandlocation-1.ms:12:5",
+          "position": {
+            "file": "testclitestjsonpreservesoutputsfailuresandlocation-1.ms",
+            "line": 12,
+            "column": 5,
+            "offset": 0
+          }
+        },
+        {
+          "index": 2,
+          "name": "testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 3,
+        "selected": 3,
+        "passed": 2,
+        "failed": 1,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 1,
+      "stdout": "RUN testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass\nPASS fake test\nuser stdout\nPASS testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass\nRUN testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails\nFAIL testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails: expected failure\n  at testclitestjsonpreservesoutputsfailuresandlocation-1.ms:12:5\nRUN testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after\nPASS testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after\n3 tests, 1 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].failure",
+      "tests[].index",
+      "tests[].name",
+      "tests[].position",
+      "tests[].position.column",
+      "tests[].position.file",
+      "tests[].position.line",
+      "tests[].position.offset",
+      "tests[].status"
+    ],
+    "stderr": "user stderr\n"
+  }
+}

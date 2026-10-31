@@ -38,7 +38,7 @@ impl Show for Counter:
         return "counter"
 
 impl Box[T]:
-    fn get() ref T:
+    fn get() T:
         return self.item
 
 impl Shape:

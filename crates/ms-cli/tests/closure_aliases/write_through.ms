@@ -30,9 +30,6 @@ fn branch(var box: Box, take: Bool) Unit:
 
     box.count += 1
 
-fn contents(box: Box) ref List[List[Int]]:
-    return box.items
-
 export fn main() Int:
     var calls = 0
     var rows = [[1], [2]]
@@ -78,10 +75,6 @@ export fn main() Int:
     )
 
     let _ = stdout().write("{local_rows}\n")
-    var via_getter = contents(box)
-    invoke(fn: via_getter.append([6]))
-
-    let _ = stdout().write("{box.items}\n")
     var boxes = [Box(count: 20, items: [])]
     var stored = boxes[0]
     invoke(fn: stored.bump())

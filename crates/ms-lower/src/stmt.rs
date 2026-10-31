@@ -149,7 +149,6 @@ impl<'a> FnLower<'a> {
                 }
             }
             StmtKind::Return(e) => {
-                self.lent_expr = e.as_ref().map(|e| e as *const Expr as usize);
                 let x = match e {
                     Some(e) => self.expr(e)?,
                     None => Val {
@@ -249,15 +248,6 @@ impl<'a> FnLower<'a> {
             }
             self.bind_lent(&b, opt.v);
             return Ok(());
-        }
-        if self.lent_return
-            && let PatternKind::Name(_) = pattern.kind
-            && let Some(b) = self.hir.pattern_binding(pattern)
-            && self.cx.shared(b.uid)
-        {
-            // A `let` borrow in a lending function takes the lent form of an accessor, so the
-            // function can hand it back.
-            self.lent_expr = Some(value as *const Expr as usize);
         }
         let x = self.expr(value)?;
         if self.dead {

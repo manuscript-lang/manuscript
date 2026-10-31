@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2003",
+        "phase": "resolution",
+        "message": "redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly",
+        "position": {
+          "file": "testcollectionsupportshadowingandcaselookup-2.ms",
+          "line": 4,
+          "column": 8,
+          "offset": 251
+        },
+        "end": {
+          "file": "testcollectionsupportshadowingandcaselookup-2.ms",
+          "line": 4,
+          "column": 17,
+          "offset": 260
+        },
+        "fix": {
+          "position": {
+            "file": "testcollectionsupportshadowingandcaselookup-2.ms",
+            "line": 4,
+            "column": 8,
+            "offset": 251
+          },
+          "end": {
+            "file": "testcollectionsupportshadowingandcaselookup-2.ms",
+            "line": 4,
+            "column": 19,
+            "offset": 262
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS2003",
+        "phase": "resolution",
+        "message": "redundant prelude import MapEntry; remove MapEntry from this import and use its prelude declaration directly",
+        "position": {
+          "file": "testcollectionsupportshadowingandcaselookup-2.ms",
+          "line": 4,
+          "column": 19,
+          "offset": 262
+        },
+        "end": {
+          "file": "testcollectionsupportshadowingandcaselookup-2.ms",
+          "line": 4,
+          "column": 27,
+          "offset": 270
+        },
+        "fix": {
+          "position": {
+            "file": "testcollectionsupportshadowingandcaselookup-2.ms",
+            "line": 4,
+            "column": 19,
+            "offset": 262
+          },
+          "end": {
+            "file": "testcollectionsupportshadowingandcaselookup-2.ms",
+            "line": 4,
+            "column": 29,
+            "offset": 272
+          },
+          "replacement": ""
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:4:8: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry, MapEntry, Partition, filled, map_from_entries from \"@std/collections.ms\"\n   |        ^^^^^^^^^\n<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:4:19: resolution: redundant prelude import MapEntry; remove MapEntry from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry, MapEntry, Partition, filled, map_from_entries from \"@std/collections.ms\"\n   |                   ^^^^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

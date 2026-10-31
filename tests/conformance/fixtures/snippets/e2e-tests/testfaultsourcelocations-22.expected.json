@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 67,
+    "stdout": "",
+    "stderr": "called Optional.get() on none; check is_some first, or pass a default: get(default: ...)\n  at testfaultsourcelocations-22.ms:5 in extract\n  at testfaultsourcelocations-22.ms:8 in main\n"
+  }
+}

@@ -1,6 +1,6 @@
 # Remove `ref` from the language
 
-Status: proposal, 2026-10-31, checked against main. Approved by Chinmay 2026-10-31: "let's rely on copy elision, make all methods return a copy". Skeptical review done (below). The dependency (list-element and string-view move-out) was investigated and dropped: no measured Release gain. Direction (Chinmay, 2026-10-30): "a sound and performant copy semantics implementation, no special casing, everything should be cleanly handled by language rules and semantics".
+Status: implemented, 2026-10-31 (syntax, checker, lowering and fixtures removed in one change; stdlib lenders and the index-based `Iterable` landed first). Approved by Chinmay 2026-10-31: "let's rely on copy elision, make all methods return a copy". Skeptical review done (below). The dependency (list-element and string-view move-out) was investigated and dropped: no measured Release gain. Direction (Chinmay, 2026-10-30): "a sound and performant copy semantics implementation, no special casing, everything should be cleanly handled by language rules and semantics".
 
 ## Summary
 

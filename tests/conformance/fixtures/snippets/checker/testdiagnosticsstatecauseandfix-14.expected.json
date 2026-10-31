@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member insert on Set[Int]; did you mean 'add'?",
+        "position": {
+          "file": "testdiagnosticsstatecauseandfix-14.ms",
+          "line": 5,
+          "column": 12,
+          "offset": 185
+        },
+        "fix": {
+          "position": {
+            "file": "testdiagnosticsstatecauseandfix-14.ms",
+            "line": 5,
+            "column": 12,
+            "offset": 185
+          },
+          "end": {
+            "file": "testdiagnosticsstatecauseandfix-14.ms",
+            "line": 5,
+            "column": 18,
+            "offset": 191
+          },
+          "replacement": "add"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-14.ms:5:12: resolution: unknown or ambiguous member insert on Set[Int]; did you mean 'add'?\n   |\n 5 |     values.insert(1)\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

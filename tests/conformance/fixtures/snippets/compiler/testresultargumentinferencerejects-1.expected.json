@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "testresultargumentinferencerejects-1.ms",
+          "line": 6,
+          "column": 19,
+          "offset": 245
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Error does not satisfy Equal; pass a type that already implements it",
+        "position": {
+          "file": "testresultargumentinferencerejects-1.ms",
+          "line": 6,
+          "column": 29,
+          "offset": 255
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testresultargumentinferencerejects-1.ms:6:19: resolution: unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it\n   |\n 6 | fn first(r: Error!E1) Unit: bounded(r)\n   |                   ^\n<DIR>/testresultargumentinferencerejects-1.ms:6:29: type: Error does not satisfy Equal; pass a type that already implements it\n   |\n 6 | fn first(r: Error!E1) Unit: bounded(r)\n   |                             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -129,10 +129,6 @@ impl Classifier {
             }
         }
         visiting.pop();
-        // A value holding a borrow is never copied implicitly: the copy would hold nothing.
-        if borrows(t) {
-            class = class.max(Class::Move);
-        }
         // A recursive alternative or record reached its own id above and
         // returned Move, which max propagates.
         class

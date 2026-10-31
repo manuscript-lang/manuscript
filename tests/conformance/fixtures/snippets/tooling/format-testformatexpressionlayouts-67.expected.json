@@ -1,0 +1,53 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding CommandError; add: import CommandError from \"@std/process.ms\"",
+        "position": {
+          "file": "format-testformatexpressionlayouts-67.ms",
+          "line": 7,
+          "column": 20,
+          "offset": 215
+        },
+        "fix": {
+          "position": {
+            "file": "format-testformatexpressionlayouts-67.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "format-testformatexpressionlayouts-67.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import CommandError from \"@std/process.ms\"\n"
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directly",
+        "position": {
+          "file": "format-testformatexpressionlayouts-67.ms",
+          "line": 6,
+          "column": 9,
+          "offset": 189
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/format-testformatexpressionlayouts-67.ms:7:20: resolution: unknown binding CommandError; add: import CommandError from \"@std/process.ms\"\n   |\n 7 |             value: CommandError.Failed(message: \"command diagnostic\")\n   |                    ^\n<DIR>/format-testformatexpressionlayouts-67.ms:6:9: type: Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directly\n   |\n 6 |         Error(\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

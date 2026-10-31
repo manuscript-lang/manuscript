@@ -29,9 +29,7 @@ pub fn run_where(m: &mut Module, select: impl Fn(&Func) -> bool) -> bool {
         if m.funcs[fi].blocks.is_empty() || !select(&m.funcs[fi]) {
             continue;
         }
-        // The stand-in keeps `ret_borrowed`, so a recursive call still reads as lending.
-        let mut stand_in = Func::new("", Vec::new(), crate::types::Ty::UNIT);
-        stand_in.ret_borrowed = m.funcs[fi].ret_borrowed;
+        let stand_in = Func::new("", Vec::new(), crate::types::Ty::UNIT);
         let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
         changed |= function(m, &mut f);
         m.funcs[fi] = f;

@@ -117,6 +117,8 @@ pub struct Program {
     pub borrows: Rc<HashMap<usize, crate::ownership::BorrowKind>>,
     /// Resource bindings closed implicitly when their scope ends. Filled together with `borrows`.
     pub implicit_closes: Rc<HashSet<usize>>,
+    /// Closed resource bindings that also have an explicit `.close()` call.
+    pub explicit_closes: Rc<HashSet<usize>>,
     /// The name expressions that move a closed resource binding, by binding.
     pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
     /// Payload bindings of a consumed match scrutinee that some path moves out.
@@ -126,9 +128,6 @@ pub struct Program {
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
-    /// `ref` functions that return a borrow on every path, by module file and node, for lowering.
-    /// Filled together with `borrows`.
-    pub lenders: Rc<HashSet<(Name, NodeId)>>,
     /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
     /// identity. Filled together with `borrows`.
     pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument second: Int in call to f; add 'second: <Int>'",
+        "position": {
+          "file": "testdefaultargumentboundaries-4.ms",
+          "line": 8,
+          "column": 12,
+          "offset": 233
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/testdefaultargumentboundaries-4.ms:8:12: type: missing argument second: Int in call to f; add 'second: <Int>'\n   |\n 8 |     return f()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
