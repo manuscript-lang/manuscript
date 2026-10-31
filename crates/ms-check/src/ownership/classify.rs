@@ -36,6 +36,11 @@ impl Classifier {
         Classifier { closeable }
     }
 
+    /// Whether `t` has a `Closeable` implementation of its own, which runs on the whole value.
+    pub fn closes_itself(&self, t: &Ty) -> bool {
+        self.closeable.contains(&t.id)
+    }
+
     /// The class of values of `t`.
     pub fn class(&self, t: &Ty) -> Class {
         self.class_in(t, &mut Vec::new())

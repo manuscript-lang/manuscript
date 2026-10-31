@@ -10,7 +10,7 @@
 
 ## Status
 
-Proposal, 2026-10-30, against `6a9ca18f`. Builds on [field-ownership-dataflow](field-ownership-dataflow.md) (#1991, #1997), whose open question "Resources: should a plain record that holds a Resource field allow moving that field out?" it answers yes. Chinmay: "make sure this is solid, i was thinking from cpp perspective where this might result in free after move" and "we do have a close method that gets called similar to destructors". Soundness claim: every resource is closed exactly once, and no storage is dropped twice.
+Implemented, 2026-10-30 (#2008), against `6a9ca18f`. Builds on [field-ownership-dataflow](field-ownership-dataflow.md) (#1991, #1997), whose open question "Resources: should a plain record that holds a Resource field allow moving that field out?" it answers yes. Chinmay: "make sure this is solid, i was thinking from cpp perspective where this might result in free after move" and "we do have a close method that gets called similar to destructors". Soundness claim: every resource is closed exactly once, and no storage is dropped twice.
 
 ## Problem
 

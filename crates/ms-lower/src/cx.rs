@@ -173,6 +173,9 @@ pub struct Cx {
     /// runs only on the paths that never reach one.
     pub close_moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
     pub moved_payloads: Rc<std::collections::HashSet<usize>>,
+    /// Resource fields moved out of an owned binding, by binding and member node.
+    pub resource_moves:
+        Rc<HashMap<usize, HashMap<ms_syntax::ast::NodeId, Vec<ms_check::types::Name>>>>,
     /// `ref` functions that lend on every path, by module file and node.
     pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Captures a non-escaping lambda only reads: the closure points at them instead of copying.
@@ -235,6 +238,7 @@ impl Cx {
             implicit_closes: program.implicit_closes.clone(),
             close_moves: program.close_moves.clone(),
             moved_payloads: program.moved_payloads.clone(),
+            resource_moves: program.resource_moves.clone(),
             lenders: program.lenders.clone(),
             borrowed_captures: program.borrowed_captures.clone(),
             consumes: program.consumes.clone(),
