@@ -1,0 +1,261 @@
+{
+  "method": "Existing bench/perf/representative/rss.c fork/exec/getrusage helper. Linux peak KiB, includes untimed benchmark setup and warmup. Six balanced pairs per case; peak RSS is not allocation count.",
+  "binary_sha256": {
+    "baseline": "73044ebf9b652dc6306b8b18f4018567d6b1c1dfdd17a07f8c2700ada9c6f3a5",
+    "candidate": "0939a2c8df9a4de8dd31b9d7624d48d13fb802be10e6f65f7bb140b6ab0a4db2"
+  },
+  "samples": [
+    {
+      "maxrss_kib": 1532,
+      "trial": 0,
+      "case": "index-2",
+      "which": "baseline",
+      "units": 11
+    },
+    {
+      "maxrss_kib": 1532,
+      "trial": 0,
+      "case": "index-2",
+      "which": "candidate",
+      "units": 11
+    },
+    {
+      "maxrss_kib": 2172,
+      "trial": 0,
+      "case": "index-256",
+      "which": "baseline",
+      "units": 519
+    },
+    {
+      "maxrss_kib": 2292,
+      "trial": 0,
+      "case": "index-256",
+      "which": "candidate",
+      "units": 519
+    },
+    {
+      "maxrss_kib": 4028,
+      "trial": 0,
+      "case": "stdlib",
+      "which": "baseline",
+      "units": 46661
+    },
+    {
+      "maxrss_kib": 4124,
+      "trial": 0,
+      "case": "stdlib",
+      "which": "candidate",
+      "units": 46661
+    },
+    {
+      "maxrss_kib": 1404,
+      "trial": 1,
+      "case": "index-2",
+      "which": "candidate",
+      "units": 11
+    },
+    {
+      "maxrss_kib": 1532,
+      "trial": 1,
+      "case": "index-2",
+      "which": "baseline",
+      "units": 11
+    },
+    {
+      "maxrss_kib": 2300,
+      "trial": 1,
+      "case": "index-256",
+      "which": "candidate",
+      "units": 519
+    },
+    {
+      "maxrss_kib": 2172,
+      "trial": 1,
+      "case": "index-256",
+      "which": "baseline",
+      "units": 519
+    },
+    {
+      "maxrss_kib": 4104,
+      "trial": 1,
+      "case": "stdlib",
+      "which": "candidate",
+      "units": 46661
+    },
+    {
+      "maxrss_kib": 4072,
+      "trial": 1,
+      "case": "stdlib",
+      "which": "baseline",
+      "units": 46661
+    },
+    {
+      "maxrss_kib": 1404,
+      "trial": 2,
+      "case": "index-2",
+      "which": "baseline",
+      "units": 11
+    },
+    {
+      "maxrss_kib": 1468,
+      "trial": 2,
+      "case": "index-2",
+      "which": "candidate",
+      "units": 11
+    },
+    {
+      "maxrss_kib": 2172,
+      "trial": 2,
+      "case": "index-256",
+      "which": "baseline",
+      "units": 519
+    },
+    {
+      "maxrss_kib": 2296,
+      "trial": 2,
+      "case": "index-256",
+      "which": "candidate",
+      "units": 519
+    },
+    {
+      "maxrss_kib": 3964,
+      "trial": 2,
+      "case": "stdlib",
+      "which": "baseline",
+      "units": 46661
+    },
+    {
+      "maxrss_kib": 4092,
+      "trial": 2,
+      "case": "stdlib",
+      "which": "candidate",
+      "units": 46661
+    },
+    {
+      "maxrss_kib": 1528,
+      "trial": 3,
+      "case": "index-2",
+      "which": "candidate",
+      "units": 11
+    },
+    {
+      "maxrss_kib": 1532,
+      "trial": 3,
+      "case": "index-2",
+      "which": "baseline",
+      "units": 11
+    },
+    {
+      "maxrss_kib": 2296,
+      "trial": 3,
+      "case": "index-256",
+      "which": "candidate",
+      "units": 519
+    },
+    {
+      "maxrss_kib": 2300,
+      "trial": 3,
+      "case": "index-256",
+      "which": "baseline",
+      "units": 519
+    },
+    {
+      "maxrss_kib": 4076,
+      "trial": 3,
+      "case": "stdlib",
+      "which": "candidate",
+      "units": 46661
+    },
+    {
+      "maxrss_kib": 4076,
+      "trial": 3,
+      "case": "stdlib",
+      "which": "baseline",
+      "units": 46661
+    },
+    {
+      "maxrss_kib": 1532,
+      "trial": 4,
+      "case": "index-2",
+      "which": "baseline",
+      "units": 11
+    },
+    {
+      "maxrss_kib": 1524,
+      "trial": 4,
+      "case": "index-2",
+      "which": "candidate",
+      "units": 11
+    },
+    {
+      "maxrss_kib": 2236,
+      "trial": 4,
+      "case": "index-256",
+      "which": "baseline",
+      "units": 519
+    },
+    {
+      "maxrss_kib": 2292,
+      "trial": 4,
+      "case": "index-256",
+      "which": "candidate",
+      "units": 519
+    },
+    {
+      "maxrss_kib": 4076,
+      "trial": 4,
+      "case": "stdlib",
+      "which": "baseline",
+      "units": 46661
+    },
+    {
+      "maxrss_kib": 4028,
+      "trial": 4,
+      "case": "stdlib",
+      "which": "candidate",
+      "units": 46661
+    },
+    {
+      "maxrss_kib": 1532,
+      "trial": 5,
+      "case": "index-2",
+      "which": "candidate",
+      "units": 11
+    },
+    {
+      "maxrss_kib": 1404,
+      "trial": 5,
+      "case": "index-2",
+      "which": "baseline",
+      "units": 11
+    },
+    {
+      "maxrss_kib": 2172,
+      "trial": 5,
+      "case": "index-256",
+      "which": "candidate",
+      "units": 519
+    },
+    {
+      "maxrss_kib": 2172,
+      "trial": 5,
+      "case": "index-256",
+      "which": "baseline",
+      "units": 519
+    },
+    {
+      "maxrss_kib": 4080,
+      "trial": 5,
+      "case": "stdlib",
+      "which": "candidate",
+      "units": 46661
+    },
+    {
+      "maxrss_kib": 4132,
+      "trial": 5,
+      "case": "stdlib",
+      "which": "baseline",
+      "units": 46661
+    }
+  ]
+}
