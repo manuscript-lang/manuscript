@@ -5,6 +5,9 @@ import stderr from "@std/io.ms"
 import arguments from "@std/process.ms"
 import gen_c03 from "./challenges/c03-csv-group-sum/gen.ms"
 import gen_c05 from "./challenges/c05-calculator/gen.ms"
+import gen_c09 from "./challenges/c09-ciphers/gen.ms"
+import gen_c13 from "./challenges/c13-inventory-orders/gen.ms"
+import gen_c14 from "./challenges/c14-dp-suite/gen.ms"
 
 export fn main() Int:
     let args = arguments()
@@ -19,6 +22,15 @@ export fn main() Int:
         ran += 1
     if which == "c05" or which == "all":
         gen_c05()
+        ran += 1
+    if which == "c09" or which == "all":
+        gen_c09()
+        ran += 1
+    if which == "c13" or which == "all":
+        gen_c13()
+        ran += 1
+    if which == "c14" or which == "all":
+        gen_c14()
         ran += 1
     if ran == 0:
         stderr().write("unknown challenge {which}\n").get()

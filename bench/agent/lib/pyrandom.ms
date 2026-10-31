@@ -1,5 +1,6 @@
 # Python's `random.Random` (Mersenne Twister) for integer seeds, so the generators reproduce the cases
 # CPython's `random` module produced. Covers `randint`, `randrange`, `choice`, `random` and `sample`.
+import panic from "@std/core.ms"
 import bit_and, bit_xor, shift_left, shift_right from "@std/math.ms"
 
 let N = 624
@@ -96,3 +97,17 @@ impl Random:
     var fn choice(items: List[String]) String:
         let at = self.below(items.length())
         return items[at].clone()
+
+    # `k` distinct items in random order, as `random.sample` picks them from a population of at most 21 items
+    # (CPython's pool method; larger populations use a different algorithm that is not implemented here).
+    var fn sample(items: List[String], k: Int) List[String]:
+        let n = items.length()
+        if n > 21: panic("sample: only the pool method is implemented")
+
+        var pool = items.clone()
+        var out = List[String]()
+        for i in 0..k:
+            let j = self.below(n - i)
+            out.append(pool[j].clone())
+            pool[j] = pool[n - i - 1].clone()
+        return out

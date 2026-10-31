@@ -1,5 +1,6 @@
 # Small helpers shared by the benchmark tools: environment, files, shell commands.
 import read_file, write_file, create_directory, dirname from "@std/fs.ms"
+import compile from "@std/string.ms"
 import Duration, seconds from "@std/time.ms"
 import CommandError, commands, control from "@std/process.ms"
 
@@ -58,3 +59,30 @@ export fn run_in(program: String, arguments: List[String], timeout_s: Int, input
     if result.err() == CommandError.Timeout: return Ran(124, "", "timeout", elapsed)
 
     return Ran(127, "", "cannot start {program}", elapsed)
+
+# `text.split(separator, maxsplit)` as Python defines it: at most `splits` splits, the rest stays in the last piece.
+export fn split_max(text: String, separator: String, splits: Int) List[String]:
+    var out = List[String]()
+    var rest = text.clone()
+    while out.length() < splits:
+        let at = rest.index_of(separator)
+        if at.is_none(): break
+
+        out.append(rest.slice(0, at.get(0)).get(""))
+        rest = rest.slice(at.get(0) + separator.length(), rest.length()).get("")
+    out.append(rest)
+    return out
+
+# `text.strip(" ")`: the spaces at both ends removed.
+export fn strip_spaces(text: String) String:
+    var start = 0
+    var end = text.length()
+    while start < end and text.get(start) == " ": start += 1
+    while end > start and text.get(end - 1) == " ": end -= 1
+    return text.slice(start, end).get("")
+
+# Whether the regular expression `pattern` matches all of `text`, as Python's `re.fullmatch`.
+export fn full_match(pattern: String, text: String) Bool:
+    if let re = compile("^(?:{pattern})$").to_optional(): return re.matches(text)
+
+    return false
