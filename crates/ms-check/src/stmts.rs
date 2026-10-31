@@ -1432,6 +1432,22 @@ impl Checker {
         (found, cs, false)
     }
 
+    /// Whether `name` is a payloadless case of a visible alternative: such a name has its own
+    /// type, unlike `none`, which takes its type from context.
+    fn is_payloadless_case(&self, name: Name) -> bool {
+        self.names.borrow().values().any(|s| {
+            s.kind == SymKind::Type
+                && s.ty_opt().is_some_and(|st| {
+                    st.kind == Kind::Alternative
+                        && !st.is_std("Optional")
+                        && st
+                            .opaque_module()
+                            .is_none_or(|module| module == self.current_file())
+                        && case_of(&st, name).is_some_and(|c| c.fields.is_empty())
+                })
+        })
+    }
+
     /// Whether an expression's type is decided by its context.
     pub(crate) fn contextual(&self, e: &Expr) -> bool {
         match &e.kind {
@@ -1449,7 +1465,9 @@ impl Checker {
                         .all(|en| self.contextual(&en.key) && self.contextual(&en.value))
             }
             ExprKind::Name(name) => {
-                self.scope.binding(*name).is_none() && self.sym(*name).is_none()
+                self.scope.binding(*name).is_none()
+                    && self.sym(*name).is_none()
+                    && !self.is_payloadless_case(*name)
             }
             ExprKind::Call { callee, .. } => {
                 if let ExprKind::Name(name) = &callee.kind
