@@ -23,9 +23,10 @@ runs:
     - name: Keep the sccache directory in runner storage
       shell: bash
       run: echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> "$GITHUB_ENV"
-    # The key hashes only Cargo.lock and the toolchain: one entry per prefix and lockfile, saved
-    # on main. A fallback restore from an older lockfile is fine because sccache entries are
-    # content-addressed.
+    # One entry per run, saved from main: the key ends in the run id, so every scheduled main run writes
+    # a fresh cache holding what it compiled, and a restore takes the newest entry for the prefix (the
+    # prune workflow keeps only that one). sccache entries are content-addressed, so an entry from an
+    # older lockfile is still valid.
     - name: Restore cargo cache
       id: restore
       uses: actions/cache/restore@v6
@@ -35,5 +36,5 @@ runs:
           ~/.cargo/registry/cache
           ~/.cargo/git/db
           ${{ runner.temp }}/sccache
-        key: ${{ inputs.prefix }}${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+        key: ${{ inputs.prefix }}${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
         restore-keys: ${{ inputs.prefix }}
