@@ -693,9 +693,13 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
                 if cur(flow) == 0: return error(
                     flow_invalid(flow, "unterminated flow mapping")
                 )
+                if cur(flow) == 44: return error(
+                    flow_invalid(flow, "expected flow mapping key")
+                )
 
                 quoted_key = cur(flow) == 34 or cur(flow) == 39
 
+                let key_start = flow.pos
                 let parsed_key = try flow_value(var flow, level, key: true)
 
                 match parsed_key:
@@ -718,6 +722,19 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
                 if step(var flow) != 58: return error(
                     flow_invalid(flow, "expected mapping colon")
                 )
+
+                # A colon makes this an implicit key: validate physical source lines, not
+                # decoded text, which may legitimately contain an escaped newline.
+                var key_at = key_start
+
+                while key_at < flow.pos:
+                    if flow.codes.get(key_at) == 10: return error(
+                        flow_invalid(
+                            flow, "an implicit mapping key must stay on one line"
+                        )
+                    )
+
+                    key_at += 1
 
                 phase = 0
                 continue
@@ -1478,7 +1495,7 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
         has_colon = not is_sequence and context.col.get(context.index) >= 0
     else:
         first = blank_trim_start(uncomment(context.lines.get(context.index)))
-        if first.starts_with("?"): return error(
+        if first.starts_with("?") and not plain_may_start(first): return error(
             YamlError.UnsupportedFeature(
                 line: (context.index + 1),
                 reason: "explicit mapping keys are unsupported"
@@ -1567,6 +1584,19 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
                     )
                 )
 
+            if (
+                not quoted_key
+                and (
+                    not plain_may_start(name)
+                    or key_start == 124
+                    or key_start == 62
+                )
+            ): return error(
+                invalid(
+                    context,
+                    "a plain mapping key cannot start with an indicator character"
+                )
+            )
             if explicit.contains(name): return error(
                 invalid(context, "duplicate mapping key")
             )

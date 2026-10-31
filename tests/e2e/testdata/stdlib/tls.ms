@@ -4,6 +4,7 @@ import headers, HttpMethod, buffered from "@std/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions from "@std/net.ms"
 import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/http.ms"
+import Bytes from "@std/bytes.ms"
 import network from "@std/net.ms"
 import timestamp from "@std/time.ms"
 import Shared, share from "@std/shared.ms"
@@ -216,3 +217,53 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
     let plain = try net.listen("127.0.0.1:0")
     let client = try net.connect(plain.address(), 2.seconds)
     try expect_false(client.tls_info().is_ok())
+
+fn count_until_eof(listener: Shared[Listener]) Int:
+    let accepted = listener.get().accept(5.seconds)
+    if accepted.is_error(): return -1
+
+    var connection = accepted.get()
+    var total = 0
+    var reads = 0
+
+    while reads < 100000:
+        reads += 1
+
+        let chunk = connection.read(65536, 5.seconds)
+        if chunk.is_error(): return -2
+        if chunk.get().is_none(): break
+
+        total += chunk.get().get(Bytes([])).length()
+
+    connection.close().get(none)
+    return total
+
+test "raw TLS client that writes a large payload and closes at once loses no bytes":
+    let net = network()
+    let server_tls = TlsOptions(
+        server_name: "", roots_pem: "", certificate_pem: certificate(),
+        private_key_pem: private_key(), alpn: [], require_client_certificate: false
+    )
+    let client_tls = TlsOptions(
+        server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
+        private_key_pem: "", alpn: [], require_client_certificate: false
+    )
+    let listener: Shared[Listener] = share(
+        try net.listen_tls("127.0.0.1:0", server_tls, 5.seconds)
+    )
+    var group = TaskGroup[Int]()
+    let handle = listener
+    group.spawn(fn ch: count_until_eof(handle))
+
+    var client = try net.connect_tls_config(
+        listener.get().address(), client_tls, 5.seconds
+    )
+    try client.write("y".repeat(20000000).get(), 20.seconds)
+
+    # No read first: the server's post-handshake bytes must not reset the connection.
+    try client.close()
+
+    let counted = try group.results()
+    try expect_equal(counted[0], 20000000)
+    try group.close()
+    try listener.get().close()

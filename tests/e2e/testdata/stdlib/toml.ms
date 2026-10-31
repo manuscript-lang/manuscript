@@ -3,7 +3,7 @@ import TextError from "@std/core.ms"
 import parse, stringify, TomlValue, TomlError, TomlLimits from "@std/toml.ms"
 import clock from "@std/time.ms"
 
-fn entries(value: TomlValue)(Map[String, TomlValue])!:
+fn entries(value: TomlValue) Map[String, TomlValue]!:
     match value:
         TableValue(values): return ok(values)
         _: return error(TextError("expected TOML table"))

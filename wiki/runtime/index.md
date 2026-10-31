@@ -4,6 +4,8 @@
 
 Cancellation, cleanup, resources, networking, workers, test helpers.
 
+- [BigInt power estimates do not prove a result fits](bigint-power-estimates-do-not-prove-a-result-fits.md): a lower bit-length bound rejects some oversized powers, but the computed result still needs its exact size checked.
+
 - [A native signature change needs the catalogue and a fresh runtime archive](a-native-signature-change-needs-the-catalogue-and-a-fresh-ru.md): lowering marshals native calls from `crates/ms-rt/SYMBOLS.md`, not from the Rust source, and programs link `target/ms-native/libms_native.a`.
 - [A process entry is found by code offset, so it must capture nothing](a-process-entry-is-found-by-code-offset-so-it-must-capture-n.md): `ProcessGroup.spawn` passes `lambda: serve(entry)` to `msstd_process_fork`, which reads the runner's and the entry's code and drop…
 - [A runtime builder makes compiler-laid-out values through a thunk, not a copy of the layout](a-runtime-builder-makes-compiler-laid-out-values-through-a-t.md): an untyped `parse` builds `JsonValue` in `ms_rt::tree::TreeBuilder` while the scanner runs, with no document.
@@ -38,4 +40,5 @@ Cancellation, cleanup, resources, networking, workers, test helpers.
 - [Worker threads are isolates that share nothing](worker-threads-are-isolates-that-share-nothing.md): workers follow the `worker_threads` model: an OS thread with its own isolate, started from a named top-level `def`, talking to its starter o…
 - [Write operations take String; `_bytes` siblings take Bytes](write-operations-take-string-bytes-siblings-take-bytes.md): write APIs (`write`, `write_file`, `append_file`, `write_at`, on streams, files, connections, transports) accept `String`; raw bytes use a s…
 - [YAML plain colons depend on the following character](yaml-plain-colons-depend-on-the-following-character.md): splitting a plain flow key at every colon changes `{a:1}` from a key `a:1` with null value into key `a` with number 1, and corrupts URL keys.
+- [YAML implicit keys need physical-source validation](yaml-implicit-keys-need-physical-source-validation.md): validate a key’s physical source span, preserving decoded escapes and omitted values.
 - [YAML folding must retain physical blank lines until decoding](yaml-folding-must-retain-physical-blank-lines-until-decoding.md): stripping continuation lines before joining loses paragraph breaks and can misclassify comment markers inside an open quote.

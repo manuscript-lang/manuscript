@@ -1,0 +1,25 @@
+{
+  "binaries": {
+    "before": {
+      "path": "/workspace/serialization-perf/.artifacts/toml-quoting/before-integrated",
+      "sha256": "71db5a093ba0942fffbfe6382a5b80607e1ce9b0563ddac4e8f820dfc71d6665"
+    },
+    "after": {
+      "path": "/workspace/serialization-perf/.artifacts/toml-quoting/after-integrated",
+      "sha256": "a518594467ccb3f0e84f9390db7b8ef28d2f57115eebdde4f49d3223e378687d"
+    },
+    "rust": {
+      "path": "/workspace/serialization-perf/bench/perf/toml-quoting/rust/target/release/toml-quoting-control",
+      "sha256": "9003a06db53a3878d0a7bc76952c994fb670bbdb85df2f5e1e92b68d768a548f"
+    }
+  },
+  "timing_environment_sha256": "ac3c728fd21f7a0224bedf45198667ddc8e807d2a5f1cf7ee05d560abad540fe",
+  "runner_sha256": "53bd665ff8bfee9e7088b9e2b6f899bfeb0b9e4d05780f7b73b7ccf4d1b25077",
+  "rss_launcher": {
+    "path": "/workspace/serialization-perf/.artifacts/toml-quoting/rss",
+    "sha256": "09441b9246dd4d6a5b1454b9d3652f8a8b3dc1b1f925218d00fa91d3fdc98347"
+  },
+  "rss_source_sha256": "c671c66114469e2438d3486a19f5826d25cac131405eda0b43cfc5980af62a34",
+  "repeats": 6,
+  "note": "Whole-process peak RSS; setup, warm-up and one guarded call included. Not allocation counts or timing evidence."
+}

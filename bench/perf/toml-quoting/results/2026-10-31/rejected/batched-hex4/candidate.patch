@@ -1,0 +1,42 @@
+--- a/stdlib/toml.ms
++++ b/stdlib/toml.ms
+@@ -1043,0 +1044 @@
++    let bytes = text.to_bytes()
+@@ -1047,8 +1048,18 @@
+-    for c in text.chars():
+-        let code = c.scalar_at(0)
+-
+-        if c == "\"": result.append("\\\"")
+-        else if c == "\\": result.append("\\\\")
+-        else if c == "\n": result.append("\\n")
+-        else if c == "\t": result.append("\\t")
+-        else if c == "\r": result.append("\\r")
++    var at = 0
++    var run = 0
++
++    while at < bytes.length():
++        let code = bytes.get(at).to_int()
++
++        # Escapes are ASCII, so run boundaries are also UTF-8 scalar boundaries.
++        if code >= 32 and code != 34 and code != 92 and code != 127:
++            at += 1
++            continue
++
++        if run < at: result.append(bytes.decode_utf8_range(run, at).get())
++
++        if code == 34: result.append("\\\"")
++        else if code == 92: result.append("\\\\")
++        else if code == 10: result.append("\\n")
++        else if code == 9: result.append("\\t")
++        else if code == 13: result.append("\\r")
+@@ -1057 +1068 @@
+-        else if code < 32 or code == 127:
++        else:
+@@ -1060,2 +1071,5 @@
+-        else: result.append(c)
+-
++
++        at += 1
++        run = at
++
++    if run < at: result.append(bytes.decode_utf8_range(run, at).get())

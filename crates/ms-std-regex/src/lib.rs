@@ -321,6 +321,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn hex_escapes_reject_non_hexadecimal_characters() {
+        for pattern in [r"\x+1", r"\x{+41}", r"[\x+1]", r"[\x{+41}]"] {
+            assert!(
+                matches!(compile(pattern), Err(Fail::InvalidData)),
+                "accepted invalid hexadecimal escape: {pattern}"
+            );
+        }
+        for pattern in [r"\x41", r"\x{41}", r"[\x41]", r"[\x{41}]"] {
+            assert!(compile(pattern).unwrap().is_match("A"));
+        }
+    }
+
+    #[test]
     fn strict_limits_stop_scanning_when_failure_is_known() {
         let re = compile("x").unwrap();
         let text = "x".repeat(10_000);

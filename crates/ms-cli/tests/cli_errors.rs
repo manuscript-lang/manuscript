@@ -60,3 +60,61 @@ fn init_next_command_for_hyphen_directory_is_a_file_operand() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn source_only_commands_reject_program_arguments_before_discovery() {
+    for command in ["inspect", "diagram"] {
+        for extra in [&["extra"][..], &["--", "extra"], &["--", "--help"]] {
+            let mut args = vec![command, "missing.ms"];
+            args.extend_from_slice(extra);
+            let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+                .args(&args)
+                .output()
+                .unwrap();
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert_eq!(output.status.code(), Some(2), "{args:?}: {stderr}");
+            assert!(output.stdout.is_empty(), "{args:?}: {output:?}");
+            assert!(!stderr.contains("file not found:"), "{args:?}: {stderr}");
+            assert!(stderr.contains("remove"), "{args:?}: {stderr}");
+            assert!(
+                !stderr.contains("arguments for the program go after --"),
+                "{args:?}: {stderr}"
+            );
+        }
+    }
+}
+
+#[test]
+fn empty_source_targets_are_usage_errors_before_discovery() {
+    let cases: &[&[&str]] = &[
+        &["check", ""],
+        &["check", "--", ""],
+        &["check", "missing.ms", "--", ""],
+        &["check", "missing.ms", "--json", "--", ""],
+        &["lint", ""],
+        &["lint", "--", ""],
+        &["lint", "missing.ms", "--", ""],
+        &["lint", "missing.ms", "--json", "--", ""],
+        &["fmt", ""],
+        &["fmt", "--", ""],
+        &["fmt", "missing.ms", ""],
+        &["fmt", "missing.ms", "--check", "--json", "--", ""],
+        &["review", ""],
+        &["review", "", "--json"],
+    ];
+    for args in cases {
+        let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(*args)
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert_eq!(output.status.code(), Some(2), "{args:?}: {stderr}");
+        assert!(output.stdout.is_empty(), "{args:?}: {output:?}");
+        assert!(stderr.contains("argument is empty;"), "{args:?}: {stderr}");
+        assert!(
+            stderr.contains("pass a .ms file, directory, or ms.toml"),
+            "{args:?}: {stderr}"
+        );
+        assert!(!stderr.contains("file not found:"), "{args:?}: {stderr}");
+    }
+}

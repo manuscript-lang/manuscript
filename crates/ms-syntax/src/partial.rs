@@ -241,10 +241,18 @@ fn partial_root_start(source: &str) -> bool {
         }
     }
     after_keyword(source, "fn").is_some_and(|rest| {
-        rest.trim_start()
+        let rest = rest.trim_start();
+        let name_start = rest
             .as_bytes()
             .first()
-            .is_some_and(|b| b.is_ascii_alphabetic() || *b == b'_')
+            .is_some_and(|b| b.is_ascii_alphabetic() || *b == b'_');
+        let name_end = rest
+            .bytes()
+            .take_while(|b| b.is_ascii_alphanumeric() || *b == b'_')
+            .count();
+        // A named function needs a parameter or type-parameter list after
+        // its name. Inferred callbacks can continue their header on later lines.
+        name_start && rest[name_end..].trim_start().starts_with(['(', '['])
     }) || after_keyword(source, "bench").is_some_and(|rest| rest.trim_start().starts_with('"'))
         || after_keyword(source, "opaque")
             .is_some_and(|rest| after_keyword(rest.trim_start(), "type").is_some())

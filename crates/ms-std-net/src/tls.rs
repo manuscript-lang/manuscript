@@ -240,6 +240,17 @@ pub fn server_config(o: &TlsOptions) -> Result<Arc<ServerConfig>, NetErr> {
     Ok(Arc::new(config))
 }
 
+/// Server settings for raw TLS listeners. It sends no TLS 1.3 session tickets: the caller never
+/// reads them, and a ticket reaching a peer that has already closed draws a reset that discards
+/// bytes the peer wrote just before closing.
+pub fn stream_server_config(o: &TlsOptions) -> Result<Arc<ServerConfig>, NetErr> {
+    let mut config = server_config(o)?;
+    if let Some(c) = Arc::get_mut(&mut config) {
+        c.send_tls13_tickets = 0;
+    }
+    Ok(config)
+}
+
 #[derive(Debug)]
 struct FixedIdentity(Arc<CertifiedKey>);
 
@@ -939,15 +950,23 @@ impl Io for TlsIo {
     }
 
     fn write(&self, data: &[u8]) -> Step {
-        let n = match self.state.borrow_mut().writer().write(data) {
-            Ok(n) => n,
-            Err(e) => return Step::Err(e),
-        };
-        match self.write_pending() {
-            Ok(true) => Step::Done(n),
-            Ok(false) if n > 0 => Step::Done(n),
-            Ok(false) => Step::WantWrite,
-            Err(e) => Step::Err(e),
+        loop {
+            let n = match self.state.borrow_mut().writer().write(data) {
+                Ok(n) => n,
+                Err(e) => return Step::Err(e),
+            };
+            let flushed = match self.write_pending() {
+                Ok(flushed) => flushed,
+                Err(e) => return Step::Err(e),
+            };
+            // A full plaintext buffer accepts nothing; once the records drain it has room again,
+            // so retry rather than report a zero-byte write, which callers treat as a short write.
+            if n > 0 || data.is_empty() {
+                return Step::Done(n);
+            }
+            if !flushed {
+                return Step::WantWrite;
+            }
         }
     }
 
