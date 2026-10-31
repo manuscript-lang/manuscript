@@ -883,10 +883,7 @@ fn borrow_opt_str_reads(m: &mut Module, fi: usize) -> bool {
                 !(e.writes || e.rc || e.io)
             };
             let mut span_ok = f.blocks[bc].insts[i + 1..].iter().all(&quiet);
-            for x in 0..nb {
-                if !seen[x] {
-                    continue;
-                }
+            for x in (0..nb).filter(|&x| seen[x]) {
                 let upto = ends
                     .iter()
                     .filter(|&&(eb, _)| eb == x)
