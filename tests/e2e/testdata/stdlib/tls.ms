@@ -226,7 +226,7 @@ fn count_until_eof(listener: Shared[Listener]) Int:
     var total = 0
     var reads = 0
 
-    while reads < 1000:
+    while reads < 100000:
         reads += 1
 
         let chunk = connection.read(65536, 5.seconds)
@@ -238,7 +238,7 @@ fn count_until_eof(listener: Shared[Listener]) Int:
     connection.close().get(none)
     return total
 
-test "raw TLS client that writes and closes at once loses no bytes":
+test "raw TLS client that writes a large payload and closes at once loses no bytes":
     let net = network()
     let server_tls = TlsOptions(
         server_name: "", roots_pem: "", certificate_pem: certificate(),
@@ -258,12 +258,12 @@ test "raw TLS client that writes and closes at once loses no bytes":
     var client = try net.connect_tls_config(
         listener.get().address(), client_tls, 5.seconds
     )
-    try client.write("y".repeat(3000000).get(), 10.seconds)
+    try client.write("y".repeat(20000000).get(), 20.seconds)
 
     # No read first: the server's post-handshake bytes must not reset the connection.
     try client.close()
 
     let counted = try group.results()
-    try expect_equal(counted[0], 3000000)
+    try expect_equal(counted[0], 20000000)
     try group.close()
     try listener.get().close()

@@ -950,15 +950,23 @@ impl Io for TlsIo {
     }
 
     fn write(&self, data: &[u8]) -> Step {
-        let n = match self.state.borrow_mut().writer().write(data) {
-            Ok(n) => n,
-            Err(e) => return Step::Err(e),
-        };
-        match self.write_pending() {
-            Ok(true) => Step::Done(n),
-            Ok(false) if n > 0 => Step::Done(n),
-            Ok(false) => Step::WantWrite,
-            Err(e) => Step::Err(e),
+        loop {
+            let n = match self.state.borrow_mut().writer().write(data) {
+                Ok(n) => n,
+                Err(e) => return Step::Err(e),
+            };
+            let flushed = match self.write_pending() {
+                Ok(flushed) => flushed,
+                Err(e) => return Step::Err(e),
+            };
+            // A full plaintext buffer accepts nothing; once the records drain it has room again,
+            // so retry rather than report a zero-byte write, which callers treat as a short write.
+            if n > 0 || data.is_empty() {
+                return Step::Done(n);
+            }
+            if !flushed {
+                return Step::WantWrite;
+            }
         }
     }
 
