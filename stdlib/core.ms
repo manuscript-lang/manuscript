@@ -71,7 +71,7 @@ export interface Closeable:
 export interface Iterator[T]:
     # Returns the next item, or none when no items remain. The item borrows from the iterator
     # (an iterator over a container borrows from the container instead).
-    var fn next() ref T?
+    var fn next() T?
 
 # Represents a value that may be absent: a `T` or `none`; a plain `T` converts where a `T?` is expected.
 export type Optional[T]:
@@ -92,7 +92,7 @@ impl T?:
 
     # Returns the payload, or `default` when this is `none`; pass a default or unwrap with `if let value = optional:` unless absence is a bug.
     # Without a default, `none` raises a fault.
-    fn get(default: T?) ref T: ...
+    fn get(default: T?) T: ...
 
     # Transforms a present payload; none remains absent.
     fn map[U](transform: fn(T) U) U?: ...
@@ -135,10 +135,10 @@ impl Result[T, E]:
 
     # Returns the successful payload, or `default` when this is an error; pass a default or propagate with `try` unless failure is a bug.
     # Without a default, an error raises a fault.
-    fn get(default: T?) ref T: ...
+    fn get(default: T?) T: ...
 
     # Returns the error payload; check `is_error()` first, because a successful result raises a fault.
-    fn err() ref E: ...
+    fn err() E: ...
 
     # Returns the successful payload, or calls create once with the original error and returns its value.
     fn get_or_else(create: fn(E) T) T: ...

@@ -52,14 +52,14 @@ fn chosen_list(a: Shelf, b: Shelf) ref List[String]:
     let names = either(a, b, false)
     return names
 
-fn first_name(s: Shelf) ref String?:
+fn first_name(s: Shelf) String?:
     let name = s.names.first()
     return name
 
-fn last_of(s: Shelf) ref String?:
+fn last_of(s: Shelf) String?:
     return s.names.last()
 
-fn age(s: Shelf, key: String) ref String?:
+fn age(s: Shelf, key: String) String?:
     let found = s.ages.get(key)
     return found
 

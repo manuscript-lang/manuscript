@@ -14,7 +14,7 @@ impl Shape:
             Names(items): return items
             _: return none
 
-    fn first() ref String?:
+    fn first() String?:
         match self:
             Names(items): return items.get(0)
             _: return none

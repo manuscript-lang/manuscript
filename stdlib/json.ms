@@ -45,9 +45,7 @@ export type JsonLimits:
 #         return name.as_string().get("")
 # ```
 #
-# `get_in` reads a chain of object members in one call and lends the same way:
-# `doc.get_in(["user", "name"])`. A lambda owns its result, so `and_then(lambda u: u.get("name"))`
-# does not check; use `get_in`, read the levels with `if let`, or take a copy with `.clone()`.
+# `get_in` reads a chain of object members in one call: `doc.get_in(["user", "name"])`.
 export type JsonValue:
     # JSON null, represented without a payload value.
     case Null
@@ -81,8 +79,8 @@ export type JsonValue:
 impl Data for JsonValue:
 
 impl JsonValue:
-    # Returns the object member for `key`, or `none` for an absent key or a value that is not an object. The result borrows from the receiver.
-    fn get(key: String) ref JsonValue?:
+    # Returns the object member for `key`, or `none` for an absent key or a value that is not an object. The result is an owned copy.
+    fn get(key: String) JsonValue?:
         match self:
             ObjectValue(values): return values.get(key)
             _: return none
@@ -90,12 +88,12 @@ impl JsonValue:
     # Returns the value reached by reading each object member of `keys` in turn, or `none` when a
     # member is absent, a value on the way is not an object, or `keys` is empty. The result borrows
     # from the receiver.
-    fn get_in(keys: List[String]) ref JsonValue?:
+    fn get_in(keys: List[String]) JsonValue?:
         return member_path(self, keys, 0)
 
     # Returns the array element at `index`, counting a negative index from the end. An index out of
-    # range, or a value that is not an array, returns `none`. The result borrows from the receiver.
-    fn at(index: Int) ref JsonValue?:
+    # range, or a value that is not an array, returns `none`. The result is an owned copy.
+    fn at(index: Int) JsonValue?:
         match self:
             ArrayValue(values):
                 if index >= values.length() or index < 0 - values.length(): return none
@@ -103,10 +101,10 @@ impl JsonValue:
                 return values.get(index)
             _: return none
 
-    # Returns the text of a string value, or `none` for any other value. The result borrows from the receiver.
-    fn as_string() ref String?:
+    # Returns the text of a string value, or `none` for any other value. The result is an owned copy.
+    fn as_string() String?:
         match self:
-            StringValue(value): return value
+            StringValue(value): return value.clone()
             _: return none
 
     # Returns a number value as an Int, or `none` when the value is not a number or its text has a
@@ -128,16 +126,16 @@ impl JsonValue:
             BoolValue(value): return value
             _: return none
 
-    # Returns the elements of an array value, or `none` for any other value. The result borrows from the receiver.
-    fn as_list() ref List[JsonValue]?:
+    # Returns the elements of an array value, or `none` for any other value. The result is an owned copy.
+    fn as_list() List[JsonValue]?:
         match self:
-            ArrayValue(values): return values
+            ArrayValue(values): return values.clone()
             _: return none
 
-    # Returns the members of an object value, or `none` for any other value. The result borrows from the receiver.
-    fn as_map() ref Map[String, JsonValue]?:
+    # Returns the members of an object value, or `none` for any other value. The result is an owned copy.
+    fn as_map() Map[String, JsonValue]?:
         match self:
-            ObjectValue(values): return values
+            ObjectValue(values): return values.clone()
             _: return none
 
     # Returns True only for the Null case; a missing key or any other value returns False.
@@ -270,7 +268,7 @@ impl Error for JsonError:
             LimitExceeded: return "JSON: limit exceeded"
 
 # The member of `value` at `keys[from:]`, read one object level at a time.
-fn member_path(value: JsonValue, keys: List[String], from: Int) ref JsonValue?:
+fn member_path(value: JsonValue, keys: List[String], from: Int) JsonValue?:
     if from >= keys.length(): return none
     if from == keys.length() - 1: return value.get(keys[from])
     if let next = value.get(keys[from]):
