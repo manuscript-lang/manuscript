@@ -1,14 +1,17 @@
 # TOML control admission, 2026-10-31
 
-Replace the fixed ASCII-control regex precheck with a byte predicate over the
-already-normalized input. Keep the whole-input precheck before grammar parsing,
-then construct Reader state only for admitted input. Public results, diagnostics,
-Unicode scalar locations, normalization and limit precedence remain unchanged.
+Both byte-scan admission experiments are **rejected**. Production TOML code is
+unchanged. The inline form improves a tiny cached-file round trip **2.591×** and
+short errors **3.224–3.278×**, but broader controls confirmed a **1.75% slowdown**
+for arrays of 128 tables. It was slower in 11 of 12 long paired trials while the
+two identical-baseline medians differed by only 0.0044%. The earlier helper form
+also incurred repeatable writer costs. Retain the large wins and regressions
+together; neither candidate meets the campaign's regression rule.
 
-On the final cached-file controls, a tiny TOML round trip improves **2.591×**
-and short error paths improve **3.224–3.278×**. This measures cached-file ingestion
-plus processing, including I/O. It is not isolated parser timing or universal Rust
-parity; Rust remains faster on many listed workloads. Do not subtract read timings.
+This measures cached-file ingestion plus processing, including I/O. It is not
+isolated parser timing or universal Rust parity. Rust remains faster on many
+listed workloads. Do not subtract read timings. Source patches and behavior tests
+are archived unapplied under variants; no optimization is shipped by this study.
 
 ## Source and behavioral contract
 
@@ -20,7 +23,7 @@ construct Reader and allocate/parse. This preserves the existing rule that a lat
 invalid control precedes an earlier grammar error. C1 scalars remain admitted by
 this precheck, as before.
 
-The final implementation removes the one-use helper/Optional result and avoids
+The rejected inline implementation removes the one-use helper/Optional result and avoids
 unused Reader construction on rejected input. That source simplification was
 independently reviewed before trial; it was not instruction-placement tuning.
 
@@ -68,7 +71,7 @@ trials use all six orders twice for three-label suites and balanced AB/BA for
 errors. No local builds or other benchmarks run concurrently. Host noise remains
 possible, so raw observations and A/A controls are retained.
 
-## Final actual-main matrix
+## Inline candidate actual-main matrix
 
 [Full samples](results/2026-10-31/actual-main/samples.jsonl),
 [distributions](results/2026-10-31/actual-main/summary.json),
@@ -137,6 +140,36 @@ roundtrip medians fall by 728 KiB on the listed cases; large error cases fall by
 Writer/read medians are unchanged. These include setup, I/O and teardown; they are
 not allocation counts, and no mechanism is inferred from RSS alone.
 
+## Structural discovery and rejection
+
+The [broader pass](results/2026-10-31/structure-discovery/summary.json) covers nine
+valid shapes: nested tables at depths 8/32, arrays of 1,024 strings and integers,
+one array of 128 tables, shared dotted keys, Unicode keys, an empty key and a long
+multiline string. All Rust abstract-value and exact before/after output checks
+pass; blocked cases are an empty list. Six balanced three-label trials produce
+162 observations, using the same exact binaries pinned above.
+
+Arrays of tables lost about 1.48% in that pass, so a prespecified longer A/A
+confirmation used twelve trials at about 700ms per baseline process. The
+[36 retained observations](results/2026-10-31/structure-tables-long/samples.jsonl)
+give baseline A/B medians 135650.55/135656.48 ns and candidate 138036.28 ns:
+**+1.75%** versus mean baseline medians. Paired candidate-minus-mean-baselines
+has median +1870 ns and is positive in 11/12 trials. Baseline MADs are 844/897 ns,
+candidate MAD 437 ns. Ranges overlap, but the repeated direction and stable A/A
+medians establish an actionable protected-shape regression. Do not dismiss it
+because other cases improve more or because some individual ranges overlap.
+
+The inline candidate is rejected and the production source restored. No third
+placement variant or excluded backend/lifetime investigation was attempted.
+[Original structural driver](variants/structure-discovery.py.txt), full payloads,
+calibration counts, hashes and long-run provenance are retained. The driver was
+run from .artifacts/control-scan in this worktree; it intentionally stops on
+changed valid outputs and records invalid/unsupported cases separately.
+The exact candidate patch against 81b is
+[archived](variants/inline-scan-81b.patch), as are the four baseline-passing
+[behavior tests](variants/toml-controls.ms.txt). These are evidence, not active
+production/test-suite changes. Reapply them only for a future matched experiment.
+
 ## Retained rejected and exploratory work
 
 The initial one-use control_offset helper also improved parsing but was held after
@@ -146,8 +179,8 @@ showed reproducible costs of about 1.5–2.4%: paired candidate costs 36.9 ns em
 not erase that signal. Its full 1,224 observations, 144 long observations and 150 RSS
 records remain separate. The [unapplied helper patch](variants/helper-scan-f900.patch)
 reconstructs that candidate against f900; zero-context patches use git apply
---unidiff-zero. The inline version has a real error-path simplification, repeats
-all protected controls, and must not be accepted merely because it has a large gain.
+--unidiff-zero. The inline version has a real error-path simplification but its later arrays-of-tables
+regression independently requires rejection.
 
 Earlier invariant-text loops reported much larger apparent factors (including
 66× empty and 123× short errors). Whole-output guards and printed checksums prove
@@ -173,7 +206,7 @@ are ignored; a local accidental staging was removed before any publication.
 
 ## Validation and limitations
 
-Passed on actual main: four new source tests cover every ASCII byte/C1 scalar;
+Passed on the measured 81b main: four archived source tests cover every ASCII byte/C1 scalar;
 first Unicode-scalar location and CRLF/bare CR; byte/value/depth and syntax error
 precedence; and offset boundaries 0, 1, 31, 32, 127, 128, 129, 255, 256, 1024. They also pass
 on the untouched baseline compiler. Existing 14 TOML source tests, four quoting tests
@@ -183,14 +216,16 @@ Workspace/control Rust formatting, control Clippy with warnings denied, reposito
 checks, license freshness, Python syntax and whitespace checks pass. Three
 controlled bad producers are rejected for the intended failure reason without a
 summary; external-input probes verify both measured producers. Independent review
-checks semantics, identities, distributions and both rejected and accepted costs.
+checked semantics, identities, distributions, the 37 new structural payloads and
+exact reconstruction of the archived candidate. No production or active-test
+diff remains versus main.
 No GitHub approval is submitted on the user's behalf.
 
 Full workspace/native conformance, backend, ownership/cleanup, HTTP, Debug JSON and
 Windows investigations were not run under campaign exclusions. Required CI remains
-enabled. Later combined-main replay is required after other pending native changes,
-including JSON #2126, merge. Other TOML/YAML/JSON parser shapes and invalid syntax
-policies are not declared clean from these string-table controls.
+enabled. Later combined-main replay is required for retained production changes after other
+pending native changes, including JSON #2126, merge. This rejected experiment
+does not establish clean status for other TOML/YAML/JSON shapes or error policies.
 
 ## Replay
 

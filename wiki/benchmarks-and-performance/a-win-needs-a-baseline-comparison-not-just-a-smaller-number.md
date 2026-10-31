@@ -7,9 +7,10 @@ Verified: keep the raw hand-written baseline (the C controls in `bench/perf/kern
 Fixed-set validation optimizations must preserve admission order as well as accepted
 values: TOML checks original byte limits, normalizes CRLF, then reports the first
 invalid control before grammar errors. Cover every ASCII/C1 value and Unicode
-locations when replacing a regex with a byte predicate. Retain protected writer
-controls: an earlier helper form improved parsing but incurred a repeatable writer
-cost. Evidence: [TOML admission controls](../../bench/perf/toml-control-scan/README.md).
+locations when testing a regex replacement. Include structural parser controls
+alongside writers: one TOML scan form improved tiny parsing but incurred repeatable
+writer costs; another improved tiny parsing 2.59x but regressed arrays of 128 tables
+1.75% (11/12 long paired trials). Both were rejected. Evidence: [TOML admission controls](../../bench/perf/toml-control-scan/README.md).
 
 Apply when: optimizing a helper, a lowering path, or a runtime routine.
 Evidence: [program results](../../bench/perf/programs/results.md), [kernel baselines](../../bench/perf/kernels/README.md).
