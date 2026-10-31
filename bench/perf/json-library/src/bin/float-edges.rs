@@ -11,6 +11,9 @@ fn payload(case: &str) -> Vec<f64> {
         let fraction = (bits & ((1u64 << 52) - 1)) | (1023u64 << 52);
         let value = match case {
             "midrange" => (f64::from_bits(fraction) - 1.0) * 1e10 - 5e9,
+            "fraction5" => (123_456 + i) as f64 / 100_000.0,
+            "fraction15" => (123_456_789_000_000u64 + i as u64 * 7919) as f64 / 1e12,
+            "small-decimals" => (1_000_000u64 + i as u64 * 7919) as f64 / 1e12,
             "whole" => (f64::from_bits(fraction) - 1.0) * 1e18 - 5e17,
             "halfway" => {
                 let edges = [f64::from_bits(0x4317_9085_685d_83c9), 2f64.powi(-25), 0.125];

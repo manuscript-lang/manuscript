@@ -1462,6 +1462,24 @@ pub fn float_text(v: f64) -> Option<String> {
     String::from_utf8(out).ok()
 }
 
+/// Fixed-size text for the `{:e}` form of a float: at most 17 digits, a point, and an exponent.
+struct Sci {
+    bytes: [u8; 32],
+    len: usize,
+}
+
+impl core::fmt::Write for Sci {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        let end = self.len + s.len();
+        self.bytes
+            .get_mut(self.len..end)
+            .ok_or(core::fmt::Error)?
+            .copy_from_slice(s.as_bytes());
+        self.len = end;
+        Ok(())
+    }
+}
+
 /// Powers of ten that a double holds exactly.
 const POW10: [f64; 23] = [
     1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16,
@@ -1525,81 +1543,23 @@ fn short_digits(abs: f64, buf: &mut [u8; 24]) -> Option<(usize, i32)> {
     Some((len, 14 - scale))
 }
 
-/// For positive finite `abs`, `2 * abs / 10^power` when it is an odd integer that fits
-/// in a u64. Such a value is exactly halfway between two decimals at this power. Normalized f64 digits need at most
-/// 17 digits, so their halfway unit count fits in u64.
-fn midpoint_units(abs: f64, power: i32) -> Option<u64> {
-    let bits = abs.to_bits();
-    let encoded_exp = ((bits >> 52) & 0x7ff) as i32;
-    let fraction = bits & ((1u64 << 52) - 1);
-    let (significand, exp) = if encoded_exp == 0 {
-        (fraction, -1074)
-    } else {
-        (fraction | (1u64 << 52), encoded_exp - 1075)
-    };
-    let zeros = significand.trailing_zeros();
-    if exp + zeros as i32 != power - 1 {
-        return None;
-    }
-    let odd = significand >> zeros;
-    if power <= 0 {
-        return odd.checked_mul(5u64.checked_pow(power.unsigned_abs())?);
-    }
-    // A nonzero f64 significand has at most 53 bits; 5^23 is larger than that.
-    if power > 22 {
-        return None;
-    }
-    let divisor = 5u64.pow(power as u32);
-    (odd % divisor == 0).then_some(odd / divisor)
-}
-
-/// The shortest round-trip digits of finite positive `abs`, normalized from fixed or
-/// exponent form into the digits and exponent consumed by the existing JSON layout.
+/// The shortest round-trip digits of `abs` through the standard formatter, as in
+/// [`short_digits`].
 fn sci_digits(abs: f64, buf: &mut [u8; 24]) -> Option<(usize, i32)> {
-    let mut decimal = zmij::Buffer::new();
-    let text = decimal.format_finite(abs);
-    let e_at = text.bytes().position(|c| c == b'e').unwrap_or(text.len());
-    let mantissa = &text[..e_at];
-    let mut exp: i32 = if e_at < text.len() {
-        text[e_at + 1..].parse().ok()?
-    } else {
-        0
+    use core::fmt::Write;
+    let mut sci = Sci {
+        bytes: [0; 32],
+        len: 0,
     };
-    let point = mantissa
-        .bytes()
-        .position(|c| c == b'.')
-        .unwrap_or(mantissa.len());
-    exp += point as i32 - 1;
+    write!(sci, "{abs:e}").ok()?;
+    let text = &sci.bytes[..sci.len];
+    let e_at = text.iter().position(|&c| c == b'e')?;
+    let exp: i32 = core::str::from_utf8(&text[e_at + 1..]).ok()?.parse().ok()?;
     let mut n = 0;
-    for c in mantissa.bytes() {
-        if c == b'.' {
-            continue;
-        }
-        if n == 0 && c == b'0' {
-            exp -= 1;
-            continue;
-        }
-        *buf.get_mut(n)? = c;
-        n += 1;
-    }
-    while n > 1 && buf[n - 1] == b'0' {
-        n -= 1;
-    }
-    if n == 0 {
-        return None;
-    }
-    // Preserve the established formatter's upward choice at exact halfway ties. Compute
-    // the upper integer in decimal units rather than formatting the same float twice.
-    if let Some(units) = midpoint_units(abs, exp + 1 - n as i32) {
-        let rounded = units / 2 + 1;
-        let mut digits = [0u8; 24];
-        let start = put_digits(&mut digits, 24, rounded);
-        let len = 24 - start;
-        exp += len as i32 - n as i32;
-        buf[..len].copy_from_slice(&digits[start..]);
-        n = len;
-        while n > 1 && buf[n - 1] == b'0' {
-            n -= 1;
+    for &c in &text[..e_at] {
+        if c != b'.' {
+            *buf.get_mut(n)? = c;
+            n += 1;
         }
     }
     Some((n, exp))
@@ -1741,120 +1701,4 @@ pub fn parse_int(text: &str) -> Option<i64> {
 pub fn parse_float(text: &str) -> Option<f64> {
     let v: f64 = text.parse().ok()?;
     v.is_finite().then_some(v)
-}
-
-#[cfg(test)]
-mod scalar_tests {
-    use super::{midpoint_units, sci_digits};
-
-    fn assert_digits(abs: f64) {
-        let reference = alloc::format!("{abs:e}");
-        let (mantissa, exponent) = reference.split_once('e').unwrap();
-        let digits = mantissa.replace('.', "");
-        let mut buf = [0u8; 24];
-        let (n, exp) = sci_digits(abs, &mut buf).unwrap();
-        assert_eq!(&buf[..n], digits.as_bytes(), "{abs:e}");
-        assert_eq!(exp, exponent.parse::<i32>().unwrap(), "{abs:e}");
-    }
-
-    #[test]
-    fn decimal_midpoints_are_detected_without_float_scaling() {
-        for (value, power, units) in [
-            (25.0, 1, 5),
-            (2.5, 0, 5),
-            (0.25, -1, 5),
-            (0.125, -2, 25),
-            (5e21, 22, 1),
-        ] {
-            assert_eq!(
-                midpoint_units(value, power),
-                Some(units),
-                "{value:e}, {power}"
-            );
-        }
-        for (value, power) in [(20.0, 1), (2.0, 0), (0.2, -1), (5e22, 23)] {
-            assert!(midpoint_units(value, power).is_none(), "{value:e}, {power}");
-        }
-    }
-
-    #[test]
-    fn binary_midpoint_families_and_neighbors_keep_the_closest_decimal() {
-        for exponent in -60..=60 {
-            for odd in [
-                1,
-                3,
-                5,
-                7,
-                (1u64 << 25) - 1,
-                (1u64 << 52) - 1,
-                (1u64 << 53) - 1,
-            ] {
-                let value = odd as f64 * 2f64.powi(exponent);
-                for bits in [value.to_bits() - 1, value.to_bits(), value.to_bits() + 1] {
-                    assert_digits(f64::from_bits(bits));
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn shortest_digits_match_the_standard_scientific_formatter() {
-        for value in [
-            f64::from_bits(1),
-            f64::MIN_POSITIVE,
-            f64::MAX,
-            1.0,
-            1e-6,
-            1e-3,
-            1e15,
-            1e21,
-        ] {
-            assert_digits(value);
-            assert_digits(f64::from_bits(value.to_bits().saturating_sub(1)).max(f64::from_bits(1)));
-            let above = f64::from_bits(value.to_bits() + 1);
-            if above.is_finite() {
-                assert_digits(above);
-            }
-        }
-        for exponent in 0..2047u64 {
-            for fraction in [
-                0,
-                1,
-                (1u64 << 51) - 1,
-                1u64 << 51,
-                (1u64 << 52) / 3,
-                (1u64 << 52) - 2,
-                (1u64 << 52) - 1,
-            ] {
-                let value = f64::from_bits((exponent << 52) | fraction);
-                if value > 0.0 {
-                    assert_digits(value);
-                }
-            }
-        }
-        for exponent in -323..=308 {
-            let value = 10f64.powi(exponent);
-            if value > 0.0 && value.is_finite() {
-                assert_digits(value);
-                let below = f64::from_bits(value.to_bits() - 1);
-                if below > 0.0 {
-                    assert_digits(below);
-                }
-                let above = f64::from_bits(value.to_bits() + 1);
-                if above.is_finite() {
-                    assert_digits(above);
-                }
-            }
-        }
-        let mut bits = 0x9e37_79b9_7f4a_7c15u64;
-        for _ in 0..1_000_000 {
-            bits ^= bits << 13;
-            bits ^= bits >> 7;
-            bits ^= bits << 17;
-            let abs = f64::from_bits(bits & !(1u64 << 63));
-            if abs.is_finite() && abs > 0.0 {
-                assert_digits(abs);
-            }
-        }
-    }
 }

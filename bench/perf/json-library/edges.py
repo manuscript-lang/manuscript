@@ -25,7 +25,7 @@ metadata = {"revision": args.revision, "platform": platform.platform(), "toolcha
             "flags": "Cargo release opt-level3 panic=abort; repository force-frame-pointers; same host allocator for library and Serde; native library component, not Manuscript generated code",
             "build": "cargo build --release --locked --manifest-path bench/perf/json-library/Cargo.toml --bin float-edges", "trials": 12}
 (args.output / "environment.json").write_text(json.dumps(metadata, indent=2) + "\n")
-cases = ["midrange", "whole", "halfway", "thresholds"]
+cases = ["midrange", "whole", "halfway", "thresholds", "fraction5", "fraction15", "small-decimals"]
 
 
 def invoke(label, case, operation, count):

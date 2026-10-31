@@ -68,7 +68,6 @@ version = "0.1.0"
 dependencies = [
  "ms-rt",
  "ms-rt-abi",
- "zmij",
 ]
 
 [[package]]

@@ -1,24 +1,31 @@
 # JSON float writer controls, 2026-10-31
 
-The retained optimization replaces the native JSON library's general scientific
-formatter fallback with Zmij 1.0.23 and an exact integer correction for the existing
-upward tie rule. Existing short-decimal paths, JSON notation thresholds, signed
-zero, nonfinite handling and budgets are unchanged. Hard-float arrays improve
-**1.827×**; the four additional float controls improve **1.846–7.669×**.
+**All production experiments are rejected; production JSON, active tests and root
+dependencies are unchanged.** Zmij1.0.23 plus exact midpoint arithmetic preserved
+all sampled bytes and improved hard-float arrays about1.84x, but the actual
+pristine-main dependency-graph comparison reproduced a roughly1.5% tiny-file-read
+cost. The signal is modest/noisy (9/12 long pairs), and no mechanism or universal
+slowdown is established. Under the campaign's strict protected-common-path rule,
+keep the existing implementation. Preserve the target gain and counterexample.
 
-This is a **native library component** study. Rust callers invoke
-`ms_std_json::Writer` and idiomatic Serde JSON on the same host, producing the same
-abstract JSON values in the same order. The established numeric presentation rules
-can produce different equivalent spellings and byte lengths; both are recorded.
-This is not compiled-Manuscript, generated-encoder or universal language parity.
+A corrected Ryu alternative regressed Unicode writing. A later attempt to remove
+the old15-digit scaling path passed exact-output checks but regressed dedicated
+precision classes25–52%. That path remains justified. Candidate source patches,
+tests, dependency snapshots and complete observations are archived below.
 
-Rust parser timings are **diagnostic only**: Manuscript's arena parser retains
-original number lexemes, while Serde's Value representation has different lexical
-and normalization contracts. The final Rust control enables `arbitrary_precision`
-for exact numeric precision, but still normalizes some spellings. All final Rust
-parse ratios are null. Earlier numeric parse ratios are unmatched historical
-experiments and must not be used as performance evidence. Native parser
-before/after ratios remain useful because that implementation's contract is unchanged.
+This is a **native library component** study: Rust callers invoke
+ms_std_json::Writer and idiomatic Serde JSON on equivalent values. It is not
+compiled-Manuscript, generated-encoder or universal language parity. All following
+before/after tables describe unshipped experiments. Rust parser ratios are null:
+Manuscript retains original number lexemes while Serde normalizes some spellings,
+so parse timings are diagnostic or same-contract before/after controls only.
+
+The latest canonical [dated baseline](../baseline-2026-10-28.md) is a profiling
+reference from a different machine; its numbers are not mixed into these ratios.
+All reported ratios below compare the same host, inputs, semantics and release
+settings. Instruction/page-fault counts were not captured; perf and Valgrind were
+unavailable. No profiler installation, credential or security-setting change was attempted.
+RSS evidence is retained and is not allocation counts.
 
 ## Builds and method
 
@@ -303,3 +310,80 @@ relative filenames to UTF-8 source and SHA256; its manifest hashes every file an
 both packed/unpacked bundles. Restore it under bench/perf/toml-control-scan for the
 recorded commands. No temporary source copy is added to the active benchmark tree.
 Independent review verified the identical executables and scoped attribution limit.
+
+
+## Final actual-graph counterexample and rejection
+
+Newer main `72a0274844d124b7f3184b738f2826f82a8a619c`, including the regex change,
+was independently combined with reviewed converter commit46712ee1a in integration
+head `075bc92918422bfcc2a47889378039de2e31dfd8`. The normal runtime/CLI builds pass.
+Candidate validation passes22 scoped JSON Rust tests,3 source JSON controls,
+22 source TOML controls (including every ASCII/C1 admission and normalized-location
+case) and41 YAML source tests. The baseline scalar_tests filter selected zero and
+is explicitly not counted as candidate coverage; its18 existing JSON tests passed.
+
+Fresh [component](results/2026-10-31/main72-component/summary.json) and
+[edges](results/2026-10-31/main72-edges/summary.json) retain720 observations:
+hard floats1.837x, additional floats1.817–7.490x. These are real component gains,
+with hard arrays still about4x the Rust writer on this host. They do not establish
+a safe overall change.
+
+The actual pristine-main comparison restores the **original** root manifests and
+locked graph for before, then applies the actual source/dependency change for after,
+in the same worktree and source/target paths. This differs from the earlier
+candidate-manifest-only A/A cohort. All four generated TOML/error/writer/read pairs
+now differ. [Build identities](results/2026-10-31/main72-actual-graph/build-identities.json)
+match pristine main72 and the exact integration tree. No concrete source/build
+confound was found by independent review.
+
+The [complete1,224-observation matrix](results/2026-10-31/main72-actual-graph/summary.json)
+passes all full-value/byte/error checks. Tiny-file reads lose about1.47%. Longer
+[read controls](results/2026-10-31/main72-read-long/summary.json),144 observations,
+give A/B/candidate medians2235.64/2231.20/2267.93ns: **+1.545%** versus mean baseline
+medians, paired median+37.72ns, slower in9/12 trials. Baseline MADs7.56/10.58ns,
+candidate MAD29.15ns; the effect is modest and its ranges overlap. The paired cost
+exceeds the17.22ns median absolute A/A difference and reproduces the full-matrix
+signal. Fields32 reads have a smaller/noisier+1.19% signal (8/12 slower), while
+empty/comment controls are close. No mechanism is inferred from these observations.
+
+[Long roundtrips](results/2026-10-31/main72-roundtrip-long/summary.json),72 observations,
+show a possible tiny+0.68%/48ns marginal cost (10/12), and do not retain the short
+Unicode slowdown. These mixed controls are all preserved. Earlier identical-binary
+A/A results cannot clear this actual-graph comparison. Given the protected-path
+rule, the converter is rejected conservatively; this is not proof of a universal
+1.5% slowdown or of its cause. No backend/cache/lifetime investigation or placement
+variant was attempted to explain or tune it away.
+
+Fresh [component RSS](results/2026-10-31/main72-memory/samples.json) has108 unique
+records and no material increase. Setup and complete semantic checks are included;
+these are whole-process peaks, not allocation counts. They do not overturn rejection.
+All production, active test, root lockfile and license inventory changes are restored.
+The exact [converter patch](variants/rejected-zmij-main72.patch) preserves those
+unshipped changes, including tests and dependencies. The original benchmark lockfile
+and four-case edge sources/drivers are archived alongside it for exact historical
+replay; the active harness adds precision-class controls for future work.
+
+## Rejected removal of the scaling path
+
+A distinct simplification removed short_digits and its power table, using Zmij
+right after the existing integer and short_fraction paths. Independent pretrial
+review required its intended success classes: small decimals and5–15-digit
+fractions. No dependency/ABI change was added by this trial. The complete
+[matrix](results/2026-10-31/short-digits-full/summary.json),576 observations, and
+[seven edge classes](results/2026-10-31/short-digits-edges/summary.json),252 observations,
+retain every result. Some other float classes gain3–7%, but fraction5,
+fraction15 and small-decimals before/candidate ratios are0.756/0.801/0.659:
+about32%/25%/52% slower. The extra success-class controls establish that the old
+scaling path still earns its code. No further variant was attempted.
+
+All22 scoped Rust tests pass. Complete before/after one-million-value streams are
+byte-identical,36,563,797 bytes, SHA256
+5bcd38bdba0747ea6a073f899cf3360d0283eacb90987ed1eb1aba255c00f860;
+[oracle identities](variants/short-digits-oracle.json) retain the result. Streams
+remain in local campaign artifacts and are reproducible from the pinned generator;
+they are not duplicated in this Git payload. The
+[unapplied removal patch](variants/rejected-short-digits.patch) applies on top of
+the archived converter. The active seven-case harness reconstructs its inputs.
+Production and all performance experiment edits are restored. These bounded passes
+found no further verified safe optimization; known Rust gaps and untested paths
+remain, so this report does not declare the whole lane or language clean.

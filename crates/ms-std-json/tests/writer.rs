@@ -308,21 +308,3 @@ fn plain_decimals_print_as_rust_displays_them() {
         }
     }
 }
-
-#[test]
-fn halfway_shortest_decimals_keep_the_existing_spelling() {
-    // Both adjacent decimals read back as this exact quarter, but the established encoder
-    // chooses the upper spelling rather than ties-to-even.
-    let value = f64::from_bits(0x4317_9085_685d_83c9);
-    let mut writer = Writer::new(None, None);
-    writer.begin_array();
-    writer.item();
-    writer.float(value);
-    writer.item();
-    writer.float(-value);
-    writer.end_array();
-    assert_eq!(
-        writer.finish().unwrap(),
-        "[1658206780088562.3,-1658206780088562.3]"
-    );
-}
