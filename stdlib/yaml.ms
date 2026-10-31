@@ -99,6 +99,9 @@ type Flow:
     line: Int
     context: Context
     delimited: Bool
+    # Scalar offsets where stripped comments terminate an already-started plain leaf.
+    stops: List[Int] = []
+    next_stop: Int = 0
 
 # YAML separates tokens with only space and tab; Unicode spaces such as U+00A0 are scalar content.
 fn blank(code: Int) Bool:
@@ -449,6 +452,21 @@ fn fold_plain(text: String) String:
 
     return result
 
+# Whether the character following a colon ends a plain scalar in this context.
+fn separates_colon(next: Int, delimited: Bool) Bool:
+    if next == 0 or next == 9 or next == 10 or next == 32: return true
+
+    return (
+        delimited
+        and (
+            next == 44
+            or next == 91
+            or next == 93
+            or next == 123
+            or next == 125
+        )
+    )
+
 # A scalar, alias or quoted string at the cursor, whose first code is `c`.
 fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
     if c == 42:
@@ -470,8 +488,14 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
     if c == 34 or c == 39: return ok(YamlValue.StringValue(try quoted(var flow)))
 
     let start = flow.pos
+    while (
+        flow.next_stop < flow.stops.length()
+        and flow.stops.get(flow.next_stop) <= start
+    ): flow.next_stop += 1
 
-    while true:
+    let stop = flow.stops.get(flow.next_stop, default: flow.chars.length())
+
+    while flow.pos < stop:
         let code = cur(flow)
         if code == 0: break
         if (
@@ -484,10 +508,16 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
                 or code == 125
             )
         ): break
-        if key and code == 58: break
-        if code == 58 and flow.codes.get(flow.pos + 1, default: 0) == 32: return error(
-            flow_invalid(flow, "unexpected mapping colon")
-        )
+
+        if (
+            code == 58
+            and separates_colon(
+                flow.codes.get(flow.pos + 1, default: 0), flow.delimited or key
+            )
+        ):
+            if key: break
+
+            return error(flow_invalid(flow, "unexpected mapping colon"))
 
         flow.pos += 1
 
@@ -678,6 +708,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
 
                 quoted_key = cur(flow) == 34 or cur(flow) == 39
 
+                let key_start = flow.pos
                 let parsed_key = try flow_value(var flow, level, key: true)
 
                 match parsed_key:
@@ -700,6 +731,19 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
                 if step(var flow) != 58: return error(
                     flow_invalid(flow, "expected mapping colon")
                 )
+
+                # A colon makes this an implicit key: validate physical source lines, not
+                # decoded text, which may legitimately contain an escaped newline.
+                var key_at = key_start
+
+                while key_at < flow.pos:
+                    if flow.codes.get(key_at) == 10: return error(
+                        flow_invalid(
+                            flow, "an implicit mapping key must stay on one line"
+                        )
+                    )
+
+                    key_at += 1
 
                 phase = 0
                 continue
@@ -764,10 +808,120 @@ fn plain_boundary(text: String, colon: Bool) Int:
         let at = offset + found
         let before = text.get(at - 1, default: "")
         let after = text.get(at + 1, default: "")
-        if colon and (after == "" or after == " " or after == "\t"): return at
-        if not colon and (at == 0 or before == " " or before == "\t"): return at
+        if colon and (after == "" or after == " " or after == "\t" or after == "\n"): return at
+        if not colon and (at == 0 or before == " " or before == "\t" or before == "\n"): return at
 
         offset = at + 1
+
+# A structural marker; `closed` is meaningful only when the scan reaches the end.
+type StructureScan:
+    marker: Int
+    closed: Bool
+
+# Scan quoted and flow nodes without interpreting quotes or brackets inside plain text.
+fn scan_structure(text: String, target: String) StructureScan:
+    let chars = text.split("")
+    var quote = ""
+    var depth = 0
+    var node_start = true
+    var json_node = false
+    var index = 0
+
+    while index < chars.length():
+        let c = chars.get(index)
+        let next = chars.get(index + 1, default: "")
+
+        if quote != "":
+            if c == "\\" and quote == "\"": index += 1
+            else if c == quote:
+                if quote == "'" and next == "'": index += 1
+                else:
+                    quote = ""
+                    json_node = true
+
+            index += 1
+            continue
+
+        let before = chars.get(index - 1, default: "")
+
+        if (
+            c == "#"
+            and (
+                index == 0
+                or before == " "
+                or before == "\t"
+                or before == "\n"
+            )
+        ):
+            if target == "#": return StructureScan(index, closed: false)
+
+            while index < chars.length() and chars.get(index) != "\n": index += 1
+            node_start = true
+            json_node = false
+            continue
+
+        if node_start and (c == "&" or c == "!"):
+            index += 1
+
+            if c == "!" and next == "<":
+                while index < chars.length() and chars.get(index) != ">": index += 1
+                if index < chars.length(): index += 1
+            else:
+                while (
+                    index < chars.length()
+                    and not " \t\n,[]\{\}".contains(
+                        chars.get(index)
+                    )
+                ):
+                    index += 1
+
+            json_node = false
+            continue
+
+        if node_start and (c == "\"" or c == "'"):
+            quote = c.clone()
+            node_start = false
+            json_node = false
+        else if node_start and (c == "[" or c == "\{"):
+            depth += 1
+            json_node = false
+        else if depth > 0 and (c == "]" or c == "\}"):
+            depth -= 1
+            node_start = false
+            json_node = true
+        else if depth > 0 and c == ",":
+            node_start = true
+            json_node = false
+        else if c == ":":
+            let separates = (
+                json_node
+                or separates_colon(
+                    next.scalar_at(0, default: 0), depth > 0
+                )
+            )
+
+            if separates:
+                if target == ":" and depth == 0: return StructureScan(
+                    index, closed: false
+                )
+
+                node_start = true
+            else: node_start = false
+
+            json_node = false
+        else if (
+            node_start
+            and (c == "-" or c == "?")
+            and (next == "" or next == " " or next == "\t" or next == "\n")
+        ):
+            json_node = false
+        else if c != " " and c != "\t" and c != "\n":
+            node_start = false
+            json_node = false
+
+        index += 1
+
+    return StructureScan(-1, closed: quote == "" and depth == 0)
 
 # Find a mapping colon or comment outside quoted/flow values.
 fn boundary(text: String, colon: Bool) Int:
@@ -781,56 +935,7 @@ fn boundary(text: String, colon: Bool) Int:
     if first < 0: return -1
     if not quoted_or_nested(text.slice_scalars(0, first).get("")): return first
 
-    let chars = text.split("")
-    var quote = ""
-    var depth = 0
-    var index = 0
-
-    while index < chars.length():
-        let c = chars.get(index)
-
-        if quote != "":
-            if c == "\\" and quote == "\"": index += 1
-            else if c == quote:
-                if quote == "'" and chars.get(index + 1, default: "") == "'": index = (
-                    index
-                    + 1
-                )
-                else: quote = ""
-        else if (
-            (c == "\"" or c == "'")
-            and (
-                index == 0
-                or " \t\n:[\{,".contains((chars.get((index - 1))))
-            )
-        ): quote = c.clone()
-        else if c == "[" or c == "\{": depth += 1
-        else if c == "]" or c == "\}": depth -= 1
-        else if (
-            colon
-            and c == ":"
-            and depth == 0
-            and (
-                index + 1 == chars.length()
-                or chars.get((index + 1), default: "") == " "
-                or chars.get((index + 1), default: "") == "\t"
-            )
-        ):
-            return index
-        else if (
-            not colon
-            and c == "#"
-            and (
-                index == 0
-                or chars.get(index - 1, default: "") == " "
-                or chars.get((index - 1), default: "") == "\t"
-            )
-        ):
-            return index
-
-        index += 1
-
-    return -1
+    return scan_structure(text, if colon: ":" else: "#").marker
 
 fn uncomment(text: String) String:
     let index = boundary(text, colon: false)
@@ -945,35 +1050,7 @@ fn sequence(text: String) Bool:
 fn complete(text: String) Bool:
     if not quoted_or_nested(text): return true
 
-    var quote = ""
-    var depth = 0
-    var index = 0
-    let chars = text.split("")
-
-    while index < chars.length():
-        let c = chars.get(index)
-
-        if quote != "":
-            if c == "\\" and quote == "\"": index += 1
-            else if c == quote:
-                if quote == "'" and chars.get(index + 1, default: "") == "'": index = (
-                    index
-                    + 1
-                )
-                else: quote = ""
-        else if (
-            (c == "\"" or c == "'")
-            and (
-                index == 0
-                or " \t\n:[\{,".contains((chars.get((index - 1))))
-            )
-        ): quote = c.clone()
-        else if c == "[" or c == "\{": depth += 1
-        else if c == "]" or c == "\}": depth -= 1
-
-        index += 1
-
-    return quote == "" and depth <= 0
+    return scan_structure(text, "").closed
 
 # Whether a value starting with this scalar is a flow collection, quote, anchor, alias or tag
 # (or, with `blank`, whitespace) rather than a plain scalar.
@@ -997,7 +1074,15 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
     if (
         text != ""
         and not structured_lead(text.scalar_at(0, default: 0), blank: true)
-        and not text.contains(": ")
+        and (
+            not text.contains(":")
+            or not (
+                text.contains(": ")
+                or text.contains(":\t")
+                or text.contains(":\n")
+                or text.ends_with(":")
+            )
+        )
         and plain_may_start(blank_trim(text))
     ):
         try count(var context, depth)
@@ -1012,6 +1097,11 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
         or text.starts_with("'")
         or text.starts_with("&")
     )
+    var stops: List[Int] = []
+    if (
+        structured
+        and boundary(context.lines.get(context.index - 1), colon: false) >= 0
+    ): stops.append(joined.scalar_length())
 
     while (
         structured
@@ -1025,7 +1115,9 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
         let comment = boundary(combined, colon: false)
 
         if comment < 0: joined = combined
-        else: joined = combined.slice(0, comment).get("")
+        else:
+            stops.append(comment)
+            joined = combined.slice(0, comment).get("")
 
         context.index += 1
 
@@ -1042,7 +1134,8 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
             anchors: context.anchors.clone(), sizes: context.sizes.clone(), simple: [],
             blank: [], dash: [], ind: [], col: []
         ),
-        delimited: false
+        delimited: false,
+        stops: stops
     )
     let result = try flow_value(var flow, depth, key: false)
     flow_space(var flow)
@@ -1219,7 +1312,17 @@ fn block_value(
         if not structured_lead(lead):
             remainder = blank_trim_end(remainder).clone()
 
-            if may_continue(context, base):
+            # An inline comment ends a nonempty plain scalar, even when the next line
+            # would otherwise have continuation indentation. Simple lines contain no comments.
+            if (
+                (
+                    context.simple.get(context.index - 1)
+                    or boundary(
+                        context.lines.get(context.index - 1), colon: false
+                    ) < 0
+                )
+                and may_continue(context, base)
+            ):
                 var joined = StringBuilder()
                 joined.append(remainder)
 
@@ -1263,6 +1366,10 @@ fn block_value(
                     joined.append(blank_trim(next))
                     probe += 1
                     context.index = probe
+                    if (
+                        not context.simple.get(probe - 1)
+                        and boundary(line, colon: false) >= 0
+                    ): break
 
                 remainder = joined.build()
 
@@ -1372,13 +1479,15 @@ fn sequence_items(
                 frames.append([])
                 level += 1
 
+            # Keep comments in the virtual source line so plain continuation can see them.
+            let raw = context.lines.get(context.index)
             context.simple.set(context.index, false)
             context.lines.set(
                 context.index,
                 pad(innermost).concat(
                     (
-                        line
-                        .slice(innermost, line.scalar_length())
+                        raw
+                        .slice(innermost, raw.scalar_length())
                         .get("")
                     )
                 )
@@ -1427,7 +1536,17 @@ fn sequence_items(
                     context.index, false
                 )
 
-            context.lines.set(context.index, pad(column).concat(item))
+            var rewritten = pad(column).concat(item)
+
+            if not fast:
+                let raw = context.lines.get(context.index)
+                rewritten = rewritten.concat(
+                    raw.slice(
+                        line.scalar_length(), raw.scalar_length()
+                    ).get("")
+                )
+
+            context.lines.set(context.index, rewritten)
             values.append(try block(var context, column, (depth + 1)))
         else:
             context.index += 1

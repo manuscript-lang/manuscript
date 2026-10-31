@@ -40,6 +40,9 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     let text = |t: &Token| &normalized[t.lo as usize..t.hi as usize];
     let mut output: Vec<String> = Vec::new();
     let mut blank = true;
+    // A comment-only line whose indentation snaps to a block boundary can need
+    // the blank lines a dedent gets, which only the next pass sees.
+    let mut realigned = false;
     for (index, line) in lines.iter().enumerate() {
         if breaks.contains(&(index + 1)) && !blank {
             output.push(String::new());
@@ -63,6 +66,7 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
             }
             let stripped = line.trim_start_matches(' ');
             let indent = line.len() - stripped.len();
+            realigned |= indent % 4 != 0;
             output.push(format!(
                 "{}{}",
                 " ".repeat(indent / 4 * 4),
@@ -98,6 +102,9 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     let result = output.join("\n") + "\n";
     let result = format_expression_layout(file, &result)?;
     parse(file, &result)?;
+    if realigned && result != source {
+        return format(file, &result);
+    }
     Ok(result)
 }
 
@@ -183,6 +190,48 @@ fn align_suite_headers(lines: &[String], tokens: &[Token]) -> Option<Vec<String>
     )
 }
 
+/// Reports whether the final `)` closes the parameter list of an `fn`
+/// declaration or function type, so a `(` after it opens a parenthesized
+/// return type (`fn f() (fn() Int)?`) rather than calling a result.
+/// `None` when the matching `(` is not among `tokens` (a line that starts at
+/// the `)`).
+fn closes_parameter_list(tokens: &[Token]) -> Option<bool> {
+    let mut depth = 0usize;
+    let mut open = None;
+    for (index, token) in tokens.iter().enumerate().rev() {
+        match token.kind {
+            Tok::RParen => depth += 1,
+            Tok::LParen => {
+                depth -= 1;
+                if depth == 0 {
+                    open = Some(index);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut at = open?;
+    if at > 0 && tokens[at - 1].kind == Tok::RBracket {
+        let mut depth = 0usize;
+        while at > 0 {
+            at -= 1;
+            match tokens[at].kind {
+                Tok::RBracket => depth += 1,
+                Tok::LBracket => {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let kind = |back: usize| at.checked_sub(back).map(|i| tokens[i].kind);
+    Some(kind(1) == Some(Tok::Fn) || (kind(1) == Some(Tok::Name) && kind(2) == Some(Tok::Fn)))
+}
+
 fn token_space(tokens: &[Token], at: usize) -> bool {
     let (current, previous) = (tokens[at].kind, tokens[at - 1].kind);
     if current == Tok::Dot && matches!(previous, Tok::Pipe | Tok::Try) {
@@ -226,9 +275,18 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
     if current == Tok::LParen
         && matches!(previous, Tok::Name | Tok::RParen | Tok::RBracket | Tok::Fn)
     {
-        return false;
+        if previous != Tok::RParen {
+            return false;
+        }
+        // Per-line spacing cannot see a `(` on an earlier line; keep the authored gap.
+        return closes_parameter_list(&tokens[..at]).unwrap_or(tokens[at].lo != tokens[at - 1].hi);
     }
-    if current == Tok::LBracket && matches!(previous, Tok::Name | Tok::SelfKw | Tok::RBracket) {
+    if current == Tok::LBracket
+        && matches!(
+            previous,
+            Tok::Name | Tok::SelfKw | Tok::RBracket | Tok::RParen
+        )
+    {
         return false;
     }
     if previous == Tok::Minus
@@ -810,13 +868,19 @@ impl<'a> Layout<'a> {
 
     fn flat(&self, nodes: &[Node]) -> String {
         let mut out = String::new();
-        for node in nodes {
+        let mut last_line = 0u32;
+        for (index, node) in nodes.iter().enumerate() {
             if layout_token(node.tok.kind) || node.tok.kind == Tok::Comment {
                 continue;
             }
-            if !out.is_empty() && node.space {
+            if joined_flow_dot(&nodes[..index], node, last_line) {
+                out.push_str(" | ");
+            } else if !out.is_empty() && node.space {
                 out.push(' ');
             }
+            last_line = node
+                .group
+                .map_or(node.tok.pos.line, |g| self.groups[g].close.pos.line);
             match node.group {
                 Some(g) => {
                     let g = &self.groups[g];
@@ -958,7 +1022,7 @@ impl<'a> Layout<'a> {
 
     fn layout_operators(&self, nodes: &[Node]) -> (Option<Tok>, usize) {
         let (mut selected, mut level, mut count) = (None, 7, 0);
-        for node in nodes {
+        for (index, node) in nodes.iter().enumerate() {
             if node.tok.kind == Tok::Newline || node.tok.kind == Tok::Fn {
                 return (None, 0); // Operators here belong to a callable body or type.
             }
@@ -971,7 +1035,7 @@ impl<'a> Layout<'a> {
                 Tok::EqEq | Tok::NotEq | Tok::Lt | Tok::Gt | Tok::Le | Tok::Ge => 3,
                 Tok::Plus | Tok::Minus => 4,
                 Tok::Star | Tok::Slash | Tok::Percent => 5,
-                Tok::Dot => 6,
+                Tok::Dot if !optional_dot(nodes, index) => 6,
                 _ => continue,
             };
             if p < level {
@@ -1120,7 +1184,8 @@ impl<'a> Layout<'a> {
         };
         let mut first_indent = 0i64;
         for node in nodes {
-            if !layout_token(node.tok.kind) {
+            // A leading comment may sit off the code's indentation.
+            if !layout_token(node.tok.kind) && node.tok.kind != Tok::Comment {
                 first_indent = self.line_indent(node.tok.pos.line) as i64;
                 break;
             }
@@ -1169,6 +1234,8 @@ impl<'a> Layout<'a> {
                 }
             } else if comment {
                 w.write("  ");
+            } else if joined_flow_dot(&nodes[..index], node, last_line) {
+                w.write(" | ");
             } else if node.space {
                 w.write(" ");
             }
@@ -1187,11 +1254,35 @@ impl<'a> Layout<'a> {
     }
 }
 
+/// A line starting with `.` after a flow step applies to the whole flow so far.
+/// Joined onto the previous line it must read `| .name(...)`, since `step.name`
+/// would instead select a member of the step.
+fn joined_flow_dot(before: &[Node], node: &Node, last_line: u32) -> bool {
+    if node.tok.kind != Tok::Dot || last_line == 0 || last_line == node.tok.pos.line {
+        return false;
+    }
+    // Only the current comma-separated item is part of the flow.
+    let item = before
+        .iter()
+        .rposition(|n| n.group.is_none() && n.tok.kind == Tok::Comma)
+        .map_or(before, |comma| &before[comma + 1..]);
+    let mut code = item
+        .iter()
+        .filter(|n| !layout_token(n.tok.kind) && n.tok.kind != Tok::Comment);
+    let previous = code.clone().next_back().map(|n| n.tok.kind);
+    !matches!(previous, Some(Tok::Pipe | Tok::Try)) && code.any(|n| n.tok.kind == Tok::Pipe)
+}
+
 fn is_comparison(k: Tok) -> bool {
     matches!(
         k,
         Tok::EqEq | Tok::NotEq | Tok::Lt | Tok::Gt | Tok::Le | Tok::Ge
     )
+}
+
+/// The `.` of `?.`: a line cannot start with `?.`, so a chain never breaks there.
+fn optional_dot(nodes: &[Node], index: usize) -> bool {
+    nodes[index].tok.kind == Tok::Dot && index > 0 && nodes[index - 1].tok.kind == Tok::Question
 }
 
 fn split_layout(nodes: &[Node], separator: Tok) -> Vec<&[Node]> {
@@ -1206,7 +1297,7 @@ fn split_layout(nodes: &[Node], separator: Tok) -> Vec<&[Node]> {
             }
             _ => k == separator,
         };
-        if node.group.is_some() || !matches {
+        if node.group.is_some() || !matches || optional_dot(nodes, i) {
             continue;
         }
         let mut end = i;
@@ -1359,6 +1450,8 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     Tok::Dot if depth == 0 => dots += 1,
                     Tok::Newline | Tok::Indent | Tok::Dedent | Tok::Fn => return,
                     Tok::If | Tok::Else => return,
+                    // A line starting with `.` after a flow step applies to the whole flow.
+                    Tok::Pipe if depth == 0 => return,
                     k if depth == 0
                         && (matches!(k, Tok::And | Tok::Or) || is_comparison(k) || is_arith(k)) =>
                     {

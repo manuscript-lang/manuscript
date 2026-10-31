@@ -1,0 +1,10 @@
+{
+  "publication_base": "63cfffa9eb0ba72afaefe7e06cb3af5cf29d4a69",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "machine": "x86_64",
+  "cpu_affinity_measurement": [
+    0
+  ],
+  "normalization_production_change": false,
+  "note": "Publication checkout metadata only; all timed phases remain at8dd79f417165200a4208b860d653fc5c4ec22d1e."
+}

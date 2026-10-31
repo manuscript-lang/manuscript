@@ -1,0 +1,19 @@
+   Compiling libc v0.2.191
+   Compiling ms-rt-abi v0.1.0 (/workspace/manuscript/crates/ms-rt-abi)
+   Compiling tinyvec v1.13.3
+   Compiling memchr v2.8.3
+   Compiling ms-rt-hot v0.1.0 (/workspace/manuscript/crates/ms-rt-hot)
+   Compiling unicode-normalization v0.1.26
+   Compiling mio v1.2.4
+   Compiling ms-rt v0.1.0 (/workspace/manuscript/crates/ms-rt)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.72s
+────────────
+ Nextest run ID 6645f2a9-60fe-4bf5-bd02-6d346e7e8f8d with nextest profile: default
+    Starting 5 tests across 3 binaries (151 tests skipped)
+        PASS [   0.003s] (1/5) ms-rt string::tests::short_searches_agree_with_a_naive_scan
+        PASS [   0.013s] (2/5) ms-rt string::tests::find_matches_naive_search
+        PASS [   0.011s] (3/5) ms-rt string::tests::substring_search_repetitive_near_matches
+        PASS [   0.014s] (4/5) ms-rt string::tests::needle_find_matches_a_naive_search_near_the_window_edge
+        PASS [   0.039s] (5/5) ms-rt string::tests::substring_search_matches_exhaustive_byte_model
+────────────
+     Summary [   0.039s] 5 tests run: 5 passed, 151 skipped

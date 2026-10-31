@@ -1,6 +1,0 @@
-=== RUN   TestLexicalSerializerCoversInfo
---- PASS: TestLexicalSerializerCoversInfo (0.00s)
-=== RUN   TestLexicalColdIndex
-    lexical_index_probe_test.go:302: lexical_cold={"allocated_bytes":21422496,"allocations":70259,"elapsed_ns":21866005,"go_version":"go1.25.1","inventory":{"files":46,"initialized":46,"tokens":35727,"token_capacity":42293,"token_slot_bytes":4736816,"source_bytes":303169,"errors":0,"cached":true},"occurrences":4486,"retained_heap_delta":4333384,"retained_objects_delta":7144,"std_source_sha256":"aa9a0469bbb766e1ad598564f45e59371bb3945a0c51f9e539001dc3e031c1f4","token_slot_size":112}
---- PASS: TestLexicalColdIndex (0.07s)
-PASS

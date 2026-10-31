@@ -23,10 +23,12 @@ ms profile ms.toml --out-dir capture --top 10 -- arg1
 ```
 
 - Bare `ms` prints help. `ms version` and `ms --version` print the compiler version.
+- Command-line arguments must be valid UTF-8; invalid OS arguments return usage status 2.
 - Long options take `--output path` or `--output=path`; only the first `=` splits, so `--output=api=v1.md` writes `api=v1.md`. Required values cannot be empty.
 - Arguments after `--` are forwarded to the application unchanged.
 - Commands taking one source input also accept a project directory with `ms.toml`. Native commands select one application entrypoint.
 - `ms check <targets> --fix` and `ms lint <targets> --fix` apply available machine-applicable diagnostic fixes in place, then report what remains. They skip overlapping edits and cannot be combined with `--watch`. See the [diagnostic fix contract](source/diagnostics.md#json-diagnostics) for the supported repairs and JSON fields.
+- Final stdout handling reports failed writes or flushes with status 1 when the command would otherwise succeed. It preserves existing nonzero statuses and does not add a failure for a broken pipe.
 
 ## Rebuild on save
 
@@ -126,7 +128,7 @@ Two small commands answer what the compiler commands do not and print only what 
 
 | Command | Behavior |
 | --- | --- |
-| `ms search_symbol [<name or words>... \| <path>]` | Fuzzy, case-insensitive lookup over project and standard-library symbols (`--limit n`, default 5, max 10; `--json`). Project matches print `file:line:column`, type, description, and up to five uses; standard matches print signature and path. A lone module or declaration path (`json`, `prelude.List`, `prelude.List.sorted`) prints that page, capped near 3.5 KB; no argument lists modules |
+| `ms search_symbol [<name or words>... \| <path>]` | Fuzzy, case-insensitive lookup over project and standard-library symbols (`--limit n`, default 5, max 10 total matches; `--json`). Project matches come first and print `file:line:column`, type, description, and up to five uses; standard matches fill remaining places and print signature and path. A lone module or declaration path (`json`, `prelude.List`, `prelude.List.sorted`) prints that page, capped near 3.5 KB; no argument lists modules |
 | `ms guide` | The language cheat sheet with a checked example program, then common mistakes beside their fixes (`crates/ms-tooling/data/mistakes.txt`, verified against the compiler by `guide_pages`) |
 
 Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which print compact diagnostics (`--json` for complete documents).
@@ -137,6 +139,7 @@ Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which pri
 
 - A directory with `ms.toml` selects that project.
 - A directory without one recursively selects `.ms` files, skipping hidden, `vendor`, and `node_modules` directories, directory symlinks, and nested projects. Select nested projects explicitly; explicitly selecting an excluded path is allowed. File symlinks must stay inside the directory.
+- Standalone directory discovery requires UTF-8 source filenames and visited directory names; invalid names are selection errors.
 - Files keep their ordinary import roots. Select `ms.toml` to get project aliases and project-wide checking.
 - Use `--` before filenames beginning with `-`. `fmt` keeps its own [directory and manifest discovery](source/formatting.md).
 

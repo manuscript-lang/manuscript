@@ -3,10 +3,13 @@
 //! the server example runs its cleanup before the synchronous farewell reaches the client.
 #![cfg(unix)]
 
+mod common;
+
+use common::scratch;
 use std::io::{BufRead, BufReader, Read};
 use std::net::TcpStream;
 use std::os::unix::process::{CommandExt, ExitStatusExt};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{Receiver, channel};
 use std::time::{Duration, Instant};
@@ -99,13 +102,6 @@ fn reader(pipe: impl Read + Send + 'static) -> Receiver<String> {
         }
     });
     lines
-}
-
-fn scratch(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("ms-shutdown-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
 }
 
 /// Build the example and run it as a native binary and through the `ms run` launcher.

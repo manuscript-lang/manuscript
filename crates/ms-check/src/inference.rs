@@ -418,7 +418,23 @@ impl Checker {
             return;
         }
         for (key, value) in trial {
-            s.insert(key, value);
+            // A default that converts to the expected type stays the default: `x.ok_or()`
+            // returned as `Result[T, Error]` fails with `MissingValue`, which crosses the
+            // Error boundary, instead of asking for an `Error` value to build.
+            let defaulted = !s.contains_key(&key)
+                && variables
+                    .iter()
+                    .find(|v| v.id == key)
+                    .and_then(|v| v.default_ty())
+                    .is_some_and(|d| {
+                        let d = sub(&d, s);
+                        !same(&d, &value)
+                            && (self.error_assignable(&d, &value)
+                                || self.interface_assignable(&d, &value))
+                    });
+            if !defaulted {
+                s.insert(key, value);
+            }
         }
     }
 

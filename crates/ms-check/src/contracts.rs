@@ -1120,10 +1120,14 @@ impl Checker {
         }
         if receiver.kind == Kind::Variable {
             let mut result: Vec<MethodRef> = Vec::new();
+            let mut seen_bounds: Vec<Ty> = Vec::new();
             for b in receiver.bounds() {
-                if b.kind != Kind::Contract {
+                // A bound inherited from both the receiver declaration and the
+                // implementation must not make its operations ambiguous.
+                if b.kind != Kind::Contract || seen_bounds.iter().any(|s| s.id == b.id) {
                     continue;
                 }
+                seen_bounds.push(b.clone());
                 // `Self` in a bound's operation is the bounded variable itself.
                 match contract_operation(&b, name, receiver) {
                     Some(method) => result.push(method),
@@ -1255,6 +1259,11 @@ impl Checker {
                 }
                 for op in def.operations.borrow().clone() {
                     self.check_declared(&op.ty, d.pos(), s.export);
+                    for v in stdlib::operation_variables(&format!("{}/{}", t.id, op.name)) {
+                        for b in v.bounds() {
+                            self.check_declared(&b, d.pos(), s.export);
+                        }
+                    }
                 }
             }
             for v in s.variables() {
@@ -1396,7 +1405,7 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
         };
     if name == "clone"
         && (matches!(t.kind, Kind::Record | Kind::Alternative)
-            || (t.kind == Kind::Variable && t.bounds().iter().any(|b| b.is_std("Clonable")))
+            || (t.kind == Kind::Variable && t.bounds().iter().any(implies_clonable))
             || (t.kind == Kind::Primitive && t.id.as_str() == "String")
             || t.is_std("List")
             || t.is_std("Map")

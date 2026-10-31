@@ -1965,7 +1965,6 @@ impl<'a, 'm> Lower<'a, 'm> {
                     .collect()
             }
             Op::RecNew => (0..inst.args.len()).flat_map(|i| self.a(inst, i)).collect(),
-            Op::RefNew | Op::RefGet => self.a(inst, 0),
             Op::RecGet => {
                 let Imm::Field(_, i) = inst.imm else {
                     unreachable!()

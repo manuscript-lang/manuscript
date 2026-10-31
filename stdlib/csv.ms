@@ -36,7 +36,7 @@ export fn parse(
     let total = bytes.length()
     var reader = Reader(
         bytes: bytes, total: total,
-        delimiter: options.delimiter.scalar_values() [0].to_uint8().get(0),
+        delimiter: options.delimiter.scalar_values()[0].to_uint8().get(0),
         delimiter_text: options.delimiter.clone(), at: 0, quote: -1, delimiter_at: -1,
         line_at: -1
     )
@@ -225,7 +225,7 @@ export fn stringify(
     var out = StringBuilder()
     var used = 0
     let crlf = options.line_ending == "\r\n"
-    let delimiter = options.delimiter.scalar_values() [0]
+    let delimiter = options.delimiter.scalar_values()[0]
 
     for row in rows:
         var line = ""

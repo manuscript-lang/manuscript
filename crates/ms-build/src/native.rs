@@ -97,6 +97,16 @@ pub fn build_executable(
             text.join("\n")
         ));
     }
+    let timings = std::env::var_os("MS_TIMINGS").is_some_and(|v| v != "0");
+    let started = std::time::Instant::now();
+    let phase = |name: &str| {
+        if timings {
+            eprintln!(
+                "ms-timings: {name} done at {:.3}s",
+                started.elapsed().as_secs_f64()
+            );
+        }
+    };
     let (level, options) = profile.options();
     optimize(module, level, cfg!(debug_assertions));
     // Not an optimization: it keeps cancellation from leaking, so every profile runs it.
@@ -104,12 +114,14 @@ pub fn build_executable(
     if unwound && cfg!(debug_assertions) {
         verify_after(module, "unwind")?;
     }
+    phase("mir optimize");
     let parts = ms_clif::compile_parts(module, &options).map_err(|e| {
         format!(
             "native code generation failed (this is a Manuscript bug, so report it with the source that triggers it; 'ms emit <file>' prints the lowered code): {e}"
         )
     })?;
 
+    phase("codegen");
     let directory = output
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
@@ -146,6 +158,7 @@ pub fn build_executable(
         &staged,
         profile == Profile::MinSizeRel,
     );
+    phase("link");
     let _ = std::fs::remove_file(&object_path);
     let _ = std::fs::remove_file(&llvm_path);
     if let Err(error) = linked {
@@ -160,7 +173,7 @@ pub fn build_executable(
 
 /// Publish the native debug companion together with the staged executable. If
 /// replacing the executable fails, restore the previous companion as well.
-fn publish(staged: &Path, output: &Path) -> std::io::Result<()> {
+pub fn publish(staged: &Path, output: &Path) -> std::io::Result<()> {
     let Some(destination) = ms_clif::link::debug_companion_path(output) else {
         return std::fs::rename(staged, output);
     };

@@ -309,28 +309,7 @@ fn lowercase_os_text(err: &io::Error) -> String {
 
 /// Message for an unresolvable host name.
 pub fn cannot_resolve(name: &str) -> String {
-    format!("cannot resolve host {}", go_quote(name))
-}
-
-/// Quotes the characters host names can hold.
-pub fn go_quote(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 2);
-    out.push('"');
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if (c as u32) < 0x20 || c as u32 == 0x7f => {
-                out.push_str(&format!("\\x{:02x}", c as u32))
-            }
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
+    format!("cannot resolve host {name:?}")
 }
 
 impl fmt::Display for NetErr {
@@ -366,8 +345,7 @@ mod tests {
     }
 
     #[test]
-    fn quoting_matches_go() {
-        assert_eq!(go_quote("a\"b"), "\"a\\\"b\"");
+    fn cannot_resolve_quotes_the_host() {
         assert_eq!(cannot_resolve("no.such"), "cannot resolve host \"no.such\"");
     }
 }

@@ -44,7 +44,7 @@ fn prepare_receiver(var state: Counter) Offset!:
     next(var state) | try expect_equal(0)
     return ok(Offset(2))
 
-fn prepare_function(var state: Counter)(fn(Int) Int)!:
+fn prepare_function(var state: Counter) (fn(Int) Int)!:
     next(var state) | try expect_equal(4)
     return ok(increment)
 

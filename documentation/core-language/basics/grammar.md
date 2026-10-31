@@ -92,7 +92,7 @@ fn example() Int:
     )
 ```
 
-Use `fn value: value - 1` when context supplies the parameter type; an inline body returns its value, while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
+Use `fn value: value - 1` when context supplies the parameter type; an inline body returns its value (it can be a conditional expression: `fn value: if value > 0: value else: 0`), while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
 
 ```manuscript
 fn example() Int:

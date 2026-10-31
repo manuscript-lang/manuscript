@@ -1326,15 +1326,12 @@ impl Walker<'_> {
         // optional it was read from, so the binding becomes an exclusive borrow of that place.
         if root.name.as_str().starts_with('?') && perm != Perm::MutBorrowed {
             let Some(place) = self.chain_places.get(&root.uid).cloned() else {
-                // A consumed or temporary optional: the payload is the chain's own value.
-                if !self.arm_payloads.contains(&root.uid) {
-                    self.error(
-                        pos,
-                        format!(
-                            "cannot {what} through `?.` on a borrowed value; call it on a `var`"
-                        ),
-                    );
-                }
+                // Only a variable (or a part of one) can be changed through `?.`; a call result
+                // such as `m.get(k)` is a read-only view.
+                self.error(
+                    pos,
+                    format!("cannot {what} through `?.` on a value that is not a variable; bind it to a `var` first, or index the collection and assign"),
+                );
                 return;
             };
             // The read-only borrow `?N` held becomes the exclusive one.
