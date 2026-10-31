@@ -25,6 +25,8 @@ pub(crate) enum AStep {
     /// address when the borrow found it in this function: the exclusive borrow keeps the map
     /// from gaining or losing entries, so the address holds until the borrow ends.
     Key(Var, Option<Value>),
+    /// The payload of an `Optional` the match has shown present (`c?.f()`).
+    Some,
 }
 
 /// The place a borrow binding names.
@@ -159,6 +161,7 @@ impl<'a> FnLower<'a> {
                         .emit(Op::Load, &[ptr], Imm::Ty(vty), Some(vty))
                         .expect("load")
                 }
+                AStep::Some => self.b.opt_get(cur),
             };
         }
         Ok(Val { v: cur, own: false })
@@ -210,6 +213,18 @@ impl<'a> FnLower<'a> {
                 } else {
                     self.b.list_set(obj, *at, inner)
                 })
+            }
+            AStep::Some => {
+                // An optional has no slot to move the payload out of, so the payload is copied,
+                // changed, and rewrapped; the old optional is released.
+                let view = self.b.opt_get(obj);
+                let payload = self.owned(Val {
+                    v: view,
+                    own: false,
+                });
+                let inner = self.update_steps(payload, rest, f)?;
+                self.drop_value(obj);
+                Ok(self.b.opt_some(inner))
             }
             AStep::Key(var, at) => {
                 // The entry is changed where it lies: its value is taken out of the slot,

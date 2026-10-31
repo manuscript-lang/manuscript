@@ -7,4 +7,8 @@ impl Counter:
         return self.n
 
 fn bump_if_present(c: Counter?) Int?:
-    return c?.bump() # error: cannot change through `?.`: it only reads its receiver; unwrap with `if let v = ...:` and change a copy, `var w = v.clone()`
+    return c?.bump() # error: parameter `c` is not declared var
+
+fn bump_let() Int?:
+    let c: Counter? = Counter(1)
+    return c?.bump() # error: declared with let
