@@ -1,0 +1,39 @@
+Fresh bounded lexer/parser discovery — 2026-10-31
+
+One new source-backed algorithmic candidate established in the subsequent root-directed function-depth probe (see final section). No counterfactual speedup or merge readiness claimed. Read-only production inspection; no production edits, GitHub actions or denied-scope investigation.
+
+Current checkout at initial probe: 11d6d8696c875a3ad225f6d4d4deb9d0ceed01ac. Existing Rust 1.99.1, release ms-syntax build; original library compiled through cargo build --release --locked -p ms-syntax (up to date). probe.rs linked the actual library with opt-level3, debug1, panic abort, frame pointers. results.json records source/library/executable hashes, platform, toolchain and CPU affinity.
+
+Coverage:16 families,48 generated inputs,243 timed samples; three shuffled fresh processes per family/size/mode (seed2741), pinned CPU0. One current compiler implementation, not generated Manuscript-versus-Rust programs. Setup, file I/O and three warm passes outside timer; parsing/lexing/recovery/destruction inside. Every result black-boxed; node/token and diagnostic counts validated every pass. Each process times at least30ms in batches16. Shared VM isolation not asserted.
+
+Families: LF and CRLF declarations; single function bodies; collection literals; flat and nested layout; ASCII and Unicode comments; escaped text; flat and nested interpolations; recovery after broken header, many bad declarations, one bad statement, many bad statements, and multiline column-zero parameters. All48inputs completed;0failures. Recovery-many-statements respects existing8attempt bound and does not show unbounded retry growth.
+
+Representative medians, N/2N/4N:
+- Strict LF declarations256/512/1024:135.124/270.181/541.773us.
+- Lex LF declarations256/512/1024:26.202/51.497/105.477us.
+- Lex CRLF declarations256/512/1024:34.749/70.031/144.327us.
+- Recovery broken-header with256/512/1024 valid declarations:388.714/774.207/1552.558us; one diagnostic, all declarations retained.
+- Recovery many malformed statements256/512/1024:95.719/184.877/368.098us; declaration omitted, one diagnostic, bounded retries.
+- Recovery multiline params256/512/1024:60.499/121.438/229.002us; one diagnostic, good declaration retained.
+- Nested interpolations16/32/64 parse:3.881/7.847/15.450us.
+- Escaped text1024/2048/4096 escape groups parse:33.306/65.218/130.786us.
+- ASCII comment16/32/64KiB lex:11.949/23.410/46.160us.
+
+Observed unresolved localized cost: flat-layout parse512->1024 blocks rose2.73x despite linear source/node growth. Five-repeat shuffled follow-up at512/1024/2048/4096 reproduced137.451/375.235/760.210/1558.838us (ratios2.73/2.026/2.051). Lexer ratios2.012/2.052/2.015. Source inspection found direct per-statement construction rather than a repeated whole-body scan. No allocator/cache profiling or counterfactual attributes the size transition; do not label it noise, a proved quadratic defect, or a clean path. Raw follow-up and generator retained separately.
+
+Nested layout source includes indentation:16/32/64 levels correspond to800/2576/9200 source bytes, so scaling by depth alone is misleading.
+
+Limits: no cross-language generated-program baseline; no new allocation/RSS/instruction instrumentation; no exhaustive fuzzing; no cold-start/editor integration timing. Known growing successful ambiguous-generic AST remains out-of-lane; known eager token-capacity issue retains original implementation because both predeclared alternatives caused repeatable common regressions. Excluded compiler/runtime/network/etc paths remain excluded, not clean.
+
+
+Subsequent root-directed function-depth candidate:
+lexer.rs::run queries function_depths.contains(&delimiters.len()) on every token-bearing physical line. At each query the vector is nondecreasing and all entries are <=current delimiter depth: Fn/Match push current depth; matched closers pop entries greater than the new depth; clears preserve ordering; virtual-paren completion clears before any query. Therefore contains(current) is equivalent to last()==Some(current). The root-supplied nested function-type shape produces an increasing stack over N opening lines and reverse closing lines; full membership searches examine O(N squared) entries while source size is O(N). Existing std search may vectorize, but traversal work remains quadratic.
+
+Valid LF/CRLF function-type sources at depths64/128/256/512 all lex and strictly parse. Five shuffled pinned fresh processes per size/mode/ending, same probe and timing protocol. Raw80samples in function-depth-baseline.json; exact generated inputs and generator function_depth.py retained.
+- LF lex64/128/256/512:3.422/6.934/16.783/51.867us; doubling2.026/2.420/3.090.
+- CRLF lex64/128/256/512:5.265/10.287/22.540/63.386us; doubling1.954/2.191/2.812.
+- LF strict parse64/128/256/512:14.192/28.206/59.004/137.078us.
+- CRLF strict parse64/128/256/512:15.947/31.358/64.906/147.116us.
+-0failed probes. LF lexer depth512 five-sample range51.147..52.764us; depth25616.567..16.835us.
+
+Smallest candidate is replacing only that contains query with a last-element equality test. No production edit made. Root must measure matched before/after cases plus ordinary/shallow/common controls, verify exact token/diagnostic/recovery parity, and independently review the invariant before publication. This is a new causal rescan candidate, not an established optimization result.
