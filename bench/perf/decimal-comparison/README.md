@@ -133,6 +133,59 @@ controls reproduce the comparison gains without establishing universal
 performance equivalence. Nineteen numeric nextest tests, six source fixtures,
 Release alignment, workspace formatting and Clippy pass on the combined tree.
 
+## Further numeric discovery: residual gaps
+
+A bounded independent sweep checks BigInt factorial and a fixed-integer linear
+congruential recurrence against Rust on the same combined state. It uses nine
+identities across zero/tiny/common/large factorial inputs and a million-step
+integer recurrence, ten rotating/reversed phases plus warmup, before/after,
+idiomatic Rust, a borrowed-BigInt Rust diagnostic and baseline A/A. All
+**495 invocations** passed independent Python full-result and weighted-checksum
+validation; [raw data](discovery/results.jsonl), [source](discovery/main.ms),
+[Rust](discovery/rust/src/main.rs), [harness](discovery/repeat.py), and
+[hashes](discovery/artifacts.json) are preserved. Each full canonical factorial
+result (up to 4,115 digits) is validated outside timing before its digest is
+recorded. All timed iterations contribute to the checksum. The two MS binaries
+are byte-for-byte identical, so this also controls unaffected numeric execution.
+
+Batched medians, ns per complete factorial/recurrence result, including normal
+remainder/checksum/loop handling:
+
+| Workload | Repeats per producer | MS before | MS candidate | Rust idiomatic | Rust borrowed diagnostic |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Factorial 0 | 10,000 | 19.16 | 19.14 | 5.84 | 5.84 |
+| Factorial 20 | 100,000 | 371.44 | 369.52 | 51.73 | 78.36 |
+| Factorial 1,000 | 200 | 62,655 | 62,713 | 35,921 | 52,965 |
+| Factorial 1,500 | 100 | 130,721 | 129,123 | 83,039 | 123,178 |
+| Integer recurrence, 1M steps | 5 | 3,354,321 | 3,351,121 | 2,624,924 | 2,624,185 |
+
+Both factorials use exact unbounded signed integers from num-bigint 0.5.1 and
+the same ordered multiplication algorithm/inputs/results. Idiomatic Rust uses
+owned `MulAssign<i64>`; the diagnostic materializes each factor as BigInt and
+uses borrowed multiplication, closer to the MS public operation shape. The Rust
+loop selects those forms with a stable Boolean branch, so these full-workload
+ratios include that dispatch rather than establishing isolated multiplication
+latency. The two Rust labels execute the same LCG code.
+Fixed integers use checked i64 arithmetic in both languages; inputs
+stay in range. Rust's per-iteration bound passes through `black_box`.
+
+Tiny BigInt factorial remains much slower than idiomatic Rust; the fixed-integer
+recurrence remains about 1.28x slower. Reducing native-call/representation work
+or investigating generated-loop overhead would enter this lane's inherited
+native ABI, ownership, or backend exclusions. Those mechanisms were not
+investigated, reproduced as separate defects, or patched. These are unresolved
+scope boundaries, not proof that the remainder of the numeric lane is clean.
+No power or shift operations overlap correctness PRs #2059/#2067.
+
+To reproduce after the main builds in [Reproduce](#reproduce):
+
+```sh
+cargo build --release --locked --manifest-path bench/perf/decimal-comparison/discovery/rust/Cargo.toml --target-dir /tmp/discovery-rust
+MS_BACKEND=cranelift MS_RT_LIB=/tmp/compare-base/target/ms-native/libms_native.a "$ms_compiler" build bench/perf/decimal-comparison/discovery/main.ms --build-type Release -o /tmp/discovery-before
+MS_BACKEND=cranelift MS_RT_LIB="$PWD/target/ms-native/libms_native.a" "$ms_compiler" build bench/perf/decimal-comparison/discovery/main.ms --build-type Release -o /tmp/discovery-after
+taskset -c 0 python3 bench/perf/decimal-comparison/discovery/repeat.py /tmp/discovery-before /tmp/discovery-after /tmp/discovery-rust/release/numeric-discovery-control > /tmp/discovery.jsonl
+```
+
 ## Reproduce
 
 Use isolated baseline/candidate worktrees, build both native archives, then use
