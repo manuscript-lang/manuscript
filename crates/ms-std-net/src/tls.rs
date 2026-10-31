@@ -764,14 +764,10 @@ pub struct TlsIo {
 fn handshake_error_text(e: &rustls::Error) -> String {
     match e {
         rustls::Error::General(m) => m.clone(),
-        rustls::Error::AlertReceived(a) => format!(
-            "TLS handshake: the peer rejected it with alert \"{}\"; check the certificate chain, protocol versions and ALPN settings on both ends",
-            alert_text(a)
-        ),
-        rustls::Error::InvalidCertificate(c) => format!(
-            "TLS handshake: certificate rejected ({c:?}); check the host name, expiry and trusted roots"
-        ),
-        other => format!("TLS handshake: {other}; check the peer's TLS configuration"),
+        rustls::Error::AlertReceived(a) => {
+            format!("TLS handshake: peer sent alert: {}", alert_text(a))
+        }
+        other => format!("TLS handshake: {other}"),
     }
 }
 

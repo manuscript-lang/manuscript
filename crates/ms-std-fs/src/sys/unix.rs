@@ -167,27 +167,6 @@ pub fn chmod_link(path: &CPath, mode: u32) -> Result<(), Errno> {
     }
 }
 
-/// The likely cause and the fix for an errno a program can act on.
-pub fn errno_advice(e: Errno) -> Option<&'static str> {
-    Some(match e {
-        libc::ENOSPC | libc::EDQUOT => {
-            "the disk or quota is full, so free space or write to another volume"
-        }
-        libc::EROFS => "the volume is mounted read-only, so write somewhere else",
-        libc::EBUSY | libc::ETXTBSY => {
-            "another process is using it, so close it there or retry later"
-        }
-        libc::EFBIG => "the file exceeds the filesystem's size limit, so split the data",
-        libc::ENAMETOOLONG => "a name is too long for this filesystem, so shorten it",
-        libc::ELOOP => "symbolic links form a cycle, so remove or repoint one",
-        libc::EXDEV => "source and target are on different volumes, so copy then remove",
-        libc::EMFILE | libc::ENFILE => "too many files are open, so close some before opening more",
-        libc::EMLINK => "the file has the maximum number of hard links",
-        libc::EIO => "the device reported a read or write failure, so check its health",
-        _ => return None,
-    })
-}
-
 /// Fixed wording for an errno, the same on every Unix; `None` for codes without one.
 pub fn errno_text(e: Errno) -> Option<&'static str> {
     Some(match e {

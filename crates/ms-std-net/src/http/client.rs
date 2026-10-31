@@ -1157,10 +1157,7 @@ impl Client {
                             .next()
                             .unwrap_or_default();
                         let line = String::from_utf8_lossy(line);
-                        format!(
-                            "malformed HTTP response {:?}; the peer is not speaking HTTP/1.x, so check the port and scheme",
-                            line.trim_end()
-                        )
+                        format!("malformed HTTP response {:?}", line.trim_end())
                     };
                     return Err(Fail::Err(HttpErr::Failed(text)));
                 }
@@ -1298,7 +1295,7 @@ fn referer_for(last: &Url, next: &Url, initial: &[(String, Vec<u8>)]) -> Option<
 
 fn location_error(location: &str) -> HttpErr {
     HttpErr::Failed(format!(
-        "failed to parse Location header {location:?}: invalid redirect target; the server sent a bad redirect"
+        "failed to parse Location header {location:?}: invalid redirect target"
     ))
 }
 
@@ -2770,9 +2767,7 @@ mod tests {
         }
         let (_net, c) = client(ClientOptions::default());
         match c.send(request("GET", &address, "/")) {
-            Err(HttpErr::Failed(m)) => {
-                assert!(m.starts_with("malformed HTTP response \"garbage\"; "))
-            }
+            Err(HttpErr::Failed(m)) => assert_eq!(m, "malformed HTTP response \"garbage\""),
             other => panic!("{:?}", other.map(|b| b.status)),
         }
         match c.send(request("GET", &address, "/")) {

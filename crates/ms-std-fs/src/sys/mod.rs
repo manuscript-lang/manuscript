@@ -318,42 +318,18 @@ pub fn classify(e: Errno) -> u8 {
     }
 }
 
-/// The text for an error code: what failed, then (for the codes a program can act on) the likely
-/// cause and the fix, as `<detail>; <cause and fix>`. The detail is a fixed wording on Unix and
-/// `std`'s message otherwise (without its trailing " (os error N)").
+/// The host's detail text for an error code: a fixed wording on Unix, `std`'s message otherwise
+/// (without its trailing " (os error N)"). Wording for users is composed in the stdlib `.ms`.
 pub fn describe(e: Errno) -> String {
-    let mut text = String::new();
     #[cfg(unix)]
-    if let Some(known) = unix::errno_text(e) {
-        text.push_str(known);
+    if let Some(text) = unix::errno_text(e) {
+        return String::from(text);
     }
-    if text.is_empty() {
-        text = io::Error::from_raw_os_error(e).to_string();
-        if let Some(i) = text.rfind(" (os error ") {
-            text.truncate(i);
-        }
-    }
-    if let Some(advice) = advice(e) {
-        text.push_str("; ");
-        text.push_str(advice);
+    let mut text = io::Error::from_raw_os_error(e).to_string();
+    if let Some(i) = text.rfind(" (os error ") {
+        text.truncate(i);
     }
     text
-}
-
-/// The likely cause and the fix for the failures a program can act on.
-fn advice(e: Errno) -> Option<&'static str> {
-    #[cfg(unix)]
-    if let Some(text) = unix::errno_advice(e) {
-        return Some(text);
-    }
-    use io::ErrorKind::*;
-    Some(match kind(e) {
-        BrokenPipe => "the reader closed its end, so stop writing",
-        OutOfMemory => "the system is out of memory, so process the data in smaller pieces",
-        TimedOut => "the operation took too long, so retry or raise the timeout",
-        Interrupted | WouldBlock => "a signal or busy resource interrupted it, so retry",
-        _ => return None,
-    })
 }
 
 fn unix_pair(t: SystemTime) -> (i64, i64) {

@@ -309,9 +309,7 @@ fn lowercase_os_text(err: &io::Error) -> String {
 
 /// Message for an unresolvable host name.
 pub fn cannot_resolve(name: &str) -> String {
-    format!(
-        "cannot resolve host {name:?}; the name does not exist or DNS is unreachable, so check the spelling and the network"
-    )
+    format!("cannot resolve host {name:?}")
 }
 
 impl fmt::Display for NetErr {
@@ -348,6 +346,6 @@ mod tests {
 
     #[test]
     fn cannot_resolve_quotes_the_host() {
-        assert!(cannot_resolve("no.such").starts_with("cannot resolve host \"no.such\"; "));
+        assert_eq!(cannot_resolve("no.such"), "cannot resolve host \"no.such\"");
     }
 }
