@@ -1,0 +1,20 @@
+diff --git a/crates/ms-rt/src/vec.rs b/crates/ms-rt/src/vec.rs
+index 66a4614b2..d7ff259a8 100644
+--- a/crates/ms-rt/src/vec.rs
++++ b/crates/ms-rt/src/vec.rs
+@@ -1483,7 +1483,14 @@ pub unsafe extern "C-unwind" fn msrt_bytes_index_of_byte(
+             return 0;
+         }
+         let from = start.max(0) as usize;
+-        match s[from..].iter().position(|&x| x as i64 == value) {
++        let tail = &s[from..];
++        // Keep nearby hits cheap (for example, short CSV fields) before the vector search.
++        let (near, rest) = tail.split_at(tail.len().min(16));
++        let found = near
++            .iter()
++            .position(|&x| x as i64 == value)
++            .or_else(|| memchr::memchr(value as u8, rest).map(|i| near.len() + i));
++        match found {
+             Some(i) => {
+                 *out = (from + i) as i64;
+                 1

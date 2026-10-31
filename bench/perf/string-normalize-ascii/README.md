@@ -1,3 +1,7 @@
+> Historical experiment below: its optimization was subsequently reverted.
+> The [2026-10-31 re-evaluation](results-2026-10-31.md) rejects both new ASCII-only
+> candidates after full Unicode controls; no normalization shortcut is accepted.
+
 # ASCII identity normalization and lazy Unicode input
 
 Candidate on pinned baseline `4be5d6d8c2defb9fc6eb75c8c43bd68a5314d192`.
