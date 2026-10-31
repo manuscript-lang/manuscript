@@ -1216,7 +1216,17 @@ fn block_value(
         if not structured_lead(lead):
             remainder = blank_trim_end(remainder).clone()
 
-            if may_continue(context, base):
+            # An inline comment ends a nonempty plain scalar, even when the next line
+            # would otherwise have continuation indentation. Simple lines contain no comments.
+            if (
+                (
+                    context.simple.get(context.index - 1)
+                    or boundary(
+                        context.lines.get(context.index - 1), colon: false
+                    ) < 0
+                )
+                and may_continue(context, base)
+            ):
                 var joined = StringBuilder()
                 joined.append(remainder)
 
@@ -1260,6 +1270,10 @@ fn block_value(
                     joined.append(blank_trim(next))
                     probe += 1
                     context.index = probe
+                    if (
+                        not context.simple.get(probe - 1)
+                        and boundary(line, colon: false) >= 0
+                    ): break
 
                 remainder = joined.build()
 
@@ -1369,13 +1383,15 @@ fn sequence_items(
                 frames.append([])
                 level += 1
 
+            # Keep comments in the virtual source line so plain continuation can see them.
+            let raw = context.lines.get(context.index)
             context.simple.set(context.index, false)
             context.lines.set(
                 context.index,
                 pad(innermost).concat(
                     (
-                        line
-                        .slice(innermost, line.scalar_length())
+                        raw
+                        .slice(innermost, raw.scalar_length())
                         .get("")
                     )
                 )
@@ -1424,7 +1440,17 @@ fn sequence_items(
                     context.index, false
                 )
 
-            context.lines.set(context.index, pad(column).concat(item))
+            var rewritten = pad(column).concat(item)
+
+            if not fast:
+                let raw = context.lines.get(context.index)
+                rewritten = rewritten.concat(
+                    raw.slice(
+                        line.scalar_length(), raw.scalar_length()
+                    ).get("")
+                )
+
+            context.lines.set(context.index, rewritten)
             values.append(try block(var context, column, (depth + 1)))
         else:
             context.index += 1
