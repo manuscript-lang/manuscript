@@ -534,9 +534,15 @@ impl Checker {
                 .as_ref()
                 .map(|m| m.variables.clone())
                 .unwrap_or_default();
-            let opt_args: Vec<Option<Ty>> = args.into_iter().map(Some).collect();
+            let mut opt_args: Vec<Option<Ty>> = args.into_iter().map(Some).collect();
+            if opt_args.len() >= required_type_arguments(&variables) {
+                opt_args = complete_type_arguments(&variables, &opt_args);
+            }
             i.ty =
                 Some(self.specialize(&callable.t(), &variables, &opt_args, e.pos, &callee_name(e)));
+            if callable.native_str().is_empty() || callable.native_str() == "contract" {
+                i.type_args = opt_args;
+            }
             self.set_info(left, i.clone());
             return i;
         }

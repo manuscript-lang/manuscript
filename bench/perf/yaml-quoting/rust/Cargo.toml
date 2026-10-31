@@ -1,0 +1,11 @@
+[package]
+name = "yaml-quoting-control"
+version = "0.1.0"
+edition = "2024"
+publish = false
+[dependencies]
+serde_yaml_ng = "=0.10.0"
+[profile.release]
+opt-level = 3
+panic = "abort"
+[workspace]

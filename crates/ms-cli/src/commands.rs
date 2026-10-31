@@ -190,6 +190,12 @@ fn parse_review(args: &[String], io: &mut Io) -> Result<ReviewRequest, i32> {
             "ms review: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms review ms.toml",
         ));
     }
+    if args[1].is_empty() {
+        return Err(usage_error(
+            io,
+            "ms review: the file argument is empty; pass a .ms file, directory, or ms.toml",
+        ));
+    }
     if args[1].starts_with('-') {
         return Err(usage_error(
             io,

@@ -110,6 +110,9 @@ impl Checker {
             );
             supplied = vars.iter().map(|v| subst.get(&v.id).cloned()).collect();
         }
+        if supplied.len() >= required_type_arguments(&vars) {
+            supplied = complete_type_arguments(&vars, &supplied);
+        }
         if method.native.as_str().is_empty() || method.native == "contract" {
             info.type_args = supplied.clone();
         }
@@ -126,3 +129,7 @@ impl Checker {
         info
     }
 }
+
+#[cfg(test)]
+#[path = "method_type_defaults_tests.rs"]
+mod method_type_defaults_tests;

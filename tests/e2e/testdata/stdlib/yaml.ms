@@ -3,7 +3,7 @@ import from_scalars from "@std/string.ms"
 import TextError from "@std/core.ms"
 import parse, stringify, YamlValue, YamlError, YamlLimits from "@std/yaml.ms"
 
-fn entries(value: YamlValue)(Map[String, YamlValue])!:
+fn entries(value: YamlValue) Map[String, YamlValue]!:
     match value:
         ObjectValue(values): return ok(values)
         _: return error(TextError("expected YAML mapping"))
@@ -341,7 +341,7 @@ test "YAML documents BOM CRLF empty input and version directive":
             text: "\u{feff}%YAML 1.2\r\n---\r\na: 1\r\n...\r\n# done\r\n"
         ) | try expect_ok
     )
-    (try entries(root)) ["a"] | try expect_equal(YamlValue.NumberValue("1"))
+    (try entries(root))["a"] | try expect_equal(YamlValue.NumberValue("1"))
     parse(text: "# comment\n") | try expect_ok | try expect_equal(YamlValue.Null)
     parse(text: "---\n...\n") | try expect_ok | try expect_equal(YamlValue.Null)
     (try items((parse(text: "- - 1\n  - 2\n- - 3\n") | try expect_ok))).length() | try expect_equal(
@@ -635,9 +635,7 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
     let first = (try entries(list.first().get()))
     first["b"] | try expect_equal(YamlValue.NumberValue("2"))
     (try items(list.get(1).clone())).length() | try expect_equal(2)
-    (try entries(list.last().get())) ["d"] | try expect_equal(
-        YamlValue.NumberValue("4")
-    )
+    (try entries(list.last().get()))["d"] | try expect_equal(YamlValue.NumberValue("4"))
 
 fn repeated(text: String, count: Int) String:
     if count <= 0: return ""

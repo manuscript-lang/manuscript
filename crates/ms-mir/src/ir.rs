@@ -283,8 +283,6 @@ pub enum Op {
     RecNew, RecGet, RecSet, RecFill, AltNew, AltTag, AltGet, AltUnbox, AltTake, AltRelease, RecRelease,
     // Lists.
     ListNew, ListLit, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast,
-    // Borrowed views: `RefNew` wraps a borrowed value, `RefGet` reads it back as a borrow.
-    RefNew, RefGet,
     // Optionals.
     OptSome, OptView, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
     // Strings.
@@ -407,7 +405,6 @@ impl Op {
         Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
-        Op::RefNew, Op::RefGet,
         Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
         Op::StrLen, Op::StrByte, Op::StrAscii, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData, Op::IfaceIs,
@@ -496,8 +493,6 @@ impl Op {
             Op::ListFill => ("list.fill", K::None, true, effects!(reads, writes, faults)),
             Op::ListPush => ("list.push", K::None, true, effects!(reads, writes, alloc, faults)),
             Op::ListDropLast => ("list.droplast", K::None, true, effects!(reads, writes, rc)),
-            Op::RefNew => ("ref.new", K::None, true, effects!()),
-            Op::RefGet => ("ref.get", K::None, true, effects!()),
             Op::OptSome => ("opt.some", K::None, true, effects!()),
             Op::OptView => ("opt.view", K::None, true, effects!()),
             Op::OptNone => ("opt.none", K::None, true, effects!()),
@@ -1261,8 +1256,7 @@ impl Module {
             | TyKind::UInt64
             | TyKind::Float
             | TyKind::Float32
-            | TyKind::Ptr
-            | TyKind::Ref(_) => false,
+            | TyKind::Ptr => false,
             TyKind::Opt(inner) => self.needs_drop_in(*inner, seen),
             TyKind::Rec(r) => {
                 if seen.contains(&ty) {
@@ -1292,44 +1286,6 @@ impl Module {
         }
     }
 
-    /// Whether a value of `ty` holds a borrowed view of another value, directly or in a field,
-    /// payload or element: such a value must not outlive what it borrows.
-    pub fn holds_view(&self, ty: Ty) -> bool {
-        self.holds_view_in(ty, &mut Vec::new())
-    }
-
-    fn holds_view_in(&self, ty: Ty, seen: &mut Vec<Ty>) -> bool {
-        match self.types.kind(ty) {
-            TyKind::Ref(_) => true,
-            TyKind::Opt(inner) | TyKind::List(inner) => self.holds_view_in(*inner, seen),
-            TyKind::Rec(r) => {
-                if seen.contains(&ty) {
-                    return false;
-                }
-                seen.push(ty);
-                let out = self.records[r.index()]
-                    .fields
-                    .iter()
-                    .any(|f| self.holds_view_in(f.1, seen));
-                seen.pop();
-                out
-            }
-            TyKind::Alt(a) => {
-                if seen.contains(&ty) {
-                    return false;
-                }
-                seen.push(ty);
-                let out = self.alts[a.index()]
-                    .cases
-                    .iter()
-                    .any(|c| c.fields.iter().any(|f| self.holds_view_in(f.1, seen)));
-                seen.pop();
-                out
-            }
-            _ => false,
-        }
-    }
-
     /// The ownership mode of the result of `inst` in `f`, if it is reference counted.
     pub fn result_mode(&self, f: &Func, inst: &Inst) -> Option<Mode> {
         let res = inst.res?;
@@ -1349,7 +1305,6 @@ impl Module {
             | Op::StrLit
             | Op::StrAscii
             | Op::OptView
-            | Op::RefGet
             | Op::OptNone => Mode::Borrow,
             _ => Mode::Own,
         })

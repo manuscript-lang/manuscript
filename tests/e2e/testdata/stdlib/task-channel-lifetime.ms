@@ -11,7 +11,7 @@ fn send_one(ch: Channel[Int, Unit]) Unit!ChannelError:
 fn send_nothing(ch: Channel[Int, Unit]) Unit!ChannelError:
     return ok(unit)
 
-fn retained_end(group: TaskGroup[Unit!ChannelError, Unit, Int])(Channel[Unit, Int])!:
+fn retained_end(group: TaskGroup[Unit!ChannelError, Unit, Int]) Channel[Unit, Int]!:
     let task = group.spawn(send_one)
     task.result() | try expect_ok | try expect_ok
     return ok(task.channel.clone())
@@ -27,7 +27,7 @@ fn collect_and_drop(group: TaskGroup[Unit!ChannelError, Unit, Int]) Unit!:
     task.result() | try expect_ok | try expect_ok
     return ok(unit)
 
-fn close_on_return()(Channel[Unit, Int])!:
+fn close_on_return() Channel[Unit, Int]!:
     let group = TaskGroup[Unit!ChannelError, Unit, Int]()
     let task = group.spawn(send_one)
     task.result() | try expect_ok | try expect_ok

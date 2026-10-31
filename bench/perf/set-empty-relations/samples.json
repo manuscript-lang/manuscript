@@ -1,0 +1,4676 @@
+{
+  "complete": true,
+  "affinity": [
+    0
+  ],
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "sha256": {
+    "/workspace/collection-evidence/sets-fresh-before": "c9e8c14fa01c75566225c9da6f53786f912882033dc3834d93f1db788d797210",
+    "/workspace/collection-evidence/sets-fresh-after": "652996ee19110875e483906bb08117f2a9b80309a2887067f6c14ff122b6cbc2",
+    "/workspace/collection-evidence/sets-rust": "b0b47234e424a273755acc927658682e90ca24d7b1a91a6ff07b7455d77a121b"
+  },
+  "cases": [
+    {
+      "mode": "subset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1536685,
+          1455002,
+          1463285,
+          1448903,
+          1494882,
+          1475153
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1561562,
+          1465658,
+          1593460,
+          1551116,
+          1638999,
+          1486550
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          902124,
+          1019199,
+          904236,
+          949444,
+          903065,
+          930977
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1469219.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1556339.0,
+        "/workspace/collection-evidence/sets-rust": 917606.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1467511,
+          1465999,
+          1562804,
+          1614672,
+          1583025,
+          1518378
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1561211,
+          1501492,
+          1565338,
+          1478318,
+          1508823,
+          1452919
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          897556,
+          899339,
+          896284,
+          1004667,
+          905278,
+          899820
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1540591.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1505157.5,
+        "/workspace/collection-evidence/sets-rust": 899579.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1511267,
+          1530676,
+          1606961,
+          1655393,
+          1573130,
+          1542163
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1473620,
+          1456886,
+          1769203,
+          1668893,
+          1561963,
+          1525879
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          901482,
+          899650,
+          904918,
+          908052,
+          929034,
+          1034552
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1557646.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1543921.0,
+        "/workspace/collection-evidence/sets-rust": 906485.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1707872,
+          1552659,
+          1494311,
+          1466790,
+          1585488,
+          1449023
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1485248,
+          1464868,
+          1573210,
+          1478918,
+          1451777,
+          1603986
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          899539,
+          883896,
+          906800,
+          897476,
+          904337,
+          883586
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1523485.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1482083.0,
+        "/workspace/collection-evidence/sets-rust": 898507.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1563876,
+          1451988,
+          1506209,
+          1468513,
+          1526209,
+          1507711
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1493741,
+          1458518,
+          1578547,
+          1559589,
+          1459679,
+          1446980
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          919910,
+          1033050,
+          922364,
+          914682,
+          941492,
+          895192
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1506960.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1476710.0,
+        "/workspace/collection-evidence/sets-rust": 921137.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1515173,
+          1543235,
+          1451296,
+          1577896,
+          1465298,
+          1491988
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1478088,
+          1489254,
+          1673591,
+          1620180,
+          1484677,
+          1546079
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          902624,
+          1019509,
+          943015,
+          1104387,
+          938017,
+          971478
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1503580.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1517666.5,
+        "/workspace/collection-evidence/sets-rust": 957246.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1510335,
+          1464777,
+          1451147,
+          1628322,
+          1451367,
+          1454472
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1448343,
+          1461922,
+          1508653,
+          1462995,
+          1560731,
+          1564717
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          905629,
+          908382,
+          919319,
+          903796,
+          883766,
+          915854
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1459624.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1485824.0,
+        "/workspace/collection-evidence/sets-rust": 907005.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1800951,
+          2099009,
+          1781453,
+          2019439,
+          1817175,
+          1855192
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          2062755,
+          1895833,
+          2029113,
+          2056605,
+          1835163,
+          1874302
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          901222,
+          898387,
+          1025829,
+          914021,
+          898508,
+          903005
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1836183.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1962473.0,
+        "/workspace/collection-evidence/sets-rust": 902113.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1861352,
+          1832399,
+          1784957,
+          1846940,
+          1785057,
+          1827121
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1834942,
+          2037026,
+          2046480,
+          1807441,
+          1833891,
+          1813761
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          896295,
+          895523,
+          883976,
+          883915,
+          951207,
+          894982
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1829760.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1834416.5,
+        "/workspace/collection-evidence/sets-rust": 895252.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1844607,
+          1850876,
+          1811698,
+          1834041,
+          1804877,
+          1798287
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1911307,
+          2026239,
+          2108463,
+          1825798,
+          1887090,
+          1839879
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          883806,
+          1176756,
+          1022574,
+          897787,
+          1283174,
+          904757
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1822869.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1899198.5,
+        "/workspace/collection-evidence/sets-rust": 963665.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1828002,
+          1839709,
+          1835774,
+          2063646,
+          2051948,
+          1952489
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1791678,
+          2105979,
+          2030025,
+          1850636,
+          2206720,
+          1859619
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          898839,
+          898468,
+          896484,
+          902554,
+          898348,
+          980430
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1896099.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1944822.0,
+        "/workspace/collection-evidence/sets-rust": 898653.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1805118,
+          1959289,
+          1798858,
+          2407972,
+          1795573,
+          1813490
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          2129985,
+          1857777,
+          2097426,
+          1931487,
+          1925468,
+          2017076
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          900571,
+          897957,
+          967411,
+          1081672,
+          930325,
+          903155
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1809304.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1974281.5,
+        "/workspace/collection-evidence/sets-rust": 916740.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1896785,
+          1782864,
+          1804326,
+          2121823,
+          1799189,
+          1815423
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          2087331,
+          1901031,
+          1879449,
+          1986660,
+          1926400,
+          1876925
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          883235,
+          961672,
+          897085,
+          934903,
+          899589,
+          972899
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1809874.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1913715.5,
+        "/workspace/collection-evidence/sets-rust": 917246.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1843936,
+          1802033,
+          1778317,
+          2591317,
+          1828513,
+          1778888
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1926119,
+          1962264,
+          2015883,
+          2059659,
+          1820892,
+          2025919
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          916495,
+          896806,
+          986670,
+          940621,
+          897256,
+          911637
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1815273.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1989073.5,
+        "/workspace/collection-evidence/sets-rust": 914066.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1572950,
+          1633140,
+          1593670,
+          1711647,
+          1516875,
+          1514182
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1121292,
+          1195253,
+          1119440,
+          1121532,
+          1140841,
+          1229874
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          1046539,
+          997376,
+          1090425,
+          1046700,
+          928573,
+          990646
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1583310.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1131186.5,
+        "/workspace/collection-evidence/sets-rust": 1021957.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1563004,
+          1736595,
+          1454351,
+          1652709,
+          1501342,
+          1496585
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1123475,
+          1122183,
+          1140651,
+          1127120,
+          1120751,
+          1131998
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          899990,
+          916735,
+          951317,
+          883586,
+          884246,
+          914842
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1532173.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1125297.5,
+        "/workspace/collection-evidence/sets-rust": 907416.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1482003,
+          1460240,
+          1497556,
+          1565298,
+          1446500,
+          1603525
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1127871,
+          1119829,
+          1193129,
+          1201012,
+          1124206,
+          1200281
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          1635934,
+          989204,
+          924417,
+          902133,
+          942744,
+          901803
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1489779.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1160500.0,
+        "/workspace/collection-evidence/sets-rust": 933580.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1573370,
+          1489784,
+          1537366,
+          1486610,
+          1519680,
+          1499129
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1119960,
+          1160781,
+          1134852,
+          1405769,
+          1191838,
+          1170565
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          1058268,
+          912018,
+          977746,
+          906470,
+          894301,
+          905739
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1509404.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1165673.0,
+        "/workspace/collection-evidence/sets-rust": 909244.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1486530,
+          1494161,
+          1603405,
+          2314001,
+          1613921,
+          1541723
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1165388,
+          1142504,
+          1120541,
+          1125088,
+          1120160,
+          1121382
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          883546,
+          883636,
+          895673,
+          896084,
+          896374,
+          902373
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1572564.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1123235.0,
+        "/workspace/collection-evidence/sets-rust": 895878.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1499920,
+          1561052,
+          1644727,
+          1688412,
+          1462464,
+          1554162
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1214281,
+          1117566,
+          1130876,
+          1196625,
+          1198768,
+          1117566
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          915924,
+          935393,
+          898608,
+          966179,
+          968903,
+          908243
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1557607.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1163750.5,
+        "/workspace/collection-evidence/sets-rust": 925658.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 0,
+      "repeats": 1000000,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1506950,
+          1453149,
+          1446840,
+          1573610,
+          1563315,
+          1535133
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1119569,
+          1117917,
+          1164967,
+          1125948,
+          1121102,
+          1127010
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          914432,
+          934381,
+          915013,
+          918107,
+          1464667,
+          910706
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1521041.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1123525.0,
+        "/workspace/collection-evidence/sets-rust": 916560.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4683015,
+          4683745,
+          4715783,
+          4695433,
+          4789755,
+          4699950
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4626049,
+          4614501,
+          4727582,
+          4794472,
+          4828543,
+          4640721
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8820100,
+          8865238,
+          8832068,
+          8823826,
+          8842754,
+          8825348
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4697691.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4684151.5,
+        "/workspace/collection-evidence/sets-rust": 8828708.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1504266,
+          1501392,
+          1513510,
+          1612579,
+          1505218,
+          1450426
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1449825,
+          1476274,
+          1578027,
+          1565788,
+          1478417,
+          1500782
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          895273,
+          897286,
+          903345,
+          897226,
+          904357,
+          912980
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1504742.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1489599.5,
+        "/workspace/collection-evidence/sets-rust": 900315.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2985869,
+          2953310,
+          3012098,
+          2951808,
+          2958267,
+          2966450
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3013390,
+          2983765,
+          2931307,
+          3082694,
+          2951097,
+          2994952
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          904977,
+          900982,
+          899329,
+          895393,
+          883966,
+          897927
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 2962358.5,
+        "/workspace/collection-evidence/sets-fresh-after": 2989358.5,
+        "/workspace/collection-evidence/sets-rust": 898628.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          5028993,
+          3876976,
+          3889164,
+          3967320,
+          3878899,
+          3879519
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3831577,
+          3846740,
+          3984447,
+          4091377,
+          3850706,
+          3851818
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          10020521,
+          8507902,
+          8256254,
+          8305088,
+          8091778,
+          8435283
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3884341.5,
+        "/workspace/collection-evidence/sets-fresh-after": 3851262.0,
+        "/workspace/collection-evidence/sets-rust": 8370185.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3929374,
+          3850966,
+          3838277,
+          3861432,
+          3871567,
+          3886530
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3840091,
+          3841051,
+          3850345,
+          4096645,
+          3833530,
+          4089164
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8157186,
+          8239799,
+          8075703,
+          8463966,
+          8424787,
+          8163075
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3866499.5,
+        "/workspace/collection-evidence/sets-fresh-after": 3845698.0,
+        "/workspace/collection-evidence/sets-rust": 8201437.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3884457,
+          4472438,
+          3882133,
+          3929083,
+          3887791,
+          3881562
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4105027,
+          3847992,
+          3860180,
+          3842864,
+          3812578,
+          4135453
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8388843,
+          8539529,
+          8088112,
+          8418647,
+          8106520,
+          8179500
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3886124.0,
+        "/workspace/collection-evidence/sets-fresh-after": 3854086.0,
+        "/workspace/collection-evidence/sets-rust": 8284171.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3894132,
+          3874512,
+          4697205,
+          4038498,
+          4001482,
+          3875373
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3849154,
+          3850465,
+          3989214,
+          3843215,
+          3992619,
+          3939299
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8070886,
+          8313750,
+          8158007,
+          8084897,
+          8481071,
+          8301132
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3947807.0,
+        "/workspace/collection-evidence/sets-fresh-after": 3894882.0,
+        "/workspace/collection-evidence/sets-rust": 8229569.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          5574692,
+          4990145,
+          4989735,
+          4886079,
+          5604497,
+          5024056
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4875213,
+          4815092,
+          4939079,
+          4790035,
+          4820731,
+          4804637
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          9116705,
+          8708252,
+          9114612,
+          8726089,
+          8734662,
+          8986600
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 5007100.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4817911.5,
+        "/workspace/collection-evidence/sets-rust": 8860631.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3237316,
+          3252829,
+          3109384,
+          3221533,
+          3116525,
+          3121942
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3210746,
+          3105027,
+          3160371,
+          3128853,
+          3115513,
+          3115793
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          902874,
+          897626,
+          903224,
+          897656,
+          904536,
+          904287
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3171737.5,
+        "/workspace/collection-evidence/sets-fresh-after": 3122323.0,
+        "/workspace/collection-evidence/sets-rust": 903049.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1896906,
+          1887741,
+          1864397,
+          2019199,
+          1828823,
+          1871317
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1821993,
+          2072730,
+          2034181,
+          1856124,
+          2016264,
+          2123715
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          899299,
+          901612,
+          897086,
+          995363,
+          999168,
+          915623
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1879529.0,
+        "/workspace/collection-evidence/sets-fresh-after": 2025222.5,
+        "/workspace/collection-evidence/sets-rust": 908617.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4015964,
+          4070085,
+          4060461,
+          4013740,
+          4108032,
+          4073440
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3926309,
+          3937476,
+          3933951,
+          3994251,
+          4027581,
+          4030696
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          7783024,
+          8541632,
+          8249645,
+          8088072,
+          8107211,
+          8090085
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4065273.0,
+        "/workspace/collection-evidence/sets-fresh-after": 3965863.5,
+        "/workspace/collection-evidence/sets-rust": 8098648.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4063135,
+          4054772,
+          4208653,
+          3987101,
+          4001943,
+          4065618
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4048453,
+          4001833,
+          3987200,
+          4102684,
+          4058998,
+          3985198
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          7917065,
+          8043495,
+          8043465,
+          7798458,
+          8077667,
+          8517356
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4058953.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4025143.0,
+        "/workspace/collection-evidence/sets-rust": 8043480.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4236795,
+          4005288,
+          4083194,
+          4054853,
+          4001832,
+          4131768
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4003135,
+          4178147,
+          3913981,
+          4692548,
+          3999359,
+          4054162
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8163995,
+          8197867,
+          8082875,
+          8107471,
+          8558347,
+          8068202
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4069023.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4028648.5,
+        "/workspace/collection-evidence/sets-rust": 8135733.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4075714,
+          4075103,
+          4071818,
+          4066079,
+          4279729,
+          4012118
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3908573,
+          4004166,
+          4254762,
+          4287952,
+          4131097,
+          4026359
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          7935173,
+          8456064,
+          7978728,
+          8233741,
+          9365388,
+          7942493
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4073460.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4078728.0,
+        "/workspace/collection-evidence/sets-rust": 8106234.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4835343,
+          4608312,
+          4471207,
+          4575353,
+          4710826,
+          4540611
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4684597,
+          4635112,
+          4594892,
+          4627751,
+          4650316,
+          4568232
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8962734,
+          8850806,
+          8962544,
+          8800431,
+          9679610,
+          9354943
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4591832.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4631431.5,
+        "/workspace/collection-evidence/sets-rust": 8962639.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1589614,
+          1545899,
+          1604547,
+          1565488,
+          1548273,
+          1490586
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1525448,
+          1533780,
+          1591357,
+          1536194,
+          1540080,
+          1574061
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          975894,
+          930956,
+          970456,
+          896975,
+          905048,
+          904066
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1556880.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1538137.0,
+        "/workspace/collection-evidence/sets-rust": 918002.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3181622,
+          3171758,
+          3919489,
+          3274351,
+          3412609,
+          3434822
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1139609,
+          1119990,
+          1125399,
+          1196365,
+          1206530,
+          1129555
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          852428,
+          843786,
+          840981,
+          852649,
+          855683,
+          854501
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3343480.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1134582.0,
+        "/workspace/collection-evidence/sets-rust": 852538.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4283706,
+          4372399,
+          4751447,
+          4124506,
+          4215834,
+          4152749
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4178508,
+          4066570,
+          4253310,
+          4227021,
+          4101222,
+          4096065
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8370365,
+          8143625,
+          8337045,
+          8517025,
+          8595984,
+          8540821
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4249770.0,
+        "/workspace/collection-evidence/sets-fresh-after": 4139865.0,
+        "/workspace/collection-evidence/sets-rust": 8443695.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4171728,
+          4111287,
+          4064086,
+          4059389,
+          4223615,
+          4084106
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4138508,
+          4065768,
+          3985018,
+          7002048,
+          4073891,
+          4036335
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          9259068,
+          10571688,
+          8145268,
+          8338177,
+          8956405,
+          8168112
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4097696.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4069829.5,
+        "/workspace/collection-evidence/sets-rust": 8647291.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4084898,
+          4074862,
+          4082314,
+          4060431,
+          4296865,
+          4139309
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4275844,
+          3993700,
+          3994462,
+          4218698,
+          4021222,
+          4164036
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8438558,
+          8164346,
+          8351116,
+          8367952,
+          8686289,
+          8375854
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4083606.0,
+        "/workspace/collection-evidence/sets-fresh-after": 4092629.0,
+        "/workspace/collection-evidence/sets-rust": 8371903.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 1,
+      "repeats": 1000000,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4151307,
+          4239369,
+          4156084,
+          4364757,
+          4271116,
+          4235183
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4149945,
+          5120391,
+          4031848,
+          4178077,
+          4137827,
+          4132819
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8490646,
+          8485078,
+          8449975,
+          8663976,
+          8434742,
+          8410966
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4237276.0,
+        "/workspace/collection-evidence/sets-fresh-after": 4143886.0,
+        "/workspace/collection-evidence/sets-rust": 8467526.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          5721732,
+          5691558,
+          5389695,
+          5403095,
+          5526039,
+          5549465
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          5280060,
+          5255283,
+          5303445,
+          5440020,
+          5307512,
+          5386269
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          10165147,
+          10005409,
+          12302423,
+          10015433,
+          9762864,
+          9797035
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 5537752.0,
+        "/workspace/collection-evidence/sets-fresh-after": 5305478.5,
+        "/workspace/collection-evidence/sets-rust": 10010421.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          287732,
+          287481,
+          287381,
+          422924,
+          469063,
+          350726
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          287502,
+          307772,
+          398958,
+          289514,
+          320010,
+          289354
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          177015,
+          177006,
+          192609,
+          185288,
+          178688,
+          207381
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 319229.0,
+        "/workspace/collection-evidence/sets-fresh-after": 298643.0,
+        "/workspace/collection-evidence/sets-rust": 181988.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          580841,
+          596715,
+          653189,
+          581582,
+          707291,
+          617046
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          619850,
+          597656,
+          655293,
+          600521,
+          603605,
+          657266
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          177236,
+          177356,
+          239339,
+          177226,
+          177557,
+          177396
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 606880.5,
+        "/workspace/collection-evidence/sets-fresh-after": 611727.5,
+        "/workspace/collection-evidence/sets-rust": 177376.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          904207,
+          1012599,
+          970255,
+          939490,
+          998738,
+          903075
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          867672,
+          885248,
+          940581,
+          943615,
+          854942,
+          873941
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          1696615,
+          1906460,
+          1662313,
+          1779409,
+          1572179,
+          1665027
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 954872.5,
+        "/workspace/collection-evidence/sets-fresh-after": 879594.5,
+        "/workspace/collection-evidence/sets-rust": 1680821.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          827412,
+          778768,
+          779469,
+          760470,
+          776484,
+          779840
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          773210,
+          787501,
+          870385,
+          755804,
+          756305,
+          769865
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          176986,
+          241812,
+          176856,
+          176845,
+          176936,
+          176825
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 779118.5,
+        "/workspace/collection-evidence/sets-fresh-after": 771537.5,
+        "/workspace/collection-evidence/sets-rust": 176896.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          928572,
+          920360,
+          904537,
+          1029143,
+          1080961,
+          1029894
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1010145,
+          899689,
+          1011948,
+          875583,
+          857176,
+          905769
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          6221772,
+          5249805,
+          1625748,
+          1641202,
+          1674712,
+          1828042
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 978857.5,
+        "/workspace/collection-evidence/sets-fresh-after": 902729.0,
+        "/workspace/collection-evidence/sets-rust": 1751377.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          5399369,
+          5307621,
+          5201342,
+          5211597,
+          5425689,
+          5452779
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          5073159,
+          5203244,
+          5195403,
+          5235733,
+          5178317,
+          5240731
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          2765177,
+          2857606,
+          6134392,
+          9581382,
+          6140761,
+          3901162
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 5353495.0,
+        "/workspace/collection-evidence/sets-fresh-after": 5199323.5,
+        "/workspace/collection-evidence/sets-rust": 5017777.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          5551728,
+          5321372,
+          5443064,
+          5402814,
+          5443715,
+          5803565
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          5341733,
+          5242804,
+          5461672,
+          5283315,
+          5419199,
+          5341703
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          9878398,
+          9778127,
+          9572529,
+          9996104,
+          10087581,
+          9785018
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 5443389.5,
+        "/workspace/collection-evidence/sets-fresh-after": 5341718.0,
+        "/workspace/collection-evidence/sets-rust": 9831708.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          626610,
+          613289,
+          628333,
+          660961,
+          638939,
+          642664
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          625398,
+          610175,
+          625198,
+          778328,
+          610095,
+          723535
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          192839,
+          176975,
+          176975,
+          193300,
+          177035,
+          176795
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 633636.0,
+        "/workspace/collection-evidence/sets-fresh-after": 625298.0,
+        "/workspace/collection-evidence/sets-rust": 177005.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          448623,
+          368893,
+          407071,
+          398648,
+          354101,
+          413860
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          354401,
+          353991,
+          461121,
+          454662,
+          372699,
+          398648
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          176755,
+          176705,
+          177126,
+          176955,
+          176995,
+          176876
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 402859.5,
+        "/workspace/collection-evidence/sets-fresh-after": 385673.5,
+        "/workspace/collection-evidence/sets-rust": 176915.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          804888,
+          814081,
+          786910,
+          814001,
+          802103,
+          886800
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          807912,
+          794992,
+          794862,
+          788273,
+          863586,
+          790275
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          1595043,
+          1714131,
+          1616795,
+          1659078,
+          2873170,
+          1602103
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 809444.5,
+        "/workspace/collection-evidence/sets-fresh-after": 794927.0,
+        "/workspace/collection-evidence/sets-rust": 1637936.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          884757,
+          786490,
+          812459,
+          825048,
+          800601,
+          838558
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          785348,
+          789885,
+          790836,
+          810916,
+          956956,
+          772138
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          1670255,
+          1564467,
+          1791627,
+          1544767,
+          1566299,
+          1878467
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 818753.5,
+        "/workspace/collection-evidence/sets-fresh-after": 790360.5,
+        "/workspace/collection-evidence/sets-rust": 1618277.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          833200,
+          801672,
+          786089,
+          786510,
+          786149,
+          805959
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          813630,
+          811908,
+          771417,
+          815153,
+          843706,
+          806710
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          2718297,
+          5164897,
+          5036495,
+          3825398,
+          8431066,
+          4975814
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 794091.0,
+        "/workspace/collection-evidence/sets-fresh-after": 812769.0,
+        "/workspace/collection-evidence/sets-rust": 5006154.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          5184947,
+          5144496,
+          5115953,
+          5296224,
+          5490606,
+          5135153
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          5006530,
+          5023615,
+          5054041,
+          6111777,
+          5005038,
+          4931408
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          3950366,
+          4600270,
+          2841803,
+          7207962,
+          7316535,
+          2730796
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 5164721.5,
+        "/workspace/collection-evidence/sets-fresh-after": 5015072.5,
+        "/workspace/collection-evidence/sets-rust": 4275318.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          906910,
+          941101,
+          902173,
+          895143,
+          954371,
+          925308
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          911096,
+          946850,
+          928352,
+          946990,
+          1110486,
+          924627
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          1716225,
+          1708051,
+          1715624,
+          1721443,
+          1710115,
+          1740130
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 916109.0,
+        "/workspace/collection-evidence/sets-fresh-after": 937601.0,
+        "/workspace/collection-evidence/sets-rust": 1715924.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          322354,
+          287641,
+          287381,
+          287511,
+          333791,
+          310476
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          306209,
+          318898,
+          322243,
+          308623,
+          301583,
+          301713
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          183235,
+          176996,
+          176926,
+          193139,
+          177216,
+          177095
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 299058.5,
+        "/workspace/collection-evidence/sets-fresh-after": 307416.0,
+        "/workspace/collection-evidence/sets-rust": 177155.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2843736,
+          2781632,
+          2799088,
+          2808132,
+          2894942,
+          2786950
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          221843,
+          221782,
+          221743,
+          221633,
+          247692,
+          221402
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          167932,
+          210676,
+          167962,
+          168012,
+          184057,
+          201001
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 2803610.0,
+        "/workspace/collection-evidence/sets-fresh-after": 221762.5,
+        "/workspace/collection-evidence/sets-rust": 176034.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          5365458,
+          5381913,
+          5555854,
+          5420110,
+          5566360,
+          5299980
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4736665,
+          4841982,
+          4948963,
+          4865979,
+          5467361,
+          4791357
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          9426109,
+          9172329,
+          9001060,
+          9288192,
+          9603074,
+          9516704
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 5401011.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4853980.5,
+        "/workspace/collection-evidence/sets-rust": 9357150.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4279880,
+          4332338,
+          4421632,
+          4480681,
+          4362394,
+          4442834
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4450285,
+          4477006,
+          4211337,
+          4237215,
+          4220290,
+          4263385
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          1730545,
+          1645808,
+          1595072,
+          1593881,
+          1632318,
+          1697987
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4392013.0,
+        "/workspace/collection-evidence/sets-fresh-after": 4250300.0,
+        "/workspace/collection-evidence/sets-rust": 1639063.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1563345,
+          1545878,
+          1537797,
+          1603755,
+          1488192,
+          1533531
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          29054652,
+          1830015,
+          1617115,
+          1604817,
+          1580631,
+          1488223
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          3007972,
+          2731397,
+          1716485,
+          1845438,
+          1875574,
+          1715894
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1541837.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1610966.0,
+        "/workspace/collection-evidence/sets-rust": 1860506.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 8,
+      "repeats": 200000,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          898178,
+          964026,
+          906249,
+          899619,
+          911287,
+          947632
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          986410,
+          996555,
+          929314,
+          916384,
+          913600,
+          914242
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          1710345,
+          1824326,
+          1776214,
+          1760921,
+          1699339,
+          1715143
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 908768.0,
+        "/workspace/collection-evidence/sets-fresh-after": 922849.0,
+        "/workspace/collection-evidence/sets-rust": 1738032.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4393560,
+          4404937,
+          4384567,
+          4512479,
+          4380160,
+          4338297
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4320791,
+          4470947,
+          4381021,
+          4261081,
+          4237025,
+          4367331
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          7410826,
+          7321793,
+          7342964,
+          7337486,
+          7323345,
+          7487501
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4389063.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4344061.0,
+        "/workspace/collection-evidence/sets-rust": 7340225.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          15093,
+          15103,
+          15113,
+          16114,
+          16224,
+          15123
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          14992,
+          15173,
+          15033,
+          16104,
+          15063,
+          15053
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          9164,
+          8974,
+          8984,
+          8963,
+          8973,
+          8974
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 15118.0,
+        "/workspace/collection-evidence/sets-fresh-after": 15058.0,
+        "/workspace/collection-evidence/sets-rust": 8974.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          29644,
+          29665,
+          29685,
+          29524,
+          29815,
+          29635
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          29564,
+          29675,
+          29554,
+          30395,
+          29614,
+          29594
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8943,
+          8933,
+          8944,
+          8964,
+          8963,
+          8954
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 29654.5,
+        "/workspace/collection-evidence/sets-fresh-after": 29604.0,
+        "/workspace/collection-evidence/sets-rust": 8949.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          58197,
+          58187,
+          54993,
+          60932,
+          56545,
+          60941
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          55043,
+          74893,
+          54902,
+          54982,
+          54993,
+          54803
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          80540,
+          80601,
+          93289,
+          77576,
+          80551,
+          78057
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 58192.0,
+        "/workspace/collection-evidence/sets-fresh-after": 54987.5,
+        "/workspace/collection-evidence/sets-rust": 80545.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          38748,
+          38748,
+          39139,
+          38678,
+          38708,
+          38718
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          41863,
+          38438,
+          38357,
+          38417,
+          38398,
+          38427
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8943,
+          8944,
+          8953,
+          8943,
+          8944,
+          8933
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 38733.0,
+        "/workspace/collection-evidence/sets-fresh-after": 38422.0,
+        "/workspace/collection-evidence/sets-rust": 8943.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          39930,
+          38628,
+          38628,
+          40350,
+          38718,
+          204586
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          38418,
+          38327,
+          38458,
+          39099,
+          38438,
+          38348
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          1937116,
+          6145929,
+          1299480,
+          7154451,
+          4398298,
+          3610316
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 39324.0,
+        "/workspace/collection-evidence/sets-fresh-after": 38428.0,
+        "/workspace/collection-evidence/sets-rust": 4004307.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4493060,
+          4602344,
+          4529905,
+          4376064,
+          4353911,
+          4432759
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4419990,
+          4329865,
+          4490115,
+          4304147,
+          4520581,
+          5285538
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          7116966,
+          3235093,
+          4722414,
+          6089634,
+          2983515,
+          4262944
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4462909.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4455052.5,
+        "/workspace/collection-evidence/sets-rust": 4492679.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4628763,
+          4346429,
+          4531347,
+          4353591,
+          4435223,
+          4343905
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4396525,
+          4394121,
+          4283926,
+          4433310,
+          4447772,
+          4391286
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          7511497,
+          7482783,
+          7410646,
+          7401803,
+          7498938,
+          7372298
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4394407.0,
+        "/workspace/collection-evidence/sets-fresh-after": 4395323.0,
+        "/workspace/collection-evidence/sets-rust": 7446714.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          32639,
+          31246,
+          31307,
+          31667,
+          31708,
+          31247
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          51408,
+          31207,
+          31217,
+          31166,
+          31177,
+          31167
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8964,
+          8973,
+          8963,
+          8973,
+          8994,
+          8983
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 31487.0,
+        "/workspace/collection-evidence/sets-fresh-after": 31192.0,
+        "/workspace/collection-evidence/sets-rust": 8973.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          18428,
+          18458,
+          18408,
+          18438,
+          20641,
+          20640
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          20581,
+          20641,
+          20571,
+          20611,
+          18398,
+          18418
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8994,
+          8993,
+          8984,
+          8993,
+          9004,
+          9003
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 18448.0,
+        "/workspace/collection-evidence/sets-fresh-after": 20576.0,
+        "/workspace/collection-evidence/sets-rust": 8993.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          45368,
+          45308,
+          45359,
+          45187,
+          45278,
+          45298
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          44036,
+          44117,
+          44156,
+          43916,
+          44076,
+          43966
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          76845,
+          79299,
+          76295,
+          76786,
+          76705,
+          84126
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 45303.0,
+        "/workspace/collection-evidence/sets-fresh-after": 44056.0,
+        "/workspace/collection-evidence/sets-rust": 76815.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          45278,
+          45378,
+          45298,
+          47050,
+          45208,
+          45278
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          44296,
+          44126,
+          44036,
+          43946,
+          45028,
+          43986
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          76505,
+          76374,
+          76965,
+          76925,
+          76394,
+          76405
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 45288.0,
+        "/workspace/collection-evidence/sets-fresh-after": 44081.0,
+        "/workspace/collection-evidence/sets-rust": 76455.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          45318,
+          45308,
+          45207,
+          47021,
+          45258,
+          45208
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          44016,
+          44086,
+          63315,
+          43946,
+          43996,
+          43966
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          7127470,
+          5967181,
+          3290526,
+          1875784,
+          1142063,
+          1538358
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 45283.0,
+        "/workspace/collection-evidence/sets-fresh-after": 44006.0,
+        "/workspace/collection-evidence/sets-rust": 2583155.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4437536,
+          4319579,
+          4610485,
+          4612238,
+          4469304,
+          4547070
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4301902,
+          4303646,
+          4305929,
+          4219619,
+          4279349,
+          4386229
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          3711377,
+          6850175,
+          5745849,
+          5153040,
+          6259339,
+          5841212
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4508187.0,
+        "/workspace/collection-evidence/sets-fresh-after": 4302774.0,
+        "/workspace/collection-evidence/sets-rust": 5793530.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          45828,
+          44807,
+          45469,
+          45318,
+          46110,
+          44828
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          45629,
+          45598,
+          45769,
+          45679,
+          45508,
+          45469
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          84556,
+          84387,
+          84427,
+          84467,
+          84457,
+          84356
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 45393.5,
+        "/workspace/collection-evidence/sets-fresh-after": 45613.5,
+        "/workspace/collection-evidence/sets-rust": 84442.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          15082,
+          15133,
+          15072,
+          16184,
+          15083,
+          15073
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          18347,
+          18407,
+          15974,
+          15904,
+          15804,
+          15914
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          9003,
+          8994,
+          8983,
+          8993,
+          9004,
+          8993
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 15082.5,
+        "/workspace/collection-evidence/sets-fresh-after": 15944.0,
+        "/workspace/collection-evidence/sets-rust": 8993.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2096595,
+          2637727,
+          2217256,
+          2090766,
+          2221862,
+          2214952
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          11848,
+          29074,
+          12149,
+          12018,
+          12038,
+          11888
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8613,
+          8563,
+          53570,
+          8523,
+          8573,
+          8533
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 2216104.0,
+        "/workspace/collection-evidence/sets-fresh-after": 12028.0,
+        "/workspace/collection-evidence/sets-rust": 8568.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3792899,
+          4141842,
+          3880481,
+          3960141,
+          3801252,
+          3914873
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3561593,
+          3508472,
+          3775113,
+          3683445,
+          3713320,
+          3586860
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          7044396,
+          7332779,
+          7089504,
+          7421422,
+          7241181,
+          7154091
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3897677.0,
+        "/workspace/collection-evidence/sets-fresh-after": 3635152.5,
+        "/workspace/collection-evidence/sets-rust": 7197636.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3786830,
+          3889254,
+          3708813,
+          3814893,
+          3983735,
+          3637977
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3455713,
+          3604787,
+          3517106,
+          3590615,
+          3481712,
+          3629804
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          79138,
+          79069,
+          90005,
+          129124,
+          79369,
+          79259
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3800861.5,
+        "/workspace/collection-evidence/sets-fresh-after": 3553860.5,
+        "/workspace/collection-evidence/sets-rust": 79314.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          71758,
+          71768,
+          71717,
+          71628,
+          73741,
+          71717
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          127812,
+          72699,
+          69684,
+          69675,
+          69845,
+          70306
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          84416,
+          137466,
+          100390,
+          84297,
+          84397,
+          109955
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 71737.5,
+        "/workspace/collection-evidence/sets-fresh-after": 70075.5,
+        "/workspace/collection-evidence/sets-rust": 92403.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 128,
+      "repeats": 10000,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          44727,
+          46229,
+          44827,
+          46259,
+          44807,
+          46109
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          45599,
+          45668,
+          45659,
+          45498,
+          45508,
+          45689
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          84356,
+          84377,
+          84407,
+          84376,
+          84346,
+          84367
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 45468.0,
+        "/workspace/collection-evidence/sets-fresh-after": 45629.0,
+        "/workspace/collection-evidence/sets-rust": 84371.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          5164737,
+          5007311,
+          4946220,
+          5031317,
+          5223185,
+          5160812
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4854432,
+          4892799,
+          4805908,
+          4759219,
+          4684387,
+          4788443
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          7398117,
+          7676886,
+          7382895,
+          7156955,
+          7370065,
+          7394732
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 5096064.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4797175.5,
+        "/workspace/collection-evidence/sets-rust": 7388813.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1302,
+          1962,
+          1282,
+          1272,
+          2023,
+          1272
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1332,
+          1372,
+          1973,
+          1362,
+          1342,
+          1322
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          401,
+          400,
+          401,
+          401,
+          400,
+          390
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1292.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1352.0,
+        "/workspace/collection-evidence/sets-rust": 400.5
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1783,
+          1763,
+          2404,
+          1623,
+          1743,
+          1723
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1723,
+          1853,
+          1833,
+          1743,
+          1802,
+          1802
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          381,
+          390,
+          380,
+          381,
+          381,
+          381
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1753.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1802.0,
+        "/workspace/collection-evidence/sets-rust": 381.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2314,
+          2313,
+          2213,
+          2213,
+          2354,
+          2194
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          2183,
+          2223,
+          2194,
+          2153,
+          2293,
+          2173
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          2544,
+          2744,
+          2564,
+          2474,
+          2484,
+          2534
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 2263.0,
+        "/workspace/collection-evidence/sets-fresh-after": 2188.5,
+        "/workspace/collection-evidence/sets-rust": 2539.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2003,
+          2014,
+          2714,
+          2003,
+          2023,
+          1993
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          2183,
+          2043,
+          2023,
+          2023,
+          2053,
+          2063
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          380,
+          391,
+          391,
+          391,
+          391,
+          390
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 2008.5,
+        "/workspace/collection-evidence/sets-fresh-after": 2048.0,
+        "/workspace/collection-evidence/sets-rust": 391.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2053,
+          2283,
+          2044,
+          2083,
+          2043,
+          2083
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          2123,
+          2083,
+          2134,
+          2044,
+          2093,
+          2053
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          5213169,
+          6274080,
+          6157796,
+          1785168,
+          4854181,
+          2543925
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 2068.0,
+        "/workspace/collection-evidence/sets-fresh-after": 2088.0,
+        "/workspace/collection-evidence/sets-rust": 5033675.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4947892,
+          5039599,
+          4979189,
+          4939870,
+          5012529,
+          4964607
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4706330,
+          4997867,
+          5042313,
+          4822834,
+          4719069,
+          4688212
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          2272078,
+          1661563,
+          6267622,
+          1600380,
+          5772859,
+          1366129
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4971898.0,
+        "/workspace/collection-evidence/sets-fresh-after": 4770951.5,
+        "/workspace/collection-evidence/sets-rust": 1966820.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4941903,
+          4968623,
+          5048802,
+          4844938,
+          4926470,
+          4916895
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4857446,
+          5146550,
+          4770675,
+          4775123,
+          4748182,
+          5068973
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          7436685,
+          7494311,
+          7416946,
+          7150446,
+          7524016,
+          7480741
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4934186.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4816284.5,
+        "/workspace/collection-evidence/sets-rust": 7458713.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1773,
+          1792,
+          1943,
+          1723,
+          1893,
+          1772
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1943,
+          1923,
+          1853,
+          1733,
+          1772,
+          1713
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          401,
+          391,
+          400,
+          391,
+          401,
+          401
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1782.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1812.5,
+        "/workspace/collection-evidence/sets-rust": 400.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1472,
+          2153,
+          1352,
+          1422,
+          1362,
+          1382
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1402,
+          1402,
+          1462,
+          1402,
+          1372,
+          1442
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          421,
+          421,
+          421,
+          421,
+          411,
+          431
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1402.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1402.0,
+        "/workspace/collection-evidence/sets-rust": 421.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2113,
+          2093,
+          2093,
+          2023,
+          2083,
+          2184
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          2224,
+          2053,
+          2163,
+          2043,
+          2764,
+          2053
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          2444,
+          2473,
+          2443,
+          2444,
+          2464,
+          2444
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 2093.0,
+        "/workspace/collection-evidence/sets-fresh-after": 2108.0,
+        "/workspace/collection-evidence/sets-rust": 2444.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2123,
+          2744,
+          2053,
+          1983,
+          2043,
+          2053
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          2093,
+          2143,
+          2043,
+          1943,
+          2104,
+          2043
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          2674,
+          2464,
+          2433,
+          2444,
+          2444,
+          2454
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 2053.0,
+        "/workspace/collection-evidence/sets-fresh-after": 2068.0,
+        "/workspace/collection-evidence/sets-rust": 2449.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2073,
+          2284,
+          2143,
+          2033,
+          2083,
+          2093
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          2083,
+          2103,
+          2113,
+          2113,
+          2103,
+          2143
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          4448693,
+          3679139,
+          2624838,
+          5631627,
+          3392018,
+          4946560
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 2088.0,
+        "/workspace/collection-evidence/sets-fresh-after": 2108.0,
+        "/workspace/collection-evidence/sets-rust": 4063916.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4957306,
+          5976335,
+          4886239,
+          4916475,
+          4904326,
+          4848533
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          5008713,
+          4900641,
+          4737486,
+          4692919,
+          4765388,
+          4775704
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          4571627,
+          1469494,
+          798227,
+          6710706,
+          5015563,
+          1634482
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4910400.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4770546.0,
+        "/workspace/collection-evidence/sets-rust": 3103054.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2234,
+          2393,
+          2264,
+          2243,
+          2304,
+          2293
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          2234,
+          2334,
+          2323,
+          2234,
+          2334,
+          2293
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          2704,
+          2694,
+          2694,
+          2674,
+          2694,
+          2704
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 2278.5,
+        "/workspace/collection-evidence/sets-fresh-after": 2308.0,
+        "/workspace/collection-evidence/sets-rust": 2694.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1282,
+          1322,
+          1943,
+          1262,
+          1302,
+          1282
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1282,
+          1352,
+          1262,
+          1332,
+          1362,
+          1312
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          421,
+          421,
+          420,
+          411,
+          411,
+          421
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1292.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1322.0,
+        "/workspace/collection-evidence/sets-rust": 420.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1929714,
+          2048653,
+          1932458,
+          1981623,
+          1936014,
+          1925748
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1222,
+          1222,
+          1352,
+          1152,
+          1192,
+          1171
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          401,
+          401,
+          390,
+          441,
+          391,
+          601
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1934236.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1207.0,
+        "/workspace/collection-evidence/sets-rust": 401.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3927021,
+          4001422,
+          3888323,
+          3989755,
+          3884647,
+          3848732
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3766309,
+          3703115,
+          3734581,
+          3701382,
+          3689824,
+          3781892
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          6732989,
+          6876904,
+          6866409,
+          6745689,
+          6758658,
+          6824908
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3907672.0,
+        "/workspace/collection-evidence/sets-fresh-after": 3718848.0,
+        "/workspace/collection-evidence/sets-rust": 6791783.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3973561,
+          3902133,
+          3979489,
+          4011346,
+          3921051,
+          3922723
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3814632,
+          3830105,
+          3701833,
+          3727131,
+          3682754,
+          3787501
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          2543,
+          2554,
+          2854,
+          2543,
+          2554,
+          2534
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3948142.0,
+        "/workspace/collection-evidence/sets-fresh-after": 3757316.0,
+        "/workspace/collection-evidence/sets-rust": 2548.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          3085,
+          3034,
+          3075,
+          2914,
+          3084,
+          3035
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          3215,
+          3065,
+          3054,
+          2945,
+          3035,
+          3055
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          2705,
+          2684,
+          2674,
+          2704,
+          2684,
+          2694
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 3055.0,
+        "/workspace/collection-evidence/sets-fresh-after": 3054.5,
+        "/workspace/collection-evidence/sets-rust": 2689.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 4096,
+      "repeats": 300,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2273,
+          2283,
+          2294,
+          2193,
+          2223,
+          2283
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          2254,
+          2313,
+          2273,
+          2193,
+          2303,
+          2294
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          2684,
+          2694,
+          2694,
+          2714,
+          2694,
+          2694
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 2278.0,
+        "/workspace/collection-evidence/sets-fresh-after": 2283.5,
+        "/workspace/collection-evidence/sets-rust": 2694.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          11039369,
+          10830054,
+          10855634,
+          10814972,
+          10840040,
+          10899419
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          10802502,
+          10856835,
+          10774001,
+          10668653,
+          11104076,
+          11062573
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          11102453,
+          11188332,
+          11106840,
+          11068333,
+          11072057,
+          11090255
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 10847837.0,
+        "/workspace/collection-evidence/sets-fresh-after": 10829668.5,
+        "/workspace/collection-evidence/sets-rust": 11096354.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1272,
+          1282,
+          1292,
+          1041,
+          1172,
+          1402
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1292,
+          1342,
+          1252,
+          1242,
+          1222,
+          1393
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          241,
+          160,
+          150,
+          161,
+          150,
+          160
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1277.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1272.0,
+        "/workspace/collection-evidence/sets-rust": 160.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1182,
+          1212,
+          1062,
+          1151,
+          1202,
+          1402
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1943,
+          1202,
+          1151,
+          1242,
+          1192,
+          3065
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          140,
+          150,
+          130,
+          140,
+          160,
+          151
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1192.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1222.0,
+        "/workspace/collection-evidence/sets-rust": 145.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1843,
+          2264,
+          2073,
+          1462,
+          1913,
+          1773
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1873,
+          2043,
+          1963,
+          2153,
+          2023,
+          1843
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          531,
+          471,
+          611,
+          421,
+          501,
+          551
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1878.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1993.0,
+        "/workspace/collection-evidence/sets-rust": 516.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1312,
+          1291,
+          1262,
+          1142,
+          1913,
+          1232
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1913,
+          1442,
+          2043,
+          1172,
+          1272,
+          1603
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          211,
+          130,
+          160,
+          140,
+          140,
+          140
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1276.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1522.5,
+        "/workspace/collection-evidence/sets-rust": 140.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1322,
+          1402,
+          1342,
+          1302,
+          1662,
+          1522
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1783,
+          1592,
+          2053,
+          1442,
+          1973,
+          1722
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          2144817,
+          1381652,
+          9126299,
+          10002493,
+          9955043,
+          495824
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1372.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1752.5,
+        "/workspace/collection-evidence/sets-rust": 5635558.0
+      }
+    },
+    {
+      "mode": "subset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          11153328,
+          10907359,
+          11162323,
+          10813009,
+          12704286,
+          10952138
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          11242154,
+          10794853,
+          10842854,
+          12366148,
+          10741563,
+          10923715
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          3756615,
+          4039019,
+          328904,
+          1242053,
+          10742514,
+          10879089
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 11052733.0,
+        "/workspace/collection-evidence/sets-fresh-after": 10883284.5,
+        "/workspace/collection-evidence/sets-rust": 3897817.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          10940210,
+          11084717,
+          11296535,
+          10962834,
+          11243044,
+          11178948
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          10897385,
+          12032238,
+          10819730,
+          11217426,
+          11049855,
+          10975563
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          11468453,
+          11373981,
+          16985979,
+          11006340,
+          10927261,
+          10945298
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 11131832.5,
+        "/workspace/collection-evidence/sets-fresh-after": 11012709.0,
+        "/workspace/collection-evidence/sets-rust": 11190160.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1242,
+          1181,
+          1152,
+          1152,
+          1081,
+          1182
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1232,
+          1292,
+          1241,
+          1272,
+          1152,
+          1362
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          181,
+          150,
+          150,
+          160,
+          150,
+          170
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1166.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1256.5,
+        "/workspace/collection-evidence/sets-rust": 155.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1202,
+          1242,
+          1162,
+          1021,
+          1131,
+          1022
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1362,
+          1433,
+          1382,
+          1282,
+          1241,
+          1453
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          201,
+          191,
+          170,
+          180,
+          201,
+          170
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1146.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1372.0,
+        "/workspace/collection-evidence/sets-rust": 185.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1873,
+          2273,
+          2173,
+          1663,
+          2083,
+          1843
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          2123,
+          1863,
+          1983,
+          1943,
+          1843,
+          2253
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          571,
+          510,
+          431,
+          601,
+          571,
+          441
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1978.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1963.0,
+        "/workspace/collection-evidence/sets-rust": 540.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1723,
+          1392,
+          1402,
+          1312,
+          1252,
+          1373
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1492,
+          1362,
+          1572,
+          1172,
+          1192,
+          1262
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          440,
+          420,
+          421,
+          320,
+          321,
+          341
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1382.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1312.0,
+        "/workspace/collection-evidence/sets-rust": 380.5
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1402,
+          1502,
+          2053,
+          1612,
+          2483,
+          2464
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1903,
+          1673,
+          1613,
+          2093,
+          2023,
+          2193
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          1310636,
+          6873601,
+          6546419,
+          334792,
+          10093129,
+          9848082
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1832.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1963.0,
+        "/workspace/collection-evidence/sets-rust": 6710010.0
+      }
+    },
+    {
+      "mode": "superset",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          10731187,
+          10780530,
+          11390005,
+          10677817,
+          12186570,
+          11396885
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          10505427,
+          10483085,
+          10509313,
+          10542193,
+          10460911,
+          11682203
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8995934,
+          2581803,
+          2244437,
+          9264496,
+          9232348,
+          9009674
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 11085267.5,
+        "/workspace/collection-evidence/sets-fresh-after": 10507370.0,
+        "/workspace/collection-evidence/sets-rust": 9002804.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "equal",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2143,
+          1552,
+          1342,
+          1312,
+          1472,
+          1573
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1772,
+          1823,
+          1883,
+          1683,
+          1532,
+          1732
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          681,
+          771,
+          681,
+          671,
+          570,
+          641
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1512.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1752.0,
+        "/workspace/collection-evidence/sets-rust": 676.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "empty-left",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1131,
+          1101,
+          1112,
+          1071,
+          1893,
+          3836
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1572,
+          1242,
+          1232,
+          1122,
+          1202,
+          2404
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          500,
+          280,
+          180,
+          170,
+          270,
+          571
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1121.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1237.0,
+        "/workspace/collection-evidence/sets-rust": 275.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "empty-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2043806,
+          2046530,
+          2068183,
+          2149815,
+          2045759,
+          2105808
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1813,
+          1652,
+          1352,
+          1512,
+          1443,
+          1412
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          511,
+          321,
+          150,
+          160,
+          170,
+          161
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 2057356.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1477.5,
+        "/workspace/collection-evidence/sets-rust": 165.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "disjoint",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          20175162,
+          20262083,
+          20513971,
+          19941761,
+          20091206,
+          20374181
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          19039830,
+          19200110,
+          20294461,
+          19262975,
+          19490704,
+          19444787
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          8783285,
+          8900370,
+          9835933,
+          8797716,
+          8839950,
+          9136305
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 20218622.5,
+        "/workspace/collection-evidence/sets-fresh-after": 19353881.0,
+        "/workspace/collection-evidence/sets-rust": 8870160.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "small-right",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          4211387,
+          4363585,
+          4541692,
+          4305688,
+          4218738,
+          4385428
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          4041783,
+          4140240,
+          4037366,
+          4002433,
+          4187811,
+          4043896
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          752,
+          761,
+          551,
+          821,
+          941,
+          671
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 4334636.5,
+        "/workspace/collection-evidence/sets-fresh-after": 4042839.5,
+        "/workspace/collection-evidence/sets-rust": 756.5
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "early",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          1643,
+          1792,
+          1403,
+          1312,
+          1813,
+          1723
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1723,
+          1972,
+          1802,
+          1823,
+          1893,
+          1683
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          651,
+          771,
+          551,
+          571,
+          651,
+          651
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1683.0,
+        "/workspace/collection-evidence/sets-fresh-after": 1812.5,
+        "/workspace/collection-evidence/sets-rust": 651.0
+      }
+    },
+    {
+      "mode": "disjoint",
+      "size": 65536,
+      "repeats": 20,
+      "pattern": "late",
+      "samples": {
+        "/workspace/collection-evidence/sets-fresh-before": [
+          2824,
+          1532,
+          1682,
+          1502,
+          1692,
+          1663
+        ],
+        "/workspace/collection-evidence/sets-fresh-after": [
+          1803,
+          1552,
+          1743,
+          1713,
+          1763,
+          2274
+        ],
+        "/workspace/collection-evidence/sets-rust": [
+          551,
+          601,
+          561,
+          571,
+          601,
+          560
+        ]
+      },
+      "median_ns": {
+        "/workspace/collection-evidence/sets-fresh-before": 1672.5,
+        "/workspace/collection-evidence/sets-fresh-after": 1753.0,
+        "/workspace/collection-evidence/sets-rust": 566.0
+      }
+    }
+  ]
+}

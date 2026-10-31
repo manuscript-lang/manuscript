@@ -145,7 +145,7 @@ export type Matches:
 impl Matches:
     # Returns the text of a flag or argument.
     fn string(name: String) String:
-        return self.values.get(name).get() [0].clone()
+        return self.values.get(name).get()[0].clone()
 
     # Returns an Int flag or argument value.
     fn int(name: String) Int:
