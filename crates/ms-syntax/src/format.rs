@@ -1118,9 +1118,10 @@ impl<'a> Layout<'a> {
             column,
             line_indent: indent,
         };
+        // Comments may be indented independently of the code they describe.
         let mut first_indent = 0i64;
         for node in nodes {
-            if !layout_token(node.tok.kind) {
+            if !layout_token(node.tok.kind) && node.tok.kind != Tok::Comment {
                 first_indent = self.line_indent(node.tok.pos.line) as i64;
                 break;
             }
