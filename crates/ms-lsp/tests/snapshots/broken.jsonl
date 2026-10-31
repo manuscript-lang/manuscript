@@ -51,11 +51,11 @@
 {"id":48,"jsonrpc":"2.0","result":null}
 {"id":49,"jsonrpc":"2.0","result":null}
 #large
-{"id":51,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nok: fn() Int\n```"},"range":{"end":{"character":2,"line":1},"start":{"character":0,"line":1}}}}
-{"id":52,"jsonrpc":"2.0","result":[{"range":{"end":{"character":2,"line":1},"start":{"character":0,"line":1}},"uri":"file://$TMP/ms-lsp-broken-PID/b1.ms"}]}
+{"id":51,"jsonrpc":"2.0","result":null}
+{"id":52,"jsonrpc":"2.0","result":null}
 #large
-{"id":54,"jsonrpc":"2.0","result":null}
-{"id":55,"jsonrpc":"2.0","result":null}
+{"id":54,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nok: fn() Int\n```"},"range":{"end":{"character":5,"line":1},"start":{"character":3,"line":1}}}}
+{"id":55,"jsonrpc":"2.0","result":[{"range":{"end":{"character":5,"line":1},"start":{"character":3,"line":1}},"uri":"file://$TMP/ms-lsp-broken-PID/b1.ms"}]}
 #large
 {"id":57,"jsonrpc":"2.0","result":null}
 {"id":58,"jsonrpc":"2.0","result":null}
@@ -69,21 +69,21 @@
 {"id":66,"jsonrpc":"2.0","result":null}
 {"id":67,"jsonrpc":"2.0","result":null}
 #large
-{"id":69,"jsonrpc":"2.0","result":[{"detail":"fn() Int","kind":12,"name":"ok","range":{"end":{"character":12,"line":2},"start":{"character":0,"line":1}},"selectionRange":{"end":{"character":0,"line":1},"start":{"character":0,"line":1}}}]}
+{"id":69,"jsonrpc":"2.0","result":[{"detail":"fn() Int","kind":12,"name":"ok","range":{"end":{"character":12,"line":2},"start":{"character":0,"line":1}},"selectionRange":{"end":{"character":5,"line":1},"start":{"character":3,"line":1}}}]}
 {"id":70,"jsonrpc":"2.0","result":{"data":[0,0,2,0,0,1,0,2,0,0,0,3,2,5,0,0,5,3,1,0,1,4,6,0,0,0,7,1,2,0]}}
 {"id":71,"jsonrpc":"2.0","result":[{"endLine":2,"kind":"region","startLine":1}]}
 {"error":{"code":-32602,"message":"$TMP/ms-lsp-broken-PID/b1.ms:4:1: parse: unterminated delimiter '(' opened at line 1:4; add the matching ')' before the end of the file"},"id":72,"jsonrpc":"2.0"}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS3001","message":"expected String, found Int (in the initializer of 'x'); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"","range":{"end":{"character":21,"line":1},"start":{"character":20,"line":1}},"severity":1,"source":"manuscript"},{"code":"MS2001","message":"unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...) T:', or import it from a module","range":{"end":{"character":18,"line":2},"start":{"character":11,"line":2}},"severity":1,"source":"manuscript"}],"uri":"file://$TMP/ms-lsp-broken-PID/b0.ms","version":1}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS1000","message":"unterminated delimiter '(' opened at line 1:4; add the matching ')' before the end of the file","range":{"end":{"character":2,"line":1},"start":{"character":0,"line":1}},"severity":1,"source":"manuscript"},{"code":"MS2001","message":"declaration ok reuses a prelude constructor name; rename it, because ok always refers to the prelude case","range":{"end":{"character":2,"line":1},"start":{"character":0,"line":1}},"severity":1,"source":"manuscript"}],"uri":"file://$TMP/ms-lsp-broken-PID/b1.ms","version":1}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS1000","message":"unterminated delimiter '(' opened at line 4:13; add the matching ')' before the end of the file","range":{"end":{"character":0,"line":4},"start":{"character":0,"line":4}},"severity":1,"source":"manuscript"},{"code":"MSL001","message":"Remove trailing whitespace","range":{"end":{"character":15,"line":3},"start":{"character":15,"line":3}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-broken-PID/b2.ms","version":1}}
-{"id":73,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nT: T\n```"},"range":{"end":{"character":1,"line":0},"start":{"character":0,"line":0}}}}
-{"id":74,"jsonrpc":"2.0","result":[{"range":{"end":{"character":1,"line":0},"start":{"character":0,"line":0}},"uri":"file://$TMP/ms-lsp-broken-PID/b2.ms"}]}
+{"id":73,"jsonrpc":"2.0","result":null}
+{"id":74,"jsonrpc":"2.0","result":null}
 #large
 {"id":76,"jsonrpc":"2.0","result":null}
 {"id":77,"jsonrpc":"2.0","result":null}
 #large
-{"id":79,"jsonrpc":"2.0","result":null}
-{"id":80,"jsonrpc":"2.0","result":null}
+{"id":79,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nT: T\n```"},"range":{"end":{"character":6,"line":0},"start":{"character":5,"line":0}}}}
+{"id":80,"jsonrpc":"2.0","result":[{"range":{"end":{"character":6,"line":0},"start":{"character":5,"line":0}},"uri":"file://$TMP/ms-lsp-broken-PID/b2.ms"}]}
 #large
 {"id":82,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\na: Int\n```"},"range":{"end":{"character":5,"line":1},"start":{"character":4,"line":1}}}}
 {"id":83,"jsonrpc":"2.0","result":[{"range":{"end":{"character":5,"line":1},"start":{"character":4,"line":1}},"uri":"file://$TMP/ms-lsp-broken-PID/b2.ms"}]}
@@ -115,7 +115,7 @@
 {"id":109,"jsonrpc":"2.0","result":null}
 {"id":110,"jsonrpc":"2.0","result":null}
 {"id":111,"jsonrpc":"2.0","result":[]}
-{"id":112,"jsonrpc":"2.0","result":[{"children":[{"kind":8,"name":"a","range":{"end":{"character":10,"line":1},"start":{"character":4,"line":1}},"selectionRange":{"end":{"character":4,"line":1},"start":{"character":4,"line":1}}}],"detail":"T","kind":5,"name":"T","range":{"end":{"character":15,"line":3},"start":{"character":0,"line":0}},"selectionRange":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}]}
+{"id":112,"jsonrpc":"2.0","result":[{"children":[{"kind":8,"name":"a","range":{"end":{"character":10,"line":1},"start":{"character":4,"line":1}},"selectionRange":{"end":{"character":5,"line":1},"start":{"character":4,"line":1}}}],"detail":"T","kind":5,"name":"T","range":{"end":{"character":15,"line":3},"start":{"character":0,"line":0}},"selectionRange":{"end":{"character":6,"line":0},"start":{"character":5,"line":0}}}]}
 {"id":113,"jsonrpc":"2.0","result":{"data":[0,0,4,0,0,0,5,1,6,0,1,4,1,7,0,0,3,3,1,0,1,0,2,0,0,0,3,1,5,0,0,4,1,1,0,1,4,6,0,0,0,7,1,1,0,0,2,1,1,0]}}
 {"id":114,"jsonrpc":"2.0","result":[{"endLine":1,"kind":"region","startLine":0},{"endLine":3,"kind":"region","startLine":2}]}
 {"error":{"code":-32602,"message":"$TMP/ms-lsp-broken-PID/b2.ms:5:1: parse: unterminated delimiter '(' opened at line 4:13; add the matching ')' before the end of the file"},"id":115,"jsonrpc":"2.0"}
