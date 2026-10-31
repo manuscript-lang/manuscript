@@ -64,14 +64,24 @@ jobs:
             {\"os\":\"windows\",\"arch\":\"amd64\",\"runner\":\"windows-2025\",\"tests\":true,\"corpus\":true,\"cranelift\":true},
             {\"os\":\"windows\",\"arch\":\"arm64\",\"runner\":\"windows-11-arm\",\"tests\":true,\"corpus\":true}"
           fi
-          # Each platform splits into three parts that run on separate runners at once: `unit` (format,
-          # clippy, nextest, doc tests), `conform` (corpus and e2e fixtures) and `extra` (release builds,
-          # source conformance, ownership gates, packaging, and the Cranelift corpus and fixtures where
-          # the leg has `cranelift`). Three parts keep a main run near the account's 20-job limit. Every
-          # part is a full job on the platform, so no platform loses coverage; only wall time shrinks.
-          matrix=$(echo "{\"include\":[$include]}" | jq -c '{include: [.include[] | . as $leg
-            | ["unit","conform","extra"][] as $part
-            | $leg + {part: $part}]}')
+          # Each platform splits into parts that run on separate runners at once. Pushes and merge groups
+          # start six platforms, so they use three parts each to stay near the account's 20-job limit:
+          # `unit` (format, clippy, nextest, doc tests), `conform` (corpus and e2e fixtures) and `extra`
+          # (release builds, source conformance, ownership gates, packaging, and the Cranelift corpus and
+          # fixtures where the leg has `cranelift`). Pull requests start two platforms, so they split
+          # further into `corpus`, `e2e` and `clif`. Every part is a full job on the platform, so no
+          # platform loses coverage; only wall time shrinks.
+          if [ "$EVENT" = pull_request ]; then
+            parts='["unit","corpus","e2e","extra"]'
+            split='{"corpus_part":"corpus","e2e_part":"e2e","clif_part":"clif"}'
+          else
+            parts='["unit","conform","extra"]'
+            split='{"corpus_part":"conform","e2e_part":"conform","clif_part":"extra"}'
+          fi
+          matrix=$(echo "{\"include\":[$include]}" | jq -c --argjson parts "$parts" --argjson split "$split" \
+            '{include: [.include[] | . as $leg
+              | ($parts + (if $leg.cranelift and ($split.clif_part == "clif") then ["clif"] else [] end))[] as $part
+              | $leg + $split + {part: $part}]}')
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   # Each platform runs as four or five parts in parallel (see the matrix step in `changes`), so the
@@ -281,18 +291,18 @@ jobs:
           cargo test --locked -p ms-build --test debug_artifacts -- --nocapture
           cargo test --locked -p ms-build --lib -- --nocapture
       - name: Rust ms replays the corpus
-        if: matrix.part == 'conform' && matrix.corpus
+        if: matrix.part == matrix.corpus_part && matrix.corpus
         run: sh scripts/conform.sh
       - name: Rust ms runs the e2e fixtures
-        if: matrix.part == 'conform' && matrix.corpus
+        if: matrix.part == matrix.e2e_part && matrix.corpus
         run: sh scripts/e2e.sh
       - name: Rust ms replays the corpus on Cranelift
-        if: matrix.part == 'extra' && matrix.cranelift
+        if: matrix.part == matrix.clif_part && matrix.cranelift
         env:
           MS_BACKEND: cranelift
         run: sh scripts/conform.sh
       - name: Rust ms runs the e2e fixtures on Cranelift
-        if: matrix.part == 'extra' && matrix.cranelift
+        if: matrix.part == matrix.clif_part && matrix.cranelift
         env:
           MS_BACKEND: cranelift
         run: sh scripts/e2e.sh
