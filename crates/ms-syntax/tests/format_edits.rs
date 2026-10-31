@@ -48,3 +48,12 @@ fn off_grid_comment_before_a_block_argument_does_not_shift_its_suite() {
     assert_eq!(ms_syntax::format(&file, source).unwrap(), expected);
     assert_eq!(ms_syntax::format(&file, expected).unwrap(), expected);
 }
+
+#[test]
+fn collapsing_a_flow_keeps_a_leading_dot_line_applied_to_the_whole_flow() {
+    let file: Arc<str> = Arc::from("edits.ms");
+    let source = include_str!("format_edits/flow_dot.src");
+    let expected = include_str!("format_edits/flow_dot.expected");
+    assert_eq!(ms_syntax::format(&file, source).unwrap(), expected);
+    assert_eq!(ms_syntax::format(&file, expected).unwrap(), expected);
+}

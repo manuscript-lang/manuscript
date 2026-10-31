@@ -863,13 +863,19 @@ impl<'a> Layout<'a> {
 
     fn flat(&self, nodes: &[Node]) -> String {
         let mut out = String::new();
-        for node in nodes {
+        let mut last_line = 0u32;
+        for (index, node) in nodes.iter().enumerate() {
             if layout_token(node.tok.kind) || node.tok.kind == Tok::Comment {
                 continue;
             }
-            if !out.is_empty() && node.space {
+            if joined_flow_dot(&nodes[..index], node, last_line) {
+                out.push_str(" | ");
+            } else if !out.is_empty() && node.space {
                 out.push(' ');
             }
+            last_line = node
+                .group
+                .map_or(node.tok.pos.line, |g| self.groups[g].close.pos.line);
             match node.group {
                 Some(g) => {
                     let g = &self.groups[g];
@@ -1223,6 +1229,8 @@ impl<'a> Layout<'a> {
                 }
             } else if comment {
                 w.write("  ");
+            } else if joined_flow_dot(&nodes[..index], node, last_line) {
+                w.write(" | ");
             } else if node.space {
                 w.write(" ");
             }
@@ -1239,6 +1247,25 @@ impl<'a> Layout<'a> {
             pending = comment;
         }
     }
+}
+
+/// A line starting with `.` after a flow step applies to the whole flow so far.
+/// Joined onto the previous line it must read `| .name(...)`, since `step.name`
+/// would instead select a member of the step.
+fn joined_flow_dot(before: &[Node], node: &Node, last_line: u32) -> bool {
+    if node.tok.kind != Tok::Dot || last_line == 0 || last_line == node.tok.pos.line {
+        return false;
+    }
+    // Only the current comma-separated item is part of the flow.
+    let item = before
+        .iter()
+        .rposition(|n| n.group.is_none() && n.tok.kind == Tok::Comma)
+        .map_or(before, |comma| &before[comma + 1..]);
+    let mut code = item
+        .iter()
+        .filter(|n| !layout_token(n.tok.kind) && n.tok.kind != Tok::Comment);
+    let previous = code.clone().next_back().map(|n| n.tok.kind);
+    !matches!(previous, Some(Tok::Pipe | Tok::Try)) && code.any(|n| n.tok.kind == Tok::Pipe)
 }
 
 fn is_comparison(k: Tok) -> bool {
@@ -1418,6 +1445,8 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     Tok::Dot if depth == 0 => dots += 1,
                     Tok::Newline | Tok::Indent | Tok::Dedent | Tok::Fn => return,
                     Tok::If | Tok::Else => return,
+                    // A line starting with `.` after a flow step applies to the whole flow.
+                    Tok::Pipe if depth == 0 => return,
                     k if depth == 0
                         && (matches!(k, Tok::And | Tok::Or) || is_comparison(k) || is_arith(k)) =>
                     {
