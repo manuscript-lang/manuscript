@@ -31,7 +31,10 @@ Proposal, 2026-10-31, checked against `ea4dfeab`.
   - Pending success or no error: a failed close becomes the function's error. The function must return a `Result` that accepts `Error`.
   - Pending error: the original error stays primary; the close error is recorded as a secondary diagnostic, as cleanup faults are today.
   - Fault or cancellation: unchanged (`cleanup-faults.md`); a close error is a secondary diagnostic.
-- Checker rule: a binding with a fallible close that is not explicitly closed, in a function that cannot return `Error`, is rejected with "call `close()` and handle the result". Example of an accepted program:
+- An implicit close is `try x.close()` at every scope exit, so the existing `try` rule applies: a function that cannot return `Error` is rejected with "this scope closes `file`; return a `Result` or call `close()` yourself".
+- A close that cannot fail (locks, groups) declares `Result[Unit, Never]`; `try` on a `Never` error needs no `Result` in the enclosing function.
+- When the body already failed and close also fails, the body's error is returned and the close error is only recorded as a diagnostic. This is the one path where an error is not returned.
+- Example of an accepted program:
 
 ```manuscript
 import FileHandle, open from "@std/fs.ms"
@@ -42,6 +45,8 @@ fn save(path: String, text: String) Result[Unit, Error]:
     return ok(unit)
 ```
 
+- Allocation failure (out of memory) is a fault everywhere in the language, including `clone()`, `push` and concatenation. Chinmay chose this on 2026-10-31; only I/O-backed operations return `Result`.
+- Resources stay out of `Clonable`: lowering uses `Op::Copy` for internal copy-then-drop of temporaries, so a resource clone in the glue would run extra clones and drop the original without close (found in the #2029 thread).
 - Clone: `Clonable.clone() Self` stays total and covers plain data only, so generic `T: Clonable` code never hides a syscall or a failure.
 - A resource that can be copied declares an inherent `fn clone() Result[Self, Error]` (not a `Clonable` implementation). `FileHandle` and plain connections dup; the caller uses `try`.
 - A resource has no `Clonable` impl, so generic or implicit copies (`List[FileHandle].clone()`, `T: Clonable`) stay compile errors, as today.
@@ -76,6 +81,5 @@ fn twice(file: FileHandle) Result[List[FileHandle], Error]:
 
 ## Open questions
 
-- Should a close that cannot fail (locks, groups) keep `Unit`, via a second interface or `Result[Unit, Never]`?
 - Should `main() Int` be allowed to propagate close errors as an exit status, or must it close explicitly?
 - Overlap with PR #2029 (dup and TLS split): land it first; this proposal only changes `close`.
