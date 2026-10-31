@@ -499,10 +499,16 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
                 or code == 125
             )
         ): break
-        if key and code == 58: break
-        if code == 58 and flow.codes.get(flow.pos + 1, default: 0) == 32: return error(
-            flow_invalid(flow, "unexpected mapping colon")
-        )
+
+        if (
+            code == 58
+            and separates_colon(
+                flow.codes.get(flow.pos + 1, default: 0), flow.delimited or key
+            )
+        ):
+            if key: break
+
+            return error(flow_invalid(flow, "unexpected mapping colon"))
 
         flow.pos += 1
 
@@ -1059,7 +1065,15 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
     if (
         text != ""
         and not structured_lead(text.scalar_at(0, default: 0), blank: true)
-        and not text.contains(": ")
+        and (
+            not text.contains(":")
+            or not (
+                text.contains(": ")
+                or text.contains(":\t")
+                or text.contains(":\n")
+                or text.ends_with(":")
+            )
+        )
         and plain_may_start(blank_trim(text))
     ):
         try count(var context, depth)

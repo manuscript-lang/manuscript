@@ -16,3 +16,13 @@ and long overflow, early/late invalid bytes, leading-zero success, all signs and
 bases, and unchanged formatting controls with balanced A/A. An equivalent Rust
 error baseline must validate the complete syntax; `from_str_radix` alone can stop
 earlier at overflow. Put an input optimization barrier inside invariant Rust loops.
+
+A later [Float ASCII-scan trial](../../bench/perf/float-parse-ascii/README.md)
+proved that the grammar check already guaranteed UTF-8 validity. Removing the
+redundant scan improved valid parsing 13–18%, but short invalid/Unicode rejection
+slowed about 9–10% in a longer balanced confirmation. An unchanged integer control
+also regressed. Same-location rebuilds produced byte-identical benchmark programs,
+so build location did not explain the results. The candidate was rejected and the
+checked conversion restored. Safety proofs and successful-input gains do not
+replace complete affected controls; retain negative measurements and stop when
+a confirmed regression remains unexplained.

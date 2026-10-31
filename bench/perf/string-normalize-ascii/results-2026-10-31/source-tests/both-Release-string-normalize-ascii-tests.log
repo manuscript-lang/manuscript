@@ -1,0 +1,5 @@
+RUN string-normalize-ascii.ms::ASCII normalization is identical under every form and byte budget
+PASS string-normalize-ascii.ms::ASCII normalization is identical under every form and byte budget
+RUN string-normalize-ascii.ms::normalization falls back for Unicode before and after long ASCII prefixes
+PASS string-normalize-ascii.ms::normalization falls back for Unicode before and after long ASCII prefixes
+2 tests, 0 failed

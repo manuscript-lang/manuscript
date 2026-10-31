@@ -1,0 +1,137 @@
+[
+  {
+    "suite": "lines",
+    "argv": [
+      "taskset",
+      "-c",
+      "0",
+      "python3",
+      "bench/perf/string-lines/compare.py",
+      "/workspace/byte-search-evidence/lines-before",
+      "/workspace/byte-search-evidence/lines-after-short-fixed",
+      "/workspace/byte-search-evidence/short-fixed-controls/lines-samples.csv",
+      "--pairs",
+      "6"
+    ],
+    "started": 1793462727.815693,
+    "source": {
+      "path": "bench/perf/string-lines/main.ms",
+      "sha256": "e7d37f5ea0147ac0fa127990ec52848f7319fd300f07719a3f0bd7be76a51787"
+    },
+    "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+    "executables": {
+      "before": {
+        "path": "/workspace/byte-search-evidence/lines-before",
+        "sha256": "fa7a9d194d7be373be7cf37a2319e492311eff178dead0a10f417ef5c5987100"
+      },
+      "after": {
+        "path": "/workspace/byte-search-evidence/lines-after-short-fixed",
+        "sha256": "cf753b0fc92aa9e0327ffc04976afa1cc7f8fb014605ebc7cb48abc334109c99"
+      }
+    },
+    "build": {
+      "compiler_sha256": "e0f8d0152bf68b04e9f0a6fc2ca876d4c51328d2e58b94dcac322b2c5b71daeb",
+      "before_MS_RT_LIB": "/workspace/byte-search-evidence/baseline.a",
+      "after_MS_RT_LIB": "/workspace/manuscript/target/ms-native/libms_native.a",
+      "before_archive_sha256": "4ef63cd2ca0418a2b7b4d9590d001af06bd51413af8b1861228da795f80356be",
+      "after_archive_sha256": "51064bdfa7bd90b113ca5b0f116c6e29eeb21a6141b9134e6d7c40a23dcfd75a",
+      "settings": "--build-type Release"
+    },
+    "returncode": 0,
+    "finished": 1793462730.92083
+  },
+  {
+    "suite": "normalize",
+    "argv": [
+      "taskset",
+      "-c",
+      "0",
+      "python3",
+      "bench/perf/string-lines/compare.py",
+      "/workspace/byte-search-evidence/normalize-before",
+      "/workspace/byte-search-evidence/normalize-after-short-fixed",
+      "/workspace/byte-search-evidence/short-fixed-controls/normalize-samples.csv",
+      "--pairs",
+      "6",
+      "--identity-file",
+      "bench/perf/string-normalize-ascii/identities.json"
+    ],
+    "started": 1793462730.9211557,
+    "source": {
+      "path": "bench/perf/string-normalize-ascii/main.ms",
+      "sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4"
+    },
+    "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+    "executables": {
+      "before": {
+        "path": "/workspace/byte-search-evidence/normalize-before",
+        "sha256": "5e2c2c23f5a5bf90334a8114fe02eccac530ef0b09f0ce18e0ab54b26bbedc3f"
+      },
+      "after": {
+        "path": "/workspace/byte-search-evidence/normalize-after-short-fixed",
+        "sha256": "da1acbe876105625c44bff329a4dcf8fdc4cda5efa6ea7edd7f93d5e56b49ef7"
+      }
+    },
+    "build": {
+      "compiler_sha256": "e0f8d0152bf68b04e9f0a6fc2ca876d4c51328d2e58b94dcac322b2c5b71daeb",
+      "before_MS_RT_LIB": "/workspace/byte-search-evidence/baseline.a",
+      "after_MS_RT_LIB": "/workspace/manuscript/target/ms-native/libms_native.a",
+      "before_archive_sha256": "4ef63cd2ca0418a2b7b4d9590d001af06bd51413af8b1861228da795f80356be",
+      "after_archive_sha256": "51064bdfa7bd90b113ca5b0f116c6e29eeb21a6141b9134e6d7c40a23dcfd75a",
+      "settings": "--build-type Release"
+    },
+    "identities": {
+      "path": "bench/perf/string-normalize-ascii/identities.json",
+      "sha256": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348"
+    },
+    "returncode": 0,
+    "finished": 1793462771.5142913
+  },
+  {
+    "suite": "reverse",
+    "argv": [
+      "taskset",
+      "-c",
+      "0",
+      "python3",
+      "bench/perf/string-lines/compare.py",
+      "/workspace/byte-search-evidence/reverse-before",
+      "/workspace/byte-search-evidence/reverse-after-short-fixed",
+      "/workspace/byte-search-evidence/short-fixed-controls/reverse-samples.csv",
+      "--pairs",
+      "6",
+      "--identity-file",
+      "bench/perf/string-normalization-rollback/inputs/reverse-full-identities.json"
+    ],
+    "started": 1793462771.5148885,
+    "source": {
+      "path": "bench/perf/string-normalization-rollback/inputs/reverse-full.ms",
+      "sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e"
+    },
+    "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+    "executables": {
+      "before": {
+        "path": "/workspace/byte-search-evidence/reverse-before",
+        "sha256": "93a8e9ae28ff200fb504a115f1a2045725456ae9d06e4e4498657489ed28126d"
+      },
+      "after": {
+        "path": "/workspace/byte-search-evidence/reverse-after-short-fixed",
+        "sha256": "6a86e76b971df12c8a58f2aab3a79be566b19cf7ba95884f87c5012043384a01"
+      }
+    },
+    "build": {
+      "compiler_sha256": "e0f8d0152bf68b04e9f0a6fc2ca876d4c51328d2e58b94dcac322b2c5b71daeb",
+      "before_MS_RT_LIB": "/workspace/byte-search-evidence/baseline.a",
+      "after_MS_RT_LIB": "/workspace/manuscript/target/ms-native/libms_native.a",
+      "before_archive_sha256": "4ef63cd2ca0418a2b7b4d9590d001af06bd51413af8b1861228da795f80356be",
+      "after_archive_sha256": "51064bdfa7bd90b113ca5b0f116c6e29eeb21a6141b9134e6d7c40a23dcfd75a",
+      "settings": "--build-type Release"
+    },
+    "identities": {
+      "path": "bench/perf/string-normalization-rollback/inputs/reverse-full-identities.json",
+      "sha256": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0"
+    },
+    "returncode": 0,
+    "finished": 1793462869.0877125
+  }
+]
