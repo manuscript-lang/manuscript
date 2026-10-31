@@ -1,12 +1,12 @@
 import arguments from "@std/process.ms"
-import filesystem from "@std/fs.ms"
+import read_file, write_file from "@std/fs.ms"
 import stdout from "@std/io.ms"
 import clock from "@std/time.ms"
 
 export fn main() Int:
     let args = arguments()
     let path = args.get(0)
-    let text = filesystem().read_file(path).get().decode_utf8().get()
+    let text = read_file(path).get().decode_utf8().get()
     let count = args.get(1).parse_int().get()
     let expected = text
 
@@ -16,13 +16,13 @@ export fn main() Int:
 
     # Optional readiness marker for the external-input observability probe, outside timing.
     if args.length() > 2:
-        filesystem().write_file(args.get(2), "ready").get()
+        write_file(args.get(2), "ready").get()
 
     var checksum = 0
     let start = clock().now()
 
     for unused in 0..count:
-        let current = filesystem().read_file(path).get().decode_utf8().get()
+        let current = read_file(path).get().decode_utf8().get()
         let output = current
         if output != expected: return 1
 
