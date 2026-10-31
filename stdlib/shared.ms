@@ -5,7 +5,7 @@
 # `@std/sync.ms` into a `var` binding: the guard holds the payload for its scope and returns it when the
 # scope ends, however it ends. `take`, `put`, `locked` and `id` are the primitives `lock` is built on;
 # calling them elsewhere is rejected.
-export type Shared[T]: ...
+export extern type Shared[T]
 
 # Moves `value` into a new `Shared` with one holder; copy the result to add holders.
 export fn share[T](value: T) Shared[T]: ...

@@ -40,7 +40,7 @@ Keep public crate APIs small and documented with rustdoc; cross-crate changes mu
 
 ## Runtime ABI rules
 
-- Runtime symbols use `msrt_`; native standard-library symbols use `msstd_`. `stdlib/*.ms` owns public signatures and `stdlib/bindings.json` owns native identities.
+- Runtime symbols use `msrt_`; native standard-library symbols use `msstd_`. `stdlib/*.ms` owns public signatures and names its native symbols with `extern fn`.
 - Scalars cross the C-layout ABI directly. Aggregates cross by pointer, and constructed aggregates use a trailing output pointer. Fallible calls use status codes and outputs; see [ABI conventions](ms-rt/ABI.md#1-conventions).
 - Arguments are borrowed unless documented as consuming; `var` receivers are exclusive mutable pointers. Returned values are owned, while explicitly lending source operations retain the borrow relationship checked by `ms-check`.
 - `ms-rt-abi` defines shared layouts and constants; its layout tests keep compiler and runtime assumptions aligned.

@@ -36,7 +36,7 @@ impl Error for StringError:
     fn message() String: ...
 
 # Mutable builder for constructing a string without repeated intermediate copies.
-export type StringBuilder: ...
+export extern type StringBuilder
 
 impl StringBuilder:
     # Appends the supplied text in order.
@@ -58,7 +58,7 @@ export type RegexError:
     case LimitExceeded
 
 # A compiled regular expression that can be reused across input strings.
-export type Regex: ...
+export extern type Regex
 
 impl Regex:
     # Tests whether any match occurs; anchor the pattern explicitly to require a whole-string match.
