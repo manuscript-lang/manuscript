@@ -1560,6 +1560,7 @@ impl Checker {
         }
         // Infer from independently typed, reachable arms before checking
         // contextual values such as none or []. Keep each arm's checked lexical scope.
+        let mut invalid_arm = false;
         // Each pass reads and updates one arm's state while `self` is borrowed mutably.
         #[allow(clippy::needless_range_loop)]
         for si in 0..states.len() {
@@ -1579,6 +1580,7 @@ impl Checker {
                         let before = self.p.diagnostics.len();
                         let info = self.arm_value(value, result.as_ref(), expected);
                         let t = info.t();
+                        invalid_arm = invalid_arm || t.id == "<invalid>";
                         if result.is_none()
                             && t.id != "Never"
                             && crate::inference::inference_type_known(&t, &self.inference_variables)
@@ -1601,6 +1603,11 @@ impl Checker {
                     }
                 }
             }
+        }
+        if result.is_none() && invalid_arm {
+            // An arm already failed, so a contextual arm (`none`, `[]`) has no type to infer
+            // and would only add a second error about the first.
+            result = Some(invalid());
         }
         let (mut fall, mut breaks) = (false, false);
         // Each pass reads and updates one arm's state while `self` is borrowed mutably.

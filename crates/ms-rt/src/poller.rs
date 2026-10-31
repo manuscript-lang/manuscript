@@ -68,6 +68,7 @@ mod imp {
 
     const WAKE_TOKEN: Token = Token(usize::MAX);
     const EPERM: i32 = 1;
+    const EINVAL: i32 = 22;
 
     struct State {
         poll: Poll,
@@ -192,7 +193,12 @@ mod imp {
                 }
                 Watch::Armed
             }
+            // epoll refuses regular files and `/dev/null` with EPERM; kqueue refuses `/dev/null` with
+            // EINVAL. Either way the descriptor never blocks, so it is ready at once.
             Err(e) if e.raw_os_error() == Some(EPERM) => Watch::Always,
+            Err(e) if cfg!(not(target_os = "linux")) && e.raw_os_error() == Some(EINVAL) => {
+                Watch::Always
+            }
             Err(_) => Watch::Failed,
         }
     }
