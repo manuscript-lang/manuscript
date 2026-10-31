@@ -34,7 +34,7 @@ fn result(r: Result<Vec<u8>, Fail>) -> String {
 }
 
 #[test]
-fn matches_go() {
+fn matches_oracle() {
     let data = include_str!("oracle/compress.tsv");
     let mut n = 0;
     for line in data.lines().filter(|l| !l.starts_with('#')) {

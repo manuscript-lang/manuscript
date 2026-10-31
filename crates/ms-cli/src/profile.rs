@@ -547,7 +547,7 @@ pub fn run_profile(
                     std::fs::write(&top_path, report.as_bytes()),
                     std::fs::write(
                         &manifest_path,
-                        manifest.pretty_line(ms_json::Escape::GoHtml).as_bytes(),
+                        manifest.pretty_line(ms_json::Escape::HtmlSafe).as_bytes(),
                     ),
                 ];
                 if let Some(Err(error)) = writes.iter().find(|result| result.is_err()) {

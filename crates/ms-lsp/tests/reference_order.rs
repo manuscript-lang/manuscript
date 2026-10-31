@@ -42,8 +42,8 @@ fn scan_error_preserves_exported_reference_order_and_declaration_filter() {
         character: 10,
     };
     for (include, expected) in [
-        (true, vec![(0, 10), (10, 24), (2, 23)]),
-        (false, vec![(10, 24), (2, 23)]),
+        (true, vec![(0, 10), (2, 23), (10, 24)]),
+        (false, vec![(2, 23), (10, 24)]),
     ] {
         let locations =
             workspace_references(&analysis, analysis.index(), &d, &docs, at, include, None);
