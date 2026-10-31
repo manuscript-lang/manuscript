@@ -4,11 +4,11 @@
 
 - Problem: `filesystem()`, `network()`, `clock()`, `system()`, `control()`, `commands()`, `entropy()`, `terminal()`, `files()` are getters that return a host-handle interface; every call starts with a getter, then a method.
 - Change: ambient host operations become functions of their module, as in Node (`fs.readFile`), Python (`os.listdir`, `time.time`) and Go (`os.ReadFile`, `time.Now`). Types remain only for configured or stateful values (a restricted `Network`, `HttpClient`, `Subprocess`). Getters and host-handle interfaces are deleted.
-- Decision requested: the per-module table below, and the two open questions.
+- Decision: approved.
 
 ## Status
 
-Proposal, 2026-10-31, checked at `be04a207`. Chinmay: "having one filesystem(), network() functions feels very weird ... same for rest of the stdlib as well", then "should these be free functions instead? see how the stdlib for node/python/go is setup". Interface-typed default parameters check (`ms check`, scratch project). Skeptic review pending.
+Approved, 2026-10-31, checked at `be04a207`. Chinmay: "having one filesystem(), network() functions feels very weird ... same for rest of the stdlib as well", then "should these be free functions instead? see how the stdlib for node/python/go is setup". Interface-typed default parameters check (`ms check`, scratch project). Approved by Chinmay 2026-10-31: plain free functions, no injectable `Commands`/`Entropy` interfaces, constants become values.
 
 ## Problem
 
@@ -53,7 +53,7 @@ let limited = try narrow.http_client(HttpClientOptions())
 - Each removed method keeps its name and arguments as a function, so migration is mechanical: drop the getter, import the function.
 - One spelling per operation (`wiki/stdlib-design`): `FileSystem` and its getter are deleted, not kept beside the functions. `Network` is the exception because a restricted network is a real value.
 - The .ms half of each module calls the same `extern fn` natives the interface methods call today.
-- Faking: a function that accepts a role takes it as a defaulted parameter, `entropy: Entropy = HostEntropy()`.
+- No injection: `run`, `spawn` and `secure_int` take no `Commands`/`Entropy` parameter; the `Commands` and `Entropy` interfaces are deleted and their fake-based fixtures are rewritten or removed with owner approval of each.
 
 ## Components touched
 
@@ -76,9 +76,4 @@ let limited = try narrow.http_client(HttpClientOptions())
 1. `fs`, `time`, `random`: functions, call-site rewrite. `make verify`.
 2. `process`, `io`: functions. `make verify`.
 3. `net`, with `restrict` as a function. `make verify`.
-4. Constants, only if approved. `make verify-full`.
-
-## Open questions
-
-- `Commands` and `Entropy` fakes: recommend defaulted interface parameters with `HostCommands()`/`HostEntropy()` types, so `run(...)` and `secure_int(...)` work without them.
-- Constants (`math.pi`, `os_type`): need an exported-constant form, which does not exist; a small language change. Recommend yes, as its own stage.
+4. Constants as exported values (small language change). `make verify-full`.
