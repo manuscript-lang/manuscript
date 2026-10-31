@@ -486,12 +486,7 @@ impl Checker {
             variables.push(v.clone());
             self.scope.types.borrow_mut().insert(param.name, v);
         }
-        for (i, param) in method.func.type_params.iter().enumerate() {
-            for bound in &param.bounds {
-                let t = self.resolve(Some(bound));
-                variables[i].bounds.borrow_mut().push(t);
-            }
-        }
+        self.resolve_type_bounds(&method.func.type_params, &variables);
         self.type_defaults(&method.func.type_params, &variables);
         stdlib::set_operation_variables(format!("{owner}/{}", method.func.name), variables);
     }
@@ -1123,6 +1118,12 @@ impl Checker {
             vars.push(v.clone());
             self.scope.types.borrow_mut().insert(p.name, v);
         }
+        self.resolve_type_bounds(params, &vars);
+        vars
+    }
+
+    /// Attaches only interface bounds, consistently for declarations and operations.
+    pub(crate) fn resolve_type_bounds(&mut self, params: &[TypeParam], vars: &[Ty]) {
         for (i, p) in params.iter().enumerate() {
             for b in &p.bounds {
                 // A declaration's own parameters are not registered yet, so resolving it here would misreport its arity.
@@ -1158,7 +1159,6 @@ impl Checker {
                 vars[i].bounds.borrow_mut().push(t);
             }
         }
-        vars
     }
 
     /// Resolves a written type.
