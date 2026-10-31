@@ -684,6 +684,7 @@ impl Checker {
                 own[i].bounds.borrow_mut().push(t);
             }
         }
+        self.type_defaults(&method.func.type_params, &own);
         own
     }
 
