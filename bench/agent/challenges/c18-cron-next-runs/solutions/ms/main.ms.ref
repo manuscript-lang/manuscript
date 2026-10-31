@@ -20,7 +20,7 @@ fn digits(s: String, lo: Int, hi: Int) Int?:
 
         n = n * 10 + (c - 48)
 
-    return some(n)
+    return n
 
 fn days_from_civil(year: Int, m: Int, d: Int) Int:
     var y = year
@@ -112,7 +112,7 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Bool]?:
             set.set(v, true)
             v = v + step
 
-    return some(set)
+    return set
 
 # Returns [day number, minute of day] for a valid START, or an empty list.
 fn parse_start(s: String) List[Int]:

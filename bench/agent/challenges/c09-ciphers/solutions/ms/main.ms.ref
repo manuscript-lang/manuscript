@@ -53,7 +53,7 @@ fn parse_caesar_key(key: String) Int?:
 
     if negative:
         k = 0 - k
-    return some(k)
+    return k
 
 fn solve_line(line: String) String:
     var parts = List[String]()
