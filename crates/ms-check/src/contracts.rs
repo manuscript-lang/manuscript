@@ -1465,3 +1465,7 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
 #[cfg(test)]
 #[path = "method_candidates_tests.rs"]
 mod method_candidates_tests;
+
+#[cfg(test)]
+#[path = "method_parameter_names_tests.rs"]
+mod method_parameter_names_tests;
