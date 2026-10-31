@@ -219,34 +219,16 @@ fn is_candidate_line(line: &str) -> bool {
 }
 
 fn is_declaration_line(line: &str) -> bool {
-    if !is_candidate_line(line) {
-        return false;
-    }
-    let trimmed = line.trim();
-    [
-        "import ",
-        "export ",
-        "fn ",
-        "extern ",
-        "let ",
-        "let(",
-        "type ",
-        "interface ",
-        "impl ",
-        "test ",
-    ]
-    .iter()
-    .any(|k| trimmed.starts_with(k))
+    is_candidate_line(line) && partial_root_start(line.trim())
 }
 
-/// Only a bound for optimistic parsing, never a recovery boundary. Includes
-/// constants and token boundaries such as `import{` and `let(`; malformed input
-/// still synchronizes using the original rules.
+/// Recognizes declaration starts by token boundary, including contextual words
+/// only when their following token selects a declaration. The same roots bound
+/// optimistic parsing and synchronize recovery after an unmatched opener.
 fn partial_root_start(source: &str) -> bool {
     for keyword in [
         "import",
         "export",
-        "fn",
         "extern",
         "type",
         "interface",
@@ -254,15 +236,26 @@ fn partial_root_start(source: &str) -> bool {
         "test",
         "let",
     ] {
-        if !source.starts_with(keyword) {
-            continue;
+        if after_keyword(source, keyword).is_some() {
+            return true;
         }
-        return match source.as_bytes().get(keyword.len()) {
-            None => true,
-            Some(b) => !(b.is_ascii_alphanumeric() || *b == b'_'),
-        };
     }
-    false
+    after_keyword(source, "fn").is_some_and(|rest| {
+        rest.trim_start()
+            .as_bytes()
+            .first()
+            .is_some_and(|b| b.is_ascii_alphabetic() || *b == b'_')
+    }) || after_keyword(source, "bench").is_some_and(|rest| rest.trim_start().starts_with('"'))
+        || after_keyword(source, "opaque")
+            .is_some_and(|rest| after_keyword(rest.trim_start(), "type").is_some())
+}
+
+fn after_keyword<'a>(source: &'a str, keyword: &str) -> Option<&'a str> {
+    source.strip_prefix(keyword).filter(|rest| {
+        rest.as_bytes()
+            .first()
+            .is_none_or(|b| !(b.is_ascii_alphanumeric() || *b == b'_'))
+    })
 }
 
 /// Grouped imports and constants produce several AST nodes for one written
