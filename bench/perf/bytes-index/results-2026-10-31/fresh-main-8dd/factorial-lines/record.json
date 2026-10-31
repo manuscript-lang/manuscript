@@ -1,0 +1,233 @@
+{
+  "complete": true,
+  "argv": [
+    "bench/perf/string-normalize-ascii/compare_matrix.py",
+    "/workspace/normalization-evidence/factorial-protocol/lines-programs.json",
+    "/workspace/normalization-evidence/factorial-protocol/lines-identities.json",
+    "/workspace/normalization-evidence/factorial-lines",
+    "--cpu",
+    "0"
+  ],
+  "affinity": [
+    0
+  ],
+  "orders": [
+    [
+      "baseline",
+      "byte",
+      "ascii",
+      "both"
+    ],
+    [
+      "byte",
+      "ascii",
+      "both",
+      "baseline"
+    ],
+    [
+      "ascii",
+      "both",
+      "baseline",
+      "byte"
+    ],
+    [
+      "both",
+      "baseline",
+      "byte",
+      "ascii"
+    ],
+    [
+      "both",
+      "ascii",
+      "byte",
+      "baseline"
+    ],
+    [
+      "baseline",
+      "both",
+      "ascii",
+      "byte"
+    ],
+    [
+      "byte",
+      "baseline",
+      "both",
+      "ascii"
+    ],
+    [
+      "ascii",
+      "byte",
+      "baseline",
+      "both"
+    ]
+  ],
+  "cases": 16,
+  "validated_producers": [
+    [
+      "warmup",
+      "baseline"
+    ],
+    [
+      "warmup",
+      "byte"
+    ],
+    [
+      "warmup",
+      "ascii"
+    ],
+    [
+      "warmup",
+      "both"
+    ],
+    [
+      0,
+      "baseline"
+    ],
+    [
+      0,
+      "byte"
+    ],
+    [
+      0,
+      "ascii"
+    ],
+    [
+      0,
+      "both"
+    ],
+    [
+      1,
+      "byte"
+    ],
+    [
+      1,
+      "ascii"
+    ],
+    [
+      1,
+      "both"
+    ],
+    [
+      1,
+      "baseline"
+    ],
+    [
+      2,
+      "ascii"
+    ],
+    [
+      2,
+      "both"
+    ],
+    [
+      2,
+      "baseline"
+    ],
+    [
+      2,
+      "byte"
+    ],
+    [
+      3,
+      "both"
+    ],
+    [
+      3,
+      "baseline"
+    ],
+    [
+      3,
+      "byte"
+    ],
+    [
+      3,
+      "ascii"
+    ],
+    [
+      4,
+      "both"
+    ],
+    [
+      4,
+      "ascii"
+    ],
+    [
+      4,
+      "byte"
+    ],
+    [
+      4,
+      "baseline"
+    ],
+    [
+      5,
+      "baseline"
+    ],
+    [
+      5,
+      "both"
+    ],
+    [
+      5,
+      "ascii"
+    ],
+    [
+      5,
+      "byte"
+    ],
+    [
+      6,
+      "byte"
+    ],
+    [
+      6,
+      "baseline"
+    ],
+    [
+      6,
+      "both"
+    ],
+    [
+      6,
+      "ascii"
+    ],
+    [
+      7,
+      "ascii"
+    ],
+    [
+      7,
+      "byte"
+    ],
+    [
+      7,
+      "baseline"
+    ],
+    [
+      7,
+      "both"
+    ]
+  ],
+  "programs": {
+    "baseline": {
+      "path": "/workspace/normalization-evidence/programs/baseline-lines",
+      "sha256": "ad0cb2e694f4b2f48544c61c04cf22e77659b5b4f8ee75c666614c3f328c77f7"
+    },
+    "byte": {
+      "path": "/workspace/normalization-evidence/programs/byte-lines",
+      "sha256": "9dbe357c6c9798a05b9f5019f6ac485dd7366d5775af3cb7160f82b25d7c2748"
+    },
+    "ascii": {
+      "path": "/workspace/normalization-evidence/programs/ascii-lines",
+      "sha256": "617bb62254ff1226b2155275af6b1c8b2f2c14d273a5c4038702bbbc2698ab6b"
+    },
+    "both": {
+      "path": "/workspace/normalization-evidence/programs/both-lines",
+      "sha256": "ea1b561c98ea794a11e4b5cde54062d3531c703b8687f46157bb73069796f24b"
+    }
+  },
+  "program_inventory_sha256": "6888471fa4daa9b90c7cb4e78e1f447cf5a55941275cf1a7d7b9dfe8ad553ad5",
+  "identities_sha256": "910d8ccb7b7065c8c90afefdaef31999c694aeefaeb27ee6283505e318d75bc0",
+  "runner_sha256": "c430e1babbf6028534f8a3a42c4cb2bd09c501be3628647563aea0dfcc2b91fd",
+  "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883"
+}
