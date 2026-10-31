@@ -155,13 +155,14 @@ TypeParameters = "[", TypeParameter, { ",", TypeParameter }, [ "," ], "]" ;
 TypeParameter = Name, [ ":", Bounds ], [ "=", Type ] ;
 Bounds        = NamedType, { "&", NamedType } ;
 
-Type          = NamedType | FunctionType | "(", Type, ")" ;
+Type          = ( NamedType | FunctionType | "(", Type, ")" ), { "?" | "!", [ NamedType ] } ;
 NamedType     = TypePath, [ TypeArguments ] ;
 TypePath      = Name, { ".", Name } ;
 TypeArguments = "[", Type, { ",", Type }, [ "," ], "]" ;
 FunctionType  = "fn", "(", [ Type, { ",", Type } ], ")", Type ;
 ```
 
+- A type suffix `?` is `Optional[T]`; `!` is `Result[T, Error]`, and `!E` with `E` directly after the bang is `Result[T, E]`. Suffixes apply left to right.
 - A `type` declares record fields or alternative cases, never both; its methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A nullary case is `case Ready`, without `()`. Names are unique per scope.
 - A result type follows the parameter list with no arrow (`fn double(value: Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value: Int) Int: value * 2`).
 - Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).

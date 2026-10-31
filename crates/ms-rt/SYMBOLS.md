@@ -415,6 +415,7 @@ msstd_fs_truncate(path: *const StrVal, size: i64) -> u8
 msstd_fs_set_times( path: *const StrVal, accessed: *const Timestamp, modified: *const Timestamp, follow: u8, ) -> u8
 msstd_fs_file_open( path: *const StrVal, flags: i64, mode: i64, out: *mut *mut FileHandle, ) -> u8
 msstd_fs_open( path: *const StrVal, flags: *const StrVal, mode: i64, out: *mut *mut FileHandle, ) -> u8
+msstd_fs_file_clone(h: *const FileHandle, out: *mut *mut FileHandle) -> u8
 msstd_fs_file_reader(h: *mut FileHandle) -> *mut Handle<stream::Stream>
 msstd_fs_file_writer(h: *mut FileHandle) -> *mut Handle<stream::Stream>
 msstd_fs_open_flags(mode: *const StrVal, out: *mut i64) -> u8
@@ -640,6 +641,7 @@ msrt_net_connection_peer_address(c: *const Obj, out: *mut StrVal)
 msrt_net_connection_read( c: *const Obj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, err: *mut StrVal, ) -> u8
 msrt_net_connection_write( c: *const Obj, data: *const StrVal, has_timeout: u8, timeout: i64, err: *mut StrVal, ) -> u8
 msrt_net_connection_write_bytes( c: *const Obj, data: *const VecVal, has_timeout: u8, timeout: i64, err: *mut StrVal, ) -> u8
+msrt_net_connection_clone( c: *const Obj, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
 msrt_net_connection_shutdown_write( c: *const Obj, err: *mut StrVal, ) -> u8
 msrt_net_listener_accept( l: *const Obj, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
 msrt_net_listener_accept_raw( l: *const Obj, has_timeout: u8, timeout: i64, out: *mut i64, err: *mut StrVal, ) -> u8

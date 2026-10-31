@@ -68,7 +68,7 @@
     },
     {
       "name": "keyword.operator.manuscript",
-      "match": "\\.\\.\\.|\\.\\.|->|==|!=|<=|>=|[+*/%=-]=?|[<>&|?]"
+      "match": "\\.\\.\\.|\\.\\.|->|==|!=|<=|>=|[+*/%=-]=?|[<>&|?!]"
     },
     {
       "name": "punctuation.manuscript",
