@@ -1207,7 +1207,8 @@ export fn stringify(value: TomlValue, max_bytes: Int? = none) Result[String, Tom
     var writer = Writer(StringBuilder(), started: false)
     emit_table(var writer, [], root)
 
-    let text = writer.out.build()
+    let {out} = writer
+    let text = out.build()
     if not within(text.byte_length(), max_bytes): return error(TomlError.LimitExceeded)
 
     return ok(text)

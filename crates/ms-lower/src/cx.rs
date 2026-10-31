@@ -441,10 +441,6 @@ impl Cx {
             let payload = self.lower_ty(m, &t.args[0])?;
             return Ok(crate::sharedbuilder::handle_ty(m, "Shared", payload));
         }
-        // A text builder is a shared handle over its accumulating bytes.
-        if let Some(kind) = crate::sharedbuilder::builder_kind(t) {
-            return Ok(crate::sharedbuilder::handle_ty(m, kind, MTy::BYTES));
-        }
         let name = ["Map", "Set"].into_iter().find(|n| t.is_std(n));
         if let Some(name) = name {
             let mut args = Vec::new();
@@ -453,8 +449,8 @@ impl Cx {
             }
             return Ok(m.types.obj(name, args));
         }
-        // Bytes is a growable byte buffer; the text and byte builders are handles over one.
-        if t.is_std("Bytes") {
+        // Bytes is a growable byte buffer; the text and byte builders are owned values over one.
+        if t.is_std("Bytes") || ms_check::effects::is_text_builder(t) {
             return Ok(MTy::BYTES);
         }
         // Plain-data natives share the runtime's `repr(C)` layout.
