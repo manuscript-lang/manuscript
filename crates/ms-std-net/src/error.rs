@@ -309,11 +309,11 @@ fn lowercase_os_text(err: &io::Error) -> String {
 
 /// Message for an unresolvable host name.
 pub fn cannot_resolve(name: &str) -> String {
-    format!("cannot resolve host {}", go_quote(name))
+    format!("cannot resolve host {}", quote_text(name))
 }
 
 /// Quotes the characters host names can hold.
-pub fn go_quote(s: &str) -> String {
+pub fn quote_text(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
     out.push('"');
     for c in s.chars() {
@@ -366,8 +366,8 @@ mod tests {
     }
 
     #[test]
-    fn quoting_matches_go() {
-        assert_eq!(go_quote("a\"b"), "\"a\\\"b\"");
+    fn quoting_matches_oracle() {
+        assert_eq!(quote_text("a\"b"), "\"a\\\"b\"");
         assert_eq!(cannot_resolve("no.such"), "cannot resolve host \"no.such\"");
     }
 }

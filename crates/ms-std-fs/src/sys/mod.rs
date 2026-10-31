@@ -322,7 +322,7 @@ pub fn classify(e: Errno) -> u8 {
 /// trailing " (os error N)").
 pub fn describe(e: Errno) -> String {
     #[cfg(unix)]
-    if let Some(text) = unix::go_text(e) {
+    if let Some(text) = unix::errno_text(e) {
         return String::from(text);
     }
     let mut text = io::Error::from_raw_os_error(e).to_string();

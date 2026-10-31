@@ -131,7 +131,7 @@ fn explain_codes(codes: &[&str], json: bool, io: &mut Io) -> i32 {
         let _ = writeln!(
             io.stdout,
             "{}",
-            document.pretty(crate::json::Escape::GoHtml)
+            document.pretty(crate::json::Escape::HtmlSafe)
         );
     }
     status

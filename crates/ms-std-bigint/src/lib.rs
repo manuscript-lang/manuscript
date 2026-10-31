@@ -300,7 +300,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_matches_go() {
+    fn parse_matches_oracle() {
         assert_eq!(parse(b"+-1", 10, Some(2)), Err(STATUS_INVALID_DATA));
         assert_eq!(parse(b"+-1", 10, Some(1)), Err(STATUS_LIMIT_EXCEEDED));
         assert_eq!(parse(b"1_0", 10, None), Err(STATUS_INVALID_DATA));

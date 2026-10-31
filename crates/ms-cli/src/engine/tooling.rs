@@ -424,7 +424,7 @@ fn ordered(diagnostics: Vec<CommandDiagnostic>) -> Vec<CommandDiagnostic> {
     let mut seen = BTreeSet::new();
     let mut unique: Vec<CommandDiagnostic> = diagnostics
         .into_iter()
-        .filter(|d| seen.insert(d.to_json().pretty_line(ms_json::Escape::GoHtml)))
+        .filter(|d| seen.insert(d.to_json().pretty_line(ms_json::Escape::HtmlSafe)))
         .collect();
     unique.sort_by(|a, b| {
         let key = |d: &CommandDiagnostic| {
@@ -474,7 +474,7 @@ pub fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendResult {
     let program = checked.program.as_ref().expect("accepted program");
     let mut text = inspect(program)
         .to_json()
-        .pretty_line(ms_json::Escape::GoHtml);
+        .pretty_line(ms_json::Escape::HtmlSafe);
     text.push('\n');
     Ok(write_output(io, &request.output, text.as_bytes()))
 }
@@ -536,7 +536,7 @@ fn view(request: &DiagramRequest, head: &Checked, io: &mut Io) -> i32 {
             ("entity", ms_json::Json::str(&request.entity)),
             ("tree", tree.to_json()),
         ])
-        .pretty_line(ms_json::Escape::GoHtml)
+        .pretty_line(ms_json::Escape::HtmlSafe)
             + "\n"
     } else if request.format == "mermaid" {
         tree.mermaid()
@@ -577,7 +577,7 @@ pub fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
         let findings = compare_facts(&base, &head_facts, &input);
         let explanation = if request.format == "json" {
             explain_json(&findings, &head_facts, &request.explain)
-                .map(|j| j.pretty_line(ms_json::Escape::GoHtml) + "\n")
+                .map(|j| j.pretty_line(ms_json::Escape::HtmlSafe) + "\n")
         } else {
             explain(&findings, &head_facts, &request.explain)
         };

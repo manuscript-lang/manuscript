@@ -461,7 +461,7 @@ pub fn references_with_index(
 
 /// Go prints a location map as `map[range:{{a b} {c d}} uri:u]`; results
 /// are ordered by that text, which this reproduces.
-pub fn go_location_order(location: &Json) -> String {
+pub fn location_sort_key(location: &Json) -> String {
     let number = |j: Option<&Json>| j.and_then(|j| j.as_i64()).unwrap_or(0);
     let range = location.get("range");
     let side = |name: &str| {

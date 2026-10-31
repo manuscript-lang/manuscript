@@ -82,7 +82,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn matches_go_filepath() {
+    fn matches_oracle_paths() {
         let cases: &[(&str, &str)] = &[
             ("", "."),
             ("a/c", "a/c"),
