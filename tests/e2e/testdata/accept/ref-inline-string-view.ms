@@ -5,7 +5,7 @@ type Box:
     other: String
 
 impl Box:
-    fn short() ref String:
+    fn short() String:
         return self.name.trim()
 
 fn churn(n: Int) Int:
@@ -14,7 +14,7 @@ fn churn(n: Int) Int:
         total += "{i}".length()
     return total
 
-fn lend(line: String) ref String:
+fn lend(line: String) String:
     return line.trim()
 
 test "view of an inline string stays valid across calls":
