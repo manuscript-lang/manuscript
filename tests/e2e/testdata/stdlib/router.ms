@@ -366,19 +366,19 @@ type Sink:
     lines: Shared[List[String]]
 
 impl Transport for Sink:
-    var fn write(data: String) Unit!LogError:
+    fn write(data: String) Unit!LogError:
         var guard = lock(self.lines)
         guard.value.append(data.clone())
         guard.close().get(none)
         return ok(unit)
 
-    var fn write_bytes(data: Bytes) Unit!LogError:
+    fn write_bytes(data: Bytes) Unit!LogError:
         return self.write(data.decode_utf8().get(""))
 
-    var fn flush() Unit!LogError:
+    fn flush() Unit!LogError:
         return ok(unit)
 
-    var fn close() Unit:
+    fn close() Unit:
         return unit
 
 fn logged(lines: Shared[List[String]]) String:

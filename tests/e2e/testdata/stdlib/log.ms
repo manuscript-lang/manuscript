@@ -1,15 +1,19 @@
 import expect_equal, expect_error, expect_false, expect_ok, expect_true from "@std/test.ms"
 import (
+    Logger,
     Transport,
     LogLevel,
     LogError,
     create,
-    record,
     stream_transport,
     stdout_transport,
     file_transport
 ) from "@std/log.ms"
-import IoError from "@std/io.ms"
+import IoError, WriteStream from "@std/io.ms"
+import Shared, share from "@std/shared.ms"
+import lock from "@std/sync.ms"
+import TaskGroup from "@std/tasks.ms"
+import nanoseconds, sleep from "@std/time.ms"
 import JsonValue from "@std/json.ms"
 import filesystem, FileSystemError from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
@@ -36,7 +40,7 @@ test "logger writes typed escaped records and protects metadata":
     let file = try filesystem().open(path: path, flags: "w", mode: 420)
     var logger = try create(stream_transport(file.writer()), timestamp: false)
     let fields = Payload(9007199254740993, ok: true, Items([none, 1]), 0, "fake", 0)
-    try record(logger, LogLevel.Info, "say \"hi\"\nnext", fields)
+    try logger.info_with("say \"hi\"\nnext", fields)
 
     let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
     try expect_equal((try written(path)), expected)
@@ -49,8 +53,8 @@ test "non-object values are written under data":
     let path = "{directory.path()}/out.ndjson"
     let file = try filesystem().open(path: path, flags: "w", mode: 420)
     let logger = try create(stream_transport(file.writer()), timestamp: false)
-    try record(logger, LogLevel.Info, "n", 7)
-    try record(logger, LogLevel.Warn, "l", ["a", "b"])
+    try logger.info_with("n", 7)
+    try logger.warn_with("l", ["a", "b"])
 
     let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
     try expect_equal((try written(path)), expected)
@@ -103,11 +107,11 @@ test "child bindings snapshot values and merge without mutating inputs":
     let path = "{directory.path()}/out.ndjson"
     let file = try filesystem().open(path: path, flags: "w", mode: 420)
     let root = try create(stream_transport(file.writer()), timestamp: false)
-    let logger = try root.child_json("\{\"service\":\"api\"\}")
-    let child = try logger.child_json("\{\"request\":7\}")
+    let logger = try root.child(Service("api"))
+    let child = try logger.child(Request(7))
     logger.set_level(LogLevel.Fatal)
     try expect_equal(child.level(), LogLevel.Info)
-    try record(child, LogLevel.Info, "child", Service("worker"))
+    try child.info_with("child", Service("worker"))
     try logger.fatal("parent")
 
     let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
@@ -148,7 +152,7 @@ test "limits and unencodable values reject before writing":
     let unlimited = try create(stream_transport(file.writer()), timestamp: false)
     let bad = JsonValue.NumberValue("NaN")
     let invalid_data: Unit!LogError = error(LogError.InvalidData)
-    try expect_equal(record(unlimited, LogLevel.Info, "bad", bad), invalid_data)
+    try expect_equal(unlimited.info_with("bad", bad), invalid_data)
     try expect_equal((try written(path)), before)
 
 test "transport closure and stream errors preserve identity":
@@ -245,20 +249,71 @@ test "source transports receive complete records and close through their contrac
     logger.close()
     try expect_true(fs.read_file("{path}.closed").is_ok())
 
-test "log_json and child_json accept only JSON objects":
+test "unencodable fields are rejected and non-objects go under data":
     let directory = try filesystem().temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
     let file = try filesystem().open(path: path, flags: "w", mode: 420)
     let logger = try create(stream_transport(file.writer()), timestamp: false)
     let invalid: Unit!LogError = error(LogError.InvalidData)
-
-    for text in ["[1]", "5", "null", "\"s\"", "nope"]:
-        try expect_equal(logger.log_json(LogLevel.Info, "m", text), invalid)
-        try expect_false(logger.child_json(text).is_ok())
-
+    let nan = JsonValue.NumberValue("NaN")
+    try expect_equal(logger.info_with("m", nan), invalid)
+    try expect_false(logger.child(nan).is_ok())
     try expect_equal((try written(path)), "")
-    try logger.log_json(LogLevel.Info, "m", "\{\"a\":1\}")
-    try record(logger, LogLevel.Info, "m", [1])
+    try logger.log_with(LogLevel.Info, "m", Service("a"))
+    try logger.info_with("m", [1])
 
-    let expected = "\{\"level\":30,\"msg\":\"m\",\"a\":1\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
+    let expected = "\{\"level\":30,\"msg\":\"m\",\"service\":\"a\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
     try expect_equal((try written(path)), expected)
+
+# A stream that suspends in the middle of a write, so only the transport keeps records whole.
+type SlowStream:
+    parts: Shared[List[String]]
+
+impl WriteStream for SlowStream:
+    var fn close() Unit:
+        return unit
+
+    var fn flush() Unit!IoError:
+        return ok(unit)
+
+    var fn write(data: String) Unit!IoError:
+        let half = data.length() / 2
+        var first = lock(self.parts)
+        first.value.append(data.slice(0, half).get(""))
+        first.close().get(none)
+        sleep(nanoseconds(1000000))
+
+        var second = lock(self.parts)
+        second.value.append(data.slice(half, data.length()).get(""))
+        second.close().get(none)
+        return ok(unit)
+
+    var fn write_bytes(data: Bytes) Unit!IoError:
+        return self.write(data.decode_utf8().get(""))
+
+fn chatter(logger: Logger, name: String) Unit!:
+    for n in 0..3:
+        try logger.info_with("m", name)
+    return ok(unit)
+
+test "concurrent tasks never interleave a record":
+    let parts = share(List[String]())
+    let logger = (create(stream_transport(SlowStream(parts)), timestamp: false)).get()
+    let group = TaskGroup[Unit!, Unit, Unit]()
+    let first = logger.clone()
+    let second = logger.clone()
+    let a = group.spawn(fn ch: chatter(first, "a"))
+    let b = group.spawn(fn ch: chatter(second, "b"))
+    a.result() | try expect_ok | try expect_ok
+    b.result() | try expect_ok | try expect_ok
+
+    var guard = lock(parts)
+    let text = guard.value.join("")
+    try expect_equal(text.split("\n").length(), 7)
+    for line in text.split("\n"):
+        if line != "":
+            try expect_equal(
+                line == "\{\"level\":30,\"msg\":\"m\",\"data\":\"a\"\}"
+                or line == "\{\"level\":30,\"msg\":\"m\",\"data\":\"b\"\}",
+                true
+            )

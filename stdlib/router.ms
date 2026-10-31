@@ -13,7 +13,7 @@ import (
 ) from "@std/http.ms"
 import IoError from "@std/io.ms"
 import WebSocket, WebSocketError from "@std/net.ms"
-import Logger, LogLevel, record from "@std/log.ms"
+import Logger from "@std/log.ms"
 import entropy, uuid_v4 from "@std/random.ms"
 import clock from "@std/time.ms"
 import Shared, share from "@std/shared.ms"
@@ -741,7 +741,7 @@ fn with_access_log(
         bytes: sent.bytes,
         duration_ms: clock().now().difference(started).to_milliseconds()
     )
-    let logged = record(logger, LogLevel.Info, "request", entry)
+    let logged = logger.info_with("request", entry)
     return result
 
 fn answered(status: Int, succeeded: Bool) Int:
