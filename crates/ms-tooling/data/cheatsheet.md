@@ -43,7 +43,7 @@ export fn main() Int:
 - Functions: `fn f(a: Int, b: Int = 1) Int:`, called `f(1, b: 2)`; generics `fn f[T](x: T) T`; closures `fn x: x + 1`, typed `fn(x: Int) Int: x + 1`; types `fn(Int) Int`.
 - Collections: `[1, 2]`, `xs[i] = v`, `List[T](reserve: n)`, `xs.slice(a, b)` is a `Result`; `Map[K, V]()`, `Set[T]()` mutate in place; `for e in m.entries():`, `if var n = m.get(k): n += 1`; `contains`, `split`.
 - Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)` or `T(1)`; alternatives `case A`, `case B(x: Int)`. Methods in `impl T:` (`var fn` mutates `self`), never in `type`; `interface I:` with `impl I for T:`, and a `T` passes where `I` is expected.
-- `Optional`: `some(x)` / `none`; unwrap with `if let x = v:` (+ `else:`) or `.get(d)`; `a?.b` is `none` when `a` is `none` (rest of the chain skipped), else `a.b` as `B?`.
+- `Optional`: `some(x)` / `none`; unwrap with `if let x = v:` (+ `else:`) or `.get(d)`; `a?.b` is `none` if `a` is, else `B?`.
 - `match v:` only on your own types: `Case(x):`, `_:`, exhaustive. Never match `Result`/`Optional` or nest `match`.
 - Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` implements `Error`, which has `.message()`. `try r` gives the `ok` value or returns the error from the current function. `if let x = r:` runs only on success and ignores the error.
 - Faults (`panic`, failed `get()`) abort the program, not a `Result`.
