@@ -429,7 +429,8 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
 
         let name = try anchor_name(var flow)
         if let size = flow.context.sizes.get(name):
-            try charge(var flow.context, size)
+            # Value aliases already counted their root; string alias keys count no values.
+            try charge(var flow.context, size - 1)
         if let value = flow.context.anchors.get(name):
             return ok(value.clone())
 
