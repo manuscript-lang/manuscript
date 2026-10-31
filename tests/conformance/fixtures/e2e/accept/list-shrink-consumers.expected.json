@@ -29,7 +29,7 @@
             "file": "list-shrink-consumers.ms",
             "line": 254,
             "column": 17,
-            "offset": 9153
+            "offset": 9161
           }
         },
         {
@@ -40,7 +40,7 @@
             "file": "list-shrink-consumers.ms",
             "line": 254,
             "column": 40,
-            "offset": 9176
+            "offset": 9184
           }
         },
         {
@@ -51,7 +51,7 @@
             "file": "list-shrink-consumers.ms",
             "line": 255,
             "column": 17,
-            "offset": 9215
+            "offset": 9223
           }
         },
         {
@@ -62,7 +62,7 @@
             "file": "list-shrink-consumers.ms",
             "line": 258,
             "column": 57,
-            "offset": 9355
+            "offset": 9363
           }
         },
         {
@@ -73,7 +73,7 @@
             "file": "list-shrink-consumers.ms",
             "line": 261,
             "column": 40,
-            "offset": 9472
+            "offset": 9480
           }
         }
       ]

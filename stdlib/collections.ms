@@ -16,7 +16,6 @@ export type List[T]:
     reserve: Int?
 
 impl List[T]:
-
     # Returns an element; negative indexes are relative to the end. An out-of-range index returns `default`; pass one for indexes that may miss, or use `first()` and `last()`.
     # Without a default, an out-of-range index raises a fault, as `xs[i]` does.
     fn get(index: Int, default: T?) ref T: ...
@@ -112,7 +111,6 @@ impl List[T]:
 export type Map[T: Hashable, U]: ...
 
 impl Map[T, U]:
-
     # Reports whether this map has no entries.
     fn is_empty() Bool: ...
 
@@ -407,7 +405,6 @@ interface ListCopies[T: Clonable]:
     fn slice(start: Int, end: Int) Result[List[T], CollectionError]
     fn take(count: Int) List[T]
     fn drop(count: Int) List[T]
-    fn zip[U: Clonable](other: List[U]) List[Pair[T, U]]
     fn chunks(size: Int) List[List[T]]
     fn windows(size: Int) List[List[T]]
     fn partition(predicate: fn(T) Bool) Partition[T]
@@ -416,7 +413,6 @@ interface ListCopies[T: Clonable]:
     fn filter(predicate: fn(T) Bool) List[T]
     fn find(predicate: fn(T) Bool) T?
     fn find_last(predicate: fn(T) Bool) T?
-    fn group_by[K: Hashable](key: fn(T) K) Map[K, List[T]]
     var fn fill(value: T, start: Int, end: Int) Unit
     var fn copy_within(target: Int, start: Int, end: Int) Unit
     fn entries() List[ListEntry[T]]
@@ -437,9 +433,6 @@ impl ListCopies[T] for List[T]:
     # Copies the remainder after min(count, length) into fresh owned List storage.
     # Leaves the receiver unchanged; negative count is a programming fault.
     fn drop(count: Int) List[T]: ...
-
-    # Pairs elements by position into fresh `Pair` records, stopping at the shorter list; both lists are unchanged.
-    fn zip[U: Clonable](other: List[U]) List[Pair[T, U]]: ...
 
     # Splits the list into consecutive copies of `size` elements; the last chunk may be shorter, and an empty list gives an empty list.
     # A `size` of zero or less is a programming fault.
@@ -469,10 +462,6 @@ impl ListCopies[T] for List[T]:
     # Searches from the end and returns the last element for which `predicate` is True, or none.
     fn find_last(predicate: fn(T) Bool) T?: ...
 
-    # Calls `key` once per element in order and returns a map from each distinct key to the elements that produced it.
-    # Keys appear in first-seen order and each group keeps the original element order.
-    fn group_by[K: Hashable](key: fn(T) K) Map[K, List[T]]: ...
-
     # Sets elements in [start, end) to `value` in place.
     # Bounds must satisfy 0 <= start <= end <= length(); negative or larger bounds fault rather than counting from the end, and an empty range changes nothing.
     var fn fill(value: T, start: Int, end: Int) Unit: ...
@@ -488,6 +477,19 @@ impl ListCopies[T] for List[T]:
     fn concat(other: List[T]) List[T]: ...
 
 # Operations that copy elements. A copy of a resource would be closed twice, so the elements must be Clonable.
+# Copying operations with type parameters of their own, apart so `ListCopies` can be a value type.
+interface ListCopiesGeneric[T: Clonable]:
+    fn zip[U: Clonable](other: List[U]) List[Pair[T, U]]
+    fn group_by[K: Hashable](key: fn(T) K) Map[K, List[T]]
+
+impl ListCopiesGeneric[T] for List[T]:
+    # Pairs elements by position into fresh `Pair` records, stopping at the shorter list; both lists are unchanged.
+    fn zip[U: Clonable](other: List[U]) List[Pair[T, U]]: ...
+
+    # Calls `key` once per element in order and returns a map from each distinct key to the elements that produced it.
+    # Keys appear in first-seen order and each group keeps the original element order.
+    fn group_by[K: Hashable](key: fn(T) K) Map[K, List[T]]: ...
+
 interface MapCopies[T: Hashable, U: Clonable]:
     fn clone() Map[T, U]
     fn filter(predicate: fn(T, U) Bool) Map[T, U]

@@ -309,7 +309,10 @@ export type Entry[T, In: Clonable, Out: Clonable]:
     channel: Channel[In, Out]
 
 # Drops the entry of the collected task `handle`, so the group holds nothing for it.
-fn forget[T, In, Out](registry: Shared[Map[Int, Entry[T, In, Out]]], handle: Int) Unit:
+fn forget[T, In: Clonable, Out: Clonable](
+    registry: Shared[Map[Int, Entry[T, In, Out]]],
+    handle: Int
+) Unit:
     var entries = lock(registry)
     entries.value.remove(handle)
 

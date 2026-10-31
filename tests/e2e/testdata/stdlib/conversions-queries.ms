@@ -35,7 +35,10 @@ fn reduce_map[K: Hashable, V, A](values: Map[K, V], initial: A, step: fn(A, K, V
 fn reduce_set[T: Hashable, A](values: Set[T], initial: A, step: fn(A, T) A) A:
     return values.fold(initial, step)
 
-fn locate[K: Hashable, V](values: Map[K, V], predicate: fn(K, V) Bool) MapEntry[K, V]?:
+fn locate[K: Hashable, V: Clonable](
+    values: Map[K, V],
+    predicate: fn(K, V) Bool
+) MapEntry[K, V]?:
     return values.find(predicate)
 
 test "conversions and collection queries are callable":

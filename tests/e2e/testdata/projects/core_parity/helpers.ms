@@ -8,7 +8,10 @@ export fn lookup[K: Hashable, V: Clonable](values: Map[K, V], key: K, fallback: 
     let get = values.get_or
     return get(key, fallback)
 
-export fn locate_map[K: Hashable, V: Clonable](values: Map[K, V], needle: K) MapEntry[K, V]?:
+export fn locate_map[K: Hashable, V: Clonable](
+    values: Map[K, V],
+    needle: K
+) MapEntry[K, V]?:
     let find = values.find
     return find(fn key, value: key == needle)
 

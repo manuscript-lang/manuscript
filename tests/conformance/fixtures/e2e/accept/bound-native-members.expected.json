@@ -3,102 +3,78 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "bound-native-members.ms::string members",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "bound-native-members.ms::list members",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "bound-native-members.ms::custom equality is kept for bound members",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "bound-native-members.ms::builder",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "bound-native-members.ms::sealed builder",
-          "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "bound-native-members.ms::abs of the minimum overflows",
-          "status": "passed"
-        },
-        {
-          "index": 6,
-          "name": "bound-native-members.ms::negative split cap faults",
-          "status": "passed"
-        },
-        {
-          "index": 7,
-          "name": "bound-native-members.ms::size and shape methods as values",
-          "status": "passed"
-        },
-        {
-          "index": 8,
-          "name": "bound-native-members.ms::sorted as a value",
-          "status": "passed"
-        },
-        {
-          "index": 9,
-          "name": "bound-native-members.ms::equals on built-in data",
-          "status": "passed"
-        },
-        {
-          "index": 10,
-          "name": "bound-native-members.ms::built-in data passes as Equal",
-          "status": "passed"
-        },
-        {
-          "index": 11,
-          "name": "bound-native-members.ms::list and map literals pass as Equal",
-          "status": "passed"
-        },
-        {
-          "index": 12,
-          "name": "bound-native-members.ms::numeric and optional members as values",
-          "status": "passed"
-        },
-        {
-          "index": 13,
-          "name": "bound-native-members.ms::native calls pass as Equal",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 14,
-        "selected": 14,
-        "passed": 14,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN bound-native-members.ms::string members\nPASS bound-native-members.ms::string members\nRUN bound-native-members.ms::list members\nPASS bound-native-members.ms::list members\nRUN bound-native-members.ms::custom equality is kept for bound members\nPASS bound-native-members.ms::custom equality is kept for bound members\nRUN bound-native-members.ms::builder\nPASS bound-native-members.ms::builder\nRUN bound-native-members.ms::sealed builder\nPASS bound-native-members.ms::sealed builder\nRUN bound-native-members.ms::abs of the minimum overflows\nPASS bound-native-members.ms::abs of the minimum overflows\nRUN bound-native-members.ms::negative split cap faults\nPASS bound-native-members.ms::negative split cap faults\nRUN bound-native-members.ms::size and shape methods as values\nPASS bound-native-members.ms::size and shape methods as values\nRUN bound-native-members.ms::sorted as a value\nPASS bound-native-members.ms::sorted as a value\nRUN bound-native-members.ms::equals on built-in data\nPASS bound-native-members.ms::equals on built-in data\nRUN bound-native-members.ms::built-in data passes as Equal\nPASS bound-native-members.ms::built-in data passes as Equal\nRUN bound-native-members.ms::list and map literals pass as Equal\nPASS bound-native-members.ms::list and map literals pass as Equal\nRUN bound-native-members.ms::numeric and optional members as values\nPASS bound-native-members.ms::numeric and optional members as values\nRUN bound-native-members.ms::native calls pass as Equal\nPASS bound-native-members.ms::native calls pass as Equal\n14 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`sb` is moved here but used again at 53:36; a value has one owner, so pass `sb.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "bound-native-members.ms",
+            "line": 51,
+            "column": 5,
+            "offset": 1622
+          },
+          "fix": {
+            "position": {
+              "file": "bound-native-members.ms",
+              "line": 51,
+              "column": 7,
+              "offset": 1624
+            },
+            "end": {
+              "file": "bound-native-members.ms",
+              "line": 51,
+              "column": 7,
+              "offset": 1624
+            },
+            "replacement": ".clone()"
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].fix",
+      "diagnostics[].fix.end",
+      "diagnostics[].fix.end.column",
+      "diagnostics[].fix.end.file",
+      "diagnostics[].fix.end.line",
+      "diagnostics[].fix.end.offset",
+      "diagnostics[].fix.position",
+      "diagnostics[].fix.position.column",
+      "diagnostics[].fix.position.file",
+      "diagnostics[].fix.position.line",
+      "diagnostics[].fix.position.offset",
+      "diagnostics[].fix.replacement",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -109,11 +85,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

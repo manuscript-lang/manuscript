@@ -88,10 +88,17 @@ test "size and shape methods as values":
     (set_is_empty() == false) | try expect_true
 
 test "sorted as a value":
-    let sort = [3, 1, 2].sorted
+    # `sorted` comes from both `ListCopies` and `ListOrderCopy`, so a value names it through a closure.
+    let sort = fn(compare: fn(Int, Int) Int) List[Int]: [3, 1, 2].sorted(compare)
     let ordered = sort(compare: fn a, b: a - b)
     (ordered.get(index: 0) == 1) | try expect_true
     (ordered.get(index: 2) == 3) | try expect_true
+
+test "take as a value":
+    let take = [3, 1, 2].take
+    let first = take(2)
+    (first.length() == 2) | try expect_true
+    (first.get(index: 0) == 3) | try expect_true
 
 type EqualProbe:
     n: Int

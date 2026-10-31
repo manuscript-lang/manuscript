@@ -23,11 +23,11 @@ Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Clos
 | `Equal` | Values can be compared by their contents with `==` and `!=` |
 | `Comparable` | Values have an order: `a.compare(b)` is negative, zero, or positive. Int, Float, String, Decimal, BigInt, Duration, Instant, and Timestamp qualify; other types opt in with `impl Comparable` |
 | `Hashable` | Values can be map keys or set elements; also supports equality |
-| `Clonable` | `value.clone()` returns an independent deep copy, so a generic body can keep a value it only borrows. Plain data qualifies; function values, interface views, regular expressions and resource handles do not |
+| `Clonable` | `value.clone()` returns an independent copy, so a generic body can keep a value it only borrows. Every type qualifies except a resource (`Closeable`) and a type holding one; a function value shares its unchangeable captures. Generic code that copies a value of `T` (`xs.take(1)`, `xs.concat(ys)`, keeping a borrowed argument) declares `T: Clonable` |
 | `Data` | Values hold no resource, function, interface value, or runtime handle, so they can cross a byte boundary: `json.parse`, `json.stringify`, and the message types of workers and processes require it. Import it from `@std/core.ms`. Records and alternatives qualify when every part does; `Closeable` types never do; of the collections only `List` qualifies, never `Map` or `Set`; `JsonValue` is declared `Data`, so a JSON object travels as one. A type with a `JsonEncode` implementation qualifies; the codec owns its JSON form |
 | A named operation contract | Type supplies the required operations through an explicit implementation |
 
-Bounds are checked at every application, and `Hashable` implies `Equal`. No sharing bound exists, and sharing adds no synchronization. Contract types gain no equality or hashing.
+Bounds are checked at every application; `Hashable` implies `Equal`, and `Data` and `Hashable` imply `Clonable`. No sharing bound exists, and sharing adds no synchronization. Contract types gain no equality or hashing.
 
 `Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/core.ms`: bounds, parameter types, type arguments, and `impl` targets. Their prelude names cannot be redefined by declarations, imports, or type parameters.
 
