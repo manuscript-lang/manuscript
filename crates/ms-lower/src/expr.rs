@@ -359,11 +359,7 @@ impl<'a> FnLower<'a> {
             .iter()
             .position(|f| f.0 == name)
             .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
-        let mut f = self.b.rec_get(rid, idx, obj.v);
-        // A `ref` field holds a view; reading it borrows what it views.
-        if matches!(self.b.m.types.kind(self.ty_of(f)), TyKind::Ref(_)) {
-            f = self.b.ref_get(f);
-        }
+        let f = self.b.rec_get(rid, idx, obj.v);
         if let Some((uid, names)) = self.resource_move_of(e) {
             let o = self.moved_field(uid, &names, f)?;
             return Ok(Val { v: o, own: true });
