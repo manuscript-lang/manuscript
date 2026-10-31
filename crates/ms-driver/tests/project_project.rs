@@ -294,7 +294,7 @@ fn reserved_std_alias_is_not_suggested() {
 #[test]
 fn imports_table_parses_and_validates() {
     let (_dir, p) = fixture(&format!(
-        "{MANIFEST}[imports]\n\"src/**\" = [\"src/**\", \"@std/json.ms\"] # agent code\n\"types/**\" = [ \"@std/**\" ]\n\"tests/**\" = []\n"
+        "{MANIFEST}[imports]\n\"src/**\" = [\"src/**\", \"@std/json.ms\",] # agent code\n\"types/**\" = [ \"@std/**\", \"extern\" ] # [not an array]\n\"tests/**\" = []\n\"gen/*#*.ms\" = [\"@std/#.ms\"]\n"
     ));
     let rules: Vec<(&str, Vec<&str>)> = p
         .imports
@@ -310,8 +310,9 @@ fn imports_table_parses_and_validates() {
         rules,
         vec![
             ("src/**", vec!["src/**", "@std/json.ms"]),
-            ("types/**", vec!["@std/**"]),
+            ("types/**", vec!["@std/**", "extern"]),
             ("tests/**", vec![]),
+            ("gen/*#*.ms", vec!["@std/#.ms"]),
         ]
     );
     assert_eq!(p.imports[1].location.line, 7);
@@ -319,17 +320,18 @@ fn imports_table_parses_and_validates() {
         (
             "string value",
             "\"src/**\" = \"src/**\"\n",
-            "arrays of double-quoted patterns",
+            "one-line arrays of double-quoted patterns",
         ),
-        (
-            "bare item",
-            "\"src/**\" = [src]\n",
-            "arrays of double-quoted patterns",
-        ),
+        ("bare item", "\"src/**\" = [src]\n", "one-line arrays"),
         (
             "missing comma",
             "\"src/**\" = [\"a\" \"b\"]\n",
-            "arrays of double-quoted patterns",
+            "one-line arrays",
+        ),
+        (
+            "multi-line array",
+            "\"src/**\" = [\n  \"a\",\n]\n",
+            "on one line",
         ),
         (
             "absolute pattern",
@@ -340,6 +342,11 @@ fn imports_table_parses_and_validates() {
             "backslash",
             "\"src/**\" = [\"src\\\\a.ms\"]\n",
             "project-relative paths",
+        ),
+        (
+            "partial double star",
+            "\"src/**\" = [\"a**b\"]\n",
+            "** stands alone",
         ),
         (
             "duplicate",

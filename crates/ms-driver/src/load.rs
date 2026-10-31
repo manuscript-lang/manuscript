@@ -365,20 +365,29 @@ impl Loader<'_> {
         };
         let key = n(file);
         let mut resolved: Vec<(ms_syntax::NodeId, Name)> = Vec::new();
+        // `@std` imports and `extern fn` declarations reach outside the file without resolution,
+        // so the allow list checks them here; local imports are checked once resolved.
+        let externs = module.decls.iter().filter_map(|d| {
+            matches!(&d.kind, ms_syntax::ast::DeclKind::Fn(f) if f.external).then_some(d.pos)
+        });
+        let standard = module
+            .imports
+            .iter()
+            .filter(|item| item.path.starts_with("@std/"))
+            .map(|item| (item.path.as_str(), item.pos));
+        for (target, pos) in standard.chain(externs.map(|pos| ("extern", pos))) {
+            if let Err(message) = crate::project::check_import(self.config, canonical, target) {
+                let failure = Failure::diagnostic(Box::new(resolution(file, pos, message)));
+                if !self.recover {
+                    return Err(failure);
+                }
+                self.graph
+                    .diagnostics
+                    .push(failure.into_diagnostic(file, pos));
+            }
+        }
         for item in &module.imports {
             if item.path.starts_with("@std/") {
-                if let Err(message) =
-                    crate::project::check_import(self.config, canonical, &item.path)
-                {
-                    let failure =
-                        Failure::diagnostic(Box::new(resolution(file, item.pos, message)));
-                    if !self.recover {
-                        return Err(failure);
-                    }
-                    self.graph
-                        .diagnostics
-                        .push(failure.into_diagnostic(file, item.pos));
-                }
                 continue;
             }
             match self.import_module(canonical, file, item) {
@@ -598,6 +607,7 @@ mod tests {
                     ("src/value.ms", "export let value = 1\n"),
                     ("src/fs.ms", "import read_file from \"@std/fs.ms\"\n"),
                     ("src/lib.ms", "import a from \"../lib/a.ms\"\n"),
+                    ("src/native.ms", "extern fn labs(value: Int) Int\n"),
                     (
                         "lib/a.ms",
                         "import read_file from \"@std/fs.ms\"\nexport let a = 1\n",
@@ -614,6 +624,7 @@ mod tests {
                 for (name, target, line) in [
                     ("src/fs.ms", "@std/fs.ms", 1),
                     ("src/lib.ms", "lib/a.ms", 1),
+                    ("src/native.ms", "extern", 1),
                 ] {
                     let d = loader
                         .visit(&format!("{root}/{name}"))

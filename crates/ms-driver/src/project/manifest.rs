@@ -219,16 +219,21 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                     format!("duplicate manifest key {id}; each key may be set once"),
                 ));
             }
-            let allowed = import_list(value)
-                .ok_or_else(|| fail.at(&location, format!("[imports] values are arrays of double-quoted patterns; write \"{key}\" = [\"src/**\", \"@std/json.ms\"]")))?;
-            if key.is_empty()
-                || key.starts_with('/')
-                || key.contains('\\')
-                || allowed
-                    .iter()
-                    .any(|a| a.is_empty() || a.starts_with('/') || a.contains('\\'))
-            {
-                return Err(fail.at(&key_location, format!("[imports] patterns are project-relative paths with / separators, such as \"src/**\" or \"@std/json.ms\"; fix \"{key}\"")));
+            let allowed = import_list(value).ok_or_else(|| {
+                fail.at(
+                    &location,
+                    format!(
+                        "[imports] values are one-line arrays of double-quoted patterns; write \"{key}\" = [\"src/**\", \"@std/json.ms\"] on one line"
+                    ),
+                )
+            })?;
+            for pattern in std::iter::once(&key).chain(&allowed) {
+                if let Some(problem) = crate::project::imports::pattern_problem(pattern) {
+                    return Err(fail.at(
+                        &key_location,
+                        format!("[imports] pattern \"{pattern}\" is invalid: {problem}"),
+                    ));
+                }
             }
             p.assignments.insert(
                 id,
