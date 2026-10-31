@@ -1,6 +1,6 @@
 # Remove `ref` from the language
 
-Status: proposal, 2026-10-31, checked against main. Not reviewed by a skeptical reviewer yet. The dependency (list-element and string-view move-out) was investigated and dropped: no measured Release gain. Direction (Chinmay, 2026-10-30): "a sound and performant copy semantics implementation, no special casing, everything should be cleanly handled by language rules and semantics".
+Status: proposal, 2026-10-31, checked against main. Approved by Chinmay 2026-10-31: "let's rely on copy elision, make all methods return a copy". Skeptical review done (below). The dependency (list-element and string-view move-out) was investigated and dropped: no measured Release gain. Direction (Chinmay, 2026-10-30): "a sound and performant copy semantics implementation, no special casing, everything should be cleanly handled by language rules and semantics".
 
 ## Summary
 
@@ -61,7 +61,7 @@ fn size(l: Line) Int:
 | `stdlib/*.ms`, `bindings.json` | drop `ref` from 34 occurrences in 9 files; natives that lent now return owned values | stdlib e2e, leak sweep |
 | formatter, lint, LSP, VS Code | drop keyword and hints | tooling tests |
 | docs | rewrite `types/references.md`, `grammar.md`, `contracts.md`, `loops.md`; `ms guide` | `make docs`, `make repo-check` |
-| `ms-rt`, codegen | unchanged | |
+| `ms-rt`, `ms-clif`, ABI | lending natives return owned values; `bindings.json` and interface method tables follow | leak sweep, native tests |
 
 ## Alternatives
 
@@ -72,12 +72,23 @@ fn size(l: Line) Int:
 
 ## Staging and verification
 
-1. Migrate stdlib and tests off `ref` (add `.clone()` at lend sites); re-record `count-check` headers, each raised count with its reason; delete `*_via_ref.ms`. Gate: `make verify-full` and `bench/perf` tables with no regression above noise, on all three platforms.
-2. Remove syntax, checker rules, MIR types, docs, tooling; keep a migration hint for one release.
+Each stage is its own PR on auto-merge and lands green on Linux, macOS and Windows; no test is disabled.
 
-No test is disabled on any platform.
+1. Evidence first: run `bench/perf` (5 runs, stated noise band) plus a hot `trim()` / `Map.get` loop over large values; record in `bench/perf` results. Update the `lend_via_clone.ms` header that names guaranteed elision as the precondition for removing `ref`, and say why it is dropped (no measured wall-time gain).
+2. Leaf lenders, one family per PR, each re-recording `count-check` headers with the reason: `trim*`, `List.get/first/last`, then `Map.get`, then `json` and `http`.
+3. Interface and carrier lenders together, because every implementation of a `ref` operation must agree: `Iterator.next`, `DequeIter`, `QueueIter`, `PriorityQueueIter`, `io.ms` line reader, and the `source: ref` carrier fields.
+4. Remove syntax, checker rules, MIR `ret_borrowed`, docs (`references.md`, `grammar.md`, `OWNERSHIP.md`), tooling; keep a migration hint for one release.
+
+## Skeptical review outcome
+
+- Wall-time evidence was thin (best of 2, clone vs move, not vs `ref`, no string views). Addressed by stage 1 before any migration.
+- Fixture headers named guaranteed elision as the precondition. Addressed in stage 1.
+- Non-Clonable and generic lenders (`Optional.get`, `Shared.get`, `Deque.front/back/at`, `Iterator.next`): an owned return needs `T: Clonable` (`stdlib/core.ms:172`), which excludes functions, interface values and resource handles. Decision: add the bound; resources are taken with `pop`/`take`, not read with `get`. This is a visible API change; see Open questions.
+- `ms-rt`/codegen are not unchanged: lending natives (`trim`, `Map.get`) return owned values, which changes `bindings.json` ABI and `ret_borrowed` in `ms-mir/src/types.rs`. Components table to include `ms-clif`, interface method tables, `OWNERSHIP.md`.
+- Stage 1 of the earlier draft could not stay green incrementally (interface `ref` agreement); stages are reordered as above.
 
 ## Open questions
 
 - Is losing `var ys = b.list()` write-through acceptable? Recommendation: yes; it is the one visible behavior change and matches value semantics.
+- Is a `T: Clonable` bound on `Optional.get`, `Shared.get`, `Deque.front/back/at` and `Iterator.next` acceptable? Recommendation: yes (matches "all methods return a copy"); resource containers are consumed with `pop`/`take`.
 - Do iterators over large element types regress? Recommendation: measure in stage 1 and fix with a cursor, not `ref`.
