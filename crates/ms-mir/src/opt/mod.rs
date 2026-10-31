@@ -21,6 +21,7 @@ pub mod copyelim;
 pub mod ifconv;
 pub mod inline;
 pub mod lastuse;
+pub mod loopslot;
 pub mod optparam;
 pub mod range;
 pub mod reserve;
@@ -97,6 +98,8 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     check(m, "buildmove");
     slotfuse::run(m);
     check(m, "slotfuse");
+    loopslot::run(m);
+    check(m, "loopslot");
     for round in 0..3 {
         let mut changed = optparam::run(m);
         check(m, "optparam");
