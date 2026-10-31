@@ -1,0 +1,6 @@
+fn f(value:
+OPEN
+        Int
+CLOSE
+) Unit:
+    return unit

@@ -22,3 +22,6 @@ Verify: compare optimized MIR and native binaries before/after on real programs,
 Verify: simplify unused arithmetic chains at N/2N/4N; shared operands disappear without deleting an unused overflow check.
 Verify: `ms test tests/e2e/testdata/stdlib/json-accessors.ms --build-type Release` with the debug `ms` (MIR verified after every pass) passes.
 Verify: forty-level branching prefixes and distinct diamond arms into preserving cycles check without expanding every path; direct and mutual cycles, changed arguments, acyclic tails, and same-spelled declarations in different modules keep their diagnostics.
+
+Verified: lexer header depths stay nondecreasing because pushes use the current delimiter depth and closers discard greater depths. Membership at the current depth is a tail check; scanning the entire stack on every physical line makes multiline function-type signatures quadratic. Preserve anonymous-function and match suites inside delimiters when using this invariant.
+Evidence: [lexer](../../crates/ms-syntax/src/lexer.rs), [header layout regressions](../../crates/ms-syntax/tests/function_depth.rs), [throughput controls](../../bench/perf/lexer-header-depth/README.md).
