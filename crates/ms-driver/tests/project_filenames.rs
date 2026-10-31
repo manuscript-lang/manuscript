@@ -1,6 +1,7 @@
 //! Discovery must not replace filesystem names before selecting source modules.
 
-#![cfg(unix)]
+// These fixtures create invalid UTF-8 names, which APFS does not permit.
+#![cfg(target_os = "linux")]
 
 mod common;
 
