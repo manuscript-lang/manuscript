@@ -64,31 +64,14 @@ jobs:
             {\"os\":\"windows\",\"arch\":\"amd64\",\"runner\":\"windows-2025\",\"tests\":true,\"corpus\":true,\"cranelift\":true},
             {\"os\":\"windows\",\"arch\":\"arm64\",\"runner\":\"windows-11-arm\",\"tests\":true,\"corpus\":true}"
           fi
-          # Each platform splits into parts that run on separate runners at once. Pushes and merge groups
-          # start six platforms, so they use three parts each to stay near the account's 20-job limit:
-          # `unit` (format, clippy, nextest, doc tests), `conform` (corpus and e2e fixtures) and `extra`
-          # (release builds, source conformance, ownership gates, packaging, and the Cranelift corpus and
-          # fixtures where the leg has `cranelift`). Pull requests start two platforms, so they split
-          # further into `corpus`, `e2e` and `clif`. Every part is a full job on the platform, so no
-          # platform loses coverage; only wall time shrinks.
-          if [ "$EVENT" = pull_request ]; then
-            parts='["unit","corpus","e2e","extra"]'
-            split='{"corpus_part":"corpus","e2e_part":"e2e","clif_part":"clif"}'
-          else
-            parts='["unit","conform","extra"]'
-            split='{"corpus_part":"conform","e2e_part":"conform","clif_part":"extra"}'
-          fi
-          matrix=$(echo "{\"include\":[$include]}" | jq -c --argjson parts "$parts" --argjson split "$split" \
-            '{include: [.include[] | . as $leg
-              | ($parts + (if $leg.cranelift and ($split.clif_part == "clif") then ["clif"] else [] end))[] as $part
-              | $leg + $split + {part: $part}]}')
-          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "matrix={\"include\":[$include]}" | tr -d '\n' >> "$GITHUB_OUTPUT"
+          echo >> "$GITHUB_OUTPUT"
 
-  # Each platform runs as four or five parts in parallel (see the matrix step in `changes`), so the
-  # slowest part, not the sum of all of them, sets the wall time. Tests also parallelize inside a
-  # part: nextest and the corpus runner both use every core.
+  # One job per platform runs everything for that platform in sequence, so a pull request
+  # starts six Rust runners, not dozens (the account runs 20 jobs at once). Tests parallelize
+  # inside the job: nextest and the corpus runner both use every core.
   rust:
-    name: Rust ${{ matrix.os }}-${{ matrix.arch }} ${{ matrix.part }}
+    name: Rust ${{ matrix.os }}-${{ matrix.arch }}
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     runs-on: ${{ matrix.runner }}
@@ -119,7 +102,7 @@ jobs:
       - id: sccache
         uses: ./.github/actions/sccache
         with:
-          prefix: cargo-sccache-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.part }}-
+          prefix: cargo-sccache-${{ matrix.os }}-${{ matrix.arch }}-
       - name: Keep native test artifacts in runner storage
         run: |
           printf '%s\n' "TMPDIR=$RUNNER_TEMP" "TMP=$RUNNER_TEMP" "TEMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
@@ -128,7 +111,7 @@ jobs:
         with:
           arch: ${{ matrix.arch == 'arm64' && 'amd64_arm64' || 'amd64' }}
       - uses: taiki-e/install-action@v2
-        if: matrix.part == 'unit' && (matrix.full || matrix.tests)
+        if: matrix.full || matrix.tests
         with:
           tool: nextest
       - name: Select native Windows Rust host and MSVC linker
@@ -162,7 +145,6 @@ jobs:
           arch: ${{ matrix.arch }}
       # Runner images often ship the LLVM tools already; install only when they are missing.
       - name: Install LLVM native debug consumers
-        if: matrix.part == 'unit'
         run: |
           if command -v llvm-dwarfdump >/dev/null 2>&1 && command -v llvm-symbolizer >/dev/null 2>&1; then
             echo "LLVM debug consumers already installed"
@@ -177,13 +159,13 @@ jobs:
           fi
       - name: Restore Windows x64 LLVM consumers
         id: llvm-debug
-        if: matrix.part == 'unit' && runner.os == 'Windows' && matrix.arch == 'amd64'
+        if: runner.os == 'Windows' && matrix.arch == 'amd64'
         uses: actions/cache/restore@v6
         with:
           path: ${{ runner.temp }}/llvm-debug-23.1.1
           key: llvm-debug-windows-x64-23.1.1-c54ac814
       - name: Install Windows x64 LLVM consumers
-        if: matrix.part == 'unit' && runner.os == 'Windows' && matrix.arch == 'amd64'
+        if: runner.os == 'Windows' && matrix.arch == 'amd64'
         run: |
           temp_root=$(cygpath -u "$RUNNER_TEMP")
           tools="$temp_root/llvm-debug-23.1.1"
@@ -198,7 +180,7 @@ jobs:
           fi
           cygpath -w "$tools" >> "$GITHUB_PATH"
       - name: Save Windows x64 LLVM consumers
-        if: matrix.part == 'unit' && github.ref == 'refs/heads/main' && runner.os == 'Windows' && matrix.arch == 'amd64' && steps.llvm-debug.outputs.cache-hit != 'true'
+        if: github.ref == 'refs/heads/main' && runner.os == 'Windows' && matrix.arch == 'amd64' && steps.llvm-debug.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ runner.temp }}/llvm-debug-23.1.1
@@ -206,7 +188,7 @@ jobs:
       - name: Build the native runtime
         run: cargo xtask runtime
       - name: Format and clippy
-        if: matrix.part == 'unit' && matrix.full
+        if: matrix.full
         run: |
           cargo fmt --all --check
           cargo clippy --workspace --all-targets -- -D warnings
@@ -217,7 +199,7 @@ jobs:
       # that ms-rt itself depends on cannot link it back in, so test builds on Windows let the
       # linker leave those references unresolved. Distribution builds never use this flag.
       - name: Tests and doc tests
-        if: matrix.part == 'unit' && (matrix.full || matrix.tests)
+        if: matrix.full || matrix.tests
         run: |
           if [ "$RUNNER_OS" = Windows ]; then
             export RUSTFLAGS='-C link-arg=/FORCE:UNRESOLVED'
@@ -231,7 +213,6 @@ jobs:
         if: ${{ !(matrix.full || matrix.tests) }}
         run: cargo test --locked -p ms-mir --test opt_overflow -- --nocapture
       - name: Build CLI for native source conformance
-        if: matrix.part == 'unit' || matrix.part == 'extra'
         run: |
           set -euo pipefail
           reports="$RUNNER_TEMP/ms-native-conformance"
@@ -242,10 +223,9 @@ jobs:
           rustc -vV > "$reports/host.txt"
           cargo build --locked -p ms-cli 2>&1 | tee "$reports/build.log"
       - name: Native Windows project paths
-        if: matrix.part == 'unit' && runner.os == 'Windows'
+        if: runner.os == 'Windows'
         run: cargo test --locked -p ms-driver --test project_windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
       - name: Release builds use the bundled LLVM tools
-        if: matrix.part == 'extra'
         run: |
           set -euo pipefail
           # MS_KEEP_LL copies the LLVM IR next to the build, so it exists only when LLVM compiled the program.
@@ -253,7 +233,6 @@ jobs:
           mkdir -p "$dir"
           (cd "$dir" && MS_KEEP_LL=1 "$GITHUB_WORKSPACE/target/debug/ms" build "$GITHUB_WORKSPACE/examples/hello/ms.toml" -o hello --build-type Release && test -s ms-keep.ll && ./hello)
       - name: Native standard-library source conformance
-        if: matrix.part == 'extra'
         run: |
           set -euo pipefail
           ms=target/debug/ms
@@ -291,33 +270,32 @@ jobs:
           cargo test --locked -p ms-build --test debug_artifacts -- --nocapture
           cargo test --locked -p ms-build --lib -- --nocapture
       - name: Rust ms replays the corpus
-        if: matrix.part == matrix.corpus_part && matrix.corpus
+        if: matrix.corpus
         run: sh scripts/conform.sh
       - name: Rust ms runs the e2e fixtures
-        if: matrix.part == matrix.e2e_part && matrix.corpus
+        if: matrix.corpus
         run: sh scripts/e2e.sh
       - name: Rust ms replays the corpus on Cranelift
-        if: matrix.part == matrix.clif_part && matrix.cranelift
+        if: matrix.cranelift
         env:
           MS_BACKEND: cranelift
         run: sh scripts/conform.sh
       - name: Rust ms runs the e2e fixtures on Cranelift
-        if: matrix.part == matrix.clif_part && matrix.cranelift
+        if: matrix.cranelift
         env:
           MS_BACKEND: cranelift
         run: sh scripts/e2e.sh
       - name: Cancelled tasks release what they own
-        if: matrix.part == 'extra' && matrix.corpus
+        if: matrix.corpus
         run: |
           sh scripts/leak-check.sh tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release-shapes.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release-vars.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-channel-wait-memory.ms
       - name: Ownership counts and cleanup order hold
-        if: matrix.part == 'extra' && matrix.corpus
+        if: matrix.corpus
         run: sh scripts/count-check.sh
       - name: Package and run the distribution on a hello project
-        if: matrix.part == 'extra'
         run: |
           sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"
           name="manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}"
@@ -348,7 +326,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: rust-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.part }}
+          name: rust-${{ matrix.os }}-${{ matrix.arch }}
           path: |
             .artifacts/conform.md
             ${{ runner.temp }}/ms-clif-tests-*
