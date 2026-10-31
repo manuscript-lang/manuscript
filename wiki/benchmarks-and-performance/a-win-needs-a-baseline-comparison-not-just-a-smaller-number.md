@@ -35,6 +35,13 @@ An initial allocation replay copied a stale executable from another Cargo
 target directory; use the explicit build target and verify artifact identities.
 Evidence: [complete utility controls and rejected candidates](../../bench/perf/pure-utilities/README.md).
 
+Verified (2026-10-31, YAML direct escape append): removing radix formatting and
+writing digits into the existing builder improved dense cached-file serialization
+2.20x but regressed a late sparse escape4.44%, slower in12/12 long paired trials.
+The [rejected study](../../bench/perf/yaml-append-escapes/README.md) retains both.
+Include fresh external-input controls; invariant-value output guards alone do not
+prove repeated serialization work.
+
 Verified (2026-10-31, normalization): ASCII identity shortcuts can win over 200x
 on ASCII while slowing Unicode controls by several percent. A content-based
 first-byte gate removed one flag but exposed other NFD costs; both were rejected.

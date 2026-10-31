@@ -1,0 +1,31 @@
+{
+  "command": [
+    ".artifacts/yaml-append-escapes/memory.py",
+    "--environment",
+    ".artifacts/yaml-append-escapes/file-full/environment.json",
+    "--inputs",
+    ".artifacts/yaml-append-escapes/file-full",
+    "--rss",
+    "/workspace/serialization-perf/.artifacts/toml-quoting/rss",
+    "--output",
+    ".artifacts/yaml-append-escapes/memory"
+  ],
+  "driver_sha256": "7c2f56fd1a980c2f013f051a642ba1867bc62551c2a8c2e5c52a549d2c2eb249",
+  "timing_environment_sha256": "cb55595dbab7c787e03addcfd4f5974ac534a73ad5b7d4c8e89eabf5f516fa4e",
+  "binaries": {
+    "before": {
+      "path": "/workspace/yaml-perf/.artifacts/yaml-append-escapes/file-before",
+      "sha256": "5ad8551a78ab1d9132008bef61c8eee45c27d90cc17c3e6ae316cf20e904ea4c"
+    },
+    "after": {
+      "path": "/workspace/yaml-perf/.artifacts/yaml-append-escapes/file-after",
+      "sha256": "19448e1dd230901cd927eb85880dffc429b271750179da06c4c2c3f775151132"
+    },
+    "rust": {
+      "path": "/workspace/yaml-perf/.artifacts/yaml-append-escapes/harness/rust/target/release/file-writer",
+      "sha256": "c7a8d2423778d2af49e2027aa4b307b0374d2293eb63deca4ec7ceaace768352"
+    }
+  },
+  "rss_sha256": "09441b9246dd4d6a5b1454b9d3652f8a8b3dc1b1f925218d00fa91d3fdc98347",
+  "note": "Fresh child whole-process RSS includes setup, semantic full-output guards, 3 cached-file reads/map-creation/stringify operations; not allocation counts."
+}

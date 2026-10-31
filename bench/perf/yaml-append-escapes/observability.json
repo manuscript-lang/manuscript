@@ -1,0 +1,19 @@
+{
+  "driver_sha256": "b71f213c652dc866fcd12ac815845e20c3ab727139d7256c314d2031106e6a88",
+  "records": [
+    {
+      "label": "before",
+      "binary": "/workspace/yaml-perf/.artifacts/yaml-append-escapes/file-before",
+      "sha256": "5ad8551a78ab1d9132008bef61c8eee45c27d90cc17c3e6ae316cf20e904ea4c",
+      "exit": 1,
+      "result": "changed external input rejected after setup"
+    },
+    {
+      "label": "after",
+      "binary": "/workspace/yaml-perf/.artifacts/yaml-append-escapes/file-after",
+      "sha256": "19448e1dd230901cd927eb85880dffc429b271750179da06c4c2c3f775151132",
+      "exit": 1,
+      "result": "changed external input rejected after setup"
+    }
+  ]
+}
