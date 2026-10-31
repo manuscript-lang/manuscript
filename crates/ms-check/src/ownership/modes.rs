@@ -134,7 +134,7 @@ pub fn call_modes(
                 }
                 None => {
                     // A native runs the function arguments it is given before it returns,
-                    // unless bindings.json declares it keeps them.
+                    // unless it is one of the externs that keep them.
                     let runs_now = !crate::stdlib::keeps_callbacks(s.native.as_str());
                     let params = s.ty().params.clone();
                     CallModes {

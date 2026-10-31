@@ -14,7 +14,7 @@
           "file": "pkg-tooling-testeffectsincludetransitivecallsandimplicitclea-1.ms",
           "line": 12,
           "column": 14,
-          "offset": 429
+          "offset": 430
         },
         "fix": {
           "position": {
@@ -38,16 +38,16 @@
         "message": "cannot move `item` out: a function value only borrows its arguments, and the resource `Resource` stays with its caller, which closes it; use `item` in place here",
         "position": {
           "file": "pkg-tooling-testeffectsincludetransitivecallsandimplicitclea-1.ms",
-          "line": 26,
+          "line": 27,
           "column": 21,
-          "offset": 720
+          "offset": 745
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-testeffectsincludetransitivecallsandimplicitclea-1.ms:12:14: type: cannot change `self.state`: this method does not change its receiver; declare it `var fn` to allow that\n    |\n 12 |         self.state.dequeue()\n    |              ^\n<DIR>/pkg-tooling-testeffectsincludetransitivecallsandimplicitclea-1.ms:26:21: type: cannot move `item` out: a function value only borrows its arguments, and the resource `Resource` stays with its caller, which closes it; use `item` in place here\n    |\n 26 |         let _held = item\n    |                     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-testeffectsincludetransitivecallsandimplicitclea-1.ms:12:14: type: cannot change `self.state`: this method does not change its receiver; declare it `var fn` to allow that\n    |\n 12 |         self.state.dequeue()\n    |              ^\n<DIR>/pkg-tooling-testeffectsincludetransitivecallsandimplicitclea-1.ms:27:21: type: cannot move `item` out: a function value only borrows its arguments, and the resource `Resource` stays with its caller, which closes it; use `item` in place here\n    |\n 27 |         let _held = item\n    |                     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

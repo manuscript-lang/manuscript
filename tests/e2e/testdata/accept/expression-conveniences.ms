@@ -11,14 +11,15 @@ type Resource:
 
 # Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _written = filesystem().write_file(self.marker, "closed", true)
+        return ok(unit)
 
 fn closed(marker: String) Bool: filesystem().read_file(marker).is_ok()
 
 fn identity[T](value: T) T: return value
 
-fn amount(text: String, marker: String) Result[Int, TextError]:
+fn amount(text: String, marker: String) Int!TextError:
     let _resource = Resource(marker: marker.clone())
 
     let cents = match text.parse_int():
@@ -41,7 +42,7 @@ fn all_return(value: Int?) Int:
         number: return number
         none: return 9
 
-fn tick(var counter: Counter) Result[Int, Error]:
+fn tick(var counter: Counter) Int!:
     counter.count | try expect_equal(1)
     counter.count = counter.count + 1
     return ok(0)
@@ -107,7 +108,7 @@ test "match expressions preserve returns and cleanup":
     let invalid = amount(text: "invalid", marker: "{dir}/invalid")
     (invalid != Result[Int, TextError].error(cause: TextError("Invalid amount"))) | try expect_false
     closed("{dir}/invalid") | try expect_true
-    temporary.close()
+    try temporary.close()
 
     let nested = match present:
         value:
@@ -189,7 +190,7 @@ test "contextual values infer from later arms":
 
     list[0] | try expect_equal(5)
 
-fn returned_argument(var counter: Counter) Result[Int, Error]:
+fn returned_argument(var counter: Counter) Int!:
     let absent: Int? = none
     return ok(
         combine(
@@ -203,7 +204,7 @@ fn returned_argument(var counter: Counter) Result[Int, Error]:
 
 fn combine(first: Int, second: Int) Int: return first + second
 
-fn propagated(text: String) Result[Int, TextError]:
+fn propagated(text: String) Int!TextError:
     let result = match text.parse_int():
         value:
             try Result[Int, TextError].ok(value: value)

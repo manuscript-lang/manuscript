@@ -143,7 +143,7 @@ test "Fetcher.stream returns the body incrementally and reuses the client":
 
     try expect_equal(out.build(), "0123456789".to_bytes())
     try expect_equal(body.metadata().status, 200)
-    body.close()
+    try body.close()
 
     let again = try client.fetch(url)
     try expect_equal(again.body.length(), 10)
@@ -151,7 +151,7 @@ test "Fetcher.stream returns the body incrementally and reuses the client":
 test "a closed Fetcher returns Closed":
     let server = try network().serve("127.0.0.1:0", buffered(route))
     var client = try fetcher()
-    client.close()
+    try client.close()
 
     let sent = client.fetch("http://{server.address()}/big")
     try expect_equal(sent.err().message(), "HTTP: resource is closed")

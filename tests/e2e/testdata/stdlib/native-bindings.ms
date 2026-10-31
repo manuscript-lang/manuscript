@@ -6,10 +6,7 @@ import milliseconds, sleep from "@std/time.ms"
 import TaskGroup from "@std/tasks.ms"
 import Shared, share from "@std/shared.ms"
 
-fn expect_process_error[T](
-    outcome: Result[T, ControlError],
-    expected: ControlError
-) Result[Unit, Error]:
+fn expect_process_error[T](outcome: T!ControlError, expected: ControlError) Unit!:
     match outcome:
         ok(_): return error(TextError("process misuse succeeded"))
         error(cause):
@@ -17,10 +14,7 @@ fn expect_process_error[T](
 
     return ok(unit)
 
-fn expect_fs_error[T](
-    outcome: Result[T, FileSystemError],
-    expected: FileSystemError
-) Result[Unit, Error]:
+fn expect_fs_error[T](outcome: T!FileSystemError, expected: FileSystemError) Unit!:
     match outcome:
         ok(_): return error(TextError("filesystem misuse succeeded"))
         error(cause):
@@ -115,7 +109,7 @@ test "polling and native watchers report a created file and close":
     var polling = try fs.watch(path: root, recursive: false, interval: milliseconds(20))
     try fs.write_file(path: "{root}/a.txt", data: "x", replace: false)
     try expect_true(saw(try polling.next(), join([root.clone(), "a.txt"]), "rename"))
-    polling.close()
+    try polling.close()
 
     let native = try fs.watch_native(path: root, recursive: false, overflow: "error")
     try fs.write_file(path: "{root}/b.txt", data: "y", replace: false)
@@ -140,7 +134,7 @@ test "native watcher max_entries counts the paths under the root":
     var w = try fs.watch_native(
         path: t.path(), recursive: true, max_entries: 2, overflow: "error"
     )
-    w.close()
+    try w.close()
 
 fn wait_next(w: Shared[FileWatcher]) Int:
     let r = w.get().next()
@@ -159,7 +153,7 @@ test "close wakes a pending native next with Closed":
     let a = w
     group.spawn(fn ch: wait_next(a))
     sleep(100.milliseconds)
-    w.get().close()
+    try w.get().close()
 
     let got = try group.results()
     try expect_equal(got[0], 2)
@@ -178,8 +172,8 @@ test "a group timeout cancels a task waiting on a watcher":
     let c = group.spawn(fn ch: 7)
     try expect_equal(c.result().get(-1), 7)
     try expect_true(h.result().is_error())
-    group.close()
-    w.get().close()
+    try group.close()
+    try w.get().close()
 
 test "recursive native watch sees a file in a new subdirectory":
     let fs = filesystem()

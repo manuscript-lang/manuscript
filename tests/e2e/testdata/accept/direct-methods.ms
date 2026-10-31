@@ -59,10 +59,10 @@ type Parser:
     base: Int
 
 interface Parse:
-    fn parse(n: Int) Result[Int, TextError]
+    fn parse(n: Int) Int!TextError
 
 impl Parse for Parser:
-    fn parse(n: Int) Result[Int, TextError]:
+    fn parse(n: Int) Int!TextError:
         if n < 0:
             return error(TextError("negative"))
 
@@ -72,13 +72,13 @@ type Chain:
     parser: Parser
 
 interface Step:
-    fn step(n: Int) Result[Int, TextError]
+    fn step(n: Int) Int!TextError
 
 impl Step for Chain:
-    fn step(n: Int) Result[Int, TextError]:
+    fn step(n: Int) Int!TextError:
         return ok((try self.parser.parse(n)) + 1)
 
-fn code(r: Result[Int, TextError]) Int:
+fn code(r: Int!TextError) Int:
     return r.get(-1)
 
 fn run_direct(chain: Chain, n: Int) Int:

@@ -4,7 +4,7 @@
 import expect_equal from "@std/test.ms"
 import NormalizationForm, StringError from "@std/string.ms"
 
-fn normalize(form: NormalizationForm, text: String) Result[String, StringError]:
+fn normalize(form: NormalizationForm, text: String) String!StringError:
     return form.normalize(text)
 
 fn call[T](operation: fn(String, Int?) T, text: String) T:

@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-build-testlibraryerrordomainsaredistinct-2.ms",
           "line": 4,
-          "column": 25,
-          "offset": 178
+          "column": 17,
+          "offset": 170
         },
         "fix": {
           "position": {
@@ -40,7 +40,7 @@
           "file": "pkg-build-testlibraryerrordomainsaredistinct-2.ms",
           "line": 5,
           "column": 25,
-          "offset": 214
+          "offset": 205
         },
         "fix": {
           "position": {
@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testlibraryerrordomainsaredistinct-2.ms:4:25: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n   |\n 4 | fn wrong() Result[Unit, JsonError]:\n   |                         ^\n<DIR>/pkg-build-testlibraryerrordomainsaredistinct-2.ms:5:25: resolution: unknown binding EncodingError; add: import EncodingError from \"@std/encoding.ms\"\n   |\n 5 |     return error(cause: EncodingError.InvalidData)\n   |                         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testlibraryerrordomainsaredistinct-2.ms:4:17: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n   |\n 4 | fn wrong() Unit!JsonError:\n   |                 ^\n<DIR>/pkg-build-testlibraryerrordomainsaredistinct-2.ms:5:25: resolution: unknown binding EncodingError; add: import EncodingError from \"@std/encoding.ms\"\n   |\n 5 |     return error(cause: EncodingError.InvalidData)\n   |                         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

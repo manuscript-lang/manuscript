@@ -35,7 +35,7 @@ export fn main() Int:
                 let _ = stdout().write("error\r\n")
                 done = true
 
-        term.close()
+        term.close().get(none)
         return 0
 
     let _ = stdout().write("no raw mode\n")

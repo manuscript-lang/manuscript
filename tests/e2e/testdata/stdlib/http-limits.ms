@@ -35,7 +35,7 @@ test "serve timeout closes idle connections":
     let closed = silent.read(timeout: 3.seconds) | try expect_ok
     if let _data = closed: return error(TextError("silent connection was answered"))
 
-    silent.close()
+    try silent.close()
 
     let reused = net.connect(server.address(), 2.seconds) | try expect_ok
     reused.write("GET / HTTP/1.1\r\nHost: t\r\n\r\n", 2.seconds) | try expect_ok

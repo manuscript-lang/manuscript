@@ -7,7 +7,7 @@ fn halve(n: Int) Int?:
 
     return (n / 2)
 
-fn parse(n: Int) Result[Int, TextError]:
+fn parse(n: Int) Int!TextError:
     if n < 0:
         return error(cause: TextError("negative"))
 

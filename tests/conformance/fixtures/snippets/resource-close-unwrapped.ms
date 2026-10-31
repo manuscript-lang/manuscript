@@ -8,16 +8,17 @@ type Res:
     name: String
 
 impl Closeable for Res:
-    var fn close() Unit:
+    var fn close() Unit!:
         stdout().write("close {self.name}\n").get()
+        return ok(unit)
 
-fn make(name: String) Result[Res, TextError]:
+fn make(name: String) Res!TextError:
     return ok(Res(name))
 
 fn keep(r: Res) Res:
     return r
 
-fn via_try() Result[Unit, TextError]:
+fn via_try() Unit!TextError:
     let r = try make("try")
     stdout().write("body {r.name}\n").get()
     return ok(unit)

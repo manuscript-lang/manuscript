@@ -6,7 +6,7 @@ type Door:
     name: String
 
 impl Closeable for Door:
-    var fn close() Unit: return
+    var fn close() Unit!: return ok(unit)
 
 export fn main() Int:
     let s = Set[Door]()

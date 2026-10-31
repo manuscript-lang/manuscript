@@ -19,7 +19,7 @@ type Done:
     id: Int
     count: Int
 
-fn square_each(var ch: Channel[Int, Int]) Result[Unit, ChannelError]:
+fn square_each(var ch: Channel[Int, Int]) Unit!ChannelError:
     while true:
         if let n = try ch.receive():
             try ch.send(n * n)
@@ -96,7 +96,7 @@ fn sum_until_closed() Unit:
             let _ = ch.send(total)
             return
 
-fn ask(group: WorkerGroup[Int, Int], value: Int) Result[Int, WorkerError]:
+fn ask(group: WorkerGroup[Int, Int], value: Int) Int!WorkerError:
     var worker = try group.spawn(squares)
     let _ = worker.channel.send(value)
     var answer = -1
@@ -188,7 +188,7 @@ test "leaving the group stops workers that are still running":
     var group = WorkerGroup[Int, Int]()
     let worker = group.spawn(wait_forever)
     let _ignored = try expect_ok(worker)
-    group.close()
+    try group.close()
     try expect_equal(1, 1)
 
 test "sends after the worker ended report the channel closed":
@@ -315,8 +315,8 @@ test "workers fetch from the starter's server at the same time":
         try expect_equal(workers[i].channel.receive(), ok((3 * 65536)))
         try expect_ok(workers[i].wait())
 
-    group.close()
-    server.close()
+    try group.close()
+    try server.close()
 
 fn doubles_bytes() Unit:
     var _ch = worker_channel[Int, Int]()

@@ -28,7 +28,7 @@ fn interpolate[T](value: T) String:
 fn bound_stringify[T: Named](value: T) String:
     return value.to_string()
 
-fn check(value: String, expected: String) Result[Unit, Error]:
+fn check(value: String, expected: String) Unit!:
     if value != expected: return fail(message: "expected {expected}, received {value}")
 
     return ok(unit)
@@ -71,7 +71,7 @@ test "records alternatives and collections convert":
 
     let absent: Int? = none
     let present: Int? = 3
-    let result: Result[Int, TextError] = error(TextError("failed"))
+    let result: Int!TextError = error(TextError("failed"))
     (try check(value: absent.to_string(), expected: "Optional.none"))
     (try check(value: present.to_string(), expected: "Optional.some(3)"))
     (

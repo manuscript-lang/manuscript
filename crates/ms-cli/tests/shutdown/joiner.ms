@@ -15,5 +15,5 @@ export fn main() Int:
 
     let outcome = w.wait()
     stdout().write("joined {outcome.is_ok()}\n").get()
-    group.close()
+    group.close().get(none)
     return 0

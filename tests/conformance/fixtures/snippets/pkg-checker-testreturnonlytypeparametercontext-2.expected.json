@@ -14,14 +14,14 @@
           "file": "pkg-checker-testreturnonlytypeparametercontext-2.ms",
           "line": 8,
           "column": 1,
-          "offset": 320
+          "offset": 311
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testreturnonlytypeparametercontext-2.ms:8:1: type: reachable fallthrough in function returning Result[Int, TextError]; end every path with 'return <Result[Int, TextError]>' (or make the last branch return)\n   |\n 8 | fn first() Result[Int, TextError]: ...\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testreturnonlytypeparametercontext-2.ms:8:1: type: reachable fallthrough in function returning Result[Int, TextError]; end every path with 'return <Result[Int, TextError]>' (or make the last branch return)\n   |\n 8 | fn first() Int!TextError: ...\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

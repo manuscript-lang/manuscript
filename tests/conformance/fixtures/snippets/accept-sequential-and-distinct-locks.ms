@@ -10,9 +10,9 @@ export fn main() Int:
     var one = lock(a)
     var two = lock(b)
     two.value += one.value
-    one.close()
+    one.close().get(none)
 
     var again = lock(a)
     again.value += 1
-    again.close()
+    again.close().get(none)
     return 0

@@ -33,10 +33,10 @@ fn request(method: HttpMethod, path: String) HttpRequest:
         method: method, path: path, query: "", headers: headers(), body: "".to_bytes()
     )
 
-fn say(label: String) fn(HttpExchange, RouteParams) Result[Unit, HttpError]:
+fn say(label: String) fn(HttpExchange, RouteParams) Unit!HttpError:
     return fn exchange, params: reply(exchange, text(200, label.clone()))
 
-fn show(exchange: HttpExchange, params: RouteParams) Result[Unit, HttpError]:
+fn show(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     let id = params.get("id").get("-")
     let rest = params.get("rest").get("-")
     return reply(exchange, text(200, "{id}|{rest}"))
@@ -109,19 +109,19 @@ test "invalid and duplicate patterns are rejected":
 
 fn tag(
     label: String
-) fn(HttpExchange, fn(HttpExchange) Result[Unit, HttpError]) Result[Unit, HttpError]:
+) fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError:
     return fn exchange, next: tagged(label.clone(), exchange, next)
 
 fn tagged(
     label: String,
     exchange: HttpExchange,
-    next: fn(HttpExchange) Result[Unit, HttpError]
-) Result[Unit, HttpError]:
+    next: fn(HttpExchange) Unit!HttpError
+) Unit!HttpError:
     let seen = exchange.headers()
     try seen.append("X-Trail", label)
     return next(exchange)
 
-fn trail(exchange: HttpExchange, params: RouteParams) Result[Unit, HttpError]:
+fn trail(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     let values = exchange.headers().values("X-Trail")
     return reply(exchange, text(200, values.join(">")))
 
@@ -139,8 +139,8 @@ test "middleware also wraps the 404 answer":
 
 fn refuse(
     exchange: HttpExchange,
-    next: fn(HttpExchange) Result[Unit, HttpError]
-) Result[Unit, HttpError]:
+    next: fn(HttpExchange) Unit!HttpError
+) Unit!HttpError:
     return reply(exchange, text(401, "no"))
 
 test "middleware may answer without calling the rest":
@@ -151,7 +151,7 @@ test "middleware may answer without calling the rest":
     let response = try r.call(get("/t"))
     try expect_equal(response.status, 401)
 
-fn fail(exchange: HttpExchange, params: RouteParams) Result[Unit, HttpError]:
+fn fail(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     return error(HttpError.Failed("boom"))
 
 test "a handler error comes back from call":
@@ -211,10 +211,10 @@ type Answer:
     name: String
     count: Int
 
-fn answer(exchange: HttpExchange, params: RouteParams) Result[Unit, HttpError]:
+fn answer(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     return reply(exchange, try json(201, Answer(name: "ok", count: 2)))
 
-fn moved(exchange: HttpExchange, params: RouteParams) Result[Unit, HttpError]:
+fn moved(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     return reply(exchange, try redirect("/elsewhere"))
 
 test "json and redirect build responses":
@@ -231,7 +231,7 @@ test "json and redirect build responses":
     try expect_equal(moved_to.status, 303)
     try expect_equal(moved_to.headers.values("Location").join(","), "/elsewhere")
 
-fn echo_id(exchange: HttpExchange, params: RouteParams) Result[Unit, HttpError]:
+fn echo_id(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     let seen = exchange.headers().values("X-Request-Id")
     return reply(exchange, text(200, seen.join(",")))
 
@@ -263,16 +263,16 @@ type Sink:
     lines: Shared[List[String]]
 
 impl Transport for Sink:
-    var fn write(data: String) Result[Unit, LogError]:
+    var fn write(data: String) Unit!LogError:
         var guard = lock(self.lines)
         guard.value.append(data.clone())
-        guard.close()
+        guard.close().get(none)
         return ok(unit)
 
-    var fn write_bytes(data: Bytes) Result[Unit, LogError]:
+    var fn write_bytes(data: Bytes) Unit!LogError:
         return self.write(data.decode_utf8().get(""))
 
-    var fn flush() Result[Unit, LogError]:
+    var fn flush() Unit!LogError:
         return ok(unit)
 
     var fn close() Unit:

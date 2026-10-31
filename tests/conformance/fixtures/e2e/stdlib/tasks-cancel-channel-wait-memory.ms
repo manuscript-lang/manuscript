@@ -25,14 +25,14 @@ fn waiting(ready: Channel[Unit, Unit], ch: Channel[Int, Int]) Unit:
     var end = ch
     let _ignored = end.receive()
 
-fn cancel_one(ch: Channel[Int, Int]) Result[Unit, Error]:
+fn cancel_one(ch: Channel[Int, Int]) Unit!:
     var group = TaskGroup[Unit]()
     let end = ch.clone()
     var task = group.spawn(fn ready: waiting(ready, end.clone()))
     task.channel.receive() | try expect_ok | try expect_equal(unit)
-    group.close()
+    try group.close()
     task.result() | try expect_error | try expect_equal(TaskError.Closed)
-    group.close()
+    try group.close()
     return ok(unit)
 
 export fn main() Int:
@@ -53,5 +53,5 @@ export fn main() Int:
 
     let after = control().memory_usage().get()
     stdout().write("growth {after.heap_used - before.heap_used}\n").get()
-    owner.close()
+    owner.close().get(none)
     return 0

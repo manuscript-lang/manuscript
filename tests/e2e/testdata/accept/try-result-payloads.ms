@@ -9,16 +9,16 @@ type Failure:
 impl Error for Failure:
     fn message() String: self.detail.clone()
 
-fn relay[T, E: Error](result: Result[T, E], var visits: List[Int]) Result[T, E]:
+fn relay[T, E: Error](result: T!E, var visits: List[Int]) T!E:
     let value = try result
     visits.append(1)
     return ok(value)
 
-fn text(result: Result[Int, TextError]) Result[String, TextError]:
+fn text(result: Int!TextError) String!TextError:
     let value = try result
     return ok(value.to_string())
 
-fn widened(result: Result[Int, Failure]) Result[Int, Error]:
+fn widened(result: Int!Failure) Int!:
     let value = try result
     return ok(value)
 
@@ -44,11 +44,11 @@ test "try retains aliases and error views":
     abstract.err().message() | try expect_equal("before")
     widened(Result[Int, Failure].ok(7)).get() | try expect_equal(7)
 
-fn visit[T, E: Error](result: Result[T, E], var visits: List[Int]) Result[T, E]:
+fn visit[T, E: Error](result: T!E, var visits: List[Int]) T!E:
     visits.append(1)
     return result
 
-fn tail[T, E: Error](result: Result[T, E], var visits: List[Int]) Result[T, E]:
+fn tail[T, E: Error](result: T!E, var visits: List[Int]) T!E:
     let value = try visit(result, var visits)
     return ok(value)
 
@@ -57,19 +57,20 @@ type TailCleanup:
 
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for TailCleanup:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _written = filesystem().write_file(self.marker, "closed", true)
+        return ok(unit)
 
 fn tail_cleanup(
-    result: Result[Int, TextError],
+    result: Int!TextError,
     var visits: List[Int],
     marker: String
-) Result[Int, TextError]:
+) Int!TextError:
     let _resource = TailCleanup(marker)
     let value = try visit(result, var visits)
     return ok(value)
 
-fn function_tail(result: Result[fn() Int, TextError]) Result[fn() Int, TextError]:
+fn function_tail(result: (fn() Int)!TextError)(fn() Int)!TextError:
     let value = try result
     return ok(value)
 

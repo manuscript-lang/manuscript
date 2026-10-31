@@ -18,7 +18,7 @@ impl ReadStream for Chunks:
     fn close() Unit:
         return unit
 
-    var fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
+    var fn read(max_bytes: Int? = none) Bytes?!IoError:
         if self.next == self.parts.length():
             match self.failure:
                 message: return error(IoError.Failed(message.clone()))

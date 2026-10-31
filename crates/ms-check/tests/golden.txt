@@ -4814,7 +4814,7 @@ fn answer(input: Int) Int:
     return value.|
 parse	2	18	43	expected a name, found '|'fn work() Int?:
     return Int?.|
-parse	2	15	30	expected end of statement, found '?'; put one statement per line, and join operands with an operator or a comma inside bracketsfn work() Result[Int, Error]:
+parse	2	17	32	expected a name, found '|'fn work() Result[Int, Error]:
     return Result[Int, Error].|
 parse	2	31	60	expected a name, found '|'fn count(items: List[String]) Unit:
     items.ap|
@@ -6667,7 +6667,8 @@ test "first request":
 test "second request uses same server":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
-type	9	80	461	expected fn(HttpExchange) Result[Unit, HttpError], found fn(HttpRequest) HttpResponse (in argument 'handler' of serve)export fn helper() Unit:
+type	9	80	461	expected fn(HttpExchange) Result[Unit, HttpError], found fn(HttpRequest) HttpResponse (in argument 'handler' of serve)
+type	12	9	540	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeexport fn helper() Unit:
     return
 test "interruptible":
     println("READY")

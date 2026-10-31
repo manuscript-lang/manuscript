@@ -7,5 +7,6 @@ type Resource:
     visits: List[Int]
 
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         self.visits.append(1)
+        return ok(unit)

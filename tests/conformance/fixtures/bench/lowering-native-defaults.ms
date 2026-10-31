@@ -26,10 +26,10 @@ fn csv_explicit() CsvOptions: CsvOptions(",", "\n")
 
 fn csv_omitted() CsvOptions: CsvOptions()
 
-fn command_explicit() Result[CommandOutput, CommandError]:
+fn command_explicit() CommandOutput!CommandError:
     return commands().run(program: "", arguments: [], input: "".to_bytes())
 
-fn command_omitted() Result[CommandOutput, CommandError]:
+fn command_omitted() CommandOutput!CommandError:
     return commands().run(program: "", arguments: [])
 
 fn command_bind() fn(
@@ -38,16 +38,16 @@ fn command_bind() fn(
     Bytes,
     Int?,
     Duration?
-) Result[CommandOutput, CommandError]:
+) CommandOutput!CommandError:
     return commands().run
 
 fn filesystem_setup() FileSystem: filesystem()
 
-fn filesystem_explicit(fs: FileSystem, data: Bytes) Result[Unit, FileSystemError]:
+fn filesystem_explicit(fs: FileSystem, data: Bytes) Unit!FileSystemError:
     return fs.write_file_bytes("", data, false)
 
-fn filesystem_omitted(fs: FileSystem, data: Bytes) Result[Unit, FileSystemError]:
+fn filesystem_omitted(fs: FileSystem, data: Bytes) Unit!FileSystemError:
     return fs.write_file_bytes("", data)
 
-fn filesystem_bind(fs: FileSystem) fn(String, Bytes, Bool) Result[Unit, FileSystemError]:
+fn filesystem_bind(fs: FileSystem) fn(String, Bytes, Bool) Unit!FileSystemError:
     return fs.write_file

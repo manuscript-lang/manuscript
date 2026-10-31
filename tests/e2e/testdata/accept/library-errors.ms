@@ -12,7 +12,7 @@ impl Error for ApplicationError:
 fn encoding_error(cause: EncodingError) ApplicationError:
     return Encoding(cause)
 
-fn decode_bad_input() Result[Unit, ApplicationError]:
+fn decode_bad_input() Unit!ApplicationError:
     match hex_decode(text: "zz", max_bytes: 10):
         ok(_):
             return ok(unit)
@@ -38,9 +38,7 @@ test "JSON errors need only JSON cases":
             try expect_equal(json_error_code(cause), 2)
 
 test "explicit error mapping preserves the cause":
-    let expected: Result[Unit, ApplicationError] = error(
-        Encoding(EncodingError.InvalidData)
-    )
+    let expected: Unit!ApplicationError = error(Encoding(EncodingError.InvalidData))
     decode_bad_input() | try expect_equal(expected)
 
 # Error is an ordinary operation contract. Custom errors use ordinary impl blocks.
@@ -60,11 +58,11 @@ impl Error for TaggedError[T]:
     fn message() String:
         return "tagged failure"
 
-fn decode_generically() Result[Unit, Error]:
+fn decode_generically() Unit!:
     let _bytes = try hex_decode(text: "zz", max_bytes: 10)
     return ok(unit)
 
-fn propagate_generic() Result[Unit, Error]:
+fn propagate_generic() Unit!:
     let _completed = try decode_generically()
     return ok(unit)
 
@@ -159,7 +157,7 @@ impl Error for ReadError:
     fn message() String:
         return self.diagnostic.clone()
 
-fn failed_read() Result[Unit, ReadError]:
+fn failed_read() Unit!ReadError:
     return error(
         ReadError(
             diagnostic: "read failed", path: "settings.json", attempt: 2,
@@ -167,7 +165,7 @@ fn failed_read() Result[Unit, ReadError]:
         )
     )
 
-fn propagate_read() Result[Unit, ReadError]:
+fn propagate_read() Unit!ReadError:
     let _completed = try failed_read()
     return ok(unit)
 
@@ -198,20 +196,20 @@ test "domain error fields survive propagation without a wrapper":
         _:
             return fail(message: "generic boundary lost concrete error")
 
-fn read_failure(cause: ReadError) Result[Unit, ReadError]:
+fn read_failure(cause: ReadError) Unit!ReadError:
     return error(cause)
 
-fn general_read(cause: ReadError) Result[Unit, Error]:
+fn general_read(cause: ReadError) Unit!:
     let _completed = try read_failure(cause)
     return ok(unit)
 
-fn forward_read(cause: ReadError) Result[Unit, Error]:
+fn forward_read(cause: ReadError) Unit!:
     return read_failure(cause)
 
-fn generic_failure[E: Error](cause: E) Result[Unit, E]:
+fn generic_failure[E: Error](cause: E) Unit!E:
     return error(cause)
 
-fn generic_propagation[E: Error](cause: E) Result[Unit, Error]:
+fn generic_propagation[E: Error](cause: E) Unit!:
     let _completed = try generic_failure(cause)
     return ok(unit)
 
@@ -229,7 +227,7 @@ test "specific errors pass directly into Error boundaries":
         ) != "read failed" or shared.message() != "read failed"
     ) | try expect_false
 
-    let results: List[Result[Unit, Error]] = [
+    let results: List[Unit!] = [
         general_read(original.clone()), forward_read(original.clone()),
         generic_propagation(original.clone()), error(original.clone())
     ]
@@ -260,10 +258,10 @@ test "specific errors pass directly into Error boundaries":
 
     original.path | try expect_equal("settings.json")
 
-fn read_success() Result[Int, ReadError]:
+fn read_success() Int!ReadError:
     return ok(7)
 
-fn general_read_success() Result[Int, Error]:
+fn general_read_success() Int!:
     return read_success()
 
 test "Error Result forwarding preserves successful payloads":
@@ -279,7 +277,7 @@ type ValidationError:
 impl Error for ValidationError:
     fn message() String: "ValidationError"
 
-fn invalid_field() Result[Unit, ValidationError]:
+fn invalid_field() Unit!ValidationError:
     return error(InvalidField(field: "attempt", expected: 1, actual: 0))
 
 test "domain case payloads need no Error implementation":
@@ -351,7 +349,7 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
 
 import filesystem from "@std/fs.ms"
 
-fn check_missing_file() Result[Unit, Error]:
+fn check_missing_file() Unit!:
     let fs = filesystem()
     let directory = try fs.temporary_directory("manuscript-errors-")
     let missing = "{directory}/missing-secret-token"

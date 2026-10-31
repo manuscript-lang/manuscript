@@ -11,14 +11,14 @@ import parse_timestamp from "@std/time.ms"
 import posix from "@std/fs.ms"
 import win32 from "@std/fs.ms"
 
-fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
+fn common_result[T, E: Error](result: T!E) T!:
     match result:
         ok(value):
             return ok(value)
         error(cause):
             return error(cause)
 
-fn exercise(path: String) Result[Unit, Error]:
+fn exercise(path: String) Unit!:
     let _written = try common_result(
         result: filesystem().write_file(
             path: path, data: "hello", replace: false
@@ -70,7 +70,7 @@ fn exercise(path: String) Result[Unit, Error]:
     let _synced = try common_result(result: file.sync())
     let _resized = try common_result(result: file.truncate(size: 3))
     (try common_result(result: file.stat())).size | try expect_equal(3)
-    file.close()
+    try file.close()
 
     var watcher = try common_result(
         result: filesystem().watch_native(
@@ -83,7 +83,7 @@ fn exercise(path: String) Result[Unit, Error]:
     )
     let events = try common_result(result: watcher.next())
     (events.length() > 0) | try expect_true
-    watcher.close()
+    try watcher.close()
 
     let paths = posix()
     try expect_false(

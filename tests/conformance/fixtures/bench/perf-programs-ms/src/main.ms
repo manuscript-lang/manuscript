@@ -37,13 +37,13 @@ fn report(name: String, ops: Int, started: Instant) Unit:
 fn ident[T](x: T) T:
     return x
 
-fn checked(n: Int) Result[Int, TextError]:
+fn checked(n: Int) Int!TextError:
     if n < 0:
         return error(TextError("negative"))
 
     return ok(n + 1)
 
-fn chain(n: Int) Result[Int, TextError]:
+fn chain(n: Int) Int!TextError:
     let v = try checked(n)
     return ok(v)
 

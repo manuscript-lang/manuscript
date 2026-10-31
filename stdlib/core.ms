@@ -58,10 +58,16 @@ export fn category(cause: Error) ErrorCategory?: ...
 export fn panic(message: String) Never: ...
 
 # A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
+# The implicit close behaves like `try value.close()`: a failed close becomes the function's error, after the
+# other bindings of the scopes it leaves have closed. Where the function cannot return an `Error`, or the
+# close happens inside a holder (a record, list or temporary), a failed close is a fault. If the scope is
+# already returning an error, that error is kept and the close error is dropped. Call `close()` yourself to
+# handle the failure; the binding is then consumed.
 export interface Closeable:
     # Releases the implementation's resource state; with calls this on every scope exit.
-    # Cleanup runs during return, expected errors, faults, and cancellation too.
-    var fn close() Unit
+    # Cleanup runs during return, expected errors, faults, and cancellation too. A type whose release cannot
+    # fail returns `ok(unit)`.
+    var fn close() Unit!
 
 # A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
 # `for item in source:` calls `next` until `none`; a variable or field path advances in place and
@@ -108,10 +114,10 @@ impl T?:
 
     # Returns ok with the original payload, or error with the eager cause.
     # Without a cause, E is MissingValue and the error names the calling source file and line.
-    fn ok_or[E: Error = MissingValue](cause: E?) Result[T, E]: ...
+    fn ok_or[E: Error = MissingValue](cause: E?) T!E: ...
 
     # Constructs an error once only for none; present payloads remain unchanged.
-    fn ok_or_else[E: Error](create: fn() E) Result[T, E]: ...
+    fn ok_or_else[E: Error](create: fn() E) T!E: ...
 
 # Holds either a successful value (`ok`) or an expected failure (`error`).
 export type Result[T, E: Error]:
@@ -126,7 +132,7 @@ export type Result[T, E: Error]:
         cause: E
     )
 
-impl Result[T, E]:
+impl T!E:
     # Reports whether this result contains a successful value.
     fn is_ok() Bool: ...
 
@@ -144,16 +150,16 @@ impl Result[T, E]:
     fn get_or_else(create: fn(E) T) T: ...
 
     # Calls create once with the original error only when this is an error, returning its Result.
-    fn or_else(create: fn(E) Result[T, E]) Result[T, E]: ...
+    fn or_else(create: fn(E) T!E) T!E: ...
 
     # Transforms only an error, preserving a successful payload unchanged.
-    fn map_error[F: Error](transform: fn(E) F) Result[T, F]: ...
+    fn map_error[F: Error](transform: fn(E) F) T!F: ...
 
     # Transforms only a successful payload, preserving an error unchanged.
-    fn map[U](transform: fn(T) U) Result[U, E]: ...
+    fn map[U](transform: fn(T) U) U!E: ...
 
     # Calls transform only on success. Its result keeps the same error type.
-    fn and_then[U](transform: fn(T) Result[U, E]) Result[U, E]: ...
+    fn and_then[U](transform: fn(T) U!E) U!E: ...
 
     # Returns some with the original success payload, or none for an error.
     fn to_optional() T?: ...

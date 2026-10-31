@@ -11,7 +11,7 @@ import body_stream, reader, next_event from "@std/sse.ms"
 import network from "@std/net.ms"
 
 # Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
-fn stream_events(exchange: HttpExchange) Result[Unit, HttpError]:
+fn stream_events(exchange: HttpExchange) Unit!HttpError:
     var sent = headers()
     try sent.append("Content-Type", "text/event-stream")
     try exchange.send_headers(200, sent)
@@ -37,5 +37,5 @@ test "HTTP response bodies decode as SSE and close with the reader":
 
     try expect_false(second.event != "message" or second.data != "second")
     try expect_false((try next_event(var events)).is_some())
-    events.close()
+    try events.close()
     try expect_equal(status, 200)

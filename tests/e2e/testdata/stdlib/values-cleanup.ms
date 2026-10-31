@@ -22,17 +22,18 @@ type Resource:
 # Resources own their state, so close records order through the filesystem:
 # resource 1 notes whether resource 2 had already closed.
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         let fs = filesystem()
         let inner_closed = fs.read_file("{self.dir}/2").is_ok()
         let _ = fs.write_file("{self.dir}/{self.id}", "{inner_closed}", true)
+        return ok(unit)
 
 fn leave(dir: String) Int:
     let _outer = Resource(dir.clone(), 1)
     let _inner = Resource(dir, 2)
     return 42
 
-fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
+fn propagate(result: Int!JsonError) Int!JsonError:
     let found = try result
     return ok(found + 1)
 
@@ -47,11 +48,11 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
     try expect_false(not nested.is_some() or not nested.get().is_none())
 
 test "Result propagation and Error views preserve concrete causes":
-    let failed: Result[Int, JsonError] = error(JsonError.InvalidData)
+    let failed: Int!JsonError = error(JsonError.InvalidData)
     try expect_equal(propagate(failed), failed)
 
-    let success: Result[Int, JsonError] = ok(3)
-    let expected: Result[Int, JsonError] = ok(4)
+    let success: Int!JsonError = ok(3)
+    let expected: Int!JsonError = ok(4)
     try expect_equal(propagate(success), expected)
 
     let view: Error = JsonError.InvalidData

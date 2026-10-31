@@ -24,12 +24,12 @@ fn only_the_binding_that_is_never_flushed_is_reported() {
     let found = findings(include_str!("lint_flush/unflushed.ms"));
     assert_eq!(found.len(), 1, "{found:?}");
     assert!(found[0].message.starts_with("`journal` is closed"));
-    assert_eq!(found[0].pos.line, 15);
+    assert_eq!(found[0].pos.line, 16);
 }
 
 #[test]
 fn a_binding_some_path_keeps_is_reported() {
     let found = findings(include_str!("lint_flush/conditional.ms"));
     let lines: Vec<u32> = found.iter().map(|f| f.pos.line).collect();
-    assert_eq!(lines, vec![21], "{found:?}");
+    assert_eq!(lines, vec![22], "{found:?}");
 }

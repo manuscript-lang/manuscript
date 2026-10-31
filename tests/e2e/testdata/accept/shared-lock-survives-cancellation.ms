@@ -9,7 +9,7 @@ fn hold(box: Shared[List[Int]]) Int:
     var guard = lock(box)
     guard.value.append(2)
     sleep(nanoseconds(5000000000))
-    guard.close()
+    guard.close().get(none)
     return 0
 
 fn add_slowly(box: Shared[List[Int]]) Int:
@@ -17,13 +17,13 @@ fn add_slowly(box: Shared[List[Int]]) Int:
     guard.value.append(1)
     sleep(nanoseconds(2000000))
     guard.value.append(2)
-    guard.close()
+    guard.close().get(none)
     return 0
 
 fn add(box: Shared[List[Int]], value: Int) Int:
     var guard = lock(box)
     guard.value.append(value)
-    guard.close()
+    guard.close().get(none)
     return value
 
 test "a task cancelled while holding the lock puts the payload back":
@@ -33,12 +33,12 @@ test "a task cancelled while holding the lock puts the payload back":
     group.spawn(fn ch: hold(mine))
 
     let _ignored = group.wait()
-    group.close()
+    try group.close()
     box.get().clone() | try expect_equal([1, 2])
 
     var guard = lock(box)
     guard.value.append(3)
-    guard.close()
+    try guard.close()
     box.get().clone() | try expect_equal([1, 2, 3])
 
 test "a second lock waits for the first guard":
@@ -50,5 +50,5 @@ test "a second lock waits for the first guard":
     let b = group.spawn(fn ch: add(second, 3))
     let _first_done = try a.result()
     let _second_done = try b.result()
-    group.close()
+    try group.close()
     box.get().clone() | try expect_equal([1, 2, 3])

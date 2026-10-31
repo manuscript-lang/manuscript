@@ -13,8 +13,9 @@ type Resource:
     output: WriteStream
 
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _ = self.output.write(data: "close {self.label}\n")
+        return ok(unit)
 
 type Pair:
     first: Int
@@ -36,10 +37,10 @@ fn early(var output: WriteStream) Int:
     let _inner = Resource(label: "inner", output: stdout())
     return report(output: var output, label: "return value", value: 5)
 
-fn failure() Result[Int, TextError]:
+fn failure() Int!TextError:
     return error(TextError("expected"))
 
-fn propagate(output: WriteStream) Result[Int, TextError]:
+fn propagate(output: WriteStream) Int!TextError:
     let _resource = Resource(label: "propagation", output: output)
     let number = try failure()
     return ok(number)
@@ -48,7 +49,7 @@ fn iterable(var output: WriteStream) List[Int]:
     let _ = output.write(data: "iterable\n")
     return [1, 2]
 
-fn exercise() Result[Int, Error]:
+fn exercise() Int!:
     var chosen = stdout()
     var second_out = stdout()
     var first_out = stdout()
@@ -70,7 +71,7 @@ fn exercise() Result[Int, Error]:
 
     var _resource = Resource(label: "normal", output: stdout())
     let completed = unit
-    _resource.close()
+    try _resource.close()
 
     let _ = stdout().write(data: "after normal\n")
     var count = 0

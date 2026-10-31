@@ -11,6 +11,6 @@ test "typed JSON Base64 decodes every byte and preserves strict syntax":
     try expect_equal((try parse[List[Bytes]](text)), expected)
     try expect_equal((try parse[Bytes]("\"+/8=\"")), Bytes([251, 255]))
 
-    let invalid: Result[Bytes, JsonError] = error(JsonError.InvalidData)
+    let invalid: Bytes!JsonError = error(JsonError.InvalidData)
     for encoded in ["-_8=", "Zh==", "Zm9=", "=AAA", "AA=A", "éAA", "Zg== "]:
         try expect_equal(parse[Bytes]("\"{encoded}\""), invalid)

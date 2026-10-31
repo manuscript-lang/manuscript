@@ -2,7 +2,7 @@ import TextError from "@std/core.ms"
 import expect_equal from "@std/test.ms"
 import Decimal from "@std/decimal.ms"
 
-fn amount() Result[Decimal, TextError]:
+fn amount() Decimal!TextError:
     return ok(12.50d)
 
 test "explicit standard imports":

@@ -2,5 +2,5 @@
 # conform: phase=check
 # conform: origin=pkg/compiler/result_argument_inference_test.go:47 TestResultArgumentInference
 fn first() Int:
-    let r: Result[Int, Error] = f()
+    let r: Int! = f()
     return h(r)

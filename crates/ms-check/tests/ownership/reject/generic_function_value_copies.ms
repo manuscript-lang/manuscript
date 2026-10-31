@@ -4,8 +4,8 @@ type Door:
     n: Int
 
 impl Closeable for Door:
-    var fn close() Unit:
-        return
+    var fn close() Unit!:
+        return ok(unit)
 
 fn keep[T](x: T) List[T]:
     return [x]

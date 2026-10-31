@@ -10,5 +10,5 @@ impl Error for DomainFailure:
 export fn second_error(cause: DomainFailure) Error:
     return cause
 
-export fn relay(cause: Error) Result[Unit, Error]:
+export fn relay(cause: Error) Unit!:
     return error(cause)

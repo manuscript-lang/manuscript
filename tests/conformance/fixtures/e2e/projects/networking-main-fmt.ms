@@ -30,14 +30,14 @@ fn websocket_error(cause: WebSocketError) HttpError:
         Failed(message):
             return HttpError.Failed(message)
 
-fn socket_result[T](result: Result[T, WebSocketError]) Result[T, HttpError]:
+fn socket_result[T](result: T!WebSocketError) T!HttpError:
     match result:
         ok(value):
             return ok(value)
         error(cause):
             return error(websocket_error(cause))
 
-fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
+fn echo(exchange: HttpExchange) Unit!HttpError:
     if exchange.path() == "/ws":
         var socket = try socket_result(
             result: exchange.upgrade(
@@ -55,7 +55,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
             none:
                 return ok(unit)
 
-        socket.close()
+        try socket.close()
         return ok(unit)
 
     var fields = headers()
@@ -68,7 +68,7 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
         error(_):
             return error(HttpError.Failed("write failed"))
 
-fn exercise() Result[Unit, Error]:
+fn exercise() Unit!:
     let tls = TlsOptions(
         server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
         alpn: [], require_client_certificate: false
@@ -106,7 +106,7 @@ fn exercise() Result[Unit, Error]:
         none:
             return fail(message: "Unexpected case")
 
-    client.close()
+    try client.close()
 
     let websocket_options = WebSocketOptions(
         max_message_bytes: 1024, timeout: 2.seconds, tls: tls, compression: false
@@ -128,7 +128,7 @@ fn exercise() Result[Unit, Error]:
         none:
             return fail(message: "Unexpected case")
 
-    server.close()
+    try server.close()
     return ok(unit)
 
 export fn main() Int:

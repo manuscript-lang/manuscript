@@ -12,9 +12,10 @@ type G:
     items: List[String]
 
 impl Closeable for G:
-    var fn close() Unit:
+    var fn close() Unit!:
         if self.held:
             self.held = false
+        return ok(unit)
 
 fn body() Int:
     while true:
@@ -24,7 +25,7 @@ fn body() Int:
                 "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
             )
         )
-        g.close()
+        g.close().get(none)
         sleep(nanoseconds(10000000000))
 
     return 0

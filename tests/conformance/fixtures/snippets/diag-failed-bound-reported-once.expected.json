@@ -13,15 +13,15 @@
         "position": {
           "file": "diag-failed-bound-reported-once.ms",
           "line": 4,
-          "column": 29,
-          "offset": 154
+          "column": 20,
+          "offset": 145
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-failed-bound-reported-once.ms:4:29: type: String does not satisfy Error; use a type that implements it\n   |\n 4 | fn f() Result[Int, String]: ok(1)\n   |                             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-failed-bound-reported-once.ms:4:20: type: String does not satisfy Error; use a type that implements it\n   |\n 4 | fn f() Int!String: ok(1)\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

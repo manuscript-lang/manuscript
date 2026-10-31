@@ -13,7 +13,7 @@ fn cancel_read(path: String) Int:
     if task.result().is_error():
         return 1
 
-    group.close()
+    group.close().get(none)
     return 0
 
 export fn main() Int:

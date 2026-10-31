@@ -31,7 +31,7 @@ fn route(request: HttpRequest) HttpResponse:
         status: 200, headers: fields, body: "{request.path}|{request.query}".to_bytes()
     )
 
-fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
+fn stream_route(exchange: HttpExchange) Unit!HttpError:
     var chain_1 = Map[String, List[String]]()
     chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 
@@ -43,7 +43,7 @@ fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
     )
     return ok(unit)
 
-fn check_route(url: String, expected: String) Result[Unit, Error]:
+fn check_route(url: String, expected: String) Unit!:
     let response = network().request(
         method: HttpMethod.Get, url: url,
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
@@ -57,7 +57,7 @@ fn check_route(url: String, expected: String) Result[Unit, Error]:
 
     return ok(unit)
 
-fn check_rejected(url: String) Result[Unit, Error]:
+fn check_rejected(url: String) Unit!:
     let response = network().request(
         method: HttpMethod.Get, url: url,
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
@@ -68,7 +68,7 @@ fn check_rejected(url: String) Result[Unit, Error]:
 
     return ok(unit)
 
-fn check_paths(base: String) Result[Unit, Error]:
+fn check_paths(base: String) Unit!:
     (try check_route(url: "{base}/a%20b", expected: "/a b|"))
     (try check_route(url: "{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F"))
     (try check_route(url: "{base}/a/../b/", expected: "/b/|"))
@@ -91,7 +91,7 @@ test "streaming routes validate original input and decode once":
     ) | try expect_ok
     (try check_paths("http://{server.address()}"))
 
-fn expect_http_error[T](outcome: Result[T, HttpError]) Result[Unit, Error]:
+fn expect_http_error[T](outcome: T!HttpError) Unit!:
     match outcome:
         ok(_): return error(TextError("invalid URL succeeded"))
         error(cause):

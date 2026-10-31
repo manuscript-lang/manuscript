@@ -90,7 +90,7 @@ test "typed addresses preserve normalization and reject zones":
     try expect_ip_error("fe80::1%eth0")
     try expect_false((try contains_ip(try parse_cidr("::ffff:192.0.2.0/120"), ip)))
 
-fn expect_ip_error(input: String) Result[Unit, Error]:
+fn expect_ip_error(input: String) Unit!:
     try expect_equal((try expect_error(parse_ip(input))), NetworkError.InvalidData)
     return ok(unit)
 
@@ -98,7 +98,7 @@ fn accept_one(l: Shared[Listener]) Int:
     let r = l.get().accept(2.seconds)
 
     if r.is_ok():
-        r.get().close()
+        r.get().close().get(none)
         return 1
 
     return 0
@@ -118,10 +118,10 @@ test "two tasks accept on one listener":
     let got = try group.results()
     try expect_equal(got.length(), 2)
     try expect_equal(got[0] + got[1], 2)
-    c1.close()
-    c2.close()
-    group.close()
-    shared.get().close()
+    try c1.close()
+    try c2.close()
+    try group.close()
+    try shared.get().close()
 
 fn read_some(c: Shared[Connection]) Int:
     let r = c.get().read(1, 2.seconds)
@@ -146,12 +146,12 @@ test "two tasks read one connection":
 
     let got = try group.results()
     try expect_equal(got[0] + got[1], 2)
-    group.close()
-    client.close()
-    shared.get().close()
+    try group.close()
+    try client.close()
+    try shared.get().close()
 
 # Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
-fn answer_mx(socket: Shared[DatagramSocket]) Result[Int, NetworkError]:
+fn answer_mx(socket: Shared[DatagramSocket]) Int!NetworkError:
     let query = try socket.get().receive(512, 2.seconds)
     let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
     let header = Bytes(
@@ -200,7 +200,7 @@ test "an empty host listens on every interface, with or without IPv6":
     let server = try listener.accept(2.seconds)
     try client.write("hi", 2.seconds)
     try expect_equal((try server.read(2, 2.seconds)).get(), "hi".to_bytes())
-    listener.close()
+    try listener.close()
 
     let socket = try net.bind_datagram(":0")
     try expect_false(socket.address().is_empty())

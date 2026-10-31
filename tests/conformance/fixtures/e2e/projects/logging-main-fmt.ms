@@ -7,7 +7,7 @@ import arguments from "@std/process.ms"
 import stderr from "@std/io.ms"
 import emit from "./records.ms"
 
-fn exercise(mode: String, path: String) Result[Unit, Error]:
+fn exercise(mode: String, path: String) Unit!:
     if (mode == "file" or mode == "missing"):
         var root = try create(try file_transport(path), timestamp: false)
         let logger = try root.child_json("\{\"service\":\"api\"\}")

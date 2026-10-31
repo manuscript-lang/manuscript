@@ -1959,10 +1959,17 @@ impl Walker<'_> {
                 ),
             );
         } else if d == Demand::Consume && class != Class::Copy {
-            let message = format!(
-                "cannot move `{0}` out of `{1}`: only a whole variable can move; take an owned copy with `{0}.{COPY}()`",
-                info.text, info.root.name
-            );
+            let message = if info.root.name.starts_with('?') {
+                // The payload of an optional chain `a?.b`, which has no written name.
+                format!(
+                    "an optional chain `?.` cannot move a field out of the optional; take an owned copy by ending the access with `.{COPY}()`"
+                )
+            } else {
+                format!(
+                    "cannot move `{0}` out of `{1}`: only a whole variable can move; take an owned copy with `{0}.{COPY}()`",
+                    info.text, info.root.name
+                )
+            };
             // A member's position is its name, so the copy goes right after it.
             match &e.kind {
                 ExprKind::Member { name, .. } => self.error_fix(

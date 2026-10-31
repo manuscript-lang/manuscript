@@ -131,11 +131,11 @@ test "HTML honors optional byte depth and node limits":
     try expect_equal((try parse("", HtmlLimits(0, 2, 4))), empty)
     try expect_equal((try parse("é", HtmlLimits())), (try parse("é")))
 
-    let limited: Result[HtmlNode, HtmlError] = error(HtmlError.LimitExceeded)
+    let limited: HtmlNode!HtmlError = error(HtmlError.LimitExceeded)
     try expect_equal(parse("é", HtmlLimits(1)), limited)
     try expect_equal(parse("", HtmlLimits(max_depth: 1)), limited)
     try expect_equal(parse("", HtmlLimits(max_nodes: 3)), limited)
 
-    let invalid: Result[HtmlNode, HtmlError] = error(HtmlError.InvalidInput)
+    let invalid: HtmlNode!HtmlError = error(HtmlError.InvalidInput)
     try expect_equal(parse("", HtmlLimits(max_nodes: -1)), invalid)
     try expect_not_equal(HtmlError.InvalidData.message(), "")

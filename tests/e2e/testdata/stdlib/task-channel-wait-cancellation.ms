@@ -42,35 +42,35 @@ fn send_value(ready: Channel[Unit, Unit], target: Channel[Int, Int]) Unit:
     var end = target.clone()
     end.send(42).get()
 
-fn cancel_receive(target: Channel[Int, Int]) Result[Unit, Error]:
+fn cancel_receive(target: Channel[Int, Int]) Unit!:
     var group = TaskGroup[Int]()
     let end = target.clone()
     var task = group.spawn(fn ready: receive_value(ready, end))
     task.channel.receive() | try expect_ok | try expect_equal(unit)
 
     # The acknowledging task parks on the target before this receive resumes us.
-    group.close()
+    try group.close()
     task.result() | try expect_error | try expect_equal(TaskError.Closed)
-    group.close()
+    try group.close()
     return ok(unit)
 
-fn cancel_send(target: Channel[Int, Int]) Result[Unit, Error]:
+fn cancel_send(target: Channel[Int, Int]) Unit!:
     var group = TaskGroup[Unit]()
     let end = target.clone()
     var task = group.spawn(fn ready: send_value(ready, end))
     task.channel.receive() | try expect_ok | try expect_equal(unit)
-    group.close()
+    try group.close()
     task.result() | try expect_error | try expect_equal(TaskError.Closed)
-    group.close()
+    try group.close()
     return ok(unit)
 
-fn wake_receiver(target: Channel[Int, Int]) Result[Unit, Error]:
+fn wake_receiver(target: Channel[Int, Int]) Unit!:
     var end = target.clone()
     end.send(7) | try expect_ok
     end.receive() | try expect_ok | try expect_equal(7)
     return ok(unit)
 
-fn wake_sender(target: Channel[Int, Int]) Result[Unit, Error]:
+fn wake_sender(target: Channel[Int, Int]) Unit!:
     var end = target.clone()
     for value in 0..17:
         end.receive() | try expect_ok | try expect_equal(value)
@@ -158,6 +158,6 @@ test "cancelling one receiver preserves another receivers wake":
     let second_end = target.channel.clone()
     var kept = survivor.spawn(fn ready: receive_value(ready, second_end))
     kept.channel.receive() | try expect_ok | try expect_equal(unit)
-    cancelled.close()
+    try cancelled.close()
     target.channel.send(7) | try expect_ok
     kept.result() | try expect_ok | try expect_equal(7)

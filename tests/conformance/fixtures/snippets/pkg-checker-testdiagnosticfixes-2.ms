@@ -5,5 +5,5 @@ impl Error for Result[Int]:
     fn message() String:
         return "x"
 
-fn f(x: Result[Int]) Result[Int, Error]:
+fn f(x: Result[Int]) Int!:
     return error(x)

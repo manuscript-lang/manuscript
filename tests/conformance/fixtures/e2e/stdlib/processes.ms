@@ -11,7 +11,7 @@ type Job:
     name: String
     sizes: List[Int]
 
-fn square_all(ch: Channel[Int, Int]) Result[Int, ChannelError]:
+fn square_all(ch: Channel[Int, Int]) Int!ChannelError:
     var c = ch
     var count = 0
 
@@ -79,7 +79,7 @@ fn report(ch: Channel[Int, Unit]) Int:
     return 3
 
 test "a child process answers each message in order":
-    let group = ProcessGroup[Result[Int, ChannelError], Int, Int]()
+    let group = ProcessGroup[Int!ChannelError, Int, Int]()
     var child = group.spawn(square_all) | try expect_ok
 
     for n in [1, 2, 3]:
@@ -132,8 +132,8 @@ test "a group forgets a closed process":
     let _second = group.spawn(describe) | try expect_ok
     let kept = first.result() | try expect_ok
     try expect_equal(kept.name, "child")
-    first.close()
-    first.close()
+    try first.close()
+    try first.close()
 
     let all = group.results() | try expect_ok
     try expect_equal(all.length(), 1)

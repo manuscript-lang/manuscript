@@ -8,9 +8,10 @@ type Door:
     log: Shared[List[Int]]
 
 impl Closeable for Door:
-    var fn close() Unit:
+    var fn close() Unit!:
         var seen = lock(self.log)
         seen.value.append(self.id)
+        return ok(unit)
 
 fn open(id: Int, log: Shared[List[Int]]) Door?:
     return Door(id, log)

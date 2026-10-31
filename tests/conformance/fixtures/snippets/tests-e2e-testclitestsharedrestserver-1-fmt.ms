@@ -20,7 +20,7 @@ fn make_fixture() ApiFixture:
 
 impl TestHooks for ApiFixture:
     var fn after_all() Unit:
-        self.server.close()
+        self.server.close().get(none)
 
 test "first request":
     let response = try expect_ok(

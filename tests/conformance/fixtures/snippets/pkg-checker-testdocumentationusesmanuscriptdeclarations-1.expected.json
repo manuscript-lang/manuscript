@@ -39,8 +39,8 @@
         "position": {
           "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 10,
-          "column": 14,
-          "offset": 350
+          "column": 7,
+          "offset": 343
         },
         "fix": {
           "position": {
@@ -65,8 +65,8 @@
         "position": {
           "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 10,
-          "column": 24,
-          "offset": 360
+          "column": 16,
+          "offset": 352
         },
         "fix": {
           "position": {
@@ -92,7 +92,7 @@
           "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 14,
           "column": 18,
-          "offset": 451
+          "offset": 442
         },
         "fix": {
           "position": {
@@ -117,8 +117,8 @@
         "position": {
           "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 15,
-          "column": 20,
-          "offset": 480
+          "column": 12,
+          "offset": 463
         },
         "fix": {
           "position": {
@@ -144,7 +144,7 @@
           "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 17,
           "column": 15,
-          "offset": 527
+          "offset": 509
         },
         "fix": {
           "position": {
@@ -170,7 +170,7 @@
           "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 19,
           "column": 18,
-          "offset": 576
+          "offset": 558
         },
         "fix": {
           "position": {
@@ -195,8 +195,8 @@
         "position": {
           "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 20,
-          "column": 20,
-          "offset": 605
+          "column": 12,
+          "offset": 579
         },
         "fix": {
           "position": {
@@ -218,7 +218,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:9:18: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 9 |         timeout: Duration?\n   |                  ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:10:14: resolution: unknown type Datagram; add: import Datagram from \"@std/net.ms\"\n    |\n 10 |     ) Result[Datagram, NetworkError]\n    |              ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:10:24: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"\n    |\n 10 |     ) Result[Datagram, NetworkError]\n    |                        ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:14:18: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n    |\n 14 |         timeout: Duration?\n    |                  ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:15:20: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"\n    |\n 15 |     ) Result[Unit, NetworkError]\n    |                    ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:17:15: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n    |\n 17 |         data: Bytes,\n    |               ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:19:18: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n    |\n 19 |         timeout: Duration?\n    |                  ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:20:20: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"\n    |\n 20 |     ) Result[Unit, NetworkError]\n    |                    ^\n8 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:9:18: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 9 |         timeout: Duration?\n   |                  ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:10:7: resolution: unknown type Datagram; add: import Datagram from \"@std/net.ms\"\n    |\n 10 |     ) Datagram!NetworkError\n    |       ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:10:16: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"\n    |\n 10 |     ) Datagram!NetworkError\n    |                ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:14:18: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n    |\n 14 |         timeout: Duration?\n    |                  ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:15:12: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"\n    |\n 15 |     ) Unit!NetworkError\n    |            ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:17:15: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n    |\n 17 |         data: Bytes,\n    |               ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:19:18: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n    |\n 19 |         timeout: Duration?\n    |                  ^\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:20:12: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"\n    |\n 20 |     ) Unit!NetworkError\n    |            ^\n8 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

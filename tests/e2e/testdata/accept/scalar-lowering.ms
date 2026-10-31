@@ -11,8 +11,9 @@ type Resource:
 
 # Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _written = filesystem().write_file(self.marker, "closed", true)
+        return ok(unit)
 
 fn closed(marker: String) Bool: filesystem().read_file(marker).is_ok()
 
@@ -68,7 +69,7 @@ fn defaulted(
         number:
             var _resource = Resource(marker.clone())
             let _used = unit
-            _resource.close()
+            _resource.close().get(none)
             number
         none: 0
 ) Int: value
@@ -80,26 +81,26 @@ fn nested(marker: String) Unit:
 
     callback()
 
-fn failed() Result[Int, TextError]: error(TextError("expected"))
+fn failed() Int!TextError: error(TextError("expected"))
 
-fn propagate(marker: String) Result[Int, TextError]:
+fn propagate(marker: String) Int!TextError:
     var _resource = Resource(marker.clone())
     let value = try failed()
     return ok(value)
     return ok(0)
 
-fn bare_propagate() Result[Int, TextError]:
+fn bare_propagate() Int!TextError:
     let value = try failed()
     return ok(value)
 
-fn equality_propagate() Result[Bool, TextError]:
+fn equality_propagate() Bool!TextError:
     let matches = (try failed()) == 0
     return ok(matches)
 
-fn bool_failed() Result[Bool, TextError]: error(TextError("expected"))
+fn bool_failed() Bool!TextError: error(TextError("expected"))
 
-fn nested_results(marker: String) Result[Int, TextError]:
-    let child = fn() Result[Bool, TextError]:
+fn nested_results(marker: String) Int!TextError:
+    let child = fn() Bool!TextError:
         var _resource = Resource(marker.clone())
         let value = try bool_failed()
         return ok(value)
@@ -109,7 +110,7 @@ fn nested_results(marker: String) Result[Int, TextError]:
     let value = try failed()
     return ok(value)
 
-fn statement_match_try(marker: String) Result[Int, TextError]:
+fn statement_match_try(marker: String) Int!TextError:
     match present(1):
         _value:
             let _resource = Resource(marker.clone())
@@ -119,7 +120,7 @@ fn statement_match_try(marker: String) Result[Int, TextError]:
 
     return ok(-1)
 
-fn value_match_loop_try(marker: String) Result[Int, TextError]:
+fn value_match_loop_try(marker: String) Int!TextError:
     var index = 0
 
     while index < 2:
@@ -127,7 +128,7 @@ fn value_match_loop_try(marker: String) Result[Int, TextError]:
             number:
                 var _resource = Resource(marker.clone())
                 let _value = try failed()
-                _resource.close()
+                _resource.close().get(none)
                 number
             none: 0
 

@@ -24,8 +24,8 @@
         "position": {
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-3.ms",
           "line": 8,
-          "column": 50,
-          "offset": 322
+          "column": 41,
+          "offset": 313
         }
       },
       {
@@ -43,7 +43,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-3.ms:4:1: resolution: declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration\n   |\n 4 | type Optional[T]:\n   | ^\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-3.ms:8:50: type: String does not satisfy Error; pass a type that already implements it\n   |\n 8 | fn wrong(value: Int?) Result[Int, String]: value.ok_or(\"missing\")\n   |                                                  ^\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-3.ms:8:1: type: String does not satisfy Error; use a type that implements it\n   |\n 8 | fn wrong(value: Int?) Result[Int, String]: value.ok_or(\"missing\")\n   | ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-3.ms:4:1: resolution: declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration\n   |\n 4 | type Optional[T]:\n   | ^\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-3.ms:8:41: type: String does not satisfy Error; pass a type that already implements it\n   |\n 8 | fn wrong(value: Int?) Int!String: value.ok_or(\"missing\")\n   |                                         ^\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-3.ms:8:1: type: String does not satisfy Error; use a type that implements it\n   |\n 8 | fn wrong(value: Int?) Int!String: value.ok_or(\"missing\")\n   | ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

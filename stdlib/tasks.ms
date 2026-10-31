@@ -82,7 +82,7 @@ export fn cancelled() Bool:
     return msrt_task_cancel_requested() != 0
 
 # Maps a runtime outcome (0 returned, 1 timed out, 2 cancelled, 3 closed or collected, 4 faulted) to a result.
-fn outcome(code: Int) Result[Unit, TaskError]:
+fn outcome(code: Int) Unit!TaskError:
     if code == 1:
         return error(TaskError.TimedOut)
     if code == 2:
@@ -158,7 +158,7 @@ fn close_end[A, B](outgoing: Shared[Lane[A]], incoming: Shared[Lane[B]]) Unit:
     var sending = lock(outgoing)
     sending.value.sender_closed = true
     sending.value.wake()
-    sending.close()
+    sending.close().get(none)
 
     var receiving = lock(incoming)
     receiving.value.receiver_closed = true
@@ -174,7 +174,7 @@ type WaitTicket[T]:
 
 impl Closeable for WaitTicket[T]:
     # A normal wake already cleared the entry. Cancellation must remove it here instead.
-    var fn close() Unit:
+    var fn close() Unit!:
         var lane = lock(self.lane)
 
         for index in 0..lane.value.waiting.length():
@@ -184,6 +184,7 @@ impl Closeable for WaitTicket[T]:
 
         if lane.value.waiting.is_empty():
             lane.value.waiting = List[Int]()
+        return ok(unit)
 
 # One end of a channel between tasks on the runtime thread. Values move from one end to the other;
 # a task that must wait parks until the other end posts its token.
@@ -215,7 +216,7 @@ fn claim_room[T](lane: Shared[Lane[T]]) Reserved:
 
 impl TaskTransport[In, Out]:
     # Waits until `outgoing` has room. Nothing runs between this returning and the caller's send.
-    fn wait_for_room() Result[Unit, ChannelError]:
+    fn wait_for_room() Unit!ChannelError:
         while true:
             match claim_room(self.outgoing):
                 Reserved.Ready:
@@ -229,16 +230,16 @@ impl TaskTransport[In, Out]:
         return ok(unit)
 
 impl Transport[In, Out] for TaskTransport[In, Out]:
-    fn send(value: In) Result[Unit, ChannelError]:
+    fn send(value: In) Unit!ChannelError:
         try self.wait_for_room()
 
         var lane = lock(self.outgoing)
         lane.value.back.append(value)
         lane.value.wake()
-        lane.close()
+        lane.close().get(none)
         return ok(unit)
 
-    fn receive() Result[Out?, ChannelError]:
+    fn receive() Out?!ChannelError:
         while true:
             var lane = lock(self.incoming)
             if lane.value.receiver_closed:
@@ -253,7 +254,7 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
 
             let token = msrt_channel_token()
             lane.value.waiting.append(token)
-            lane.close()
+            lane.close().get(none)
 
             let ticket = WaitTicket[Out](lane: self.incoming, token: token)
             msrt_channel_park(token)
@@ -265,8 +266,9 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
 
 impl Closeable for TaskTransport[In, Out]:
     # Closes this end. Safe to call again.
-    var fn close() Unit:
+    var fn close() Unit!:
         close_end(self.outgoing, self.incoming)
+        return ok(unit)
 
 # The body of a task: runs `entry` on the task's end of its channel and stores its one result in
 # `slot`. The end closes when the task ends, however it ends.
@@ -318,14 +320,14 @@ fn forget[T, In: Clonable, Out: Clonable](
 
 # Waits for the task `handle` of `scope` and takes its result from `values`. The task is collected
 # even when it has no result, so the runtime and the group let go of it.
-fn collect[T](scope: Int, handle: Int, values: Shared[List[T]]) Result[T, TaskError]:
+fn collect[T](scope: Int, handle: Int, values: Shared[List[T]]) T!TaskError:
     try outcome(msrt_scope_join(scope, handle, 0))
 
     var finished = lock(values)
     if let value = finished.value.pop():
         return ok(value)
 
-    finished.close()
+    finished.close().get(none)
     panic("Task: the result was already taken")
 
 # A started task that returns a `T`, with the group's end of its channel.
@@ -343,7 +345,7 @@ export type Task[T, In: Clonable = Unit, Out: Clonable = Unit]:
 
 impl Task[T, In, Out]:
     # Waits for the task and returns its result, or why it has none. Takes the result, so call it once.
-    fn result() Result[T, TaskError]:
+    fn result() T!TaskError:
         let collected = collect(self.scope, self.handle, self.values)
         forget(self.registry, self.handle)
         return collected
@@ -404,14 +406,14 @@ impl TaskGroup[T, In, Out]:
         started.value[handle] = Entry(
             handle, values, group_end(down, up, lifetime.clone())
         )
-        started.close()
+        started.close().get(none)
         return Task(
             self.scope, handle, self.tasks, values, group_end(down, up, lifetime)
         )
 
     # Waits for every uncollected task and returns their results in start order, or the first task's error.
     # Tasks already collected with `result` are not included; the ones returned are collected.
-    fn results() Result[List[T], TaskError]:
+    fn results() List[T]!TaskError:
         if msrt_scope_wait(self.scope) == 3:
             return error(TaskError.Closed)
 
@@ -426,12 +428,12 @@ impl TaskGroup[T, In, Out]:
         return ok(values)
 
     # Waits for every started task to end. Returns `TimedOut`, `Cancelled`, `Closed` or `Faulted` if any task ended without a result.
-    fn wait() Result[Unit, TaskError]:
+    fn wait() Unit!TaskError:
         return outcome(msrt_scope_wait(self.scope))
 
 impl Closeable for TaskGroup[T, In, Out]:
     # Cancels tasks that have not ended, waits for them, and closes every channel. Safe to call again.
-    var fn close() Unit:
+    var fn close() Unit!:
         msrt_scope_close(self.scope)
         msrt_channel_group_close(self.channels)
 
@@ -439,3 +441,4 @@ impl Closeable for TaskGroup[T, In, Out]:
         for handle in started.value.keys():
             if var entry = started.value[handle]?:
                 entry.channel.close()
+        return ok(unit)

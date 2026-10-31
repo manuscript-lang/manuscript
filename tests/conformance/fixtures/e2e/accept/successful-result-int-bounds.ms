@@ -5,13 +5,13 @@ import Closeable from "@std/core.ms"
 import TextError from "@std/core.ms"
 import expect_contains, expect_equal, expect_fault from "@std/test.ms"
 
-fn checked(n: Int) Result[Int, TextError]:
+fn checked(n: Int) Int!TextError:
     if n < 0:
         return error(TextError("negative"))
 
     return ok(n + 1)
 
-fn wrapped(n: Int) Result[Int, TextError]:
+fn wrapped(n: Int) Int!TextError:
     let value = try checked(n)
     return ok(value)
 
@@ -58,7 +58,7 @@ fn peer() Int:
 
     return sum
 
-fn hidden(n: Int) Result[Int, TextError]:
+fn hidden(n: Int) Int!TextError:
     if n < 0:
         return error(
             TextError(
@@ -86,8 +86,9 @@ type BoundedResultCleanup:
     visits: List[Int]
 
 impl Closeable for BoundedResultCleanup:
-    var fn close() Unit:
+    var fn close() Unit!:
         self.visits.append(7)
+        return ok(unit)
 
 fn cleanup(visits: List[Int]) Int:
     let _resource = BoundedResultCleanup(visits)

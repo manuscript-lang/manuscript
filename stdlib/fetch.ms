@@ -72,7 +72,7 @@ export type FetchBody:
     )
 
 # Encodes `value` as a JSON request body, sent as `application/json` unless a `Content-Type` is given.
-export fn json_body[T: Data](value: T) Result[FetchBody, FetchError]:
+export fn json_body[T: Data](value: T) FetchBody!FetchError:
     let text = try stringify(value).map_error(json_failure)
     return ok(FetchBody.JsonText(text))
 
@@ -116,21 +116,21 @@ impl FetchResponse:
         return self.head.status >= 200 and self.head.status < 300
 
     # Decodes the body as UTF-8.
-    fn text() Result[String, FetchError]:
+    fn text() String!FetchError:
         if let text = self.body.decode_utf8():
             return ok(text)
 
         return error(FetchError.InvalidText)
 
     # Decodes the body as JSON into `T`, as in `try response.json[User]()`; use `JsonValue` for untyped data.
-    fn json[T: Data](ignore_unknown_fields: Bool = true) Result[T, FetchError]:
+    fn json[T: Data](ignore_unknown_fields: Bool = true) T!FetchError:
         let text = try self.text()
         return parse[T](text, ignore_unknown_fields: ignore_unknown_fields).map_error(
             json_failure
         )
 
     # Succeeds when the status is 200 through 299 and otherwise returns `Status`, so `try response.check_status()` rejects error responses.
-    fn check_status() Result[Unit, FetchError]:
+    fn check_status() Unit!FetchError:
         if self.ok(): return ok(unit)
 
         return error(FetchError.Status(self.head.status))
@@ -146,7 +146,7 @@ impl Fetcher:
     fn fetch(
         url: String,
         options: FetchOptions = FetchOptions()
-    ) Result[FetchResponse, FetchError]:
+    ) FetchResponse!FetchError:
         let started = clock().now()
         let body = try self.stream(url, options.clone())
         return drain(body, options, started)
@@ -155,7 +155,7 @@ impl Fetcher:
     fn stream(
         url: String,
         options: FetchOptions = FetchOptions()
-    ) Result[ResponseBody, FetchError]:
+    ) ResponseBody!FetchError:
         let sent = outgoing(options)
         return self.client.request_bytes(
             options.method.clone(), url, sent.headers, sent.body,
@@ -164,15 +164,15 @@ impl Fetcher:
 
 impl Closeable for Fetcher:
     # Cancels in-flight requests and drops pooled connections; later calls return `Http(Closed)`.
-    var fn close() Unit:
-        self.client.close()
+    var fn close() Unit!:
+        return self.client.close()
 
 # Reads the body to its end within the options' size limit, then closes it.
 fn drain(
     body: ResponseBody,
     options: FetchOptions,
     started: Instant
-) Result[FetchResponse, FetchError]:
+) FetchResponse!FetchError:
     let open = body
     let metadata = open.metadata()
     let whole = (
@@ -246,7 +246,7 @@ fn outgoing(options: FetchOptions) Outgoing:
 export fn fetcher(
     options: FetcherOptions = FetcherOptions(),
     net: Network = network()
-) Result[Fetcher, FetchError]:
+) Fetcher!FetchError:
     let settings = HttpClientOptions(
         max_redirects: options.max_redirects, decompress: options.decompress,
         cookies: options.cookies, tls: options.tls.clone()
@@ -259,6 +259,6 @@ export fn fetcher(
 export fn fetch(
     url: String,
     options: FetchOptions = FetchOptions()
-) Result[FetchResponse, FetchError]:
+) FetchResponse!FetchError:
     let client = try fetcher()
     return client.fetch(url, options)

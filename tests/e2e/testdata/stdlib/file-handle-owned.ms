@@ -3,7 +3,7 @@ import ReadStream from "@std/io.ms"
 import expect_true, expect_ok from "@std/test.ms"
 
 # `FileHandle` is a nominal type with `impl Closeable`, so a binding of one owns the file.
-fn view_of(path: String) Result[ReadStream, Error]:
+fn view_of(path: String) ReadStream!:
     let file = try filesystem().open(path, "r", 0)
     return ok(file.reader())
 
@@ -20,4 +20,4 @@ test "closing a file handle by hand is allowed once more at scope end":
     let path = "{temporary.path()}/b.txt"
     var file = filesystem().open(path, "w", 420) | try expect_ok
     try expect_true(file.write("hello").is_ok())
-    file.close()
+    try file.close()

@@ -24,7 +24,7 @@ fn child(ch: Channel[Unit, Unit]) Int:
     var c = ch
     let _ = c.send(unit)
     g.result().get()
-    group.close()
+    group.close().get(none)
     return 0
 
 export fn main() Int:
@@ -32,7 +32,7 @@ export fn main() Int:
     var group = ProcessGroup[Int, Unit, Unit]()
     var c = group.spawn(child).get()
     let _ = c.channel.receive()
-    group.close()
+    group.close().get(none)
     sleep(nanoseconds(3500000000))
     stdout().write(
         "grandchild survived: " + filesystem().read_file(

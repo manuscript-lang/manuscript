@@ -7,5 +7,5 @@ fn start(entry: fn(Channel[Unit, Unit]) Int) Int:
     var group = TaskGroup[Int]()
     group.spawn(entry)
     group.spawn(entry)
-    group.close()
+    group.close().get(none)
     return 0

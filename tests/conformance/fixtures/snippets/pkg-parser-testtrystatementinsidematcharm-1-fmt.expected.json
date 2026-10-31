@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(x: Int?) Result[Unit, Error]:\n    match x:\n        n:\n            try g(n)\n            return ok(unit)\n        none: return ok(unit)\n"
+    "fmt": "fn f(x: Int?) Unit!:\n    match x:\n        n:\n            try g(n)\n            return ok(unit)\n        none: return ok(unit)\n"
   }
 }

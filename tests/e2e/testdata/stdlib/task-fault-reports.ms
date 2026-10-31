@@ -13,7 +13,7 @@ test "closing a faulted group does not replace a later wait report":
 
     let reason = first.wait() | try expect_error
     report(reason) | try expect_equal("first group fault")
-    first.close()
+    try first.close()
 
     let second = TaskGroup[Unit](contain_faults: true)
     second.spawn(fn ch: panic("second group fault"))

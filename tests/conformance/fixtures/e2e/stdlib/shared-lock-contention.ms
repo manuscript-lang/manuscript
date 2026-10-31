@@ -24,7 +24,7 @@ export fn main() Int:
         g.spawn(fn ch: bump(b, n))
 
     let _ = g.results()
-    g.close()
+    g.close().get(none)
 
     let _ = stdout().write("total " + box.get().to_string() + "\n")
     return 0

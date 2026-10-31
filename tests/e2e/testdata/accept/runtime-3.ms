@@ -4,8 +4,8 @@ import expect_equal, expect_true, fail from "@std/test.ms"
 fn identity[T](value: T) T:
     return value
 
-fn probe() Result[Unit, Error]:
-    let first = fn() Result[Int, TextError]:
+fn probe() Unit!:
+    let first = fn() Int!TextError:
         return ok(3)
     let second = fn:
         return true
@@ -34,7 +34,7 @@ type Code:
 impl Error for Code:
     fn message() String: "code {self.number}"
 
-fn describe(outcome: Result[Int, Code]) Result[Int, TextError]:
+fn describe(outcome: Int!Code) Int!TextError:
     match outcome:
         ok(value):
             return ok(value)
@@ -42,10 +42,10 @@ fn describe(outcome: Result[Int, Code]) Result[Int, TextError]:
             return error(TextError("Error {cause.number}"))
 
 test "explicit error conversion":
-    let failed: Result[Int, Code] = error(Code(7))
-    let expected: Result[Int, TextError] = error(TextError("Error 7"))
+    let failed: Int!Code = error(Code(7))
+    let expected: Int!TextError = error(TextError("Error 7"))
     describe(outcome: failed) | try expect_equal(expected)
 
-    let succeeded: Result[Int, Code] = ok(3)
-    let unchanged: Result[Int, TextError] = ok(3)
+    let succeeded: Int!Code = ok(3)
+    let unchanged: Int!TextError = ok(3)
     describe(outcome: succeeded) | try expect_equal(unchanged)

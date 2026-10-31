@@ -4,8 +4,9 @@ type Journal:
     lines: Int
 
 impl Closeable for Journal:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _ = self.lines
+        return ok(unit)
 
 impl Journal:
     var fn flush() Result[Unit, TextError]:

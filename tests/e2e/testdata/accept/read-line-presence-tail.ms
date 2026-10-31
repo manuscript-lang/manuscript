@@ -10,7 +10,7 @@ type MemoryStream:
     closed: Bool
 
 impl ReadStream for MemoryStream:
-    var fn read(max_bytes: Int?) Result[Bytes?, IoError]:
+    var fn read(max_bytes: Int?) Bytes?!IoError:
         if self.closed: return error(IoError.Closed)
         if self.offset == self.data.length(): return ok(none)
 
@@ -37,8 +37,9 @@ type LineTailCleanup:
 
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for LineTailCleanup:
-    var fn close() Unit:
+    var fn close() Unit!:
         let _written = filesystem().write_file(self.marker, "closed", true)
+        return ok(unit)
 
 fn with_cleanup(var input: ReadStream, marker: String) Bool:
     let _resource = LineTailCleanup(marker)

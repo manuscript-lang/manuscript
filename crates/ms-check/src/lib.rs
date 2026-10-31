@@ -16,7 +16,6 @@ pub mod exprs;
 pub mod hints;
 pub mod hir;
 pub mod inference;
-pub mod json;
 pub mod native;
 pub mod native_defaults;
 pub mod ownership;

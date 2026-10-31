@@ -718,8 +718,19 @@ impl<'a> FnLower<'a> {
                         return Ok(recv);
                     }
                     self.close_with(&kind, recv.v, want);
-                    let v = self.b.unit();
-                    return Ok(Val { v, own: false });
+                    // The call is checked as `Unit!`: it succeeds, since a part that fails faults.
+                    let result = self.mty(&ms_check::types::test_outcome())?;
+                    let TyKind::Alt(alt) = self.b.m.types.kind(result).clone() else {
+                        return Err(Error::new("a close returns a Result"));
+                    };
+                    let ok = self.b.m.alts[alt.index()]
+                        .cases
+                        .iter()
+                        .position(|c| c.name == "ok")
+                        .ok_or_else(|| Error::new("a close returns a Result"))?;
+                    let unit = self.b.unit();
+                    let v = self.b.alt_new(alt, ok as u32, &[unit]);
+                    return Ok(Val { v, own: true });
                 }
                 return Err(Error::new(format!(
                     "{static_ty} has no implementation of {}",

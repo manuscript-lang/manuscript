@@ -33,7 +33,7 @@ fn rebound_datagram(address: String) Int:
     match network().bind_datagram(address):
         ok(bound):
             var again = bound
-            again.close()
+            again.close().get(none)
             return 1
         error(_): return 0
 
@@ -41,7 +41,7 @@ fn rebound(address: String) Int:
     match network().listen(address):
         ok(bound):
             var again = bound
-            again.close()
+            again.close().get(none)
             return 1
         error(_): return 0
 
@@ -49,7 +49,7 @@ export fn main() Int:
     let net = network()
     var first = net.listen("127.0.0.1:0").get()
     let address = first.address().clone()
-    first.close()
+    first.close().get(none)
     stdout().write("closed listener rebound: {rebound(address)}\n").get()
 
     var group = TaskGroup[Int](timeout: nanoseconds(2000000))
@@ -57,7 +57,7 @@ export fn main() Int:
     group.spawn(fn ch: accept_one(a))
 
     let _ = group.wait()
-    group.close()
+    group.close().get(none)
     stdout().write("cancelled accept rebound: {rebound(address)}\n").get()
 
     let third = net.listen("127.0.0.1:0").get()
@@ -71,18 +71,18 @@ export fn main() Int:
         round_group.spawn(fn ch: read_one(round_a))
 
         let _ = round_group.wait()
-        round_group.close()
+        round_group.close().get(none)
 
         let accepted = server.accept(nanoseconds(500000000))
         if accepted.is_ok():
-            accepted.get().close()
+            accepted.get().close().get(none)
 
-    server.close()
+    server.close().get(none)
     stdout().write("cancelled reads rebound: {rebound(third_address)}\n").get()
 
     var udp = net.bind_datagram("127.0.0.1:0").get()
     let udp_address = udp.address().clone()
-    udp.close()
+    udp.close().get(none)
     (
         stdout().write(
             "closed datagram socket rebound: {rebound_datagram(udp_address)}\n"
@@ -94,6 +94,6 @@ export fn main() Int:
     group2.spawn(fn ch: receive_one(datagram_a))
 
     let _ = group2.wait()
-    group2.close()
+    group2.close().get(none)
     stdout().write("cancelled receive rebound: {rebound_datagram(udp_address)}\n").get()
     return 0

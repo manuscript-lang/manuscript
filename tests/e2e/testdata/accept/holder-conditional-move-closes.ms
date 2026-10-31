@@ -8,9 +8,10 @@ type Door:
     log: Shared[List[Int]]
 
 impl Closeable for Door:
-    var fn close() Unit:
+    var fn close() Unit!:
         var seen = lock(self.log)
         seen.value.append(self.id)
+        return ok(unit)
 
 test "a list moved on one path closes on the path that keeps it":
     let log: Shared[List[Int]] = share([])

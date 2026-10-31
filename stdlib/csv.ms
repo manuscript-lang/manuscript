@@ -24,7 +24,7 @@ export fn parse(
     options: CsvOptions = CsvOptions(),
     max_rows: Int?,
     max_cells: Int?
-) Result[List[List[String]], CsvError]:
+) List[List[String]]!CsvError:
     let rows_budget = budget(max_rows)
     let cells_budget = budget(max_cells)
     if rows_budget < 0 or cells_budget < 0: return error(CsvError.InvalidInput)
@@ -67,7 +67,7 @@ fn budget(limit: Int?) Int:
     return 9223372036854775807
 
 # Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
-fn check_options(options: CsvOptions) Result[Unit, CsvError]:
+fn check_options(options: CsvOptions) Unit!CsvError:
     let scalars = options.delimiter.scalar_values()
     if scalars.length() != 1: return error(CsvError.InvalidInput)
 
@@ -132,7 +132,7 @@ fn line_end_after(reader: Reader, at: Int) Int:
     return at
 
 # Reads the next record, skipping empty lines; none at end of input.
-fn read_record(var reader: Reader) Result[List[String]?, CsvError]:
+fn read_record(var reader: Reader) List[String]?!CsvError:
     while true:
         let skipped = line_end_after(reader, reader.at)
         if skipped == reader.at: break
@@ -215,7 +215,7 @@ export fn stringify(
     rows: List[List[String]],
     options: CsvOptions = CsvOptions(),
     max_bytes: Int?
-) Result[String, CsvError]:
+) String!CsvError:
     let limit = budget(max_bytes)
     if limit < 0: return error(CsvError.InvalidInput)
 

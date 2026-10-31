@@ -6,12 +6,14 @@ import TaskGroup from "@std/tasks.ms"
 
 fn show(xs: List[Int]) Int:
     var group = TaskGroup[Int]()
+
     # Each task owns its capture, and `xs` is only borrowed, so each one takes a clone.
     let first = xs.clone()
     group.spawn(fn ch: first.length())
+
     let second = xs.clone()
     group.spawn(fn ch: second.length())
-    group.close()
+    group.close().get(none)
     return 0
 
 export fn main() Int:

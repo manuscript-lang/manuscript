@@ -41,7 +41,7 @@ weight = 1
 | `ms-tooling`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, `guide`, docgen; language server |
 | `ms-cli`, `ms-conform`, `ms-repo-check` | The `ms` binary; the conformance runner; repository invariants |
 
-`stdlib/*.ms` holds the public standard declarations and `bindings.json` the native identities; it is the signature authority and the Rust implementation embeds it unchanged.
+`stdlib/*.ms` holds the public standard declarations and names the native symbols with `extern fn`; it is the signature authority and the Rust implementation embeds it unchanged.
 
 ## Keep shared behavior in one implementation
 
@@ -76,7 +76,7 @@ Fix generated output through its generator, never by editing HTML or copying sta
 | Change | Trace and validation |
 | --- | --- |
 | Syntax or type rules | Guide, `ms-syntax`, `ms-check`, `ms-lower`, formatting and LSP, accepted/rejected fixtures |
-| Standard operation | `.ms` declaration, `bindings.json`, `ms-lower` native call, `ms-std-*` implementation, generated reference; test in a called test block |
+| Standard operation | `.ms` declaration, `ms-lower` native call, `ms-std-*` implementation, generated reference; test in a called test block |
 | Resource work | Checking, acquisition, cancellation, close; verify exit ordering |
 | Manifest, alias, or import | `ms-driver` `project`, module graph, overlays; test equivalent paths, escapes, malformed input |
 | CLI command | `ms-cli`, relevant crate, status/output contract; failed checking preserves outputs |

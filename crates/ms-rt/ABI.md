@@ -70,7 +70,7 @@ recorded here before it is committed.)_
   Clone becomes explicit `msrt_list_copy` / `msrt_slot_copy`. The sections below
   describe v2 only.
 - **v2.1 (implemented runtime, `ABI_VERSION` 2).** Everything below is implemented and tested in `ms-rt`;
-  `SYMBOLS.md` lists every exported symbol with its Rust signature. It is kept by hand; the `runtime_symbol_catalogue_matches_archive` test fails when it and the runtime archive disagree, and `stdlib/bindings.json` (`runtime_symbols`) names the symbol of each native function.
+  `SYMBOLS.md` lists every exported symbol with its Rust signature. It is kept by hand; the `runtime_symbol_catalogue_matches_archive` test fails when it and the runtime archive disagree, and each `extern fn` in `stdlib/*.ms` names its symbol.
   - Strings: owned, immutable, uniquely owned buffers; empty and one-ASCII-byte results are static strings (tag `10`).
     The scalar count of the long string last measured is cached in a one-entry hint with a position for sequential indexing.
   - Optional/fallible conventions as in section 1: `Int?` result = `u8` present + `out: *mut i64`; `String?` = `OptStr { value: StrVal }` (16 bytes; none is a static empty string with a null `ptr`) through `out`, or a `present: u8` result with `out: *mut StrVal`

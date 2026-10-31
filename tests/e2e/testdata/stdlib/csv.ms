@@ -37,14 +37,12 @@ test "CSV quoted empty fields respect exact row cell and byte budgets":
         let bytes = text.byte_length()
         try expect_equal((try stringify(rows, options, bytes)), text)
 
-        let limited_text: Result[String, CsvError] = error(CsvError.LimitExceeded)
+        let limited_text: String!CsvError = error(CsvError.LimitExceeded)
         try expect_equal(stringify(rows, options, bytes - 1), limited_text)
         try expect_equal(stringify([[""]], options, 0), limited_text)
         try expect_equal((try parse(text, options, 3, 3)), rows)
 
-        let limited_rows: Result[List[List[String]], CsvError] = error(
-            CsvError.LimitExceeded
-        )
+        let limited_rows: List[List[String]]!CsvError = error(CsvError.LimitExceeded)
         try expect_equal(parse(text, options, 2), limited_rows)
         try expect_equal(parse(text, options, max_cells: 2), limited_rows)
         try expect_equal(parse("\"\"", options, 0), limited_rows)
@@ -71,14 +69,14 @@ test "CSV quotes delimiters multiline cells and line endings":
 
 test "CSV rejects malformed records invalid options and limits":
     let options = CsvOptions(",", "\n")
-    let malformed: Result[List[List[String]], CsvError] = error(CsvError.InvalidData)
+    let malformed: List[List[String]]!CsvError = error(CsvError.InvalidData)
     try expect_equal(parse("\"unterminated", options), malformed)
     for text in ["\"\"x\n", "x\"\"\n", "\"\"\"\n"]:
         try expect_equal(parse(text, options), malformed)
 
-    let limited: Result[List[List[String]], CsvError] = error(CsvError.LimitExceeded)
+    let limited: List[List[String]]!CsvError = error(CsvError.LimitExceeded)
     try expect_equal(parse("a,b\n", options, max_cells: 1), limited)
     try expect_equal(parse("a\nb\n", options, 1), limited)
 
-    let invalid: Result[String, CsvError] = error(CsvError.InvalidInput)
+    let invalid: String!CsvError = error(CsvError.InvalidInput)
     try expect_equal(stringify([["a"]], CsvOptions("::", "\n")), invalid)

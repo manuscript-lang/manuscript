@@ -34,7 +34,7 @@ impl Error for CustomError:
 fn is_missing(cause: Error) Bool:
     return category(cause) == ErrorCategory.NotFound
 
-fn yaml_error(cause: Error) Result[YamlError, Error]:
+fn yaml_error(cause: Error) YamlError!:
     match cause:
         YamlError(found): return ok(found)
         _: return error(TextError("category changed domain"))

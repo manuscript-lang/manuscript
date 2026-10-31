@@ -28,7 +28,7 @@ export fn main() Int:
         ok(value): say("good {value}")
         error(_other): say("good failed")
 
-    group.close()
+    group.close().get(none)
 
     var group2 = TaskGroup[Int](contain_faults: true)
     group2.spawn(fn ch: boom([1]))
@@ -37,5 +37,5 @@ export fn main() Int:
         ok(_unit): say("wait ok")
         error(reason): say(describe(reason))
 
-    group2.close()
+    group2.close().get(none)
     return 0

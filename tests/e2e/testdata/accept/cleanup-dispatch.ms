@@ -17,8 +17,9 @@ impl OtherClose for Resource:
         return 0
 
 impl Closeable for Resource:
-    var fn close() Unit:
+    var fn close() Unit!:
         panic("closeable")
+        return ok(unit)
 
 impl Disposable for Resource:
     var fn close() Unit:

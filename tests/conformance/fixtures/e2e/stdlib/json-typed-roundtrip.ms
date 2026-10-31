@@ -26,7 +26,7 @@ test "JSON payloadless cases are their names and round-trip":
     try expect_equal(try stringify(back), text)
 
 test "JSON rejects an unknown case name":
-    let invalid: Result[Color, JsonError] = error(JsonError.InvalidData)
+    let invalid: Color!JsonError = error(JsonError.InvalidData)
     try expect_equal(parse[Color]("\"Blue\""), invalid)
     try expect_equal(parse[Color]("\"Color.Red\""), invalid)
 

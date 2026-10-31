@@ -8,8 +8,9 @@ type Resource:
     state: Queue[Int]
 
 impl Closeable for Resource:
-    fn close() Unit:
+    fn close() Unit!:
         self.state.dequeue()
+        return ok(unit)
 
 fn pure() Int:
     return 1

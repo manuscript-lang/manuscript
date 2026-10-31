@@ -60,7 +60,7 @@ test "a task cancelled in a channel read releases the link":
     var tasks = TaskGroup[Int](timeout: nanoseconds(50000000))
     tasks.spawn(fn ch: first(reader.clone()))
     try expect_equal(tasks.wait().is_error(), true)
-    tasks.close()
+    try tasks.close()
     try expect_equal(child.result().get(-1), 42)
 
 fn long_program() String:
@@ -104,7 +104,7 @@ test "cancelling a task inside commands().run kills the child":
     var group = TaskGroup[Int](timeout: nanoseconds(200000000))
     let t = group.spawn(fn ch: run_long())
     try expect_equal(t.result().is_ok(), false)
-    group.close()
+    try group.close()
     sleep(nanoseconds(200000000))
     try expect_equal(long_alive(), false)
 
@@ -116,7 +116,7 @@ test "cancelling a task inside Subprocess.wait kills the child":
     var group = TaskGroup[Int](timeout: nanoseconds(200000000))
     let t = group.spawn(fn ch: wait_long())
     try expect_equal(t.result().is_ok(), false)
-    group.close()
+    try group.close()
     sleep(nanoseconds(200000000))
     try expect_equal(long_alive(), false)
 
@@ -127,7 +127,7 @@ test "cancelling a task inside Subprocess.wait stops a child the task was handed
     var group = TaskGroup[Int](timeout: nanoseconds(200000000))
     let t = group.spawn(fn ch: child.wait().get(-1))
     try expect_equal(t.result().is_ok(), false)
-    group.close()
+    try group.close()
     sleep(nanoseconds(200000000))
     try expect_equal(long_alive(), false)
 
@@ -168,7 +168,7 @@ test "two tasks send to the same child while its pipe is full":
     tasks.spawn(fn ch: send_many(a.clone(), 20000))
     tasks.spawn(fn ch: send_many(b.clone(), 20000))
     try expect_equal(tasks.results().get([]), [20000, 20000])
-    tasks.close()
+    try tasks.close()
     child.channel.close()
     try expect_equal(child.result().get(-1), 40000)
 
@@ -184,5 +184,5 @@ test "two tasks receive from the same child":
     let got = tasks.results().get([])
     try expect_equal(got.length(), 2)
     try expect_equal(got[0] + got[1], 3)
-    tasks.close()
+    try tasks.close()
     try expect_equal(child.result().get(-1), 42)
