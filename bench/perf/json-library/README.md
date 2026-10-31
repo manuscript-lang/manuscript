@@ -270,3 +270,36 @@ medians show no new material regression; earlier long controls apply to these
 exact same binaries. All22 scoped JSON Rust tests and the normal native/CLI build
 pass on this integrated tree. Required CI must rerun on the updated PR head;
 post-merge combined-main replay remains required.
+
+
+## Expanded compiled TOML controls on main024
+
+A separate-worktree comparison on024 exposed possible large-Unicode timing costs.
+Its [complete1,224 observations](results/2026-10-31/toml-main-024-separate/summary.json)
+remain retained as discovery; checkout differences confound candidate attribution.
+We therefore repeated normal runtime/CLI builds in **one worktree**, with the same
+manifests, exact dependency graph, target and source paths. The baseline restores
+only current-main JSON lib.rs; the candidate uses the reviewed replacement.
+This is an isolated algorithm toggle, not a pristine-main dependency graph.
+
+[Source/runtime/build identities](results/2026-10-31/toml-main-024-identical/build-identities.json)
+and fresh [full results](results/2026-10-31/toml-main-024-identical/summary.json)
+cover1,224 observations over11 parse/stringify,6 error,8 writer and11 read cases,
+including1MiB inputs. All four corresponding before/after TOML, error, writer and
+read executable pairs are **byte-identical**. These produced-executable results
+are therefore A/A variation; even directional label differences cannot establish
+an algorithm-specific TOML cost. Different runtime-archive hashes alone do not
+establish an executable change. No backend/cache/lifetime mechanism was inspected
+to explain the identity or earlier differences, and no build-speed claim is made.
+
+Each measured iteration reads fresh external UTF-8 input; setup and printing are
+excluded, cached-file ingestion and full-output equality are included. Equivalent
+Rust toml0.9.8 values validate every complete valid output; MS before/after bytes
+agree. Six errors compare exact MS diagnostics only. All observations, actual
+counts, outputs and payload hashes remain retained, including the unfavorable
+separate-worktree cohort. The compressed
+[harness snapshot](variants/toml-control-scan-harness.json.gz) maps exact original
+relative filenames to UTF-8 source and SHA256; its manifest hashes every file and
+both packed/unpacked bundles. Restore it under bench/perf/toml-control-scan for the
+recorded commands. No temporary source copy is added to the active benchmark tree.
+Independent review verified the identical executables and scoped attribution limit.
