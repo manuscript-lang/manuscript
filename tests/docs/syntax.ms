@@ -14,13 +14,13 @@ type State:
     case Data(value: Int)
 
 interface Reader:
-    fn text() ref String
+    fn text() String
 
 type Document:
     value: String
 
 impl Reader for Document:
-    fn text() ref String:
+    fn text() String:
         return self.value
 
 impl Document:

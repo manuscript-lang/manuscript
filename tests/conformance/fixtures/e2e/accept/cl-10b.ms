@@ -4,7 +4,7 @@
 import expect_equal from "@std/test.ms"
 
 interface ReadValue[T]:
-    fn get() ref T
+    fn get() T
 
 type Box[T]:
     value: T
@@ -16,7 +16,7 @@ type CallbackReader:
     read_value: fn() Int
 
 impl ReadValue[T] for Box[T]:
-    fn get() ref T:
+    fn get() T:
         return self.value
 
 impl ReadValue[Int] for CallbackReader:

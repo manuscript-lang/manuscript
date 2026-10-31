@@ -4,23 +4,23 @@
 import expect_equal, expect_false from "@std/test.ms"
 
 interface ReadValue[T]:
-    fn get() ref T
+    fn get() T
 
 interface SameValue[T: Equal]:
     fn same(other: T) Bool
 
-type Box[T]:
+type Box[T: Clonable]:
     value: T
 
 impl ReadValue[T] for Box[T]:
-    fn get() ref T:
-        return self.value
+    fn get() T:
+        return self.value.clone()
 
 impl SameValue[T] for Box[T]:
     fn same(other: T) Bool:
         return self.value == other
 
-fn compare[T: Equal](box: Box[T], other: T) Bool:
+fn compare[T: Equal & Clonable](box: Box[T], other: T) Bool:
     return box.same(other)
 
 test "generic implementations":

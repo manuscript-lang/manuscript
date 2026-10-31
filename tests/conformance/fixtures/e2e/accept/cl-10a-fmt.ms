@@ -4,7 +4,7 @@
 import expect_equal, expect_false from "@std/test.ms"
 
 interface ReadValue[T]:
-    fn get() ref T
+    fn get() T
 
 interface SameValue[T: Equal]:
     fn same(other: T) Bool
@@ -13,7 +13,7 @@ type Box[T]:
     value: T
 
 impl ReadValue[T] for Box[T]:
-    fn get() ref T:
+    fn get() T:
         return self.value
 
 impl SameValue[T] for Box[T]:

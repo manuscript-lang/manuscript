@@ -176,8 +176,6 @@ pub struct Cx {
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves:
         Rc<HashMap<usize, HashMap<ms_syntax::ast::NodeId, Vec<ms_check::types::Name>>>>,
-    /// `ref` functions that lend on every path, by module file and node.
-    pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Captures a non-escaping lambda only reads: the closure points at them instead of copying.
     pub borrowed_captures: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId, usize)>>,
     /// Parameters each callable consumes, by module file and node.
@@ -239,7 +237,6 @@ impl Cx {
             close_moves: program.close_moves.clone(),
             moved_payloads: program.moved_payloads.clone(),
             resource_moves: program.resource_moves.clone(),
-            lenders: program.lenders.clone(),
             borrowed_captures: program.borrowed_captures.clone(),
             consumes: program.consumes.clone(),
             getters: program.getter_borrows.clone(),
@@ -338,12 +335,6 @@ impl Cx {
                 let mut fields = Vec::new();
                 for f in ct::fields(t) {
                     let ty = self.lower_ty(m, &f.ty)?;
-                    // A `ref` field holds a view of its value: the record never owns it.
-                    let ty = if ct::field_is_ref(t, f.name) {
-                        m.types.view(ty)
-                    } else {
-                        ty
-                    };
                     fields.push((f.name.to_string(), ty));
                 }
                 m.records[id.index()].fields = fields;
@@ -411,11 +402,7 @@ impl Cx {
                             params.push(self.lower_ty(m, &p.ty)?);
                         }
                         let ret = self.lower_ty(m, &sig.result_ty())?;
-                        let ret_borrowed = op
-                            .decl
-                            .as_ref()
-                            .and_then(|d| d.func().map(|f| f.result_ref))
-                            .unwrap_or(false);
+                        let ret_borrowed = false;
                         methods.push(MethodSig {
                             name: op.name.to_string(),
                             params,

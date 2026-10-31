@@ -1,9 +1,9 @@
 import expect_equal from "@std/test.ms"
 
 interface ReadValue[T]:
-    fn get() ref T
+    fn get() T
 
-type Box[T]:
+type Box[T: Clonable]:
     value: T
 
 type ReaderHolder:
@@ -13,8 +13,8 @@ type CallbackReader:
     read_value: fn() Int
 
 impl ReadValue[T] for Box[T]:
-    fn get() ref T:
-        return self.value
+    fn get() T:
+        return self.value.clone()
 
 impl ReadValue[Int] for CallbackReader:
     fn get() Int:

@@ -11,7 +11,7 @@ impl Original for Item:
     fn original() Int:
         return self.value
 
-export type Box[T]:
+export type Box[T: Clonable]:
     value: T
 
 export type Holder[T: Read[Int]]:

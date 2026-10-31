@@ -16,10 +16,10 @@ type Outcome:
     case Waiting
 
 interface Named:
-    fn name() ref String
+    fn name() String
 
 impl Named for Person:
-    fn name() ref String:
+    fn name() String:
         return self.name
 
 fn stringify[T](value: T) String:

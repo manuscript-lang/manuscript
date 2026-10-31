@@ -727,7 +727,6 @@ fn renumber_param(
         ty,
         default: None,
         mutable: p.mutable,
-        by_ref: p.by_ref,
     })
 }
 
@@ -803,7 +802,6 @@ fn interface_for_inherent(
                 .map(|p| renumber_param(p, ids))
                 .collect::<Result<_, _>>()?,
             result: renumber_type(&m.func.result, ids)?,
-            result_ref: m.func.result_ref,
             body: Vec::new(),
             external: false,
         };

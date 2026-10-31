@@ -11,11 +11,11 @@ type Doc:
     lines: List[String]
 
 impl Doc:
-    fn longest() ref String: # lends part of self
+    fn longest() String:
         var best = 0
         for i in 0..self.lines.length():
             if self.lines[i].length() > self.lines[best].length(): best = i
-        return self.lines[best]
+        return self.lines[best].clone()
 
 fn load(path: String) Result[Doc, Error]:
     let f = try filesystem().open(path, flags: "r", mode: 0)
@@ -51,8 +51,8 @@ export fn main() Int:
 - Ownership: every `String`, list, map, record and alternative has one owner: a variable, field or element. `Int`, `Float`, `Bool` copy freely (no `.clone()`). `let` is immutable including contents: `let xs = [1]; xs.append(2)` fails, write `var xs`.
 - Move: giving a value to a new owner (`xs.append(s)`, a field, `return`, a parameter the callee keeps) kills the old name, so `xs.append(s.clone())` unless it is the last use.
 - Borrow: `xs[i]`, `let x = a.b`, loop variables, match payloads and read-only parameters cannot be moved or stored, and a field or element cannot move out: `names.append(u.name.clone())`, `out.append(first.clone())`.
-- A fn returning part of a parameter or receiver writes `ref` before its result type: `fn name(u: User) ref String: return u.name`. Otherwise return `.clone()`.
-- `export opaque type T:` hides fields and cases outside its file. A `name: ref String` field makes a record a borrowing view: use it in place, never store or move it.
+- A result owns its value: a fn returning part of a parameter or receiver returns `.clone()`: `fn name(u: User) String: return u.name.clone()`. The compiler elides the copy when the source is dead.
+- `export opaque type T:` hides fields and cases outside its file.
 - `var` parameter: `fn add(var xs: List[Int])`, called `add(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints: `ms lint`/`ms verify` fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail check (prefix `_`).
 - Any `Closeable` (files, or your `impl Closeable for T:`) has `close()` called when its `let`/`var` goes out of scope, unless moved on (returned, stored).

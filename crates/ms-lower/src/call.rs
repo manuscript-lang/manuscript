@@ -346,15 +346,8 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
-        // A `ref` function the checker proved lends on every path hands back a borrow of its
-        // argument instead of a copy.
-        let lent = self.cx.lenders.contains(&(c.module.file, c.id()))
-            && c.func.func().is_some_and(|f| !f.body.is_empty());
-        let owned_mask = if lent { None } else { self.cx.owned_mask(c) };
-        let fid = if lent {
-            let scope = self.evidence();
-            self.cx.function_lent(self.b.m, c, subst, scope)?
-        } else if owned_mask.is_some() {
+        let owned_mask = self.cx.owned_mask(c);
+        let fid = if owned_mask.is_some() {
             let scope = self.evidence();
             self.cx.function_owned(self.b.m, c, subst, scope)?
         } else {
@@ -473,7 +466,7 @@ impl<'a> FnLower<'a> {
                 _ => self.drop_value(new),
             }
         }
-        Ok(self.val(v, !lent))
+        Ok(self.val(v, true))
     }
 
     // ------------------------------------------------------------- methods
@@ -955,12 +948,8 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
-            let is_ref_field =
-                case.is_none() && ct::field_is_ref(&t, a.slot.name) && a.wrap_optional.is_none();
             // A later field may return early (`try`): hold this one as a temporary until then.
-            let x = if is_ref_field {
-                x
-            } else if later_try {
+            let x = if later_try {
                 self.hold_temp(x)
             } else {
                 let v = self.owned(x);
@@ -978,10 +967,6 @@ impl<'a> FnLower<'a> {
         let mut vals = Vec::new();
         for (i, s) in slots.into_iter().enumerate() {
             match s {
-                // A `ref` field holds a view of its argument: nothing is copied or moved in.
-                Some(x) if case.is_none() && ct::field_is_ref(&t, params[i].name) => {
-                    vals.push(self.b.ref_new(x.v));
-                }
                 Some(x) => {
                     let v = self.owned(x);
                     vals.push(v);

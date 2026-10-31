@@ -13,11 +13,11 @@ type Outcome:
     case Waiting
 
 interface Named:
-    fn name() ref String
+    fn name() String
 
 impl Named for Person:
-    fn name() ref String:
-        return self.name
+    fn name() String:
+        return self.name.clone()
 
 fn stringify[T](value: T) String:
     return value.to_string()

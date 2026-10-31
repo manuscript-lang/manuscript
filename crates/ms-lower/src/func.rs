@@ -179,13 +179,10 @@ impl Cx {
             return None;
         }
         let f = c.func.func()?;
-        if f.body.is_empty() || f.result_ref {
+        if f.body.is_empty() {
             return None;
         }
         let key = (c.module.file, c.id());
-        if self.lenders.contains(&key) {
-            return None;
-        }
         let mask = self.consumes.get(&key)?;
         (mask.len() == c.parameters.len() + c.self_binding.iter().count()).then(|| mask.clone())
     }

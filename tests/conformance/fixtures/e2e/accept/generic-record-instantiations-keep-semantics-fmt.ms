@@ -14,7 +14,7 @@ type Pair[A, B]:
 fn wrap[T](value: T) Box[T]:
     return Box[T](v: value, n: 1)
 
-fn unwrap[T](b: Box[T]) ref T:
+fn unwrap[T](b: Box[T]) T:
     return b.v
 
 fn bump(b: Box[Int]) Int:
