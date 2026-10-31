@@ -1,23 +1,12 @@
-# Foreign functions: complete C interop through a native ABI
+# Foreign functions: what `ms_abi.h` must provide
 
 ## Summary
 
-- Problem: a program cannot use a C library such as libuv. `extern fn` crosses only `Int`, `Float`, `Bool` and borrowed `String`. Natives cannot hand Manuscript a resource, call Manuscript back, block without stalling every task, or report error text.
-- Approach, taken from how Node (N-API), Python (C API) and Go (cgo) do it: C things stay in C and Manuscript things stay in Manuscript. A binding is a C shim written against a stable, versioned `ms_abi.h`, plus a Manuscript module of typed `extern` declarations.
-  - `ms header` generates the C view of those declarations, so the shim and the Manuscript side cannot disagree.
-  - `ms cc` is a bundled clang targeting the same musl and mingw runtimes the bundled linker uses, so shims and libraries build the same way on every platform.
-- "Complete" means covering what those three systems give native code:
-  - every value type crosses;
-  - native objects have finalizers and per-isolate state;
-  - callbacks run on the same thread;
-  - calls can come from any thread, with or without waiting for a result;
-  - blocking work runs off the isolate;
-  - code can wait on sockets;
-  - stop requests reach native code;
-  - errors and faults are handled.
-  Embedding Manuscript in a C program is a follow-up proposal whose prerequisites are listed below.
-- Manuscript code stays memory safe and reads like any other: handles close at scope end, callbacks are closures, failures flow through `try`. There is no `Pointer`, no raw memory, and no new syntax.
-- Decision requested: approve the direction and the four open questions.
+- Problem: a program cannot use a C library such as libuv. `ms_abi.h` today declares only a borrowed string view and one string constructor. A native cannot hand Manuscript a resource, call Manuscript back, run blocking work without stalling every task, or report error text.
+- Change: grow `ms_abi.h` into the complete, versioned contract for C shims. C code stays in C and Manuscript code stays in Manuscript: a binding is a shim written against this one header, plus typed `extern fn` declarations in `.ms`.
+- The header has eleven groups: version, status codes, strings and bytes, values, lists, native objects, errors and faults, calls into Manuscript (same thread and any thread), blocking work and sockets, stop requests, and per-isolate state. Together they cover the use cases of Node's N-API, Python's C API and Go's cgo; the doc maps each use case to its entries.
+- Manuscript code stays memory safe: no pointers, no raw memory, no new syntax. Records, optionals and other compound types are converted in Manuscript wrappers, not in C.
+- Decision requested: approve the header and the three open questions.
 
 ## Status
 
@@ -28,195 +17,267 @@
   - "should we harden the ms abi instead of brining all unsafe behavior into ms?"
   - "ms is supposed to be the language where code will flow like a stream"
   - "keep c things in c and ms things in ms"
-  - "no the interop needs to be complete, think critically, how do other languages do this like node or python or go"
-- History (git):
-  - Draft 1 put pointers and raw memory in Manuscript. Rejected: "keep c things in c".
-  - Draft 2 had C call closures directly.
-  - Draft 3 only pulled events and had no callbacks. Rejected: "needs to be complete".
-  - Draft 4 is this file before its review.
-- Skeptical reviews: three independent reviews checked earlier drafts against source, and their findings are folded in. The review of draft 4 asked for revisions, and this text addresses each point:
-  - Arguments of a cross-thread call are copied as C views and built on the isolate. The arena forbids building values on a foreign thread (`glue/pool.rs:5`).
-  - The toolchain question is answered by `ms cc`.
-  - The header exposes accessors, not C structs. Records flatten to leaves and alternatives share payload slots (`crates/ms-clif/src/layout.rs:319`), and layouts are target-independent.
-  - Closures handed to C carry their isolate.
-  - `ms_blocking` has its own non-unwinding entry, its own lane and its own reap point.
-  - Added: synchronous calls from foreign threads, per-isolate data and exit hooks, a no-exceptions rule, and a copy rule for strings.
-  - The error message case is dropped in favour of generated error constructors.
-  - Containers start with `List` and `Bytes`.
-  - The libuv example registers a stop hook.
-  - Embedding moves to its own proposal.
-- Standing direction:
-  - Manuscript first; Rust only for small general primitives.
-  - Linux, macOS and Windows parity.
-  - The declared name is the symbol (no `as`; `bindings.json` removed).
-  - One `Closeable`, whose `close()` returns `Unit!`.
-  - `T!E` shorthand.
+  - "the interop needs to be complete ... how do other languages do this like node or python or go"
+  - "lets focus this on what we can do in the msabi.h file to achieve all the use cases"
+- History (git): earlier drafts put pointers in Manuscript, then pulled events only, then added generated headers, `ms cc` and embedding. This version is scoped to the header and what stands behind it.
+- Review findings kept from four independent skeptical reviews:
+  - Closure code follows the C ABI only for scalars (`call_closure`, `crates/ms-clif/src/lower.rs:2847`), so C calls closures through a runtime entry, not directly.
+  - Thread checks use isolate registration (`isolate::CURRENT`, `crates/ms-rt/src/isolate.rs:52`); `msrt_isolate_hdr()` always returns a header (`fault.rs:109`).
+  - Values cannot be built on a foreign thread, because the arena forbids cross-thread frees (`glue/pool.rs:5`). Foreign threads pass C data, and the isolate builds the values.
+  - A callback fault is guarded and re-raised, so a worker's `join` sees it.
+  - Blocking work needs its own non-unwinding entry, because `pool::run` unwinds on a stop (`pool.rs:250`).
+  - Libraries that finish asynchronously need a lifetime rule.
+- Skeptical review of this revision: the reviewer said revise, and every finding is folded in:
+  - Manuscript values never cross threads; cross-thread calls take only plain C data.
+  - Generated code pre-fills outputs, so a shim that writes the wrong one or none cannot cause an undefined drop.
+  - `ms_list` carries its element kind.
+  - Entry points have versioned names. A `used` check symbol would not survive `--gc-sections` (`link/lld.rs:189`).
+  - The header has a C++ guard and a named union.
+  - `ms_blocking` takes `cancel` and always waits for `work`.
+  - `ms_fn_hold` replaces "every function is a wake source", and `ms_post` has backpressure.
+  - `ms_wait_sockets` takes several sockets at full `SOCKET` width and reports hang-up.
+  - Added: `ms_str_cstring` and `code_out`.
+  - Status codes are distinct.
+  - The example keeps library memory in C and frees it from the completion callback.
 
 ## Problem
 
-- Verified: the types a user extern may use are fixed (`crates/ms-check/src/checker.rs:1268`):
+- Verified: today's header (`crates/ms-rt-abi/include/ms_abi.h`, 33 lines) declares `ms_str`, `ms_str_len`, `ms_str_data` and `msrt_string_from_bytes`, nothing else.
+- Verified: what a user extern may use is limited by the checker:
+  - argument and result types are only `Int`, `Float`, `Bool`, `String` (`crates/ms-check/src/checker.rs:1268`);
+  - error types must be payload-free (`checker.rs:1306`);
+  - `extern type` is bundled-only (`checker.rs:732`);
+  - function values cannot be passed.
+- Example (verified):
 
   ```text
   extern fn uv_timer_init(loop: Int, timer: Int) Int32
   a.ms:1:48: type: extern result has type Int32, which cannot cross the native boundary; return Int, Float, Bool, String, Unit, or a Result of them
   ```
 
-- Verified: other limits in the checker:
-  - `extern type` is rejected outside bundled modules (`checker.rs:732`).
-  - Error types must be payload-free (`checker.rs:1306`).
-  - A user extern cannot take a function value.
-- Verified: `ms_abi.h` is 33 lines and declares only `ms_str` and `msrt_string_from_bytes` (`crates/ms-rt-abi/include/ms_abi.h`).
 - Verified: a native that blocks stalls every task on its isolate (ABI.md section 7).
-- Verified: shims and libraries must be built for musl on Linux and the mingw UCRT on Windows (`proposals/bundled-linker.md`). `ms` bundles a linker but no C compiler.
-- Non-goals:
-  - Dynamic loading (Open question 3).
-  - Generating shims from C headers (a later tool).
-  - Embedding Manuscript in C programs (follow-up, see section 10).
 
-## How Node, Python and Go do it
+## The header
 
-| Capability | Node (N-API) | Python (C API) | Go (cgo) | Manuscript (this proposal) |
-| --- | --- | --- | --- | --- |
-| Where glue lives | C addon against `node_api.h` | C extension against `Python.h`; `ctypes`/`cffi` for calls without glue | C in the Go file's preamble; cgo reads C headers to derive Go types | C shim against `ms_abi.h` plus `extern fn` in `.ms` |
-| ABI stability | `NAPI_VERSION`, stable across Node releases | limited API / `abi3` | none; rebuilt with the program | `MS_ABI_VERSION`, checked at link time |
-| Toolchain | node-gyp drives the platform compiler | setuptools drives the platform compiler | the system C compiler (`CC`) | bundled `ms cc` (clang) for the bundled runtimes |
-| Values | opaque `napi_value` with create/inspect calls per type | `PyObject *` with functions per type | C types mapped to Go types | every type a signature uses, through generated accessors |
-| Zero-copy buffers | external buffers, `napi_create_external_buffer` | buffer protocol | `unsafe.Slice` over C memory | borrowed for the call; native-owned buffers are an `extern type` read by copy (section 1) |
-| Native objects | `napi_wrap` with a finalizer | extension types with `tp_dealloc`, capsules | `runtime.SetFinalizer` / `AddCleanup` on a Go wrapper | `extern type` from `ms_object_new(size, drop)` |
-| Per-instance state | `napi_set_instance_data`, env cleanup hooks | module state, `m_free` | package variables | `ms_isolate_data`, `ms_on_isolate_exit` |
-| Callbacks, same thread | `napi_call_function` | `PyObject_Call` with the GIL held | `//export` functions (`_cgo_export.h`) | generated `ms_call_*` adapters |
-| Calls from any thread | `napi_threadsafe_function`, queued | `PyGILState_Ensure`, then call and wait | any C thread calls an exported function and waits | `ms_post_*` (queued) and `ms_call_wait_*` (waits for the result) |
-| Blocking work | `napi_create_async_work` | `Py_BEGIN_ALLOW_THREADS` releases the GIL | the runtime hands off the P during a C call | `ms_blocking(work, data)` on a native lane, task parks |
-| Foreign event loops | Node is libuv | asyncio by file descriptor | goroutine locked to an OS thread (`LockOSThread`) | loop on its own thread posting with `ms_post_*`, or `ms_wait_socket` |
-| Errors | `napi_throw_*`, status per call | exception set, return `NULL` | `errno` as a second result | `Result` built through generated error constructors; `ms_fault` |
-| Exceptions crossing | C++ exceptions must not cross | must not cross | panics must not cross | C++ exceptions and `longjmp` must not cross |
-| Loading | `dlopen` | `dlopen` | static or dynamic link | static link with `--link` |
-| Embedding | embedder API | `Py_Initialize` | `-buildmode=c-archive` | follow-up proposal (section 10) |
+`ms_abi.h` v1. Every function may be called only on the isolate thread that called into the shim, unless it is marked **any thread**. Values that cross threads are plain C data in system memory; Manuscript values never leave their isolate.
 
-What the table settles:
+```c
+#ifndef MS_ABI_H
+#define MS_ABI_H
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#ifdef __cplusplus
+extern "C" {
+#define MS_NORETURN [[noreturn]]
+#else
+#define MS_NORETURN _Noreturn
+#endif
 
-- All three keep unsafe code in C behind a stable surface. None makes the high-level language do pointer arithmetic, except Python's `ctypes`, which relies on `dlopen`.
-- All three let native code:
-  - call the language back on the same thread;
-  - call it from other threads, both queued and waiting for the result;
-  - run blocking C work without stopping the language's scheduler;
-  - keep per-instance state.
-  A design without all of these is not complete.
-- Like JS values and CPython objects, Manuscript reference counts and allocation are tied to one thread, its isolate. So a foreign thread hands over C data, and the owning isolate builds the values. This is the N-API thread-safe function model.
-- Go is the model for a statically linked native language: no `dlopen`, a compiler driven by the language tool, and generated C declarations for what the language exports. Manuscript goes one step further and bundles the compiler, because its runtimes (musl, mingw UCRT) are not what the system compiler targets.
+/* ---- 1. Version ---------------------------------------------------------------------- */
+/* Every entry point is linked under a versioned name (ms_string_new is ms_string_new_v1), so a
+   shim built against another version fails to link, naming the function it needs. */
+#define MS_ABI_VERSION 1
 
-## Design
+/* ---- 2. Status codes ----------------------------------------------------------------- */
+typedef enum ms_status {
+    MS_OK = 0, MS_CANCELLED = 1, MS_TIMEOUT = 2, MS_CLOSED = 3, MS_FAULTED = 4,
+    MS_WOULD_DEADLOCK = 5, MS_FULL = 6, MS_INVALID = 7
+} ms_status;
 
-The rule: **unsafe code lives in native code; the ABI is the safe contract between them; the compiler generates the C view of every declaration that crosses it.** Every `ms_*` function may be called only on the isolate thread, except those marked *any thread*.
+/* ---- 3. Strings and bytes ------------------------------------------------------------ */
+typedef struct ms_str   { void *ptr_word; size_t tagged; } ms_str;          /* String (StrVal) */
+typedef struct ms_bytes { uint8_t *ptr; size_t len; size_t cap; } ms_bytes; /* Bytes (VecVal) */
+size_t         ms_str_len(const ms_str *s);
+const uint8_t *ms_str_data(const ms_str *s);       /* not NUL-terminated                     */
+char          *ms_str_cstring(const ms_str *s);    /* any thread: malloc'd NUL-terminated copy;
+                                                      NULL if s contains NUL; free with free() */
+size_t         ms_bytes_len(const ms_bytes *b);
+const uint8_t *ms_bytes_data(const ms_bytes *b);
+void ms_string_new(const uint8_t *data, size_t len, ms_str *out);   /* copies into out        */
+void ms_bytes_new(const uint8_t *data, size_t len, ms_bytes *out);  /* copies into out        */
 
-### 1. Values
+/* ---- 4. Values ----------------------------------------------------------------------- */
+typedef struct ms_object ms_object;
+typedef struct ms_fn     ms_fn;
+typedef struct ms_list   ms_list;
+typedef enum ms_kind {
+    MS_UNIT, MS_BOOL, MS_INT, MS_UINT, MS_FLOAT, MS_STRING, MS_BYTES,
+    MS_OBJECT, MS_LIST, MS_FN                      /* same thread only                       */
+} ms_kind;
+typedef struct ms_value {
+    ms_kind kind;
+    union {
+        bool b; int64_t i; uint64_t u; double f;   /* sized types widen; narrowing is checked */
+        struct { const uint8_t *data; size_t len; } buf;   /* MS_STRING, MS_BYTES: a view    */
+        ms_object *object; const ms_list *list; ms_fn *fn;
+    } as;
+} ms_value;
+/* String and bytes results from ms_list_get, ms_call and ms_call_wait are malloc'd copies. */
+void ms_value_free(ms_value *v);                   /* any thread                             */
 
-| Manuscript | C | Ownership |
+/* ---- 5. Lists ------------------------------------------------------------------------ */
+/* A List[T] of a signature type. The list knows its element type, so get and push check kinds
+   and ranges; a mismatch faults naming both types. */
+size_t   ms_list_len(const ms_list *l);
+ms_kind  ms_list_kind(const ms_list *l);
+ms_value ms_list_get(const ms_list *l, size_t i);  /* objects and functions borrowed          */
+void     ms_list_push(ms_list *out, const ms_value *v);  /* out starts as an empty list       */
+
+/* ---- 6. Native objects (extern type) ------------------------------------------------- */
+/* size bytes of zeroed payload, 16-byte aligned, at a stable address. drop(payload), which may
+   be NULL, runs when the last reference goes; it may free native memory, start a library's
+   asynchronous close and call ms_release, nothing else. */
+ms_object *ms_object_new(size_t size, void (*drop)(void *payload));
+void      *ms_payload(ms_object *o);
+ms_object *ms_retain(ms_object *o);
+void       ms_release(ms_object *o);
+
+/* ---- 7. Errors and faults ------------------------------------------------------------ */
+/* A fallible extern returns uint8_t: 0 is ok, n is the n-th case of its error type. If any case
+   has a `code: Int` field, a trailing int64_t *code_out follows; if any has `message: String`, a
+   trailing ms_str *message_out follows. Outputs arrive holding valid empty values; the caller
+   reads only the fields of the returned case and drops every output either way. */
+/* Unrecoverable. Runs cleanups like a Manuscript fault; under a task guard it jumps over the
+   calling C frames, so call it only when the library's state is consistent. */
+MS_NORETURN void ms_fault(const char *text, size_t len);
+
+/* ---- 8. Calling Manuscript functions ------------------------------------------------- */
+/* Same thread, inside an extern call. Arguments are checked against f's signature. After a
+   fault in f it returns MS_FAULTED (the fault is re-raised when the extern returns) and later
+   calls return MS_FAULTED without running. f may not wait: a park faults. */
+ms_status ms_call(ms_fn *f, const ms_value *args, size_t count, ms_value *result);
+/* any thread. Arguments may be only BOOL, INT, UINT, FLOAT, STRING, BYTES (else MS_INVALID); they
+   are copied, and the call runs as a new task on f's isolate, where it may wait. MS_FULL when
+   more than 1024 calls are queued for f; MS_CLOSED after the isolate has ended. */
+ms_status ms_post(ms_fn *f, const ms_value *args, size_t count);
+/* any thread except f's own isolate (MS_WOULD_DEADLOCK). Like ms_post, then blocks until the
+   call returns; the result is a copy (same kinds). */
+ms_status ms_call_wait(ms_fn *f, const ms_value *args, size_t count, ms_value *result);
+ms_fn *ms_fn_retain(ms_fn *f);                     /* any thread                             */
+void   ms_fn_release(ms_fn *f);                    /* any thread; the closure goes on its isolate */
+/* any thread. While held, f keeps its isolate waiting for posts instead of reporting a
+   deadlock (N-API's ref/unref). A retained but unheld f does not keep the isolate alive. */
+void   ms_fn_hold(ms_fn *f, bool hold);
+
+/* ---- 9. Blocking work and sockets ---------------------------------------------------- */
+/* Inside an extern: runs work(data) on a native thread while the calling task parks, so other
+   tasks keep running. work must not touch Manuscript values. On cancellation, cancel(data)
+   (may be NULL) runs on the isolate, for example sqlite3_interrupt; ms_blocking always waits
+   for work to return, then returns MS_OK or MS_CANCELLED. */
+ms_status ms_blocking(void (*work)(void *data), void (*cancel)(void *data), void *data);
+#ifdef _WIN32
+typedef uintptr_t ms_socket;                       /* SOCKET                                 */
+#else
+typedef int ms_socket;
+#endif
+enum { MS_READABLE = 1, MS_WRITABLE = 2, MS_HANGUP = 4 };
+typedef struct ms_socket_wait { ms_socket socket; int events; int ready; } ms_socket_wait;
+/* Inside an extern: parks the calling task until one of the sockets is ready (its `ready` is
+   set), the timeout passes (negative: none) or the task is cancelled. */
+ms_status ms_wait_sockets(ms_socket_wait *items, size_t count, int64_t timeout_ns);
+
+/* ---- 10. Stop requests --------------------------------------------------------------- */
+typedef struct ms_stop_hook ms_stop_hook;
+/* fn(arg) runs when a stop is requested for this isolate (SIGINT, SIGTERM, Worker.cancel, a
+   callback fault), from a signal handler or another thread: it must be async-signal-safe. */
+ms_stop_hook *ms_on_stop(void (*fn)(void *arg), void *arg);
+void          ms_on_stop_remove(ms_stop_hook *h);
+
+/* ---- 11. Per-isolate state ----------------------------------------------------------- */
+/* key: any static address. Replaces process globals so a shim works in several workers; drop
+   runs when the value is replaced or the isolate ends. */
+void *ms_isolate_get(const void *key);
+void  ms_isolate_set(const void *key, void *value, void (*drop)(void *value));
+
+/* ---- Rules ----------------------------------------------------------------------------- */
+/* - Never free, reallocate or write a Manuscript string, bytes, list or object yourself.
+   - Borrowed arguments are valid only until the extern returns: copy strings and bytes to keep
+     them, ms_retain an object, ms_fn_retain a function.
+   - ms_object, ms_list and Manuscript strings stay on their isolate; only ms_fn handles,
+     ms_post, ms_call_wait, ms_value_free and ms_str_cstring are any thread.
+   - Memory a library keeps after a call (a uv_timer_t) is C memory the shim allocates. The
+     object's drop starts the library's close, and the completion callback frees it.
+   - C++ exceptions and longjmp must not cross Manuscript frames.
+   - Cancellation is never delivered inside C: an extern call sees it only as MS_CANCELLED from
+     ms_blocking or ms_wait_sockets, or after it returns. */
+#ifdef __cplusplus
+}
+#endif
+#endif
+```
+
+### Use cases and the entries that cover them
+
+| Use case | Example | Header entries |
 | --- | --- | --- |
-| `Int8` ... `Int64`, `UInt8` ... `UInt64`, `Float32`, `Float`, `Bool` | `int8_t` ... `uint64_t`, `float`, `double`, `bool` | by value; narrow integers are sign- or zero-extended per the platform ABI (today only `I8` gets `uext`, `cg.rs:14`) |
-| `String`, `Bytes` | `ms_str`, `ms_bytes`; `ms_str_data`, `ms_str_len` | argument: `const *`, borrowed for the call, **copy to keep** (strings have no count, ABI.md section 3); result: trailing `out`, built with `ms_string_new` / `ms_bytes_new` |
-| records and alternatives used by an extern | opaque `const ms_value *` plus generated accessors (`ms_Point_x(v)`, `ms_Shape_case(v)`, `ms_Shape_Circle_radius(v)`) and builders | argument: borrowed; result: `out`, built with generated builders |
-| `List[T]`, `T?` (first); `Map`, `Set` (stage 3) | generated `ms_list_T_len/get/push`, `ms_opt_T_has/get` | as above |
-| `extern type H` | `ms_object *` | argument: borrowed (`ms_retain` to keep); result: owned by Manuscript |
-| `fn(A...) R` | `ms_fn *` | argument: borrowed (`ms_retain` to keep); called through `ms_call_*` / `ms_post_*` |
-| `Result[T, E]` result of an extern | `uint8_t` status, `T` through `out`, `E` through `err_out` built with generated constructors (`ms_UvError_Failed(err_out, message)`) | any error type, payload or not |
+| Call a C function with numbers and text | `uv_strerror`, `crc32` | 3, signature types (below) |
+| Pass a path to a C API | `sqlite3_open(const char *)` | 3 (`ms_str_cstring`) |
+| Pass and return binary data | socket reads, compression | 3 (`ms_bytes`) |
+| Pass or return a list | argv, a batch of rows | 5 |
+| Own a native resource that closes at scope end | `sqlite3 *`, a libuv loop | 6, plus `impl Closeable` in `.ms` |
+| A resource the library releases later | `uv_close` | 6, plus the memory rule |
+| Report a failure with its code and text | `UV_EAGAIN`, `uv_strerror_r` | 7 (`code_out`, `message_out`) |
+| Library calls back on the same thread | libuv timer and read callbacks, `qsort` comparators, SQLite busy handler | 8 (`ms_call`) |
+| Library calls back from its own thread | libuv loop on its own thread, audio callbacks, gRPC completion queues | 8 (`ms_post`, `ms_call_wait`, `ms_fn_hold`) |
+| Run a blocking C call without stalling tasks | `sqlite3_step`, a synchronous HTTP call | 9 (`ms_blocking`, with `sqlite3_interrupt` as `cancel`) |
+| Integrate a library that exposes sockets | libcurl multi, libpq, c-ares | 9 (`ms_wait_sockets`) |
+| Ctrl-C reaches a loop blocked in C | `uv_run` | 10 (`ms_on_stop` calling `uv_async_send`) |
+| One shim used by several workers | per-worker connection pools | 11 |
+| Unrecoverable error in C | violated library invariant | 7 (`ms_fault`) |
+| Shim built against another runtime version | upgrade | 1 (versioned names) |
 
-- `ms header uv.ms -o uv_ms.h` lowers the module (layouts come from the MIR, `Layouts::new`) and writes:
-  - a prototype for every `extern fn`;
-  - accessors and builders for every record, alternative and container those signatures use;
-  - one call adapter per function type.
-  
-  The header exposes **no struct layouts**. Records flatten to leaves and alternatives share payload slots by kind (`layout.rs:319-348`), so C sees functions, not fields. Layouts are target-independent, so one header serves every platform.
-- A shim that disagrees with its declarations fails to compile; it does not corrupt memory. The header embeds `MS_ABI_VERSION`.
-- Generic externs, `var` parameters and defaults stay rejected for user externs, because a C function has one signature.
-- A function value passed to a user extern escapes: the ownership pass makes it own its captures. This is the rule `KEPT_CALLBACKS` applies to three bundled natives today (`crates/ms-check/src/stdlib.rs:94`), and it needs no marker.
-- Buffers C keeps: Manuscript `Bytes` cannot be lent past a call, because values move. A library buffer that outlives a call is an `extern type` whose accessor copies into `Bytes`. Zero-copy views like N-API's external buffers are not offered (Open question 2).
+The capabilities N-API, the CPython C API and cgo share are values, wrapped objects with finalizers, same-thread callbacks, queued and waiting calls from other threads with keep-alive control, blocking work with interruption, socket readiness, instance state and exception rules. Each has a row above. Dynamic loading and embedding are non-goals (below).
 
-### 2. Native objects and per-isolate state
+### Manuscript signature types
 
-- `ms_object_new(size, drop)` allocates an object:
-  - a runtime object header (`Obj { rc, drop }`, ABI.md section 2);
-  - a word for the shim's `drop`;
-  - `size` bytes of zeroed, 16-byte-aligned payload at a stable address (`ms_payload`).
-  
-  When the last reference goes, the runtime calls `drop(payload)` and frees the object. A drop function releases native resources and may call `ms_release`; it must not call Manuscript or any `ms_call_*`.
-- Asynchronous lifetimes: while a library may still touch a payload, the shim holds its own reference. It releases that reference in the library's completion callback, for libuv the `uv_close` callback. Handles retain their loop; a loop's `close()` runs it until every closing handle has finished.
-- Per-isolate state, in place of process globals (N-API instance data, Python module state):
-  - `ms_isolate_data(key)` and `ms_set_isolate_data(key, value, drop)`, keyed by any static address;
-  - `ms_on_isolate_exit(fn, arg)`, which runs when the main program or a worker ends.
+The checker accepts these in a user `extern fn`. Records, alternatives, maps, optionals, generics, `var` parameters and defaults are converted in an ordinary Manuscript wrapper around the extern. A call with several results returns an `extern type` with accessor externs.
 
-### 3. Synchronous callbacks
+| Manuscript | C parameter | C result |
+| --- | --- | --- |
+| `Int8` ... `Int64`, `UInt8` ... `UInt64`, `Float32`, `Float`, `Bool` | same-width C type, extended per platform ABI | same |
+| `String`, `Bytes` | `const ms_str *`, `const ms_bytes *` (borrowed) | trailing `ms_str *out`, `ms_bytes *out` |
+| `List[T]`, `T` a scalar, `String`, `Bytes` or `extern type` | `const ms_list *` (borrowed) | trailing `ms_list *out` |
+| `extern type H` | `ms_object *` (borrowed) | `ms_object *` (owned by Manuscript) |
+| `fn(A...) R`, each `A` a row above and `R` one or `Unit` | `ms_fn *` (borrowed; `ms_fn_retain` to keep) | not allowed |
+| `Unit` | not allowed | `void` |
+| `Result[T, E]`; `E` cases carry nothing, `code: Int`, `message: String`, or both | not allowed | `uint8_t` status, `T` through `out`, then `code_out`, `message_out` as needed |
 
-- `ms_call_<type>(f, args...)` is generated per function type. It is written once at the Cranelift IR level, which the LLVM backend translates (`crates/ms-clif/src/llvm_ir.rs:3`). It converts C arguments to the closure's own convention, which is C only for scalars (`call_closure`, `lower.rs:2847`; implicit sret, `cg.rs:599`), and converts the result back.
-- Isolate check: closures carry no owner (ABI.md section 6). So an `fn` argument to a user extern is wrapped in a small `ms_fn` object holding the closure and its isolate id and generation.
-  - `ms_call_*` checks that object against the current isolate (`isolate::CURRENT`, `isolate.rs:52`). It checks a per-task count of active extern calls, not `msrt_isolate_hdr()` (`fault.rs:109`), which always returns a header.
-  - On a mismatch it writes `native callback ran outside its isolate's extern call; use ms_post or ms_call_wait from other threads` and exits 67.
-- Faults: the adapter runs the closure under `msrt_guard_call` (ABI.md section 7).
-  - On a fault it records the report, fires the stop hooks (section 6), and returns a zeroed result.
-  - Later `ms_call_*` calls in the same extern call return zero without running.
-  - When the outer extern returns, generated code re-raises the fault, so it ends the task or worker normally and `join` sees it.
-  - As with every guard, values not registered for cleanup in the abandoned frames leak.
-- Cancellation: the callback runs under `stop_shield`, which replays a pending stop afterwards (`fault.rs:85`).
-- No waiting. A synchronous callback that would park faults at the park point with `a native callback cannot wait; post the work with ms_post`. Calls that park include:
-  - channel send and receive;
-  - a contended `lock`;
-  - `sleep`;
-  - network and pipe I/O that would block, including stdout to a full pipe;
-  - `TaskGroup` joins.
-  
-  This keeps other tasks from re-entering the library under its own C frames, the same guarantee JS and the GIL give callbacks.
-- C++ exceptions and `longjmp` must not cross Manuscript frames. Generated code has no unwind tables (`cg.rs:602`). A C++ shim catches at its boundary.
+## Behind the header
 
-### 4. Calls from any thread
+- **Values.**
+  - `ms_str` and `ms_bytes` are the runtime's `StrVal` and `VecVal` (ABI.md sections 3 and 4).
+  - `ms_list` is `{VecVal *, element descriptor, element kind}`. The descriptor is the one the compiler already passes to generic list natives (ABI.md sections 1 and 5). The kind records signedness and width, which a POD descriptor does not.
+  - Narrow integers gain sign and zero extension at the call; today only `I8` gets `uext` (`cg.rs:14`).
+- **Outputs.** Generated code fills `out`, `code_out` and `message_out` with valid empty values before the call, then drops all of them after it. A shim that writes the wrong output, or none, therefore causes no undefined drop. This changes today's "uninitialised `out`" rule (ABI.md section 1) for user externs only.
+- **Objects.** `ms_object_new` allocates a runtime object: the `Obj { rc, drop }` header (ABI.md section 2), a word for the shim's `drop`, and padding, so the payload starts at offset 32. `extern type` becomes legal in user modules, as an opaque handle with no fields.
+- **Functions.** A function value passed to a user extern is wrapped by the compiler in an `ms_fn` holding:
+  - the closure;
+  - its isolate id and generation;
+  - an atomic count;
+  - a hold flag;
+  - a pointer to a compiler-emitted invoke thunk for its type. The thunk is written once at the Cranelift IR level, which the LLVM backend translates. It converts `ms_value` arguments to the closure's own convention and back, and checks kinds and ranges.
 
-- Queued call: `ms_post_<type>(f, args...)` (*any thread*), Node's thread-safe function. Arguments are C views (`const char *, size_t` for strings and bytes, scalars by value). They are copied into system memory with one block per call, and a new inbox message kind carries them to the closure's isolate (`isolate.rs:152`; today the inbox carries only token posts). The isolate builds the Manuscript values and runs the call as a new task, so it may wait like any task.
-- Waiting call: `ms_call_wait_<type>(f, args..., result_out)` (*any thread*), like `PyGILState_Ensure` plus a call, or a cgo export. It posts the same way and blocks the calling OS thread until the task finishes. The result is copied back as C views into memory the caller frees with `ms_free_result`. Called from the isolate's own thread, it returns `MS_WOULD_DEADLOCK`.
-- Keeping a function for other threads: `ms_retain_shared(f)` and `ms_release_shared(f)` (*any thread*) keep `f` alive. The isolate releases the closure itself.
-- A function with shared references counts as a wake source, so an isolate whose tasks wait only for posted calls is not reported as deadlocked. A reference never released turns a real deadlock into a hang; the header documents this.
-- After the isolate ends, both kinds of call return `MS_CLOSED`.
+  The ownership pass treats the function as escaping, so it owns its captures (the rule `KEPT_CALLBACKS` applies to three bundled natives, `crates/ms-check/src/stdlib.rs:94`).
+- **`ms_call`.**
+  - It checks that the current thread is the `ms_fn`'s isolate and that an extern call is active, using a per-task count.
+  - It runs the thunk under `msrt_guard_call` and `stop_shield` (ABI.md section 7, `fault.rs:85`). The guard's jump target is inside `ms_call`, so a fault skips only Manuscript frames.
+  - On a fault it records the report and fires the stop hooks. Generated code re-raises the fault after the extern returns, so a worker's `join` sees it.
+  - A park inside the call faults with `a native callback cannot wait; use ms_post`.
+- **`ms_post` and `ms_call_wait`.**
+  - Arguments are copied into system memory and carried to the isolate by a new inbox message kind (`isolate.rs:152`; today the inbox carries only token posts).
+  - The isolate builds the values and runs the call as a task.
+  - A held `ms_fn` counts as a wake source in the deadlock check.
+- **`ms_blocking`.**
+  - Work runs on a native lane, separate from the pool's DNS and general lanes (`glue/pool.rs`). The lane starts threads on demand, up to `MS_NATIVE_THREADS` (default 64).
+  - It never unwinds, and it always waits for `work`. A `work` that never returns is cut off by the existing 30 s forced exit.
+- **`ms_wait_sockets`** is a new poller entry that registers several sockets at once, with full `SOCKET` width on Windows (mio, `poller.rs:254`). `msrt_task_wait_fd` takes one `i32` (`task.rs:1119`), so it cannot serve here.
+- **`ms_on_stop`.** It is called from the signal handler on Linux and macOS, from the console-control thread on Windows, and from `msrt_worker_cancel`. Registration uses the lock-free reader-count pattern of `PublishedHdr`.
+- **Names.** Public names are `ms_*`, defined in `ms-rt` under their `_v1` names. The `msrt_` and `msstd_` prefixes stay reserved (`checker.rs:1256`). `msrt_string_from_bytes` stays as an alias of `ms_string_new`.
 
-### 5. Blocking work and sockets
+## Worked example: a libuv timer
 
-- `int ms_blocking(void (*work)(void *), void *data, void (*done)(void *))`, called inside an extern, runs `work(data)` on a native lane while the calling task parks (Go's P handoff, Python releasing the GIL, N-API async work). `work` must not touch Manuscript values.
-  - The lane is separate from the pool's DNS and general lanes (`glue/pool.rs`). It starts threads on demand up to `MS_NATIVE_THREADS` (default 64), because cgo and Python place no small cap on blocking calls.
-  - It never unwinds. On cancellation it returns `MS_CANCELLED` to the shim, which then returns its own error; it does not use `pool::run`, which unwinds on a stop (`pool.rs:250`).
-  - `done(data)` runs on the isolate when the job ends, including after a cancellation. The isolate reaps finished jobs on its poller wake, not only at the next submit.
-- `int ms_wait_socket(ms_socket s, int events, int64_t timeout_ns)` parks the calling task until a socket is ready, through the runtime poller (`msrt_task_wait_fd`; mio on Windows, `poller.rs:254`). It covers libraries that expose sockets (libcurl multi, libpq, c-ares) on all three platforms. Arbitrary descriptors are Unix-only and are not part of it.
-
-### 6. Stop requests
-
-- `ms_on_stop(fn, arg)` and `ms_on_stop_remove(hook)` register a function called when a stop is requested for the isolate: SIGINT, SIGTERM, `Worker.cancel`, or a recorded callback fault.
-- It runs in the requesting context: a signal handler on Linux and macOS, the console-control thread on Windows, or the cancelling thread. It must therefore be async-signal-safe; `uv_async_send` is.
-- Registration uses the lock-free reader-count pattern of `PublishedHdr` (`fault.rs`).
-
-### 7. Errors and faults
-
-- Expected failures are `Result` values: the status byte, plus `err_out` built with generated constructors (section 1).
-- `ms_fault(text, length)` raises an unrecoverable error from C. Under a callback adapter it is recorded and re-raised like a Manuscript fault. Elsewhere it runs cleanups and exits 67. It never unwinds C frames.
-
-### 8. Toolchain: `ms cc`
-
-- `ms cc` is clang from the same pinned llvm-bundle release that provides lld, `opt` and `llc` (`scripts/lld.lock`). It ships with the musl (Linux) and mingw UCRT (Windows) headers and libraries the linker already embeds, and with the macOS SDK stubs the linker already generates. This follows `zig cc`.
-- `ms cc` targets the current platform's bundled runtime by default and takes `--target` for cross builds. It can stand in for `CC` in a library's own build, for example `cmake -DCMAKE_C_COMPILER="ms cc" ...` for libuv, so libraries and shims are built at parity without a system toolchain.
-- Cost: the clang binary per platform (hypothesis: tens of MB compressed, fetched on first use like the LLVM tools are today, `crates/ms-clif/src/link/bundled.rs`). Open question 4.
-
-### 9. Linking and versioning
-
-- Static linking only, as Go does: `ms build main.ms --link uv_shim.o --link libuv.a`.
-- On Windows, the bundle also embeds the `iphlpapi`, `psapi` and `ole32` import libraries libuv needs (`lld.rs:240` lists today's set).
-- `MS_ABI_CHECK()` in a shim references `ms_abi_v<N>`, which only a matching runtime defines, so a version mismatch fails at link time.
-- Public names are `ms_*` aliases in `ms-rt`. The `msrt_` and `msstd_` prefixes stay reserved (`checker.rs:1256`).
-
-### 10. Embedding (follow-up proposal)
-
-C programs calling Manuscript (cgo's `-buildmode=c-archive`, `Py_Initialize`) reuse section 4's waiting call. The follow-up must resolve:
-- A musl-built runtime archive cannot link into a glibc or MSVC host.
-- The runtime installs SIGINT and SIGTERM handlers (`crates/ms-rt/src/start.rs:221`).
-- A fault exits the process with 67, which a library must not do.
-
-### Worked example: a libuv timer
-
-Manuscript side. It passes `ms check` against stubs: records stand in for the two `extern type`s and placeholder `fn`s stand in for the externs, because today's checker rejects both.
+Manuscript side. It passes `ms check` against stubs: records stand in for the two `extern type`s and placeholder `fn`s for the externs, because today's checker rejects both.
 
 ```manuscript
 import Closeable from "@std/core.ms"
@@ -269,134 +330,146 @@ export fn count_ticks(limit: Int, every_ms: UInt64) Int!UvError:
     return ok(count.get())
 ```
 
-C side, `uv_shim.c`, against the generated `uv_ms.h`. It is illustrative; stage 4 compiles it with `ms cc` on all three platforms.
+C side, `uv_shim.c`, using only `ms_abi.h` and `uv.h`. It is illustrative; stage 3 compiles it on all three platforms.
 
 ```c
+#include <stdlib.h>
 #include <string.h>
 #include <uv.h>
-#include "uv_ms.h"      /* `ms header uv.ms`: prototypes, ms_call_fn_Bool, ms_UvError_Failed */
-MS_ABI_CHECK();
+#include <ms_abi.h>
 
+/* libuv keeps these after a call, so they are C memory; the objects hold pointers to them. */
 typedef struct { uv_loop_t uv; uv_async_t wake; ms_stop_hook *hook; } Loop;
-typedef struct { uv_timer_t uv; ms_object *self, *loop; ms_fn *on_tick; } Timer;
+typedef struct { uv_timer_t uv; ms_object *loop; ms_fn *on_tick; } Timer;
 
-static uint8_t fail(int rc, ms_value *err_out) {
-    const char *text = uv_strerror(rc);
-    ms_UvError_Failed(err_out, text, strlen(text));
-    return 1;
+static uint8_t fail(int rc, ms_str *message_out) {
+    char text[256];
+    uv_strerror_r(rc, text, sizeof text);
+    ms_string_new((const uint8_t *)text, strlen(text), message_out);
+    return 1;                                      /* UvError.Failed */
 }
 
-static void on_wake(uv_async_t *a) { uv_stop(a->loop); }           /* runs inside uv_run */
-static void on_stop(void *arg) { uv_async_send((uv_async_t *)arg); } /* signal-safe */
+static void on_wake(uv_async_t *a) { uv_stop(a->loop); }
+static void on_stop(void *arg) { uv_async_send((uv_async_t *)arg); }  /* signal-safe */
+static void close_any(uv_handle_t *h, void *arg) { if (!uv_is_closing(h)) uv_close(h, NULL); }
 
-uint8_t msuv_loop_new(ms_object **out, ms_value *err_out) {
-    ms_object *self = ms_object_new(sizeof(Loop), NULL);
-    Loop *l = ms_payload(self);
+static void loop_drop(void *payload) {             /* only C callbacks run from here on */
+    Loop *l = *(Loop **)payload;
+    if (!l) return;
+    ms_on_stop_remove(l->hook);
+    uv_walk(&l->uv, close_any, NULL);
+    uv_run(&l->uv, UV_RUN_DEFAULT);
+    uv_loop_close(&l->uv);
+    free(l);
+}
+
+uint8_t msuv_loop_new(ms_object **out, ms_str *message_out) {
+    Loop *l = calloc(1, sizeof *l);
     int rc = uv_loop_init(&l->uv);
-    if (rc == 0) rc = uv_async_init(&l->uv, &l->wake, on_wake);
-    if (rc < 0) { ms_release(self); return fail(rc, err_out); }
+    if (rc < 0) { free(l); return fail(rc, message_out); }
+    rc = uv_async_init(&l->uv, &l->wake, on_wake);
+    if (rc < 0) { uv_loop_close(&l->uv); free(l); return fail(rc, message_out); }
     l->hook = ms_on_stop(on_stop, &l->wake);       /* Ctrl-C stops uv_run */
+    ms_object *self = ms_object_new(sizeof(Loop *), loop_drop);
+    *(Loop **)ms_payload(self) = l;
     *out = self;
     return 0;
 }
 
 static void on_tick(uv_timer_t *uv) {
     Timer *t = (Timer *)uv;
-    if (!ms_call_fn_Bool(t->on_tick)) uv_timer_stop(uv);   /* runs the Manuscript closure */
+    ms_value keep;
+    if (ms_call(t->on_tick, NULL, 0, &keep) != MS_OK || !keep.as.b) uv_timer_stop(uv);
 }
 
-static void on_closed(uv_handle_t *uv) {           /* libuv is done: drop the shim's references */
+static void on_closed(uv_handle_t *uv) {           /* libuv is done: free the C memory */
     Timer *t = (Timer *)uv;
-    if (t->on_tick) ms_release(t->on_tick);
+    if (t->on_tick) ms_fn_release(t->on_tick);
     ms_release(t->loop);
-    ms_release(t->self);
+    free(t);
 }
 
-uint8_t msuv_timer_new(ms_object *loop, ms_object **out, ms_value *err_out) {
-    ms_object *self = ms_object_new(sizeof(Timer), NULL);
-    Timer *t = ms_payload(self);
-    int rc = uv_timer_init(&((Loop *)ms_payload(loop))->uv, &t->uv);
-    if (rc < 0) { ms_release(self); return fail(rc, err_out); }
-    t->self = ms_retain(self);                     /* held until on_closed */
-    t->loop = ms_retain(loop);
+static void timer_drop(void *payload) {            /* last Manuscript reference gone */
+    Timer *t = *(Timer **)payload;
+    if (t && !uv_is_closing((uv_handle_t *)&t->uv)) uv_close((uv_handle_t *)&t->uv, on_closed);
+}
+
+uint8_t msuv_timer_new(ms_object *loop, ms_object **out, ms_str *message_out) {
+    Timer *t = calloc(1, sizeof *t);
+    int rc = uv_timer_init(&(*(Loop **)ms_payload(loop))->uv, &t->uv);
+    if (rc < 0) { free(t); return fail(rc, message_out); }
+    t->loop = ms_retain(loop);                     /* the loop outlives its timers */
+    ms_object *self = ms_object_new(sizeof(Timer *), timer_drop);
+    *(Timer **)ms_payload(self) = t;
     *out = self;
     return 0;
 }
 
-uint8_t msuv_timer_start(ms_object *timer, uint64_t every_ms, ms_fn *callback, ms_value *err_out) {
-    Timer *t = ms_payload(timer);
-    if (t->on_tick) ms_release(t->on_tick);
-    t->on_tick = ms_retain(callback);              /* kept until on_closed */
+uint8_t msuv_timer_start(ms_object *timer, uint64_t every_ms, ms_fn *callback, ms_str *message_out) {
+    Timer *t = *(Timer **)ms_payload(timer);
+    if (t->on_tick) ms_fn_release(t->on_tick);
+    t->on_tick = ms_fn_retain(callback);
     int rc = uv_timer_start(&t->uv, on_tick, every_ms, every_ms);
-    return rc < 0 ? fail(rc, err_out) : 0;
+    return rc < 0 ? fail(rc, message_out) : 0;
 }
 
-void msuv_timer_close(ms_object *timer) {
-    Timer *t = ms_payload(timer);
-    if (!uv_is_closing((uv_handle_t *)&t->uv)) uv_close((uv_handle_t *)&t->uv, on_closed);
-}
+void msuv_timer_close(ms_object *timer) { timer_drop(ms_payload(timer)); }
 ```
 
-- The unsafe parts live in C, where libuv's headers describe them for each platform: layout, casts, `uv_close` lifetimes, and `uv_buf_t`, which differs between Unix and Windows. The Manuscript side has no address, size or cast.
-- `msuv_loop_close` (not shown) removes the stop hook, closes `wake`, and runs the loop until `uv_loop_close` succeeds.
-- `uv_run` blocks its isolate. Two ways keep other tasks running, both at parity:
+- A timer is closed by `close()` or, if the program forgets, by its drop. Either way libuv finishes with the memory before `on_closed` frees it, and the loop's drop closes anything still open, so nothing leaks.
+- `msuv_loop_close` (not shown) does what `loop_drop` does and reports `uv_loop_close` errors.
+- To keep other tasks running while libuv waits, there are two options:
   - run the loop in a worker;
-  - run `uv_run` on a thread the shim starts and deliver events with `ms_post_*`, so each callback runs as a task and may wait. This is how Node itself sits on libuv.
-- A TCP echo server adds `uv_tcp_t`, delivers reads as `Bytes` to a `fn(Bytes) Unit` callback, and writes with `uv_write`. It is the stage 4 fixture.
+  - run `uv_run` on a shim thread and deliver each event with `ms_post`, holding the callback with `ms_fn_hold`. The callbacks then run as tasks and may wait, which is how Node sits on libuv.
 
 ## Components touched
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `crates/ms-rt-abi/include/ms_abi.h` | public contract and rules: value functions, `ms_object_new`, isolate data, `ms_post`/`ms_call_wait` support, `ms_blocking`, `ms_wait_socket`, `ms_on_stop`, `ms_fault`, `MS_ABI_CHECK` | C test archive built with `ms cc` per platform in CI |
-| `crates/ms-rt` | `ms_*` aliases; object payloads; `ms_fn` with isolate id; guard, fault record and re-raise; park-in-callback fault; inbox message for posted calls built on the isolate; waiting calls; shared function references in the deadlock check; native lane; stop hooks; isolate data and exit hooks | unit tests; foreign-thread, fault-in-callback, cancel-during-blocking, stop-hook and wait-call tests per platform |
-| `crates/ms-check` | user externs accept every non-generic type and `extern type`; function arguments escape; any error type | conformance accept and reject cases with exact diagnostics |
-| `crates/ms-lower`, `crates/ms-clif` | values and closures by pointer; integer extension; `err_out`; adapters per function type, written once in Cranelift IR; re-raise after an extern returns | ABI round-trip test with every type, both backends, all platforms |
-| `crates/ms-cli` | `ms header`, which runs lowering for layouts; `ms cc` | header golden files; `ms cc` builds libuv per platform |
-| llvm-bundle, `scripts/lld.lock`, `crates/ms-clif/src/link` | add clang and C headers to the bundle; Windows: `iphlpapi`, `psapi`, `ole32` | fetch and checksum tests |
-| `documentation/core-language/functions/native-functions.md`, `crates/ms-rt/ABI.md` | rewritten for shims, the header, threads, blocking and `ms cc`; ABI.md section 6 corrected (scope and channel natives also call closures) | `make docs`, example checks |
-| `examples/libuv-timer`, `examples/libuv-echo` (new) | worked examples with shims | CI builds them with `ms cc` against a checksum-pinned libuv |
-| parser, grammar, formatter, LSP, `stdlib/*.ms` | unchanged (no syntax); bundled natives may move to the public header later | |
+| `crates/ms-rt-abi/include/ms_abi.h` | the header above | C and C++ test archives compiled per platform in CI |
+| `crates/ms-rt` | `ms_*_v1` functions: strings, lists, objects, `ms_fn` with hold, `ms_call` with guard and re-raise, `ms_post`/`ms_call_wait` over a new inbox message with a queue limit, native lane with cancel, multi-socket wait, stop hooks, isolate state | unit tests per group; foreign-thread, fault-in-callback, cancel-during-blocking and stop-hook tests per platform |
+| `crates/ms-check` | user extern types per the signature table; user `extern type`; function arguments escape; `message` error case | conformance accept and reject cases with exact diagnostics |
+| `crates/ms-lower`, `crates/ms-clif` | `ms_fn` wrapping and one invoke thunk per function type; integer extension; pre-filled `out`/`code_out`/`message_out`; re-raise after an extern returns | ABI round-trip test with every type, both backends |
+| `crates/ms-clif/src/link` | Windows: embed `iphlpapi`, `psapi`, `ole32` for libuv | Windows libuv example links |
+| `documentation/core-language/functions/native-functions.md` | rewritten around the header | `make docs`, example checks |
+| `examples/libuv-timer` | the worked example | CI builds it against a pinned libuv |
+| parser, grammar, formatter, LSP, `stdlib/*.ms` | unchanged (no syntax) | |
 
 ## Alternatives
 
-- **Do nothing: shims against today's ABI.** This works for scalar-only libraries. libuv cannot be bound: there are no handles or callbacks, `Int32` is rejected, and error text is lost.
-- **Pointers and raw memory in Manuscript** (draft 1). Rejected: "keep c things in c and ms things in ms".
-- **Pull events only** (draft 3). Rejected: "needs to be complete". It cannot bind libraries that need an answer from a callback, and it has no answer for foreign threads.
-- **An N-API-style dynamic value API.** Opaque handles with run-time create and inspect calls need no generated header. But every access is a call plus a type check, and a shim can disagree with its declaration until run time. Manuscript is statically typed and compiled ahead of time, so generated accessors give the same coverage, checked at compile time.
-- **Generated C structs instead of accessors.** Field access would be cheaper, but it would freeze the compiler's flattened layouts as public ABI. Accessors keep layout free to change and can be inlined in the header later.
-- **The system C compiler, as cgo uses.** It does not target musl or mingw UCRT on most machines, so shims would link against the wrong C library.
-- **`ctypes`/`libffi`-style calls with no shim.** These need `dlopen`, which static musl executables cannot do (Open question 3).
-- **Integrating foreign loops with the poller by descriptor.** libuv on Windows has no pollable descriptor. `ms_post_*` from the loop's own thread covers that case at parity, and `ms_wait_socket` covers libraries that expose sockets.
-- **A `[link]` table in `ms.toml`.** The manifest reader takes only string values, and only the program's own manifest is read. `--link` covers the libuv stages.
+- **Do nothing.** Scalar-only libraries work. libuv cannot be bound: there are no handles, no callbacks, and no error text.
+- **Pointers and raw memory in Manuscript.** Rejected: "keep c things in c and ms things in ms".
+- **Records and maps in the header.** Records and maps would need generated layouts or accessors per type, and a shim would depend on compiler layouts. A Manuscript wrapper converts them to the signature types instead, which keeps the header fixed.
+- **Calling closure code directly from C.** It follows the C ABI only for scalars; `ms_call` with `ms_value` arguments works for every signature, and kind checks make a mismatch a fault, not memory corruption.
+- **Pull events only, no callbacks.** Rejected: "the interop needs to be complete". It cannot answer a callback (comparators, SQLite's busy handler) or accept calls from foreign threads.
 
 ## Staging and verification
 
 Each stage lands green on Linux, macOS and Windows; no platform skips.
 
-1. **Toolchain and values.**
-   - Work: `ms cc`; scalars, `String`, `Bytes`, records, alternatives, `List`, `T?`; `extern type`; error constructors; `ms header`; `MS_ABI_CHECK`; isolate data.
-   - Gate: a C test archive built with `ms cc` round-trips every type on both backends, and a handle's drop runs exactly once.
-2. **Synchronous callbacks.**
-   - Work: adapters, `ms_fn` isolate check, guard and re-raise, `stop_shield`, the park fault, `ms_fault`.
-   - Gate: C calls a capturing closure of each shape. A fault in a callback reaches a worker's `join`. A callback that waits faults with its message.
-3. **Threads and blocking.**
-   - Work: `ms_post_*`, `ms_call_wait_*`, shared references, the native lane, `ms_wait_socket`, `ms_on_stop`, `Map`/`Set` accessors.
-   - Gate: a C thread posts 10,000 calls that all run; waiting calls return results; cancelling during `ms_blocking` returns `MS_CANCELLED` and `done` runs; SIGINT to a program blocked in C exits 130 through its hook.
-4. **libuv.**
-   - Work: timer and TCP echo server, with the loop on the main isolate, in a worker, and on a shim thread posting calls; libuv built by `ms cc`.
-   - Gate: every variant runs on all three platforms, and the leak check is clean.
-- Go/no-go after stage 2: if adapters or re-raise need changes to the fault or task machinery beyond the guard, stop and report.
-- Checks per stage:
-  - `cargo fmt --all --check`
-  - `cargo clippy --workspace --all-targets -- -D warnings`
-  - `cargo nextest run --workspace`
-  - `make verify`
-  - `make verify-full` before stage 4 merges.
+1. **Groups 1 to 7:** versioning, status codes, strings, values, lists, objects, errors and faults.
+   - Gate: a C test archive round-trips every signature type on both backends, and an object's drop runs exactly once.
+2. **Groups 8 to 11:** functions, blocking work, sockets, stop hooks, isolate state.
+   - Gate: same-thread calls of each kind work.
+   - Gate: a callback fault reaches a worker's `join`, and a callback that waits faults with its message.
+   - Gate: 10,000 posts from a C thread all run, and `ms_call_wait` returns results.
+   - Gate: cancelling during `ms_blocking` runs `cancel` and returns after `work`.
+   - Gate: SIGINT to a program blocked in C exits 130 through its hook.
+3. **libuv:** timer and TCP echo server, with the loop on the main isolate, in a worker, and on a shim thread using `ms_post`.
+   - Gate: all variants run on all three platforms, and the leak check is clean.
+- Go/no-go after stage 2: if `ms_call` needs changes to the fault or task machinery beyond the guard, stop and report.
+- Checks per stage: `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo nextest run --workspace`, `make verify`; `make verify-full` before stage 3 merges.
+
+## Non-goals
+
+- Dynamic loading: static musl executables cannot `dlopen` (`proposals/bundled-linker.md`).
+- Embedding Manuscript in a C program.
+- Generating shims from C headers.
 
 ## Open questions
 
-1. **Callbacks that wait.** Recommended: a synchronous callback faults if it would wait (the JS and GIL guarantee), and posted calls may wait. The alternative is to allow waiting and make re-entrancy the shim's responsibility.
-2. **Zero-copy buffers.** Recommended: copy into `Bytes` now and add external `Bytes` (memory owned by a native object) only if a benchmark shows copies matter. The alternative is to design it now.
-3. **Dynamic loading.** Recommended: stay static, like Go, which keeps single-binary executables. The alternative is a dynamically linked Linux build, which would make `dlopen` and `ctypes`-style calls possible.
-4. **Bundling clang.** Recommended: ship `ms cc` from the existing llvm-bundle, fetched on first use. The alternative is to require users to install a musl/mingw-targeting compiler themselves.
+1. **Building shims.** Shims and libraries must target musl on Linux and the mingw UCRT on Windows, and `ms` bundles no C compiler.
+   - Recommended: document the commands per platform for now (for example `zig cc`, or clang with a musl sysroot), and decide on bundling a compiler separately.
+   - Alternative: bundle clang as `ms cc` now.
+2. **Callbacks that wait.** Recommended: `ms_call` faults if the callback would wait, and `ms_post` callbacks may wait. Alternative: allow waiting and make re-entrancy the shim's responsibility.
+3. **Zero-copy buffers.** Recommended: copy now, and add native-owned `Bytes` only if a benchmark shows copies matter. Alternative: design it now.
