@@ -1,5 +1,5 @@
 import Closeable, panic from "@std/core.ms"
-import filesystem from "@std/fs.ms"
+import read_file, temporary, write_file from "@std/fs.ms"
 import TaskGroup from "@std/tasks.ms"
 import expect_equal, expect_error, expect_fault, expect_ok, expect_true from "@std/test.ms"
 import nanoseconds, sleep from "@std/time.ms"
@@ -18,13 +18,13 @@ impl Closeable for Holder:
         if self.pause:
             sleep(nanoseconds(5000000))
 
-        let _ = filesystem().write_file("{self.dir}/{self.id}", "closed", true)
+        let _ = write_file("{self.dir}/{self.id}", "closed", true)
         if self.breaks:
             panic("close fault")
         return ok(unit)
 
 fn closed(dir: String, id: Int) Bool:
-    return filesystem().read_file("{dir}/{id}").is_ok()
+    return read_file("{dir}/{id}").is_ok()
 
 fn hold_and_wait(dir: String, id: Int, pause: Bool) Int:
     let holder = Holder(dir, id, pause, false)
@@ -54,26 +54,26 @@ fn cancel_a_holder(dir: String, id: Int, pause: Bool) Unit:
     let _ignored = group.wait()
 
 test "cancellation closes the binding":
-    let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok
+    let temporary = temporary("manuscript-shield-") | try expect_ok
     let dir = temporary.path()
     cancel_a_holder(dir.clone(), 1, false)
     try expect_true(closed(dir, 1))
 
 test "cancellation does not interrupt a close that suspends":
-    let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok
+    let temporary = temporary("manuscript-shield-") | try expect_ok
     let dir = temporary.path()
     cancel_a_holder(dir.clone(), 2, true)
     try expect_true(closed(dir, 2))
 
 test "a fault unwinding the scope closes the binding":
-    let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok
+    let temporary = temporary("manuscript-shield-") | try expect_ok
     let dir = temporary.path()
     let message = try expect_fault(fn: hold_and_fault(dir.clone(), 3))
     try expect_equal(message, "body fault")
     try expect_true(closed(dir, 3))
 
 test "a faulted task closes its binding before the group reports":
-    let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok
+    let temporary = temporary("manuscript-shield-") | try expect_ok
     let dir = temporary.path()
     let mine = dir.clone()
     var group = TaskGroup[Unit](contain_faults: true)
@@ -84,14 +84,14 @@ test "a faulted task closes its binding before the group reports":
     try expect_true(closed(dir, 4))
 
 test "a fault in close on a normal return is the fault":
-    let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok
+    let temporary = temporary("manuscript-shield-") | try expect_ok
     let dir = temporary.path()
     let message = try expect_fault(fn: hold_then_break(dir.clone(), 5))
     try expect_equal(message, "close fault")
     try expect_true(closed(dir, 5))
 
 test "a fault in close does not replace a pending fault":
-    let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok
+    let temporary = temporary("manuscript-shield-") | try expect_ok
     let dir = temporary.path()
     let message = try expect_fault(fn: hold_fault_and_break(dir.clone(), 6))
     try expect_equal(message, "body fault")

@@ -1,7 +1,7 @@
 import TextError from "@std/core.ms"
 import expect_equal, expect_false, expect_ok, expect_true from "@std/test.ms"
 import Closeable from "@std/core.ms"
-import filesystem from "@std/fs.ms"
+import read_file, temporary, write_file from "@std/fs.ms"
 
 type Counter:
     count: Int
@@ -12,10 +12,10 @@ type Resource:
 # Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
 impl Closeable for Resource:
     var fn close() Unit!:
-        let _written = filesystem().write_file(self.marker, "closed", true)
+        let _written = write_file(self.marker, "closed", true)
         return ok(unit)
 
-fn closed(marker: String) Bool: filesystem().read_file(marker).is_ok()
+fn closed(marker: String) Bool: read_file(marker).is_ok()
 
 fn identity[T](value: T) T: return value
 
@@ -98,8 +98,7 @@ test "match expressions preserve returns and cleanup":
     let absent: Int? = none
     (early(present) != 5 or early(absent) != 9 or all_return(present) != 4) | try expect_false
 
-    let fs = filesystem()
-    var temporary = fs.temporary("manuscript-match-") | try expect_ok
+    var temporary = temporary("manuscript-match-") | try expect_ok
     let dir = temporary.path()
     let parsed = amount(text: "3", marker: "{dir}/parsed")
     (parsed != Result[Int, TextError].ok(value: 4)) | try expect_false

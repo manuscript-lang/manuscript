@@ -3,7 +3,7 @@
 # conform: origin=perf thread: @std/log on the native backend
 import expect_equal, expect_error from "@std/test.ms"
 import LogError, LogLevel, create, file_transport, record from "@std/log.ms"
-import FileSystemError, filesystem from "@std/fs.ms"
+import FileSystemError, read_file, temporary from "@std/fs.ms"
 
 type Service:
     service: String
@@ -12,12 +12,11 @@ type Request:
     request: Int
 
 fn lines(path: String) String!:
-    let data = try filesystem().read_file(path)
+    let data = try read_file(path)
     return ok(data.decode_utf8().get(""))
 
 test "levels filter, fields nest under data, and bound fields merge":
-    let fs = filesystem()
-    let directory = try fs.temporary("manuscript-log-")
+    let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/events.ndjson"
     var logger = try create(try file_transport(path), LogLevel.Warn, false)
     try expect_equal(logger.enabled(LogLevel.Info), false)
@@ -39,8 +38,7 @@ test "levels filter, fields nest under data, and bound fields merge":
     try expect_equal(try lines(path), expected)
 
 test "limits, invalid levels, and closed transports are errors":
-    let fs = filesystem()
-    let directory = try fs.temporary("manuscript-log-")
+    let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/events.ndjson"
     let line = "\{\"level\":30,\"msg\":\"x\"\}\n"
     var logger = try create(
@@ -66,8 +64,7 @@ test "limits, invalid levels, and closed transports are errors":
     try expect_equal(try lines(path), line)
 
 test "a missing directory is a filesystem error":
-    let fs = filesystem()
-    let directory = try fs.temporary("manuscript-log-")
+    let directory = try temporary("manuscript-log-")
     let missing = try expect_error(
         file_transport("{directory.path()}/missing/events.ndjson")
     )

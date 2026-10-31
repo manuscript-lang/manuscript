@@ -1,7 +1,7 @@
 import TextError from "@std/core.ms"
 import expect_equal, expect_false, expect_not_equal, expect_ok, expect_true from "@std/test.ms"
 import Closeable from "@std/core.ms"
-import filesystem from "@std/fs.ms"
+import read_file, temporary, write_file from "@std/fs.ms"
 
 type Counter:
     value: Int = 0
@@ -12,10 +12,10 @@ type Resource:
 # Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
 impl Closeable for Resource:
     var fn close() Unit!:
-        let _written = filesystem().write_file(self.marker, "closed", true)
+        let _written = write_file(self.marker, "closed", true)
         return ok(unit)
 
-fn closed(marker: String) Bool: filesystem().read_file(marker).is_ok()
+fn closed(marker: String) Bool: read_file(marker).is_ok()
 
 fn mark(var counter: Counter, digit: Int) Int:
     counter.value = counter.value * 10 + digit
@@ -137,8 +137,7 @@ fn value_match_loop_try(marker: String) Int!TextError:
     return ok(index)
 
 test "combined lowering retains callable state and try boundaries":
-    let fs = filesystem()
-    let temporary = fs.temporary("manuscript-scalar-") | try expect_ok
+    let temporary = temporary("manuscript-scalar-") | try expect_ok
     let dir = temporary.path()
     let expected = Result[Int, TextError].error(TextError("expected"))
     try expect_equal(nested_results("{dir}/nested"), expected)
@@ -149,8 +148,7 @@ test "combined lowering retains callable state and try boundaries":
     try expect_true(closed("{dir}/loop"))
 
 test "cleanup remains owned by its source callable":
-    let fs = filesystem()
-    let temporary = fs.temporary("manuscript-scalar-") | try expect_ok
+    let temporary = temporary("manuscript-scalar-") | try expect_ok
     let dir = temporary.path()
     try expect_equal(conditional("{dir}/skipped", take: false), 8)
     try expect_false(closed("{dir}/skipped"))

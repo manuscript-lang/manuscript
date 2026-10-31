@@ -1,19 +1,19 @@
 import expect_equal, expect_ok, expect_true from "@std/test.ms"
-import filesystem from "@std/fs.ms"
+import open, read_file, temporary from "@std/fs.ms"
 import network from "@std/net.ms"
 
 # `clone` copies a resource: each copy owns its own descriptor and closes on its own.
 
 test "a cloned file handle writes through its own descriptor after the original closes":
-    let temporary = filesystem().temporary("manuscript-dup-") | try expect_ok
+    let temporary = temporary("manuscript-dup-") | try expect_ok
     let path = "{temporary.path()}/a.txt"
-    var file = filesystem().open(path, "w", 420) | try expect_ok
+    var file = open(path, "w", 420) | try expect_ok
     var copy = file.clone() | try expect_ok
     try file.write("one ")
     try file.close()
     try copy.write("two")
     try copy.close()
-    try expect_equal(try filesystem().read_file(path), "one two".to_bytes())
+    try expect_equal(try read_file(path), "one two".to_bytes())
 
 test "a cloned connection writes after the original closes":
     let net = network()

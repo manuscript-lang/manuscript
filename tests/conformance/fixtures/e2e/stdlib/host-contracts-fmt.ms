@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/host-contracts.ms
 import expect_equal, expect_error, expect_false from "@std/test.ms"
-import filesystem, FileSystemError from "@std/fs.ms"
+import FileSystemError, open, temporary, write_file from "@std/fs.ms"
 import files, IoError from "@std/io.ms"
 import control from "@std/process.ms"
 import nanoseconds from "@std/time.ms"
@@ -63,15 +63,14 @@ test "closed codec strings reject spelling changes with their domain errors":
         try expect_equal(unpack(data, format), unpack_error)
 
 test "all ten string open modes are accepted and changed spellings are invalid":
-    let fs = filesystem()
-    let temporary = try fs.temporary("manuscript-open-modes-")
+    let temporary = try temporary("manuscript-open-modes-")
 
     for mode in ["r", "r+", "w", "wx", "w+", "wx+", "a", "ax", "a+", "ax+"]:
         let path = "{temporary.path()}/{mode}"
         if mode == "r" or mode == "r+":
-            try fs.write_file(path, "", replace: false)
+            try write_file(path, "", replace: false)
 
-        let handle = try fs.open(path, mode, 384)
+        let handle = try open(path, mode, 384)
         let _fileinfo = try handle.stat()
 
     for mode in ["R", "rs", "w+x", " r", ""]:
@@ -79,7 +78,7 @@ test "all ten string open modes are accepted and changed spellings are invalid":
             (
                 (
                     try expect_error(
-                        fs.open(
+                        open(
                             "{temporary.path()}/invalid", mode, 384
                         )
                     )
@@ -88,11 +87,10 @@ test "all ten string open modes are accepted and changed spellings are invalid":
         )
 
 test "full byte counts positions EOF and stream aliases retain their contracts":
-    let fs = filesystem()
-    let temporary = try fs.temporary("manuscript-write-contract-")
+    let temporary = try temporary("manuscript-write-contract-")
     let path = "{temporary.path()}/data"
     let data = (try "é".repeat(40000)).to_bytes()
-    var handle = try fs.open(path, "w+", 384)
+    var handle = try open(path, "w+", 384)
     try handle.write_bytes(data)
     try expect_equal((try handle.stat()).size, 80000)
     try expect_false((try handle.read()).is_some())
@@ -125,6 +123,6 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 
     let missing = "{temporary.path()}/missing"
     try expect_equal(
-        (try expect_error(fs.open(missing, "r", 384))), FileSystemError.NotFound
+        (try expect_error(open(missing, "r", 384))), FileSystemError.NotFound
     )
     try expect_equal((try expect_error(files().open(missing))), IoError.Unavailable)

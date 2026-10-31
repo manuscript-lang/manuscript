@@ -359,7 +359,9 @@ pub(crate) fn clip_text(s: &str, limit: usize) -> String {
     if s.len() <= limit {
         return s.to_string();
     }
-    let (head, tail) = (limit * 2 / 3, limit / 3);
+    // The omission marker counts against the limit.
+    let room = limit.saturating_sub(48);
+    let (head, tail) = (room * 2 / 3, room / 3);
     let bytes = s.as_bytes();
     let mut out = Vec::new();
     out.extend_from_slice(&bytes[..head]);
