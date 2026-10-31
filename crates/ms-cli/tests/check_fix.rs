@@ -224,3 +224,27 @@ fn error_with_a_string_gives_one_diagnostic_naming_fail() {
     assert!(text.contains("1 error;"), "{text}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn fix_removes_only_a_trailing_semicolon() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-fix-semi-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("a.ms"),
+        "export fn main() Int:\n    let a = 1;  # note\n    return a\n",
+    )
+    .unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert!(fixed.contains("let a = 1  # note\n"), "{fixed}");
+
+    // A mid-line semicolon has no fix: deleting it would fuse two statements.
+    let source = "export fn main() Int:\n    let a = 1; let b = 2\n    return a\n";
+    std::fs::write(dir.join("b.ms"), source).unwrap();
+    let (status, text) = ms(&["check", "b.ms", "--fix"], &dir);
+    assert_eq!(status, Some(1), "{text}");
+    assert_eq!(std::fs::read_to_string(dir.join("b.ms")).unwrap(), source);
+    let _ = std::fs::remove_dir_all(&dir);
+}

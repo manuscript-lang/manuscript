@@ -266,6 +266,16 @@ impl Scanner<'_> {
         });
         Err(d)
     }
+    /// Whether only whitespace or a `#` comment follows the cursor on its line.
+    fn trailing_semicolon(&self) -> bool {
+        let rest = &self.text[self.offset + 1..];
+        let line = rest
+            .split('\n')
+            .next()
+            .unwrap_or("")
+            .trim_start_matches([' ', '\t']);
+        line.is_empty() || line.starts_with('#') || line == "\r"
+    }
     /// Fails on the source range `[start, cursor)`.
     fn fail_range<T>(&self, start: Pos, message: String) -> PResult<T> {
         let mut d = self.err(start, message);
@@ -560,7 +570,8 @@ impl Scanner<'_> {
                                 character_hint(b)
                             ),
                             match b {
-                                b';' => Some(""),
+                                // Removing a mid-line `;` would fuse two statements.
+                                b';' if self.trailing_semicolon() => Some(""),
                                 b'!' => Some("not "),
                                 _ => None,
                             },
