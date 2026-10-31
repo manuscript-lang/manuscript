@@ -553,7 +553,7 @@ fn f(x: Int?) Result[Unit, Error]:
     return ok(1)
 fn f() Int:
     return p()
-type	4	12	67	expected Int, found Result[Int, Error] (in the return value); unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'fn f(x: Int?) Int:
+type	4	12	67	expected Int, found Int! (in the return value); unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'fn f(x: Int?) Int:
     return x
 type	2	12	30	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f(x: Int?) Int:
     return match x:
@@ -1346,7 +1346,7 @@ resolution	5	9	78	unknown case None of Optional; cases: none, some; did you mean
     return ok(1)
 fn f() Int:
     return p() + 1
-type	4	16	71	operator operands require the same independently known type, found Result[Int, Error] + Int; unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'fn f(n: Int?) Int:
+type	4	16	71	operator operands require the same independently known type, found Int! + Int; unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'fn f(n: Int?) Int:
     return n
 type	2	12	30	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn f() Float:
     let x: Float = 3
@@ -3027,7 +3027,7 @@ fn f() Result[Int, Error]:
     try operation()
     return ok(1)
 type	1	35	34	Int does not satisfy Error; use a type that implements it
-type	3	5	74	try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for itfn operation() Result[Unit, Error]: ok(unit)
+type	3	5	74	try requires the same error type or an Error boundary implemented by the specific error; this function returns Int! but the operand fails with Int, so change the return error type or implement Error for itfn operation() Result[Unit, Error]: ok(unit)
 fn f() Unit:
     try operation()
 type	3	5	62	try requires an enclosing Result; declare this function to return Result[T, E], or use 'if let', '.get(default)', or '.get()'fn operation() Unit: unit
@@ -5455,7 +5455,7 @@ fn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int: ...
 resolution	2	5	22	unknown binding operation; declare it with 'let operation = ...' before use, define 'fn operation(...) T:', or import it from a modulefn operation() Result[Unit, Error]: ok(unit)
 fn caller() Unit:
     operation()
-type	3	5	67	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn caller() Unit:
+type	3	5	67	this statement discards Unit!, so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn caller() Unit:
     let callback = fn() Unit:
         if true:
             operation()
@@ -5819,7 +5819,7 @@ test "selected=a=b":
 
 test "unselected":
     write_line("unselected")
-type	28	5	670	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn f() Int:
+type	28	5	670	this statement discards Unit!, so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn f() Int:
     return 1
 let X = f()
 type	3	9	33	a constant takes literals, operators, collections, and other constants; compute this value in a functionfn f() Int:
@@ -6668,7 +6668,7 @@ test "second request uses same server":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
 type	9	80	461	expected fn(HttpExchange) Result[Unit, HttpError], found fn(HttpRequest) HttpResponse (in argument 'handler' of serve)
-type	12	9	540	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeexport fn helper() Unit:
+type	12	9	540	this statement discards Unit!, so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeexport fn helper() Unit:
     return
 test "interruptible":
     println("READY")

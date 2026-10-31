@@ -1309,6 +1309,14 @@ impl Walker<'_> {
             (m.perm, m.role, m.parameter, m.is_receiver)
         };
         let text = info.text.clone();
+        // `?.` desugars to a hidden `?N` binding of the payload: it can only read.
+        if root.name.as_str().starts_with('?') && perm != Perm::Mutable {
+            self.error(
+                pos,
+                format!("cannot {what} through `?.`: it only reads its receiver; unwrap with `if let v = ...:` and change a copy, `var w = v.clone()`"),
+            );
+            return;
+        }
         if let Some(field) = info.through_ref {
             self.error(
                 pos,
