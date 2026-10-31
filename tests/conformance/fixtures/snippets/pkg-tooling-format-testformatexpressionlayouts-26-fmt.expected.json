@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "fn work(early: Int) Int:\n    let result = subtract(\n        try match 0:\n            _value:\n                10\n            none: 10\n    )\n    return result\n"
-  }
-}
