@@ -13,7 +13,7 @@ use std::collections::HashSet;
 /// enough to be a plausible misspelling.
 pub fn closest(name: &str, candidates: &[String]) -> String {
     let mut best = String::new();
-    let mut best_distance = 0usize;
+    let mut best_key = (0usize, false);
     if name.len() < 3 {
         return best;
     }
@@ -23,14 +23,21 @@ pub fn closest(name: &str, candidates: &[String]) -> String {
         if candidate == name {
             continue;
         }
-        let d = edit_distance(&lname, &candidate.to_lowercase());
+        let lcandidate = candidate.to_lowercase();
+        let d = edit_distance(&lname, &lcandidate);
+        // At equal distance a name that extends or truncates the typed one
+        // ("testing" for "test") beats an unrelated one.
+        let key = (
+            d,
+            !(lname.starts_with(&lcandidate) || lcandidate.starts_with(&lname)),
+        );
         if d <= limit
             && (best.is_empty()
-                || d < best_distance
-                || (d == best_distance && candidate.as_str() < best.as_str()))
+                || key < best_key
+                || (key == best_key && candidate.as_str() < best.as_str()))
         {
             best = candidate.clone();
-            best_distance = d;
+            best_key = key;
         }
     }
     best
@@ -737,13 +744,18 @@ impl Checker {
         if path.starts_with("@std/") {
             let pn = n(path);
             if !stdlib::is_native_module(pn) && stdlib::standard_source_module(pn).is_none() {
-                let hint = did_you_mean(
-                    path,
-                    &stdlib::standard_module_names()
-                        .iter()
-                        .map(|s| s.to_string())
-                        .collect::<Vec<_>>(),
-                );
+                let stem = |p: &str| {
+                    p.trim_start_matches("@std/")
+                        .trim_end_matches(".ms")
+                        .to_string()
+                };
+                let stems: Vec<String> = stdlib::standard_module_names()
+                    .iter()
+                    .map(|s| stem(s))
+                    .collect();
+                let hint = did_you_mean(&stem(path), &stems)
+                    .replace("; did you mean '", "; did you mean '@std/")
+                    .replace("'?", ".ms'?");
                 return format!("unknown standard module {path}{hint}");
             }
             exports.extend(
