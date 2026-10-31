@@ -477,6 +477,14 @@ impl Checker {
                         param.name
                     ),
                 );
+            } else if self.intrinsic_type_parameter(param.name) {
+                self.res_error(
+                    param.pos,
+                    format!(
+                        "duplicate or intrinsic type parameter {}; choose a different type parameter name",
+                        param.name
+                    ),
+                );
             }
             let v: Ty = Rc::new(Type::new(
                 param.name,
@@ -486,12 +494,7 @@ impl Checker {
             variables.push(v.clone());
             self.scope.types.borrow_mut().insert(param.name, v);
         }
-        for (i, param) in method.func.type_params.iter().enumerate() {
-            for bound in &param.bounds {
-                let t = self.resolve(Some(bound));
-                variables[i].bounds.borrow_mut().push(t);
-            }
-        }
+        self.resolve_type_bounds(&method.func.type_params, &variables);
         self.type_defaults(&method.func.type_params, &variables);
         stdlib::set_operation_variables(format!("{owner}/{}", method.func.name), variables);
     }
@@ -1110,17 +1113,19 @@ impl Checker {
         b
     }
 
+    pub(crate) fn intrinsic_type_parameter(&self, name: Name) -> bool {
+        self.sym(name).is_some_and(|s| s.module.as_str().is_empty())
+            || matches!(
+                name.as_str(),
+                "Equal" | "Comparable" | "Hashable" | "Clonable"
+            )
+    }
+
     pub(crate) fn type_variables(&mut self, params: &[TypeParam]) -> Vec<Ty> {
         let mut vars: Vec<Ty> = Vec::new();
         for p in params {
-            let intrinsic = self
-                .sym(p.name)
-                .is_some_and(|s| s.module.as_str().is_empty())
-                || self.scope.types.borrow().contains_key(&p.name)
-                || matches!(
-                    p.name.as_str(),
-                    "Equal" | "Comparable" | "Hashable" | "Clonable"
-                );
+            let intrinsic = self.intrinsic_type_parameter(p.name)
+                || self.scope.types.borrow().contains_key(&p.name);
             if intrinsic {
                 self.res_error(
                     p.pos,
@@ -1135,6 +1140,12 @@ impl Checker {
             vars.push(v.clone());
             self.scope.types.borrow_mut().insert(p.name, v);
         }
+        self.resolve_type_bounds(params, &vars);
+        vars
+    }
+
+    /// Attaches only interface bounds, consistently for declarations and operations.
+    pub(crate) fn resolve_type_bounds(&mut self, params: &[TypeParam], vars: &[Ty]) {
         for (i, p) in params.iter().enumerate() {
             for b in &p.bounds {
                 // A declaration's own parameters are not registered yet, so resolving it here would misreport its arity.
@@ -1170,7 +1181,6 @@ impl Checker {
                 vars[i].bounds.borrow_mut().push(t);
             }
         }
-        vars
     }
 
     /// Resolves a written type.
@@ -1637,3 +1647,7 @@ pub fn self_variable(owner: Name) -> Ty {
         Kind::Variable,
     ))
 }
+
+#[cfg(test)]
+#[path = "operation_bounds_tests.rs"]
+mod operation_bounds_tests;

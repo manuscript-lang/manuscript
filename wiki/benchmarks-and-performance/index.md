@@ -4,6 +4,8 @@
 
 Perf and agent benchmarks, profiling.
 
+- [Numeric parsing needs invalid-input performance controls](numeric-parsing-needs-invalid-input-performance-controls.md): valid-input gains can hide overflow and malformed-input regressions; preserve error precedence and equivalent Rust validation.
+
 - [A win needs a baseline comparison, not just a smaller number](a-win-needs-a-baseline-comparison-not-just-a-smaller-number.md): keep the raw hand-written baseline (the C controls in `bench/perf/kernels/c`) and distinguish logical work elimination from faster execution…
 - [Benchmarks are a profiling guide, not a gate](benchmarks-are-a-profiling-guide-not-a-gate.md): results are only comparable on one machine and revision; record the commit and machine with the table, as the result files do.
 - [Compare instruction counts first; a low-IPC gap points at libc](compare-instruction-counts-first-a-low-ipc-gap-points-at-lib.md): wall-clock on a shared VM moves by 2x between runs, so compare `valgrind --tool=callgrind` instruction counts of one kernel built in Manuscr…
