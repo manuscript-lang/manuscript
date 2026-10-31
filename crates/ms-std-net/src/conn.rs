@@ -63,6 +63,11 @@ pub trait Io {
     fn short_read_drains(&self) -> bool {
         false
     }
+    /// A second stream over a duplicate of the descriptor, closed on its own; `None` when the
+    /// stream keeps state of its own (TLS) that a duplicate could not share.
+    fn try_clone(&self) -> Option<io::Result<Box<dyn Io>>> {
+        None
+    }
 }
 
 /// A socket that can be closed before its owner is dropped, so a closed connection frees its
@@ -117,12 +122,16 @@ fn parked<T>(busy: &Cell<u32>, idle: &dyn Fn(), body: impl FnOnce() -> T) -> T {
 /// An unencrypted socket.
 pub struct Plain {
     sock: OwnedSock,
+    /// Open descriptors over this socket, counting duplicates: a shutdown would stop them all, so
+    /// only the last one shuts the socket down.
+    open: Rc<Cell<u32>>,
 }
 
 impl Plain {
     pub fn new(sock: Socket) -> Plain {
         Plain {
             sock: OwnedSock::new(sock),
+            open: Rc::new(Cell::new(1)),
         }
     }
 
@@ -176,11 +185,27 @@ impl Io for Plain {
     }
 
     fn shutdown_both(&self) {
-        let _ = self.sock.shutdown(std::net::Shutdown::Both);
+        let open = self.open.get();
+        self.open.set(open - 1);
+        if open == 1 {
+            let _ = self.sock.shutdown(std::net::Shutdown::Both);
+        }
     }
 
     fn release(&self) {
         self.sock.release();
+    }
+
+    fn try_clone(&self) -> Option<io::Result<Box<dyn Io>>> {
+        let sock = match self.sock.try_clone() {
+            Ok(s) => OwnedSock::new(s),
+            Err(e) => return Some(Err(e)),
+        };
+        self.open.set(self.open.get() + 1);
+        Some(Ok(Box::new(Plain {
+            sock,
+            open: self.open.clone(),
+        })))
     }
 }
 
@@ -318,6 +343,21 @@ impl Connection {
             self.io.shutdown_both();
             self.release_if_idle();
         }
+    }
+
+    /// A second connection over a duplicate of the socket, closed on its own: one task can read
+    /// while another writes. A TLS connection keeps session state a duplicate cannot share.
+    pub fn duplicate(&self) -> Result<Rc<Connection>, NetErr> {
+        if self.closed.get() {
+            return Err(NetErr::Closed);
+        }
+        let io = self
+            .io
+            .try_clone()
+            .ok_or(NetErr::Unsupported)?
+            .map_err(|e| io_to_net(&e))?;
+        self.owner
+            .adopt_io(io, self.local.clone(), self.peer.clone())
     }
 
     fn release_if_idle(&self) {

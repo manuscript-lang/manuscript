@@ -1089,6 +1089,14 @@ impl Checker {
 
     /// Methods named `name` available on `receiver`.
     pub(crate) fn methods(&self, receiver: &Ty, name: Name) -> Vec<MethodRef> {
+        // A type's own `clone` replaces the structural one: a resource's clone duplicates its
+        // handle and returns a `Result`.
+        if name == "clone" && matches!(receiver.kind, Kind::Record | Kind::Alternative) {
+            let own = self.implemented_methods(receiver, name);
+            if !own.is_empty() {
+                return own;
+            }
+        }
         if let Some(m) = native_method(receiver, name) {
             return vec![Rc::new(m)];
         }
