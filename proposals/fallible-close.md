@@ -4,7 +4,7 @@
 
 - `Closeable.close()` returns `Result[Unit, Error]`, so a failed flush or release is a value, not a fault.
 - An implicit scope-end close never drops its error: it becomes the function's error, or the checker rejects the binding.
-- `clone()` stays total (`fn clone() Self`); only types whose copy cannot fail are `Clonable`.
+- Resource `clone()` returns `Result[Self, Error]`; plain-data `clone()` stays total and is the only `Clonable` one.
 - Decision requested: approve the rules below before any implementation.
 
 ## Status
@@ -20,7 +20,8 @@ Proposal, 2026-10-31, checked against `ea4dfeab`.
 
 - `Closeable.close()` returns `Unit` (`stdlib/core.ms`). An unexpected release failure is a cleanup fault; expected failures need a separate `flush()`/`commit()` the caller must remember (`documentation/core-language/cleanup/closeable.md`).
 - Forgetting that method loses data silently: the scope closes the file and the failure is invisible or kills the program.
-- Non-goals: user `defer`; changing `clone()`'s signature; making locks or groups fallible.
+- Copying a resource (dup) can fail on descriptor limits or a closed handle; a total `clone()` can only fault or return a closed copy, both silent.
+- Non-goals: user `defer`; making `clone()` fallible for plain data.
 
 ## Design
 
@@ -41,7 +42,18 @@ fn save(path: String, text: String) Result[Unit, Error]:
     return ok(unit)
 ```
 
-- Clone: `clone()` is not fallible. `FileHandle` and plain connections are `Clonable` through dup; running out of descriptors faults like running out of memory. TLS is a separate non-`Clonable` type. Locks, guards and groups are not `Clonable`.
+- Clone: `Clonable.clone() Self` stays total and covers plain data only, so generic `T: Clonable` code never hides a syscall or a failure.
+- A resource that can be copied declares an inherent `fn clone() Result[Self, Error]` (not a `Clonable` implementation). `FileHandle` and plain connections dup; the caller uses `try`.
+- A resource has no `Clonable` impl, so generic or implicit copies (`List[FileHandle].clone()`, `T: Clonable`) stay compile errors, as today.
+- TLS is a separate type with no `clone`; locks, guards and groups have none.
+
+```manuscript
+import FileHandle from "@std/fs.ms"
+
+fn twice(file: FileHandle) Result[List[FileHandle], Error]:
+    let copy = try file.clone()
+    return ok([copy, file])
+```
 
 ## Components touched
 
@@ -50,11 +62,14 @@ fn save(path: String, text: String) Result[Unit, Error]:
 | `stdlib/core.ms` and ~24 `Closeable` impls | New `close` signature, bodies return the native result | e2e per module |
 | `crates/ms-check` cleanup facts and `close_method` | Match the new signature; reject unclosable-in-context bindings | `tests/ownership` reject cases |
 | Lowering and MIR cleanup | Implicit close error feeds the function's return path | `crates/ms-mir/tests` |
+| `FileHandle`/`Connection` in `stdlib/fs.ms`, `net.ms` | Add `clone() Result[Self, Error]` via dup | e2e + `reject/clonable-handle.ms` |
 | Docs | `closeable.md`, `resource-release.md`, `exit-order.md`, `cleanup-faults.md` | `make repo-check` |
 
 ## Alternatives
 
 - Do nothing: keeps silent loss; rejected.
+- Total resource `clone()` that faults or returns a closed copy: silent; rejected.
+- Fallible `Clonable.clone()` for every type: every plain-data copy needs `try`; rejected.
 - Discard the implicit error (Rust `Drop`): incorrect programs; rejected by the requester.
 - Fault on any close error: no recovery path and kills services; rejected.
 - Keep `close()` as `Unit`, require `finish()`: relies on the author remembering; rejected.
