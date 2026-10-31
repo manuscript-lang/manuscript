@@ -23,3 +23,10 @@ Verified (2026-10-31, TOML quoting): batching UTF-8 runs improved ASCII timing b
 escape. Retain large sparse-escape memory controls alongside timing; the accepted
 change only removes general radix formatting for known ASCII control escapes.
 Evidence: [matched controls and rejected variants](../../bench/perf/toml-quoting/README.md).
+
+Verified (2026-10-31, normalization): ASCII identity shortcuts can win over 200x
+on ASCII while slowing Unicode controls by several percent. A content-based
+first-byte gate removed one flag but exposed other NFD costs; both were rejected.
+Retain complete matrices and composition controls rather than accepting a
+removed flag or a clean screen.
+Evidence: [both rejected normalization candidates](../../bench/perf/string-normalize-ascii/results-2026-10-31.md).

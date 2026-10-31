@@ -1,0 +1,5 @@
+RUN typed-normalization.ms::typed Unicode forms retain normalization and bound dispatch
+PASS typed-normalization.ms::typed Unicode forms retain normalization and bound dispatch
+RUN typed-normalization.ms::typed normalization keeps UTF-8 byte budgets and domain errors
+PASS typed-normalization.ms::typed normalization keeps UTF-8 byte budgets and domain errors
+2 tests, 0 failed

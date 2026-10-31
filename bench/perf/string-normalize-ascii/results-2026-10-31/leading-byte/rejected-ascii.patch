@@ -1,0 +1,19 @@
+diff --git a/crates/ms-rt/src/string.rs b/crates/ms-rt/src/string.rs
+index eaa0203ed..bb562c995 100644
+--- a/crates/ms-rt/src/string.rs
++++ b/crates/ms-rt/src/string.rs
+@@ -2211,6 +2211,14 @@ unsafe fn normalize_kind(
+             usize::MAX
+         };
+         let text = bytes(s);
++        // Every ASCII byte is unchanged by each supported normalization form.
++        if text.is_ascii() {
++            if text.len() > limit {
++                return STATUS_LIMIT_EXCEEDED;
++            }
++            *out = from_bytes(text);
++            return STATUS_OK;
++        }
+         let mut chars: Vec<char> = Vec::new();
+         let mut i = 0;
+         while i < text.len() {
