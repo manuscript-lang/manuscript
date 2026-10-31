@@ -9,6 +9,26 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
+/// Finds a checked declaration's name even when a different declaration prevents
+/// whole-document lexing. The fallback scans only the declaration's own line.
+pub fn header(lexical: Option<&Lexical>, source: &str, offset: usize, name: &str) -> Option<usize> {
+    if let Some(lexical) = lexical {
+        return lexical.header(offset, name);
+    }
+    let tail = source.get(offset..)?;
+    let newline = if tail.starts_with("\r\n") {
+        2
+    } else {
+        usize::from(tail.starts_with('\n'))
+    };
+    let start = offset + newline;
+    let line = source[start..].split('\n').next()?;
+    crate::text::editor_tokens(line)
+        .into_iter()
+        .find(|token| token.kind == crate::text::EditorKind::Name && token.text == name)
+        .map(|token| start + token.start)
+}
+
 /// The tokens of one source.
 pub struct Lexical {
     /// The CRLF-normalised source the token text indexes into.

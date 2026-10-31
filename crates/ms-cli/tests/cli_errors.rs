@@ -70,3 +70,26 @@ fn init_extra_argument_error_reads_cause_then_fix() {
         "{err}"
     );
 }
+
+#[test]
+fn source_only_commands_reject_program_arguments_before_discovery() {
+    for command in ["inspect", "diagram"] {
+        for extra in [&["extra"][..], &["--", "extra"], &["--", "--help"]] {
+            let mut args = vec![command, "missing.ms"];
+            args.extend_from_slice(extra);
+            let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+                .args(&args)
+                .output()
+                .unwrap();
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert_eq!(output.status.code(), Some(2), "{args:?}: {stderr}");
+            assert!(output.stdout.is_empty(), "{args:?}: {output:?}");
+            assert!(!stderr.contains("file not found:"), "{args:?}: {stderr}");
+            assert!(stderr.contains("remove"), "{args:?}: {stderr}");
+            assert!(
+                !stderr.contains("arguments for the program go after --"),
+                "{args:?}: {stderr}"
+            );
+        }
+    }
+}

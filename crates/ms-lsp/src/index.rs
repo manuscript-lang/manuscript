@@ -194,11 +194,8 @@ impl Builder {
             .unwrap_or_else(|| format!("binding:{}", b.id))
     }
 
-    fn header(&self, lexical: &Option<Rc<Lexical>>, pos: usize, name: &str) -> usize {
-        lexical
-            .as_ref()
-            .and_then(|l| l.header(pos, name))
-            .unwrap_or(pos)
+    fn header(&self, lexical: &Option<Rc<Lexical>>, file: Name, pos: usize, name: &str) -> usize {
+        lexical::header(lexical.as_deref(), &self.by_file[&file].source, pos, name).unwrap_or(pos)
     }
 }
 
@@ -258,7 +255,12 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
             if let Some(symbol) = symbols.get(&d.name())
                 && symbol.decl.as_ref().is_some_and(|sd| sd.same(d))
             {
-                let at = b.header(&lexical, d.pos().offset as usize, symbol.name.as_str());
+                let at = b.header(
+                    &lexical,
+                    m.file,
+                    d.pos().offset as usize,
+                    symbol.name.as_str(),
+                );
                 b.add(
                     symbol_key(Some(symbol)),
                     symbol.name.as_str(),
@@ -344,6 +346,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
                         };
                         let at = b.header(
                             &lexical,
+                            m.file,
                             method.pos.offset as usize,
                             method.func.name.as_str(),
                         );
@@ -411,7 +414,12 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
             continue;
         };
         let lexical = tokens.get(&file).cloned().flatten();
-        let at = b.header(&lexical, decl.pos().offset as usize, decl.name().as_str());
+        let at = b.header(
+            &lexical,
+            file,
+            decl.pos().offset as usize,
+            decl.name().as_str(),
+        );
         let key = method_key(&b.files, method);
         b.add(
             key,
@@ -596,9 +604,12 @@ impl Visitor for BindingWalker<'_> {
                     self.module.facts().patterns.get(&pattern.id).cloned()
                 });
                 if let Some(binding) = loop_binding.or(expanded) {
-                    let at =
-                        self.b
-                            .header(self.lexical, s.pos.offset as usize, binding.name.as_str());
+                    let at = self.b.header(
+                        self.lexical,
+                        self.module.file,
+                        s.pos.offset as usize,
+                        binding.name.as_str(),
+                    );
                     self.declare(&binding, at);
                 }
             }
@@ -634,6 +645,7 @@ impl Visitor for BindingWalker<'_> {
                     for binding in bindings.iter().flatten() {
                         let at = self.b.header(
                             self.lexical,
+                            self.module.file,
                             arm.pos.offset as usize,
                             binding.name.as_str(),
                         );

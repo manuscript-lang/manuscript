@@ -758,8 +758,9 @@ impl<'a> Parser<'a> {
     /// type needs parentheses first, since its result type takes the suffix.
     fn type_suffix(&mut self, mut t: TypeRef) -> PResult<TypeRef> {
         loop {
+            let pos = t.pos;
             let (name, args) = if self.take(Tok::Question) {
-                ("Optional", vec![t.clone()])
+                ("Optional", vec![t])
             } else if self.take(Tok::Bang) {
                 let bang = self.previous();
                 let next = self.peek();
@@ -769,19 +770,18 @@ impl<'a> Parser<'a> {
                     let id = self.id();
                     TypeRef {
                         id,
-                        pos: t.pos,
+                        pos,
                         kind: TypeKind::Named {
                             name: Symbol::intern("Error"),
                             args: Vec::new(),
                         },
                     }
                 };
-                ("Result", vec![t.clone(), error])
+                ("Result", vec![t, error])
             } else {
                 return Ok(t);
             };
             let id = self.id();
-            let pos = t.pos;
             t = TypeRef {
                 id,
                 pos,
