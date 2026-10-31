@@ -106,3 +106,33 @@ excluded compiler stages, so no representation change was attempted here.
 These measurements cover the initial combined local candidate. Normal required
 CI, full combined-main benchmark controls and fresh discovery after merging are
 still required; blocked or untested paths are not clean.
+
+## Matched merged-main replay — 2026-10-31
+
+After the suffix fix merged, baseline `649ddeb9a2fb91eb36d1eb074842eaaa4ee370fc`
+was rebuilt and compared against candidate `241a49115` containing that same main
+plus this cache. This includes merged formatter, recovery and Unicode-span
+correctness fixes. All syntax tests, clippy, formatting and repository checks
+passed after the merge; exact outcome/recovery parity and all 420 timed samples
+passed again. Raw evidence is `results-2026-10-31-current-main.json`.
+
+| Control | Baseline µs/pass | Candidate µs/pass | Speedup |
+| --- | ---: | ---: | ---: |
+| Tiny source | 0.537 | 0.556 | 0.97x |
+| 256 plain signatures | 103.793 | 105.122 | 0.99x |
+| 256 generic optional signatures | 203.824 | 203.187 | 1.00x |
+| One-level indexing | 0.703 | 0.720 | 0.98x |
+| Two-level indexing | 0.931 | 0.925 | 1.01x |
+| 64-level indexing | 90.551 | 14.496 | 6.25x |
+| 128-level indexing | 348.776 | 28.316 | 12.32x |
+| 256-level indexing | 1375.625 | 56.371 | 24.40x |
+| Mixed nested and flat indexing | 95.881 | 92.790 | 1.03x |
+| Standard-library corpus | 4869.836 | 4826.270 | 1.01x |
+
+The tiny-source fixed cost remains visible. A preliminary comparison against
+the older pre-merge baseline had shown a roughly 4% generic-signature cost;
+matching the merged-main revisions removes that confound and shows this
+signature control unchanged. The preliminary measurements remain in the task
+workspace; they are not used as causal acceptance evidence.
+
+Repeat after this cache itself merges, and retain both historical runs.
