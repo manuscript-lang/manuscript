@@ -115,8 +115,12 @@ pub fn suggest_project_imports(diagnostics: &mut [Diagnostic], source_root: &str
         let Some(candidates) = exports.get(&name) else {
             continue;
         };
-        let Ok(here) = pathops::abs(&d.file) else {
-            continue;
+        // Graph diagnostics name modules relative to source_root, not the
+        // process working directory. Absolute diagnostic paths remain usable.
+        let here = if pathops::is_abs(&d.file) {
+            pathops::clean(&d.file)
+        } else {
+            pathops::join(&[source_root, &d.file])
         };
         let dir = pathops::dir(&here);
         let paths: Vec<String> = candidates
@@ -176,16 +180,22 @@ mod tests {
         .unwrap();
         let root = pathops::eval_symlinks(root.to_str().unwrap()).unwrap();
         let main = pathops::join(&[&root, "main.ms"]);
-        let mut found = vec![unknown(&main)];
-        suggest_project_imports(&mut found, &root);
-        assert_eq!(
-            found[0].message,
-            "unknown type Bytes; add: import Bytes from \"./lib/blobs.ms\""
-        );
-        assert_eq!(
-            found[0].fix.as_ref().unwrap().replacement,
-            "import Bytes from \"./lib/blobs.ms\"\n"
-        );
+        for (file, expected) in [
+            (main.as_str(), "./lib/blobs.ms"),
+            ("main.ms", "./lib/blobs.ms"),
+            ("src/nested/main.ms", "../../lib/blobs.ms"),
+        ] {
+            let mut found = vec![unknown(file)];
+            suggest_project_imports(&mut found, &root);
+            assert_eq!(
+                found[0].message,
+                format!("unknown type Bytes; add: import Bytes from \"{expected}\"")
+            );
+            assert_eq!(
+                found[0].fix.as_ref().unwrap().replacement,
+                format!("import Bytes from \"{expected}\"\n")
+            );
+        }
         let _ = std::fs::remove_dir_all(&root);
     }
 
