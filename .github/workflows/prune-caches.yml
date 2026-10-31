@@ -6,7 +6,10 @@ name: Prune caches
 # keys are dead and go too.
 
 on:
-  push:
+  # Right after a main run saved its caches, so the superseded entries go before the limit is reached.
+  workflow_run:
+    workflows: [CI/CD]
+    types: [completed]
     branches: [main]
   schedule:
     - cron: '17 */6 * * *'
@@ -30,9 +33,9 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           gh cache list --limit 1000 --json id,key,ref,createdAt > caches.json
-          # Newest first within each name (the key without its trailing hash); keep the first.
+          # Newest first within each name (the key without its trailing lockfile hash and run id); keep the first.
           jq -r '
-            def name: sub("-[0-9a-f]{16,}$"; "");
+            def name: sub("-[0-9a-f]{16,}(-[0-9]+)?$"; "");
             def dead: .ref != "refs/heads/main" or (.key | test("^(v0-rust-|lld-|cargo-rust-)"));
             . as $all
             | [$all[] | select(dead)] as $dead

@@ -1584,6 +1584,22 @@ fn with_alias_origins(
         roots: std::collections::HashMap<usize, usize>,
     }
     impl ms_syntax::visit::Visitor for Origins<'_, '_> {
+        fn expr(&mut self, e: &Expr) {
+            // `c?.f()` borrows `c` for the payload binding of its chain.
+            let ExprKind::Match { scrutinee, arms } = &e.kind else {
+                return;
+            };
+            for arm in arms.iter().filter(|a| a.chain) {
+                for b in self.fl.hir.arm(arm).bindings.iter().flatten() {
+                    if self.fl.cx.exclusive(b.uid)
+                        && let Some(root) = alias_origin(self.fl, scrutinee)
+                    {
+                        self.roots.insert(b.uid, root);
+                    }
+                }
+            }
+        }
+
         fn stmt(&mut self, s: &Stmt) {
             let (pattern, value) = match &s.kind {
                 StmtKind::Bind { pattern, value, .. } => (pattern, value),

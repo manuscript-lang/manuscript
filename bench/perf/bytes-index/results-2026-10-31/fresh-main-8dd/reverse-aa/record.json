@@ -1,0 +1,87 @@
+{
+  "complete": true,
+  "argv": [
+    "bench/perf/string-normalize-ascii/compare_matrix.py",
+    "/workspace/normalization-evidence/factorial-protocol/reverse-aa-programs.json",
+    "bench/perf/string-normalization-rollback/inputs/reverse-full-identities.json",
+    "/workspace/normalization-evidence/reverse-aa"
+  ],
+  "affinity": [
+    0
+  ],
+  "orders": [
+    [
+      "baseline-a",
+      "baseline-b"
+    ],
+    [
+      "baseline-b",
+      "baseline-a"
+    ],
+    [
+      "baseline-b",
+      "baseline-a"
+    ],
+    [
+      "baseline-a",
+      "baseline-b"
+    ]
+  ],
+  "cases": 83,
+  "validated_producers": [
+    [
+      "warmup",
+      "baseline-a"
+    ],
+    [
+      "warmup",
+      "baseline-b"
+    ],
+    [
+      0,
+      "baseline-a"
+    ],
+    [
+      0,
+      "baseline-b"
+    ],
+    [
+      1,
+      "baseline-b"
+    ],
+    [
+      1,
+      "baseline-a"
+    ],
+    [
+      2,
+      "baseline-b"
+    ],
+    [
+      2,
+      "baseline-a"
+    ],
+    [
+      3,
+      "baseline-a"
+    ],
+    [
+      3,
+      "baseline-b"
+    ]
+  ],
+  "programs": {
+    "baseline-a": {
+      "path": "/workspace/normalization-evidence/programs/baseline-reverse",
+      "sha256": "bd841168fa778ca4434e25010d710194f87a545f860e95354698e2da2a331ac9"
+    },
+    "baseline-b": {
+      "path": "/workspace/normalization-evidence/programs/baseline-reverse",
+      "sha256": "bd841168fa778ca4434e25010d710194f87a545f860e95354698e2da2a331ac9"
+    }
+  },
+  "program_inventory_sha256": "5a897d33710aee3e76f74c6ae75505a2a0c7fc39b92bbc697536434482649988",
+  "identities_sha256": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0",
+  "runner_sha256": "c430e1babbf6028534f8a3a42c4cb2bd09c501be3628647563aea0dfcc2b91fd",
+  "validator_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883"
+}

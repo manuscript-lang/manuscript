@@ -54,7 +54,6 @@ fn plain(m: &Module, t: crate::types::Ty, seen: &mut Vec<crate::types::Ty>) -> b
         | TyKind::Float32
         | TyKind::Str
         | TyKind::Bytes => true,
-        TyKind::Ref(_) => true,
         TyKind::Ptr | TyKind::Fn(..) | TyKind::Iface(_) => false,
         TyKind::List(e) | TyKind::Opt(e) => plain(m, *e, seen),
         TyKind::Obj(n, args) => {
@@ -319,10 +318,7 @@ fn family(m: &Module, f: &Func, ix: &Index, v: Value) -> HashSet<Value> {
                     // A lending function's result is a borrow of its arguments.
                     let lent = m.result_mode(f, i) == Some(Mode::Borrow)
                         && matches!(i.op, Op::Call | Op::CallMethod);
-                    // A result holding a view of an argument points into it too.
-                    let viewing = matches!(i.op, Op::Call | Op::CallMethod)
-                        && i.res.is_some_and(|r| m.holds_view(f.ty(r)));
-                    if (i.op == Op::CallRt && !fresh || lent || viewing)
+                    if (i.op == Op::CallRt && !fresh || lent)
                         && let Some(r) = i.res
                         && !is_scalar(m, f.ty(r))
                     {

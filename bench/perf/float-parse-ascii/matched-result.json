@@ -1,0 +1,33 @@
+{
+  "pairs": [
+    {
+      "original": "final-before",
+      "matched": "matched-before",
+      "original_sha256": "6188433cec15f48eac4885a12c2c2bd324371f84423cb06047b8ca03e4dff248",
+      "matched_sha256": "6188433cec15f48eac4885a12c2c2bd324371f84423cb06047b8ca03e4dff248",
+      "identical": true
+    },
+    {
+      "original": "final-after",
+      "matched": "matched-after",
+      "original_sha256": "32dff1c8e7076e5f75b25d14476d06fe2c945d8cce011c1e75d287d3c81fdf2a",
+      "matched_sha256": "32dff1c8e7076e5f75b25d14476d06fe2c945d8cce011c1e75d287d3c81fdf2a",
+      "identical": true
+    },
+    {
+      "original": "final-controls-before",
+      "matched": "matched-controls-before",
+      "original_sha256": "1ef45fb75ab365aa0b97534a1887d0802de2ac267e81dd2438c1a15127aba2c5",
+      "matched_sha256": "1ef45fb75ab365aa0b97534a1887d0802de2ac267e81dd2438c1a15127aba2c5",
+      "identical": true
+    },
+    {
+      "original": "final-controls-after",
+      "matched": "matched-controls-after",
+      "original_sha256": "bda9481355ff05ef641706820811671efebea8948b274b80e68847fa010aa476",
+      "matched_sha256": "bda9481355ff05ef641706820811671efebea8948b274b80e68847fa010aa476",
+      "identical": true
+    }
+  ],
+  "result": "Every linked benchmark executable is byte-identical. Build location does not explain the confirmed regressions. Candidate rejected; no further timing or variants required."
+}
