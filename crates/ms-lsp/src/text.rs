@@ -128,6 +128,39 @@ impl<'a> SourcePositions<'a> {
     }
 }
 
+/// Coordinates for an ordered batch without rescanning already visited text.
+pub(crate) struct ForwardPositions<'a> {
+    source: &'a str,
+    offset: usize,
+    at: Position,
+}
+
+impl<'a> ForwardPositions<'a> {
+    pub(crate) fn new(source: &'a str) -> Self {
+        Self {
+            source,
+            offset: 0,
+            at: Position::default(),
+        }
+    }
+
+    pub(crate) fn position(&mut self, offset: usize) -> Position {
+        let offset = offset.min(self.source.len());
+        if offset < self.offset || !self.source.is_char_boundary(offset) {
+            return position(self.source, offset);
+        }
+        let next = &self.source[self.offset..offset];
+        if let Some(last) = next.rfind('\n') {
+            self.at.line += next.bytes().filter(|&b| b == b'\n').count();
+            self.at.character = utf16_length(&next.as_bytes()[last + 1..]);
+        } else {
+            self.at.character += utf16_length(next.as_bytes());
+        }
+        self.offset = offset;
+        self.at
+    }
+}
+
 /// The position just past the last byte.
 pub fn end_position(source: &str) -> Position {
     position(source, source.len())
@@ -355,6 +388,29 @@ pub fn line_span(source: &str, line: usize) -> (usize, usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn forward_positions_preserve_every_original_byte_position() {
+        for source in ["", "plain", "a😀b\r\né\n\nlast\rignored", "\n😀\n日本\r\n"] {
+            let mut positions = ForwardPositions::new(source);
+            for offset in (0..=source.len() + 2)
+                .chain((0..=source.len()).rev())
+                .chain([0, 1, 2, source.len(), usize::MAX, 0, source.len()])
+            {
+                assert_eq!(positions.position(offset), position(source, offset));
+            }
+            let mut positions = ForwardPositions::new(source);
+            for at in 0..=source.len() {
+                for offset in [at, source.len() - at, at, at + 1] {
+                    assert_eq!(positions.position(offset), position(source, offset));
+                }
+            }
+            let mut positions = ForwardPositions::new(source);
+            for offset in [0, 1, 2, 5, 0, 6, 5, 7, 3, source.len(), usize::MAX] {
+                assert_eq!(positions.position(offset), position(source, offset));
+            }
+        }
+    }
 
     #[test]
     fn diagnostic_index_preserves_all_original_byte_ranges() {

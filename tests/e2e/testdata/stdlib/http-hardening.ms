@@ -141,7 +141,7 @@ fn raw_status(address: String, request: String) String!:
 
     let reply = client.read(timeout: 2.seconds) | try expect_ok
     let text = reply.get(Bytes([])).decode_utf8().get("")
-    return ok(text.split("\r\n") [0].clone())
+    return ok(text.split("\r\n")[0].clone())
 
 test "asterisk-form target is accepted only for OPTIONS":
     let server = network().serve(

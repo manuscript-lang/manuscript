@@ -53,8 +53,8 @@ test "set algebra preserves collision order and first representatives":
     try expect_equal(symmetric.map(fn(k: Key) Int: k.id), [2, 0, 3])
     try expect_equal(symmetric[0].payload, [20])
     try expect_equal(symmetric[2].payload, [30])
-    try expect_equal(left.values() [0].payload, [20])
-    try expect_equal(right.values() [0].payload, [999])
+    try expect_equal(left.values()[0].payload, [20])
+    try expect_equal(right.values()[0].payload, [999])
 
 test "distinct copies nested values into independent output storage":
     var source: List[List[Int]] = []

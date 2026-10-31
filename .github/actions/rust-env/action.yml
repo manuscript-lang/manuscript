@@ -1,0 +1,96 @@
+name: Rust environment
+description: Set up the native compiler, linker, LLVM tools and ms toolchain for a CI job.
+
+inputs:
+  os:
+    description: Target os (linux, darwin or windows).
+    required: true
+  arch:
+    description: Target arch (amd64 or arm64).
+    required: true
+  llvm-consumers:
+    description: "'true' installs llvm-dwarfdump and llvm-symbolizer, which the debug-info tests read."
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - uses: ilammy/msvc-dev-cmd@v1
+      if: runner.os == 'Windows'
+      with:
+        arch: ${{ inputs.arch == 'arm64' && 'amd64_arm64' || 'amd64' }}
+    - name: Select native Windows Rust host and MSVC linker
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $rustTarget = if ('${{ inputs.arch }}' -eq 'arm64') { 'aarch64-pc-windows-msvc' } else { 'x86_64-pc-windows-msvc' }
+        rustup set default-host $rustTarget
+        $msvcLinker = Join-Path $env:VCToolsInstallDir ('bin/Host{0}/{1}/link.exe' -f $env:VSCMD_ARG_HOST_ARCH, $env:VSCMD_ARG_TGT_ARCH)
+        if (!(Test-Path $msvcLinker)) { throw "MSVC linker missing: $msvcLinker" }
+        $linkerKey = 'CARGO_TARGET_' + $rustTarget.ToUpper().Replace('-', '_') + '_LINKER'
+        "$linkerKey=$msvcLinker" >> $env:GITHUB_ENV
+        Write-Output "Rust linker: $msvcLinker"
+    - name: Record native host and compiler
+      shell: bash
+      run: |
+        rustc -Vv
+        cargo -V
+        host=$(rustc -vV | sed -n 's/^host: //p')
+        expected=x86_64
+        if [ '${{ inputs.arch }}' = arm64 ]; then expected=aarch64; fi
+        case "$host" in "$expected"-*) ;; *) echo "Wrong native Rust host: $host"; exit 1 ;; esac
+        if [ "$RUNNER_OS" = Windows ]; then
+          clang --version
+          echo 'CC=clang' >> "$GITHUB_ENV"
+        else
+          cc --version
+        fi
+    - uses: ./.github/actions/native-toolchain
+      with:
+        os: ${{ inputs.os }}
+        arch: ${{ inputs.arch }}
+    # Runner images often ship the LLVM tools already; install only when they are missing.
+    - name: Install LLVM native debug consumers
+      if: inputs.llvm-consumers == 'true'
+      shell: bash
+      run: |
+        if command -v llvm-dwarfdump >/dev/null 2>&1 && command -v llvm-symbolizer >/dev/null 2>&1; then
+          echo "LLVM debug consumers already installed"
+        elif [ "$RUNNER_OS" = Linux ]; then
+          sudo apt-get update
+          sudo apt-get install -y llvm
+        elif [ "$RUNNER_OS" = macOS ]; then
+          brew install llvm
+          echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+        elif [ "$RUNNER_OS" = Windows ] && [ '${{ inputs.arch }}' = arm64 ]; then
+          echo 'C:/Program Files/LLVM/bin' >> "$GITHUB_PATH"
+        fi
+    - name: Restore Windows x64 LLVM consumers
+      id: llvm-debug
+      if: inputs.llvm-consumers == 'true' && runner.os == 'Windows' && inputs.arch == 'amd64'
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ runner.temp }}/llvm-debug-23.1.1
+        key: llvm-debug-windows-x64-23.1.1-c54ac814
+    - name: Install Windows x64 LLVM consumers
+      if: inputs.llvm-consumers == 'true' && runner.os == 'Windows' && inputs.arch == 'amd64'
+      shell: bash
+      run: |
+        temp_root=$(cygpath -u "$RUNNER_TEMP")
+        tools="$temp_root/llvm-debug-23.1.1"
+        if [ ! -x "$tools/llvm-dwarfdump.exe" ] || [ ! -x "$tools/llvm-symbolizer.exe" ]; then
+          archive="$temp_root/llvm-debug-23.1.1.tar.xz"
+          curl --fail --location --retry 3 'https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.1/clang%2Bllvm-23.1.1-x86_64-pc-windows-msvc.tar.xz' -o "$archive"
+          echo "c54ac8146b420fe72e11e6fdd56498d6818011ad23267196b6ab37b5ac9264c3  $archive" | sha256sum --check
+          mkdir -p "$tools"
+          tar -xJf - -C "$tools" --strip-components=2 \
+            clang+llvm-23.1.1-x86_64-pc-windows-msvc/bin/llvm-dwarfdump.exe \
+            clang+llvm-23.1.1-x86_64-pc-windows-msvc/bin/llvm-symbolizer.exe < "$archive"
+        fi
+        cygpath -w "$tools" >> "$GITHUB_PATH"
+    - name: Save Windows x64 LLVM consumers
+      if: inputs.llvm-consumers == 'true' && github.ref == 'refs/heads/main' && runner.os == 'Windows' && inputs.arch == 'amd64' && steps.llvm-debug.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ runner.temp }}/llvm-debug-23.1.1
+        key: ${{ steps.llvm-debug.outputs.cache-primary-key }}
