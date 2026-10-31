@@ -14,7 +14,7 @@
 #     name: String
 #     shout: Bool
 #
-# fn greet(options: Greeting) Result[Int, Error]:
+# fn greet(options: Greeting) Int!:
 #     return ok(0)
 #
 # export fn main() Int:
@@ -196,7 +196,7 @@ export type Command:
     # Subcommands in help order; their names must be unique, nonempty and not `help`.
     children: List[Command] = []
     # Runs after a successful parse; the returned Int is the exit status.
-    exec: fn(Matches) Result[Int, Error] = fn m: ok(0)
+    exec: fn(Matches) Int! = fn m: ok(0)
 
 # The outcome of parsing: help text to show, or a node ready to run.
 export type Parsed:
@@ -285,7 +285,7 @@ impl Command:
 # handler returns the exit status.
 export fn command[T: Data](
     name: String,
-    run: fn(T) Result[Int, Error],
+    run: fn(T) Int!,
     about: String = "",
     flags: List[Flag] = [],
     args: List[Arg] = []

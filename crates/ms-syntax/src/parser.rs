@@ -754,23 +754,44 @@ impl<'a> Parser<'a> {
         Ok((by_ref, self.typ()?))
     }
 
-    /// Wraps `t` once per trailing `?`: `T?` is `Optional[T]`. A function type
-    /// needs parentheses first, since its result type takes the `?`.
-    fn optional_suffix(&mut self, mut t: TypeRef) -> TypeRef {
-        while self.kind() == Tok::Question {
-            self.at += 1;
+    /// Wraps `t` once per trailing suffix, left to right: `T?` is `Optional[T]`, `T!` is
+    /// `Result[T, Error]`, and `T!E` (E directly after the bang) is `Result[T, E]`. A function
+    /// type needs parentheses first, since its result type takes the suffix.
+    fn type_suffix(&mut self, mut t: TypeRef) -> PResult<TypeRef> {
+        loop {
+            let (name, args) = if self.take(Tok::Question) {
+                ("Optional", vec![t.clone()])
+            } else if self.take(Tok::Bang) {
+                let bang = self.previous();
+                let next = self.peek();
+                let error = if next.kind == Tok::Name && next.lo == bang.hi {
+                    self.named_type()?
+                } else {
+                    let id = self.id();
+                    TypeRef {
+                        id,
+                        pos: t.pos,
+                        kind: TypeKind::Named {
+                            name: Symbol::intern("Error"),
+                            args: Vec::new(),
+                        },
+                    }
+                };
+                ("Result", vec![t.clone(), error])
+            } else {
+                return Ok(t);
+            };
             let id = self.id();
             let pos = t.pos;
             t = TypeRef {
                 id,
                 pos,
                 kind: TypeKind::Named {
-                    name: Symbol::intern("Optional"),
-                    args: vec![t],
+                    name: Symbol::intern(name),
+                    args,
                 },
             };
         }
-        t
     }
 
     fn typ(&mut self) -> PResult<TypeRef> {
@@ -823,7 +844,7 @@ impl<'a> Parser<'a> {
         } else {
             self.named_type()?
         };
-        Ok(self.optional_suffix(t))
+        self.type_suffix(t)
     }
 
     // ---- declarations ----
@@ -1096,10 +1117,10 @@ impl<'a> Parser<'a> {
                 // `impl Contract for Type:` implements a contract; `impl Type:`
                 // declares the type's own methods.
                 let first = self.named_type()?;
-                let first = self.optional_suffix(first);
+                let first = self.type_suffix(first)?;
                 let (contract, receiver) = if self.take(Tok::For) {
                     let receiver = self.named_type()?;
-                    (Some(first), self.optional_suffix(receiver))
+                    (Some(first), self.type_suffix(receiver)?)
                 } else {
                     (None, first)
                 };
