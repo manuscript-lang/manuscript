@@ -1,0 +1,51 @@
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+
+root = Path('/workspace/manuscript')
+out = Path(__file__).resolve().parent
+digest = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()
+record = {'complete': False, 'commands': [], 'base': '98854115f95bfeddbaa362382bfcff85c0499752'}
+def save():
+    (out / 'build-record.json').write_text(json.dumps(record, indent=2) + '\n')
+def run(args, name, extra=None):
+    env = os.environ.copy()
+    if extra:
+        env.update(extra)
+    with (out / (name + '.log')).open('wb') as log:
+        result = subprocess.run(args, cwd=root, env=env, stdout=log, stderr=subprocess.STDOUT)
+    record['commands'].append({'argv': args, 'extra_env': extra or {}, 'exit': result.returncode, 'log': name + '.log'})
+    save()
+    result.check_returncode()
+
+shutil.copy2(root / 'target/release/ms', out / 'ms-compiler')
+record['compiler'] = {'path': str(out / 'ms-compiler'), 'sha256': digest(out / 'ms-compiler')}
+record['head'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+record['archives'] = {label: digest(out / (label + '.a')) for label in ['baseline', 'word']}
+sources = {
+    'byte': root / 'bench/perf/bytes-index/main.ms',
+    'lines': root / 'bench/perf/string-lines/main.ms',
+    'normalize': root / 'bench/perf/string-normalize-ascii/main.ms',
+    'reverse': root / 'bench/perf/string-normalization-rollback/inputs/reverse-full.ms',
+}
+record['sources'] = {label: {'path': str(path), 'sha256': digest(path)} for label, path in sources.items()}
+record['programs'] = {}
+save()
+for label in ['baseline', 'word']:
+    for suite, source in sources.items():
+        program = out / (label + '-' + suite)
+        run([str(out / 'ms-compiler'), 'build', str(source), '--build-type', 'Release', '-o', str(program)],
+            label + '-' + suite + '-build', {'MS_RT_LIB': str(out / (label + '.a'))})
+        record['programs'][label + '-' + suite] = {'path': str(program), 'sha256': digest(program)}
+        save()
+run([str(out / 'ms-compiler'), 'test', 'tests/e2e/testdata/stdlib/bytes-index-search.ms', '--build-type', 'Debug'],
+    'source-tests-debug', {'MS_RT_LIB': str(out / 'word.a')})
+run([str(out / 'ms-compiler'), 'test', 'tests/e2e/testdata/stdlib/bytes-index-search.ms', '--build-type', 'Release'],
+    'source-tests-release', {'MS_RT_LIB': str(out / 'word.a')})
+run(['/workspace/reverse-discovery/rust-reverse-control', '--verify'], 'rust-reverse-verify')
+run(['/workspace/reverse-discovery/rust-reverse-control', '--inventory'], 'rust-reverse-inventory')
+record['complete'] = True
+save()
