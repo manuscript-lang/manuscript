@@ -134,3 +134,25 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
     if not head.starts_with("HTTP/1.1 500"): return error(
         TextError("expected a 500 reply, got: {head}")
     )
+
+fn raw_status(address: String, request: String) String!:
+    let client = network().connect(address, 2.seconds) | try expect_ok
+    client.write(request, 2.seconds) | try expect_ok
+
+    let reply = client.read(timeout: 2.seconds) | try expect_ok
+    let text = reply.get(Bytes([])).decode_utf8().get("")
+    return ok(text.split("\r\n") [0].clone())
+
+test "asterisk-form target is accepted only for OPTIONS":
+    let server = network().serve(
+        address: "127.0.0.1:0", handler: buffered(ok_route)
+    ) | try expect_ok
+    let tail = "HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
+    let get = raw_status(server.address(), "GET * {tail}") | try expect_ok
+    let options = raw_status(server.address(), "OPTIONS * {tail}") | try expect_ok
+    if get != "HTTP/1.1 400 Bad Request": return error(
+        TextError("GET * answered: {get}")
+    )
+    if options != "HTTP/1.1 200 OK": return error(
+        TextError("OPTIONS * answered: {options}")
+    )
