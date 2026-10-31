@@ -686,12 +686,7 @@ impl Checker {
             own.push(v.clone());
             self.scope.types.borrow_mut().insert(param.name, v);
         }
-        for (i, param) in method.func.type_params.iter().enumerate() {
-            for bound in &param.bounds {
-                let t = self.resolve(Some(bound));
-                own[i].bounds.borrow_mut().push(t);
-            }
-        }
+        self.resolve_type_bounds(&method.func.type_params, &own);
         own
     }
 
