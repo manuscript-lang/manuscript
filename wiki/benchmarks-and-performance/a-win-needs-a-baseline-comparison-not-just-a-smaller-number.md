@@ -30,3 +30,10 @@ first-byte gate removed one flag but exposed other NFD costs; both were rejected
 Retain complete matrices and composition controls rather than accepting a
 removed flag or a clean screen.
 Evidence: [both rejected normalization candidates](../../bench/perf/string-normalize-ascii/results-2026-10-31.md).
+
+Verified (2026-10-31, ASCII decoding): equality of UTF-8 byte count and scalar
+count is a correct ASCII predicate, but converting first made large valid
+Unicode rejection tens of times slower. Retain non-ASCII rejection controls when
+eliminating scalar conversions. The direct-conversion candidate also repeatedly slowed a 4 KiB rejection
+control; the fresh-main repeat reached 7.8%, so it was rejected despite valid-input
+gains. Preserve the counterexample rather than labeling it noise. [Report and rejected candidate](../../bench/perf/ascii-decode/README.md).
