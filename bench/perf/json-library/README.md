@@ -241,3 +241,16 @@ All 22 scoped Rust tests, source float regression, affected Clippy, workspace
 formatting, repository and license checks pass on the conflict-resolution head.
 The wiki now preserves both independent lessons and correctly records the TOML
 helper's later revert. No GitHub approval was submitted; required CI remains enabled.
+
+Main `81b804d58` / #2139 was then merged into validation head
+`8390117f612681f0369cbd814af8c0f5fc8a05dd`. All native benchmark source hashes
+remain identical; the native binaries are unchanged and their hashes are recorded.
+The normal native/CLI build, all 22 scoped Rust tests, three source float/scalar
+controls, Clippy, formatting, repository and license checks pass again.
+A fresh 720-observation balanced replay is retained under
+[snapshot-replay](results/2026-10-31/snapshot-replay/summary.json) and
+[snapshot-edges](results/2026-10-31/snapshot-edges/summary.json): hard floats 1.820×,
+additional float cases 1.834–7.585×. The tiny-parse marginal variation persists
+(about 3.5% in this short run); the longer identical-binary controls above remain
+important context and do not establish a material regression. No Rust parser
+comparison is claimed. Required CI must pass on the updated PR head.
