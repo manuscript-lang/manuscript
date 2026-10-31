@@ -88,9 +88,33 @@ fn rows_of_copy(rows: List[Int]) Int:
 ```
 
 - Each function above consumes the record; `r.title` stays usable after `r.rows` moved because fields are tracked separately. Using `r.rows` again, or the whole `r`, after the move is `is moved here but used again`; `r.rows = value` makes the field usable again.
-- It applies to owned `Move`-class fields (strings, lists, records). Elements (`xs[i]`), `ref` fields, borrowed values, `var` parameters, closure captures, and records that hold a resource or declare `close` still need `.clone()` or a whole-value move.
+- It applies to owned fields (strings, lists, records, resources) of a `let` binding or parameter. Elements (`xs[i]`), `ref` fields, borrowed values, `var` bindings and parameters, `for` variables, closure captures, and records that declare `close` still need `.clone()` or a whole-value move.
 - `let x = r.rows` stays a borrow of the field; pass `r.rows` directly to the consuming call or `return` instead.
 - A parameter with a field moved out is consumed: the caller gives the record up (`.clone()` at the call keeps it).
+
+A resource field moves without a copy, and the new owner closes it. The record closes only the fields that were not moved, last declared first, on every way out of the function:
+
+```manuscript
+import Closeable from "@std/core.ms"
+
+type Door:
+    id: Int
+
+impl Closeable for Door:
+    var fn close() Unit:
+        return
+
+type Room:
+    door: Door
+    spare: Door
+
+fn open_door(r: Room) List[Door]:
+    var doors: List[Door] = []
+    doors.append(r.door)
+    return doors
+```
+
+Here `r.spare` closes when `open_door` returns and `r.door` closes with `doors`' new owner. A place and a part of it (`r.room` and `r.room.door`) cannot both be moved out of one binding.
 
 ## Domain identity
 

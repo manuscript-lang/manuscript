@@ -121,6 +121,8 @@ pub struct Program {
     pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
     /// Payload bindings of a consumed match scrutinee that some path moves out.
     pub moved_payloads: Rc<HashSet<usize>>,
+    /// Resource fields moved out of an owned binding, by binding and member node.
+    pub resource_moves: Rc<HashMap<usize, HashMap<NodeId, Vec<Name>>>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
