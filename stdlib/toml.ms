@@ -223,7 +223,7 @@ fn within(value: Int, limit: Int?) Bool:
 
     return true
 
-fn allocate(var reader: Reader) Result[Unit, TomlError]:
+fn allocate(var reader: Reader) Unit!TomlError:
     reader.values += 1
     if not within(reader.values, reader.limits.max_values): return error(
         TomlError.LimitExceeded
@@ -231,7 +231,7 @@ fn allocate(var reader: Reader) Result[Unit, TomlError]:
 
     return ok(unit)
 
-fn budget(reader: Reader, depth: Int) Result[Unit, TomlError]:
+fn budget(reader: Reader, depth: Int) Unit!TomlError:
     if not within(depth, reader.limits.max_depth): return error(TomlError.LimitExceeded)
 
     return ok(unit)
@@ -246,7 +246,7 @@ fn quote_char(quote: Int) String:
     return "'"
 
 # Basic and literal strings, including multiline delimiters and escaped newline folding.
-fn string_value(var reader: Reader, key: Bool) Result[String, TomlError]:
+fn string_value(var reader: Reader, key: Bool) String!TomlError:
     let quote = advance(var reader)
     var multiline = false
 
@@ -380,7 +380,7 @@ fn bare_key_byte(b: Int) Bool:
         or b == 45
     )
 
-fn key_path(var reader: Reader) Result[List[String], TomlError]:
+fn key_path(var reader: Reader) List[String]!TomlError:
     var keys: List[String] = []
 
     while true:
@@ -513,7 +513,7 @@ fn simple_key(var reader: Reader) String?:
     return slice_text(reader, start, end)
 
 # Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
-fn key_value(var reader: Reader, table: Int, depth: Int) Result[Unit, TomlError]:
+fn key_value(var reader: Reader, table: Int, depth: Int) Unit!TomlError:
     if let key = simple_key(var reader):
         let value = try read_value(var reader, depth + 1)
         return assign_one(reader: var reader, parent: table, key: key, value: value)
@@ -639,7 +639,7 @@ fn datetime_valid(text: String) Bool:
 
     return time_valid(rest)
 
-fn scalar(reader: Reader, text: String, at: Int) Result[Node, TomlError]:
+fn scalar(reader: Reader, text: String, at: Int) Node!TomlError:
     if text == "true": return ok(Node.Leaf(TomlValue.BoolValue(true)))
     if text == "false": return ok(Node.Leaf(TomlValue.BoolValue(false)))
     if datetime_valid(text): return ok(Node.Leaf(TomlValue.DateTimeValue(text)))
@@ -771,7 +771,7 @@ fn scalar_offset(reader: Reader, count: Int) Int:
 
     return pos
 
-fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
+fn read_value(var reader: Reader, depth: Int) Node!TomlError:
     try allocate(var reader)
     try budget(reader, depth)
     space(var reader, multiline: false)
@@ -883,7 +883,7 @@ fn materialize(
     node: Node,
     depth: Int,
     var budget: Budget
-) Result[TomlValue, TomlError]:
+) TomlValue!TomlError:
     if not within(depth, budget.limits.max_depth): return error(TomlError.LimitExceeded)
 
     budget.values += 1
@@ -923,7 +923,7 @@ fn control_pattern() Regex:
     return compile("[\\x00-\\x08\\x0b-\\x1f\\x7f]").get()
 
 # Parses a TOML document into a table value and reports source line and column on invalid input.
-export fn parse(text: String, limits: TomlLimits?) Result[TomlValue, TomlError]:
+export fn parse(text: String, limits: TomlLimits?) TomlValue!TomlError:
     var options = default_limits()
     if let value = limits:
         options = value
@@ -1194,7 +1194,7 @@ fn datetimes_valid(value: TomlValue) Bool:
         _: return true
 
 # Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
-export fn stringify(value: TomlValue, max_bytes: Int?) Result[String, TomlError]:
+export fn stringify(value: TomlValue, max_bytes: Int?) String!TomlError:
     if let limit = max_bytes:
         if limit < 0: return error(TomlError.InvalidInput)
 

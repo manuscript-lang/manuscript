@@ -10,7 +10,7 @@ fn core() Unit:
     let served = serve_core(buffered(handler))
     let _ = served
 
-fn run(listener: Listener) Result[Unit, NetworkError]:
+fn run(listener: Listener) Unit!NetworkError:
     return serve_cores(listener, core, 3)
 
 fn get(address: String) String:
@@ -36,7 +36,7 @@ test "serve_cores serves clients across workers and fails when accepting fails":
     let net = network()
     let listener = try net.listen("127.0.0.1:0")
     let address = listener.address()
-    var group = TaskGroup[Result[Unit, NetworkError]]()
+    var group = TaskGroup[Unit!NetworkError]()
     group.spawn(fn ch: run(listener))
 
     for i in 0..5:

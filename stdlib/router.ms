@@ -87,14 +87,9 @@ export type Route:
     # The pattern split at `/` into segments, in path order.
     segments: List[Segment]
     # Middleware of the routers this route was mounted through, outermost first.
-    around: List[
-        fn(
-            HttpExchange,
-            fn(HttpExchange) Result[Unit, HttpError]
-        ) Result[Unit, HttpError]
-    ]
+    around: List[fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError]
     # Runs when the route matches, with the values the pattern captured.
-    handler: fn(HttpExchange, RouteParams) Result[Unit, HttpError]
+    handler: fn(HttpExchange, RouteParams) Unit!HttpError
 
 # Routes requests by method and path and wraps them in middleware.
 #
@@ -105,12 +100,7 @@ export type Router:
     # Registered routes in registration order.
     routes: List[Route] = []
     # Middleware in the order it wraps requests: the first one added runs outermost.
-    middleware: List[
-        fn(
-            HttpExchange,
-            fn(HttpExchange) Result[Unit, HttpError]
-        ) Result[Unit, HttpError]
-    ] = []
+    middleware: List[fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError] = []
 
 impl Router:
     # Registers `handler` for `method` and `pattern`.
@@ -119,65 +109,65 @@ impl Router:
     var fn route(
         method: HttpMethod,
         pattern: String,
-        handler: fn(HttpExchange, RouteParams) Result[Unit, HttpError]
-    ) Result[Unit, RouterError]:
+        handler: fn(HttpExchange, RouteParams) Unit!HttpError
+    ) Unit!RouterError:
         let segments = try parse_pattern(pattern.clone())
         return insert(var self.routes, method.text(), pattern, segments, [], handler)
 
     # Registers `handler` for GET requests to `pattern`; shorthand for `route(HttpMethod.Get, pattern, handler)`.
     var fn get(
         pattern: String,
-        handler: fn(HttpExchange, RouteParams) Result[Unit, HttpError]
-    ) Result[Unit, RouterError]:
+        handler: fn(HttpExchange, RouteParams) Unit!HttpError
+    ) Unit!RouterError:
         return self.route(HttpMethod.Get, pattern, handler)
 
     # Registers `handler` for HEAD requests to `pattern`; shorthand for `route(HttpMethod.Head, pattern, handler)`.
     var fn head(
         pattern: String,
-        handler: fn(HttpExchange, RouteParams) Result[Unit, HttpError]
-    ) Result[Unit, RouterError]:
+        handler: fn(HttpExchange, RouteParams) Unit!HttpError
+    ) Unit!RouterError:
         return self.route(HttpMethod.Head, pattern, handler)
 
     # Registers `handler` for POST requests to `pattern`; shorthand for `route(HttpMethod.Post, pattern, handler)`.
     var fn post(
         pattern: String,
-        handler: fn(HttpExchange, RouteParams) Result[Unit, HttpError]
-    ) Result[Unit, RouterError]:
+        handler: fn(HttpExchange, RouteParams) Unit!HttpError
+    ) Unit!RouterError:
         return self.route(HttpMethod.Post, pattern, handler)
 
     # Registers `handler` for PUT requests to `pattern`; shorthand for `route(HttpMethod.Put, pattern, handler)`.
     var fn put(
         pattern: String,
-        handler: fn(HttpExchange, RouteParams) Result[Unit, HttpError]
-    ) Result[Unit, RouterError]:
+        handler: fn(HttpExchange, RouteParams) Unit!HttpError
+    ) Unit!RouterError:
         return self.route(HttpMethod.Put, pattern, handler)
 
     # Registers `handler` for PATCH requests to `pattern`; shorthand for `route(HttpMethod.Patch, pattern, handler)`.
     var fn patch(
         pattern: String,
-        handler: fn(HttpExchange, RouteParams) Result[Unit, HttpError]
-    ) Result[Unit, RouterError]:
+        handler: fn(HttpExchange, RouteParams) Unit!HttpError
+    ) Unit!RouterError:
         return self.route(HttpMethod.Patch, pattern, handler)
 
     # Registers `handler` for DELETE requests to `pattern`; shorthand for `route(HttpMethod.Delete, pattern, handler)`.
     var fn delete(
         pattern: String,
-        handler: fn(HttpExchange, RouteParams) Result[Unit, HttpError]
-    ) Result[Unit, RouterError]:
+        handler: fn(HttpExchange, RouteParams) Unit!HttpError
+    ) Unit!RouterError:
         return self.route(HttpMethod.Delete, pattern, handler)
 
     # Registers `handler` for OPTIONS requests to `pattern`; shorthand for `route(HttpMethod.Options, pattern, handler)`.
     var fn options(
         pattern: String,
-        handler: fn(HttpExchange, RouteParams) Result[Unit, HttpError]
-    ) Result[Unit, RouterError]:
+        handler: fn(HttpExchange, RouteParams) Unit!HttpError
+    ) Unit!RouterError:
         return self.route(HttpMethod.Options, pattern, handler)
 
     # Registers every route of `routes` under `prefix`, wrapped in that router's own middleware.
     # The prefix is `/` followed by segments with no trailing slash, and it may hold parameters.
     # The mounted router's `/` route answers `prefix` itself. Later changes to `routes` do not
     # reach this router.
-    var fn mount(prefix: String, routes: Router) Result[Unit, RouterError]:
+    var fn mount(prefix: String, routes: Router) Unit!RouterError:
         if prefix.ends_with("/") and prefix != "/":
             return error(RouterError.InvalidPattern(prefix.clone()))
 
@@ -203,33 +193,25 @@ impl Router:
     var fn use(
         middleware: fn(
             HttpExchange,
-            fn(HttpExchange) Result[Unit, HttpError]
-        ) Result[Unit, HttpError]
+            fn(HttpExchange) Unit!HttpError
+        ) Unit!HttpError
     ) Unit:
         self.middleware.append(middleware)
 
     # Returns the function to pass to `serve`.
     # Unmatched paths answer 404, a path matched only under other methods answers 405 with
     # `Allow`, and OPTIONS on a known path answers 204 with `Allow`.
-    fn handler() fn(HttpExchange) Result[Unit, HttpError]:
+    fn handler() fn(HttpExchange) Unit!HttpError:
         let routes = share(self.routes.clone())
         let middleware = self.middleware.clone()
         return fn exchange: dispatch(routes, middleware.clone(), exchange)
 
 # Adds a route unless one with the same method and shape exists.
 fn insert(
-    var routes: List[Route],
-    token: String,
-    pattern: String,
-    segments: List[Segment],
-    around: List[
-        fn(
-            HttpExchange,
-            fn(HttpExchange) Result[Unit, HttpError]
-        ) Result[Unit, HttpError]
-    ],
-    handler: fn(HttpExchange, RouteParams) Result[Unit, HttpError]
-) Result[Unit, RouterError]:
+    var routes: List[Route], token: String, pattern: String, segments: List[Segment],
+    around: List[fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError],
+    handler: fn(HttpExchange, RouteParams) Unit!HttpError
+) Unit!RouterError:
     let shape = shape_of(segments)
     for existing in routes:
         if existing.method == token and shape_of(existing.segments) == shape:
@@ -244,10 +226,10 @@ fn insert(
 
 # The end of a chain held by value so a closure can own it.
 type Tail:
-    last: fn(HttpExchange) Result[Unit, HttpError]
+    last: fn(HttpExchange) Unit!HttpError
 
 # Parses `pattern` into segments, rejecting empty or repeated names and a wildcard that is not last.
-fn parse_pattern(pattern: String) Result[List[Segment], RouterError]:
+fn parse_pattern(pattern: String) List[Segment]!RouterError:
     if not pattern.starts_with("/"): return error(
         RouterError.InvalidPattern(pattern.clone())
     )
@@ -385,28 +367,22 @@ fn accepts(segment: Segment, part: String, var values: List[String]) Bool:
 fn dispatch(
     routes: Shared[List[Route]],
     middleware: List[
-        fn(
-            HttpExchange,
-            fn(HttpExchange) Result[Unit, HttpError]
-        ) Result[Unit, HttpError]
+        fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError
     ],
     exchange: HttpExchange
-) Result[Unit, HttpError]:
+) Unit!HttpError:
     let method = exchange.method().text()
     let found = lookup(routes.get(), method, split_path(exchange.path()))
     return chain(middleware, 0, exchange, final_step(routes, method, found))
 
 fn chain(
     middleware: List[
-        fn(
-            HttpExchange,
-            fn(HttpExchange) Result[Unit, HttpError]
-        ) Result[Unit, HttpError]
+        fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError
     ],
     at: Int,
     exchange: HttpExchange,
-    last: fn(HttpExchange) Result[Unit, HttpError]
-) Result[Unit, HttpError]:
+    last: fn(HttpExchange) Unit!HttpError
+) Unit!HttpError:
     if at >= middleware.length(): return last(exchange)
 
     return middleware[at](exchange, next_step(middleware, at + 1, last))
@@ -416,20 +392,17 @@ fn final_step(
     routes: Shared[List[Route]],
     method: String,
     found: Lookup
-) fn(HttpExchange) Result[Unit, HttpError]:
+) fn(HttpExchange) Unit!HttpError:
     return fn exchange: finish(routes, method.clone(), found.clone(), exchange)
 
 # The continuation handed to the middleware at `at - 1`.
 fn next_step(
     middleware: List[
-        fn(
-            HttpExchange,
-            fn(HttpExchange) Result[Unit, HttpError]
-        ) Result[Unit, HttpError]
+        fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError
     ],
     at: Int,
-    last: fn(HttpExchange) Result[Unit, HttpError]
-) fn(HttpExchange) Result[Unit, HttpError]:
+    last: fn(HttpExchange) Unit!HttpError
+) fn(HttpExchange) Unit!HttpError:
     let rest = Tail(last: last)
     return fn exchange: chain(middleware.clone(), at, exchange, rest.last)
 
@@ -438,7 +411,7 @@ fn route_step(
     routes: Shared[List[Route]],
     index: Int,
     params: RouteParams
-) fn(HttpExchange) Result[Unit, HttpError]:
+) fn(HttpExchange) Unit!HttpError:
     return fn exchange: routes.get() [index].handler(exchange, params)
 
 # Runs the matched route, or answers 404, 405 or the OPTIONS listing.
@@ -447,7 +420,7 @@ fn finish(
     method: String,
     found: Lookup,
     exchange: HttpExchange
-) Result[Unit, HttpError]:
+) Unit!HttpError:
     if let index = found.found:
         let around = routes.get() [index].around.clone()
         return chain(
@@ -471,7 +444,7 @@ impl Router:
     # Runs `request` through the router without a socket and returns the response it produced.
     # A handler error is returned as is; the server would answer it with a 500. A handler that
     # sends nothing answers 204.
-    fn call(request: HttpRequest) Result[HttpResponse, HttpError]:
+    fn call(request: HttpRequest) HttpResponse!HttpError:
         let state = share(
             TestState(
                 status: 0, sent: false, complete: false, closed: false, head: headers(),
@@ -496,7 +469,7 @@ type TestExchange:
     request: HttpRequest
     state: Shared[TestState]
 
-fn finished(state: Shared[TestState]) Result[HttpResponse, HttpError]:
+fn finished(state: Shared[TestState]) HttpResponse!HttpError:
     var guard = lock(state)
     if not guard.value.sent:
         return ok(HttpResponse(status: 204, headers: headers(), body: "".to_bytes()))
@@ -528,7 +501,7 @@ impl HttpExchange for TestExchange:
     fn query() String:
         return self.request.query.clone()
 
-    fn read(max_bytes: Int?) Result[Bytes?, IoError]:
+    fn read(max_bytes: Int?) Bytes?!IoError:
         let requested = max_bytes.get(65536)
         if requested <= 0: return error(IoError.InvalidInput)
 
@@ -551,7 +524,7 @@ impl HttpExchange for TestExchange:
 
         return ok(none)
 
-    fn send_headers(status: Int, headers: HttpHeaders) Result[Unit, HttpError]:
+    fn send_headers(status: Int, headers: HttpHeaders) Unit!HttpError:
         if status < 200 or status > 599: return error(HttpError.InvalidInput)
         if headers.contains("Content-Length"): return error(HttpError.InvalidInput)
         if headers.contains("Transfer-Encoding"): return error(HttpError.InvalidInput)
@@ -566,7 +539,7 @@ impl HttpExchange for TestExchange:
         guard.value.sent = true
         return ok(unit)
 
-    fn send(status: Int, headers: HttpHeaders, body: Bytes) Result[Unit, HttpError]:
+    fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!HttpError:
         try self.send_headers(status, headers)
 
         var guard = lock(self.state)
@@ -580,13 +553,13 @@ impl HttpExchange for TestExchange:
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Int?
-    ) Result[WebSocket, WebSocketError]:
+    ) WebSocket!WebSocketError:
         return error(WebSocketError.Failed("router: WebSocket upgrades need a server"))
 
-    fn write(data: String) Result[Unit, IoError]:
+    fn write(data: String) Unit!IoError:
         return self.write_bytes(data.to_bytes())
 
-    fn write_bytes(data: Bytes) Result[Unit, IoError]:
+    fn write_bytes(data: Bytes) Unit!IoError:
         var guard = lock(self.state)
         if guard.value.closed: return error(IoError.Closed)
         if not guard.value.sent or guard.value.complete: return error(
@@ -665,15 +638,15 @@ impl HttpExchange for Tap:
     fn query() String:
         return self.inner.query()
 
-    fn read(max_bytes: Int?) Result[Bytes?, IoError]:
+    fn read(max_bytes: Int?) Bytes?!IoError:
         return self.inner.read(max_bytes)
 
-    fn send_headers(status: Int, headers: HttpHeaders) Result[Unit, HttpError]:
+    fn send_headers(status: Int, headers: HttpHeaders) Unit!HttpError:
         try self.inner.send_headers(status, with_extra(headers, self.extra))
         counted(self.state, status, 0)
         return ok(unit)
 
-    fn send(status: Int, headers: HttpHeaders, body: Bytes) Result[Unit, HttpError]:
+    fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!HttpError:
         try self.inner.send(status, with_extra(headers, self.extra), body)
         counted(self.state, status, body.length())
         return ok(unit)
@@ -682,15 +655,15 @@ impl HttpExchange for Tap:
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Int?
-    ) Result[WebSocket, WebSocketError]:
+    ) WebSocket!WebSocketError:
         return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
 
-    fn write(data: String) Result[Unit, IoError]:
+    fn write(data: String) Unit!IoError:
         try self.inner.write(data)
         counted(self.state, 0, data.byte_length())
         return ok(unit)
 
-    fn write_bytes(data: Bytes) Result[Unit, IoError]:
+    fn write_bytes(data: Bytes) Unit!IoError:
         try self.inner.write_bytes(data)
         counted(self.state, 0, data.length())
         return ok(unit)
@@ -698,16 +671,13 @@ impl HttpExchange for Tap:
 # Middleware that gives every request an id: the request's own `X-Request-Id` when it is 1 to 128
 # printable ASCII characters, otherwise a new UUID. The id is set on the request headers the wrapped exchange reports, where
 # handlers and later middleware read it, and added to the response as `X-Request-Id`.
-export fn request_id() fn(
-    HttpExchange,
-    fn(HttpExchange) Result[Unit, HttpError]
-) Result[Unit, HttpError]:
+export fn request_id() fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError:
     return fn exchange, next: with_request_id(exchange, next)
 
 fn with_request_id(
     exchange: HttpExchange,
-    next: fn(HttpExchange) Result[Unit, HttpError]
-) Result[Unit, HttpError]:
+    next: fn(HttpExchange) Unit!HttpError
+) Unit!HttpError:
     var request = exchange.headers()
     var id = request.values("X-Request-Id").first().get("")
 
@@ -727,7 +697,7 @@ fn usable_id(id: String) Bool:
         and id.scalar_values().all(fn c: (c > 32 and c < 127))
     )
 
-fn new_id() Result[String, HttpError]:
+fn new_id() String!HttpError:
     let made = uuid_v4(entropy())
     if made.is_error(): return error(HttpError.Failed(made.err().message()))
 
@@ -748,14 +718,14 @@ type AccessEntry:
 # logging failure never fails the request.
 export fn access_log(
     logger: Logger
-) fn(HttpExchange, fn(HttpExchange) Result[Unit, HttpError]) Result[Unit, HttpError]:
+) fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError:
     return fn exchange, next: with_access_log(logger, exchange, next)
 
 fn with_access_log(
     logger: Logger,
     exchange: HttpExchange,
-    next: fn(HttpExchange) Result[Unit, HttpError]
-) Result[Unit, HttpError]:
+    next: fn(HttpExchange) Unit!HttpError
+) Unit!HttpError:
     let started = clock().now()
     let method = exchange.method().text()
     let path = exchange.path()

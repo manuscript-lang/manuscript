@@ -5,7 +5,7 @@ import TaskError, TaskGroup from "@std/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test.ms"
 import nanoseconds, sleep from "@std/time.ms"
 
-fn square_all(ch: Channel[Int, Int]) Result[Int, ChannelError]:
+fn square_all(ch: Channel[Int, Int]) Int!ChannelError:
     var c = ch
     var count = 0
 
@@ -75,7 +75,7 @@ fn drain(var ch: Channel[Unit, Int]) List[String]:
     return seen
 
 test "a task answers each message in order":
-    let group = TaskGroup[Result[Int, ChannelError], Int, Int]()
+    let group = TaskGroup[Int!ChannelError, Int, Int]()
     var task = group.spawn(square_all)
     var replies = List[Int]()
 
@@ -110,7 +110,7 @@ test "sending after the other end closed gives Closed":
     task.channel.send(1) | try expect_error | try expect_equal(ChannelError.Closed)
 
 test "an end used after closing it gives Closed":
-    let group = TaskGroup[Result[Int, ChannelError], Int, Int]()
+    let group = TaskGroup[Int!ChannelError, Int, Int]()
     var task = group.spawn(square_all)
     task.channel.close()
     task.channel.send(1) | try expect_error | try expect_equal(ChannelError.Closed)

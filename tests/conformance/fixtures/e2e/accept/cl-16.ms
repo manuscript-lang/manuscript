@@ -7,13 +7,13 @@ import expect_equal, expect_false from "@std/test.ms"
 type Input:
     names: List[String?]
 
-fn outcome_value(outcome: Result[Int, TextError]) Int:
+fn outcome_value(outcome: Int!TextError) Int:
     return outcome.get(-1)
 
 test "data constructor context":
     let _input = Input([none, "Ada"])
-    let success: Result[Int, TextError] = ok(3)
-    let failure: Result[Int, TextError] = error(TextError("unavailable"))
+    let success: Int!TextError = ok(3)
+    let failure: Int!TextError = error(TextError("unavailable"))
     let _absent: Int? = none
     let _nested: List[List[Int]] = [[], [1]]
     try expect_equal(outcome_value(success), 3)

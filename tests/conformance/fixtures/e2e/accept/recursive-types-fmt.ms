@@ -136,7 +136,7 @@ type NestedOptional:
     case Value(value: Int??)
 
 type NestedResult:
-    value: Result[Result[Int, TextError], TextError]
+    value: Int!TextError!TextError
 
 type Box[T]:
     value: T

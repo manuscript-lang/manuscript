@@ -7,6 +7,6 @@ type Failure:
 impl Error for Failure:
     fn message() String: self.detail.clone()
 
-fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
+fn fail_cause[T, E: Error](cause: E) T!E: error(cause)
 
-fn first() Result[Int, Error]: fail_cause(Failure("empty"))
+fn first() Int!: fail_cause(Failure("empty"))

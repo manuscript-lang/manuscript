@@ -866,6 +866,13 @@ impl Checker {
     ) -> (bool, bool) {
         let info = self.expression(value, None);
         let t = info.t();
+        if arms.first().is_some_and(|a| a.chain) && t.id != "<invalid>" && !t.is_std("Optional") {
+            self.type_error(
+                value.pos,
+                format!("`?.` needs an optional receiver, found {t}; write `.` to read a member of a value that is always present"),
+            );
+            return (true, false);
+        }
         if t.kind == Kind::Contract {
             return self.match_contract(pos, arms, &info, body);
         }
@@ -1569,16 +1576,28 @@ impl Checker {
                 }
                 Some(value) => {
                     if !self.contextual(value) {
+                        let before = self.p.diagnostics.len();
                         let info = self.arm_value(value, result.as_ref(), expected);
                         let t = info.t();
                         if result.is_none()
                             && t.id != "Never"
                             && crate::inference::inference_type_known(&t, &self.inference_variables)
                         {
-                            result = Some(required_type(&t));
+                            let t = required_type(&t);
+                            result = Some(if arm.chain && !t.is_std("Optional") {
+                                crate::types::standard("Optional", vec![t])
+                            } else {
+                                t
+                            });
                             result_at = value.pos;
                         }
-                        states[si].info = Some(info);
+                        // A chain's present value becomes optional by being checked
+                        // again against the optional result.
+                        let rewrap = arm.chain && !info.t().is_std("Optional");
+                        if rewrap {
+                            self.p.diagnostics.truncate(before);
+                        }
+                        states[si].info = (!rewrap).then_some(info);
                     }
                 }
             }
@@ -1593,6 +1612,7 @@ impl Checker {
             let arm = states[si].arm;
             if let Some(value) = &arm.value {
                 let info = match states[si].info.take() {
+                    // A chain's present value becomes optional only here, once the result is known.
                     Some(info) if info.t().kind == Kind::Function => {
                         self.check_expression(value, info, result.as_ref())
                     }

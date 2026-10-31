@@ -20,45 +20,42 @@ extern fn msrt_net_ip_address_family(value: IpAddress) Bool
 
 extern fn msrt_net_cidr_text(value: Cidr) String
 
-extern fn msrt_net_contains_ip(
-    cidr: Cidr,
-    address: IpAddress
-) Result[Bool, NetworkError]
+extern fn msrt_net_contains_ip(cidr: Cidr, address: IpAddress) Bool!NetworkError
 
-extern fn msrt_net_parse_cidr(text: String) Result[Cidr, NetworkError]
+extern fn msrt_net_parse_cidr(text: String) Cidr!NetworkError
 
-extern fn msrt_net_parse_ip(text: String) Result[IpAddress, NetworkError]
+extern fn msrt_net_parse_ip(text: String) IpAddress!NetworkError
 
 extern fn msrt_net_network() Network
 
 extern fn msrt_tls_parse_certificates(
     pem: String,
     max_certificates: Int?
-) Result[List[CertificateInfo], TlsError]
+) List[CertificateInfo]!TlsError
 
 extern fn msrt_tls_verify_certificates(
     chain_pem: String,
     roots_pem: String,
     server_name: String,
     now: Timestamp
-) Result[Unit, TlsError]
+) Unit!TlsError
 
-extern fn msrt_url_decode_component(text: String) Result[String, UrlError]
+extern fn msrt_url_decode_component(text: String) String!UrlError
 
 extern fn msrt_url_encode_component(text: String) String
 
-extern fn msrt_url_format(value: Url) Result[String, UrlError]
+extern fn msrt_url_format(value: Url) String!UrlError
 
 extern fn msrt_url_format_query(entries: List[QueryEntry]) String
 
-extern fn msrt_url_parse(text: String) Result[Url, UrlError]
+extern fn msrt_url_parse(text: String) Url!UrlError
 
 extern fn msrt_url_parse_query(
     text: String,
     max_entries: Int?
-) Result[List[QueryEntry], UrlError]
+) List[QueryEntry]!UrlError
 
-extern fn msrt_url_resolve(base: Url, reference: String) Result[Url, UrlError]
+extern fn msrt_url_resolve(base: Url, reference: String) Url!UrlError
 
 # Errors returned by socket, DNS, and network connection operations.
 export type NetworkError:
@@ -95,31 +92,25 @@ extern fn msrt_net_connection_read(
     handle: NativeConnection,
     max_bytes: Int?,
     timeout: Duration?
-) Result[Bytes?, IoError]
+) Bytes?!IoError
 
-extern fn msrt_net_connection_clone(
-    handle: NativeConnection
-) Result[Connection, NetworkError]
+extern fn msrt_net_connection_clone(handle: NativeConnection) Connection!NetworkError
 
-extern fn msrt_net_connection_shutdown_write(
-    handle: NativeConnection
-) Result[Unit, NetworkError]
+extern fn msrt_net_connection_shutdown_write(handle: NativeConnection) Unit!NetworkError
 
-extern fn msrt_net_connection_tls_info(
-    handle: NativeConnection
-) Result[TlsInfo, TlsError]
+extern fn msrt_net_connection_tls_info(handle: NativeConnection) TlsInfo!TlsError
 
 extern fn msrt_net_connection_write(
     handle: NativeConnection,
     data: String,
     timeout: Duration?
-) Result[Unit, IoError]
+) Unit!IoError
 
 extern fn msrt_net_connection_write_bytes(
     handle: NativeConnection,
     data: Bytes,
     timeout: Duration?
-) Result[Unit, IoError]
+) Unit!IoError
 
 # A connected stream socket, optionally protected by TLS.
 # Several tasks may wait on one connection: each `read` parks until data arrives, and tasks are woken together, so the one that finds data proceeds and the rest wait again. Writers sharing a connection should serialize whole messages themselves.
@@ -144,32 +135,32 @@ impl Connection:
         return msrt_net_connection_peer_address(self.native)
 
     # Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout.
-    fn read(max_bytes: Int?, timeout: Duration?) Result[Bytes?, IoError]:
+    fn read(max_bytes: Int?, timeout: Duration?) Bytes?!IoError:
         return msrt_net_connection_read(self.native, max_bytes, timeout)
 
     # Returns a second connection over a duplicate of the socket, which closes on its own, so one task
     # can read while another writes. Both share the stream: bytes read through one are not seen by the other.
     # While a clone is open, closing a copy closes only its descriptor: the peer sees no end of stream, and a call parked on the closed copy ends at its timeout or the next data.
     # Returns Unsupported for a TLS connection, whose session state cannot be shared, and Closed on a closed connection.
-    fn clone() Result[Connection, NetworkError]:
+    fn clone() Connection!NetworkError:
         return msrt_net_connection_clone(self.native)
 
     # Half-closes the connection so the peer sees end of stream, while this side can keep reading.
     # Returns Unsupported for stream kinds that cannot half-close, and Closed on a closed connection.
-    fn shutdown_write() Result[Unit, NetworkError]:
+    fn shutdown_write() Unit!NetworkError:
         return msrt_net_connection_shutdown_write(self.native)
 
     # Returns the negotiated TLS version, cipher suite, protocol, and peer certificates.
     # A connection that is not TLS returns InvalidInput.
-    fn tls_info() Result[TlsInfo, TlsError]:
+    fn tls_info() TlsInfo!TlsError:
         return msrt_net_connection_tls_info(self.native)
 
     # Writes all bytes on success; failure can leave a prefix. Local timeout uses IoError.Failed.
-    fn write(data: String, timeout: Duration?) Result[Unit, IoError]:
+    fn write(data: String, timeout: Duration?) Unit!IoError:
         return msrt_net_connection_write(self.native, data, timeout)
 
     # Writes raw bytes with the same rules as write.
-    fn write_bytes(data: Bytes, timeout: Duration?) Result[Unit, IoError]:
+    fn write_bytes(data: Bytes, timeout: Duration?) Unit!IoError:
         return msrt_net_connection_write_bytes(self.native, data, timeout)
 
 # One datagram and the address from which it was received.
@@ -190,21 +181,21 @@ extern fn msrt_net_datagram_receive(
     handle: NativeDatagramSocket,
     max_bytes: Int?,
     timeout: Duration?
-) Result[Datagram, NetworkError]
+) Datagram!NetworkError
 
 extern fn msrt_net_datagram_send(
     handle: NativeDatagramSocket,
     data: String,
     address: String,
     timeout: Duration?
-) Result[Unit, NetworkError]
+) Unit!NetworkError
 
 extern fn msrt_net_datagram_send_bytes(
     handle: NativeDatagramSocket,
     data: Bytes,
     address: String,
     timeout: Duration?
-) Result[Unit, NetworkError]
+) Unit!NetworkError
 
 # A connectionless socket for sending and receiving datagrams.
 export type DatagramSocket:
@@ -225,24 +216,16 @@ impl DatagramSocket:
 
     # Waits for one datagram and returns its bytes with the sender's address. `max_bytes` is 1 through 65535 and defaults to 65535.
     # A larger datagram returns LimitExceeded and is discarded. A timeout returns Timeout and a closed socket returns Closed.
-    fn receive(max_bytes: Int?, timeout: Duration?) Result[Datagram, NetworkError]:
+    fn receive(max_bytes: Int?, timeout: Duration?) Datagram!NetworkError:
         return msrt_net_datagram_receive(self.native, max_bytes, timeout)
 
     # Sends `data` as a single datagram to `address` (`host:port`), resolving a host name with the network's resolver.
     # The network's restrictions apply to both the name and the resolved address. A short send returns Failed; a timeout returns Timeout.
-    fn send(
-        data: String,
-        address: String,
-        timeout: Duration?
-    ) Result[Unit, NetworkError]:
+    fn send(data: String, address: String, timeout: Duration?) Unit!NetworkError:
         return msrt_net_datagram_send(self.native, data, address, timeout)
 
     # Sends raw bytes as a single datagram with the same rules as send.
-    fn send_bytes(
-        data: Bytes,
-        address: String,
-        timeout: Duration?
-    ) Result[Unit, NetworkError]:
+    fn send_bytes(data: Bytes, address: String, timeout: Duration?) Unit!NetworkError:
         return msrt_net_datagram_send_bytes(self.native, data, address, timeout)
 
 # Supported DNS query categories; unknown spellings are rejected by checking.
@@ -337,12 +320,12 @@ export extern type NativeListener
 extern fn msrt_net_listener_accept(
     handle: NativeListener,
     timeout: Duration?
-) Result[Connection, NetworkError]
+) Connection!NetworkError
 
 extern fn msrt_net_listener_accept_raw(
     handle: NativeListener,
     timeout: Duration?
-) Result[Int, NetworkError]
+) Int!NetworkError
 
 extern fn msrt_net_listener_address(handle: NativeListener) String
 
@@ -364,12 +347,12 @@ impl Closeable for Listener:
 impl Listener:
     # Waits for the next incoming connection and returns it. A timeout returns Timeout and a closed listener returns Closed.
     # On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and returns Failed.
-    fn accept(timeout: Duration?) Result[Connection, NetworkError]:
+    fn accept(timeout: Duration?) Connection!NetworkError:
         return msrt_net_listener_accept(self.native, timeout)
 
     # Waits for the next incoming connection and returns its socket handle without wrapping it, to give to `HttpServer.adopt` (on this or another thread). The caller owns the handle until then; one that is never adopted leaks its socket.
     # A timeout returns Timeout and a closed listener returns Closed. A TLS listener returns InvalidInput: the adopting server performs the handshake.
-    fn accept_raw(timeout: Duration?) Result[Int, NetworkError]:
+    fn accept_raw(timeout: Duration?) Int!NetworkError:
         return msrt_net_listener_accept_raw(self.native, timeout)
 
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
@@ -377,15 +360,15 @@ impl Listener:
         return msrt_net_listener_address(self.native)
 
 # Reports whether an IP address belongs to a CIDR range.
-export fn contains_ip(cidr: Cidr, address: IpAddress) Result[Bool, NetworkError]:
+export fn contains_ip(cidr: Cidr, address: IpAddress) Bool!NetworkError:
     return msrt_net_contains_ip(cidr, address)
 
 # Validates and canonicalizes an IPv4 or IPv6 CIDR range.
-export fn parse_cidr(text: String) Result[Cidr, NetworkError]:
+export fn parse_cidr(text: String) Cidr!NetworkError:
     return msrt_net_parse_cidr(text)
 
 # Validates and canonicalizes an IPv4 or IPv6 address.
-export fn parse_ip(text: String) Result[IpAddress, NetworkError]:
+export fn parse_ip(text: String) IpAddress!NetworkError:
     return msrt_net_parse_ip(text)
 
 impl Error for NetworkError:
@@ -405,46 +388,46 @@ impl Error for NetworkError:
 export interface Network:
     # Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
     # A restricted network without listening permission, or an address outside its CIDRs, returns PermissionDenied.
-    fn bind_datagram(address: String) Result[DatagramSocket, NetworkError]
+    fn bind_datagram(address: String) DatagramSocket!NetworkError
     # Cancels in-flight calls and closes every connection, listener, socket, HTTP client, and server this network opened, including those of derived networks.
     # Safe to call repeatedly. A request handler of a server on this network cannot close it and faults.
     fn close() Unit
     # Resolves `address` (`host:port`) and opens a TCP connection to the first reachable permitted address.
     # Returns PermissionDenied for names or addresses a restricted network disallows, Timeout when `timeout` elapses, and Failed when every address refuses.
-    fn connect(address: String, timeout: Duration?) Result[Connection, NetworkError]
+    fn connect(address: String, timeout: Duration?) Connection!NetworkError
     # Connects over TCP to `address` and completes a TLS handshake verifying the server certificate against the system roots for `server_name`, with at least TLS 1.2.
     # An empty `server_name` returns InvalidInput, and `timeout` bounds the whole attempt.
     fn connect_tls(
         address: String,
         server_name: String,
         timeout: Duration?
-    ) Result[Connection, NetworkError]
+    ) Connection!NetworkError
     # Connects over TCP to `address` and completes a TLS handshake using `options`, with at least TLS 1.2.
     # Invalid options return InvalidInput, handshake and verification failures return Failed, and `timeout` bounds the whole attempt.
     fn connect_tls_config(
         address: String,
         options: TlsOptions,
         timeout: Duration?
-    ) Result[Connection, NetworkError]
+    ) Connection!NetworkError
     # Connects to the Unix domain socket at `path`.
     # Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks. `timeout` bounds the attempt.
-    fn connect_unix(path: String, timeout: Duration?) Result[Connection, NetworkError]
+    fn connect_unix(path: String, timeout: Duration?) Connection!NetworkError
     # Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
     # Invalid or negative options return InvalidInput. Closing the network closes the client.
-    fn http_client(options: HttpClientOptions) Result[HttpClient, HttpError]
+    fn http_client(options: HttpClientOptions) HttpClient!HttpError
     # Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
     # A restricted network needs `allow_listen` and an IP-literal address inside its CIDRs, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
-    fn listen(address: String) Result[Listener, NetworkError]
+    fn listen(address: String) Listener!NetworkError
     # Listens for TCP connections on `address` and completes a TLS handshake for each accepted connection, within `handshake_timeout` when supplied.
     # `options` must hold a certificate and key, otherwise InvalidInput is returned.
     fn listen_tls(
         address: String,
         options: TlsOptions,
         handshake_timeout: Duration?
-    ) Result[Listener, NetworkError]
+    ) Listener!NetworkError
     # Listens on a Unix domain socket at `path`.
     # Any restricted network returns PermissionDenied.
-    fn listen_unix(path: String) Result[Listener, NetworkError]
+    fn listen_unix(path: String) Listener!NetworkError
     # Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
     # More than `max_records` addresses returns LimitExceeded, `timeout` bounds the lookup, and a failed lookup returns Failed.
     # System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
@@ -452,7 +435,7 @@ export interface Network:
         name: String,
         max_records: Int?,
         timeout: Duration?
-    ) Result[List[String], NetworkError]
+    ) List[String]!NetworkError
     # Performs one buffered HTTP request and returns the status, headers, and complete body.
     # Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `max_response_bytes` returns LimitExceeded; error statuses are ordinary responses.
     fn request(
@@ -462,7 +445,7 @@ export interface Network:
         body: String = "",
         max_response_bytes: Int?,
         timeout: Duration?
-    ) Result[ClientResponse, HttpError]
+    ) ClientResponse!HttpError
     # Performs the same buffered request with a raw bytes body.
     fn request_bytes(
         method: HttpMethod,
@@ -471,21 +454,21 @@ export interface Network:
         body: Bytes = "".to_bytes(),
         max_response_bytes: Int?,
         timeout: Duration?
-    ) Result[ClientResponse, HttpError]
+    ) ClientResponse!HttpError
     # Resolves the selected supported category, retaining it in each record.
     fn resolve(
         name: String,
         kind: DnsKind,
         max_records: Int?,
         timeout: Duration?
-    ) Result[List[DnsRecord], NetworkError]
+    ) List[DnsRecord]!NetworkError
     # Returns a derived network limited to the given host names and CIDR ranges.
     # Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns InvalidInput.
     fn restrict(
         hosts: List[String],
         cidrs: List[String],
         allow_listen: Bool
-    ) Result[Network, NetworkError]
+    ) Network!NetworkError
     # Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
     # A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
     # Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
@@ -493,9 +476,9 @@ export interface Network:
     # A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
     fn serve(
         address: String,
-        handler: fn(HttpExchange) Result[Unit, HttpError],
+        handler: fn(HttpExchange) Unit!HttpError,
         options: HttpServerOptions = HttpServerOptions()
-    ) Result[HttpServer, HttpError]
+    ) HttpServer!HttpError
     # Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.
     # Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. Failures use WebSocketError.
     fn web_socket(
@@ -503,16 +486,16 @@ export interface Network:
         headers: HttpHeaders,
         subprotocols: List[String],
         options: WebSocketOptions
-    ) Result[WebSocket, WebSocketError]
+    ) WebSocket!WebSocketError
     # Starts an HTTP server that has no listener: it serves the connections handed to `HttpServer.adopt`, with the handler, limits, timeouts, and TLS of `serve`. Close the server to stop it.
     # Returns InvalidInput for invalid options.
     fn serve_connections(
-        handler: fn(HttpExchange) Result[Unit, HttpError],
+        handler: fn(HttpExchange) Unit!HttpError,
         options: HttpServerOptions = HttpServerOptions()
-    ) Result[HttpServer, HttpError]
+    ) HttpServer!HttpError
     # Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
     # The address must be allowed by this network's restrictions, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
-    fn with_resolver(address: String) Result[Network, NetworkError]
+    fn with_resolver(address: String) Network!NetworkError
 
 # Returns network operations for the current host.
 export fn network() Network:
@@ -577,7 +560,7 @@ export type TlsOptions:
 export fn parse_certificates(
     pem: String,
     max_certificates: Int?
-) Result[List[CertificateInfo], TlsError]:
+) List[CertificateInfo]!TlsError:
     return msrt_tls_parse_certificates(pem, max_certificates)
 
 # Verifies a PEM certificate chain against roots, name constraints, and the supplied time.
@@ -586,7 +569,7 @@ export fn verify_certificates(
     roots_pem: String,
     server_name: String,
     now: Timestamp
-) Result[Unit, TlsError]:
+) Unit!TlsError:
     return msrt_tls_verify_certificates(chain_pem, roots_pem, server_name, now)
 
 impl Error for TlsError:
@@ -630,7 +613,7 @@ export type Url:
     fragment: String
 
 # Decodes one percent-encoded URL component. `+` is not treated as a space.
-export fn decode_component(text: String) Result[String, UrlError]:
+export fn decode_component(text: String) String!UrlError:
     return msrt_url_decode_component(text)
 
 # Percent-encodes one URL component using UTF-8 bytes.
@@ -639,7 +622,7 @@ export fn encode_component(text: String) String:
 
 # Formats URL components as an absolute hierarchical URL.
 # Missing or malformed schemes and hostless relative paths return InvalidInput, as do other invalid components.
-export fn format(value: Url) Result[String, UrlError]:
+export fn format(value: Url) String!UrlError:
     return msrt_url_format(value)
 
 # Encodes query entries as a query string.
@@ -647,18 +630,15 @@ export fn format_query(entries: List[QueryEntry]) String:
     return msrt_url_format_query(entries)
 
 # Parses an absolute URL into its components.
-export fn parse(text: String) Result[Url, UrlError]:
+export fn parse(text: String) Url!UrlError:
     return msrt_url_parse(text)
 
 # Parses a query string, preserving duplicate keys and their input order.
-export fn parse_query(
-    text: String,
-    max_entries: Int?
-) Result[List[QueryEntry], UrlError]:
+export fn parse_query(text: String, max_entries: Int?) List[QueryEntry]!UrlError:
     return msrt_url_parse_query(text, max_entries)
 
 # Resolves a relative reference against a base URL.
-export fn resolve(base: Url, reference: String) Result[Url, UrlError]:
+export fn resolve(base: Url, reference: String) Url!UrlError:
     return msrt_url_resolve(base, reference)
 
 impl Error for UrlError:
@@ -694,30 +674,24 @@ export extern type NativeWebSocket
 
 extern fn msrt_websocket_close(handle: NativeWebSocket) Unit
 
-extern fn msrt_websocket_ping(
-    handle: NativeWebSocket,
-    data: String
-) Result[Unit, WebSocketError]
+extern fn msrt_websocket_ping(handle: NativeWebSocket, data: String) Unit!WebSocketError
 
 extern fn msrt_websocket_ping_bytes(
     handle: NativeWebSocket,
     data: Bytes
-) Result[Unit, WebSocketError]
+) Unit!WebSocketError
 
 extern fn msrt_websocket_receive(
     handle: NativeWebSocket
-) Result[WebSocketMessage?, WebSocketError]
+) WebSocketMessage?!WebSocketError
 
-extern fn msrt_websocket_send(
-    handle: NativeWebSocket,
-    data: String
-) Result[Unit, WebSocketError]
+extern fn msrt_websocket_send(handle: NativeWebSocket, data: String) Unit!WebSocketError
 
 extern fn msrt_websocket_send_bytes(
     handle: NativeWebSocket,
     data: Bytes,
     text: Bool
-) Result[Unit, WebSocketError]
+) Unit!WebSocketError
 
 extern fn msrt_websocket_subprotocol(handle: NativeWebSocket) String
 
@@ -736,25 +710,25 @@ impl Closeable for WebSocket:
 impl WebSocket:
     # Sends a ping frame carrying `data`, which must be at most 125 bytes, with a one-second write deadline.
     # It does not wait for the pong. Returns Closed on a closed socket.
-    fn ping(data: String) Result[Unit, WebSocketError]:
+    fn ping(data: String) Unit!WebSocketError:
         return msrt_websocket_ping(self.native, data)
 
     # Sends a ping frame carrying raw bytes, with the same limits and deadline as ping.
-    fn ping_bytes(data: Bytes) Result[Unit, WebSocketError]:
+    fn ping_bytes(data: Bytes) Unit!WebSocketError:
         return msrt_websocket_ping_bytes(self.native, data)
 
     # Waits for the next complete message and returns it, or none once the peer closes normally.
     # A larger message returns LimitExceeded and a malformed text message InvalidData; after any receive failure the connection is closed. One receive runs at a time, and others wait their turn.
-    fn receive() Result[WebSocketMessage?, WebSocketError]:
+    fn receive() WebSocketMessage?!WebSocketError:
         return msrt_websocket_receive(self.native)
 
     # Sends `data` as one text message; a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
-    fn send(data: String) Result[Unit, WebSocketError]:
+    fn send(data: String) Unit!WebSocketError:
         return msrt_websocket_send(self.native, data)
 
     # Sends `data` as one message, a text frame when `text` is True and a binary frame (the default) otherwise.
     # Text must be valid UTF-8 or the call returns InvalidData, and a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
-    fn send_bytes(data: Bytes, text: Bool = false) Result[Unit, WebSocketError]:
+    fn send_bytes(data: Bytes, text: Bool = false) Unit!WebSocketError:
         return msrt_websocket_send_bytes(self.native, data, text)
 
     # Returns the subprotocol the server selected during the handshake, or an empty string when none was negotiated.
@@ -798,7 +772,7 @@ export fn serve_cores(
     listener: Listener,
     entry: fn() Unit,
     cores: Int
-) Result[Unit, NetworkError]:
+) Unit!NetworkError:
     if cores < 1:
         return error(NetworkError.InvalidInput)
 
@@ -824,9 +798,9 @@ export fn serve_cores(
 # Worker side of `serve_cores`: serves the connections dealt to this worker with
 # `handler` and `options`, until the acceptor ends. Returns InvalidInput for invalid options.
 export fn serve_core(
-    handler: fn(HttpExchange) Result[Unit, HttpError],
+    handler: fn(HttpExchange) Unit!HttpError,
     options: HttpServerOptions = HttpServerOptions()
-) Result[Unit, HttpError]:
+) Unit!HttpError:
     var ch = worker_channel[Int, Int]()
     var server = try network().serve_connections(handler: handler, options: options)
 

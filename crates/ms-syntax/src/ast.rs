@@ -445,9 +445,10 @@ impl Expr {
         }
     }
 
-    /// A written `match`, not the Bool match an `if` expression stands for.
+    /// A written `match`, not the Bool match an `if` expression stands for or
+    /// the match an optional chain `a?.b` stands for.
     pub fn is_written_match(&self) -> bool {
-        matches!(&self.kind, ExprKind::Match { arms, .. } if !arms.first().is_some_and(|a| a.from_if))
+        matches!(&self.kind, ExprKind::Match { arms, .. } if !arms.first().is_some_and(|a| a.from_if || a.chain))
     }
 }
 
@@ -604,6 +605,10 @@ pub struct Arm {
     pub value: Option<Expr>,
     /// The arm is a branch of an `if` expression written `if c: a else: b`.
     pub from_if: bool,
+    /// The arm belongs to the match an optional chain `a?.b` stands for: the
+    /// result is the present arm's type made optional (not wrapped again when
+    /// it already is), and the `none` arm yields `none`.
+    pub chain: bool,
     /// The arm was written as a lone lowercase name, which binds an Optional's
     /// payload; the parser spells it as the `some` case with that binding.
     pub bare: bool,

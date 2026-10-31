@@ -13,7 +13,7 @@ fn failure_code(cause: Failure) Int:
         NotFound: return 1
         Denied(_): return 2
 
-fn classify(result: Result[Int, Failure]) Int:
+fn classify(result: Int!Failure) Int:
     match result:
         error(cause): return failure_code(cause)
         ok(value): return value

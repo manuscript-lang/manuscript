@@ -90,32 +90,43 @@ fn is_higher_order(name: &str) -> bool {
     )
 }
 
-/// The `module/name` of natives that bindings override with a bare name.
-/// The host-rule path functions that `fs` absorbed from the former `path` module.
-const PATH_FUNCTIONS: [&str; 15] = [
-    "basename",
-    "dirname",
-    "extension",
-    "is_absolute",
-    "join",
-    "normalize",
-    "relative",
-    "basename_without",
-    "resolve",
-    "parse",
-    "format",
-    "separator",
-    "delimiter",
-    "to_namespaced_path",
-    "matches_glob",
-];
-
 /// An evaluated argument of a native call.
 #[derive(Clone, Copy)]
 pub(crate) struct NArg {
     pub name: ms_check::types::Name,
     pub val: Val,
     pub wrapped: bool,
+}
+
+/// Externs the compiler lowers itself, by runtime symbol, with the native identity the lowering arms and
+/// `natiface::HANDLE_FUNCTIONS` use. Every other extern is a plain runtime call marshalled from its signature.
+const HAND_LOWERED: &[(&str, &str)] = &[
+    ("msrt_html_parse", "html/parse"),
+    ("msrt_net_network", "net/network"),
+    ("msstd_fs_filesystem", "fs/filesystem"),
+    ("msstd_fs_posix", "fs/posix"),
+    ("msstd_fs_win32", "fs/win32"),
+    ("msstd_io_copy", "io/copy"),
+    ("msstd_io_files", "io/files"),
+    ("msstd_io_read_all", "io/read_all"),
+    ("msstd_io_read_line", "io/read_line"),
+    ("msstd_io_stderr", "io/stderr"),
+    ("msstd_io_stdin", "io/stdin"),
+    ("msstd_io_stdout", "io/stdout"),
+    ("msstd_io_terminal", "io/terminal"),
+    ("msstd_process_commands", "process/commands"),
+    ("msstd_process_control", "process/control"),
+    ("msstd_process_system", "process/system"),
+    ("msstd_time_clock", "time/clock"),
+    ("msstd_time_duration", "time/duration"),
+    ("msstd_time_wall_clock", "time/wall_clock"),
+];
+
+fn hand_lowered(symbol: &str) -> Option<&'static str> {
+    HAND_LOWERED
+        .iter()
+        .find(|(s, _)| *s == symbol)
+        .map(|(_, n)| *n)
 }
 
 /// The native identity of `@std/json.ms`'s typed calls, which its source module declares as externs.
@@ -207,9 +218,9 @@ impl<'a> FnLower<'a> {
                 let decode = symbol == "msstd_archive_decompress_stream";
                 return self.codec_stream(args[0].val, &args[1..], decode, result);
             }
-            // A symbol that still has a hand-lowered native identity keeps it.
-            if let Some(legacy) = ms_check::stdlib::native_for_symbol(symbol) {
-                return self.native_function(e, view, &legacy, params, sym);
+            // A symbol that is lowered by hand keeps its native identity.
+            if let Some(legacy) = hand_lowered(symbol) {
+                return self.native_function(e, view, legacy, params, sym);
             }
             // A bundled extern is a runtime symbol; its convention comes from the runtime's declaration.
             let args = self.native_args(view)?;
@@ -218,6 +229,33 @@ impl<'a> FnLower<'a> {
             }
             let result = self.emty(e)?;
             self.at(e.pos);
+            // The host-rule path functions share the interface's entry points; a leading `windows` flag the
+            // declaration does not spell selects the host's rules.
+            if crate::rtcall::rt_sig(symbol)
+                .is_some_and(|sig| sig.params.first().is_some_and(|p| p.name == "windows"))
+                && params.first().is_none_or(|p| p.name.as_str() != "windows")
+            {
+                let name = ct::n("windows");
+                let v = self.b.bconst(cfg!(windows));
+                let mut args = args;
+                args.insert(
+                    0,
+                    NArg {
+                        name,
+                        val: Val { v, own: false },
+                        wrapped: false,
+                    },
+                );
+                let mut decl = params.to_vec();
+                decl.insert(
+                    0,
+                    ct::Param {
+                        name,
+                        ty: ct::bool_(),
+                    },
+                );
+                return self.rt_function(symbol, &decl, &args, result);
+            }
             return self.rt_function(symbol, params, &args, result);
         }
         match native {
@@ -231,7 +269,7 @@ impl<'a> FnLower<'a> {
                 let v = self.call_runtime("msrt_list_range", &vals, lt)?;
                 Ok(Val { v, own: true })
             }
-            "panic" => {
+            "core/panic" => {
                 let args = self.native_args(view)?;
                 if self.dead {
                     return Ok(self.dummy(MTy::UNIT));
@@ -338,19 +376,6 @@ impl<'a> FnLower<'a> {
                 self.time_clock(it, native == "time/wall_clock")
             }
             "io/read_line" => self.read_line_native(e, view, params),
-            "sleep" => {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let d = args
-                    .first()
-                    .ok_or_else(|| Error::new("sleep without a duration"))?;
-                let d = self.borrow(d.val);
-                self.at(e.pos);
-                self.call_runtime("msstd_time_sleep", &[d], MTy::UNIT)?;
-                Ok(self.dummy(MTy::UNIT))
-            }
             "math/min" => self.math_extreme(view, false),
             "math/max" => self.math_extreme(view, true),
             "io/read_all" => self.stream_native(e, view, crate::streamloop::Loop::ReadAll),
@@ -391,32 +416,6 @@ impl<'a> FnLower<'a> {
                 }
                 let result = self.emty(e)?;
                 self.at(e.pos);
-                if other
-                    .strip_prefix("fs/")
-                    .is_some_and(|name| PATH_FUNCTIONS.contains(&name))
-                {
-                    // The host-rule functions share the interface's entry points; the leading
-                    // `windows` flag selects the host's rules.
-                    let name = ct::n("windows");
-                    let v = self.b.bconst(cfg!(windows));
-                    args.insert(
-                        0,
-                        NArg {
-                            name,
-                            val: Val { v, own: false },
-                            wrapped: false,
-                        },
-                    );
-                    let mut decl = params.to_vec();
-                    decl.insert(
-                        0,
-                        ct::Param {
-                            name,
-                            ty: ct::bool_(),
-                        },
-                    );
-                    return self.native_call(other, &decl, &args, result);
-                }
                 self.native_call(other, params, &args, result)
             }
         }
@@ -1140,7 +1139,9 @@ impl<'a> FnLower<'a> {
         let name = native.rsplit('/').next().unwrap_or(native);
         let rty = self.ty_of(recv.v);
         // `map_add`, `set_values`: the receiver type already says which.
-        let name = if crate::mapset::is_map_or_set(self.b.m, rty) {
+        // `Map.map_keys` is itself the method's name, which the `map_` rule would cut.
+        let keep = name == "map_keys";
+        let name = if !keep && crate::mapset::is_map_or_set(self.b.m, rty) {
             name.strip_prefix("map_")
                 .or_else(|| name.strip_prefix("set_"))
                 .unwrap_or(name)
@@ -1165,7 +1166,7 @@ impl<'a> FnLower<'a> {
                 self.map_entries(recv_expr, recv, result)
             }
             (TyKind::List(_), "list_keys") => self.list_keys(recv_expr, recv, result),
-            (TyKind::List(_), "list_entries") => self.list_entries(recv_expr, recv, result),
+            (TyKind::List(_), "entries") => self.list_entries(recv_expr, recv, result),
             (TyKind::List(_) | TyKind::Bytes, "length") => {
                 let r = self.borrow(recv);
                 let v = self.b.list_len(r);
@@ -1196,7 +1197,7 @@ impl<'a> FnLower<'a> {
                 let out = self.call_runtime(sym, &[r, d, n], rty)?;
                 Ok(Val { v: out, own: true })
             }
-            (TyKind::List(_), "list_zip") => {
+            (TyKind::List(_), "zip") => {
                 let TyKind::List(pair) = self.b.m.types.kind(result).clone() else {
                     return Err(Error::new("zip without a list result"));
                 };
@@ -1234,8 +1235,8 @@ impl<'a> FnLower<'a> {
                 let out = self.b.use_var(acc);
                 Ok(Val { v: out, own: true })
             }
-            (TyKind::List(elem), "list_chunks" | "list_windows") => {
-                self.list_pieces(name == "list_chunks", elem, recv, &args, result)
+            (TyKind::List(elem), "chunks" | "windows") => {
+                self.list_pieces(name == "chunks", elem, recv, &args, result)
             }
             (TyKind::List(elem), "get") => {
                 // Arguments arrive in written order; the names say which is which.

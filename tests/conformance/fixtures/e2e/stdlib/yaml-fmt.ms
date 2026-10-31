@@ -6,12 +6,12 @@ import from_scalars from "@std/string.ms"
 import TextError from "@std/core.ms"
 import parse, stringify, YamlValue, YamlError, YamlLimits from "@std/yaml.ms"
 
-fn entries(value: YamlValue) Result[Map[String, YamlValue], Error]:
+fn entries(value: YamlValue) (Map[String, YamlValue])!:
     match value:
         ObjectValue(values): return ok(values)
         _: return error(TextError("expected YAML mapping"))
 
-fn items(value: YamlValue) Result[List[YamlValue], Error]:
+fn items(value: YamlValue) List[YamlValue]!:
     match value:
         ArrayValue(values): return ok(values)
         _: return error(TextError("expected YAML sequence"))
@@ -27,7 +27,7 @@ type ScalarCase:
     text: String
     expected: String
 
-fn scalar(text: String, expected: String) Result[Unit, Error]:
+fn scalar(text: String, expected: String) Unit!:
     let root = parse(text: text) | try expect_ok | try entries
     if root.get("a").get() != YamlValue.StringValue(expected): return error(
         TextError("scalar folding: {text}")
@@ -172,7 +172,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         )
     )
 
-    let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
+    let limited: YamlValue!YamlError = error(YamlError.LimitExceeded)
     try expect_false(
         (
             parse(
@@ -394,8 +394,8 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
             _: return fail("expected unsupported feature")
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
-    let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
-    let invalid: Result[YamlValue, YamlError] = error(YamlError.InvalidInput)
+    let limited: YamlValue!YamlError = error(YamlError.LimitExceeded)
+    let invalid: YamlValue!YamlError = error(YamlError.InvalidInput)
     try expect_false(
         (
             parse(
@@ -484,7 +484,7 @@ test "YAML merge and block header errors name their own line":
     )
 
 test "YAML limits fields default to none":
-    let limited: Result[YamlValue, YamlError] = error(YamlError.LimitExceeded)
+    let limited: YamlValue!YamlError = error(YamlError.LimitExceeded)
     parse(text: "a: 1", limits: YamlLimits(max_bytes: 2)) | try expect_equal(
         limited
     )
@@ -502,14 +502,14 @@ test "YAML stringify round trips scalars sequences and mappings":
     )
 
 test "YAML stringify validates numbers and honors max_bytes":
-    let invalid: Result[String, YamlError] = error(YamlError.InvalidInput)
-    let limited: Result[String, YamlError] = error(YamlError.LimitExceeded)
+    let invalid: String!YamlError = error(YamlError.InvalidInput)
+    let limited: String!YamlError = error(YamlError.LimitExceeded)
     stringify(value: YamlValue.NumberValue("not a number")) | try expect_equal(invalid)
 
     let root = (parse(text: "a: 1") | try expect_ok)
     stringify(value: root, max_bytes: 3) | try expect_equal(limited)
 
-    let exact: Result[String, YamlError] = ok("a: 1\n")
+    let exact: String!YamlError = ok("a: 1\n")
     stringify(value: root, max_bytes: 5) | try expect_equal(exact)
     stringify(value: root, max_bytes: -1) | try expect_equal(invalid)
 

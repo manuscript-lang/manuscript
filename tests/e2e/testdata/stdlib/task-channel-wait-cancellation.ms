@@ -42,7 +42,7 @@ fn send_value(ready: Channel[Unit, Unit], target: Channel[Int, Int]) Unit:
     var end = target.clone()
     end.send(42).get()
 
-fn cancel_receive(target: Channel[Int, Int]) Result[Unit, Error]:
+fn cancel_receive(target: Channel[Int, Int]) Unit!:
     var group = TaskGroup[Int]()
     let end = target.clone()
     var task = group.spawn(fn ready: receive_value(ready, end))
@@ -54,7 +54,7 @@ fn cancel_receive(target: Channel[Int, Int]) Result[Unit, Error]:
     try group.close()
     return ok(unit)
 
-fn cancel_send(target: Channel[Int, Int]) Result[Unit, Error]:
+fn cancel_send(target: Channel[Int, Int]) Unit!:
     var group = TaskGroup[Unit]()
     let end = target.clone()
     var task = group.spawn(fn ready: send_value(ready, end))
@@ -64,13 +64,13 @@ fn cancel_send(target: Channel[Int, Int]) Result[Unit, Error]:
     try group.close()
     return ok(unit)
 
-fn wake_receiver(target: Channel[Int, Int]) Result[Unit, Error]:
+fn wake_receiver(target: Channel[Int, Int]) Unit!:
     var end = target.clone()
     end.send(7) | try expect_ok
     end.receive() | try expect_ok | try expect_equal(7)
     return ok(unit)
 
-fn wake_sender(target: Channel[Int, Int]) Result[Unit, Error]:
+fn wake_sender(target: Channel[Int, Int]) Unit!:
     var end = target.clone()
     for value in 0..17:
         end.receive() | try expect_ok | try expect_equal(value)

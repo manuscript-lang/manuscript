@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms",
           "line": 6,
-          "column": 61,
-          "offset": 297
+          "column": 52,
+          "offset": 288
         }
       },
       {
@@ -24,8 +24,8 @@
         "position": {
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms",
           "line": 6,
-          "column": 50,
-          "offset": 286
+          "column": 41,
+          "offset": 277
         }
       },
       {
@@ -35,8 +35,8 @@
         "position": {
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms",
           "line": 6,
-          "column": 61,
-          "offset": 297
+          "column": 52,
+          "offset": 288
         }
       },
       {
@@ -54,7 +54,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:6:61: type: callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest\n   |\n 6 | fn wrong(value: Int?) Result[Int, String]: value.ok_or_else(cause)\n   |                                                             ^\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:6:50: type: String does not satisfy Error; pass a type that already implements it\n   |\n 6 | fn wrong(value: Int?) Result[Int, String]: value.ok_or_else(cause)\n   |                                                  ^\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:6:61: type: expected fn() String, found fn(Int) String (in argument 'create' of value.ok_or_else)\n   |\n 6 | fn wrong(value: Int?) Result[Int, String]: value.ok_or_else(cause)\n   |                                                             ^\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:6:1: type: String does not satisfy Error; use a type that implements it\n   |\n 6 | fn wrong(value: Int?) Result[Int, String]: value.ok_or_else(cause)\n   | ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:6:52: type: callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest\n   |\n 6 | fn wrong(value: Int?) Int!String: value.ok_or_else(cause)\n   |                                                    ^\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:6:41: type: String does not satisfy Error; pass a type that already implements it\n   |\n 6 | fn wrong(value: Int?) Int!String: value.ok_or_else(cause)\n   |                                         ^\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:6:52: type: expected fn() String, found fn(Int) String (in argument 'create' of value.ok_or_else)\n   |\n 6 | fn wrong(value: Int?) Int!String: value.ok_or_else(cause)\n   |                                                    ^\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:6:1: type: String does not satisfy Error; use a type that implements it\n   |\n 6 | fn wrong(value: Int?) Int!String: value.ok_or_else(cause)\n   | ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

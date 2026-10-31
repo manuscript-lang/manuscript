@@ -131,7 +131,7 @@ fn define_anchor(var context: Context, name: String, value: YamlValue) Unit:
 
 # Counts an alias expansion against the value budget before the aliased value is copied, so
 # nested aliases cannot grow exponentially ahead of the limit.
-fn charge(var context: Context, size: Int) Result[Unit, YamlError]:
+fn charge(var context: Context, size: Int) Unit!YamlError:
     context.values += size
     if not within(context.values, context.limits.max_values): return error(
         YamlError.LimitExceeded
@@ -139,7 +139,7 @@ fn charge(var context: Context, size: Int) Result[Unit, YamlError]:
 
     return ok(unit)
 
-fn count(var context: Context, depth: Int) Result[Unit, YamlError]:
+fn count(var context: Context, depth: Int) Unit!YamlError:
     if not within(depth, context.limits.max_depth): return error(
         YamlError.LimitExceeded
     )
@@ -197,7 +197,7 @@ fn folded_break(var flow: Flow, escaped: Bool) String:
 
     return result
 
-fn quoted(var flow: Flow) Result[String, YamlError]:
+fn quoted(var flow: Flow) String!YamlError:
     let quote = advance(var flow)
 
     # Append through a builder: per-character concatenation is quadratic on long strings.
@@ -349,7 +349,7 @@ fn plain(text: String) YamlValue:
 
     return YamlValue.StringValue(text)
 
-fn anchor_name(var flow: Flow) Result[String, YamlError]:
+fn anchor_name(var flow: Flow) String!YamlError:
     var name = ""
     while peek(flow) != "" and not " \t\n,[]\{\}".contains(peek(flow)):
         name = name.concat(advance(var flow))
@@ -362,7 +362,7 @@ fn merge(
     column: Int,
     var target: Map[String, YamlValue],
     value: YamlValue
-) Result[Unit, YamlError]:
+) Unit!YamlError:
     let values = match value:
         ObjectValue(entries):
             for entry in entries:
@@ -423,7 +423,7 @@ fn fold_plain(text: String) String:
     return result
 
 # A scalar, alias or quoted string at the cursor, whose first code is `c`.
-fn flow_leaf(var flow: Flow, c: Int, key: Bool) Result[YamlValue, YamlError]:
+fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
     if c == 42:
         advance(var flow)
 
@@ -486,7 +486,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) Result[YamlValue, YamlError]:
 fn flow_entry(
     var flow: Flow, name: String, quoted_key: Bool, var entries: Map[String, YamlValue],
     var explicit: Set[String], value: YamlValue
-) Result[Unit, YamlError]:
+) Unit!YamlError:
     if explicit.contains(name): return error(
         flow_invalid(flow, "duplicate mapping key")
     )
@@ -505,7 +505,7 @@ fn flow_entry(
 # Parses a flow value. Nested sequences and mappings are parsed with explicit stacks, not by
 # recursion, so the nesting depth is bounded by the depth limit and not by the call stack. Only
 # a mapping key recurses, and a key cannot be a container.
-fn flow_value(var flow: Flow, depth: Int, key: Bool) Result[YamlValue, YamlError]:
+fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
     # The open containers, innermost last: kind (1 sequence, 2 mapping), depth, anchors, and
     # the entries so far. The innermost one is held in the variables below `parents`.
     var kinds: List[Int] = []
@@ -818,7 +818,7 @@ fn indent(text: String) Int:
     while text.scalar_at(result, default: 0) == 32: result += 1
     return result
 
-fn indentation(context: Context, text: String) Result[Int, YamlError]:
+fn indentation(context: Context, text: String) Int!YamlError:
     let spaces = indent(text)
     if text.get(spaces, default: "") == "\t": return error(
         invalid(context, "tabs cannot indent YAML")
@@ -1164,7 +1164,7 @@ fn may_continue(context: Context, base: Int) Bool:
 
 fn block_value(
     var context: Context, text: String, base: Int, depth: Int, indentless: Bool
-) Result[YamlValue, YamlError]:
+) YamlValue!YamlError:
     var remainder = text.trim_start().clone()
     var anchor = ""
     var lead = remainder.scalar_at(0, default: 0)
@@ -1293,7 +1293,7 @@ fn nested_columns(line: String, base: Int) List[Int]:
 
 fn sequence_items(
     var context: Context, var values: List[YamlValue], base: Int, depth: Int
-) Result[Unit, YamlError]:
+) Unit!YamlError:
     while context.index < context.lines.length():
         skip(var context)
         if context.index >= context.lines.length(): break
@@ -1407,7 +1407,7 @@ fn sequence_items(
 
     return ok(unit)
 
-fn block(var context: Context, base: Int, depth: Int) Result[YamlValue, YamlError]:
+fn block(var context: Context, base: Int, depth: Int) YamlValue!YamlError:
     skip(var context)
 
     var first = ""
@@ -1537,7 +1537,7 @@ fn block(var context: Context, base: Int, depth: Int) Result[YamlValue, YamlErro
         indentless: false
     )
 
-fn validate(var context: Context, value: YamlValue, depth: Int) Result[Unit, YamlError]:
+fn validate(var context: Context, value: YamlValue, depth: Int) Unit!YamlError:
     try count(var context, depth)
 
     match value:
@@ -1550,7 +1550,7 @@ fn validate(var context: Context, value: YamlValue, depth: Int) Result[Unit, Yam
     return ok(unit)
 
 # Parses a YAML document. Unsupported YAML features and invalid input include source locations.
-export fn parse(text: String, limits: YamlLimits?) Result[YamlValue, YamlError]:
+export fn parse(text: String, limits: YamlLimits?) YamlValue!YamlError:
     var options = default_limits()
     if let value = limits:
         options = value
@@ -1731,7 +1731,7 @@ fn valid_number(text: String) Bool:
 
     return false
 
-fn scalar_text(value: YamlValue) Result[String, YamlError]:
+fn scalar_text(value: YamlValue) String!YamlError:
     match value:
         Null: return ok("null")
         BoolValue(flag): return ok(flag.to_string())
@@ -1791,7 +1791,7 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
         _: return ok(unit)
 
 # Serializes a YAML value in block style with double-quoted strings.
-export fn stringify(value: YamlValue, max_bytes: Int?) Result[String, YamlError]:
+export fn stringify(value: YamlValue, max_bytes: Int?) String!YamlError:
     if let limit = max_bytes:
         if limit < 0: return error(YamlError.InvalidInput)
 

@@ -51,11 +51,9 @@ test "compression omission equals explicit level six for every format":
 
 test "compression defaults retain invalid levels formats and output budgets":
     let data = "abc".to_bytes()
-    let invalid: Result[Bytes, CompressionError] = error(CompressionError.InvalidInput)
-    let limited: Result[Bytes, CompressionError] = error(CompressionError.LimitExceeded)
-    let unsupported: Result[Bytes, CompressionError] = error(
-        CompressionError.Unsupported
-    )
+    let invalid: Bytes!CompressionError = error(CompressionError.InvalidInput)
+    let limited: Bytes!CompressionError = error(CompressionError.LimitExceeded)
+    let unsupported: Bytes!CompressionError = error(CompressionError.Unsupported)
 
     for format in [
         CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate

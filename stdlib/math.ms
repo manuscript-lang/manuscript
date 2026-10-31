@@ -94,9 +94,9 @@ extern fn msstd_math_sqrt2() Float
 
 extern fn msstd_math_sqrt_half() Float
 
-extern fn msrt_numbers_parse_float(text: String) Result[Float, NumberError]
+extern fn msrt_numbers_parse_float(text: String) Float!NumberError
 
-extern fn msrt_numbers_parse_int(text: String, radix: Int) Result[Int, NumberError]
+extern fn msrt_numbers_parse_int(text: String, radix: Int) Int!NumberError
 
 extern fn msrt_bits_bit_and(left: Int, right: Int) Int
 
@@ -134,12 +134,9 @@ extern fn msstd_bigint_subtract(value: BigInt, other: BigInt) BigInt
 
 extern fn msstd_bigint_multiply(value: BigInt, other: BigInt) BigInt
 
-extern fn msstd_bigint_divide(value: BigInt, other: BigInt) Result[BigInt, BigIntError]
+extern fn msstd_bigint_divide(value: BigInt, other: BigInt) BigInt!BigIntError
 
-extern fn msstd_bigint_remainder(
-    value: BigInt,
-    other: BigInt
-) Result[BigInt, BigIntError]
+extern fn msstd_bigint_remainder(value: BigInt, other: BigInt) BigInt!BigIntError
 
 extern fn msstd_bigint_quotient(value: BigInt, other: BigInt) BigInt
 
@@ -161,14 +158,11 @@ extern fn msstd_bigint_abs(value: BigInt) BigInt
 
 extern fn msstd_bigint_sign(value: BigInt) Int
 
-extern fn msstd_bigint_pow(value: BigInt, exponent: Int) Result[BigInt, BigIntError]
+extern fn msstd_bigint_pow(value: BigInt, exponent: Int) BigInt!BigIntError
 
-extern fn msstd_bigint_shift_left(value: BigInt, count: Int) Result[BigInt, BigIntError]
+extern fn msstd_bigint_shift_left(value: BigInt, count: Int) BigInt!BigIntError
 
-extern fn msstd_bigint_shift_right(
-    value: BigInt,
-    count: Int
-) Result[BigInt, BigIntError]
+extern fn msstd_bigint_shift_right(value: BigInt, count: Int) BigInt!BigIntError
 
 extern fn msstd_bigint_to_float(value: BigInt) Float
 
@@ -182,7 +176,7 @@ extern fn msstd_bigint_parse(
     text: String,
     radix: Int,
     max_digits: Int?
-) Result[BigInt, BigIntError]
+) BigInt!BigIntError
 
 # Returns the inverse cosine in radians.
 export fn acos(value: Float) Float:
@@ -396,11 +390,11 @@ export type NumberError:
     case OutOfRange
 
 # Parses a decimal floating-point number using Manuscript's numeric syntax.
-export fn parse_float(text: String) Result[Float, NumberError]:
+export fn parse_float(text: String) Float!NumberError:
     return msrt_numbers_parse_float(text)
 
 # Parses an integer in a radix from 2 through 36.
-export fn parse_int(text: String, radix: Int) Result[Int, NumberError]:
+export fn parse_int(text: String, radix: Int) Int!NumberError:
     return msrt_numbers_parse_int(text, radix)
 
 impl Error for NumberError:
@@ -502,12 +496,12 @@ impl BigInt:
 
     # Returns the quotient truncated toward zero, so -7 divided by 2 is -3.
     # A zero divisor returns InvalidInput.
-    fn divide(other: BigInt) Result[BigInt, BigIntError]:
+    fn divide(other: BigInt) BigInt!BigIntError:
         return msstd_bigint_divide(self, other)
 
     # Returns the remainder whose sign follows the dividend, so -7 remainder 2 is -1.
     # A zero divisor returns InvalidInput.
-    fn remainder(other: BigInt) Result[BigInt, BigIntError]:
+    fn remainder(other: BigInt) BigInt!BigIntError:
         return msstd_bigint_remainder(self, other)
 
     # Returns -1 when this value is less than `other`, 0 when equal, and 1 when greater.
@@ -568,15 +562,15 @@ impl BigInt:
         return msstd_bigint_sign(self)
 
     # Raises to a nonnegative `exponent`. A negative exponent returns InvalidInput, and a result above 16777216 bits returns LimitExceeded.
-    fn pow(exponent: Int) Result[BigInt, BigIntError]:
+    fn pow(exponent: Int) BigInt!BigIntError:
         return msstd_bigint_pow(self, exponent)
 
     # Shifts left by `count` bits, multiplying by two to that power. A negative count returns InvalidInput, and a result above 16777216 bits returns LimitExceeded.
-    fn shift_left(count: Int) Result[BigInt, BigIntError]:
+    fn shift_left(count: Int) BigInt!BigIntError:
         return msstd_bigint_shift_left(self, count)
 
     # Shifts right by `count` bits with floor semantics for negatives, so -5 shifted by 1 is -3. A negative count returns InvalidInput.
-    fn shift_right(count: Int) Result[BigInt, BigIntError]:
+    fn shift_right(count: Int) BigInt!BigIntError:
         return msstd_bigint_shift_right(self, count)
 
     # Converts to the nearest Float, or returns none when the magnitude exceeds the Float range.
@@ -601,7 +595,7 @@ export fn from_int(value: Int) BigInt:
     return msstd_bigint_from_int(value)
 
 # Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied.
-export fn parse(text: String, radix: Int, max_digits: Int?) Result[BigInt, BigIntError]:
+export fn parse(text: String, radix: Int, max_digits: Int?) BigInt!BigIntError:
     return msstd_bigint_parse(text, radix, max_digits)
 
 impl Error for BigIntError:

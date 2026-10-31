@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-compiler-testresultargumentinference-1.ms",
           "line": 5,
-          "column": 33,
-          "offset": 216
+          "column": 19,
+          "offset": 202
         }
       },
       {
@@ -25,14 +25,14 @@
           "file": "pkg-compiler-testresultargumentinference-1.ms",
           "line": 6,
           "column": 12,
-          "offset": 231
+          "offset": 217
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testresultargumentinference-1.ms:5:33: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 5 |     let r: Result[Int, Error] = f()\n   |                                 ^\n<DIR>/pkg-compiler-testresultargumentinference-1.ms:6:12: resolution: unknown binding h; declare it with 'let h = ...' before use, define 'fn h(...) T:', or import it from a module\n   |\n 6 |     return h(r)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinference-1.ms:5:19: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 5 |     let r: Int! = f()\n   |                   ^\n<DIR>/pkg-compiler-testresultargumentinference-1.ms:6:12: resolution: unknown binding h; declare it with 'let h = ...' before use, define 'fn h(...) T:', or import it from a module\n   |\n 6 |     return h(r)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

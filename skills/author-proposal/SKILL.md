@@ -40,7 +40,7 @@ Sections, in order (a small change uses Summary, Problem, Design, Components, Al
    | --- | --- | --- |
    | `crates/ms-check` | new rule, diagnostic | conformance reject case |
 
-   Consider: parser, checker, lowering/MIR, codegen, `ms-rt`/ABI, `stdlib/*.ms` and `bindings.json`, formatter, lint, LSP/VS Code, CLI, docs, tests.
+   Consider: parser, checker, lowering/MIR, codegen, `ms-rt`/ABI, `stdlib/*.ms`, formatter, lint, LSP/VS Code, CLI, docs, tests.
 6. **Alternatives**: including do nothing and the smallest version, each with evidence for why it lost. Add drawbacks of the chosen design and a line on how comparable languages do it only when that changes the decision.
 7. **Staging and verification**: stages that each land green, the check per stage, the go/no-go gate.
 8. **Open questions**: options with a recommendation, for the owner, only where the language or user-visible behavior changes.

@@ -15,22 +15,22 @@ type Tagged[T]:
 impl Error for Tagged[T]:
     fn message() String: "tagged {self.value}"
 
-fn erase[T](r: Result[T, Error]) Result[T, Error]: r
+fn erase[T](r: T!) T!: r
 
-fn forward[T, E: Error](r: Result[T, E]) Result[T, Error]: erase(r)
+fn forward[T, E: Error](r: T!E) T!: erase(r)
 
-fn optional[T](r: Result[T, Error]?) Result[T, Error]: r.get().clone()
+fn optional[T](r: T!?) T!: r.get().clone()
 
-fn same[T, E: Error](r: Result[T, E]) Result[T, E]: r
+fn same[T, E: Error](r: T!E) T!E: r
 
-fn both[T, E: Error](cause: E, r: Result[T, E]) Result[T, E]: r
+fn both[T, E: Error](cause: E, r: T!E) T!E: r
 
-fn number() Result[Int, Failure]: ok(7)
+fn number() Int!Failure: ok(7)
 
 type Events:
     values: List[Int]
 
-fn record(var events: Events, value: Int) Result[Int, Failure]:
+fn record(var events: Events, value: Int) Int!Failure:
     events.values.append(value)
     return ok(value)
 
@@ -39,17 +39,17 @@ fn default_value(var events: Events) Int:
     return 3
 
 fn ordered[T](
-    first: Result[T, Error],
-    second: Result[T, Error],
+    first: T!,
+    second: T!,
     var events: Events,
     last: Int = default_value(events)
-) Result[T, Error]:
+) T!:
     events.values.append(4)
     return first
 
 test "infer success and preserve concrete error identity":
     let cause = Failure(11)
-    let r: Result[Int, Failure] = error(cause)
+    let r: Int!Failure = error(cause)
     let inferred = erase(r)
     let explicit = erase[Int](r)
     let wrapped = optional(r)
@@ -81,8 +81,8 @@ test "infer success and preserve concrete error identity":
         _: return fail("lost generic identity")
 
 test "nested success preserves its domain and inferred errors remain exact":
-    let inner: Result[Int, Failure] = error(Failure(41))
-    let outer: Result[Result[Int, Failure], Tagged[Int]] = ok(inner)
+    let inner: Int!Failure = error(Failure(41))
+    let outer: Result[Int!Failure, Tagged[Int]] = ok(inner)
     let value = erase(outer).get()
     try expect_false(not value.is_error())
     try expect_equal(value.err().code, 41)

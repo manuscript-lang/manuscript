@@ -12,7 +12,7 @@ extern fn msrt_http_headers_append(
     headers: HttpHeaders,
     name: String,
     value: Bytes
-) Result[Unit, HttpError]
+) Unit!HttpError
 
 extern fn msrt_http_headers_values(value: HttpHeaders, name: String) List[Bytes]?
 
@@ -52,11 +52,11 @@ export extern type HttpHeaders
 impl HttpHeaders:
     # Appends a String value under a valid HTTP name; invalid names return InvalidInput.
     # Transport operations additionally validate framing and field values.
-    var fn append(name: String, value: String) Result[Unit, HttpError]:
+    var fn append(name: String, value: String) Unit!HttpError:
         return msrt_http_headers_append(self, name, value.to_bytes())
 
     # Appends raw bytes, for the rare field whose value is not UTF-8 text.
-    var fn append_bytes(name: String, value: Bytes) Result[Unit, HttpError]:
+    var fn append_bytes(name: String, value: Bytes) Unit!HttpError:
         return msrt_http_headers_append(self, name, value)
 
     # Returns every value as an owned list, empty for an absent name.
@@ -169,7 +169,7 @@ extern fn msrt_http_client_request(
     body: String,
     max_response_bytes: Int?,
     timeout: Duration?
-) Result[ResponseBody, HttpError]
+) ResponseBody!HttpError
 
 extern fn msrt_http_client_request_bytes(
     handle: NativeHttpClient,
@@ -179,7 +179,7 @@ extern fn msrt_http_client_request_bytes(
     body: Bytes,
     max_response_bytes: Int?,
     timeout: Duration?
-) Result[ResponseBody, HttpError]
+) ResponseBody!HttpError
 
 extern fn msrt_http_client_request_stream(
     handle: NativeHttpClient,
@@ -189,7 +189,7 @@ extern fn msrt_http_client_request_stream(
     body: ReadStream,
     max_response_bytes: Int?,
     timeout: Duration?
-) Result[ResponseBody, HttpError]
+) ResponseBody!HttpError
 
 # Reusable HTTP client with connection pooling and explicit response limits.
 # Outbound headers retain separate values in their stored order.
@@ -213,7 +213,7 @@ impl HttpClient:
         body: String = "",
         max_response_bytes: Int?,
         timeout: Duration?
-    ) Result[ResponseBody, HttpError]:
+    ) ResponseBody!HttpError:
         return msrt_http_client_request(
             self.native, method, url, headers, body, max_response_bytes, timeout
         )
@@ -226,7 +226,7 @@ impl HttpClient:
         body: Bytes = "".to_bytes(),
         max_response_bytes: Int?,
         timeout: Duration?
-    ) Result[ResponseBody, HttpError]:
+    ) ResponseBody!HttpError:
         return msrt_http_client_request_bytes(
             self.native, method, url, headers, body, max_response_bytes, timeout
         )
@@ -239,7 +239,7 @@ impl HttpClient:
         body: ReadStream,
         max_response_bytes: Int?,
         timeout: Duration?
-    ) Result[ResponseBody, HttpError]:
+    ) ResponseBody!HttpError:
         return msrt_http_client_request_stream(
             self.native, method, url, headers, body, max_response_bytes, timeout
         )
@@ -284,25 +284,25 @@ export interface HttpExchange:
     fn query() String
     # Returns the next chunk of the request body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past `max_body_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
-    fn read(max_bytes: Int?) Result[Bytes?, IoError]
+    fn read(max_bytes: Int?) Bytes?!IoError
     # Sends a whole response: the status line, `headers`, and `body` with its length known, so the response carries `Content-Length` rather than chunked framing. Requests with HEAD and statuses without a body get the head alone.
     # The rules of `send_headers` apply, `body` is bounded by `max_response_bytes`, and nothing else may be sent afterwards.
-    fn send(status: Int, headers: HttpHeaders, body: Bytes) Result[Unit, HttpError]
+    fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!HttpError
     # Sends the status line and headers once, before any body is written.
     # The status must be 200 through 599, header names cannot be `Content-Length`, `Transfer-Encoding`, or `Connection`, and header bytes are bounded by `max_header_bytes`. A second call returns InvalidInput and a closed exchange returns Closed.
-    fn send_headers(status: Int, headers: HttpHeaders) Result[Unit, HttpError]
+    fn send_headers(status: Int, headers: HttpHeaders) Unit!HttpError
     # Switches the connection to a WebSocket after checking the `Origin` header. Requests without an Origin are accepted; otherwise it must exactly match an entry of `allowed_origins`, or, when that list is empty, match the request's own scheme and host.
     # `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be positive when given. An exchange that already sent headers or upgraded returns InvalidInput, and a request that is not a valid WebSocket upgrade returns Failed.
     fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Int?
-    ) Result[WebSocket, WebSocketError]
+    ) WebSocket!WebSocketError
     # Writes one chunk of the response body and flushes it.
     # `send_headers` must come first, and writing beyond `max_response_bytes` returns IoError.Failed. Responses to HEAD requests and with status 204 or 304 cannot have a body.
-    fn write(data: String) Result[Unit, IoError]
+    fn write(data: String) Unit!IoError
     # Writes one chunk of raw bytes with the same rules as write.
-    fn write_bytes(data: Bytes) Result[Unit, IoError]
+    fn write_bytes(data: Bytes) Unit!IoError
 
 # Buffered request accepted by the simple HTTP server handler.
 export type HttpRequest:
@@ -337,7 +337,7 @@ extern fn msrt_http_server_adopt(handle: NativeHttpServer, connection: Int) Unit
 
 extern fn msrt_http_server_close(handle: NativeHttpServer) Unit
 
-extern fn msrt_http_server_wait(handle: NativeHttpServer) Result[Unit, IoError]
+extern fn msrt_http_server_wait(handle: NativeHttpServer) Unit!IoError
 
 # A running HTTP server. Close it to stop accepting new requests.
 export type HttpServer:
@@ -363,7 +363,7 @@ impl HttpServer:
 
     # Blocks until the server stops. Returns Ok after a normal `close`, or IoError.Failed with the host's text if serving ended with an error.
     # Cancelling the waiting task stops the wait.
-    fn wait() Result[Unit, IoError]:
+    fn wait() Unit!IoError:
         return msrt_http_server_wait(self.native)
 
 # Request and response limits, deadlines, graceful shutdown, and TLS server settings.
@@ -393,9 +393,9 @@ extern fn msrt_http_body_metadata(handle: NativeResponseBody) HttpResponseMetada
 extern fn msrt_http_body_read(
     handle: NativeResponseBody,
     max_bytes: Int?
-) Result[Bytes?, IoError]
+) Bytes?!IoError
 
-extern fn msrt_http_body_read_all(handle: NativeResponseBody) Result[Bytes, IoError]
+extern fn msrt_http_body_read_all(handle: NativeResponseBody) Bytes!IoError
 
 # Streaming response body returned by reusable HTTP client operations.
 # Metadata remains available after close and shares one mutable header object.
@@ -417,12 +417,12 @@ impl ResponseBody:
 
     # Returns the next chunk of the response body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past the request's `max_response_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
-    fn read(max_bytes: Int?) Result[Bytes?, IoError]:
+    fn read(max_bytes: Int?) Bytes?!IoError:
         return msrt_http_body_read(self.native, max_bytes)
 
     # Reads the rest of the body into one value, with `read`'s limit and error rules.
     # A plain HTTP/1.1 body of known length arrives straight into the result without intermediate copies.
-    fn read_all() Result[Bytes, IoError]:
+    fn read_all() Bytes!IoError:
         return msrt_http_body_read_all(self.native)
 
 # Maps a stream failure to the HTTP error with the same meaning, so exchange handlers need one error type.
@@ -437,7 +437,7 @@ export fn from_io(error: IoError) HttpError:
 
 # Reads the rest of the request body into one value.
 # A body over `max_body_bytes` of the server's options returns LimitExceeded; `limit` also bounds it when given.
-export fn read_body(exchange: HttpExchange, limit: Int?) Result[Bytes, HttpError]:
+export fn read_body(exchange: HttpExchange, limit: Int?) Bytes!HttpError:
     let first = try exchange.read().map_error(from_io)
     if let head = first:
         return read_rest(exchange, head, limit)
@@ -445,7 +445,7 @@ export fn read_body(exchange: HttpExchange, limit: Int?) Result[Bytes, HttpError
     return ok("".to_bytes())
 
 # Joins `head` with the chunks after it. A body that fits one chunk is returned without copying.
-fn read_rest(exchange: HttpExchange, head: Bytes, limit: Int?) Result[Bytes, HttpError]:
+fn read_rest(exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!HttpError:
     var total = head.length()
     if over_limit(total, limit): return error(HttpError.LimitExceeded)
 
@@ -464,7 +464,7 @@ fn read_more(
     chunks: List[Bytes],
     total: Int,
     limit: Int?
-) Result[Bytes, HttpError]:
+) Bytes!HttpError:
     var parts = chunks
     var size = total
 
@@ -486,7 +486,7 @@ fn over_limit(total: Int, limit: Int?) Bool:
     return false
 
 # Sends `response` whole: its status and headers, then its body.
-export fn reply(exchange: HttpExchange, response: HttpResponse) Result[Unit, HttpError]:
+export fn reply(exchange: HttpExchange, response: HttpResponse) Unit!HttpError:
     return exchange.send(response.status, response.headers, response.body)
 
 # Builds a response with a UTF-8 text body and no headers.
@@ -495,7 +495,7 @@ export fn text(status: Int, body: String) HttpResponse:
 
 # Builds a response whose body is `value` encoded as JSON, with `Content-Type: application/json`.
 # A value `stringify` cannot encode returns Failed with its diagnostic.
-export fn json[T: Data](status: Int, value: T) Result[HttpResponse, HttpError]:
+export fn json[T: Data](status: Int, value: T) HttpResponse!HttpError:
     let body = stringify(value)
     if body.is_error(): return error(HttpError.Failed(body.err().message()))
 
@@ -505,7 +505,7 @@ export fn json[T: Data](status: Int, value: T) Result[HttpResponse, HttpError]:
 
 # Builds a redirect to `location` with an empty body.
 # The status should be 301, 302, 303, 307, or 308; the default 303 sends a followed POST on as a GET.
-export fn redirect(location: String, status: Int = 303) Result[HttpResponse, HttpError]:
+export fn redirect(location: String, status: Int = 303) HttpResponse!HttpError:
     var sent = headers()
     try sent.append("Location", location)
     return ok(HttpResponse(status: status, headers: sent, body: "".to_bytes()))
@@ -514,13 +514,13 @@ export fn redirect(location: String, status: Int = 303) Result[HttpResponse, Htt
 # The request body is read in full first.
 export fn buffered(
     handler: fn(HttpRequest) HttpResponse
-) fn(HttpExchange) Result[Unit, HttpError]:
+) fn(HttpExchange) Unit!HttpError:
     return fn exchange: serve_buffered(handler, exchange)
 
 fn serve_buffered(
     handler: fn(HttpRequest) HttpResponse,
     exchange: HttpExchange
-) Result[Unit, HttpError]:
+) Unit!HttpError:
     let body = try read_body(exchange)
     let request = HttpRequest(
         method: exchange.method(), path: exchange.path(), query: exchange.query(),

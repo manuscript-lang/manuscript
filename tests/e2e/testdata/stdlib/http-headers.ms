@@ -14,7 +14,7 @@ import (
 import network from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 
-fn repeated_headers() Result[HttpHeaders, Error]:
+fn repeated_headers() HttpHeaders!:
     var fields = headers()
     let _first = fields.append("x-dup", "first") | try expect_ok
     let _second = fields.append("X-Dup", "second") | try expect_ok
@@ -70,7 +70,7 @@ test "one header type preserves repeated values through buffered requests":
         )
     )
 
-fn echo_headers(exchange: HttpExchange) Result[Unit, HttpError]:
+fn echo_headers(exchange: HttpExchange) Unit!HttpError:
     let received = exchange.headers()
     if received.values("X-DUP") != ["first", "second"]: return error(
         HttpError.InvalidData

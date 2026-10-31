@@ -15,10 +15,10 @@ test "regex rejects invalid expressions and exhausted budgets":
     try expect_equal(invalid.err(), RegexError.InvalidData)
 
     let regex = try compile("[0-9]+")
-    let limited: Result[List[String], RegexError] = error(RegexError.LimitExceeded)
+    let limited: List[String]!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(regex.find_all("1 2", 1), limited)
 
-    let output_limit: Result[String, RegexError] = error(RegexError.LimitExceeded)
+    let output_limit: String!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(regex.replace_all("1", "long", 3), output_limit)
 
 test "regex captures groups spans and splits":
@@ -43,7 +43,7 @@ test "regex captures groups spans and splits":
         (try swap.replace_template("me@home x@y", "$\{host\}:$1 $$")), "home:me $ y:x $"
     )
 
-    let limited: Result[List[String], RegexError] = error(RegexError.LimitExceeded)
+    let limited: List[String]!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(comma.split("a,b,c", 2), limited)
 
 test "regex repeated captures clear absent groups and preserve budgets":
@@ -53,9 +53,7 @@ test "regex repeated captures clear absent groups and preserve budgets":
         [["a", "a", ""], ["bbb", "", "bbb"], ["a", "a", ""]]
     )
 
-    let limited: Result[List[List[String]], RegexError] = error(
-        RegexError.LimitExceeded
-    )
+    let limited: List[List[String]]!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(re.captures_all("a bbb a", 2), limited)
     try expect_equal((try re.captures_all("xyz", 0)), [])
 
@@ -67,7 +65,7 @@ test "regex repeated template expansion preserves byte budgets":
     )
     try expect_equal((try re.replace_template("a b", "$$", 3)), "$ $")
 
-    let limited: Result[String, RegexError] = error(RegexError.LimitExceeded)
+    let limited: String!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(re.replace_template("a b", "$$", 2), limited)
     try expect_equal((try re.replace_template("a b", "xy", 5)), "xy xy")
     try expect_equal(re.replace_template("a b", "xy", 4), limited)
@@ -90,9 +88,7 @@ test "regex capture methods preserve whole match only patterns":
     try expect_equal(unnamed.named_captures("word123").is_empty(), true)
     try expect_equal((try re.captures_all("sword word word", 2)), [["word"], ["word"]])
 
-    let limited: Result[List[List[String]], RegexError] = error(
-        RegexError.LimitExceeded
-    )
+    let limited: List[List[String]]!RegexError = error(RegexError.LimitExceeded)
     try expect_equal(re.captures_all("word word", 1), limited)
     try expect_equal((try re.captures_all("sword", 0)), [])
 

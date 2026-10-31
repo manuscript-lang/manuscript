@@ -24,10 +24,10 @@ fn doors() Map[String, Door]:
     m.add("a", Door("map-a"))
     return m
 
-fn open(n: String) Result[Door, TextError]:
+fn open(n: String) Door!TextError:
     return ok(Door(n))
 
-fn collect() Result[List[Door], TextError]:
+fn collect() List[Door]!TextError:
     var found = List[Door]()
     let first = open("try-move")
     found.append(try first)

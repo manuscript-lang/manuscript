@@ -8,7 +8,7 @@ type Point:
     x: Int
     y: Int
 
-fn roll(i: Int) Result[Int, TextError]: ok(i)
+fn roll(i: Int) Int!TextError: ok(i)
 
 fn count(values: List[String]) Int: values.length()
 

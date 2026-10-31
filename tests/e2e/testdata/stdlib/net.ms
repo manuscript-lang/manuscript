@@ -90,7 +90,7 @@ test "typed addresses preserve normalization and reject zones":
     try expect_ip_error("fe80::1%eth0")
     try expect_false((try contains_ip(try parse_cidr("::ffff:192.0.2.0/120"), ip)))
 
-fn expect_ip_error(input: String) Result[Unit, Error]:
+fn expect_ip_error(input: String) Unit!:
     try expect_equal((try expect_error(parse_ip(input))), NetworkError.InvalidData)
     return ok(unit)
 
@@ -151,7 +151,7 @@ test "two tasks read one connection":
     try shared.get().close()
 
 # Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
-fn answer_mx(socket: Shared[DatagramSocket]) Result[Int, NetworkError]:
+fn answer_mx(socket: Shared[DatagramSocket]) Int!NetworkError:
     let query = try socket.get().receive(512, 2.seconds)
     let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
     let header = Bytes(

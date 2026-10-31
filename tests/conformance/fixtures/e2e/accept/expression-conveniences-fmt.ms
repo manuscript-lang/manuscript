@@ -18,7 +18,7 @@ impl Closeable for Resource:
 
 fn identity[T](value: T) T: return value
 
-fn amount(text: String, counter: Counter) Result[Int, TextError]:
+fn amount(text: String, counter: Counter) Int!TextError:
     let _resource = Resource(counter: counter)
 
     let cents = match text.parse_int():
@@ -41,7 +41,7 @@ fn all_return(value: Int?) Int:
         number: return number
         none: return 9
 
-fn tick(var counter: Counter) Result[Int, Error]:
+fn tick(var counter: Counter) Int!:
     counter.count | try expect_equal(1)
     counter.count = counter.count + 1
     return ok(0)
@@ -191,7 +191,7 @@ test "contextual values infer from later arms":
 
     list[0] | try expect_equal(5)
 
-fn returned_argument(var counter: Counter) Result[Int, Error]:
+fn returned_argument(var counter: Counter) Int!:
     let absent: Int? = none
     return ok(
         combine(
@@ -205,7 +205,7 @@ fn returned_argument(var counter: Counter) Result[Int, Error]:
 
 fn combine(first: Int, second: Int) Int: return first + second
 
-fn propagated(text: String) Result[Int, TextError]:
+fn propagated(text: String) Int!TextError:
     let result = match text.parse_int():
         value:
             try Result[Int, TextError].ok(value: value)

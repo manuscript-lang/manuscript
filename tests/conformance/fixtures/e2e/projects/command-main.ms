@@ -6,7 +6,7 @@ import stderr from "@std/io.ms"
 import commands from "@std/process.ms"
 import stdout from "@std/io.ms"
 
-fn exercise() Result[Int, Error]:
+fn exercise() Int!:
     match commands().run(
         program: "/bin/printf", arguments: ["hello"], input: "".to_bytes(),
         max_output_bytes: 64, timeout: 1.seconds

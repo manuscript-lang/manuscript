@@ -14,7 +14,7 @@
           "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-3.ms",
           "line": 5,
           "column": 24,
-          "offset": 230
+          "offset": 216
         },
         "fix": {
           "position": {

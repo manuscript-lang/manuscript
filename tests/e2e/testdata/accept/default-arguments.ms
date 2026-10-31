@@ -30,10 +30,10 @@ fn unit_value(value: Unit = unit_default()) Unit:
 fn optional(value: Int? = 3) Int?:
     return value
 
-fn fail() Result[Int, TextError]:
+fn fail() Int!TextError:
     return error(TextError("default failure"))
 
-fn propagate(value: Int = try fail()) Result[Int, TextError]:
+fn propagate(value: Int = try fail()) Int!TextError:
     return ok(value)
 
 interface Add:

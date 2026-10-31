@@ -29,8 +29,8 @@ fn lookup(limit: Int) Int:
 
     return total
 
-fn parse(text: String) Result[Int, TextError]:
-    let guard = fn(number: Int) Result[Int, TextError]:
+fn parse(text: String) Int!TextError:
+    let guard = fn(number: Int) Int!TextError:
         if number < 0:
             return Result[Int, TextError].error(TextError("negative"))
 

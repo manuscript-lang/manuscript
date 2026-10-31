@@ -68,7 +68,7 @@ export interface Commands:
         input: Bytes = "".to_bytes(),
         max_output_bytes: Int?,
         timeout: Duration?
-    ) Result[CommandOutput, CommandError]
+    ) CommandOutput!CommandError
     # Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
     fn spawn(
         program: String,
@@ -76,7 +76,7 @@ export interface Commands:
         stdin: Stdio = Stdio.Pipe,
         stdout: Stdio = Stdio.Pipe,
         stderr: Stdio = Stdio.Pipe
-    ) Result[Subprocess, CommandError]
+    ) Subprocess!CommandError
 
 # The runtime handle behind a `Subprocess`.
 export extern type NativeSubprocess
@@ -91,7 +91,7 @@ extern fn msstd_process_subprocess_stream(
 extern fn msstd_process_subprocess_wait(
     handle: NativeSubprocess,
     timeout: Duration?
-) Result[Int, CommandError]
+) Int!CommandError
 
 extern fn msstd_process_subprocess_terminate(handle: NativeSubprocess) Unit
 
@@ -126,7 +126,7 @@ impl Subprocess:
         return msstd_process_subprocess_stream(self.native, 2)
 
     # Waits for the child to exit and returns its exit status. Returns Timeout if `timeout` elapses first, leaving the child running.
-    fn wait(timeout: Duration?) Result[Int, CommandError]:
+    fn wait(timeout: Duration?) Int!CommandError:
         return msstd_process_subprocess_wait(self.native, timeout)
 
     # Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it kills the direct process. Does not wait.
@@ -149,70 +149,67 @@ export interface ProcessControl:
     # Capacity must be 1..1048576; omission/none uses 128 buffered signals.
     # Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
     # Code after next() has no shutdown guarantee; use registered with/Closeable cleanup.
-    fn watch_signals(
-        signals: List[Int],
-        capacity: Int?
-    ) Result[SignalStream, ControlError]
+    fn watch_signals(signals: List[Int], capacity: Int?) SignalStream!ControlError
     # Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0 when no limit applies or the platform has no such limit.
-    fn constrained_memory() Result[Int, ControlError]
+    fn constrained_memory() Int!ControlError
     # Returns bytes available to new allocations: the host's available memory, reduced to the remaining headroom when a Linux cgroup memory limit applies.
-    fn available_memory() Result[Int, ControlError]
+    fn available_memory() Int!ControlError
     # Returns the current process title.
     # Platforms that cannot read it return Unsupported.
-    fn title() Result[String, ControlError]
+    fn title() String!ControlError
     # Sets the process title shown by tools such as `ps`.
     # A title with NUL or newline returns InvalidInput, and platforms that cannot rename a process return Unsupported.
-    fn set_title(title: String) Result[Unit, ControlError]
+    fn set_title(title: String) Unit!ControlError
     # Replaces the supplementary group list with the groups of `username` from the account database plus `gid` first. Requires privilege.
     # A failed user lookup returns Failed, a `gid` outside 0 through 2147483647 returns InvalidInput, and a lack of privilege returns PermissionDenied.
-    fn initialize_groups(username: String, gid: Int) Result[Unit, ControlError]
+    fn initialize_groups(username: String, gid: Int) Unit!ControlError
     # Replaces the running process image with `program` using exactly the given `arguments` as argv, where `arguments[0]` is the program name, and exactly the given `environment`. On success it never returns.
     # `program` is a path, not a PATH lookup. An empty program, an empty argument list, or NUL bytes return InvalidInput, and exec failures return NotFound, PermissionDenied, or Failed. Unsupported on Windows.
     fn replace(
         program: String,
         arguments: List[String],
         environment: Map[String, String]
-    ) Result[Unit, ControlError]
+    ) Unit!ControlError
     # Returns the process id, parent id, executable path, arguments, platform, and real and effective user and group ids.
     # Text that is not valid UTF-8 returns Unsupported.
-    fn info() Result[ProcessInfo, ControlError]
+    fn info() ProcessInfo!ControlError
     # Returns heap and resident memory statistics for this process, in bytes.
-    fn memory_usage() Result[MemoryUsage, ControlError]
+    fn memory_usage() MemoryUsage!ControlError
     # Returns cumulative user and kernel CPU time consumed by this process in microseconds.
     # Platforms without resource accounting return Unsupported.
-    fn cpu_usage() Result[CpuUsage, ControlError]
+    fn cpu_usage() CpuUsage!ControlError
     # Returns elapsed Duration since runtime initialization, rather than host boot.
-    fn uptime() Result[Duration, ControlError]
+    fn uptime() Duration!ControlError
     # Reads a fresh live process environment map; non-UTF-8 entries return Unsupported.
-    fn environment() Result[Map[String, String], ControlError]
+    fn environment()(Map[String, String])!ControlError
     # Sets environment variable `name` for this process to `value`, or removes it when `value` is none.
     # An empty name, or a name or value with `=` or NUL, returns InvalidInput. The change is visible to child processes started afterwards.
-    fn set_environment(name: String, value: String?) Result[Unit, ControlError]
+    fn set_environment(name: String, value: String?) Unit!ControlError
     # Reads `KEY=value` lines from the file at `path` and sets each variable that is not already present in the environment. Existing variables keep their values.
     # Blank lines, `#` comments, an `export ` prefix, and single-, double-, or backtick-quoted values spanning lines are accepted. The whole file is validated first, so a malformed or non-UTF-8 file returns InvalidData and changes nothing. A file larger than `max_bytes` returns LimitExceeded.
-    fn load_environment(path: String, max_bytes: Int?) Result[Unit, ControlError]
+    fn load_environment(path: String, max_bytes: Int?) Unit!ControlError
     # Reads the live process directory, preserving OS failures as ControlError.
-    fn working_directory() Result[String, ControlError]
+    fn working_directory() String!ControlError
     # Changes the working directory of the whole process, affecting relative paths everywhere.
     # A missing path returns NotFound, a path containing NUL returns InvalidInput, and a denied path returns PermissionDenied.
-    fn change_directory(path: String) Result[Unit, ControlError]
+    fn change_directory(path: String) Unit!ControlError
     # Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.
     # Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination.
-    fn send_signal(pid: Int, signal: Int) Result[Unit, ControlError]
+    fn send_signal(pid: Int, signal: Int) Unit!ControlError
     # Returns the numeric ids of the supplementary groups of the process.
     # Windows returns Unsupported.
-    fn groups() Result[List[Int], ControlError]
+    fn groups() List[Int]!ControlError
     # Returns kernel resource counters for this process: CPU times, peak resident size, page faults, block I/O, and context switches.
     # Platforms without them return Unsupported.
-    fn resource_usage() Result[ResourceUsage, ControlError]
+    fn resource_usage() ResourceUsage!ControlError
     # Sets mask 0..511 (0777) and returns the previous mask; Unsupported on Windows.
-    fn umask(mask: Int) Result[Int, ControlError]
+    fn umask(mask: Int) Int!ControlError
     # Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return InvalidInput.
     # Identity changes require OS permission and are Unsupported on Windows.
-    fn set_identity(kind: String, id: Int) Result[Unit, ControlError]
+    fn set_identity(kind: String, id: Int) Unit!ControlError
     # Replaces the supplementary group list with the given numeric ids, each 0 through 2147483647. Requires privilege.
     # Invalid ids return InvalidInput, a lack of privilege returns PermissionDenied, and Windows returns Unsupported.
-    fn set_groups(groups: List[Int]) Result[Unit, ControlError]
+    fn set_groups(groups: List[Int]) Unit!ControlError
 
 # Identity and invocation details for the current process.
 export type ProcessInfo:
@@ -290,7 +287,7 @@ export interface SignalStream:
     fn close() Unit
     # Waits for the next observed signal and returns its number. Signals arriving while no call waits are buffered up to the stream's capacity.
     # Returns Closed after `close`. Cancelling the waiting task unwinds it.
-    fn next() Result[Int, ControlError]
+    fn next() Int!ControlError
 
 # Errors returned by process-control operations.
 export type ControlError:
@@ -363,35 +360,35 @@ export interface System:
     fn working_directory() String
     # Returns the host's name as reported by the operating system.
     # A name that is not valid UTF-8 returns Unsupported.
-    fn hostname() Result[String, SystemError]
+    fn hostname() String!SystemError
     # Returns the current user's home directory path, from the host's environment or account database.
     # A path that is not valid UTF-8 returns Unsupported.
-    fn home_directory() Result[String, SystemError]
+    fn home_directory() String!SystemError
     # Returns the current user's name, numeric ids, home directory, and login shell.
     # The shell is empty when the host does not record one, and text that is not valid UTF-8 returns Unsupported.
-    fn user_info() Result[UserInfo, SystemError]
+    fn user_info() UserInfo!SystemError
     # Returns one NetworkInterface for every address on every interface, including loopback.
     # An interface name that is not valid UTF-8 returns Unsupported.
-    fn network_interfaces() Result[List[NetworkInterface], SystemError]
+    fn network_interfaces() List[NetworkInterface]!SystemError
     # Returns one CpuInfo per logical CPU with its model, clock speed, and cumulative time counters.
-    fn cpus() Result[List[CpuInfo], SystemError]
+    fn cpus() List[CpuInfo]!SystemError
     # Returns memory sizes in bytes, host uptime, load averages, and available parallelism in one snapshot.
     # A host query failure returns the matching SystemError.
-    fn metrics() Result[SystemMetrics, SystemError]
+    fn metrics() SystemMetrics!SystemError
     # Returns the kernel release string, such as `6.1.0-18-amd64`, with surrounding whitespace removed.
     # Returns Unsupported where the host does not expose it.
-    fn os_release() Result[String, SystemError]
+    fn os_release() String!SystemError
     # Returns the kernel build or version string, such as `#1 SMP Debian`, with surrounding whitespace removed.
     # Returns Unsupported where the host does not expose it.
-    fn os_version() Result[String, SystemError]
+    fn os_version() String!SystemError
     # Returns the hardware architecture in `uname -m` style, such as `x86_64`, `aarch64`, or `i686`; other architectures use the target's architecture name.
-    fn machine() Result[String, SystemError]
+    fn machine() String!SystemError
     # Returns the scheduling priority of process `pid` (0 means the calling process) as a nice-style value, from -20 for highest to 19 for lowest. Windows maps its priority classes onto this range.
     # A pid outside 0 through 2147483647 returns InvalidInput, and platforms without priorities return Unsupported.
-    fn get_priority(pid: Int) Result[Int, SystemError]
+    fn get_priority(pid: Int) Int!SystemError
     # Accepts pid 0..2147483647 and priority -20..19 (lower is higher priority).
     # Unix uses nice values; Windows maps ranges to native priority classes.
-    fn set_priority(pid: Int, priority: Int) Result[Unit, SystemError]
+    fn set_priority(pid: Int, priority: Int) Unit!SystemError
 
 # Operating system and processor architecture for the current host.
 export type SystemInfo:

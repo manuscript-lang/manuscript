@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-checker-testparsetypeargument-1.ms",
           "line": 4,
-          "column": 27,
-          "offset": 180
+          "column": 20,
+          "offset": 173
         },
         "fix": {
           "position": {
@@ -39,8 +39,8 @@
         "position": {
           "file": "pkg-checker-testparsetypeargument-1.ms",
           "line": 4,
-          "column": 38,
-          "offset": 191
+          "column": 30,
+          "offset": 183
         },
         "fix": {
           "position": {
@@ -66,7 +66,7 @@
           "file": "pkg-checker-testparsetypeargument-1.ms",
           "line": 5,
           "column": 12,
-          "offset": 214
+          "offset": 205
         },
         "fix": {
           "position": {
@@ -88,7 +88,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testparsetypeargument-1.ms:4:27: resolution: unknown type JsonValue; add: import JsonValue from \"@std/json.ms\"\n   |\n 4 | fn f(text: String) Result[JsonValue, JsonError]:\n   |                           ^\n<DIR>/pkg-checker-testparsetypeargument-1.ms:4:38: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n   |\n 4 | fn f(text: String) Result[JsonValue, JsonError]:\n   |                                      ^\n<DIR>/pkg-checker-testparsetypeargument-1.ms:5:12: resolution: unknown binding parse; add: import parse from \"@std/csv.ms\"\n   |\n 5 |     return parse(text)\n   |            ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testparsetypeargument-1.ms:4:20: resolution: unknown type JsonValue; add: import JsonValue from \"@std/json.ms\"\n   |\n 4 | fn f(text: String) JsonValue!JsonError:\n   |                    ^\n<DIR>/pkg-checker-testparsetypeargument-1.ms:4:30: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n   |\n 4 | fn f(text: String) JsonValue!JsonError:\n   |                              ^\n<DIR>/pkg-checker-testparsetypeargument-1.ms:5:12: resolution: unknown binding parse; add: import parse from \"@std/csv.ms\"\n   |\n 5 |     return parse(text)\n   |            ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

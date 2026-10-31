@@ -14,14 +14,14 @@ import parse_timestamp from "@std/time.ms"
 import posix from "@std/fs.ms"
 import win32 from "@std/fs.ms"
 
-fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
+fn common_result[T, E: Error](result: T!E) T!:
     match result:
         ok(value):
             return ok(value)
         error(cause):
             return error(cause)
 
-fn exercise(path: String) Result[Unit, Error]:
+fn exercise(path: String) Unit!:
     let _written = try common_result(
         result: filesystem().write_file(
             path: path, data: "hello", replace: false

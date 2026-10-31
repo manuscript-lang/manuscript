@@ -23,7 +23,7 @@ fn generated(var rng: Rng, depth: Int) YamlValue:
         entries.add(text(var rng), generated(var rng, depth + 1))
     return YamlValue.ObjectValue(entries)
 
-fn check_round_trip(seed: Int, original: YamlValue) Result[Unit, Error]:
+fn check_round_trip(seed: Int, original: YamlValue) Unit!:
     let rendered = try stringify(original)
     if (try parse(rendered)) != original: return fail(
         "seed {seed}: changed\n{rendered}"
@@ -31,7 +31,7 @@ fn check_round_trip(seed: Int, original: YamlValue) Result[Unit, Error]:
 
     return ok(unit)
 
-fn check_stable(seed: Int, mutated: String, first: YamlValue) Result[Unit, Error]:
+fn check_stable(seed: Int, mutated: String, first: YamlValue) Unit!:
     let again = try stringify(first)
     if (try parse(again)) != first: return fail(
         "seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"

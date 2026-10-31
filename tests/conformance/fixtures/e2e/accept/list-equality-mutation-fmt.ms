@@ -18,7 +18,7 @@ type Visits:
 fn noop() Unit:
     return
 
-fn check_equality(side: String, mutation: String) Result[Unit, Error]:
+fn check_equality(side: String, mutation: String) Unit!:
     var left: List[Element] = []
     var right: List[Element] = []
     let calls = Visits(0)

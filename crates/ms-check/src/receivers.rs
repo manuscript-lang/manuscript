@@ -79,7 +79,7 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
             ("add_default", "collections/map_add_default"),
             ("add_default_from", "collections/map_add_default_from"),
             ("clear", "collections/map_clear"),
-            ("keys", "collections/map_keys"),
+            ("keys", "collections/keys"),
             ("for_each", "collections/map_for_each"),
         ],
     ),

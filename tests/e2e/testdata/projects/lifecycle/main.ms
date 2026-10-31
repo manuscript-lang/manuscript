@@ -41,10 +41,10 @@ fn early(var output: WriteStream) Int:
     let _inner = Resource(label: "inner", output: stdout())
     return report(output: var output, label: "return value", value: 5)
 
-fn failure() Result[Int, TextError]:
+fn failure() Int!TextError:
     return error(TextError("expected"))
 
-fn propagate(output: WriteStream) Result[Int, TextError]:
+fn propagate(output: WriteStream) Int!TextError:
     let _resource = Resource(label: "propagation", output: output)
     let number = try failure()
     return ok(number)
@@ -53,7 +53,7 @@ fn iterable(var output: WriteStream) List[Int]:
     let _ = output.write(data: "iterable\n")
     return [1, 2]
 
-fn exercise() Result[Int, Error]:
+fn exercise() Int!:
     var chosen = stdout()
     var second_out = stdout()
     var first_out = stdout()

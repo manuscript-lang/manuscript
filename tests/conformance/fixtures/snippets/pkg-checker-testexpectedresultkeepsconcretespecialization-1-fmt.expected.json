@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Failure:\n    detail: String\n\nimpl Error for Failure:\n    fn message() String: self.detail.clone()\n\nfn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)\n\nfn first() Result[Int, Error]: fail_cause(Failure(\"empty\"))\n"
+    "fmt": "type Failure:\n    detail: String\n\nimpl Error for Failure:\n    fn message() String: self.detail.clone()\n\nfn fail_cause[T, E: Error](cause: E) T!E: error(cause)\n\nfn first() Int!: fail_cause(Failure(\"empty\"))\n"
   }
 }

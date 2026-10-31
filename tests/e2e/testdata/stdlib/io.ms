@@ -22,11 +22,11 @@ test "stream compositions invoke source implementations and preserve EOF":
 
 test "streams enforce byte limits and preserve original errors":
     var reader = MemoryStream("abc".to_bytes(), 0, closed: false)
-    let limited: Result[Bytes, IoError] = error(IoError.LimitExceeded)
+    let limited: Bytes!IoError = error(IoError.LimitExceeded)
     try expect_equal(read_all(reader.clone(), 2), limited)
     reader.closed = true
 
-    let closed: Result[Bytes, IoError] = error(IoError.Closed)
+    let closed: Bytes!IoError = error(IoError.Closed)
     try expect_equal(read_all(reader), closed)
 
 test "native line reads reject buffered lines after the shared file is closed":
@@ -40,5 +40,5 @@ test "native line reads reject buffered lines after the shared file is closed":
     try expect_equal((try read_line(input)), "first")
     try handle.close()
 
-    let closed: Result[String?, IoError] = error(IoError.Closed)
+    let closed: String?!IoError = error(IoError.Closed)
     try expect_equal(read_line(input), closed)

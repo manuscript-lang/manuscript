@@ -44,7 +44,7 @@ fn compare(left: Int, right: Int) Int:
 
     return 0
 
-fn verify_json() Result[Unit, Error]:
+fn verify_json() Unit!:
     let limits = JsonLimits(max_bytes: 1024, max_depth: 8, max_values: 32)
     let value = try parse(
         text: "\{\"large\":9007199254740993,\"ok\":true\}", limits: limits
@@ -58,7 +58,7 @@ fn verify_json() Result[Unit, Error]:
     ) | try expect_false
     return ok(unit)
 
-fn verify_encoding() Result[Unit, Error]:
+fn verify_encoding() Unit!:
     let bytes = try hex_decode(text: "00ff42", max_bytes: 3)
     hex_encode(data: bytes) | try expect_equal("00ff42")
     (
@@ -70,19 +70,19 @@ fn verify_encoding() Result[Unit, Error]:
     ) | try expect_false
     return ok(unit)
 
-fn verify_url() Result[Unit, Error]:
+fn verify_url() Unit!:
     let query = try parse_query(text: "a=1&a=2&space=hello+world", max_entries: 3)
     query.length() | try expect_equal(3)
     format_query(entries: query) | try expect_equal("a=1&a=2&space=hello+world")
     return ok(unit)
 
-fn verify_binary() Result[Unit, Error]:
+fn verify_binary() Unit!:
     var out = BytesBuilder()
     out.append_int16_be(-32768)
     (try out.build().int16_be(0)).to_int() | try expect_equal(-32768)
     return ok(unit)
 
-fn verify_compression() Result[Unit, Error]:
+fn verify_compression() Unit!:
     let compressed = try compress(
         data: "hello hello hello".to_bytes(), format: "gzip", level: 6, max_bytes: 256
     )
@@ -95,7 +95,7 @@ fn verify_compression() Result[Unit, Error]:
     ) | try expect_false
     return ok(unit)
 
-fn verify_archive() Result[Unit, Error]:
+fn verify_archive() Unit!:
     let entries = [
         ArchiveEntry(
             path: "hello.txt", data: "hello".to_bytes(), directory: false
@@ -156,7 +156,7 @@ test "expanded packages run through compiler":
     ("é🙂").scalar_length() | try expect_equal(2)
     ("é").scalar_values() | try expect_equal([233])
 
-    let text_success: Result[String, StringError] = ok("é")
+    let text_success: String!StringError = ok("é")
     from_scalars(values: [233]) | try expect_equal(text_success)
     sqrt(value: 9.0) | try expect_equal(3.0)
     round(value: 2.5) | try expect_equal(3.0)
@@ -170,17 +170,17 @@ test "expanded packages run through compiler":
     flipped | try expect_equal([2, 1])
 
 test "malformed and bounded inputs return errors":
-    let failure1: Result[Bytes, EncodingError] = error(EncodingError.InvalidData)
+    let failure1: Bytes!EncodingError = error(EncodingError.InvalidData)
     base64_decode(text: "Zh==", url_safe: false, max_bytes: 10) | try expect_equal(
         failure1
     )
 
-    let failure2: Result[Bytes, EncodingError] = error(EncodingError.LimitExceeded)
+    let failure2: Bytes!EncodingError = error(EncodingError.LimitExceeded)
     hex_decode(text: "abcd", max_bytes: 1) | try expect_equal(failure2)
 
     let limits = JsonLimits(max_bytes: 100, max_depth: 2, max_values: 10)
-    let failure3: Result[JsonValue, JsonError] = error(JsonError.InvalidData)
+    let failure3: JsonValue!JsonError = error(JsonError.InvalidData)
     parse(text: "\{\"a\":1,\"a\":2\}", limits: limits) | try expect_equal(failure3)
 
-    let failure4: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
+    let failure4: JsonValue!JsonError = error(JsonError.LimitExceeded)
     parse(text: "[[[]]]", limits: limits) | try expect_equal(failure4)

@@ -35,27 +35,27 @@ extern fn msstd_time_timestamp_to_string(value: Timestamp) String
 extern fn msstd_time_timestamp_shift(
     value: Timestamp,
     duration: Int
-) Result[Timestamp, TimeError]
+) Timestamp!TimeError
 
 extern fn msstd_time_timestamp_difference(
     value: Timestamp,
     other: Timestamp
-) Result[Int, TimeError]
+) Int!TimeError
 
 extern fn msstd_time_timestamp_compare(value: Timestamp, other: Timestamp) Int
 
 extern fn msstd_time_timestamp_calendar(
     value: Timestamp,
     zone: String
-) Result[Calendar, TimeError]
+) Calendar!TimeError
 
 extern fn msstd_time_timestamp_format(
     value: Timestamp,
     pattern: String,
     zone: String
-) Result[String, TimeError]
+) String!TimeError
 
-extern fn msstd_time_parse_timestamp(text: String) Result[Timestamp, TimeError]
+extern fn msstd_time_parse_timestamp(text: String) Timestamp!TimeError
 
 extern fn msstd_time_from_calendar(
     year: Int,
@@ -66,16 +66,13 @@ extern fn msstd_time_from_calendar(
     second: Int,
     nanosecond: Int,
     zone: String
-) Result[Timestamp, TimeError]
+) Timestamp!TimeError
 
 extern fn msstd_time_local_zone() String
 
 extern fn msstd_time_sleep(duration: Int) Unit
 
-extern fn msstd_time_timestamp(
-    seconds: Int,
-    nanoseconds: Int
-) Result[Timestamp, TimeError]
+extern fn msstd_time_timestamp(seconds: Int, nanoseconds: Int) Timestamp!TimeError
 
 extern fn msstd_time_clock() Clock
 
@@ -286,11 +283,11 @@ impl Timestamp:
         return self.nanos
 
     # Adds a duration to this wall-clock timestamp.
-    fn shift(duration: Duration) Result[Timestamp, TimeError]:
+    fn shift(duration: Duration) Timestamp!TimeError:
         return msstd_time_timestamp_shift(self, duration.nanos)
 
     # Returns `self - right` as a duration.
-    fn difference(other: Timestamp) Result[Duration, TimeError]:
+    fn difference(other: Timestamp) Duration!TimeError:
         let nanos = try msstd_time_timestamp_difference(self, other)
         return ok(Duration(nanos: nanos))
 
@@ -325,13 +322,13 @@ impl Timestamp:
 
     # Breaks this timestamp into calendar fields in a time zone: `"UTC"`, `"Local"`, an IANA name such as `"America/New_York"`, or a fixed offset such as `"+05:30"`.
     # An unknown zone returns InvalidInput.
-    fn calendar(zone: String) Result[Calendar, TimeError]:
+    fn calendar(zone: String) Calendar!TimeError:
         return msstd_time_timestamp_calendar(self, zone)
 
     # Formats this timestamp in a zone with a token pattern.
     # Tokens are `YYYY`, `MM`, `DD`, `HH`, `mm`, `ss`, `SSS` (milliseconds), `ZZ` (offset such as `+05:30`), and `zone` (abbreviation); other text is copied.
     # An unknown zone returns InvalidInput.
-    fn format(pattern: String, zone: String) Result[String, TimeError]:
+    fn format(pattern: String, zone: String) String!TimeError:
         return msstd_time_timestamp_format(self, pattern, zone)
 
 # Calendar fields of a timestamp in one time zone.
@@ -411,7 +408,7 @@ export fn hours(n: Int) Duration:
     return nanoseconds(n * 3600000000000)
 
 # Parses an RFC 3339 timestamp with an explicit time zone.
-export fn parse_timestamp(text: String) Result[Timestamp, TimeError]:
+export fn parse_timestamp(text: String) Timestamp!TimeError:
     return msstd_time_parse_timestamp(text)
 
 # Builds a timestamp from calendar fields interpreted in a time zone (see `Timestamp.calendar` for zone names).
@@ -426,7 +423,7 @@ export fn from_calendar(
     second: Int,
     nanosecond: Int,
     zone: String
-) Result[Timestamp, TimeError]:
+) Timestamp!TimeError:
     return msstd_time_from_calendar(
         year, month, day, hour, minute, second, nanosecond, zone
     )
@@ -440,7 +437,7 @@ export fn sleep(duration: Duration) Unit:
     msstd_time_sleep(duration.nanos)
 
 # Constructs a timestamp from Unix seconds and a nanosecond adjustment.
-export fn timestamp(seconds: Int, nanoseconds: Int) Result[Timestamp, TimeError]:
+export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!TimeError:
     return msstd_time_timestamp(seconds, nanoseconds)
 
 impl Error for TimeError:
