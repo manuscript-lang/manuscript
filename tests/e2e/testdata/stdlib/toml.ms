@@ -80,10 +80,10 @@ test "TOML implicit parents dotted keys and arrays of tables":
                         "meta"
                     ).get()
                 )
-            ) ["stock"] != TomlValue.IntValue(3)
+            )["stock"] != TomlValue.IntValue(3)
         )
     )
-    (try items((try entries(products.last().get())) ["variants"])).length() | try expect_equal(
+    (try items((try entries(products.last().get()))["variants"])).length() | try expect_equal(
         2
     )
 

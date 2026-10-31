@@ -228,7 +228,12 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
     {
         return false;
     }
-    if current == Tok::LBracket && matches!(previous, Tok::Name | Tok::SelfKw | Tok::RBracket) {
+    if current == Tok::LBracket
+        && matches!(
+            previous,
+            Tok::Name | Tok::SelfKw | Tok::RBracket | Tok::RParen
+        )
+    {
         return false;
     }
     if previous == Tok::Minus
