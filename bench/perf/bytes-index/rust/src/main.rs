@@ -62,7 +62,8 @@ fn main() {
                 work = 1;
             }
             let iterations = (67108864 / work.max(32) as usize).clamp(256, 1000000);
-            assert_eq!(search(&data, 255, start).unwrap_or(n), expected);
+            let expected_option = if expected < n { Some(expected) } else { None };
+            assert_eq!(search(&data, 255, start), expected_option);
             let now = Instant::now();
             let mut checksum = 0usize;
             for _ in 0..iterations {

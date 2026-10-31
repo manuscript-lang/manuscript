@@ -69,6 +69,29 @@ pooled with the accepted samples.
 [Exploratory 80-case phases](results-2026-10-31/exploratory-80/) stay separate;
 they predate the added near-hit controls and are not pooled with final evidence.
 
+## Integration with main 3cfde58b6
+
+The branch was merged with main `3cfde58b6216ae4db54aeb3ae4e22ee7d527e323`,
+the compiler rebuilt, and both native source tests rerun in Debug and Release.
+The intervening main commits change no native runtime sources; the original
+baseline archive remains source-matched. [Integration records](results-2026-10-31/integration-main-3cf/environment.json)
+retain the new compiler and all program/source/archive hashes, both byte phases,
+and the full 16/100/83 control rerun. All inventories, outputs and checksums pass;
+no broader control crosses the same descriptive screen. Final byte warmups now
+check Optional presence separately, so a hypothetical invalid Some(length) cannot
+masquerade as absence through the checksum sentinel. The timed work is unchanged.
+
+| Integrated case | Before ns | After ns | Rust ns | Paired delta ns |
+| --- | ---: | ---: | ---: | ---: |
+| miss_1 | 1.65 | 1.57 | 2.46 | -0.08 |
+| miss_7 | 2.92 | 3.14 | 3.80 | 0.23 |
+| first_1048576 | 1.83 | 1.78 | 2.71 | -0.12 |
+| miss_1048576 | 237347.21 | 7582.82 | 7170.72 | -229744.83 |
+| last_1048576 | 236543.03 | 7472.85 | 7187.90 | -229206.67 |
+
+These integrated distributions stay separate from the earlier accepted and
+rejected phases. Required CI and a merged-main campaign replay remain pending.
+
 ## Reproduce
 
 Build the compiler/runtime normally, preserve the baseline native archive, and

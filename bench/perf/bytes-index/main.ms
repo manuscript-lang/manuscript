@@ -3,7 +3,12 @@ import stdout from "@std/io.ms"
 import clock from "@std/time.ms"
 
 fn measure(name: String, data: Bytes, start: Int, expected: Int, iterations: Int) Int:
-    if data.index_of_byte(255, start).get(data.length()) != expected: return 1
+    let checked = data.index_of_byte(255, start)
+
+    if expected == data.length():
+        if checked.is_some(): return 1
+    else:
+        if checked.get(-1) != expected: return 1
 
     var checksum = 0
     let started = clock().now()
