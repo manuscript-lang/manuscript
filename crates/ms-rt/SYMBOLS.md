@@ -127,6 +127,7 @@ msrt_realloc(p: *mut u8, size: usize) -> *mut u8
 msrt_free(p: *mut u8)
 msrt_retain(o: *mut Obj)
 msrt_release(o: *mut Obj)
+msrt_obj_share(o: *const Obj) -> *mut Obj
 msrt_drop_slow(o: *mut Obj)
 msrt_str_count(kind: i64, cap: i64)
 msrt_process_on_exit(hook: extern "C" fn())
