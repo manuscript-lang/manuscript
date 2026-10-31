@@ -306,8 +306,8 @@ native! {
         fs_status(opened).map(Object)
     }
 
-    /// `FileHandle.duplicate`: a second handle over a duplicate of the descriptor.
-    fn msstd_fs_file_duplicate(h: ObjRef<Stream>) -> Result<Object<Stream>, StatusCode> {
+    /// `FileHandle.clone`: a second handle over a duplicate of the descriptor.
+    fn msstd_fs_file_clone(h: ObjRef<Stream>) -> Result<Object<Stream>, StatusCode> {
         fs_status(file::duplicate(&h)).map(Object)
     }
 

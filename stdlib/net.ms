@@ -97,7 +97,7 @@ extern fn msrt_net_connection_read(
     timeout: Duration?
 ) Result[Bytes?, IoError]
 
-extern fn msrt_net_connection_duplicate(
+extern fn msrt_net_connection_clone(
     handle: NativeConnection
 ) Result[Connection, NetworkError]
 
@@ -148,10 +148,10 @@ impl Connection:
 
     # Returns a second connection over a duplicate of the socket, which closes on its own, so one task
     # can read while another writes. Both share the stream: bytes read through one are not seen by the other.
-    # While a duplicate is open, closing a copy closes only its descriptor: the peer sees no end of stream, and a call parked on the closed copy ends at its timeout or the next data.
+    # While a clone is open, closing a copy closes only its descriptor: the peer sees no end of stream, and a call parked on the closed copy ends at its timeout or the next data.
     # Returns Unsupported for a TLS connection, whose session state cannot be shared, and Closed on a closed connection.
-    fn duplicate() Result[Connection, NetworkError]:
-        return msrt_net_connection_duplicate(self.native)
+    fn clone() Result[Connection, NetworkError]:
+        return msrt_net_connection_clone(self.native)
 
     # Half-closes the connection so the peer sees end of stream, while this side can keep reading.
     # Returns Unsupported for stream kinds that cannot half-close, and Closed on a closed connection.

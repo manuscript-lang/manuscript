@@ -306,8 +306,8 @@ native! {
         report(c.write(data, opt(has_timeout, timeout)), &err)
     }
 
-    /// `Connection.duplicate()`.
-    fn msrt_net_connection_duplicate(
+    /// `Connection.clone()`.
+    fn msrt_net_connection_clone(
         c: ObjRef<ConnH>,
         out: Out<Object<ConnH>>,
         err: ErrOut,
