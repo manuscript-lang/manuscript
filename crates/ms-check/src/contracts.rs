@@ -711,32 +711,24 @@ impl Checker {
         contract.is_std("Comparable") && builtin_comparable(receiver)
     }
 
-    /// Whether `.clone()` is available for `t`: plain data is, resource handles and functions are not.
+    /// Whether `.clone()` is available for `t`: every value but a resource, which has one owner.
     fn clonable(&self, t: &Ty, state: &mut PropertyState) -> bool {
         match t.kind {
-            Kind::Variable => return t.bounds().iter().any(|b| b.is_std("Clonable")),
-            // A function type does not record what a closure captured, so a copy could duplicate a resource.
-            Kind::Contract | Kind::Function => return false,
-            Kind::Primitive => return true,
+            Kind::Variable => return t.bounds().iter().any(implies_clonable),
+            Kind::Contract => return !t.is_std("Closeable"),
+            Kind::Function | Kind::Primitive => return true,
             _ => {}
         }
-        if t.is_std("List") || t.is_std("Map") || t.is_std("Set") {
+        if self.closeable(t) {
+            return false;
+        }
+        if t.kind == Kind::Native {
             return t
                 .args
                 .iter()
                 .all(|a| self.property_in(a, "Clonable", state));
         }
-        if t.is_std("Regex") {
-            return false;
-        }
-        if t.kind == Kind::Native {
-            return t.is_std("Bytes") || t.is_std("Decimal") || t.is_std("BigInt");
-        }
         if t.def.is_some() {
-            // A resource has one owner: a copy would be closed a second time.
-            if self.closeable(t) {
-                return false;
-            }
             return fields(t)
                 .iter()
                 .all(|f| self.property_in(&f.ty, "Clonable", state));
@@ -1315,6 +1307,11 @@ impl Checker {
         if bound.is_std("Hashable") && self.holds_resource(t, &mut Vec::new()) {
             return format!(
                 "{prefix}it is or holds a Closeable resource, which is closed once by its owner and cannot be a set element or map key; key on a plain value such as an Int id instead"
+            );
+        }
+        if bound.is_std("Clonable") && t.kind != Kind::Variable {
+            return format!(
+                "{prefix}it is or holds a Closeable resource, which has one owner and closes once, so it cannot be copied; move it, or use it in place"
             );
         }
         if matches!(t.kind, Kind::Record | Kind::Alternative)

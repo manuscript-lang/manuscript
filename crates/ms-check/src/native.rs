@@ -48,7 +48,8 @@ impl Checker {
         // dispatch through the contract, rather than native receiver operations.
         // A source or interface operation with type parameters of its own is specialized here too.
         let generic = |m: &crate::types::Method| {
-            !m.variables.is_empty() && (m.native.as_str().is_empty() || m.native == "contract")
+            !m.variables.is_empty()
+                && (m.native.as_str().is_empty() || m.native == "contract" || m.contract.is_some())
         };
         if methods.len() != 1
             || (!generic(&methods[0])

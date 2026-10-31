@@ -270,7 +270,7 @@ impl Closeable for TaskTransport[In, Out]:
 
 # The body of a task: runs `entry` on the task's end of its channel and stores its one result in
 # `slot`. The end closes when the task ends, however it ends.
-fn run[T, In, Out](
+fn run[T, In: Clonable, Out: Clonable](
     entry: fn(Channel[Out, In]) T,
     up: Shared[Lane[Out]],
     down: Shared[Lane[In]],
@@ -288,7 +288,7 @@ fn run[T, In, Out](
     held.value.append(value)
 
 # The group's end of a task channel.
-fn group_end[In, Out](
+fn group_end[In: Clonable, Out: Clonable](
     down: Shared[Lane[In]],
     up: Shared[Lane[Out]],
     lifetime: TaskChannelLease
@@ -300,7 +300,7 @@ fn group_end[In, Out](
     )
 
 # What a group keeps of a task until it is collected: enough to wait for it and close its channel.
-export type Entry[T, In, Out]:
+export type Entry[T, In: Clonable, Out: Clonable]:
     # Internal state: the runtime handle of the task.
     handle: Int
     # Internal state: empty until the task returns, then its one result.
@@ -326,7 +326,7 @@ fn collect[T](scope: Int, handle: Int, values: Shared[List[T]]) Result[T, TaskEr
     panic("Task: the result was already taken")
 
 # A started task that returns a `T`, with the group's end of its channel.
-export type Task[T, In = Unit, Out = Unit]:
+export type Task[T, In: Clonable = Unit, Out: Clonable = Unit]:
     # Internal state: the runtime scope of the task.
     scope: Int
     # Internal state: the runtime handle of the task.
@@ -356,7 +356,7 @@ impl Task[T, In, Out]:
 # A task that passes its limit is cancelled and has the result `TimedOut`. There is no limit unless one is given. A cancelled task releases the values its functions own.
 # Tasks run on the one runtime thread and switch only when one waits (`result`, `wait`, a channel, sleeping, I/O).
 # A fault in a task ends the program, unless `contain_faults` is set: then the task ends with the result `Faulted(report)`, its siblings keep running, and values its frames owned are not released. A task owns the values its closure captures; return results instead of sharing them.
-export type TaskGroup[T, In = Unit, Out = Unit]:
+export type TaskGroup[T, In: Clonable = Unit, Out: Clonable = Unit]:
     # Limit for every task started in the group, counted from the group's creation; none for no limit.
     timeout: Duration?
     # Whether a fault in a task ends only that task (`Faulted`) instead of the program. A fault never collected is dropped by `close`.

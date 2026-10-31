@@ -53,9 +53,6 @@ pub struct Summary {
     pub params: Vec<(Name, ParamMode)>,
     /// What the result borrows from.
     pub result: ResultOrigin,
-    /// Type parameters whose values the body may copy (`xs.reversed()` on a `List[T]`): an
-    /// instance that binds one of them to a resource would close each copy.
-    pub copies: Vec<Name>,
 }
 
 impl Summary {
@@ -86,7 +83,6 @@ impl Summary {
                 })
                 .collect(),
             result: ResultOrigin::default(),
-            copies: Vec::new(),
         }
     }
 
@@ -323,33 +319,6 @@ fn method_modes(
         };
     }
     native_method_modes(method, count, label)
-}
-
-/// The summary of the source callable `call` runs, with the callee's type, its type variables,
-/// and the receiver type of a method, so a caller can bind the callee's type parameters.
-pub fn callee_summary<'s>(
-    m: &ModuleHir,
-    call: &Expr,
-    summaries: &'s Summaries,
-) -> Option<(&'s Summary, Ty, Vec<Ty>, Option<Ty>)> {
-    match m.resolution(call) {
-        Resolution::Function(s) if s.native.as_str().is_empty() => {
-            let func = FuncRef::of_decl(s.decl.clone()?);
-            let summary = summaries.get(&(s.module, func.id()))?;
-            Some((summary, s.ty_opt()?, s.variables.borrow().clone(), None))
-        }
-        Resolution::Method(method) if method.native.as_str().is_empty() => {
-            let func = method.decl.as_ref()?;
-            let summary = summaries.get(&(method.module, func.id()))?;
-            Some((
-                summary,
-                method.ty.clone(),
-                method.variables.clone(),
-                Some(method.receiver.clone()),
-            ))
-        }
-        _ => None,
-    }
 }
 
 /// How a method treats its receiver, for a method used as a value.

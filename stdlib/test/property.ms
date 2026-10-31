@@ -252,7 +252,7 @@ export fn strings(
     return lists(element_of(letters), 0, max_length).map(fn cs: cs.join(""))
 
 # Generates a 2-element `Pair`.
-export fn pairs[A, B](first: Gen[A], second: Gen[B]) Gen[Pair[A, B]]:
+export fn pairs[A: Clonable, B: Clonable](first: Gen[A], second: Gen[B]) Gen[Pair[A, B]]:
     return first.zip(second, fn a, b: Pair(a, b))
 
 # Run settings. `ms test` fills them from `--runs`, `--seed`, and `--fuzz` through environment variables.
