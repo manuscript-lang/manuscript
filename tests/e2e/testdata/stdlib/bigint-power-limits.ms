@@ -9,6 +9,10 @@ test "big integer powers enforce the exact result bit limit":
     try expect_equal(from_int(2).pow(limit), limited)
     try expect_equal(from_int(-2).pow(limit), limited)
 
+    let oversized = largest_power.multiply(from_int(2))
+    try expect_equal(oversized.pow(1), limited)
+    try expect_equal((try oversized.pow(0)).to_int(), 1)
+
     let power = try from_int(1).shift_left(limit / 3 + 1)
     let dense = power.subtract(from_int(1))
     try expect_equal(dense.pow(3), limited)

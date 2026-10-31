@@ -466,6 +466,13 @@ mod tests {
             let two = msstd_bigint_from_int(2);
             assert_eq!(msstd_bigint_pow(two, MAX_BITS - 1, &mut out), STATUS_OK);
             assert_eq!(val(out).bits(), MAX_BITS as u64);
+            let oversized = msstd_bigint_multiply(out, two);
+            assert_eq!(
+                msstd_bigint_pow(oversized, 1, &mut out),
+                STATUS_LIMIT_EXCEEDED
+            );
+            assert_eq!(msstd_bigint_pow(oversized, 0, &mut out), STATUS_OK);
+            assert_eq!(val(out), &BigInt::from(1));
             assert_eq!(
                 msstd_bigint_pow(two, MAX_BITS, &mut out),
                 STATUS_LIMIT_EXCEEDED
