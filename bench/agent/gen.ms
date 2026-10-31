@@ -18,7 +18,11 @@ import gen_c52 from "./challenges/c52-sql-engine/gen.ms"
 import gen_c53 from "./challenges/c53-markdown-html/gen.ms"
 import gen_c54 from "./challenges/c54-regex-engine/gen.ms"
 import gen_c55 from "./challenges/c55-jq-lite/gen.ms"
+import gen_c56 from "./challenges/c56-make-lite/gen.ms"
 import gen_c57 from "./challenges/c57-assembler-vm/gen.ms"
+import gen_c58 from "./challenges/c58-mini-vcs/gen.ms"
+import gen_c59 from "./challenges/c59-spreadsheet/gen.ms"
+import gen_c60 from "./challenges/c60-issue-tracker/gen.ms"
 
 export fn main() Int:
     let args = arguments()
@@ -73,8 +77,20 @@ export fn main() Int:
     if which == "c55" or which == "all":
         gen_c55()
         ran += 1
+    if which == "c56" or which == "all":
+        gen_c56()
+        ran += 1
     if which == "c57" or which == "all":
         gen_c57()
+        ran += 1
+    if which == "c58" or which == "all":
+        gen_c58()
+        ran += 1
+    if which == "c59" or which == "all":
+        gen_c59()
+        ran += 1
+    if which == "c60" or which == "all":
+        gen_c60()
         ran += 1
     if ran == 0:
         stderr().write("unknown challenge {which}\n").get()
