@@ -457,7 +457,21 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!YamlError:
                 or code == 125
             )
         ): break
-        if key and code == 58: break
+
+        if key and code == 58:
+            let next = flow.codes.get(flow.pos + 1, default: 0)
+            if (
+                next == 0
+                or next == 9
+                or next == 10
+                or next == 32
+                or next == 44
+                or next == 91
+                or next == 93
+                or next == 123
+                or next == 125
+            ): break
+
         if code == 58 and flow.codes.get(flow.pos + 1, default: 0) == 32: return error(
             flow_invalid(flow, "unexpected mapping colon")
         )
