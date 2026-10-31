@@ -144,3 +144,31 @@ fn anonymous_functions_at_column_zero_remain_continuations() {
         }
     }
 }
+
+#[test]
+fn inferred_callbacks_at_column_zero_remain_continuations() {
+    let file = Arc::from("recover.ms");
+    for callback in [
+        "fn value: value",
+        "fn value : value",
+        "fn left, right: left + right",
+        "fn: 1",
+    ] {
+        for ending in ["\n", "\r\n"] {
+            for surround in [
+                format!("let callbacks = [\n{callback},\n]\n"),
+                format!("let callback = (\n{callback}\n)\n"),
+                format!("let value = apply(\n{callback},\n)\n"),
+            ] {
+                let valid = surround.replace('\n', ending);
+                let original = ms_syntax::parser::parse(&file, &valid).unwrap();
+                let source = valid + "fn broken(\n";
+                let (module, diagnostics) = ms_syntax::parse_partial(&file, &source);
+                assert_eq!(module.decls.len(), 1, "{source:?}: {diagnostics:?}");
+                assert_eq!(module.decls[0].pos, original.decls[0].pos);
+                assert_eq!(diagnostics.len(), 1, "{source:?}: {diagnostics:?}");
+                assert_eq!(module.source.as_ref(), source);
+            }
+        }
+    }
+}
