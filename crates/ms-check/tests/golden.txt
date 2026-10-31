@@ -5087,7 +5087,7 @@ fn length(values: List[Int]) Int:
 fn os_name() String:
     return system().info().os
 resolution	1	8	7	module does not export ListBuilder; @std/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections.ms"'
-resolution	2	8	53	unknown standard module @std/system.ms; did you mean '@std/bytes.ms'?
+resolution	2	8	53	unknown standard module @std/system.ms
 resolution	6	12	175	unknown binding system; add: import system from "@std/process.ms"fn label(value: Int) String:
     return "{value}"
 test "methods":
@@ -6524,7 +6524,7 @@ import from_int from "@std/bigint.ms"
 fn compare(left: Int, right: Int) Int: left - right
 resolution	2	8	55	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
 resolution	2	15	62	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	3	8	105	unknown standard module @std/bigint.ms; did you mean '@std/bitset.ms'?test %q:
+resolution	3	8	105	unknown standard module @std/bigint.mstest %q:
     let bytes = Bytes(values: [0, 255])
     let list = [0, 1]
 %sparse	1	6	5	expected text in double quotes, found '%'test "continues after preconditions":
