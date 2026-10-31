@@ -27,7 +27,7 @@ fn step[T](
         mutate(values: var values, mode: mode, fill: fill)
     visits.count = visits.count + 1
 
-fn observe[T](var values: List[T], mode: String, fill: List[T], callback: Bool) Result[
+fn observe[T: Clonable](var values: List[T], mode: String, fill: List[T], callback: Bool) Result[
     List[T], Error
 ]:
     var seen: List[T] = []

@@ -877,6 +877,12 @@ pub fn field_is_ref(t: &Ty, name: Name) -> bool {
     t.def.as_ref().is_some_and(|d| d.field_is_ref(name))
 }
 
+/// Whether the bound `b` makes a type parameter `Clonable`: `Data` and `Hashable` hold no
+/// resource, so their values can be copied, as `Hashable` implies `Equal`.
+pub fn implies_clonable(b: &Ty) -> bool {
+    b.is_std("Clonable") || b.is_std("Data") || b.is_std("Hashable")
+}
+
 /// Whether `t` is a borrowing value: a record with a `ref` field, or one holding such a value
 /// in a field, payload or type argument. It must not outlive what it borrows.
 pub fn borrows(t: &Ty) -> bool {
