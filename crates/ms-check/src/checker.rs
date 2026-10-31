@@ -683,10 +683,15 @@ impl Checker {
                     stdlib::standard_module_symbol(pn, item.name)
                 }
             } else {
-                self.imports
-                    .get(module.file, item.id)
-                    .and_then(|target| self.p.symbols.get(&target).cloned())
-                    .and_then(|names| names.borrow().get(&item.name).cloned())
+                self.imports.get(module.file, item.id).and_then(|target| {
+                    self.p.symbols.get(&target).and_then(|names| {
+                        names
+                            .borrow()
+                            .get(&item.name)
+                            .filter(|symbol| symbol.module == target)
+                            .cloned()
+                    })
+                })
             };
             let usable = found.as_ref().filter(|f| f.export).cloned();
             let Some(found) = usable else {
@@ -979,7 +984,14 @@ impl Checker {
                             continue;
                         };
                         let old = self.scope.clone();
-                        let vars = self.sym(i.name).map(|s| s.variables()).unwrap_or_default();
+                        let mut vars = self.sym(i.name).map(|s| s.variables()).unwrap_or_default();
+                        if let Some(symbol) = self.sym(i.name) {
+                            vars.extend(stdlib::operation_variables(&format!(
+                                "{}/{}",
+                                symbol.ty().id,
+                                method.func.name
+                            )));
+                        }
                         self.scope = self.variable_scope(&vars);
                         let typ = self.resolve(param.ty.as_ref());
                         self.expression(default, Some(&typ));

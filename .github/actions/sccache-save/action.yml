@@ -12,8 +12,11 @@ inputs:
 runs:
   using: composite
   steps:
+    # `!cancelled()` saves after a failed step too. sccache entries are content-addressed, so a partial cache
+    # is still valid, and a red main would otherwise leave every later main run (and the PRs that restore
+    # from it) compiling from scratch.
     - name: Save cargo cache
-      if: github.ref == 'refs/heads/main' && inputs.cache-hit != 'true'
+      if: ${{ !cancelled() && github.ref == 'refs/heads/main' && inputs.cache-hit != 'true' }}
       uses: actions/cache/save@v6
       with:
         path: |

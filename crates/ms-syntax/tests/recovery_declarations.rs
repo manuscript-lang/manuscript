@@ -63,3 +63,115 @@ fn long_unfinished_lists_preserve_following_declarations() {
         }
     }
 }
+
+#[test]
+fn unfinished_headers_preserve_contextual_and_adjacent_declarations() {
+    let file = Arc::from("recover.ms");
+    for declaration in [
+        "opaque type Token:\n    value: Int\n",
+        "bench \"increment\": consume(1)\n",
+        "bench\"increment\": consume(1)\n",
+        "test\"example\": consume(1)\n",
+        "import(Item) from \"items.ms\"\n",
+    ] {
+        for ending in ["\n", "\r\n"] {
+            let declaration = declaration.replace('\n', ending);
+            let original = ms_syntax::parser::parse(&file, &declaration).unwrap();
+            let prefix = "fn broken(\n".replace('\n', ending);
+            let source =
+                prefix.clone() + &declaration + &"fn tail() Int: 7\n".replace('\n', ending);
+            let (module, diagnostics) = ms_syntax::parse_partial(&file, &source);
+            assert_eq!(
+                module.decls.len(),
+                original.decls.len() + 1,
+                "{declaration:?}: {diagnostics:?}"
+            );
+            assert_eq!(
+                module.imports.len(),
+                original.imports.len(),
+                "{declaration:?}: {diagnostics:?}"
+            );
+            let recovered_pos = module
+                .imports
+                .first()
+                .map(|i| i.pos)
+                .unwrap_or(module.decls[0].pos);
+            assert_eq!(recovered_pos.offset as usize, prefix.len());
+            assert_eq!(recovered_pos.line, 2);
+            assert_eq!(diagnostics.len(), 1, "{declaration:?}: {diagnostics:?}");
+            assert!(diagnostics[0].message.starts_with("unterminated delimiter"));
+            assert_eq!(module.source.as_ref(), source);
+        }
+    }
+}
+
+#[test]
+fn contextual_names_in_multiline_parameters_are_not_declarations() {
+    let file = Arc::from("recover.ms");
+    for name in [
+        "bench",
+        "opaque",
+        "benchmark",
+        "opaque_type",
+        "imported",
+        "letter",
+    ] {
+        for ending in ["\n", "\r\n"] {
+            let function =
+                format!("fn valid(\n{name}: Int,\n) Int: {name}\n").replace('\n', ending);
+            ms_syntax::parser::parse(&file, &function).unwrap();
+            let source = function + "fn broken(\n";
+            let (module, diagnostics) = ms_syntax::parse_partial(&file, &source);
+            assert_eq!(module.decls.len(), 1, "{name}: {diagnostics:?}");
+            assert_eq!(diagnostics.len(), 1);
+            assert_eq!(module.source.as_ref(), source);
+        }
+    }
+}
+
+#[test]
+fn anonymous_functions_at_column_zero_remain_continuations() {
+    let file = Arc::from("recover.ms");
+    for callback in ["fn(value: Int) Int: value", "fn (value: Int) Int: value"] {
+        for ending in ["\n", "\r\n"] {
+            let valid = format!("let callbacks = [\n{callback},\n]\n").replace('\n', ending);
+            ms_syntax::parser::parse(&file, &valid).unwrap();
+            let source = valid + "fn broken(\n";
+            let (module, diagnostics) = ms_syntax::parse_partial(&file, &source);
+            assert_eq!(module.decls.len(), 1, "{callback}: {diagnostics:?}");
+            assert_eq!(diagnostics.len(), 1, "{callback}: {diagnostics:?}");
+            assert_eq!(module.source.as_ref(), source);
+        }
+    }
+}
+
+#[test]
+fn inferred_callbacks_at_column_zero_remain_continuations() {
+    let file = Arc::from("recover.ms");
+    for callback in [
+        "fn value: value",
+        "fn value : value",
+        "fn left, right: left + right",
+        "fn: 1",
+        "fn value\n: value",
+        "fn value # comment\n: value",
+        "fn left # comment\n, right: left + right",
+    ] {
+        for ending in ["\n", "\r\n"] {
+            for surround in [
+                format!("let callbacks = [\n{callback},\n]\n"),
+                format!("let callback = (\n{callback}\n)\n"),
+                format!("let value = apply(\n{callback},\n)\n"),
+            ] {
+                let valid = surround.replace('\n', ending);
+                let original = ms_syntax::parser::parse(&file, &valid).unwrap();
+                let source = valid + "fn broken(\n";
+                let (module, diagnostics) = ms_syntax::parse_partial(&file, &source);
+                assert_eq!(module.decls.len(), 1, "{source:?}: {diagnostics:?}");
+                assert_eq!(module.decls[0].pos, original.decls[0].pos);
+                assert_eq!(diagnostics.len(), 1, "{source:?}: {diagnostics:?}");
+                assert_eq!(module.source.as_ref(), source);
+            }
+        }
+    }
+}

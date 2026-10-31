@@ -6,7 +6,7 @@ Decision: the user rejected per-call bookkeeping in generated code; a fault capt
 
 Apply when: adding lowered operations, inlining, source fault traces, or call fast paths.
 Evidence: [default frame regressions](../../crates/ms-cli/tests/default_frames.rs), [default lowering](../../crates/ms-lower/src/call.rs), and the frozen `tests-e2e-testfaultsourcelocations-20` corpus fixture.
-Evidence: [expected failures](../../tests/conformance/expect-fail.txt), [call depth fixture](../../tests/e2e/testdata/accept/call-depth.ms), [fault and frame docs](../../documentation/contributing/compiler/lowering/cleanup-and-faults.md).
+Evidence: [expected failures](../../tests/conformance/expect-fail.txt), [call depth fixture](../../tests/conformance/fixtures/e2e/accept/call-depth.ms), [fault and frame docs](../../documentation/contributing/compiler/lowering/cleanup-and-faults.md).
 Evidence: [frame walkers and budget regressions](../../crates/ms-rt/src/fault.rs), [Windows native unwind anchor](../../crates/ms-rt/src/sys_windows.rs), [stack-size contract](../../documentation/core-language/errors/faults.md).
 Evidence: [LLVM translation and six-target object tests](../../crates/ms-clif/src/llvm_ir.rs), [actual backend frame comparison](../../crates/ms-cli/tests/llvm.rs), [runtime fault definitions](../../crates/ms-rt/src/fault.rs).
 Evidence: [glue selection and bounded-traversal regressions](../../crates/ms-clif/src/llvm_ir.rs), [deep-literal and source-frame guards](../../crates/ms-cli/tests/llvm.rs).

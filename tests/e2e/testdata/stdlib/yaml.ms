@@ -774,3 +774,10 @@ test "YAML parse without limits stops alias bombs and deep nesting":
 
     let lifted = parse(deep, YamlLimits())
     try expect_true(lifted.is_ok())
+
+test "YAML plain scalars and keys keep Unicode spaces":
+    (try scalar(text: "a: x\u{a0}\n", expected: "x\u{a0}"))
+    (try scalar(text: "a: \u{3000}x\n", expected: "\u{3000}x"))
+
+    let root = parse(text: "k\u{a0}: 1\n") | try expect_ok | try entries
+    try expect_true(root.contains("k\u{a0}"))

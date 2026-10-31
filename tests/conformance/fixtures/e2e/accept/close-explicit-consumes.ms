@@ -24,6 +24,15 @@ fn branchy(explicit: Bool) Unit!:
         let _ = g.close()
     return ok(unit)
 
+fn relocked(second_fails: Bool) Unit!:
+    var g = Gate(0)
+    let _ = g.close()
+    g = Gate(0)
+    if second_fails:
+        return ok(unit)
+    let _ = g.close()
+    return ok(unit)
+
 fn ok_of(r: Unit!) Bool:
     if let _ok = r:
         return true
@@ -35,3 +44,7 @@ test "an explicit close consumes the binding":
 test "a close on one path leaves the other path to the scope":
     try expect_equal(ok_of(branchy(true)), true)
     try expect_equal(ok_of(branchy(false)), false)
+
+test "a binding given a new value is closed afresh":
+    try expect_equal(ok_of(relocked(true)), false)
+    try expect_equal(ok_of(relocked(false)), true)
