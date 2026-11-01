@@ -4,6 +4,7 @@
 
 use crate::guide::api::{ApiDeclaration, ApiMember, ApiModule, standard_library};
 use crate::guide::json::{self, Json};
+use ms_check::stdlib;
 use std::collections::{BTreeMap, BTreeSet};
 
 fn declaration_kind(kind: &str) -> &str {
@@ -101,8 +102,9 @@ pub fn site_files() -> BTreeMap<String, Vec<u8>> {
             "stdlib/{}.ms",
             if name == "prelude" { "core" } else { name }
         );
-        // A module in a stdlib subdirectory (`test/property`) gets one flat page (`test-property`).
-        let name = name.replace('/', "-");
+        // The page is named by the module stem (`http`), not its package, so links stay stable; a
+        // module in the `test` package (`test/property`) gets one flat page (`test-property`).
+        let name = stdlib::module_stem(&module.path).replace('/', "-");
         let body = render(module, true);
         files.insert(
             format!("documentation/standard-library/reference/{name}.md"),
