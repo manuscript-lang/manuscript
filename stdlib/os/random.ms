@@ -1,4 +1,5 @@
 import Bytes from "@std/bytes.ms"
+import msstd_random_draw_int, msstd_random_draw_uuid, msstd_random_draw_float, msstd_random_draw_shuffle, msstd_random_draw_choice, msstd_random_entropy from "@std/internal/random.ms"
 
 # Errors returned when random input is invalid or entropy generation fails.
 export type RandomError:
@@ -18,23 +19,6 @@ interface Entropy:
     # A negative or larger count returns InvalidInput; a source failure returns Failed. The operating system source observes task cancellation between 64 KiB chunks.
     var fn bytes(count: Int) Bytes!RandomError
 
-extern fn msstd_random_draw_int(
-    entropy: Entropy,
-    min: Int,
-    max_exclusive: Int?
-) Int!RandomError
-
-extern fn msstd_random_draw_uuid(entropy: Entropy) String!RandomError
-
-extern fn msstd_random_draw_float(entropy: Entropy) Float!RandomError
-
-extern fn msstd_random_draw_shuffle[T](
-    entropy: Entropy,
-    values: List[T]
-) List[T]!RandomError
-
-extern fn msstd_random_draw_choice[T](entropy: Entropy, values: List[T]) T?!RandomError
-
 impl Error for RandomError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `random: <reason>`.
     fn message() String:
@@ -42,8 +26,6 @@ impl Error for RandomError:
             InvalidInput: return "random: invalid input"
             LimitExceeded: return "random: limit exceeded"
             Failed(message): return message.clone()
-
-extern fn msstd_random_entropy() Entropy
 
 # Returns a secure integer at least `min` and below `max_exclusive` when supplied, from the operating system's entropy.
 export fn secure_int(min: Int, max_exclusive: Int?) Int!RandomError:

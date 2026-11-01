@@ -7,22 +7,7 @@ import ReadStream from "@std/io/io.ms"
 import TlsOptions from "@std/net/net.ms"
 import WebSocket from "@std/net/net.ms"
 import WebSocketError from "@std/net/net.ms"
-
-extern fn msrt_http_headers_append(
-    headers: HttpHeaders,
-    name: String,
-    value: Bytes
-) Unit!HttpError
-
-extern fn msrt_http_headers_values(value: HttpHeaders, name: String) List[Bytes]?
-
-extern fn msrt_http_headers_names(value: HttpHeaders) List[String]
-
-extern fn msrt_http_headers_remove(value: HttpHeaders, name: String) Bool
-
-extern fn msrt_http_headers_clone(value: HttpHeaders) HttpHeaders
-
-extern fn msrt_http_headers_new() HttpHeaders
+import msrt_http_client_close, msrt_http_client_request, msrt_http_client_request_bytes, msrt_http_client_request_stream, msrt_http_server_address, msrt_http_server_adopt, msrt_http_server_close, msrt_http_server_wait, msrt_http_body_close, msrt_http_body_metadata, msrt_http_body_read, msrt_http_body_read_all from "@std/internal/http.ms"
 
 # Errors returned for invalid requests, transport failures, timeouts, and limits.
 export type HttpError:
@@ -158,38 +143,6 @@ impl HttpMethod:
 
 # The runtime handle behind a `HttpClient`.
 export extern type NativeHttpClient
-
-extern fn msrt_http_client_close(handle: NativeHttpClient) Unit
-
-extern fn msrt_http_client_request(
-    handle: NativeHttpClient,
-    method: HttpMethod,
-    url: String,
-    headers: HttpHeaders,
-    body: String,
-    max_response_bytes: Int?,
-    timeout: Duration?
-) ResponseBody!HttpError
-
-extern fn msrt_http_client_request_bytes(
-    handle: NativeHttpClient,
-    method: HttpMethod,
-    url: String,
-    headers: HttpHeaders,
-    body: Bytes,
-    max_response_bytes: Int?,
-    timeout: Duration?
-) ResponseBody!HttpError
-
-extern fn msrt_http_client_request_stream(
-    handle: NativeHttpClient,
-    method: HttpMethod,
-    url: String,
-    headers: HttpHeaders,
-    body: ReadStream,
-    max_response_bytes: Int?,
-    timeout: Duration?
-) ResponseBody!HttpError
 
 # Reusable HTTP client with connection pooling and explicit response limits.
 # Outbound headers retain separate values in their stored order.
@@ -331,14 +284,6 @@ export type HttpResponse:
 # The runtime handle behind a `HttpServer`.
 export extern type NativeHttpServer
 
-extern fn msrt_http_server_address(handle: NativeHttpServer) String
-
-extern fn msrt_http_server_adopt(handle: NativeHttpServer, connection: Int) Unit
-
-extern fn msrt_http_server_close(handle: NativeHttpServer) Unit
-
-extern fn msrt_http_server_wait(handle: NativeHttpServer) Unit!IoError
-
 # A running HTTP server. Close it to stop accepting new requests.
 export type HttpServer:
     # The runtime handle; it is released by `close` and owned by this value.
@@ -385,17 +330,6 @@ export type HttpServerOptions:
 
 # The runtime handle behind a `ResponseBody`.
 export extern type NativeResponseBody
-
-extern fn msrt_http_body_close(handle: NativeResponseBody) Unit
-
-extern fn msrt_http_body_metadata(handle: NativeResponseBody) HttpResponseMetadata
-
-extern fn msrt_http_body_read(
-    handle: NativeResponseBody,
-    max_bytes: Int?
-) Bytes?!IoError
-
-extern fn msrt_http_body_read_all(handle: NativeResponseBody) Bytes!IoError
 
 # Streaming response body returned by reusable HTTP client operations.
 # Metadata remains available after close and shares one mutable header object.
@@ -539,3 +473,19 @@ impl Error for HttpError:
             Closed: return "HTTP: resource is closed"
             Timeout: return "HTTP: operation timed out"
             Failed(message): return message.clone()
+
+extern fn msrt_http_headers_append(
+    headers: HttpHeaders,
+    name: String,
+    value: Bytes
+) Unit!HttpError
+
+extern fn msrt_http_headers_values(value: HttpHeaders, name: String) List[Bytes]?
+
+extern fn msrt_http_headers_names(value: HttpHeaders) List[String]
+
+extern fn msrt_http_headers_remove(value: HttpHeaders, name: String) Bool
+
+extern fn msrt_http_headers_clone(value: HttpHeaders) HttpHeaders
+
+extern fn msrt_http_headers_new() HttpHeaders

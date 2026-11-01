@@ -269,7 +269,8 @@ export type ListEntry[T]:
     value: T
 
 # Creates a list containing `value` repeated `count` times.
-export fn filled[T](value: T, count: Int, max_items: Int?) List[T]!CollectionError: ...
+export fn filled[T](value: T, count: Int, max_items: Int?) List[T]!CollectionError:
+    return msrt_list_filled(value, count, max_items)
 
 # Creates the integers from `start` up to but excluding `end`, counting by one. Written `start..end`; the name `range` is not importable. The list is empty when `end <= start`. `for index in 0..count:` runs as a counter loop without allocating the list. As a stored list, more than about 268 million items is a fault; use `range_by` to bound the size with an error value.
 fn range(start: Int, end: Int) List[Int]: ...
@@ -280,7 +281,8 @@ export fn range_by(
     end: Int,
     step: Int,
     max_items: Int?
-) List[Int]!CollectionError: ...
+) List[Int]!CollectionError:
+    return msrt_list_range_by(start, end, step, max_items)
 
 # Builds a map from entries. Later entries replace earlier values for duplicate keys.
 export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) Map[K, V]: ...
@@ -290,7 +292,8 @@ impl Error for CollectionError:
     fn message() String: ...
 
 # Concatenates the inner lists in order into one new list (JavaScript `Array.prototype.flat`).
-export fn flatten[T](lists: List[List[T]]) List[T]: ...
+export fn flatten[T](lists: List[List[T]]) List[T]:
+    return msrt_list_flatten(lists)
 
 # List operations written in Manuscript. Each interface gathers the operations that need a bound on the element type;
 # a List[T] has them only when T meets the bound. They apply wherever List is used, without an import.
@@ -561,9 +564,6 @@ impl ListSearch[T] for List[T]:
 
         return none
 
-# The runtime keeps the first of equal elements, hashing them when the element type is hashable; the compiler lowers this call from the element type.
-extern fn msrt_list_distinct[T](values: List[T]) List[T]
-
 interface ListDistinct[T: Equal]:
     fn distinct() List[T]
 
@@ -705,6 +705,7 @@ impl MapUpdate[T, U] for Map[T, U]:
 
 import Closeable from "@std/core.ms"
 import StringBuilder from "@std/string.ms"
+import msrt_list_distinct, msrt_list_filled, msrt_list_flatten, msrt_list_range_by from "@std/internal/collections.ms"
 
 # Closing the resources a map holds. The compiler calls this when a map of resources goes out of scope; the values close newest entry first.
 interface MapCloseValues[U: Closeable]:

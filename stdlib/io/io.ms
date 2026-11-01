@@ -1,29 +1,7 @@
 import Closeable, Iterator from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
-import msstd_terminal_event_kind, msstd_terminal_event_text, msstd_terminal_event_ctrl, msstd_terminal_event_alt, msstd_terminal_event_shift, msstd_terminal_event_columns, msstd_terminal_event_rows from "@std/internal/io.ms"
-
-extern fn msstd_io_copy(
-    input: ReadStream,
-    output: WriteStream,
-    max_bytes: Int?
-) Int!IoError
-
-extern fn msstd_io_read_all(input: ReadStream, max_bytes: Int?) Bytes!IoError
-
-extern fn msstd_io_read_line(input: ReadStream, max_bytes: Int?) String?!IoError
-
-extern fn msstd_io_redirect_null(which: Int) Unit!IoError
-
-extern fn msstd_io_stdin() ReadStream
-
-extern fn msstd_io_stdout() WriteStream
-
-extern fn msstd_io_stderr() WriteStream
-
-extern fn msstd_io_files() Files
-
-extern fn msstd_io_terminal() Terminal
+import msstd_terminal_event_kind, msstd_terminal_event_text, msstd_terminal_event_ctrl, msstd_terminal_event_alt, msstd_terminal_event_shift, msstd_terminal_event_columns, msstd_terminal_event_rows, msstd_io_copy, msstd_io_read_all, msstd_io_read_line, msstd_io_redirect_null, msstd_io_stdin, msstd_io_stdout, msstd_io_stderr, msstd_io_files, msstd_io_terminal, msstd_terminal_raw_terminal_close, msstd_terminal_raw_terminal_next_event, msstd_terminal_raw_terminal_size_status, msstd_terminal_raw_terminal_size_columns, msstd_terminal_raw_terminal_size_rows, msstd_terminal_raw_terminal_move_cursor, msstd_terminal_raw_terminal_show_cursor, msstd_terminal_raw_terminal_erase from "@std/internal/io.ms"
 
 # A file-like byte stream that returns `none` at end of input.
 export interface File:
@@ -277,37 +255,6 @@ interface Terminal:
 
 # The runtime handle behind a `RawTerminal`.
 export extern type NativeRawTerminal
-
-extern fn msstd_terminal_raw_terminal_close(handle: NativeRawTerminal) Unit
-
-extern fn msstd_terminal_raw_terminal_next_event(
-    handle: NativeRawTerminal,
-    timeout: Duration?
-) Unit?!TerminalError
-
-extern fn msstd_terminal_raw_terminal_size_status(
-    handle: NativeRawTerminal
-) Unit!TerminalError
-
-extern fn msstd_terminal_raw_terminal_size_columns(handle: NativeRawTerminal) Int
-
-extern fn msstd_terminal_raw_terminal_size_rows(handle: NativeRawTerminal) Int
-
-extern fn msstd_terminal_raw_terminal_move_cursor(
-    handle: NativeRawTerminal,
-    row: Int,
-    column: Int
-) Unit!TerminalError
-
-extern fn msstd_terminal_raw_terminal_show_cursor(
-    handle: NativeRawTerminal,
-    visible: Bool
-) Unit!TerminalError
-
-extern fn msstd_terminal_raw_terminal_erase(
-    handle: NativeRawTerminal,
-    region: Int
-) Unit!TerminalError
 
 # Raw terminal input and cursor control. Closing it, or leaving the
 # scope that acquired it by return, error, fault, or cancellation, restores the

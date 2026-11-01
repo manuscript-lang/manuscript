@@ -1,6 +1,4 @@
-import msrt_html_escape, msrt_html_unescape from "@std/internal/html.ms"
-
-extern fn msrt_html_parse(text: String, limits: HtmlLimits?) HtmlNode!HtmlError
+import msrt_html_escape, msrt_html_unescape, msrt_html_parse from "@std/internal/html.ms"
 
 # Errors returned for malformed HTML or parser resource limits.
 export type HtmlError:

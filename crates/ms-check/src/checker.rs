@@ -683,7 +683,15 @@ impl Checker {
                         .and_then(|names| names.borrow().get(&item.name).cloned());
                     f.filter(|f| f.module == pn)
                 } else {
-                    stdlib::standard_module_symbol(pn, item.name)
+                    // A file that mixes native declarations and bodies exports both halves under its own name.
+                    stdlib::standard_module_symbol(pn, item.name).or_else(|| {
+                        let twin = stdlib::import_source(item)?;
+                        stdlib::ensure_source(&twin)
+                            .exports
+                            .get(&item.name)
+                            .filter(|s| s.module == twin.file)
+                            .cloned()
+                    })
                 }
             } else {
                 self.imports.get(module.file, item.id).and_then(|target| {
@@ -697,7 +705,12 @@ impl Checker {
                 })
             };
             let hidden = stdlib::is_internal(path) && !module.file.starts_with("@std/");
-            let usable = found.as_ref().filter(|f| f.export && !hidden).cloned();
+            // An internal module declares the natives of its host and names the host's private types.
+            let host = stdlib::is_internal(module.file.as_str());
+            let usable = found
+                .as_ref()
+                .filter(|f| (f.export || host) && !hidden)
+                .cloned();
             let Some(found) = usable else {
                 let end = Pos::new(
                     item.name_pos.offset + item.name.len() as u32,

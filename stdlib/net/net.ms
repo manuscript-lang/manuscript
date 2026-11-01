@@ -13,48 +13,7 @@ import HttpServerOptions from "@std/net/http.ms"
 import IoError from "@std/io/io.ms"
 import Timestamp from "@std/os/time.ms"
 import WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
-import msrt_url_encode_component from "@std/internal/net.ms"
-
-extern fn msrt_net_ip_address_text(value: IpAddress) String
-
-extern fn msrt_net_ip_address_family(value: IpAddress) Bool
-
-extern fn msrt_net_cidr_text(value: Cidr) String
-
-extern fn msrt_net_contains_ip(cidr: Cidr, address: IpAddress) Bool!NetworkError
-
-extern fn msrt_net_parse_cidr(text: String) Cidr!NetworkError
-
-extern fn msrt_net_parse_ip(text: String) IpAddress!NetworkError
-
-extern fn msrt_net_network() Network
-
-extern fn msrt_tls_parse_certificates(
-    pem: String,
-    max_certificates: Int?
-) List[CertificateInfo]!TlsError
-
-extern fn msrt_tls_verify_certificates(
-    chain_pem: String,
-    roots_pem: String,
-    server_name: String,
-    now: Timestamp
-) Unit!TlsError
-
-extern fn msrt_url_decode_component(text: String) String!UrlError
-
-extern fn msrt_url_format(value: Url) String!UrlError
-
-extern fn msrt_url_format_query(entries: List[QueryEntry]) String
-
-extern fn msrt_url_parse(text: String) Url!UrlError
-
-extern fn msrt_url_parse_query(
-    text: String,
-    max_entries: Int?
-) List[QueryEntry]!UrlError
-
-extern fn msrt_url_resolve(base: Url, reference: String) Url!UrlError
+import msrt_url_encode_component, msrt_net_ip_address_text, msrt_net_ip_address_family, msrt_net_cidr_text, msrt_net_contains_ip, msrt_net_parse_cidr, msrt_net_parse_ip, msrt_net_network, msrt_tls_parse_certificates, msrt_tls_verify_certificates, msrt_url_decode_component, msrt_url_format, msrt_url_format_query, msrt_url_parse, msrt_url_parse_query, msrt_url_resolve, msrt_net_connection_close, msrt_net_connection_local_address, msrt_net_connection_peer_address, msrt_net_connection_read, msrt_net_connection_clone, msrt_net_connection_shutdown_write, msrt_net_connection_tls_info, msrt_net_connection_write, msrt_net_connection_write_bytes, msrt_net_datagram_address, msrt_net_datagram_close, msrt_net_datagram_receive, msrt_net_datagram_send, msrt_net_datagram_send_bytes, msrt_net_listener_accept, msrt_net_listener_accept_raw, msrt_net_listener_address, msrt_net_listener_close, msrt_websocket_close, msrt_websocket_ping, msrt_websocket_ping_bytes, msrt_websocket_receive, msrt_websocket_send, msrt_websocket_send_bytes, msrt_websocket_subprotocol from "@std/internal/net.ms"
 
 # Errors returned by socket, DNS, and network connection operations.
 export type NetworkError:
@@ -80,36 +39,6 @@ export type NetworkError:
 
 # The runtime handle behind a `Connection`.
 export extern type NativeConnection
-
-extern fn msrt_net_connection_close(handle: NativeConnection) Unit
-
-extern fn msrt_net_connection_local_address(handle: NativeConnection) String
-
-extern fn msrt_net_connection_peer_address(handle: NativeConnection) String
-
-extern fn msrt_net_connection_read(
-    handle: NativeConnection,
-    max_bytes: Int?,
-    timeout: Duration?
-) Bytes?!IoError
-
-extern fn msrt_net_connection_clone(handle: NativeConnection) Connection!NetworkError
-
-extern fn msrt_net_connection_shutdown_write(handle: NativeConnection) Unit!NetworkError
-
-extern fn msrt_net_connection_tls_info(handle: NativeConnection) TlsInfo!TlsError
-
-extern fn msrt_net_connection_write(
-    handle: NativeConnection,
-    data: String,
-    timeout: Duration?
-) Unit!IoError
-
-extern fn msrt_net_connection_write_bytes(
-    handle: NativeConnection,
-    data: Bytes,
-    timeout: Duration?
-) Unit!IoError
 
 # A connected stream socket, optionally protected by TLS.
 # Several tasks may wait on one connection: each `read` parks until data arrives, and tasks are woken together, so the one that finds data proceeds and the rest wait again. Writers sharing a connection should serialize whole messages themselves.
@@ -171,30 +100,6 @@ export type Datagram:
 
 # The runtime handle behind a `DatagramSocket`.
 export extern type NativeDatagramSocket
-
-extern fn msrt_net_datagram_address(handle: NativeDatagramSocket) String
-
-extern fn msrt_net_datagram_close(handle: NativeDatagramSocket) Unit
-
-extern fn msrt_net_datagram_receive(
-    handle: NativeDatagramSocket,
-    max_bytes: Int?,
-    timeout: Duration?
-) Datagram!NetworkError
-
-extern fn msrt_net_datagram_send(
-    handle: NativeDatagramSocket,
-    data: String,
-    address: String,
-    timeout: Duration?
-) Unit!NetworkError
-
-extern fn msrt_net_datagram_send_bytes(
-    handle: NativeDatagramSocket,
-    data: Bytes,
-    address: String,
-    timeout: Duration?
-) Unit!NetworkError
 
 # A connectionless socket for sending and receiving datagrams.
 export type DatagramSocket:
@@ -315,20 +220,6 @@ export type DnsRecord:
 
 # The runtime handle behind a `Listener`.
 export extern type NativeListener
-
-extern fn msrt_net_listener_accept(
-    handle: NativeListener,
-    timeout: Duration?
-) Connection!NetworkError
-
-extern fn msrt_net_listener_accept_raw(
-    handle: NativeListener,
-    timeout: Duration?
-) Int!NetworkError
-
-extern fn msrt_net_listener_address(handle: NativeListener) String
-
-extern fn msrt_net_listener_close(handle: NativeListener) Unit
 
 # A listening socket that accepts incoming connections.
 # Several tasks may call `accept` on one listener (an accept pool); each incoming connection goes to exactly one of them.
@@ -670,29 +561,6 @@ export type WebSocketError:
 
 # The runtime handle behind a `WebSocket`.
 export extern type NativeWebSocket
-
-extern fn msrt_websocket_close(handle: NativeWebSocket) Unit
-
-extern fn msrt_websocket_ping(handle: NativeWebSocket, data: String) Unit!WebSocketError
-
-extern fn msrt_websocket_ping_bytes(
-    handle: NativeWebSocket,
-    data: Bytes
-) Unit!WebSocketError
-
-extern fn msrt_websocket_receive(
-    handle: NativeWebSocket
-) WebSocketMessage?!WebSocketError
-
-extern fn msrt_websocket_send(handle: NativeWebSocket, data: String) Unit!WebSocketError
-
-extern fn msrt_websocket_send_bytes(
-    handle: NativeWebSocket,
-    data: Bytes,
-    text: Bool
-) Unit!WebSocketError
-
-extern fn msrt_websocket_subprotocol(handle: NativeWebSocket) String
 
 # A WebSocket connection. Send and receive byte messages with an explicit text flag.
 export type WebSocket:

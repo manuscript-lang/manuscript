@@ -1,19 +1,6 @@
 import Data from "@std/core.ms"
 import parse_float from "@std/math/math.ms"
-
-# The compiler lowers these two calls from the type argument; see `json_parse` and `json_stringify` in ms-lower.
-extern fn msrt_json_parse[T](
-    text: String,
-    limits: JsonLimits?,
-    ignore_unknown_fields: Bool
-) T!JsonError
-
-extern fn msrt_json_stringify[T](
-    value: T,
-    max_bytes: Int?,
-    indent: Int?,
-    strict: Bool
-) String!JsonError
+import msrt_json_parse, msrt_json_stringify from "@std/internal/json.ms"
 
 # Errors returned for malformed JSON or configured input and nesting limits.
 export type JsonError:
