@@ -1,6 +1,6 @@
 # conform: tags=closures,scope-cleanup,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import share, Shared, lock from "@std/concurrency/shared.ms"
+import share, Shared from "@std/concurrency/shared.ms"
 import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
@@ -16,7 +16,7 @@ fn slow(milliseconds: Int, label: String) String:
     return label
 
 fn record(log: Shared[List[String]], entry: String) Unit:
-    var lines = lock(log)
+    var lines = log.lock()
     lines.value.append(entry)
 
 fn slow_square(n: Int) Int:
@@ -199,7 +199,7 @@ test "a task can wait for another task's value":
         fn ch:
             pause(10)
 
-            var items = lock(producer)
+            var items = producer.lock()
             items.value.append(42)
             items.close().get(none)
             return 0

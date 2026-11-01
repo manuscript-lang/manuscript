@@ -2,19 +2,19 @@
 # conform: phase=run
 import Channel from "@std/io/channels.ms"
 import stdout from "@std/io/io.ms"
-import Shared, share, lock from "@std/concurrency/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
 fn holder(box: Shared[Int], chan: Channel[Unit, Unit]) Int:
     var ch = chan.clone()
-    var _g = lock(box)
+    var _g = box.lock()
     let _never = ch.receive()
     _g.close().get(none)
     return 0
 
 fn waiter(box: Shared[Int]) Int:
-    var g = lock(box)
+    var g = box.lock()
     g.value = 1
     g.close().get(none)
     return 1

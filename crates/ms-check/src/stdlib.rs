@@ -240,6 +240,12 @@ pub fn import_source(path: &str, name: Name) -> Option<ModRef> {
     })
 }
 
+/// The bundled source module an import from `path` depends on: the module itself, or the source
+/// half of a mixed module, whose methods apply to the native half's types.
+fn import_dependency(path: &str) -> Option<ModRef> {
+    standard_source_module(n(path)).or_else(|| standard_source_module(n(&format!("{path}+source"))))
+}
+
 /// Whether the path names a native bundled module.
 pub fn is_native_module(path: Name) -> bool {
     ensure_standard();
@@ -380,7 +386,7 @@ fn source_reach(module: &ModRef) -> Vec<ModRef> {
     let mut stack: Vec<ModRef> = vec![module.clone()];
     while let Some(m) = stack.pop() {
         for item in &m.imports {
-            if let Some(dep) = import_source(&item.path, item.name)
+            if let Some(dep) = import_dependency(&item.path)
                 && !seen.iter().any(|s| s.file == dep.file)
             {
                 seen.push(dep.clone());
@@ -429,7 +435,7 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
     }
     for g in &group {
         for item in &g.imports {
-            if let Some(dep) = import_source(&item.path, item.name)
+            if let Some(dep) = import_dependency(&item.path)
                 && !group.iter().any(|m| m.file == dep.file)
             {
                 ensure_source(&dep);
@@ -540,7 +546,7 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
         }
         state.insert(module.file, 1);
         for item in &module.imports {
-            if let Some(dep) = import_source(&item.path, item.name) {
+            if let Some(dep) = import_dependency(&item.path) {
                 visit(&dep, state, ordered, diagnostics);
             }
         }

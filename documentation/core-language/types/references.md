@@ -47,11 +47,11 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 `Shared[T]` from `@std/concurrency/shared.ms` gives several owners one reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow.
 
-To change the value, lock it with `lock(box)` from `@std/concurrency/shared.ms` into a `var` binding. The guard holds the payload as `guard.value` and puts it back when the binding goes out of scope, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. `ms check` rejects the visible case, a `lock` of the same written place (`box`, `self.lines`) while the guard of an earlier `lock` of it is still open (before its scope ends or its `close()`) in the same function; a second handle to the box, or a call that locks it, is caught only by the runtime. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `Shared` has no other public operations; the primitives `lock` is built on are private to its module. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
+To change the value, lock it into a `var` binding: `var guard = box.lock()`. The guard holds the payload as `guard.value` and puts it back when the binding goes out of scope, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. `ms check` rejects the visible case, a `lock` of the same written place (`box`, `self.lines`) while the guard of an earlier `lock` of it is still open (before its scope ends or its `close()`) in the same function; a second handle to the box, or a call that locks it, is caught only by the runtime. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `Shared` has no other public operations; the primitives `lock` is built on are private to its module. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import lock, share, Shared from "@std/concurrency/shared.ms"
+import share, Shared from "@std/concurrency/shared.ms"
 import expect_equal from "@std/test/test.ms"
 
 type Counter:
@@ -62,7 +62,7 @@ impl Counter:
         self.values.append(1)
 
 fn bump(shared: Shared[Counter]) Unit:
-    var guard = lock(shared)
+    var guard = shared.lock()
     guard.value.bump()
 
 test "change a shared value through its guard":

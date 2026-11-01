@@ -2,7 +2,7 @@ import Data from "@std/core.ms"
 import IoError from "@std/io/io.ms"
 import WriteStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
-import Shared, share, lock from "@std/concurrency/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 import FileHandle, FileSystemError, open from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 import stringify from "@std/data/json.ms"
@@ -101,7 +101,7 @@ impl Transport for StreamTransport:
     fn write(data: String) Unit!LogError:
         if self.gate.is_shut(): return error(LogError.Closed)
 
-        var stream = lock(self.stream)
+        var stream = self.stream.lock()
 
         match stream.value.write(data):
             ok(_): return ok(unit)
@@ -110,7 +110,7 @@ impl Transport for StreamTransport:
     fn write_bytes(data: Bytes) Unit!LogError:
         if self.gate.is_shut(): return error(LogError.Closed)
 
-        var stream = lock(self.stream)
+        var stream = self.stream.lock()
 
         match stream.value.write_bytes(data):
             ok(_): return ok(unit)
@@ -119,7 +119,7 @@ impl Transport for StreamTransport:
     fn flush() Unit!LogError:
         if self.gate.is_shut(): return error(LogError.Closed)
 
-        var stream = lock(self.stream)
+        var stream = self.stream.lock()
 
         match stream.value.flush():
             ok(_): return ok(unit)
@@ -147,7 +147,7 @@ impl Transport for FileTransport:
         if not self.inner.gate.is_shut():
             self.inner.close()
 
-            var file = lock(self.file)
+            var file = self.file.lock()
             file.value.close().get(none)
 
 # A structured logger: level filtering, bound fields, and a pluggable `Transport`. The `_with` methods

@@ -1019,12 +1019,14 @@ impl Walker<'_> {
             self.let_pos.insert(b.uid, s.pos);
         }
         let class = self.cx.classes.class(&b.ty);
-        // `var x = handle.get()` would change a copy, not the shared value.
+        // `var x = handle.get()` would change a copy, not the shared value. A source method of the
+        // handle (`lock`) returns a value of its own.
         if mutable
             && class != Class::Copy
             && let ExprKind::Call { callee, .. } = &value.kind
             && let ExprKind::Member { left, .. } = &callee.kind
             && self.copy_handle(left)
+            && !matches!(self.cx.m.resolution(callee), Resolution::Method(m) if m.native.is_empty())
         {
             let text = self.expr_text(value);
             self.expr(value, Demand::Read);

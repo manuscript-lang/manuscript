@@ -1,6 +1,6 @@
 # conform: tags=records,interfaces,mutation,stdlib-shared,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import share, Shared, lock from "@std/concurrency/shared.ms"
+import share, Shared from "@std/concurrency/shared.ms"
 import expect_equal, expect_fault from "@std/test/test.ms"
 
 type Config:
@@ -53,7 +53,7 @@ impl Counter:
         self.values.append(1)
 
 fn bump(shared: Shared[Counter]) Unit:
-    var guard = lock(shared)
+    var guard = shared.lock()
     guard.value.bump()
 
 test "lock changes the payload every holder sees":
@@ -65,7 +65,7 @@ test "lock changes the payload every holder sees":
 
 test "a read while the payload is locked faults":
     let shared = share(Counter([]))
-    var held = lock(shared)
+    var held = shared.lock()
     let message = try expect_fault(
         fn() Unit:
             let _length = shared.get().values.length()
@@ -76,14 +76,14 @@ test "a read while the payload is locked faults":
     try expect_equal(shared.get().values.length(), 1)
 
 fn append_seven(shared: Shared[List[Int]]) Unit:
-    var items = lock(shared)
+    var items = shared.lock()
     items.value.append(7)
 
 fn drop_while_locked() Unit:
     let shared: Shared[List[Int]] = share([])
     append_seven(shared)
 
-    let guard = lock(shared)
+    let guard = shared.lock()
     if guard.value.length() != 1:
         return
 
@@ -104,7 +104,7 @@ test "an optional payload keeps its value through lock":
     let shared: Shared[Int?] = share(five)
     try expect_equal(shared.get(), 5)
 
-    var held = lock(shared)
+    var held = shared.lock()
     held.value = held.value
     try held.close()
     try expect_equal(shared.get(), 5)
@@ -115,7 +115,7 @@ type Pair:
 
 test "a record payload with an optional field after a flag survives lock":
     let shared = share(Pair(flag: 1 == 1, value: 5))
-    var pair = lock(shared)
+    var pair = shared.lock()
     pair.value = Pair(flag: 1 == 2, value: pair.value.value)
     try pair.close()
     try expect_equal(shared.get().value, 5)

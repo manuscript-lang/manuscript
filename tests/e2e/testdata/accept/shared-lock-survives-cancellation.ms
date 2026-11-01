@@ -1,18 +1,18 @@
 import stdout from "@std/io/io.ms"
-import Shared, share, lock from "@std/concurrency/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
 fn hold(box: Shared[List[Int]]) Int:
-    var guard = lock(box)
+    var guard = box.lock()
     guard.value.append(2)
     sleep(nanoseconds(5000000000))
     guard.close().get(none)
     return 0
 
 fn add_slowly(box: Shared[List[Int]]) Int:
-    var guard = lock(box)
+    var guard = box.lock()
     guard.value.append(1)
     sleep(nanoseconds(2000000))
     guard.value.append(2)
@@ -20,7 +20,7 @@ fn add_slowly(box: Shared[List[Int]]) Int:
     return 0
 
 fn add(box: Shared[List[Int]], value: Int) Int:
-    var guard = lock(box)
+    var guard = box.lock()
     guard.value.append(value)
     guard.close().get(none)
     return value
@@ -35,7 +35,7 @@ test "a task cancelled while holding the lock puts the payload back":
     try group.close()
     box.get().clone() | try expect_equal([1, 2])
 
-    var guard = lock(box)
+    var guard = box.lock()
     guard.value.append(3)
     try guard.close()
     box.get().clone() | try expect_equal([1, 2, 3])

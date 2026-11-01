@@ -2,7 +2,7 @@
 # conform: phase=run
 # conform: timeout=20
 import stdout from "@std/io/io.ms"
-import Shared, share, lock from "@std/concurrency/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 
 # Closing a guard hands the payload back without copying it, so locking costs the same for a large
@@ -17,7 +17,7 @@ export fn main() Int:
     let box: Shared[List[Int]] = share(big)
 
     for round in 0..3000:
-        var guard = lock(box)
+        var guard = box.lock()
         guard.value[0] = round
 
     stdout().write("first {box.get()[0]} length {box.get().length()}\n").get()

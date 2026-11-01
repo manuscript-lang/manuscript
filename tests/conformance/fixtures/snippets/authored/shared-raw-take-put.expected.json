@@ -9,7 +9,7 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export take; @std/concurrency/shared.ms exports: Shared, SharedGuard, lock, share; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/concurrency/shared.ms\"'",
+        "message": "module does not export take; @std/concurrency/shared.ms exports: Shared, SharedGuard, share; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/concurrency/shared.ms\"'",
         "position": {
           "file": "shared-raw-take-put.ms",
           "line": 3,
@@ -26,7 +26,7 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export put; @std/concurrency/shared.ms exports: Shared, SharedGuard, lock, share; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/concurrency/shared.ms\"'",
+        "message": "module does not export put; @std/concurrency/shared.ms exports: Shared, SharedGuard, share; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/concurrency/shared.ms\"'",
         "position": {
           "file": "shared-raw-take-put.ms",
           "line": 3,
@@ -81,7 +81,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/shared-raw-take-put.ms:3:16: resolution: module does not export take; @std/concurrency/shared.ms exports: Shared, SharedGuard, lock, share; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/concurrency/shared.ms\"'\n   |\n 3 | import Shared, take, put from \"@std/concurrency/shared.ms\"\n   |                ^^^^\n<DIR>/shared-raw-take-put.ms:3:22: resolution: module does not export put; @std/concurrency/shared.ms exports: Shared, SharedGuard, lock, share; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/concurrency/shared.ms\"'\n   |\n 3 | import Shared, take, put from \"@std/concurrency/shared.ms\"\n   |                      ^^^\n<DIR>/shared-raw-take-put.ms:6:17: resolution: unknown binding take; add: import take from \"@std/io/streams.ms\"\n   |\n 6 |     var items = take(box)\n   |                 ^\n<DIR>/shared-raw-take-put.ms:8:5: resolution: unknown binding put; declare it with 'let put = ...' before use, define 'fn put(...) T:', or import it from a module\n   |\n 8 |     put(box, items)\n   |     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/shared-raw-take-put.ms:3:16: resolution: module does not export take; @std/concurrency/shared.ms exports: Shared, SharedGuard, share; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/concurrency/shared.ms\"'\n   |\n 3 | import Shared, take, put from \"@std/concurrency/shared.ms\"\n   |                ^^^^\n<DIR>/shared-raw-take-put.ms:3:22: resolution: module does not export put; @std/concurrency/shared.ms exports: Shared, SharedGuard, share; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/concurrency/shared.ms\"'\n   |\n 3 | import Shared, take, put from \"@std/concurrency/shared.ms\"\n   |                      ^^^\n<DIR>/shared-raw-take-put.ms:6:17: resolution: unknown binding take; add: import take from \"@std/io/streams.ms\"\n   |\n 6 |     var items = take(box)\n   |                 ^\n<DIR>/shared-raw-take-put.ms:8:5: resolution: unknown binding put; declare it with 'let put = ...' before use, define 'fn put(...) T:', or import it from a module\n   |\n 8 |     put(box, items)\n   |     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

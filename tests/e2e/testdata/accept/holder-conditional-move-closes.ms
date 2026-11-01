@@ -1,5 +1,5 @@
 import Closeable from "@std/core.ms"
-import Shared, share, lock from "@std/concurrency/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 import expect_equal from "@std/test/test.ms"
 
 type Door:
@@ -8,7 +8,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        var seen = lock(self.log)
+        var seen = self.log.lock()
         seen.value.append(self.id)
         return ok(unit)
 

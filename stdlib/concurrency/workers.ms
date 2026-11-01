@@ -18,7 +18,7 @@ import Bytes from "@std/bytes.ms"
 import Channel, ChannelError, Transport from "@std/io/channels.ms"
 import Closeable, Data from "@std/core.ms"
 import parse, stringify from "@std/data/json.ms"
-import Shared, share, lock from "@std/concurrency/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 import msrt_pipe_new, msrt_pipe_peer, msrt_pipe_send, msrt_pipe_send_bytes, msrt_pipe_close, msrt_worker_start, msrt_worker_end, msrt_worker_cancel, msrt_worker_wait from "@std/internal/workers.ms"
 
 extern fn msrt_pipe_receive(end: Int) String!PipeEnd
@@ -158,7 +158,7 @@ impl Worker[In, Out]:
     # A worker that is still reading ends once its input is closed; call `cancel` first to stop one that is not.
     # Safe to call again: later calls return the same outcome.
     var fn wait() Unit!WorkerError:
-        var held = lock(self.ended)
+        var held = self.ended.lock()
         if held.value.length() > 0:
             return held.value[0].clone()
 
@@ -228,7 +228,7 @@ impl WorkerGroup[In, Out]:
         let channel = Channel[In, Out](transport: WorkerTransport[In, Out](end: near))
         let ended: Shared[List[Unit!WorkerError]] = share([])
         let worker = Worker(handle, channel, near, ended)
-        var started = lock(self.workers)
+        var started = self.workers.lock()
         started.value.append(worker.clone())
         started.close().get(none)
         return ok(worker)
@@ -236,7 +236,7 @@ impl WorkerGroup[In, Out]:
 impl Closeable for WorkerGroup[In, Out]:
     # Cancels workers that have not ended, closes their channels, and waits for them. Safe to call again.
     var fn close() Unit!:
-        var started = lock(self.workers)
+        var started = self.workers.lock()
 
         for index in 0..started.value.length():
             started.value[index].cancel()

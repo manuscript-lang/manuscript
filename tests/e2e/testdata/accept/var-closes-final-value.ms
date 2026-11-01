@@ -1,5 +1,5 @@
 import Closeable from "@std/core.ms"
-import Shared, share, lock from "@std/concurrency/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
@@ -10,7 +10,7 @@ type Counter:
 
 impl Closeable for Counter:
     var fn close() Unit!:
-        var seen = lock(self.log)
+        var seen = self.log.lock()
         seen.value.append(self.value)
         return ok(unit)
 

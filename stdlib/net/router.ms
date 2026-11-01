@@ -16,7 +16,7 @@ import WebSocket, WebSocketError from "@std/net/net.ms"
 import Logger from "@std/log.ms"
 import uuid_v4 from "@std/os/random.ms"
 import monotonic from "@std/os/time.ms"
-import Shared, share, lock from "@std/concurrency/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 
 # Errors returned while registering a route.
 export type RouterError:
@@ -469,7 +469,7 @@ type TestExchange:
     state: Shared[TestState]
 
 fn finished(state: Shared[TestState]) HttpResponse!HttpError:
-    var guard = lock(state)
+    var guard = state.lock()
     if not guard.value.sent:
         return ok(HttpResponse(status: 204, headers: headers(), body: "".to_bytes()))
 
@@ -482,7 +482,7 @@ fn finished(state: Shared[TestState]) HttpResponse!HttpError:
 
 impl HttpExchange for TestExchange:
     fn close() Unit:
-        var guard = lock(self.state)
+        var guard = self.state.lock()
         guard.value.closed = true
 
     fn headers() HttpHeaders:
@@ -506,7 +506,7 @@ impl HttpExchange for TestExchange:
 
         let max = if requested > 65536: 65536 else: requested
 
-        var guard = lock(self.state)
+        var guard = self.state.lock()
         if guard.value.closed: return error(IoError.Closed)
 
         let chunk = guard.value.unread.clone()
@@ -529,7 +529,7 @@ impl HttpExchange for TestExchange:
         if headers.contains("Transfer-Encoding"): return error(HttpError.InvalidInput)
         if headers.contains("Connection"): return error(HttpError.InvalidInput)
 
-        var guard = lock(self.state)
+        var guard = self.state.lock()
         if guard.value.closed: return error(HttpError.Closed)
         if guard.value.sent: return error(HttpError.InvalidInput)
 
@@ -541,7 +541,7 @@ impl HttpExchange for TestExchange:
     fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!HttpError:
         try self.send_headers(status, headers)
 
-        var guard = lock(self.state)
+        var guard = self.state.lock()
         guard.value.complete = true
         if self.request.method.text() == "HEAD" or not has_body(status): return ok(unit)
 
@@ -559,7 +559,7 @@ impl HttpExchange for TestExchange:
         return self.write_bytes(data.to_bytes())
 
     fn write_bytes(data: Bytes) Unit!IoError:
-        var guard = lock(self.state)
+        var guard = self.state.lock()
         if guard.value.closed: return error(IoError.Closed)
         if not guard.value.sent or guard.value.complete: return error(
             IoError.InvalidInput
@@ -601,12 +601,12 @@ export fn with_request_headers(
     return new_tap(exchange, headers(), request)
 
 fn counted(state: Shared[TapState], status: Int, bytes: Int) Unit:
-    var guard = lock(state)
+    var guard = state.lock()
     if status != 0: guard.value.status = status
     guard.value.bytes += bytes
 
 fn snapshot(state: Shared[TapState]) TapState:
-    var guard = lock(state)
+    var guard = state.lock()
     return TapState(status: guard.value.status, bytes: guard.value.bytes)
 
 # `sent` plus the `extra` headers it does not already have.

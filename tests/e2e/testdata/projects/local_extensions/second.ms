@@ -2,7 +2,7 @@ import expect_equal, expect_false from "@std/test/test.ms"
 import Item, Box, Holder, Choice from "./domain.ms"
 import Read, invoke, relay, as_view from "./contracts.ms"
 import Closeable from "@std/core.ms"
-import share, lock from "@std/concurrency/shared.ms"
+import share from "@std/concurrency/shared.ms"
 
 impl Read[Int] for Item:
     fn get() Int:
@@ -54,7 +54,7 @@ import Resource from "./domain.ms"
 
 impl Closeable for Resource:
     var fn close() Unit!:
-        var guard = lock(self.events)
+        var guard = self.events.lock()
         guard.value.append(value: 20)
         return ok(unit)
 

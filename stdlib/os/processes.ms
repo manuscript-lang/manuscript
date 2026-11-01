@@ -11,7 +11,7 @@ import Closeable, Data from "@std/core.ms"
 import ReadStream, WriteStream from "@std/io/io.ms"
 import parse, stringify from "@std/data/json.ms"
 import CommandError, Stdio from "@std/os/process.ms"
-import Shared, share, lock from "@std/concurrency/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 import Duration from "@std/os/time.ms"
 import msrt_obj_share from "@std/internal/processes.ms"
 
@@ -152,7 +152,7 @@ fn decode[T: Data](body: String) T!ChannelError:
 # frame so its caller sees what the reader recorded (a `RESULT` or `CLOSE`) before reading again.
 fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Frame?!ChannelError:
     while true:
-        var state = lock(inbox)
+        var state = inbox.lock()
         let available = state.value.pending.length()
 
         if available >= 5:
@@ -179,14 +179,14 @@ fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Frame?!ChannelError:
         if chunk.is_empty():
             return ok(none)
 
-        var more = lock(inbox)
+        var more = inbox.lock()
         more.value.pending = more.value.pending.concat(chunk)
 
     return ok(none)
 
 # Marks that the other end sent no more messages, keeping the result body if this was it.
 fn finish(inbox: Shared[Inbox], result: String?) Unit:
-    var state = lock(inbox)
+    var state = inbox.lock()
     state.value.finished = true
     if result.is_some():
         state.value.result = result
@@ -195,7 +195,7 @@ fn finish(inbox: Shared[Inbox], result: String?) Unit:
 # the child: the write could wait forever on a full pipe the child never reads).
 fn close_end(link: NativeLink, inbox: Shared[Inbox], notify: Bool = true) Unit:
     var first = false
-    var state = lock(inbox)
+    var state = inbox.lock()
     first = not state.value.closed
     state.value.closed = true
     state.close().get(none)
@@ -384,7 +384,7 @@ impl Closeable for Process[T, In, Out]:
     var fn close() Unit!:
         stop_child(self.link, self.inbox, self.native)
 
-        var all = lock(self.registry)
+        var all = self.registry.lock()
 
         for index in 0..all.value.length():
             if all.value[index].id == self.id:
@@ -424,12 +424,12 @@ impl ProcessGroup[T, In, Out]:
         let link = msstd_process_forked_link(native)
         let inbox: Shared[Inbox] = share(Inbox())
         var id = 0
-        var next = lock(self.started)
+        var next = self.started.lock()
         id = next.value
         next.value = id + 1
         next.close().get(none)
 
-        var all = lock(self.processes)
+        var all = self.processes.lock()
         all.value.append(Open(id, native.clone(), link.clone(), inbox))
         all.close().get(none)
         return ok(
@@ -462,7 +462,7 @@ impl ProcessGroup[T, In, Out]:
 impl Closeable for ProcessGroup[T, In, Out]:
     # Closes every open process: its channel, then the child, which is stopped and joined. Safe to call again.
     var fn close() Unit!:
-        var all = lock(self.processes)
+        var all = self.processes.lock()
         for index in 0..all.value.length():
             stop_child(
                 all.value[index].link, all.value[index].inbox, all.value[index].native

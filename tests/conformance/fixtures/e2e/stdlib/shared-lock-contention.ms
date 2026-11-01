@@ -2,13 +2,13 @@
 # conform: phase=run
 # conform: timeout=20
 import stdout from "@std/io/io.ms"
-import Shared, share, lock from "@std/concurrency/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
 fn bump(box: Shared[Int], n: Int) Int:
     for i in 0..50:
-        var g = lock(box)
+        var g = box.lock()
         g.value = g.value + 1
         sleep(nanoseconds(20000))
 

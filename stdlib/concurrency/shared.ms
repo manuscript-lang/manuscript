@@ -3,7 +3,7 @@ import Closeable from "@std/core.ms"
 # A reference-counted value that several owners hold at once.
 #
 # Copying a `Shared[T]` shares the payload instead of duplicating it; the payload is freed when
-# the last holder is dropped. `get` reads the payload. To change it, `lock` it into a `var`
+# the last holder is dropped. `get` reads the payload. To change it, call `lock()` into a `var`
 # binding: the guard holds the payload for its scope and returns it when the scope ends, however
 # it ends.
 export extern type Shared[T]
@@ -78,10 +78,15 @@ impl Closeable for Ticket:
                 msrt_waitq_wake(self.key)
         return ok(unit)
 
-# Locks `box` and returns the guard that holds its payload. Waits while another guard holds it,
-# and stops waiting if the task is cancelled. Bind it with `var`; the scope end closes the guard:
-# `var guard = lock(box)`, then change `guard.value`.
-export fn lock[T](box: Shared[T]) SharedGuard[T]:
+impl Shared[T]:
+    # Locks the payload and returns the guard that holds it. Waits while another guard holds it,
+    # and stops waiting if the task is cancelled. Bind it with `var`; the scope end closes the
+    # guard: `var guard = box.lock()`, then change `guard.value`.
+    fn lock() SharedGuard[T]:
+        return lock(self)
+
+# The waiting lock behind `Shared.lock`.
+fn lock[T](box: Shared[T]) SharedGuard[T]:
     while locked(box):
         let key = id(box)
         let token = msrt_channel_token()

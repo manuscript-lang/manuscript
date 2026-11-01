@@ -17,7 +17,7 @@ import (
 import IoError, read_all from "@std/io/io.ms"
 import http_client, serve from "@std/net/net.ms"
 import create, LogError, Transport from "@std/log.ms"
-import Shared, share, lock from "@std/concurrency/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 import Bytes from "@std/bytes.ms"
 import access_log, request_id, RouteParams, Router, RouterError, with_request_headers from "@std/net/router.ms"
 import body_stream from "@std/net/sse.ms"
@@ -366,7 +366,7 @@ type Sink:
 
 impl Transport for Sink:
     fn write(data: String) Unit!LogError:
-        var guard = lock(self.lines)
+        var guard = self.lines.lock()
         guard.value.append(data.clone())
         guard.close().get(none)
         return ok(unit)
@@ -381,7 +381,7 @@ impl Transport for Sink:
         return unit
 
 fn logged(lines: Shared[List[String]]) String:
-    var guard = lock(lines)
+    var guard = lines.lock()
     return guard.value.join("")
 
 test "access_log writes one record per request":

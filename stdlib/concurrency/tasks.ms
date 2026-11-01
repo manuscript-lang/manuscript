@@ -1,6 +1,6 @@
 import Channel, ChannelError, Transport from "@std/io/channels.ms"
 import Closeable, panic from "@std/core.ms"
-import Shared, share, lock from "@std/concurrency/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 import Duration from "@std/os/time.ms"
 import msrt_scope_new, msrt_scope_spawn, msrt_scope_contain, msrt_scope_fault_message, msrt_scope_started, msrt_task_cancel_requested, msrt_scope_join, msrt_scope_wait, msrt_scope_close, msrt_channel_token, msrt_channel_park, msrt_channel_post, msrt_obj_share from "@std/internal/tasks.ms"
 
@@ -124,12 +124,12 @@ impl Lane[T]:
 
 # Closes the end that sends on `outgoing` and receives on `incoming`, waking whoever waits on either.
 fn close_end[A, B](outgoing: Shared[Lane[A]], incoming: Shared[Lane[B]]) Unit:
-    var sending = lock(outgoing)
+    var sending = outgoing.lock()
     sending.value.sender_closed = true
     sending.value.wake()
     sending.close().get(none)
 
-    var receiving = lock(incoming)
+    var receiving = incoming.lock()
     receiving.value.receiver_closed = true
     receiving.value.clear()
     receiving.value.wake()
@@ -144,7 +144,7 @@ type WaitTicket[T]:
 impl Closeable for WaitTicket[T]:
     # A normal wake already cleared the entry. Cancellation must remove it here instead.
     var fn close() Unit!:
-        var lane = lock(self.lane)
+        var lane = self.lane.lock()
 
         for index in 0..lane.value.waiting.length():
             if lane.value.waiting[index] == self.token:
@@ -173,7 +173,7 @@ type Reserved:
 
 # Looks for room in `lane`, or registers a wait. The guard lives and dies in this function.
 fn claim_room[T](lane: Shared[Lane[T]]) Reserved:
-    var guard = lock(lane)
+    var guard = lane.lock()
     if guard.value.sender_closed or guard.value.receiver_closed:
         return Reserved.Shut
     if guard.value.length() < room():
@@ -202,7 +202,7 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
     fn send(value: In) Unit!ChannelError:
         try self.wait_for_room()
 
-        var lane = lock(self.outgoing)
+        var lane = self.outgoing.lock()
         lane.value.back.append(value)
         lane.value.wake()
         lane.close().get(none)
@@ -210,7 +210,7 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
 
     fn receive() Out?!ChannelError:
         while true:
-            var lane = lock(self.incoming)
+            var lane = self.incoming.lock()
             if lane.value.receiver_closed:
                 return error(ChannelError.Closed)
 
@@ -255,7 +255,7 @@ fn run[T, In: Clonable, Out: Clonable](
             transport: TaskTransport[Out, In](outgoing: up, incoming: down)
         )
     )
-    var held = lock(slot)
+    var held = slot.lock()
     held.value.append(value)
 
 # The group's end of a task channel.
@@ -284,7 +284,7 @@ fn forget[T, In: Clonable, Out: Clonable](
     registry: Shared[Map[Int, Entry[T, In, Out]]],
     handle: Int
 ) Unit:
-    var entries = lock(registry)
+    var entries = registry.lock()
     entries.value.remove(handle)
 
 # Waits for the task `handle` of `scope` and takes its result from `values`. The task is collected
@@ -292,7 +292,7 @@ fn forget[T, In: Clonable, Out: Clonable](
 fn collect[T](scope: Int, handle: Int, values: Shared[List[T]]) T!TaskError:
     try outcome(msrt_scope_join(scope, handle, 0))
 
-    var finished = lock(values)
+    var finished = values.lock()
     if let value = finished.value.pop():
         return ok(value)
 
@@ -371,7 +371,7 @@ impl TaskGroup[T, In, Out]:
         )
 
         # The group keeps a second handle on its end, so closing the group closes it.
-        var started = lock(self.tasks)
+        var started = self.tasks.lock()
         started.value[handle] = Entry(
             handle, values, group_end(down, up, lifetime.clone())
         )
@@ -406,7 +406,7 @@ impl Closeable for TaskGroup[T, In, Out]:
         msrt_scope_close(self.scope)
         msrt_channel_group_close(self.channels)
 
-        var started = lock(self.tasks)
+        var started = self.tasks.lock()
         for handle in started.value.keys():
             if var entry = started.value[handle]?:
                 entry.channel.close()

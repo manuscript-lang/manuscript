@@ -1,4 +1,4 @@
-import share, lock from "@std/concurrency/shared.ms"
+import share from "@std/concurrency/shared.ms"
 import expect_equal from "@std/test/test.ms"
 
 # A `Shared[T]` handle is `Copy`: another copy of it can replace the value while a reader
@@ -15,7 +15,7 @@ test "a loop over a shared value walks a copy":
     for name in sh.get():
         seen.append(name.clone())
 
-        var g = lock(other)
+        var g = other.lock()
         g.value = ["replaced one", "replaced two", "replaced three"]
 
     try expect_equal(seen, ["ada lovelace", "grace hopper", "barbara liskov"])
@@ -24,7 +24,7 @@ test "a let of a shared value keeps a copy":
     let sh = share(["ada lovelace", "grace hopper"])
     let other = sh
     let names = sh.get()
-    var g = lock(other)
+    var g = other.lock()
     g.value = ["replaced"]
     try g.close()
     try expect_equal(names[1], "grace hopper")
@@ -35,7 +35,7 @@ test "a match payload of a shared value is a copy":
 
     match sh.get():
         Running(n):
-            var g = lock(other)
+            var g = other.lock()
             g.value = State.Running("replaced")
             try g.close()
             try expect_equal(n, "ada lovelace")

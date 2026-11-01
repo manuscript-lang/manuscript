@@ -43,7 +43,7 @@ A binding is closed unless something takes the resource from it. Returning it, p
 To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. A lock guard is a common case: `guard.close()` ends the critical section early; handle its `Result` with `try` or `let _ =`.
 
 ```manuscript
-var guard = lock(counter)
+var guard = counter.lock()
 guard.value += 1
 let _ = guard.close()
 slow_work()
