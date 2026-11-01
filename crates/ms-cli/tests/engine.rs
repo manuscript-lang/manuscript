@@ -977,7 +977,6 @@ fn cached_file_build_notices_new_ancestor_and_nearer_manifests() {
     assert_eq!(Command::new(output).status().unwrap().code(), Some(7));
 }
 
-#[cfg(unix)]
 #[test]
 fn cached_file_build_searches_manifests_through_directory_symlinks() {
     let dir = scratch("cache-symlink-manifest");
@@ -986,7 +985,7 @@ fn cached_file_build_searches_manifests_through_directory_symlinks() {
     std::fs::create_dir_all(&src).unwrap();
     write(&src, "main.ms", MAIN);
     let alias = dir.join("alias");
-    std::os::unix::fs::symlink(&src, &alias).unwrap();
+    common::symlink_dir(&src, &alias).unwrap();
     let source = alias.join("main.ms");
     let output = dir.join("program");
     let backend = Engine::new(Fixed(EXIT_SEVEN));
@@ -1052,7 +1051,6 @@ fn cached_file_build_skips_manifest_directories_without_disabling_cache() {
     }
 }
 
-#[cfg(unix)]
 fn entry_symlink_build(project: bool) {
     let dir = scratch(&format!("cache-entry-symlink-{project}"));
     let first = write(&dir, "first.ms", MAIN);
@@ -1062,7 +1060,7 @@ fn entry_symlink_build(project: bool) {
         include_str!("engine/cache-entry-target.ms"),
     );
     let entry = dir.join("main.ms");
-    std::os::unix::fs::symlink(&first, &entry).unwrap();
+    common::symlink_file(Path::new(&first), &entry).unwrap();
     let input = if project {
         write(
             &dir,
@@ -1093,18 +1091,16 @@ fn entry_symlink_build(project: bool) {
     assert_eq!(build(), Some(0));
     assert_eq!(build(), Some(0));
     std::fs::remove_file(&entry).unwrap();
-    std::os::unix::fs::symlink(&second, &entry).unwrap();
+    common::symlink_file(Path::new(&second), &entry).unwrap();
     assert_eq!(build(), Some(8));
     assert_eq!(build(), Some(8));
 }
 
-#[cfg(unix)]
 #[test]
 fn cached_file_build_notices_entry_symlink_retargeting() {
     entry_symlink_build(false);
 }
 
-#[cfg(unix)]
 #[test]
 fn cached_project_build_notices_entry_symlink_retargeting() {
     entry_symlink_build(true);
