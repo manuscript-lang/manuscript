@@ -830,10 +830,24 @@ impl FnLower<'_> {
                     captures: vec![held],
                 };
                 let id = self.b.m.add_func(f);
+                // Omission adaptation needs the declared payload types, including the
+                // method's own type arguments fixed by its checked function-value type.
+                let declared = ct::sub(&m.ty, &self.subst);
+                let mut subst = ct::Subst::new();
+                if !ct::unify(
+                    &declared,
+                    &self.ety(e),
+                    &ct::variable_set(&m.variables),
+                    &mut subst,
+                ) {
+                    return Err(Error::new("cannot infer the method value's type arguments"));
+                }
+                let mut method = (**m).clone();
+                method.ty = ct::sub(&declared, &subst);
                 self.cx.queue.push(Job {
                     func: id,
                     kind: JobKind::BoundNative(Rc::new(BoundNativeJob {
-                        method: m.clone(),
+                        method: Rc::new(method),
                         hir: self.hir.clone(),
                         shared: shared.map(|(_, t)| t),
                         scope,

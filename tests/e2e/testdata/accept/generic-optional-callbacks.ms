@@ -137,3 +137,18 @@ test "generic native folds accept Optional accumulators without omission wrapper
     let fold_set = set.fold_right[Int?]
     let bound_set_sum = fold_set(initial, fn acc, value: acc.get(0) + value)
     try expect_equal(bound_set_sum.get(), 3)
+
+test "bound generic native defaults preserve concrete and Optional payload types":
+    let missing: Int? = none
+    let text = missing.ok_or[String]
+    try expect_equal(text("absent").err(), "absent")
+
+    let number = missing.ok_or[Int]
+    try expect_equal(number(0).err(), 0)
+
+    let nested = missing.ok_or[Int?]
+    let absent: Int? = none
+    try expect_true(nested(absent).err().is_none())
+
+    let present: Int? = 0
+    try expect_equal(nested(present).err().get(), 0)
