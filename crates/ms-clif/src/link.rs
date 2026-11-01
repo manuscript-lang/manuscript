@@ -1,4 +1,4 @@
-//! Linker driver. Every platform runs the `lld` bundled in `ms` (Linux over musl, macOS over generated
+//! Linker driver. Every platform runs the `lld` bundled in `ms` (Linux over the system glibc, or musl with `--static`, macOS over generated
 //! SDK stubs, Windows over the mingw-w64 CRT), so no C toolchain or SDK is involved.
 
 use crate::Error;
@@ -9,7 +9,7 @@ mod bundled;
 mod fetch;
 mod lld;
 pub(crate) use bundled::RUNTIME_HOT_IR;
-pub use lld::llvm_tools;
+pub use lld::{is_static, llvm_tools, set_static};
 
 /// Links `object` and the runtime inputs (objects or static libraries), in order, into the executable `out`.
 pub fn link_all(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error> {
@@ -19,7 +19,19 @@ pub fn link_all(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error
 /// Like [`link_all`]; `strip` also drops the symbol table (smallest executable, no symbol names
 /// for profilers or backtraces).
 pub fn link_with(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<(), Error> {
-    lld::link(object, inputs, out, strip)?;
+    link_libc(object, inputs, out, strip, is_static())
+}
+
+/// Like [`link_with`], choosing the Linux libc: static musl when `musl`, else the system glibc. The
+/// runtime in `inputs` must be the build for that libc.
+pub fn link_libc(
+    object: &Path,
+    inputs: &[&Path],
+    out: &Path,
+    strip: bool,
+    musl: bool,
+) -> Result<(), Error> {
+    lld::link(object, inputs, out, strip, musl)?;
     place_executable(out)?;
     emit_debug_companion(object, inputs, out)
 }

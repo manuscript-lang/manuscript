@@ -308,6 +308,7 @@ fn strip_paths(ty: &str) -> String {
 }
 
 /// Builds `ms-native` in release mode, whatever the profile of `ms` itself, and returns the archive.
+/// On Linux it also leaves `libms_native_musl.a` beside it, the runtime of `ms build --static`.
 fn runtime() -> Result<PathBuf, String> {
     // Cargo can reuse this executable from another checkout when target directories are shared.
     // Its runtime environment names the active package; the compiled path may name the old one.
@@ -317,15 +318,34 @@ fn runtime() -> Result<PathBuf, String> {
     let root = manifest.join("../..");
     let out = root.join("target/ms-native");
     let target = out.join("build");
-    // Linux programs are static musl executables and Windows programs mingw-w64 (gnullvm) ones, all
-    // linked by the bundled lld, so the runtime is built for that target. `ring`'s C sources need a C
-    // compiler (llvm-mingw's clang on Windows): building the runtime needs one, using `ms` does not.
+    // Linux programs link the system glibc (and `--static` programs musl) and Windows programs
+    // mingw-w64 (gnullvm), all with the bundled lld, so the runtime is built for that target.
+    // `ring`'s C sources need a C compiler (llvm-mingw's clang on Windows, a musl-targeting one for
+    // `--static`): building the runtime needs one, using `ms` does not.
     let arch = std::env::consts::ARCH;
     let triple = match std::env::consts::OS {
-        "linux" => Some(format!("{arch}-unknown-linux-musl")),
+        "linux" => Some(format!("{arch}-unknown-linux-gnu")),
         "windows" => Some(format!("{arch}-pc-windows-gnullvm")),
         _ => None,
     };
+    let archive = build_archive(&root, &out, &target, triple.as_deref(), "libms_native.a")?;
+    if std::env::consts::OS == "linux" {
+        let musl = format!("{arch}-unknown-linux-musl");
+        build_archive(&root, &out, &target, Some(&musl), "libms_native_musl.a")?;
+    }
+    hot_ir(&root, &out, &target, triple.as_deref())?;
+    Ok(archive)
+}
+
+/// Builds `ms-native` for `triple` (the host when `None`) and copies its stripped archive to `out/name`.
+fn build_archive(
+    root: &Path,
+    out: &Path,
+    target: &Path,
+    triple: Option<&str>,
+    name: &str,
+) -> Result<PathBuf, String> {
+    let arch = std::env::consts::ARCH;
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
     let mut command = Command::new(cargo);
     command
@@ -338,32 +358,34 @@ fn runtime() -> Result<PathBuf, String> {
             "--manifest-path",
         ])
         .arg(root.join("Cargo.toml"))
-        .env("CARGO_TARGET_DIR", &target)
+        .env("CARGO_TARGET_DIR", target)
         // The runtime ships without debug info; symbol names are enough for the profiler.
         .env("CARGO_PROFILE_RELEASE_DEBUG", "0")
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
-    if let Some(triple) = &triple {
-        let cc = format!("CC_{}", triple.replace('-', "_"));
-        if std::env::var_os(&cc).is_none() {
-            command.env(cc, c_compiler(&root, triple, arch));
+    if let Some(triple) = triple {
+        // The glibc target builds with the host's C compiler.
+        if !triple.ends_with("linux-gnu") {
+            let cc = format!("CC_{}", triple.replace('-', "_"));
+            if std::env::var_os(&cc).is_none() {
+                command.env(cc, c_compiler(root, triple, arch));
+            }
         }
         command.args(["--target", triple]);
     }
     let status = command.status().map_err(|e| format!("run cargo: {e}"))?;
     if !status.success() {
-        return Err("building ms-native failed".to_string());
+        return Err(format!("building {name} failed"));
     }
-    let release = match &triple {
+    let release = match triple {
         Some(triple) => target.join(triple).join("release"),
         None => target.join("release"),
     };
     let built = release.join("libms_native.a");
-    let archive = out.join("libms_native.a");
+    let archive = out.join(name);
     std::fs::copy(&built, &archive).map_err(|e| format!("copy {}: {e}", built.display()))?;
     strip_debug(&archive);
-    hot_ir(&root, &out, &target, triple.as_deref())?;
     Ok(archive)
 }
 

@@ -69,6 +69,8 @@ pub struct Invocation {
     pub output: String,
     /// `--link`: extra objects and static libraries for `extern fn` symbols.
     pub link: Vec<String>,
+    /// `--static`: link a static musl executable instead of the system libc (Linux).
+    pub static_libc: bool,
     pub format_check: bool,
     pub structured: bool,
     pub watch: bool,
@@ -187,6 +189,7 @@ fn parse_options(
             }
             "--watch" => inv.watch = true,
             "--fix" => inv.fix = true,
+            "--static" => inv.static_libc = true,
             "--deny-warnings" => inv.deny_warnings = true,
             "--check" => inv.format_check = true,
             "--json" => inv.structured = true,
@@ -630,6 +633,18 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             return Err(2);
         }
     };
+    if inv.static_libc && !inv.is_one_of(&["build", "run", "test", "bench"]) {
+        return Err(usage_error(
+            io,
+            format!("--static requires build, run, test, or bench, not {command}; remove the flag"),
+        ));
+    }
+    if inv.static_libc && !cfg!(target_os = "linux") {
+        return Err(usage_error(
+            io,
+            "--static links static musl, which only Linux has; remove the flag",
+        ));
+    }
     if !inv.link.is_empty() && !inv.is_one_of(&["build", "run", "test", "bench"]) {
         return Err(usage_error(
             io,
