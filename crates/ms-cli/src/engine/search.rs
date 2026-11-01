@@ -89,11 +89,7 @@ pub fn search_symbol(request: &SearchSymbolRequest, io: &mut Io) -> BackendResul
         );
     }
     if out.len() > OUTPUT_BUDGET {
-        let mut cut = OUTPUT_BUDGET;
-        while !out.is_char_boundary(cut) {
-            cut -= 1;
-        }
-        out.truncate(cut);
+        out.truncate(out.floor_char_boundary(OUTPUT_BUDGET));
         out += "\n[... output cut; use a longer name ...]\n";
     }
     let _ = write!(io.stdout, "{out}");
