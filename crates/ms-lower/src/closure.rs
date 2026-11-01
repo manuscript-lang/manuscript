@@ -979,7 +979,8 @@ impl FnLower<'_> {
             f
         };
         let fv = self.borrow(f);
-        let declared = self.ety(callee).params.clone();
+        let checked = self.ety(callee);
+        let declared = &checked.params;
         let ftype = self.ty_of(f.v);
         let TyKind::Fn(ptys, _) = self.b.m.types.kind(ftype).clone() else {
             return Err(Error::new("call of a non-function value"));
@@ -1005,11 +1006,33 @@ impl FnLower<'_> {
             let x = self.lift_argument(x, ptys[at]);
             slots[at] = Some(self.borrow(x));
         }
-        // An omitted parameter of a function type is an optional one: it is `none`.
+        // Native invocation defaults are prepared here; other omissions cross as `none`.
         let mut args = Vec::new();
+        let missing_value = checked
+            .defaults
+            .as_ref()
+            .and_then(|d| d.missing_value_at_call());
         for (i, s) in slots.into_iter().enumerate() {
             args.push(match s {
                 Some(v) => v,
+                None if missing_value == Some(declared[i].name)
+                    && declared[i].ty.is_std("Optional")
+                    && declared[i].ty.args[0].is_std("MissingValue") =>
+                {
+                    self.at(e.pos);
+                    let cause_ty = self.mty(&declared[i].ty.args[0])?;
+                    let cause = self.missing_value_at(cause_ty, e.pos)?;
+                    let cause = self.owned(cause);
+                    let present = self.b.opt_some(cause);
+                    let supplied = self.lift_argument(
+                        Val {
+                            v: present,
+                            own: true,
+                        },
+                        ptys[i],
+                    );
+                    self.borrow(supplied)
+                }
                 None if matches!(self.b.m.types.kind(ptys[i]), TyKind::Opt(_)) => {
                     self.b.opt_none(ptys[i])
                 }
@@ -1316,20 +1339,23 @@ impl FnLower<'_> {
                 passed
             };
             let lifted = passed != declared;
-            let val = if lifted {
+            let none_default = p.ty.is_std("Optional")
+                && default
+                    .is_none_or(|d| matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none"));
+            let val = if lifted && none_default {
+                // Native/interface arguments borrow their caller's values. A supplied payload and
+                // the implicit none both live through this call; copying here would make
+                // even an ignored cause pay copy/drop costs before the native reads it.
+                let supplied = self.b.opt_is_some(*v);
+                self.two_ways_mode(
+                    supplied,
+                    declared,
+                    Mode::Borrow,
+                    &mut |s| Ok(Some(s.b.opt_get(*v))),
+                    &mut |s| Ok(Some(s.b.opt_none(declared))),
+                )?
+            } else if lifted {
                 self.unlift_param(*v, &mut |s| {
-                    // Native default filling leaves `none` implicit; an adapter must
-                    // produce the declared Optional payload for that omitted argument.
-                    if p.ty.is_std("Optional")
-                        && default.is_none_or(
-                            |d| matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none"),
-                        )
-                    {
-                        return Ok(Val {
-                            v: s.none_owned(declared),
-                            own: true,
-                        });
-                    }
                     let mut tmp: Vec<crate::native::NArg> = params
                         .iter()
                         .enumerate()
@@ -1401,42 +1427,6 @@ fn lower_bound_native(
     let recv = Val { v: cap, own: false };
     let func = job.method.decl.as_ref().and_then(|d| d.func());
     let ret = fl.ret_ty;
-    // `ok_or` constructs MissingValue when the cause is omitted, whereas an explicit
-    // `none` remains a supplied argument. Keep that distinction before unwrapping omission.
-    if job.method.native == "core/ok_or"
-        && job.method.receiver.is_std("Optional")
-        && job
-            .method
-            .ty
-            .result_ty()
-            .args
-            .get(1)
-            .is_some_and(|t| t.is_std("MissingValue"))
-        && params.len() == 2
-        && fl.ty_of(params[1]) != fl.mty(&job.method.ty.params[0].ty)?
-    {
-        let supplied = fl.b.opt_is_some(params[1]);
-        let out = fl.two_ways(
-            supplied,
-            ret,
-            &mut |s| {
-                let args = s.thunk_native_args(
-                    job.method.module,
-                    func,
-                    &job.method.ty.params,
-                    &params[1..],
-                )?;
-                let out = s.bound_native_call(&job.method, recv, &args, ret)?;
-                Ok(Some(s.owned(out)))
-            },
-            &mut |s| {
-                let out = s.bound_native_call(&job.method, recv, &[], ret)?;
-                Ok(Some(s.owned(out)))
-            },
-        )?;
-        fl.emit_return(Some(out));
-        return Ok(());
-    }
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
     if job.shared.is_some() {

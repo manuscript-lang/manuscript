@@ -65,8 +65,58 @@ pub struct Param {
     pub ty: Ty,
 }
 
-/// Parameters flagged as omittable on a source callable.
-pub type Defaults = Option<Rc<HashSet<Name>>>;
+/// Omission permissions and the native default that needs an invocation position.
+#[derive(Clone, Debug)]
+pub struct ParameterDefaults {
+    names: HashSet<Name>,
+    missing_value_at_call: Option<Name>,
+}
+
+impl ParameterDefaults {
+    /// Ordinary declaration defaults, without a native invocation default.
+    pub fn new(names: HashSet<Name>) -> Self {
+        Self {
+            names,
+            missing_value_at_call: None,
+        }
+    }
+
+    /// Whether this parameter may be omitted.
+    pub fn contains(&self, name: &Name) -> bool {
+        self.names.contains(name)
+    }
+
+    /// Omittable parameter names.
+    pub fn iter(&self) -> impl Iterator<Item = &Name> {
+        self.names.iter()
+    }
+
+    /// The number of omittable parameters.
+    pub fn len(&self) -> usize {
+        self.names.len()
+    }
+
+    /// Whether every parameter is required.
+    pub fn is_empty(&self) -> bool {
+        self.names.is_empty()
+    }
+
+    /// The already-omittable native parameter whose MissingValue is made at the call.
+    pub fn missing_value_at_call(&self) -> Option<Name> {
+        self.missing_value_at_call
+    }
+
+    pub(crate) fn with_missing_value_at_call(&self, name: Name) -> Self {
+        let mut defaults = self.clone();
+        if defaults.contains(&name) {
+            defaults.missing_value_at_call = Some(name);
+        }
+        defaults
+    }
+}
+
+/// Parameters flagged as omittable on a known callable; erasure removes all default metadata.
+pub type Defaults = Option<Rc<ParameterDefaults>>;
 
 /// A checked type.
 pub struct Type {
@@ -985,7 +1035,7 @@ pub fn constructor_signature(t: &Ty) -> Ty {
     let defaults = if defaults.is_empty() {
         None
     } else {
-        Some(Rc::new(defaults))
+        Some(Rc::new(ParameterDefaults::new(defaults)))
     };
     function_with(params, t.clone(), defaults)
 }
