@@ -98,3 +98,27 @@ test "regex capture methods preserve whole match only patterns":
     let absent = try compile("(a)?b")
     try expect_equal(absent.captures("b"), ["b", ""])
     try expect_equal((try absent.captures_all("b b")), [["b", ""], ["b", ""]])
+
+test "regex collection budgets preserve empty adjacency and exact counts":
+    let re = try compile("a*")
+    try expect_equal((try re.find_all("a🙂🙂a", 3)), ["a", "", "a"])
+    try expect_equal((try re.captures_all("a🙂🙂a", 3)), [["a"], [""], ["a"]])
+    let find_limit: List[String]!RegexError = error(RegexError.LimitExceeded)
+    let capture_limit: List[List[String]]!RegexError = error(RegexError.LimitExceeded)
+    try expect_equal(re.find_all("a🙂🙂a", 2), find_limit)
+    try expect_equal(re.captures_all("a🙂🙂a", 2), capture_limit)
+    try expect_equal(re.find_all("", 0), find_limit)
+    try expect_equal(re.captures_all("", 0), capture_limit)
+
+    for pattern in ["x", "(x)"]:
+        let matching = try compile(pattern)
+        try expect_equal((try matching.find_all("none", 0)), [])
+        try expect_equal((try matching.captures_all("none", 0)), [])
+        try expect_equal(matching.find_all("x", 0), find_limit)
+        try expect_equal(matching.captures_all("x", 0), capture_limit)
+        for max in [1, 4, 8]:
+            let text = try "x".repeat(max)
+            try expect_equal((try matching.find_all(text, max)).length(), max)
+            try expect_equal((try matching.captures_all(text, max)).length(), max)
+            try expect_equal(matching.find_all(text + "x", max), find_limit)
+            try expect_equal(matching.captures_all(text + "x", max), capture_limit)
