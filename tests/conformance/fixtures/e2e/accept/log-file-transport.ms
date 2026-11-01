@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=perf thread: @std/log on the native backend
 import expect_equal, expect_error from "@std/test/test.ms"
-import LogError, LogLevel, create, file_transport, record from "@std/log.ms"
+import LogError, LogLevel, create, file_transport from "@std/log.ms"
 import FileSystemError, read_file, temporary from "@std/os/fs.ms"
 
 type Service:
@@ -22,12 +22,12 @@ test "levels filter, fields nest under data, and bound fields merge":
     try expect_equal(logger.enabled(LogLevel.Info), false)
     try logger.info("filtered")
     try logger.warn("warn")
-    try record(logger, LogLevel.Error, "n", 7)
-    try record(logger, LogLevel.Fatal, "l", ["a", "b"])
+    try logger.error_with("n", 7)
+    try logger.fatal_with("l", ["a", "b"])
 
-    let root = try logger.child_json("\{\"service\":\"api\"\}")
-    let child = try root.child_json("\{\"request\":7\}")
-    try record(child, LogLevel.Warn, "child", Service("worker"))
+    let root = try logger.child(Service("api"))
+    let child = try root.child(Request(7))
+    try child.warn_with("child", Service("worker"))
     logger.set_level(LogLevel.Trace)
     try expect_equal(logger.level(), LogLevel.Trace)
     try logger.trace("trace")
