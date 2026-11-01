@@ -47,9 +47,7 @@ fn largest_input(path: String) Result[String, Invalid]:
         if c.stdin.length() > best.length(): best = c.stdin.clone()
 
     let size = if best.length() > 0: best.length() else: 1
-
     let copies = if 3000000 / size > 1: 3000000 / size else: 1
-
     return ok(best.repeat(copies).get(""))
 
 fn evidence(dir: String, name: String, n: Int, input: String, measured: Measured) Unit:

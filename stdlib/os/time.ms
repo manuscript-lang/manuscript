@@ -131,9 +131,7 @@ impl Duration:
 
         # Work on magnitudes of the truncated parts so the minimum Duration, which has no positive counterpart, formats too.
         let step = if total < 0: -1 else: 1
-
         let sign = if total < 0: "-" else: ""
-
         let whole = total / 1000000000 * step
         let sub = total % 1000000000 * step
         if whole == 0 and sub < 1000:
@@ -145,11 +143,8 @@ impl Duration:
 
         let hours = whole / 3600
         let minutes = whole % 3600 / 60
-
         let clock = if hours == 0: "" else: "{hours}h"
-
         let minute_part = if hours == 0 and minutes == 0: "" else: "{minutes}m"
-
         let seconds_part = duration_decimal(whole % 60, sub, 9)
         return "{sign}{clock}{minute_part}{seconds_part}s"
 
@@ -379,7 +374,6 @@ export fn parse_duration(text: String) Duration!TimeError:
 
     # Accumulate negatively: the minimum Duration has no positive counterpart.
     let limit = if negative: -9223372036854775807 - 1 else: -9223372036854775807
-
     var total = 0
     var overflow = false
 
@@ -439,11 +433,9 @@ export fn parse_duration(text: String) Duration!TimeError:
                 return error(TimeError.InvalidData)
 
             scale = if suffix == 110: 1 else: 1000
-
             pos += 1
         else if suffix == 194 or suffix == 206:
             let second = if suffix == 194: 181 else: 188
-
             if (
                 size - pos < 2
                 or data.get(pos).to_int() != second

@@ -175,9 +175,7 @@ impl Router:
 
         for source in routes.routes:
             let tail = if source.pattern == "/": "" else: source.pattern.clone()
-
             let pattern = if not (base + tail).is_empty(): base + tail else: "/"
-
             let segments = try parse_pattern(pattern.clone())
             let around = routes.middleware.concat(source.around)
             try insert(
@@ -506,7 +504,6 @@ impl HttpExchange for TestExchange:
         if requested <= 0: return error(IoError.InvalidInput)
 
         let max = if requested > 65536: 65536 else: requested
-
         var guard = lock(self.state)
         if guard.value.closed: return error(IoError.Closed)
 
@@ -517,7 +514,6 @@ impl HttpExchange for TestExchange:
             if bytes.length() == 0: return ok(none)
 
             let n = if max < bytes.length(): max else: bytes.length()
-
             if n < bytes.length():
                 guard.value.unread = bytes.slice(n, bytes.length()).get()
             return ok(bytes.slice(0, n).get())
@@ -565,8 +561,8 @@ impl HttpExchange for TestExchange:
         if not guard.value.sent or guard.value.complete: return error(
             IoError.InvalidInput
         )
-        if self.request.method.text() == "HEAD" or not has_body(guard.value.status):
-            return error(IoError.InvalidInput)
+        if not has_body(guard.value.status): return error(IoError.InvalidInput)
+        if self.request.method.text() == "HEAD": return ok(unit)
 
         guard.value.body.append_bytes(data)
         return ok(unit)

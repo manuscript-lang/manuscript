@@ -311,9 +311,7 @@ fn table(title: String, rs: List[Trial], key: fn(Trial) String, label: String) S
 
     for i in 0..rows.length():
         let a = rows[i].stats
-
         let prov = if a.n < MIN_RUNS * 5: " (provisional)" else: ""
-
         lines.append(
             "| {i + 1} | {rows[i].key}{prov} | {a.n} | {fmt(a.pass, "pct")} | {fmt(a.fb, "pct")} | {fmt(a.tokens, "tok")} | {fmt(a.code, "n0")} | {fmt(a.turns, "n")} | {fmt(a.wall, "n")} | {fmt(a.cost, "usd")} |"
         )

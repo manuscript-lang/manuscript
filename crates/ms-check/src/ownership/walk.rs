@@ -290,6 +290,17 @@ struct Walker<'a> {
 
 /// A fix that inserts `text` at `pos`.
 /// `.clone()` after the written expression `e`; none for a synthetic one.
+/// Why a value of this type has no `.clone()`, for remedies that would otherwise suggest one.
+fn no_clone(t: &Ty) -> Option<&'static str> {
+    match t.kind {
+        Kind::Function => Some("a function value cannot be cloned"),
+        Kind::Contract if !t.is_std("Closeable") => Some(
+            "an interface value cannot be cloned (convert a clone of the concrete value instead)",
+        ),
+        _ => None,
+    }
+}
+
 fn copy_after(e: &Expr) -> Option<DiagnosticFix> {
     (e.end.offset > e.pos.offset).then(|| insert_at(e.end, &format!(".{COPY}()")))
 }
@@ -1399,8 +1410,13 @@ impl Walker<'_> {
         });
         if let Some(a) = found {
             let (holder, why, bpos) = (a.holder_name, a.why.clone(), a.pos);
+            let held_ty = self.meta.get(&a.holder).map(|m| m.binding.ty.clone());
             let remedy = if holder.as_str() == "for" {
                 format!("iterate over a copy instead: `for ... in {shown}.{COPY}()`")
+            } else if held_ty.as_ref().and_then(no_clone).is_some() {
+                format!(
+                    "or give `{holder}` its own value by converting a clone of the concrete value"
+                )
             } else {
                 format!(
                     "or give `{holder}` its own value by ending its initializer with `.{COPY}()`"
@@ -1619,8 +1635,15 @@ impl Walker<'_> {
         let arm_mark = self.active.len();
         match binding {
             Some(p) => {
+                // A scalar entry is copied out of the map, so the entry's place is the map itself.
                 let probed = match &cond.kind {
                     ExprKind::Probe(target) if mutable => Some(&**target),
+                    ExprKind::Call { callee, .. } if mutable && self.map_get(cond) => {
+                        match &callee.kind {
+                            ExprKind::Member { left, .. } => Some(&**left),
+                            _ => None,
+                        }
+                    }
                     _ => None,
                 };
                 let scrutinee = self.scrutinee(s.id, probed.unwrap_or(cond));
@@ -2844,6 +2867,11 @@ impl Walker<'_> {
                     e.pos,
                     format!("cannot move `{name}` out: it only borrows its value ({}), and its owner closes it; a resource cannot be cloned, so use `{name}` in place", role_text(role, perm)),
                 );
+            } else if let Some(why) = no_clone(&b.ty) {
+                self.error(
+                    e.pos,
+                    format!("cannot move `{name}` out: it only borrows its value ({}); {why}, so use `{name}` in place", role_text(role, perm)),
+                );
             } else {
                 self.error_fix(
                     e.pos,
@@ -2880,6 +2908,11 @@ impl Walker<'_> {
                 self.error(
                     e.pos,
                     format!("`{name}` is moved here but used again{later}; a resource has one owner and cannot be cloned, so move it only at its last use, or pass it where it is only read"),
+                );
+            } else if let Some(why) = no_clone(&b.ty) {
+                self.error(
+                    e.pos,
+                    format!("`{name}` is moved here but used again{later}; {why}, so move it only at its last use"),
                 );
             } else {
                 self.error_fix(
@@ -3299,14 +3332,25 @@ impl Walker<'_> {
                         .collect();
                     roots.sort();
                     roots.dedup();
-                    self.error_fix_opt(
-                        e.pos,
-                        format!(
-                            "`{name}` returns a reference into `{}`, which this position would keep; store `.{COPY}()` of it, or use it in place",
-                            roots.join("`, `")
-                        ),
-                        copy_after(e),
-                    );
+                    let ty = self.cx.m.ty(e);
+                    if let Some(why) = no_clone(&ty) {
+                        self.error(
+                            e.pos,
+                            format!(
+                                "`{name}` returns a reference into `{}`, which this position would keep; {why}, so use it in place",
+                                roots.join("`, `")
+                            ),
+                        );
+                    } else {
+                        self.error_fix_opt(
+                            e.pos,
+                            format!(
+                                "`{name}` returns a reference into `{}`, which this position would keep; store `.{COPY}()` of it, or use it in place",
+                                roots.join("`, `")
+                            ),
+                            copy_after(e),
+                        );
+                    }
                 }
                 Some(_) if self.lends_through_view(e, &lend) => {
                     // The callee lends from a view temporary of a held value: the caller owns
@@ -3805,11 +3849,18 @@ impl Walker<'_> {
         let perm = self.meta[&b.uid].perm;
         let name = b.name;
         if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured) {
-            self.error_fix_opt(
-                e.pos,
-                format!("this closure outlives the statement but captures `{name}`, which only borrows its value; capture `{name}.{COPY}()` instead"),
-                copy_after(e),
-            );
+            if let Some(why) = no_clone(&b.ty) {
+                self.error(
+                    e.pos,
+                    format!("this closure outlives the statement but captures `{name}`, which only borrows its value; {why}, so capture an owned value instead"),
+                );
+            } else {
+                self.error_fix_opt(
+                    e.pos,
+                    format!("this closure outlives the statement but captures `{name}`, which only borrows its value; capture `{name}.{COPY}()` instead"),
+                    copy_after(e),
+                );
+            }
         } else if !self.is_last(e.id, b) {
             let later = self
                 .next_use(e.id, b)

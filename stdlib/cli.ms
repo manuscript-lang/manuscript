@@ -734,7 +734,6 @@ fn flag_section(title: String, flags: List[Flag]) String:
 
     for flag in flags:
         var label = if not flag.short.is_empty(): "-{flag.short}, " else: "    "
-
         label += "--{flag.name}"
         if not is_bool(flag.kind): label += " <{value_hint(flag)}>"
         labels.append(label.clone())

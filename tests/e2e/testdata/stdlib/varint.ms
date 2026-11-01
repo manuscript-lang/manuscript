@@ -156,9 +156,7 @@ test "the tenth byte can only be zero or one":
 
     for byte in 0..2:
         let decoded = try prefix.concat(Bytes([byte.to_uint8().get(0)])).uvarint(0)
-
         let expected: UInt64 = if byte == 0: 0 else: 9223372036854775808
-
         try expect_equal(decoded.value, expected)
         try expect_equal(decoded.next_offset, 10)
 

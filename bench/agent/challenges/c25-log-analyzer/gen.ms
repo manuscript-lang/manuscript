@@ -55,9 +55,7 @@ fn solve(s: String) String:
         levels[e.level.clone()] = levels.get_or(e.level, 0) + 1
 
         let first = "{e.status}".take(1)
-
         let class = if first == "2": 0 else: if first == "3": 1 else: if first == "4": 2 else: if first == "5": 3 else: 4
-
         classes[class] = classes[class] + 1
         lats.append(e.latency)
         if slow.is_none() or e.latency > slow.get(e).latency: slow = e.clone()

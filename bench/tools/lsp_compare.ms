@@ -131,7 +131,6 @@ fn compare(
     cpu: String
 ) Result[Unit, Error]:
     let cases = if suite == "hover": hover_cases() else: if suite == "outline": outline_cases() else: semantic_cases()
-
     var paths = Map[String, String]()
     paths.add("before", before.clone())
     paths.add("after", after.clone())
@@ -209,9 +208,7 @@ export fn main() Int:
     if parsed.is_error(): return fail(parsed.err().message())
 
     let opts = parsed.get(Map[String, String]())
-
     let default_samples = if args[0] == "hover": 9 else: 10
-
     let samples = opts.get("samples").get("{default_samples}").parse_int().get(0)
     if samples < 5: return fail("--samples must be at least 5")
 

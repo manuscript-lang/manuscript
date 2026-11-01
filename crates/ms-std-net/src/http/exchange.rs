@@ -450,8 +450,13 @@ impl Exchange {
         if data.len() > remaining {
             return Err(IoErr::failed("response body limit exceeded"));
         }
-        if is_head || !server::body_allowed(status) {
+        if !server::body_allowed(status) {
             return Err(IoErr::InvalidInput);
+        }
+        // A HEAD answer has no body: the bytes are dropped, so a handler written for GET
+        // streams unchanged. The head alone goes out when the handler returns.
+        if is_head {
+            return Ok(());
         }
         let deadline = self.deadline();
         let result = if let Some(id) = self.h2_id() {

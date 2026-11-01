@@ -147,9 +147,7 @@ impl Ledger:
 
         for id in self.balance.keys().sorted():
             let balance = self.balance.get_or(id, 0)
-
             let state = if self.frozen.get_or(id, false): "yes" else: "no"
-
             total += balance
             lines.append(
                 "{id} balance={balance} limit={self.limit.get_or(id, 0)} ops={self.ops.get_or(id, 0)} rejected={self.rejected.get_or(id, 0)} frozen={state}"

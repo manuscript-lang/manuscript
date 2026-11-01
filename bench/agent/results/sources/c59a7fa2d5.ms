@@ -46,7 +46,6 @@ fn edit(a: String, b: String) Int:
 
         for j in 0..y.length():
             let cost = if x.get(i) == y.get(j): 0 else: 1
-
             cur.append(min(prev[j] + cost, min(prev[j + 1] + 1, cur[j] + 1)))
 
         prev = cur

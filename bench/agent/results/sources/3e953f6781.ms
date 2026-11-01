@@ -167,9 +167,7 @@ impl Ledger:
             let l = self.limit.get(id).get(0)
             let o = self.ops.get(id).get(0)
             let r = self.rejected.get(id).get(0)
-
             let fz = if self.frozen.get(id).get(false): "yes" else: "no"
-
             out += "{id} balance={b} limit={l} ops={o} rejected={r} frozen={fz}\n"
 
         out += "total balance={total} fees={self.fees}\n"

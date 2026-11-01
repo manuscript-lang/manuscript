@@ -425,6 +425,9 @@ impl Parser<'_> {
             .s
             .get(self.at..self.at + 4)
             .ok_or("invalid unicode escape")?;
+        if !digits.iter().all(u8::is_ascii_hexdigit) {
+            return Err("invalid unicode escape".into());
+        }
         let text = std::str::from_utf8(digits).map_err(|_| "invalid unicode escape")?;
         let value = u32::from_str_radix(text, 16).map_err(|_| "invalid unicode escape")?;
         self.at += 4;
@@ -508,7 +511,18 @@ mod tests {
 
     #[test]
     fn rejects_malformed_input() {
-        for bad in ["", "{", "[1,]", "{\"a\" 1}", "01", "\"\\x\"", "1 2", "tru"] {
+        for bad in [
+            "",
+            "{",
+            "[1,]",
+            "{\"a\" 1}",
+            "01",
+            "\"\\x\"",
+            "\"\\u+123\"",
+            "\"\\u-123\"",
+            "1 2",
+            "tru",
+        ] {
             assert!(parse(bad.as_bytes()).is_err(), "{bad}");
         }
     }

@@ -116,3 +116,39 @@ fn deeply_nested_literal_builds_quickly() {
         "release build took {elapsed:?}"
     );
 }
+
+/// A list literal of 20000 runtime elements is one straight-line function. LLVM's SLP vectorizer
+/// and machine scheduler are quadratic in that length and took over two minutes on it; both are
+/// off for huge functions, so the build takes seconds.
+#[test]
+fn llvm_builds_a_huge_straight_line_function_in_bounded_time() {
+    if !cfg!(any(target_os = "linux", target_os = "macos")) || !ms_clif::llvm_available() {
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("ms-llvm-huge-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let items: Vec<String> = (0..20_000).map(|i| format!("n + {i}")).collect();
+    let source =
+        include_str!("llvm/huge_literal.ms").replace("[n + 0]", &format!("[{}]", items.join(", ")));
+    std::fs::write(dir.join("huge.ms"), source).unwrap();
+    let started = std::time::Instant::now();
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .env("MS_BACKEND", "llvm")
+        .current_dir(&dir)
+        .args(["build", "huge.ms", "-o", "huge"])
+        .output()
+        .unwrap();
+    let elapsed = started.elapsed();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let run = Command::new(dir.join("huge")).output().unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(String::from_utf8_lossy(&run.stdout), "199990000\n");
+    assert!(
+        elapsed < std::time::Duration::from_secs(60),
+        "build took {elapsed:?}"
+    );
+}

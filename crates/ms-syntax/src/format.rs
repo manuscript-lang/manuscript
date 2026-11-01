@@ -556,7 +556,7 @@ fn paragraph_block(s: &Stmt) -> bool {
         while let ExprKind::Unary { operand, .. } = &value.kind {
             value = operand;
         }
-        if matches!(value.kind, ExprKind::Match { .. })
+        if value.is_written_match()
             || block_lambda(value)
             || matches!(&value.kind, ExprKind::Call { args, .. } if args.iter().any(|a| block_lambda(&a.value)))
         {

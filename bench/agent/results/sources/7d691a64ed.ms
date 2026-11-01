@@ -31,7 +31,6 @@ fn parse_digits(text: String) Int:
 # A positive amount, or 0 when the text is not a valid amount.
 fn parse_amount(text: String) Int:
     let v = parse_digits(text)
-
     return if v > 0: v else: 0
 
 # Whether a debit of `amount` from `balance` overdraws it and so pays the fee.
@@ -158,7 +157,6 @@ fn report(ledger: Ledger) Unit:
         total += acc.balance
 
         let frozen = if acc.frozen: "yes" else: "no"
-
         emit(
             "{id} balance={acc.balance} limit={acc.limit} ops={acc.ops} rejected={acc.rejected} frozen={frozen}"
         )

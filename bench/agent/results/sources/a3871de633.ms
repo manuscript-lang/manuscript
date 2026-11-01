@@ -126,9 +126,7 @@ export fn main() Int:
                 len_b += 1
 
         let start_a = if len_a > 0: a_before + 1 else: a_before
-
         let start_b = if len_b > 0: b_before + 1 else: b_before
-
         out.append("@@ -{range_text(start_a, len_a)} +{range_text(start_b, len_b)} @@")
 
         for p in s..e + 1:

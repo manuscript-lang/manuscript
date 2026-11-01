@@ -650,7 +650,6 @@ impl Repo:
         self.move_head(id.clone())
 
         let root_label = if root: " (root-commit)" else: ""
-
         say("[" + self.label() + root_label + " " + short(id) + "] " + message)
 
     var fn cmd_log(args: List[String]) Unit:

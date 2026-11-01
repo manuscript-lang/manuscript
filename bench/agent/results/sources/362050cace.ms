@@ -134,9 +134,7 @@ export fn main() Int:
                 last = p
             else:
                 let s = if first - ctx > 0: first - ctx else: 0
-
                 let e = if last + ctx < total - 1: last + ctx else: total - 1
-
                 emit_hunk(kinds, texts, var ia, var jb, s, e, var out)
                 first = p
                 last = p
@@ -145,9 +143,7 @@ export fn main() Int:
 
     if first >= 0:
         let s = if first - ctx > 0: first - ctx else: 0
-
         let e = if last + ctx < total - 1: last + ctx else: total - 1
-
         emit_hunk(kinds, texts, var ia, var jb, s, e, var out)
 
     if out.length() == 0:

@@ -188,7 +188,7 @@ interface ProcessControl:
     # A missing path returns NotFound, a path containing NUL returns InvalidInput, and a denied path returns PermissionDenied.
     fn change_directory(path: String) Unit!ControlError
     # Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.
-    # Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination.
+    # Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination. A pid that names no process returns NotFound.
     fn send_signal(pid: Int, signal: Int) Unit!ControlError
     # Returns the numeric ids of the supplementary groups of the process.
     # Windows returns Unsupported.
@@ -291,7 +291,7 @@ export type ControlError:
     case InvalidData
     # An environment file is larger than `max_bytes`.
     case LimitExceeded
-    # The host reported that a path or user does not exist.
+    # The host reported that a path, user, or process does not exist.
     case NotFound
     # The host reported that the target already exists.
     case AlreadyExists
@@ -635,7 +635,7 @@ export fn change_directory(path: String) Unit!ControlError:
     return host_control().change_directory(path)
 
 # Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.
-# Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination.
+# Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination. A pid that names no process returns NotFound.
 export fn send_signal(pid: Int, signal: Int) Unit!ControlError:
     return host_control().send_signal(pid, signal)
 

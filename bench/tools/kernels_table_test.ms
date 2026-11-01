@@ -25,7 +25,6 @@ fn kernel_versions() List[String]:
 test "complete rotating trials preserve minimum and columns":
     for suite in ["kernels", "competence"]:
         let versions = if suite == "kernels": kernel_versions() else: base_versions()
-
         var rotated = versions.slice(1, versions.length()).get([])
         rotated.append(versions[0].clone())
 

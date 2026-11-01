@@ -58,7 +58,6 @@ export fn main() Int:
             return usage("samples must be a positive integer")
 
     let filter = if args.length() > 1: args[1].clone() else: ""
-
     let output = stdlib_bench(ms_binary(), n, filter)
     if output.is_error(): return finish(output)
 

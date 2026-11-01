@@ -467,6 +467,9 @@ impl Network {
         if self.policy.is_some() {
             return Err(NetErr::PermissionDenied);
         }
+        if path.is_empty() {
+            return Err(NetErr::InvalidInput);
+        }
         let sock =
             Socket::new(Domain::UNIX, Type::STREAM, None).map_err(|e| self.io_failure(&e))?;
         sock.set_nonblocking(true)
@@ -547,6 +550,10 @@ impl Network {
         if self.policy.is_some() {
             return Err(NetErr::PermissionDenied);
         }
+        // An empty path would autobind an abstract address that nothing can connect to.
+        if path.is_empty() {
+            return Err(NetErr::InvalidInput);
+        }
         let sock =
             Socket::new(Domain::UNIX, Type::STREAM, None).map_err(|e| self.io_failure(&e))?;
         let addr = SockAddr::unix(path).map_err(|e| self.io_failure(&e))?;
@@ -626,9 +633,12 @@ impl Network {
 }
 
 /// The system resolver's addresses for `host`; runs on a pool thread.
+///
+/// Host names are case-insensitive, but the static musl resolver Linux programs link matches
+/// `/etc/hosts` names exactly, so `LOCALHOST` would fail there while it resolves elsewhere.
 #[expect(clippy::ptr_arg, reason = "a pool job takes `&I` for its input type")]
 fn resolve(host: &String) -> io::Result<Vec<IpAddr>> {
-    (host.as_str(), 0u16)
+    (host.to_ascii_lowercase().as_str(), 0u16)
         .to_socket_addrs()
         .map(|it| it.map(|a| a.ip()).collect())
 }
@@ -758,6 +768,8 @@ mod tests {
         );
         let localhost = n.lookup("localhost", None, Some(5_000_000_000)).unwrap();
         assert!(!localhost.is_empty());
+        let shouted = n.lookup("LocalHost", None, Some(5_000_000_000)).unwrap();
+        assert_eq!(shouted, localhost);
     }
 
     #[test]

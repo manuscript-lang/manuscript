@@ -275,8 +275,11 @@ impl BuildCache {
             return Err("MS_CACHE=verify: the rebuilt executable differs from the cached one (this is a Manuscript bug)".into());
         }
         let mut sources = compiled.sources.clone();
-        if !compiled.project_root.is_empty() {
-            sources.push(Path::new(&compiled.project_root).join("ms.toml"));
+        // A single-file build still reads the nearest enclosing manifest (import root and
+        // aliases), which lives in the source root even though `project_root` is empty.
+        let manifest = Path::new(&compiled.source_root).join("ms.toml");
+        if manifest.is_file() {
+            sources.push(manifest);
         }
         let companion = ms_clif_companion(output);
         ms_build::cache::store(

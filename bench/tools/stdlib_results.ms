@@ -88,9 +88,7 @@ export fn case_labels(names: List[String]) Map[String, String]:
     for name in names:
         let parts = name.split("::")
         let s = parts.slice(1, parts.length()).get([]).join("::")
-
         let label = if parts.length() > 1: s else: name.clone()
-
         short.add(name.clone(), label.clone())
         counts.add(label.clone(), counts.get(label).get(0) + 1)
 

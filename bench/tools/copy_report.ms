@@ -43,9 +43,7 @@ fn report(mir: String) List[String]:
             if op == "copy":
                 let ty = line.slice(colon + 2, line.length()).get("")
                 let shown = ty.slice(0, ty.index_of(" = copy").get(ty.length())).get("")
-
                 let src = if words.length() > 1: words[1].clone() else: ""
-
                 let key = "{shown} <- {defs.get(src).get("?")}"
                 counts.add(key.clone(), counts.get(key).get(0) + 1)
 

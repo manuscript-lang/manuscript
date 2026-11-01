@@ -3,7 +3,7 @@ use crate::envfile;
 #[cfg(unix)]
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
+use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_LIMIT_EXCEEDED, STATUS_NOT_FOUND, STATUS_UNSUPPORTED};
 use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::ops::read_bounded;
 use ms_std_fs::sys::{self, CPath};
@@ -71,7 +71,12 @@ pub fn send_signal(pid: i64, signal: i64) -> Res<()> {
     }
     // SAFETY: plain system call.
     if unsafe { libc::kill(pid as libc::pid_t, signal as i32) } != 0 {
-        return Err(Fail::raw(sys::errno()));
+        let errno = sys::errno();
+        // A missing process is the same `NotFound` that Windows reports for it.
+        if errno == libc::ESRCH {
+            return Err(Fail::status(STATUS_NOT_FOUND));
+        }
+        return Err(Fail::raw(errno));
     }
     Ok(())
 }
@@ -624,6 +629,11 @@ mod tests {
         assert_eq!(
             send_signal(0, 65).unwrap_err().status,
             ms_rt_abi::STATUS_INVALID_INPUT
+        );
+        // No process has the largest pid, on any platform.
+        assert_eq!(
+            send_signal(2_147_483_647, 0).unwrap_err().status,
+            ms_rt_abi::STATUS_NOT_FOUND
         );
         assert!(!working_directory().unwrap().is_empty());
         if cfg!(any(target_os = "linux", target_os = "macos")) {

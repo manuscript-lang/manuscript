@@ -44,19 +44,15 @@ test "large affix cuts preserve text and reject missing affixes":
 # Independent scalar comparisons verify exact matching without normalization.
 fn check_affix(text: String, affix: String, prefix: Bool) Unit!:
     let actual = if prefix: text.cut_prefix(affix) else: text.cut_suffix(affix)
-
     if affix.length() > text.length(): return actual | expect_none
 
     let start = if prefix: 0 else: text.length() - affix.length()
-
     for offset in 0..affix.length():
         if text.scalar_at(start + offset) != affix.scalar_at(offset):
             return actual | expect_none
 
     let kept_start = if prefix: affix.length() else: 0
-
     let kept_end = if prefix: text.length() else: start
-
     let expected = text.slice_scalars(kept_start, kept_end) | try expect_ok
     return actual | try expect_some | expect_equal(expected)
 

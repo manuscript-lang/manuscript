@@ -26,7 +26,6 @@ export fn ablations() List[String]:
 
 fn ratio(num: Float, den: Float) String:
     let low = if num < den: num else: den
-
     if low < 2.0: return "folded"
 
     return (num / den).to_fixed(2) + "x"

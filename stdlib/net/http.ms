@@ -9,6 +9,12 @@ import WebSocket from "@std/net/net.ms"
 import WebSocketError from "@std/net/net.ms"
 import (
     msstd_http_client_close,
+    msstd_http_headers_append,
+    msstd_http_headers_values,
+    msstd_http_headers_names,
+    msstd_http_headers_remove,
+    msstd_http_headers_clone,
+    msstd_http_headers_new,
     msstd_http_client_request,
     msstd_http_client_request_bytes,
     msstd_http_client_request_stream,
@@ -265,7 +271,7 @@ export interface HttpExchange:
         max_message_bytes: Int?
     ) WebSocket!WebSocketError
     # Writes one chunk of the response body and flushes it.
-    # `send_headers` must come first, and writing beyond `max_response_bytes` returns IoError.Failed. Responses to HEAD requests and with status 204 or 304 cannot have a body.
+    # `send_headers` must come first, and writing beyond `max_response_bytes` returns IoError.Failed. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return InvalidInput.
     fn write(data: String) Unit!IoError
     # Writes one chunk of raw bytes with the same rules as write.
     fn write_bytes(data: Bytes) Unit!IoError
@@ -486,19 +492,3 @@ impl Error for HttpError:
             Closed: return "HTTP: resource is closed"
             Timeout: return "HTTP: operation timed out"
             Failed(message): return message.clone()
-
-extern fn msstd_http_headers_append(
-    headers: HttpHeaders,
-    name: String,
-    value: Bytes
-) Unit!HttpError
-
-extern fn msstd_http_headers_values(value: HttpHeaders, name: String) List[Bytes]?
-
-extern fn msstd_http_headers_names(value: HttpHeaders) List[String]
-
-extern fn msstd_http_headers_remove(value: HttpHeaders, name: String) Bool
-
-extern fn msstd_http_headers_clone(value: HttpHeaders) HttpHeaders
-
-extern fn msstd_http_headers_new() HttpHeaders
