@@ -1,4 +1,78 @@
-import BigInt, BigIntError, NumberError from "@std/math/math.ms"
+import (
+    BigInt,
+    BigIntError,
+    NumberError,
+    WordSum,
+    WordDifference,
+    WideProduct,
+    WordDivision,
+    BinaryFloatParts,
+    FloatParts
+) from "@std/math/math.ms"
+
+export extern fn msstd_math_add_with_carry(
+    left: UInt64,
+    right: UInt64,
+    carry: Bool
+) WordSum
+
+export extern fn msstd_math_subtract_with_borrow(
+    left: UInt64,
+    right: UInt64,
+    borrow: Bool
+) WordDifference
+
+export extern fn msstd_math_multiply_wide(left: UInt64, right: UInt64) WideProduct
+
+export extern fn msstd_math_divide_wide(
+    high: UInt64,
+    low: UInt64,
+    divisor: UInt64
+) WordDivision!NumberError
+
+export extern fn msstd_math_remainder_wide(
+    high: UInt64,
+    low: UInt64,
+    divisor: UInt64
+) UInt64!NumberError
+
+export extern fn msstd_math_frexp(value: Float) BinaryFloatParts
+
+export extern fn msstd_math_ldexp(fraction: Float, exponent: Int) Float
+
+export extern fn msstd_math_modf(value: Float) FloatParts
+
+export extern fn msstd_math_ieee_remainder(left: Float, right: Float) Float
+
+export extern fn msstd_bigint_inverse_mod(value: BigInt, modulus: BigInt) BigInt?
+
+export extern fn msstd_math_reverse_bits(value: Int) Int
+
+export extern fn msstd_math_reverse_bytes(value: Int) Int
+
+export extern fn msstd_math_exp2(value: Float) Float
+
+export extern fn msstd_math_round_to_even(value: Float) Float
+
+export extern fn msstd_math_copy_sign(value: Float, sign: Float) Float
+
+export extern fn msstd_math_sign_bit(value: Float) Bool
+
+export extern fn msstd_math_next_after(value: Float, toward: Float) Float
+
+export extern fn msstd_math_fma(left: Float, right: Float, addend: Float) Float
+
+export extern fn msstd_bigint_gcd(value: BigInt, other: BigInt) BigInt
+
+export extern fn msstd_bigint_lcm(value: BigInt, other: BigInt) BigInt
+
+export extern fn msstd_bigint_sqrt(value: BigInt) BigInt!BigIntError
+
+export extern fn msstd_bigint_pow_mod(
+    value: BigInt,
+    exponent: BigInt,
+    modulus: BigInt
+) BigInt!BigIntError
 
 export extern fn msstd_math_acos(value: Float) Float
 

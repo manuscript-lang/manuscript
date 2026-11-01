@@ -12,6 +12,7 @@ crate-type = ["rlib"]
 crc32fast = "1.5.2"
 simd-adler32 = { version = "0.3.10", default-features = false, features = ["std"] }
 getrandom = { version = "0.4", default-features = false, features = ["sys_rng"] }
+libm = { version = "0.2", default-features = false }
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-rt = { path = "../ms-rt" }
 
