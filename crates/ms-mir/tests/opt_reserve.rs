@@ -160,3 +160,30 @@ out():
     );
     assert_eq!(count(&early, "list.new"), 0, "{}", print_module(&early));
 }
+
+#[test]
+fn finds_empty_candidates_after_nonempty_literals_and_reaches_a_fixpoint() {
+    let before = parse(include_str!("fixtures-reserve/mixed_literals.mir"));
+    let mut after = before.clone();
+    assert!(reserve::run(&mut after));
+    verify_module(&after).unwrap();
+    assert_eq!(exec(&after), exec(&before));
+    assert_eq!(exec(&after).0, Ok(7));
+    assert_eq!(count(&after, "list.lit"), 1);
+    assert_eq!(count(&after, "list.new"), 1);
+    assert!(!reserve::run(&mut after));
+}
+
+#[test]
+fn functions_without_empty_candidates_remain_unchanged() {
+    for source in [
+        include_str!("fixtures/list_push_get_set.mir"),
+        include_str!("fixtures-reserve/nonempty_literal.mir"),
+    ] {
+        let mut m = parse(source);
+        let before = print_module(&m);
+        assert!(!reserve::run(&mut m));
+        verify_module(&m).unwrap();
+        assert_eq!(print_module(&m), before);
+    }
+}
