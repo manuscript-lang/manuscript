@@ -1160,9 +1160,11 @@ dependencies = [
 name = "ms-std-core"
 version = "0.1.0"
 dependencies = [
+ "crc32fast",
  "getrandom 0.4.3",
  "ms-rt",
  "ms-rt-abi",
+ "simd-adler32",
 ]
 
 [[package]]
