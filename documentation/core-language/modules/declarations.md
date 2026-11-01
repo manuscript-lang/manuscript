@@ -9,7 +9,7 @@ Each `.ms` file is a module with its own boundary. `export` makes a declaration 
 
 ## Names and declaration order
 
-Import several symbols with `import Name, OtherName from "./module.ms"`: a nonempty comma-separated list on one line. To wrap across lines, parenthesize the list (`import (Name, OtherName) from "./module.ms"`); a trailing comma is allowed there. Braces are rejected. Single-symbol `import Name from "./module.ms"` also works. Duplicate names and collisions are errors.
+Import several symbols with `import Name, OtherName from "./module.ms"`: a nonempty comma-separated list on one line. To wrap across lines, parenthesize the list (`import (Name, OtherName) from "./module.ms"`); a trailing comma is allowed there. `ms fmt` wraps a bare list wider than 88 columns into the parenthesized form, one name per line, and leaves parenthesized lists that fit on their line as written. Braces are rejected. Single-symbol `import Name from "./module.ms"` also works. Duplicate names and collisions are errors.
 
 Types, interfaces, functions, and imports share one module namespace. Duplicates, import/declaration collisions, and overloads are rejected. Order does not matter: names and signatures are collected before bodies are checked, so forward references and mutual recursion work. Type layout cycles follow the [recursive data rule](../types/records.md#recursive-data).
 

@@ -1,7 +1,25 @@
 # Shared helpers for the benchmark drivers under bench/. Run a driver from the repository root with
 # `ms run bench/tools/<name>.ms [-- arguments]`.
-import Stdio, os_type, environment, monotonic_time, set_environment, working_directory, run, spawn, system_info from "@std/os/process.ms"
-import read_file, write_file, create_directory, is_absolute, join, remove, access from "@std/os/fs.ms"
+import (
+    Stdio,
+    os_type,
+    environment,
+    monotonic_time,
+    set_environment,
+    working_directory,
+    run,
+    spawn,
+    system_info
+) from "@std/os/process.ms"
+import (
+    read_file,
+    write_file,
+    create_directory,
+    is_absolute,
+    join,
+    remove,
+    access
+) from "@std/os/fs.ms"
 import stderr, stdin, stdout, read_all from "@std/io/io.ms"
 import JsonValue, stringify from "@std/data/json.ms"
 import hex_encode from "@std/data/encoding.ms"

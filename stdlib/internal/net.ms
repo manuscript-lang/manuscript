@@ -1,6 +1,25 @@
 import Bytes from "@std/bytes.ms"
 import IoError from "@std/io/io.ms"
-import CertificateInfo, Cidr, Connection, Datagram, IpAddress, NativeConnection, NativeDatagramSocket, NativeListener, NativeWebSocket, Network, NetworkError, QueryEntry, TlsError, TlsInfo, Url, UrlError, WebSocketError, WebSocketMessage from "@std/net/net.ms"
+import (
+    CertificateInfo,
+    Cidr,
+    Connection,
+    Datagram,
+    IpAddress,
+    NativeConnection,
+    NativeDatagramSocket,
+    NativeListener,
+    NativeWebSocket,
+    Network,
+    NetworkError,
+    QueryEntry,
+    TlsError,
+    TlsInfo,
+    Url,
+    UrlError,
+    WebSocketError,
+    WebSocketMessage
+) from "@std/net/net.ms"
 import Duration, Timestamp from "@std/os/time.ms"
 
 export extern fn msrt_url_encode_component(text: String) String

@@ -1,7 +1,20 @@
 import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
-import bit_xor, shift_right_unsigned, wrapping_add, wrapping_multiply, max_int from "@std/math/math.ms"
-import msstd_random_draw_int, msstd_random_draw_uuid, msstd_random_draw_float, msstd_random_draw_shuffle, msstd_random_draw_choice, msstd_random_entropy from "@std/internal/random.ms"
+import (
+    bit_xor,
+    shift_right_unsigned,
+    wrapping_add,
+    wrapping_multiply,
+    max_int
+) from "@std/math/math.ms"
+import (
+    msstd_random_draw_int,
+    msstd_random_draw_uuid,
+    msstd_random_draw_float,
+    msstd_random_draw_shuffle,
+    msstd_random_draw_choice,
+    msstd_random_entropy
+) from "@std/internal/random.ms"
 
 # Errors returned when random input is invalid or entropy generation fails.
 export type RandomError:

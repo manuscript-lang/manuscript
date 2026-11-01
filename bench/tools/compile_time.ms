@@ -2,7 +2,17 @@
 # Usage: ms run bench/tools/compile_time.ms [-- packages files fns]   (default 40 25 10, about 122k lines of Manuscript)
 # OUT keeps the generated sources; MS picks the compiler; SKIP_LLVM=1 skips the release build.
 # Generated Manuscript and Go source contains many braces; `q` writes them as ‹ and › so the generator reads as source.
-import absolute, env, fail, ms_binary, must, now_ns, run_in, usage, write_text from "./lib.ms"
+import (
+    absolute,
+    env,
+    fail,
+    ms_binary,
+    must,
+    now_ns,
+    run_in,
+    usage,
+    write_text
+) from "./lib.ms"
 import create_directory, remove, temporary from "@std/os/fs.ms"
 import arguments, set_environment from "@std/os/process.ms"
 import SeededRandom, seeded from "@std/os/random.ms"

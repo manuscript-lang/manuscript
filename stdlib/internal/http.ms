@@ -1,6 +1,15 @@
 import Bytes from "@std/bytes.ms"
 import IoError, ReadStream from "@std/io/io.ms"
-import HttpError, HttpHeaders, HttpMethod, HttpResponseMetadata, NativeHttpClient, NativeHttpServer, NativeResponseBody, ResponseBody from "@std/net/http.ms"
+import (
+    HttpError,
+    HttpHeaders,
+    HttpMethod,
+    HttpResponseMetadata,
+    NativeHttpClient,
+    NativeHttpServer,
+    NativeResponseBody,
+    ResponseBody
+) from "@std/net/http.ms"
 import Duration from "@std/os/time.ms"
 
 export extern fn msrt_http_client_close(handle: NativeHttpClient) Unit

@@ -705,7 +705,12 @@ impl MapUpdate[T, U] for Map[T, U]:
 
 import Closeable from "@std/core.ms"
 import StringBuilder from "@std/string.ms"
-import msrt_list_distinct, msrt_list_filled, msrt_list_flatten, msrt_list_range_by from "@std/internal/collections.ms"
+import (
+    msrt_list_distinct,
+    msrt_list_filled,
+    msrt_list_flatten,
+    msrt_list_range_by
+) from "@std/internal/collections.ms"
 
 # Closing the resources a map holds. The compiler calls this when a map of resources goes out of scope; the values close newest entry first.
 interface MapCloseValues[U: Closeable]:

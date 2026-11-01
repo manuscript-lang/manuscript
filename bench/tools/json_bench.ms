@@ -1,7 +1,25 @@
 # Compares @std/json against Node (V8) and Rust's serde_json on standard documents (bench/perf/json).
 # Usage: ms run bench/tools/json_bench.ms   (NAMES="twitter canada" selects documents; MS picks the compiler)
 # The corpora are downloaded into bench/perf/json/data (not committed).
-import Invalid, capture, env, exists, finish, jbool, jint, jlist, jobject, jstr, left, ms_binary, must, output_of, right, run_in, write_text from "./lib.ms"
+import (
+    Invalid,
+    capture,
+    env,
+    exists,
+    finish,
+    jbool,
+    jint,
+    jlist,
+    jobject,
+    jstr,
+    left,
+    ms_binary,
+    must,
+    output_of,
+    right,
+    run_in,
+    write_text
+) from "./lib.ms"
 import create_directory from "@std/os/fs.ms"
 import JsonValue, stringify from "@std/data/json.ms"
 

@@ -152,6 +152,9 @@ fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
         }
         let last = parts[parts.len() - 1];
         let tail = last.pos.column as usize - 1 + text(&last).len();
+        if let Some(rows) = wrap_import(parts, &formatted, &normalized) {
+            formatted = rows;
+        }
         if tail < line.len()
             && let Some(comment) = line[tail..].find('#')
         {
@@ -174,6 +177,29 @@ fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
         return format_lines(file, &result);
     }
     Ok(result)
+}
+
+/// A bare import list wider than the line wraps into the parenthesized form,
+/// one name per line with a trailing comma. Parenthesized imports keep the
+/// author's layout, so a second pass leaves the wrapped form unchanged.
+fn wrap_import(parts: &[Token], flat: &str, source: &str) -> Option<String> {
+    let text = |t: &Token| &source[t.lo as usize..t.hi as usize];
+    if parts.first()?.kind != Tok::Import
+        || parts.get(1)?.kind == Tok::LParen
+        || flat.chars().count() <= WIDTH
+    {
+        return None;
+    }
+    let from = parts
+        .iter()
+        .position(|t| t.kind != Tok::Import && text(t) == "from")?;
+    let indent = " ".repeat(parts[0].pos.column as usize - 1);
+    let mut out = format!("{indent}import (\n");
+    for t in parts[1..from].iter().filter(|t| t.kind == Tok::Name) {
+        out.push_str(&format!("{indent}    {},\n", text(t)));
+    }
+    out.push_str(&format!("{indent}) from {}", text(parts.get(from + 1)?)));
+    Some(out)
 }
 
 fn indent_of(line: &str) -> usize {
@@ -648,8 +674,14 @@ fn format_expression_layout(file: &Arc<str>, source: &str) -> PResult<String> {
             && index >= 2
             && nodes[index - 1].tok.kind == Tok::Name
             && nodes[index - 2].tok.kind == Tok::Dot;
+        let import_list =
+            g.open.kind == Tok::LParen && index >= 1 && nodes[index - 1].tok.kind == Tok::Import;
         let following = if chained {
             layout.following_width(&nodes[index + 1..], true)
+        } else if import_list {
+            // The `from "path"` clause shares the closing line.
+            let rest = &source[g.close.hi as usize..];
+            rest.split('\n').next().map_or(0, |l| l.chars().count())
         } else {
             0
         };

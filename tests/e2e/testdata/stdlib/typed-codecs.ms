@@ -1,7 +1,19 @@
 import expect_equal from "@std/test/test.ms"
 import HashAlgorithm, sha256, sha384, sha512, CryptoError from "@std/crypto.ms"
-import CompressionFormat, compress, decompress, CompressionError from "@std/io/archive.ms"
-import ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError from "@std/io/archive.ms"
+import (
+    CompressionFormat,
+    compress,
+    decompress,
+    CompressionError
+) from "@std/io/archive.ms"
+import (
+    ArchiveFormat,
+    pack,
+    unpack,
+    ArchiveEntry,
+    ArchiveLimits,
+    ArchiveError
+) from "@std/io/archive.ms"
 import Bytes from "@std/bytes.ms"
 
 fn digest(algorithm: HashAlgorithm, data: Bytes) Bytes:

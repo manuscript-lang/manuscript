@@ -1,7 +1,27 @@
 # Builds Release Manuscript reproductions of the List workloads (bench/lists/program.ms) and measures native wall time and peak RSS.
 # Usage: ms run bench/tools/lists_native.ms -- --cli MS --output DIR [--runs 3] [--cpu N]
 # --cpu pins executions with `taskset` (Linux).
-import absolute, dump, ensure_directory, fail, file_sha256, finish, jfloat, jint, jlist, jobject, jstr, median, must, capture, now_ns, options, peak_run, read_text, write_text from "./lib.ms"
+import (
+    absolute,
+    dump,
+    ensure_directory,
+    fail,
+    file_sha256,
+    finish,
+    jfloat,
+    jint,
+    jlist,
+    jobject,
+    jstr,
+    median,
+    must,
+    capture,
+    now_ns,
+    options,
+    peak_run,
+    read_text,
+    write_text
+) from "./lib.ms"
 import arguments from "@std/os/process.ms"
 import JsonValue from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"

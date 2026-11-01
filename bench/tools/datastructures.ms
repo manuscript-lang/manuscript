@@ -1,6 +1,15 @@
 # Core data-structure operations in Manuscript, Go and Rust (ns per operation, best of N) (bench/perf/datastructures).
 # Usage: ms run bench/tools/datastructures.ms [-- repeats]; MS picks the Manuscript compiler.
-import build_go, build_ms, build_rust, finish, repeats, rotate, sample, usage from "./lib.ms"
+import (
+    build_go,
+    build_ms,
+    build_rust,
+    finish,
+    repeats,
+    rotate,
+    sample,
+    usage
+) from "./lib.ms"
 import summarize from "./datastructures_table.ms"
 import copy_tree, temporary from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"

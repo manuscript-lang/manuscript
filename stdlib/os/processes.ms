@@ -14,7 +14,21 @@ import CommandError, Stdio from "@std/os/process.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
 import Duration from "@std/os/time.ms"
-import msrt_obj_share, msstd_process_fork, msstd_process_forked_link, msstd_process_forked_stdin, msstd_process_forked_output, msstd_process_forked_wait, msstd_process_forked_signal, msstd_process_forked_close, msstd_process_ipc_child, msstd_process_ipc_read, msstd_process_ipc_wait_reader, msstd_process_ipc_write, msstd_process_ipc_close from "@std/internal/processes.ms"
+import (
+    msrt_obj_share,
+    msstd_process_fork,
+    msstd_process_forked_link,
+    msstd_process_forked_stdin,
+    msstd_process_forked_output,
+    msstd_process_forked_wait,
+    msstd_process_forked_signal,
+    msstd_process_forked_close,
+    msstd_process_ipc_child,
+    msstd_process_ipc_read,
+    msstd_process_ipc_wait_reader,
+    msstd_process_ipc_write,
+    msstd_process_ipc_close
+) from "@std/internal/processes.ms"
 
 # A running child, owned by its `Process`.
 export extern type NativeProcess
