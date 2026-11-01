@@ -11,3 +11,4 @@ Cleanup, CI, releases, Pages, Windows targets.
 - [Repository tools are Manuscript programs](repository-tools-are-manuscript-programs.md): runners, packaging, and checks are `tools/*.ms` run with `ms run`; only pre-`ms` bootstrap stays in `toolchain/`.
 - [Windows Rust targets follow the native Rust host](windows-rust-targets-follow-the-native-rust-host.md): an emulated MSYS shell on Windows ARM64 reports `x86_64` from `uname -m`, while CI selects an `aarch64-pc-windows-msvc` Rust host and instal…
 - [PR checks skip Windows, so dispatch the full matrix](pr-checks-skip-windows-so-dispatch-the-full-matrix.md): Linux-green PRs hid Windows-only e2e hangs; dispatch `cicd.yml` on the branch for host-specific changes.
+- [Standing project rules from the owner](standing-project-rules-from-the-owner.md): PR auto-merge, platform parity, workarounds, Manuscript first, no new dependencies, memory model, glibc floor, minimal cross-thread state.
