@@ -1,7 +1,6 @@
 import Channel, ChannelError, Transport from "@std/io/channels.ms"
 import Closeable, panic from "@std/core.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import Shared, share, lock from "@std/concurrency/shared.ms"
 import Duration from "@std/os/time.ms"
 import msrt_scope_new, msrt_scope_spawn, msrt_scope_contain, msrt_scope_fault_message, msrt_scope_started, msrt_task_cancel_requested, msrt_scope_join, msrt_scope_wait, msrt_scope_close, msrt_channel_token, msrt_channel_park, msrt_channel_post, msrt_obj_share from "@std/internal/tasks.ms"
 

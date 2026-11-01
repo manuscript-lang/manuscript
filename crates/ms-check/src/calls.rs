@@ -480,7 +480,6 @@ impl Checker {
         let resolved = function_arguments(args, &sig.params);
         i.arguments = slots(&resolved);
         self.check_worker_entry(&callable, &resolved);
-        self.check_shared_use(e, callee, &callable);
         i.no_return = callable.no_return
             || self.arguments_for(
                 &callee_name(callee),
@@ -499,28 +498,6 @@ impl Checker {
             i.no_return = true;
         }
         i
-    }
-
-    /// `Shared` is changed through `lock` from `@std/concurrency/sync.ms`, which is the one place that may call
-    /// its raw `take`, `put`, `locked` and `id`. A `Shared` is not `Data`, so the `Data` bound on
-    /// worker and process messages already keeps it from crossing as a silent copy.
-    fn check_shared_use(&mut self, e: &Expr, callee: &Expr, callable: &Info) {
-        let name = match &callee.kind {
-            ExprKind::Member { name, .. } => name.as_str().to_string(),
-            _ => callee_name(callee),
-        };
-        if let Some(m) = callable.method.as_ref()
-            && m.receiver.is_std("Shared")
-            && matches!(name.as_str(), "take" | "put" | "locked" | "id")
-            && self.m().file.as_str() != "@std/concurrency/sync.ms"
-        {
-            self.type_error(
-                e.pos,
-                format!(
-                    "Shared.{name} is internal; change a Shared with `var guard = lock(box)` from \"@std/concurrency/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()"
-                ),
-            );
-        }
     }
 
     /// A worker runs on another thread with memory of its own, so its entry cannot be a closure

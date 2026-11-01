@@ -1,6 +1,5 @@
 import Closeable from "@std/core.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import Shared, share, lock from "@std/concurrency/shared.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"

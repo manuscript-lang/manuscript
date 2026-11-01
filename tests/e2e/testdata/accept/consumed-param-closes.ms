@@ -1,6 +1,5 @@
 import Closeable from "@std/core.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import Shared, share, lock from "@std/concurrency/shared.ms"
 import expect_equal from "@std/test/test.ms"
 
 type Door:

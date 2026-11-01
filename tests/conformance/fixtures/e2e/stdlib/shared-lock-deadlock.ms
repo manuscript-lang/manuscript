@@ -2,8 +2,7 @@
 # conform: phase=run
 import Channel from "@std/io/channels.ms"
 import stdout from "@std/io/io.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import Shared, share, lock from "@std/concurrency/shared.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 

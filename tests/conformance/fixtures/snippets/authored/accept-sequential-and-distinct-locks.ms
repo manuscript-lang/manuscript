@@ -1,8 +1,7 @@
 # conform: tags=scope-cleanup,mutation,tier-core
 # conform: phase=check
 # conform: origin=ms-check/tests/messages.rs
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import Shared, share, lock from "@std/concurrency/shared.ms"
 
 export fn main() Int:
     let a = share(1)

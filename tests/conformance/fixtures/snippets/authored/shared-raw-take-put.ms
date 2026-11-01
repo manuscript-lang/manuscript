@@ -1,8 +1,8 @@
 # conform: tags=diagnostics,stdlib-shared,tier-core
 # conform: phase=check
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared, take, put from "@std/concurrency/shared.ms"
 
 fn bump(box: Shared[List[Int]]) Unit:
-    var items = box.take()
+    var items = take(box)
     items.append(1)
-    box.put(items)
+    put(box, items)

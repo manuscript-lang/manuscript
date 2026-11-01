@@ -1,5 +1,4 @@
-import share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import share, lock from "@std/concurrency/shared.ms"
 
 export fn main() Int:
     let box = share(1)

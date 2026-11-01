@@ -16,8 +16,7 @@ import WebSocket, WebSocketError from "@std/net/net.ms"
 import Logger from "@std/log.ms"
 import uuid_v4 from "@std/os/random.ms"
 import monotonic from "@std/os/time.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import Shared, share, lock from "@std/concurrency/shared.ms"
 
 # Errors returned while registering a route.
 export type RouterError:

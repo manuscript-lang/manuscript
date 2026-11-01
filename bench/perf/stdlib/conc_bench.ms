@@ -1,8 +1,7 @@
 import keep, measure from "@std/test/bench.ms"
 import Channel from "@std/io/channels.ms"
 import TaskGroup, Task from "@std/concurrency/tasks.ms"
-import share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import share, lock from "@std/concurrency/shared.ms"
 
 fn produce(ch: Channel[Int, Unit]) Int:
     var c = ch

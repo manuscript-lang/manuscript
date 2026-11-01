@@ -353,6 +353,9 @@ impl<'a> FnLower<'a> {
                     .ok_or_else(|| Error::new("parse without a node type"))?;
                 self.html_parse(&node, rty, &args)
             }
+            "shared/take" | "shared/put" | "shared/locked" | "shared/id" => {
+                self.shared_primitive(e, view, native.rsplit('/').next().unwrap_or(native))
+            }
             "shared/share" => {
                 let args = self.native_args(view)?;
                 if self.dead {

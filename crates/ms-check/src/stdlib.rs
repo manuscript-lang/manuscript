@@ -229,6 +229,17 @@ pub fn standard_source_module(path: Name) -> Option<ModRef> {
     world(|w| w.source_modules.get(&path).cloned())
 }
 
+/// The bundled source module an import of `name` from `path` loads: the module itself, or the
+/// source half of a mixed module when `name` is declared there rather than in the native half.
+pub fn import_source(path: &str, name: Name) -> Option<ModRef> {
+    standard_source_module(n(path)).or_else(|| {
+        let half = standard_source_module(n(&format!("{path}+source")))?;
+        standard_module_symbol(n(path), name)
+            .is_none()
+            .then_some(half)
+    })
+}
+
 /// Whether the path names a native bundled module.
 pub fn is_native_module(path: Name) -> bool {
     ensure_standard();
@@ -318,7 +329,8 @@ pub fn standard_module_names() -> Vec<&'static str> {
     });
     names
         .into_iter()
-        .filter(|path| !is_internal(path))
+        // The source half of a mixed module is part of its file, not a module of its own.
+        .filter(|path| !is_internal(path) && !path.ends_with("+source"))
         .collect()
 }
 
@@ -334,7 +346,7 @@ pub fn standard_exports(path: &str) -> HashMap<Name, SymRef> {
             .map(|(k, v)| (*k, v.clone()))
             .collect();
     }
-    world(|w| {
+    let mut exports: HashMap<Name, SymRef> = world(|w| {
         w.modules
             .get(&path)
             .map(|m| {
@@ -344,7 +356,18 @@ pub fn standard_exports(path: &str) -> HashMap<Name, SymRef> {
                     .collect()
             })
             .unwrap_or_default()
-    })
+    });
+    // A mixed module also exports what its source half declares.
+    let half = n(&format!("{path}+source"));
+    if let Some(module) = standard_source_module(half) {
+        let checked = ensure_source(&module);
+        for (k, v) in checked.exports.iter() {
+            if v.export && v.module == half {
+                exports.insert(*k, v.clone());
+            }
+        }
+    }
+    exports
 }
 
 /// The checked result of a bundled source module, if it has been checked.
@@ -357,7 +380,7 @@ fn source_reach(module: &ModRef) -> Vec<ModRef> {
     let mut stack: Vec<ModRef> = vec![module.clone()];
     while let Some(m) = stack.pop() {
         for item in &m.imports {
-            if let Some(dep) = standard_source_module(n(&item.path))
+            if let Some(dep) = import_source(&item.path, item.name)
                 && !seen.iter().any(|s| s.file == dep.file)
             {
                 seen.push(dep.clone());
@@ -406,7 +429,7 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
     }
     for g in &group {
         for item in &g.imports {
-            if let Some(dep) = standard_source_module(n(&item.path))
+            if let Some(dep) = import_source(&item.path, item.name)
                 && !group.iter().any(|m| m.file == dep.file)
             {
                 ensure_source(&dep);
@@ -517,7 +540,7 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
         }
         state.insert(module.file, 1);
         for item in &module.imports {
-            if let Some(dep) = standard_source_module(n(&item.path)) {
+            if let Some(dep) = import_source(&item.path, item.name) {
                 visit(&dep, state, ordered, diagnostics);
             }
         }
@@ -875,7 +898,7 @@ fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
     // The source half sees the native half's exports as if it imported its own file; the file
     // does not spell that import out.
     let mut own_imports: Vec<Import> = Vec::new();
-    for d in native.iter().filter(|d| d.export) {
+    for d in &native {
         let name = match &d.kind {
             DeclKind::Fn(f) => f.name,
             DeclKind::Const(c) => c.name,

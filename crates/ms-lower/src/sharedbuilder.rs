@@ -92,13 +92,11 @@ impl<'a> FnLower<'a> {
 }
 
 impl<'a> FnLower<'a> {
-    /// A method of a user-facing `Shared[T]`: a box holding `{value, taken}`. `take` moves the
-    /// value out and marks the box in use; `put` moves it back. A second `take`, or a `get`, while
-    /// the value is out faults, which is the runtime check of the single mutable borrow.
+    /// `Shared[T].get`: a box holds `{value, taken}`. A `get` while the value is out faults, which is
+    /// the runtime check of the single mutable borrow.
     pub(crate) fn shared_method(
         &mut self,
         e: &ms_syntax::ast::Expr,
-        view: &ms_check::hir::CallView<'_>,
         recv_expr: &ms_syntax::ast::Expr,
         name: &str,
     ) -> Result<Val, Error> {
@@ -106,13 +104,38 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
+        let handle = self.borrow(recv);
+        self.shared_op(e, handle, name, &[])
+    }
+
+    /// The private primitives of `@std/concurrency/shared.ms` that `lock` and `SharedGuard` are built
+    /// on: `take` moves the value out and marks the box in use; `put` moves it back. A second
+    /// `take` while the value is out faults.
+    pub(crate) fn shared_primitive(
+        &mut self,
+        e: &ms_syntax::ast::Expr,
+        view: &ms_check::hir::CallView<'_>,
+        name: &str,
+    ) -> Result<Val, Error> {
         let args = self.native_args(view)?;
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
-        let handle = self.borrow(recv);
+        let first = args
+            .first()
+            .ok_or_else(|| Error::new("a Shared primitive without a box"))?;
+        let handle = self.borrow(first.val);
+        self.shared_op(e, handle, name, &args[1..])
+    }
+
+    fn shared_op(
+        &mut self,
+        e: &ms_syntax::ast::Expr,
+        handle: Value,
+        name: &str,
+        args: &[crate::native::NArg],
+    ) -> Result<Val, Error> {
         self.at(e.pos);
-        let result = self.emty(e)?;
         let rec = self.builder_rec(self.ty_of(handle))?;
         let value_ty = self.b.m.records[rec.index()].fields[0].1;
         let addr = self
@@ -168,13 +191,12 @@ impl<'a> FnLower<'a> {
                 self.b.emit(Op::Put, &[value, moved], Imm::None, None);
                 let no = self.b.bconst(false);
                 self.b.emit(Op::Store, &[taken, no], Imm::None, None);
-                let _ = result;
                 Ok(Val {
                     v: self.b.unit(),
                     own: false,
                 })
             }
-            _ => Err(Error::new("unknown Shared method")),
+            _ => Err(Error::new("unknown Shared operation")),
         }
     }
 

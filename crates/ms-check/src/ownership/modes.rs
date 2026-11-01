@@ -281,7 +281,7 @@ fn native_method_modes(
                     ParamMode::Consume
                 };
             }
-            if (mutator && stored) || method.native.as_str() == "shared/put" {
+            if mutator && stored {
                 ParamMode::Consume
             } else {
                 ParamMode::Borrow

@@ -674,7 +674,10 @@ impl Checker {
         for item in &module.imports {
             let path = item.path.as_ref();
             let found: Option<SymRef> = if path.starts_with("@std/") {
-                let pn = n(path);
+                let pn = match stdlib::import_source(path, item.name) {
+                    Some(m) => m.file,
+                    None => n(path),
+                };
                 if stdlib::standard_source_module(pn).is_some() {
                     let f = self
                         .p
@@ -697,7 +700,12 @@ impl Checker {
                 })
             };
             let hidden = stdlib::is_internal(path) && !module.file.starts_with("@std/");
-            let usable = found.as_ref().filter(|f| f.export && !hidden).cloned();
+            // The source half of a mixed standard module sees its native half's private declarations.
+            let own_half = module.file.strip_suffix("+source") == Some(path);
+            let usable = found
+                .as_ref()
+                .filter(|f| (f.export || own_half) && !hidden)
+                .cloned();
             let Some(found) = usable else {
                 let end = Pos::new(
                     item.name_pos.offset + item.name.len() as u32,

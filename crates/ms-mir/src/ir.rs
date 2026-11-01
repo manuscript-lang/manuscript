@@ -1115,6 +1115,8 @@ impl Module {
 
     /// Registers a source file and returns its index for [`Loc`].
     pub fn add_file(&mut self, path: &str) -> u32 {
+        // The source half of a mixed standard module (`shared.ms+source`) is part of its file.
+        let path = path.strip_suffix("+source").unwrap_or(path);
         if let Some(i) = self.files.iter().position(|x| x == path) {
             return i as u32;
         }

@@ -18,8 +18,7 @@ import Bytes from "@std/bytes.ms"
 import Channel, ChannelError, Transport from "@std/io/channels.ms"
 import Closeable, Data from "@std/core.ms"
 import parse, stringify from "@std/data/json.ms"
-import Shared, share from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import Shared, share, lock from "@std/concurrency/shared.ms"
 import msrt_pipe_new, msrt_pipe_peer, msrt_pipe_send, msrt_pipe_send_bytes, msrt_pipe_close, msrt_worker_start, msrt_worker_end, msrt_worker_cancel, msrt_worker_wait from "@std/internal/workers.ms"
 
 extern fn msrt_pipe_receive(end: Int) String!PipeEnd

@@ -1,7 +1,6 @@
 # conform: tags=closures,scope-cleanup,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import share, Shared from "@std/concurrency/shared.ms"
-import lock from "@std/concurrency/sync.ms"
+import share, Shared, lock from "@std/concurrency/shared.ms"
 import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
