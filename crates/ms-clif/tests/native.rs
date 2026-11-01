@@ -287,14 +287,6 @@ fn real_runtime() -> &'static PathBuf {
             "--features",
             "entry",
         ]);
-        // `ring`'s C sources must not reference aarch64 glibc's `__stack_chk_guard` (see xtask).
-        if cfg!(target_os = "linux") {
-            let triple = format!("{}-unknown-linux-gnu", std::env::consts::ARCH);
-            command.env(
-                format!("CFLAGS_{}", triple.replace('-', "_")),
-                "-fno-stack-protector",
-            );
-        }
         #[cfg(windows)]
         let gnullvm = format!("{}-pc-windows-gnullvm", std::env::consts::ARCH);
         #[cfg(windows)]
