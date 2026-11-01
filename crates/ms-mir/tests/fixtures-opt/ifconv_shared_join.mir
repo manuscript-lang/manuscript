@@ -1,0 +1,20 @@
+module "ifconv_shared_join"
+entry @main
+fn @main() -> int {
+b0:
+  %c: bool = bconst true
+  %zero: int = iconst 0
+  br_if %c, head(), shared(%zero)
+head:
+  br_if %c, left(), right()
+left:
+  %one: int = iconst 1
+  br shared(%one)
+right:
+  %two: int = iconst 2
+  br shared(%two)
+shared(%r: int):
+  br exit(%r)
+exit(%result: int):
+  ret %result
+}
