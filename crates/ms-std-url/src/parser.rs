@@ -7,17 +7,8 @@ pub type S = Vec<u8>;
 
 const UPPERHEX: &[u8; 16] = b"0123456789ABCDEF";
 
-fn ishex(c: u8) -> bool {
-    c.is_ascii_hexdigit()
-}
-
 fn unhex(c: u8) -> u8 {
-    match c {
-        b'0'..=b'9' => c - b'0',
-        b'a'..=b'f' => c - b'a' + 10,
-        b'A'..=b'F' => c - b'A' + 10,
-        _ => 0,
-    }
+    char::from(c).to_digit(16).unwrap_or(0) as u8
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -86,7 +77,10 @@ pub fn unescape(s: &[u8], mode: Enc) -> Result<S, Bad> {
         match s[i] {
             b'%' => {
                 n += 1;
-                if i + 2 >= s.len() || !ishex(s[i + 1]) || !ishex(s[i + 2]) {
+                if i + 2 >= s.len()
+                    || !s[i + 1].is_ascii_hexdigit()
+                    || !s[i + 2].is_ascii_hexdigit()
+                {
                     return Err(Bad);
                 }
                 if mode == Enc::Host && unhex(s[i + 1]) < 8 && &s[i..i + 3] != b"%25" {
@@ -193,10 +187,6 @@ fn cut(s: &[u8], sep: u8) -> (&[u8], Option<&[u8]>) {
     }
 }
 
-fn contains(s: &[u8], c: u8) -> bool {
-    s.contains(&c)
-}
-
 fn get_scheme(raw: &[u8]) -> Result<(S, &[u8]), Bad> {
     for (i, &c) in raw.iter().enumerate() {
         match c {
@@ -264,7 +254,7 @@ fn parse_inner(raw: &[u8], via_request: bool) -> Result<Url, Bad> {
             return Err(Bad);
         }
         let (segment, _) = cut(rest, b'/');
-        if contains(segment, b':') {
+        if segment.contains(&b':') {
             return Err(Bad);
         }
     }
@@ -287,12 +277,8 @@ fn parse_inner(raw: &[u8], via_request: bool) -> Result<Url, Bad> {
     Ok(url)
 }
 
-fn rfind(s: &[u8], c: u8) -> Option<usize> {
-    s.iter().rposition(|&b| b == c)
-}
-
 fn parse_authority(authority: &[u8]) -> Result<(Option<Userinfo>, S), Bad> {
-    let i = rfind(authority, b'@');
+    let i = authority.iter().rposition(|&b| b == b'@');
     let host = parse_host(match i {
         None => authority,
         Some(i) => &authority[i + 1..],
@@ -320,7 +306,7 @@ fn parse_authority(authority: &[u8]) -> Result<(Option<Userinfo>, S), Bad> {
 
 fn parse_host(host: &[u8]) -> Result<S, Bad> {
     if host.starts_with(b"[") {
-        let i = rfind(host, b']').ok_or(Bad)?;
+        let i = host.iter().rposition(|&b| b == b']').ok_or(Bad)?;
         if !valid_optional_port(&host[i + 1..]) {
             return Err(Bad);
         }
@@ -330,7 +316,7 @@ fn parse_host(host: &[u8]) -> Result<S, Bad> {
             out.extend(unescape(&host[i..], Enc::Host)?);
             return Ok(out);
         }
-    } else if let Some(i) = rfind(host, b':')
+    } else if let Some(i) = host.iter().rposition(|&b| b == b':')
         && !valid_optional_port(&host[i..])
     {
         return Err(Bad);
@@ -418,7 +404,7 @@ impl Url {
             if !path.is_empty() && path[0] != b'/' && !self.host.is_empty() {
                 buf.push(b'/');
             }
-            if buf.is_empty() && contains(cut(&path, b'/').0, b':') {
+            if buf.is_empty() && cut(&path, b'/').0.contains(&b':') {
                 buf.extend_from_slice(b"./");
             }
             buf.extend(path);
@@ -483,7 +469,7 @@ impl Url {
 pub fn split_host_port(host_port: &[u8]) -> (&[u8], &[u8]) {
     let mut host = host_port;
     let mut port: &[u8] = &[];
-    if let Some(colon) = rfind(host, b':')
+    if let Some(colon) = host.iter().rposition(|&b| b == b':')
         && valid_optional_port(&host[colon..])
     {
         port = &host[colon + 1..];
@@ -543,7 +529,7 @@ pub fn resolve_path(base: &[u8], r: &[u8]) -> S {
     let full: S = if r.is_empty() {
         base.to_vec()
     } else if r[0] != b'/' {
-        let i = rfind(base, b'/').map_or(0, |i| i + 1);
+        let i = base.iter().rposition(|&b| b == b'/').map_or(0, |i| i + 1);
         let mut f = base[..i].to_vec();
         f.extend_from_slice(r);
         f
@@ -566,7 +552,7 @@ pub fn resolve_path(base: &[u8], r: &[u8]) -> S {
             let str_ = dst[1..].to_vec();
             dst.clear();
             dst.push(b'/');
-            match rfind(&str_, b'/') {
+            match str_.iter().rposition(|&b| b == b'/') {
                 None => first = true,
                 Some(index) => dst.extend_from_slice(&str_[..index]),
             }

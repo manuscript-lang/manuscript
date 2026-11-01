@@ -1,4 +1,4 @@
-import msstd_html_escape, msstd_html_unescape, msstd_html_parse from "@std/internal/html.ms"
+import (msstd_html_escape, msstd_html_unescape, msstd_html_parse) from "@std/internal/html.ms"
 
 # Errors returned for malformed HTML or parser resource limits.
 export type HtmlError:

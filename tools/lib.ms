@@ -1,6 +1,13 @@
 # Shared helpers for the repository tools in this directory. Run a tool from the repository root
 # with `ms run tools/<name>.ms [-- arguments]`.
-import Stdio, os_type, environment, set_environment, run, spawn from "@std/os/process.ms"
+import (
+    Stdio,
+    os_type,
+    environment,
+    set_environment,
+    run,
+    spawn
+) from "@std/os/process.ms"
 import canonicalize, read_file from "@std/os/fs.ms"
 import stderr from "@std/io/io.ms"
 import hex_encode from "@std/data/encoding.ms"
@@ -42,7 +49,7 @@ export fn env(name: String, fallback: String) String:
     let all = environment().get(Map[String, String]())
     if let value = all.get(name): return value.clone()
 
-    return fallback
+    return fallback.clone()
 
 # A process exit status limited to what `main` may return.
 export fn status(code: Int) Int:

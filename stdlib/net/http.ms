@@ -7,7 +7,20 @@ import ReadStream from "@std/io/io.ms"
 import TlsOptions from "@std/net/net.ms"
 import WebSocket from "@std/net/net.ms"
 import WebSocketError from "@std/net/net.ms"
-import msstd_http_client_close, msstd_http_client_request, msstd_http_client_request_bytes, msstd_http_client_request_stream, msstd_http_server_address, msstd_http_server_adopt, msstd_http_server_close, msstd_http_server_wait, msstd_http_body_close, msstd_http_body_metadata, msstd_http_body_read, msstd_http_body_read_all from "@std/internal/http.ms"
+import (
+    msstd_http_client_close,
+    msstd_http_client_request,
+    msstd_http_client_request_bytes,
+    msstd_http_client_request_stream,
+    msstd_http_server_address,
+    msstd_http_server_adopt,
+    msstd_http_server_close,
+    msstd_http_server_wait,
+    msstd_http_body_close,
+    msstd_http_body_metadata,
+    msstd_http_body_read,
+    msstd_http_body_read_all
+) from "@std/internal/http.ms"
 
 # Errors returned for invalid requests, transport failures, timeouts, and limits.
 export type HttpError:

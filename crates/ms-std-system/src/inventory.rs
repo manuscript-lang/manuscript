@@ -142,35 +142,20 @@ pub fn interfaces() -> Result<Vec<Interface>, u8> {
 
 #[cfg(unix)]
 fn ip_text(sa: *const libc::sockaddr, v6: bool) -> Option<Vec<u8>> {
-    let mut buf = [0u8; 64];
-    let (af, src) = if v6 {
+    use alloc::string::ToString;
+    use core::net::{Ipv4Addr, Ipv6Addr};
+
+    let text = if v6 {
         // SAFETY: an AF_INET6 sockaddr is a `sockaddr_in6`.
         let a = unsafe { &*(sa as *const libc::sockaddr_in6) };
-        (
-            libc::AF_INET6,
-            (&a.sin6_addr as *const libc::in6_addr).cast(),
-        )
+        Ipv6Addr::from(a.sin6_addr.s6_addr).to_string()
     } else {
         // SAFETY: an AF_INET sockaddr is a `sockaddr_in`.
         let a = unsafe { &*(sa as *const libc::sockaddr_in) };
-        (libc::AF_INET, (&a.sin_addr as *const libc::in_addr).cast())
+        // `s_addr` is in network byte order, so its native bytes are the address octets.
+        Ipv4Addr::from(a.sin_addr.s_addr.to_ne_bytes()).to_string()
     };
-    unsafe extern "C" {
-        // The `libc` crate does not bind it.
-        fn inet_ntop(
-            af: libc::c_int,
-            src: *const libc::c_void,
-            dst: *mut libc::c_char,
-            size: libc::socklen_t,
-        ) -> *const libc::c_char;
-    }
-    // SAFETY: `src` is a valid address of the family and `buf` is writable for its length.
-    let text = unsafe { inet_ntop(af, src, buf.as_mut_ptr().cast(), buf.len() as _) };
-    if text.is_null() {
-        return None;
-    }
-    let end = buf.iter().position(|&b| b == 0)?;
-    Some(buf[..end].to_vec())
+    Some(text.into_bytes())
 }
 
 #[cfg(any(target_os = "linux", target_os = "android"))]

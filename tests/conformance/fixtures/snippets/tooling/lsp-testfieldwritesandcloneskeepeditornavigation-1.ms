@@ -11,4 +11,4 @@ fn work(var value: Val) Unit:
 
     let copy = value.clone()
     let list = [copy]
-    list.clone().append(value)
+    list.clone().append(value.clone())

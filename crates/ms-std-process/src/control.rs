@@ -183,8 +183,7 @@ pub fn initialize_groups(username: &[u8], gid: i64) -> Res<()> {
 /// Process title through procfs, as Go's `hostos` does on Linux.
 #[cfg(target_os = "linux")]
 fn comm_path() -> CPath {
-    // SAFETY: plain system call.
-    let pid = unsafe { libc::getpid() };
+    let pid = std::process::id();
     let text = alloc::format!("/proc/self/task/{pid}/comm");
     CPath::new(text.as_bytes()).expect("no NUL in a formatted path")
 }
@@ -360,7 +359,7 @@ pub fn info() -> Res<Info> {
     unsafe {
         Ok(Info {
             pid: std::process::id() as i64,
-            parent_pid: libc::getppid() as i64,
+            parent_pid: std::os::unix::process::parent_id() as i64,
             executable: executable()?,
             uid: libc::getuid() as i64,
             gid: libc::getgid() as i64,
@@ -526,7 +525,7 @@ pub fn resident_bytes() -> Res<i64> {
     // SAFETY: `info` is writable for `size` bytes.
     let got = unsafe {
         libc::proc_pidinfo(
-            libc::getpid(),
+            std::process::id() as libc::c_int,
             libc::PROC_PIDTASKINFO,
             0,
             (&mut info as *mut libc::proc_taskinfo).cast(),

@@ -1,6 +1,21 @@
 import expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms"
 import TextError from "@std/core.ms"
-import FileSystemError, FileHandle, GlobOptions, PathEntry, create_directory, glob, glob_entries, list, open, read_file, remove, stat, temporary, write_file from "@std/os/fs.ms"
+import (
+    FileSystemError,
+    FileHandle,
+    GlobOptions,
+    PathEntry,
+    create_directory,
+    glob,
+    glob_entries,
+    list,
+    open,
+    read_file,
+    remove,
+    stat,
+    temporary,
+    write_file
+) from "@std/os/fs.ms"
 import read_all, IoError, open_read from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 

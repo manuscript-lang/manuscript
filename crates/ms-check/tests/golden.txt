@@ -2130,19 +2130,14 @@ type	5	5	157	missing argument _0: Int in call to callback; add '_0: <Int>'fn fi
     let value: fn(String) Result[Int, TextError] = failresolution	2	39	55	unknown type TextError; add: import TextError from "@std/core.ms"
 resolution	2	52	68	unknown binding fail; add: import fail from "@std/test/test.ms"fn cause(value: Int) String: "cause"
 fn wrong(value: Int?) Result[Int, String]: value.ok_or_else(cause)type	2	61	97	callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest
-type	2	50	86	String does not satisfy Error; pass a type that already implements it
-type	2	61	97	expected fn() String, found fn(Int) String (in argument 'create' of value.ok_or_else)
-type	2	1	37	String does not satisfy Error; use a type that implements itfn check(value: Int, key: String) Bool: true
+type	2	61	97	expected fn() String, found fn(Int) String (in argument 'create' of value.ok_or_else)fn check(value: Int, key: String) Bool: true
 fn wrong(value: Map[String, Int]) Bool: value.every(check)resolution	2	47	91	unknown or ambiguous member every on Map[String, Int]; every(predicate) is now all(predicate)type Optional[T]:
     case T
     case none
-fn wrong(value: Int?) Result[Int, String]: value.ok_or("missing")resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
-type	4	50	92	String does not satisfy Error; pass a type that already implements it
-type	4	1	43	String does not satisfy Error; use a type that implements ittype Result[T, E]:
+fn wrong(value: Int?) Result[Int, String]: value.ok_or("missing")resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declarationtype Result[T, E]:
     case ok(value: T)
     case error(cause: E)
-fn wrong(value: Result[Int, String]) Int?: value.to_optional()resolution	1	1	0	declaration Result reuses a prelude name; rename it, because Result always refers to the standard declaration
-type	4	1	66	String does not satisfy Error; use a type that implements itfn f() Int:
+fn wrong(value: Result[Int, String]) Int?: value.to_optional()resolution	1	1	0	declaration Result reuses a prelude name; rename it, because Result always refers to the standard declarationfn f() Int:
     var x: Int = 1
     x += try 3
     return x
@@ -2152,8 +2147,7 @@ type	4	1	66	String does not satisfy Error; use a type that implements itfn f() 
     let output = value.filter(fn k, n: n)type	2	40	79	expected Bool, found Int (in the return value)type Result[T, E]:
     case ok(value: T)
     case error(cause: E)
-fn wrong(value: Result[Int, String]) Int: value.get()resolution	1	1	0	declaration Result reuses a prelude name; rename it, because Result always refers to the standard declaration
-type	4	1	66	String does not satisfy Error; use a type that implements itfn identity(n: Int) Int: return n
+fn wrong(value: Result[Int, String]) Int: value.get()resolution	1	1	0	declaration Result reuses a prelude name; rename it, because Result always refers to the standard declarationfn identity(n: Int) Int: return n
 fn identity[T](n: T) T: return n
 fn identity(n: Int = 0) Int: return n
 fn identity(n: Int) Int: return n + 1
@@ -2593,8 +2587,7 @@ fn call() Unit: f(4)
     return value.get()
 type	2	18	45	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn wrong(value: Result[Int, String]) Bool:
     return value.is_some()
-resolution	2	18	60	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, get_or_else, is_error, is_ok, map, map_error, or_else, to_optional
-type	1	1	0	String does not satisfy Error; use a type that implements ittype Optional[T]:
+resolution	2	18	60	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, get_or_else, is_error, is_ok, map, map_error, or_else, to_optionaltype Optional[T]:
     case T
     case none
 fn wrong(value: Int?) Int:
@@ -2614,10 +2607,9 @@ fn broken(
     let missing = none
 type	2	19	31	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f() Unit:
     let result = ok(value: 1)
-type	2	18	30	cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the binding
-type	2	18	30	<invalid> does not satisfy Error; use a type that implements itfn f() Unit:
+type	2	18	30	cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f() Unit:
     let result = error(cause: "failed")
-type	2	18	30	error(...) needs a value that implements Error, not a String; to fail a test write `try fail("message")` (from @std/test/test.ms), otherwise wrap the message in a type that implements Errorfn f() Error:
+type	2	18	30	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f() Error:
     return "failed"
 type	2	12	25	expected Error, found String (in the return value); use a concrete value implementing Errortype Other:
     case Int
@@ -2906,8 +2898,7 @@ impl Read for E1:
 fn read[T](r: Result[T, Read]) Unit: return
 fn first() Unit: read(f())resolution	3	15	47	unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it
 type	6	18	140	cannot infer type argument T for read; write read[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
-resolution	6	23	145	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module
-type	5	1	79	Read does not satisfy Error; use a type that implements ittype Cause:
+resolution	6	23	145	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a moduletype Cause:
     text: String
 impl Error for Cause:
     fn message() String: self.text
@@ -3027,8 +3018,7 @@ fn f() Result[Int, Error]:
 fn f() Result[Int, Error]:
     try operation()
     return ok(1)
-type	1	35	34	Int does not satisfy Error; use a type that implements it
-type	3	5	74	try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for itfn operation() Result[Unit, Error]: ok(unit)
+type	3	5	74	try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for itfn operation() Result[Unit, Error]: ok(unit)
 fn f() Unit:
     try operation()
 type	3	5	62	try requires an enclosing Result; declare this function to return Result[T, E], or use 'if let', '.get(default)', or '.get()'fn operation() Unit: unit
@@ -3259,8 +3249,7 @@ let NAMES: List[String] = ["a"]
         ok(n): return n
     return 0
 type	3	23	70	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match
-type	2	5	39	non-exhaustive match; missing cases: error, or add a final '_:' arm; add the arms 'case error(cause):'
-type	1	1	0	String does not satisfy Error; use a type that implements itfn f() String: "é \{1 + * 2\}"
+type	2	5	39	non-exhaustive match; missing cases: error, or add a final '_:' arm; add the arms 'case error(cause):'fn f() String: "é \{1 + * 2\}"
 export fn commands() Commands: ...
 resolution	1	22	21	unknown type Commands; add: import Commands from "@std/os/process.ms"export type Duration: ...
 type List[T]: ...
@@ -3758,7 +3747,7 @@ impl Box:
 fn f() Unit:
     let g = fn(x: Int) Result[Int, String]: ok(x)
     return unit
-type	2	45	57	String does not satisfy Error; use a type that implements itfn f() Int: 1
+type	2	9	21	local binding g is never read; remove it, use it, or name it with a leading '_' to ignore itfn f() Int: 1
 fn f(g: fn(value: Int) Int) Int: 1
 parse	1	17	16	expected ')', found ':'; close the parenthesis, separating items with commasfn f() Int:
     let g = fn(x) Int: x
@@ -3770,8 +3759,7 @@ impl Box:
 parse	1	7	6	every fn declares its result type after the parameter list, e.g. fn f() Unit:interface Read:
     fn read()
 parse	2	14	29	every fn declares its result type after the parameter list, e.g. fn f() Unit:fn f() Result[Unit, String]: ...
-    type	1	1	0	reachable fallthrough in function returning Result[Unit, String]; end every path with 'return <Result[Unit, String]>' (or make the last branch return)
-type	1	1	0	String does not satisfy Error; use a type that implements it
+    type	1	1	0	reachable fallthrough in function returning Result[Unit, String]; end every path with 'return <Result[Unit, String]>' (or make the last branch return)
 fn broken(
 parse	3	1	12	unterminated delimiter '(' opened at line 2:10; add the matching ')' before the end of the filefn choose(value: Int) Int:
     return value

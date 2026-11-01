@@ -1,5 +1,12 @@
 import HttpRequest, HttpResponse, buffered, headers from "@std/net/http.ms"
-import Listener, NetworkError, serve_cores, serve_core, connect, listen from "@std/net/net.ms"
+import (
+    Listener,
+    NetworkError,
+    serve_cores,
+    serve_core,
+    connect,
+    listen
+) from "@std/net/net.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_true from "@std/test/test.ms"
 

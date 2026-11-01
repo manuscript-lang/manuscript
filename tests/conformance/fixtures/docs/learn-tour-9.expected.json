@@ -3,47 +3,13 @@
   "phase": "check",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it",
-        "position": {
-          "file": "learn-tour-9.ms",
-          "line": 9,
-          "column": 16,
-          "offset": 287
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it",
-        "position": {
-          "file": "learn-tour-9.ms",
-          "line": 11,
-          "column": 12,
-          "offset": 335
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it",
-        "position": {
-          "file": "learn-tour-9.ms",
-          "line": 15,
-          "column": 12,
-          "offset": 454
-        }
-      }
-    ],
+    "diagnostics": [],
     "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/learn-tour-9.ms:9:16: type: QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it\n   |\n 9 |         return error(QuantityError.MustBePositive)\n   |                ^\n<DIR>/learn-tour-9.ms:11:12: type: QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it\n    |\n 11 |     return ok(value)\n    |            ^\n<DIR>/learn-tour-9.ms:15:12: type: QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it\n    |\n 15 |     return ok(valid_count * 12)\n    |            ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "exit_code": 0,
+      "stdout": "Checked learn-tour-9.ms\n",
+      "stderr": ""
     }
   }
 }

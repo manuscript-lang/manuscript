@@ -1,7 +1,32 @@
 import Closeable, Iterator from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
-import msstd_terminal_event_kind, msstd_terminal_event_text, msstd_terminal_event_ctrl, msstd_terminal_event_alt, msstd_terminal_event_shift, msstd_terminal_event_columns, msstd_terminal_event_rows, msstd_io_copy, msstd_io_read_all, msstd_io_read_line, msstd_io_redirect_null, msstd_io_stdin, msstd_io_stdout, msstd_io_stderr, msstd_io_files, msstd_io_terminal, msstd_terminal_raw_terminal_close, msstd_terminal_raw_terminal_next_event, msstd_terminal_raw_terminal_size_status, msstd_terminal_raw_terminal_size_columns, msstd_terminal_raw_terminal_size_rows, msstd_terminal_raw_terminal_move_cursor, msstd_terminal_raw_terminal_show_cursor, msstd_terminal_raw_terminal_erase from "@std/internal/io.ms"
+import (
+    msstd_terminal_event_kind,
+    msstd_terminal_event_text,
+    msstd_terminal_event_ctrl,
+    msstd_terminal_event_alt,
+    msstd_terminal_event_shift,
+    msstd_terminal_event_columns,
+    msstd_terminal_event_rows,
+    msstd_io_copy,
+    msstd_io_read_all,
+    msstd_io_read_line,
+    msstd_io_redirect_null,
+    msstd_io_stdin,
+    msstd_io_stdout,
+    msstd_io_stderr,
+    msstd_io_files,
+    msstd_io_terminal,
+    msstd_terminal_raw_terminal_close,
+    msstd_terminal_raw_terminal_next_event,
+    msstd_terminal_raw_terminal_size_status,
+    msstd_terminal_raw_terminal_size_columns,
+    msstd_terminal_raw_terminal_size_rows,
+    msstd_terminal_raw_terminal_move_cursor,
+    msstd_terminal_raw_terminal_show_cursor,
+    msstd_terminal_raw_terminal_erase
+) from "@std/internal/io.ms"
 
 # A file-like byte stream that returns `none` at end of input.
 export interface File:

@@ -1,16 +1,23 @@
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
 import monotonic from "@std/os/time.ms"
-import escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError from "@std/data/html.ms"
+import (
+    escape,
+    parse,
+    HtmlNode,
+    HtmlAttribute,
+    HtmlLimits,
+    HtmlError
+) from "@std/data/html.ms"
 
 fn children(node: HtmlNode) List[HtmlNode]:
     match node:
-        Document(items): return items
-        Element(_, _, _, items): return items
+        Document(items): return items.clone()
+        Element(_, _, _, items): return items.clone()
         _: return []
 
 fn text_content(node: HtmlNode) String:
     match node:
-        Text(text): return text
+        Text(text): return text.clone()
         Document(items):
             var text = ""
             for item in items: text = "{text}{text_content(item)}"

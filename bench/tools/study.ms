@@ -1,6 +1,21 @@
 # Building blocks for the per-experiment paired-trial drivers under bench/tools (names ending in a study topic). A study runs prebuilt
 # producer binaries in rotating order, validates every record, and keeps samples, environment and a summary.
-import Invalid, absolute, dump, exists, file_sha256, invalid, jfloat, jobject, jstr, median, platform, read_text, sample, write_text from "./lib.ms"
+import (
+    Invalid,
+    absolute,
+    dump,
+    exists,
+    file_sha256,
+    invalid,
+    jfloat,
+    jobject,
+    jstr,
+    median,
+    platform,
+    read_text,
+    sample,
+    write_text
+) from "./lib.ms"
 import append_file, create_directory from "@std/os/fs.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
 

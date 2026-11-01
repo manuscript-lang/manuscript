@@ -719,6 +719,13 @@ impl<'m> Interp<'m> {
                 };
                 set!(Val::Alt(c, Rc::new(self.take_args(f, regs, a))));
             }
+            Op::AltView => {
+                let Imm::Case(_, c) = inst.imm else {
+                    return Err(Raw::internal("alt.view without case"));
+                };
+                let fields: Vec<Val> = a.iter().map(|x| arg(f, regs, *x, false, m)).collect();
+                set!(Val::Alt(c, Rc::new(fields)));
+            }
             Op::AltTag => {
                 let Val::Alt(t, _) = &regs[a[0].index()] else {
                     return Err(Raw::internal("alt.tag on a non-alternative"));

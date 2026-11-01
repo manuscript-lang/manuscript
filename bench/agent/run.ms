@@ -1,7 +1,14 @@
 # Agent-effectiveness benchmark runner. See README.md.
 # Usage (from the repository root): ms run bench/agent/run.ms -- <list|run|oracle> [options]
 import Command, Flag, FlagKind, command from "@std/cli.ms"
-import append_file, copy_file, remove, stat, temporary_directory, create_directory from "@std/os/fs.ms"
+import (
+    append_file,
+    copy_file,
+    remove,
+    stat,
+    temporary_directory,
+    create_directory
+) from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 import arguments from "@std/os/process.ms"
 import uuid_v4 from "@std/os/random.ms"

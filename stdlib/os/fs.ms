@@ -5,7 +5,55 @@ import ReadStream from "@std/io/io.ms"
 import Timestamp from "@std/os/time.ms"
 import WriteStream from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
-import msstd_fs_constants, msstd_path_basename, msstd_path_dirname, msstd_path_extension, msstd_path_is_absolute, msstd_path_join, msstd_path_normalize, msstd_path_basename_without, msstd_path_separator, msstd_path_delimiter, msstd_path_to_namespaced_path, msstd_fs_filesystem, msstd_path_relative, msstd_fs_posix, msstd_fs_win32, msstd_path_resolve, msstd_path_parse, msstd_path_format, msstd_path_matches_glob, msstd_fs_file_reader, msstd_fs_file_writer, msstd_io_close, msstd_fs_file_clone, msstd_io_read, msstd_io_write, msstd_io_write_bytes, msstd_fs_file_read_at, msstd_fs_file_write_at, msstd_fs_file_read_file, msstd_fs_file_read_vectors, msstd_fs_file_write_vectors, msstd_fs_file_seek, msstd_fs_file_stat, msstd_fs_file_truncate, msstd_fs_file_sync, msstd_fs_file_data_sync, msstd_fs_file_chmod, msstd_fs_file_chown, msstd_fs_file_set_times, msstd_fs_file_read_lines, msstd_fs_directory_read, msstd_fs_directory_path, msstd_fs_directory_close, msstd_fs_watch_next, msstd_fs_watch_close, msstd_fs_temporary_path, msstd_fs_temporary_close from "@std/internal/fs.ms"
+import (
+    msstd_fs_constants,
+    msstd_path_basename,
+    msstd_path_dirname,
+    msstd_path_extension,
+    msstd_path_is_absolute,
+    msstd_path_join,
+    msstd_path_normalize,
+    msstd_path_basename_without,
+    msstd_path_separator,
+    msstd_path_delimiter,
+    msstd_path_to_namespaced_path,
+    msstd_fs_filesystem,
+    msstd_path_relative,
+    msstd_fs_posix,
+    msstd_fs_win32,
+    msstd_path_resolve,
+    msstd_path_parse,
+    msstd_path_format,
+    msstd_path_matches_glob,
+    msstd_fs_file_reader,
+    msstd_fs_file_writer,
+    msstd_io_close,
+    msstd_fs_file_clone,
+    msstd_io_read,
+    msstd_io_write,
+    msstd_io_write_bytes,
+    msstd_fs_file_read_at,
+    msstd_fs_file_write_at,
+    msstd_fs_file_read_file,
+    msstd_fs_file_read_vectors,
+    msstd_fs_file_write_vectors,
+    msstd_fs_file_seek,
+    msstd_fs_file_stat,
+    msstd_fs_file_truncate,
+    msstd_fs_file_sync,
+    msstd_fs_file_data_sync,
+    msstd_fs_file_chmod,
+    msstd_fs_file_chown,
+    msstd_fs_file_set_times,
+    msstd_fs_file_read_lines,
+    msstd_fs_directory_read,
+    msstd_fs_directory_path,
+    msstd_fs_directory_close,
+    msstd_fs_watch_next,
+    msstd_fs_watch_close,
+    msstd_fs_temporary_path,
+    msstd_fs_temporary_close
+) from "@std/internal/fs.ms"
 
 # Errors returned by filesystem operations. `Failed` retains the host error text.
 export type FileSystemError:

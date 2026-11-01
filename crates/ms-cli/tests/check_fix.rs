@@ -213,15 +213,22 @@ fn fix_renames_a_misspelled_member() {
 }
 
 #[test]
-fn error_with_a_string_gives_one_diagnostic_naming_fail() {
+fn context_free_string_error_keeps_inference_and_discard_diagnostics() {
     let dir = std::env::temp_dir().join(format!("ms-cli-error-string-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("a.ms"), "test \"x\":\n    error(\"boom\")\n").unwrap();
     let (status, text) = ms(&["check", "a.ms"], &dir);
     assert_eq!(status, Some(1), "{text}");
-    assert!(text.contains("try fail("), "{text}");
-    assert!(text.contains("1 error;"), "{text}");
+    assert!(
+        text.contains("cannot infer constructor type argument T"),
+        "{text}"
+    );
+    assert!(
+        text.contains("this statement discards Result[<invalid>, String]"),
+        "{text}"
+    );
+    assert!(!text.contains("implements Error"), "{text}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

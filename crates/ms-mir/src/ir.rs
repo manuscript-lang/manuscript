@@ -280,7 +280,7 @@ pub enum Op {
     // Float arithmetic and conversions.
     FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, FFloor, FCeil, FTrunc, I2F, F2IOpt, B2I, Select,
     // Records and alternatives.
-    RecNew, RecGet, RecSet, RecFill, AltNew, AltTag, AltGet, AltUnbox, AltTake, AltRelease, RecRelease,
+    RecNew, RecGet, RecSet, RecFill, AltNew, AltView, AltTag, AltGet, AltUnbox, AltTake, AltRelease, RecRelease,
     // Lists.
     ListNew, ListLit, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast,
     // Optionals.
@@ -402,7 +402,7 @@ impl Op {
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
         Op::ICmp, Op::UICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
-        Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
+        Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltView, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
         Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
@@ -475,6 +475,7 @@ impl Op {
             Op::RecSet => ("rec.set", K::Field, true, effects!(rc)),
             Op::RecFill => ("rec.fill", K::Field, true, effects!()),
             Op::AltNew => ("alt.new", K::Case, true, effects!(alloc)),
+            Op::AltView => ("alt.view", K::Case, true, effects!()),
             Op::AltTag => ("alt.tag", K::None, true, effects!(reads)),
             Op::AltGet => ("alt.get", K::AltField, true, effects!(reads)),
             Op::AltUnbox => ("alt.unbox", K::AltField, true, effects!(writes, rc)),
@@ -821,8 +822,12 @@ pub struct Func {
     pub name: String,
     /// Parameters; `blocks[0].params` define their values.
     pub params: Vec<Param>,
-    /// Result type; results are owned.
+    /// Result type. Results are owned unless `ret_borrowed`.
     pub ret: Ty,
+    /// The result is a reference into one or more parameters (a lending function): the caller
+    /// holds it as a borrow for as long as those arguments live and never releases it. The
+    /// verifier rejects an owned value returned from such a function.
+    pub ret_borrowed: bool,
     /// Visibility.
     pub linkage: Linkage,
     /// Role of the function.
@@ -859,6 +864,7 @@ impl Func {
             name: name.to_string(),
             params: params.clone(),
             ret,
+            ret_borrowed: false,
             linkage: Linkage::Internal,
             kind: FuncKind::Normal,
             inline: InlineHint::Auto,
@@ -1305,7 +1311,12 @@ impl Module {
             | Op::StrLit
             | Op::StrAscii
             | Op::OptView
+            | Op::AltView
             | Op::OptNone => Mode::Borrow,
+            // A lending function hands back a reference into its arguments.
+            Op::Call if matches!(inst.imm, Imm::Func(g) if self.funcs[g.index()].ret_borrowed) => {
+                Mode::Borrow
+            }
             _ => Mode::Own,
         })
     }

@@ -128,6 +128,14 @@ pub struct Program {
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
+    /// Callables whose result is a reference into their arguments (`ownership::Ownership`).
+    pub lenders: Rc<HashSet<(Name, NodeId)>>,
+    /// Wrappers (`x?`, `ok(x)`, `error(x)`) of lent values that stay references.
+    pub view_wraps: Rc<HashSet<(Name, NodeId)>>,
+    /// Lending calls whose result the caller owns, by module file and call node.
+    pub owned_lends: Rc<HashMap<(Name, NodeId), crate::ownership::OwnedLend>>,
+    /// Conditional and match expressions whose value is a reference, by module file and node.
+    pub lent_matches: Rc<HashSet<(Name, NodeId)>>,
     /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
     /// identity. Filled together with `borrows`.
     pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,

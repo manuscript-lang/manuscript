@@ -12,7 +12,7 @@ impl Hashable for Key:
 export fn first() Int!:
     var m = Map[Key, Int]()
     var original = Key(1.0)
-    m.add(original, 1)
+    m.add(original.clone(), 1)
     insert(var m, Key(-1.0), 2)
     insert_bound(var m, Key(1.0), 3)
 

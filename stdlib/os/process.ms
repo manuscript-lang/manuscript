@@ -4,7 +4,24 @@ import Duration from "@std/os/time.ms"
 import IpFamily from "@std/net/net.ms"
 import ReadStream from "@std/io/io.ms"
 import WriteStream from "@std/io/io.ms"
-import msrt_args, msstd_system_endianness, msstd_system_end_of_line, msstd_system_dev_null, msstd_system_os_type, msstd_system_constants, msstd_process_commands, msstd_process_control, msstd_process_system, msstd_process_subprocess_stdin, msstd_process_subprocess_stream, msstd_process_subprocess_wait, msstd_process_subprocess_max_resident, msstd_process_subprocess_terminate, msstd_process_subprocess_kill, msstd_process_subprocess_close from "@std/internal/process.ms"
+import (
+    msrt_args,
+    msstd_system_endianness,
+    msstd_system_end_of_line,
+    msstd_system_dev_null,
+    msstd_system_os_type,
+    msstd_system_constants,
+    msstd_process_commands,
+    msstd_process_control,
+    msstd_process_system,
+    msstd_process_subprocess_stdin,
+    msstd_process_subprocess_stream,
+    msstd_process_subprocess_wait,
+    msstd_process_subprocess_max_resident,
+    msstd_process_subprocess_terminate,
+    msstd_process_subprocess_kill,
+    msstd_process_subprocess_close
+) from "@std/internal/process.ms"
 
 # Errors returned when a process cannot start, times out, or exceeds an output bound.
 export type CommandError:

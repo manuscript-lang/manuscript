@@ -94,7 +94,7 @@ fn clone_Tally(tally: Tally) Int:
 test "view and helper names stay apart from declared names":
     let tally = Tally(1)
     let copy = tally.clone()
-    let view: Counter = tally
+    let view: Counter = tally.clone()
     try expect_false(view.count() != 1 or Counter_Tally(2).other != 2)
     try expect_false(copy.total != 1 or clone_Tally(tally) != 2)
 

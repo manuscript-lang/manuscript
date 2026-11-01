@@ -1,5 +1,12 @@
 import Key, Cause from "./domain.ms"
-import transform_set, locate_map, locate_set, convert, remap_keys, remap_values from "./helpers.ms"
+import (
+    transform_set,
+    locate_map,
+    locate_set,
+    convert,
+    remap_keys,
+    remap_values
+) from "./helpers.ms"
 
 impl Equal for Key:
     fn equals(other: Key) Bool:
@@ -32,7 +39,7 @@ export fn second_queries() Bool:
 
 export fn second_converted(cause: Cause) Int!:
     let missing: Int? = none
-    return convert(missing, fn() Error: cause)
+    return convert(missing, fn() Error: cause.clone())
 
 export fn second_folded(cause: Cause) Error:
     var values = Map[String, Int]()

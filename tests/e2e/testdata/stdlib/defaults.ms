@@ -1,7 +1,14 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 import parse, stringify, CsvOptions, CsvError from "@std/data/csv.ms"
 import base64_encode, base64_decode, EncodingError from "@std/data/encoding.ms"
-import Commands, Subprocess, CommandOutput, CommandError, run, Stdio from "@std/os/process.ms"
+import (
+    Commands,
+    Subprocess,
+    CommandOutput,
+    CommandError,
+    run,
+    Stdio
+) from "@std/os/process.ms"
 import Bytes from "@std/bytes.ms"
 
 fn forward[T](item: T) T: item

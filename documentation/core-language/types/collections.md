@@ -5,7 +5,7 @@ weight = 3
 
 # Collections
 
-Collections are owned values. Consuming uses move them at their last use; local place bindings and accessors can borrow them. `.clone()` makes an explicit deep copy. Mutation requires `var`; see [mutation and references](references.md).
+Collections have one owner. Bindings, arguments and lending accessors (`first`, `last`, `Map.get`) borrow them; storing one moves it at its last use; `.clone()` makes an explicit deep copy. Mutation requires `var`; see [mutation and references](references.md).
 
 `List`, `Map`, `Set`, `CollectionError`, `ListEntry[T]`, and `MapEntry[K: Hashable, V]` are prelude names (with `Optional`, `Result`, `Error`, `MissingValue`, `Equal`, `Hashable`); importing them is rejected. Builders and factories need imports. See [names and declaration order](../modules/declarations.md#names-and-declaration-order).
 

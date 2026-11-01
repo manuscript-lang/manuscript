@@ -87,7 +87,9 @@ impl FnLower<'_> {
             }
         }
         let rty = self.emty(e)?;
-        let owned = self.needs_drop(rty);
+        // A reference on every arm is joined as one: the checker holds its origins.
+        let lent = self.cx.lent_matches.contains(&(self.hir.data.file, e.id));
+        let owned = self.needs_drop(rty) && !lent;
         let res = self
             .b
             .declare_var(rty, if owned { Mode::Own } else { Mode::Borrow });
@@ -241,6 +243,7 @@ impl FnLower<'_> {
                 };
                 if !self.dead {
                     let v = match x {
+                        Some(x) if lent => x.v,
                         Some(x) => self.owned(x),
                         None => self.b.unit(),
                     };
@@ -359,12 +362,22 @@ impl FnLower<'_> {
                 .ok_or_else(|| Error::new("try without a propagated error"))?;
             x = self.fit_ty(x, &ms_check::types::sub(&failure, &self.subst), want)?;
         }
-        let po = self.owned(x);
-        let out = self.b.alt_new(ra, ret_err as u32, &[po]);
-        if hidden {
-            self.drop_value(cur);
+        if !hidden
+            && !x.own
+            && self.b.func_mut().ret_borrowed
+            && self.cx.view_wraps.contains(&(self.hir.data.file, e.id))
+        {
+            // The operand lends its error from this function's arguments: hand the reference on.
+            let out = self.b.alt_view(ra, ret_err as u32, &[x.v]);
+            self.emit_return(Some(Val { v: out, own: false }));
+        } else {
+            let po = self.owned(x);
+            let out = self.b.alt_new(ra, ret_err as u32, &[po]);
+            if hidden {
+                self.drop_value(cur);
+            }
+            self.emit_return(Some(Val { v: out, own: true }));
         }
-        self.emit_return(Some(Val { v: out, own: true }));
 
         self.enter(okb);
         let cur = self.b.use_var(rv);

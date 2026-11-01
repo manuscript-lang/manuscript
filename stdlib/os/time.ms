@@ -1,5 +1,34 @@
 import Data, panic from "@std/core.ms"
-import msstd_time_duration_add, msstd_time_duration_subtract, msstd_time_duration_multiply, msstd_time_duration_divide, msstd_time_duration_negate, msstd_time_duration_abs, msstd_time_duration_to_microseconds, msstd_time_duration_to_milliseconds, msstd_time_duration_to_seconds, msstd_time_duration_to_minutes, msstd_time_duration_to_hours, msstd_time_local_zone, msstd_time_sleep, msstd_time_instant_shift, msstd_time_instant_unshift, msstd_time_instant_difference, msstd_time_instant_compare, msstd_time_timestamp_to_string, msstd_time_timestamp_shift, msstd_time_timestamp_difference, msstd_time_timestamp_compare, msstd_time_timestamp_calendar, msstd_time_timestamp_format, msstd_time_parse_timestamp, msstd_time_from_calendar, msstd_time_timestamp, msstd_time_clock, msstd_time_wall_clock from "@std/internal/time.ms"
+import (
+    msstd_time_duration_add,
+    msstd_time_duration_subtract,
+    msstd_time_duration_multiply,
+    msstd_time_duration_divide,
+    msstd_time_duration_negate,
+    msstd_time_duration_abs,
+    msstd_time_duration_to_microseconds,
+    msstd_time_duration_to_milliseconds,
+    msstd_time_duration_to_seconds,
+    msstd_time_duration_to_minutes,
+    msstd_time_duration_to_hours,
+    msstd_time_local_zone,
+    msstd_time_sleep,
+    msstd_time_instant_shift,
+    msstd_time_instant_unshift,
+    msstd_time_instant_difference,
+    msstd_time_instant_compare,
+    msstd_time_timestamp_to_string,
+    msstd_time_timestamp_shift,
+    msstd_time_timestamp_difference,
+    msstd_time_timestamp_compare,
+    msstd_time_timestamp_calendar,
+    msstd_time_timestamp_format,
+    msstd_time_parse_timestamp,
+    msstd_time_from_calendar,
+    msstd_time_timestamp,
+    msstd_time_clock,
+    msstd_time_wall_clock
+) from "@std/internal/time.ms"
 
 # Errors returned by timestamp parsing, arithmetic, or range conversion.
 export type TimeError:

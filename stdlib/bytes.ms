@@ -1,5 +1,15 @@
 import Data from "@std/core.ms"
-import msrt_bytes_join, msrt_bytes_values, msrt_bytes_read_word, msrt_float_from_bits, msrt_float_to_bits, msrt_float32_from_bits, msrt_float32_to_bits, msrt_bits_bit_and, msrt_bits_shift_right from "@std/internal/bytes.ms"
+import (
+    msrt_bytes_join,
+    msrt_bytes_values,
+    msrt_bytes_read_word,
+    msrt_float_from_bits,
+    msrt_float_to_bits,
+    msrt_float32_from_bits,
+    msrt_float32_to_bits,
+    msrt_bits_bit_and,
+    msrt_bits_shift_right
+) from "@std/internal/bytes.ms"
 
 # An immutable sequence of bytes. Indices and slice bounds are zero-based.
 export extern type Bytes

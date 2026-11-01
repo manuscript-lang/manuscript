@@ -40,8 +40,8 @@ test "mapped output keeps lexical Hashable and Equal evidence":
 
 test "Result composition retains concrete Error and its local implementation":
     var cause = Cause(1)
-    let one = first_failure(cause)
-    let two = second_failure(cause)
+    let one = first_failure(cause.clone())
+    let two = second_failure(cause.clone())
     try expect_false(
         (one.err().message() != "first 1" or two.err().message() != "second 1")
     )

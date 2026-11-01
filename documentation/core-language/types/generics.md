@@ -16,7 +16,7 @@ Result[Decimal, DiscountError]
 
 ## Bounds
 
-Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Closeable`. A bound must resolve to an interface. Parameters are in scope in their bounds (`T: Compare[T]` is valid, `T: T` is not). Don't name a parameter `Error`; write `E: Error`.
+Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Closeable`. A bound must resolve to an interface. Parameters are in scope in their bounds (`T: Compare[T]` is valid, `T: T` is not). Don't name a parameter `Error`; use `E`, adding `E: Error` only when the helper needs the reporting interface.
 
 | Bound | Required property |
 | --- | --- |

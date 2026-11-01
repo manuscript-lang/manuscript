@@ -1,6 +1,6 @@
 import ReadStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
-import ArchiveEntry, ArchiveError, ArchiveLimits, CompressionError from "@std/io/archive.ms"
+import (ArchiveEntry, ArchiveError, ArchiveLimits, CompressionError) from "@std/io/archive.ms"
 
 export extern fn msstd_archive_compress_stream(
     format: String,

@@ -31,7 +31,7 @@ test "generic records":
     let s = Box[String](v: "hi", n: 0)
     try expect_true((s.v == "hi" and unwrap(b: s) == "hi"))
 
-    let nested = Box[Box[Int]](v: a, n: 3)
+    let nested = Box[Box[Int]](v: a.clone(), n: 3)
     try expect_true((nested.v.v == 4 and nested.v == a))
 
     let items = Box[List[Int]](v: [1, 2, 3], n: 0)

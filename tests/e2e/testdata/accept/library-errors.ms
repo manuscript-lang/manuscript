@@ -6,9 +6,6 @@ type ApplicationError:
     case Json(cause: JsonError)
     case Encoding(cause: EncodingError)
 
-impl Error for ApplicationError:
-    fn message() String: "ApplicationError"
-
 fn encoding_error(cause: EncodingError) ApplicationError:
     return Encoding(cause)
 
@@ -206,7 +203,7 @@ fn general_read(cause: ReadError) Unit!:
 fn forward_read(cause: ReadError) Unit!:
     return read_failure(cause)
 
-fn generic_failure[E: Error](cause: E) Unit!E:
+fn generic_failure[E](cause: E) Unit!E:
     return error(cause)
 
 fn generic_propagation[E: Error](cause: E) Unit!:
@@ -273,9 +270,6 @@ test "Error Result forwarding preserves successful payloads":
 
 type ValidationError:
     case InvalidField(field: String, expected: Int, actual: Int)
-
-impl Error for ValidationError:
-    fn message() String: "ValidationError"
 
 fn invalid_field() Unit!ValidationError:
     return error(InvalidField(field: "attempt", expected: 1, actual: 0))

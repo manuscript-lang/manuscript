@@ -15,7 +15,6 @@ doctest = false
 ms-rt = { path = "../ms-rt" }
 ms-std-archive = { path = "../ms-std-archive" }
 ms-std-bigint = { path = "../ms-std-bigint" }
-ms-std-compress = { path = "../ms-std-compress" }
 ms-std-crypto = { path = "../ms-std-crypto" }
 ms-std-decimal = { path = "../ms-std-decimal" }
 ms-std-core = { path = "../ms-std-core" }

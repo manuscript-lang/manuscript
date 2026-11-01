@@ -264,6 +264,8 @@ impl Cx {
         let mut f = ms_mir::ir::Func::new(&name, params, ret);
         // The checker keeps a `var` argument from overlapping any other argument.
         f.noalias = vars.iter().map(|&i| i as u32).collect();
+        // The checker found every result a reference into the arguments.
+        f.ret_borrowed = self.lenders.contains(&(c.module.file, c.id()));
         let id = m.add_func(f);
         self.insts.insert(key, id);
         self.queue.push(Job {
@@ -408,10 +410,13 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     let proto = m.funcs[job.func.index()].clone();
     let b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     let mut fl = FnLower::new(cx, b, hir, jsubst, file, proto.ret);
+    // A lending function returns references as they are; `emit_return` reads the flag.
+    fl.b.func_mut().ret_borrowed = proto.ret_borrowed;
     let result = fl.lower_callable(&c);
     let mut func = fl.b.into_func();
     result?;
     func.noalias = proto.noalias;
+    func.ret_borrowed = proto.ret_borrowed;
     func.compact_blocks();
     m.funcs[job.func.index()] = func;
     Ok(())
@@ -687,6 +692,17 @@ impl<'a> FnLower<'a> {
                     .b
                     .defining_operand(x.v)
                     .is_some_and(|parent| self.b.is_borrowed(parent)));
+        // A `let` of a lending call's result the checker holds as a borrow of the arguments.
+        let lent = lent
+            || (self.cx.shared(binding.uid)
+                && self.ownership_checked()
+                && !x.own
+                && !binding.mutable
+                && !self.slotted.contains(&binding.uid)
+                && self.temps.is_empty()
+                && self.needs_drop(ty)
+                && self.b.defining_op(x.v) == Some(Op::Call)
+                && self.b.is_borrowed(x.v));
         if lent {
             self.bind_lent(binding, x.v);
             return;
@@ -898,7 +914,9 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return;
         }
-        let v = value.map(|x| self.owned(x));
+        // A lending function returns the reference itself; the caller never releases it.
+        let lends = self.b.func_mut().ret_borrowed;
+        let v = value.map(|x| if lends { x.v } else { self.owned(x) });
         // A close error returned from inside this unwinding re-enters here with the prologue done.
         let nested = self.prologue_done;
         if !nested {

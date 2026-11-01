@@ -17,6 +17,6 @@ fn make_fixture() State:
 impl TestHooks for State:
 
 test "one":
-    var hooks: TestHooks = fixture
+    var hooks: TestHooks = fixture.clone()
     hooks.before_all()
     try expect_equal(fixture.value, 7)

@@ -1,6 +1,20 @@
 import Bytes from "@std/bytes.ms"
 import ReadStream, WriteStream from "@std/io/io.ms"
-import DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystem, FileSystemError, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, PathError, PathOperations, PathParts from "@std/os/fs.ms"
+import (
+    DirectoryEntry,
+    FileEvent,
+    FileHandle,
+    FileInfo,
+    FileSystem,
+    FileSystemError,
+    NativeDirectory,
+    NativeFile,
+    NativeTemporary,
+    NativeWatcher,
+    PathError,
+    PathOperations,
+    PathParts
+) from "@std/os/fs.ms"
 import Timestamp from "@std/os/time.ms"
 
 export extern fn msstd_fs_constants() Map[String, Int]
