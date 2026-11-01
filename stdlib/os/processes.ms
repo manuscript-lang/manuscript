@@ -389,7 +389,7 @@ export type ProcessGroup[T: Data, In: Data = Unit, Out: Data = Unit]:
     started: Shared[Int] = share(0)
 
 impl ProcessGroup[T, In, Out]:
-    # Starts this executable again in a new process at `entry`, a top-level `def`, and returns the
+    # Starts this executable again in a new process at `entry`, a top-level `fn`, and returns the
     # process. The child gets its end of a new channel, and the process's `channel` is the
     # group's end. `stdin`, `stdout` and `stderr` each choose the parent's own stream (the
     # default), the null device, or a pipe the process's `stdin()`, `stdout()` or `stderr()`

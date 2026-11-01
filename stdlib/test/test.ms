@@ -2,7 +2,7 @@
 # apply `try` so a test block returns that error and fails. Implementations are native.
 # File-level test lifecycle. A local make_fixture() returns its concrete implementer.
 # Missing hooks are no-ops. All supplied hooks take no arguments and return Unit.
-# Example: a file declares def make_fixture() -> ApiFixture and impl TestHooks for ApiFixture;
+# Example: a file declares fn make_fixture() ApiFixture and impl TestHooks for ApiFixture;
 # its tests access the shared concrete instance as fixture, and after_all closes its server.
 export interface TestHooks:
     # Runs once after the fixture factory and before the file's selected tests.
