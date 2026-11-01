@@ -29,7 +29,7 @@ export fn env(name: String, fallback: String) String:
     let all = environment().get(Map[String, String]())
     if let value = all.get(name): return value.clone()
 
-    return fallback
+    return fallback.clone()
 
 # Nanoseconds since an arbitrary fixed origin on the monotonic clock.
 export fn now_ns() Int:
