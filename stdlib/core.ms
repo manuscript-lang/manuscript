@@ -198,3 +198,45 @@ export interface Copy: ...
 export interface Hashable:
     # Returns a stable hash consistent with `equals` for the same value.
     fn hash() Int
+
+# An error with context added by the caller, such as which file or request was being handled. Its message is the context
+# followed by the cause's message. `cause` keeps the original error, so a `match` on it still recovers the concrete type.
+export type ContextError:
+    # What the caller was doing when the cause occurred.
+    context: String
+    # The error that stopped it.
+    cause: Error
+
+impl Error for ContextError:
+    # Returns the context, `: `, then the cause's message.
+    fn message() String:
+        return self.context + ": " + self.cause.message()
+
+# Returns `cause` with `context` in front of its message: `try read(path)` becomes
+# `error(wrap("read config", cause))`.
+export fn wrap(context: String, cause: Error) ContextError:
+    return ContextError(context, cause)
+
+# Several errors reported together, such as the failures of tasks that all ran to completion.
+export type JoinedError:
+    # The errors in the order they were collected; never empty when made by `join`.
+    errors: List[Error]
+
+impl Error for JoinedError:
+    # Returns the messages of the joined errors, one per line.
+    fn message() String:
+        var text = ""
+
+        for cause in self.errors:
+            if text != "":
+                text += "\n"
+            text += cause.message()
+
+        return text
+
+# Combines `errors` into one error, or none when the list is empty.
+export fn join(errors: List[Error]) JoinedError?:
+    if errors.length() == 0:
+        return none
+
+    return JoinedError(errors)
