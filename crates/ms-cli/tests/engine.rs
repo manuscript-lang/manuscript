@@ -232,9 +232,7 @@ fn build_metadata_replaces_hard_links_without_changing_their_targets() {
 #[test]
 fn build_metadata_replaces_symlinks_without_changing_their_targets() {
     for cached in [false, true] {
-        metadata_link_preserves_source(cached, "symlink", |from, to| {
-            common::symlink_file(from, to)
-        });
+        metadata_link_preserves_source(cached, "symlink", common::symlink_file);
     }
 }
 
