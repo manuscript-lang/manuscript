@@ -268,6 +268,80 @@ fn guarded_sort_restores_owned_elements_before_caller_cleanup_drops_them() {
     }
 }
 
+struct CleanupWitness {
+    sort: Sort,
+    expected: Vec<Vec<u8>>,
+}
+
+unsafe extern "C-unwind" fn inspect_and_drop_input(env: *mut u8) {
+    // SAFETY: the child retains its witness until the fault runs this explicit cleanup.
+    unsafe {
+        let witness = &mut *env.cast::<CleanupWitness>();
+        if values(&witness.sort, &witness.sort.list) != witness.expected {
+            eprintln!("explicit cleanup observed corrupted sort owners");
+            std::process::exit(99);
+        }
+        vec::drop_list(&raw mut witness.sort.list, &witness.sort.descriptor);
+        #[cfg(feature = "stats")]
+        assert_eq!(alloc::live_blocks(), 0);
+        use std::io::Write;
+        let mut stdout = std::io::stdout();
+        stdout.write_all(b"sort-owner-cleanup-ok\n").unwrap();
+        stdout.flush().unwrap();
+    }
+}
+
+#[test]
+fn unguarded_sort_restores_owners_before_explicit_cleanup() {
+    const CASE: &str = "MS_RT_TEST_UNGUARDED_SORT";
+    if let Ok(case) = std::env::var(CASE) {
+        isolate::set_main();
+        let (count, exit) = case.split_once(':').unwrap();
+        let mut state = input(count.parse().unwrap(), 2, false, true);
+        state.callback.exit_at = 3;
+        state.callback.cancel = exit == "cancel";
+        if state.callback.cancel {
+            fault::PENDING_SIGNAL.store(2, std::sync::atomic::Ordering::Relaxed);
+        }
+        let mut witness = CleanupWitness {
+            expected: values(&state, &state.list),
+            sort: state,
+        };
+        // SAFETY: the witness outlives both the sort and its process-exit cleanup.
+        unsafe {
+            assert_eq!(
+                (*fault::msrt_isolate_hdr())
+                    .guarded
+                    .load(std::sync::atomic::Ordering::Relaxed),
+                0
+            );
+            fault::msrt_cleanup_push(inspect_and_drop_input, (&raw mut witness).cast());
+            sort((&raw mut witness.sort).cast());
+        }
+        panic!("expected unguarded comparator exit");
+    }
+    for count in [3, 13, 40] {
+        for (exit, code) in [("fault", 67), ("cancel", 130)] {
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "unguarded_sort_restores_owners_before_explicit_cleanup",
+                    "--nocapture",
+                ])
+                .env(CASE, format!("{count}:{exit}"))
+                .output()
+                .unwrap();
+            assert_eq!(
+                output.status.code(),
+                Some(code),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(String::from_utf8_lossy(&output.stdout).contains("sort-owner-cleanup-ok"));
+        }
+    }
+}
+
 #[test]
 fn guarded_sort_faults_and_cancellation_preserve_owners_and_release_scratch() {
     let _lock = LOCK.lock().unwrap_or_else(|e| e.into_inner());

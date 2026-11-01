@@ -1063,19 +1063,20 @@ pub unsafe extern "C-unwind" fn msrt_list_join_int(
 /// Comparator thunk: `env` is the closure, `a` and `b` point at element slots.
 pub type CmpFn = unsafe extern "C-unwind" fn(env: *mut u8, a: *const u8, b: *const u8) -> i64;
 
-fn sort_is_guarded() -> bool {
+fn sort_needs_rollback() -> bool {
     // SAFETY: the current task's header stays live for this call.
     unsafe {
         (*fault::msrt_isolate_hdr())
             .guarded
             .load(core::sync::atomic::Ordering::Relaxed)
             != 0
+            || fault::has_cleanups()
     }
 }
 
 /// A copied sort result is not published to its caller until sorting returns.
 unsafe fn finish_sorted(out: *mut VecVal, d: &TypeDesc, sort: impl FnOnce()) {
-    if sort_is_guarded() {
+    if sort_needs_rollback() {
         // SAFETY: `out` owns the initialized copy; an interrupted in-place sort restores it
         // before this cleanup drops it. The caller acquires ownership only on normal return.
         fault::with_cleanup(&mut || unsafe { drop_list(out, d) }, sort);
@@ -1192,11 +1193,12 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
         }
         let size = d.size as usize;
         let bytes = v.len * size.max(1);
-        let guarded = sort_is_guarded();
-        // A comparator can leave a guarded task through a fault or cancellation while a
-        // merge holds moved slots in scratch. Keep an immutable byte snapshot for that exit;
+        let rollback = sort_needs_rollback();
+        // A comparator can fault or cancel while a merge holds moved slots in scratch.
+        // Both guarded callers and explicit cleanups need a valid owned list on that exit.
+        // Keep an immutable byte snapshot for those observers;
         // it has no ownership of its own and must never run element copy/drop hooks.
-        let storage = if guarded {
+        let storage = if rollback {
             bytes
                 .checked_mul(2)
                 .unwrap_or_else(|| fault::fault(b"list size overflow"))
@@ -1226,7 +1228,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
             48 => words!(6),
             _ => merge_sort(v.ptr, buf, v.len, size, cmp, env),
         };
-        if guarded {
+        if rollback {
             let original = buf.add(bytes);
             core::ptr::copy_nonoverlapping(v.ptr, original, v.len * size);
             fault::with_cleanup(
