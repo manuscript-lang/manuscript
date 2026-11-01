@@ -503,6 +503,26 @@ impl Checker {
                             method.func.name
                         ),
                     );
+                } else if let Some(declared_names) = op
+                    .decl
+                    .as_ref()
+                    .and_then(|f| f.decl.methods().get(f.index?))
+                    .map(|m| m.func.params.iter().map(|p| p.name).collect::<Vec<_>>())
+                    .filter(|names| {
+                        let written: Vec<_> = method.func.params.iter().map(|p| p.name).collect();
+                        written.len() == names.len() && written != *names
+                    })
+                    && same(&Rc::new(t.clone()), &sub(&op.ty, &renamed))
+                {
+                    let names: Vec<String> = declared_names.iter().map(|n| n.to_string()).collect();
+                    self.type_error(
+                        method.pos,
+                        format!(
+                            "implementation operation parameter names do not match contract; {} must name its parameters ({}) like the interface, since a call through the interface labels arguments by those names",
+                            method.func.name,
+                            names.join(", ")
+                        ),
+                    );
                 } else if !same(&Rc::new(t.clone()), &sub(&op.ty, &renamed)) {
                     self.type_error(
                         method.pos,
