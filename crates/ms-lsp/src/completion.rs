@@ -235,8 +235,8 @@ impl Completer<'_> {
         }
     }
 
-    /// An opaque type's cases are visible only in its declaring file.
-    fn cases_visible(&self, ty: &Ty) -> bool {
+    /// An opaque type's representation is visible only in its declaring file.
+    fn structure_visible(&self, ty: &Ty) -> bool {
         let file = self.a.result.module(&self.a.document).map(|m| m.file);
         ty.opaque_module().is_none_or(|m| Some(m) == file)
     }
@@ -249,7 +249,7 @@ impl Completer<'_> {
             return;
         };
         if let Some(ty) = type_expression(left, &self.a.scope) {
-            if !self.cases_visible(&ty) {
+            if !self.structure_visible(&ty) {
                 return;
             }
             for case in cases(&ty) {
@@ -429,7 +429,7 @@ impl Completer<'_> {
                         .collect();
                     insert = format!("{name}[{}]", parts.join(", "));
                 }
-                if !c.type_context && ty.kind == Kind::Record {
+                if !c.type_context && ty.kind == Kind::Record && self.structure_visible(&ty) {
                     let signature = constructor_signature(&ty);
                     insert = callable_text(
                         name.as_str(),
@@ -443,7 +443,7 @@ impl Completer<'_> {
                 kind = 21;
                 insert = name.as_str().to_string();
             }
-            if s.kind == SymKind::Type && !c.type_context && self.cases_visible(&ty) {
+            if s.kind == SymKind::Type && !c.type_context && self.structure_visible(&ty) {
                 // An alternative's cases are in scope next to the type.
                 for case in cases(&ty) {
                     let signature = ms_check::types::function(case.fields.clone(), ty.clone());
