@@ -690,12 +690,8 @@ mod tests {
     fn close_reports_release_errors_and_retires_the_stream() {
         // This positive descriptor/handle cannot name an open file. No resource is acquired,
         // and the failed release must not be hidden by File's infallible destructor.
-        let mut stream = Stream::with_pollable(
-            sys::Fd::MAX,
-            true,
-            Cow::Borrowed(b"invalid-handle"),
-            true,
-        );
+        let mut stream =
+            Stream::with_pollable(sys::Fd::MAX, true, Cow::Borrowed(b"invalid-handle"), true);
         let failure = stream.close().unwrap_err();
         assert_eq!(failure.status, STATUS_FAILED);
         assert!(failure.message.starts_with(b"close invalid-handle: "));
