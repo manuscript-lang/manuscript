@@ -25,7 +25,7 @@ pub(crate) struct Val {
 pub(crate) struct Local {
     pub var: Var,
     pub ty: MTy,
-    /// The address of the variable's storage when a closure changes it through a reference.
+    /// A resource parameter's caller storage, or a local shared with a mutating closure.
     pub slot: Option<Value>,
 }
 
@@ -946,6 +946,9 @@ impl<'a> FnLower<'a> {
         if !nested {
             for slot in self.var_slots.clone() {
                 let l = self.locals[&slot.uid];
+                if l.slot == Some(slot.ptr) {
+                    continue;
+                }
                 let x = self.local_take(&l);
                 self.move_into(slot.ptr, x);
             }
@@ -1004,12 +1007,27 @@ impl<'a> FnLower<'a> {
         };
         for (i, (b, v)) in bindings.iter().zip(params).enumerate() {
             if vars.contains(&i) {
-                // The callee owns the value it takes from the slot and puts back on return.
                 let ty = self.mty(&b.ty)?;
                 let owned = self.needs_drop(ty);
                 let var = self
                     .b
                     .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
+                let source_ty = ct::sub(&b.ty, &self.subst);
+                if self.cx.classes.class(&source_ty) == ms_check::ownership::Class::Resource {
+                    // The caller closes resources even if this call faults or is cancelled.
+                    // Its cleanup must see mutations before the call returns.
+                    self.locals.insert(
+                        b.uid,
+                        Local {
+                            var,
+                            ty,
+                            slot: Some(v),
+                        },
+                    );
+                    self.var_slots.push(VarSlot { uid: b.uid, ptr: v });
+                    continue;
+                }
+                // Plain data stays in SSA until return, keeping element-wise loops vectorizable.
                 let x = self.move_out(v, ty);
                 self.b.def_var(var, x);
                 self.locals.insert(

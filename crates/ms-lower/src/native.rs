@@ -1614,9 +1614,17 @@ impl<'a> FnLower<'a> {
     ) -> Result<(ms_mir::builder::Var, bool), Error> {
         if let Some(Resolution::Local(b)) = recv_expr.map(|r| self.hir.resolution(r))
             && !self.aliases.contains_key(&b.uid)
-            && self.local(&b)?.slot.is_none()
         {
-            return Ok((self.local(&b)?.var, false));
+            let local = self.local(&b)?;
+            if local.slot.is_none() {
+                return Ok((local.var, false));
+            }
+            if !recv.own {
+                // The caller owns a slotted resource; read traversal must not copy or drop it.
+                let var = self.b.declare_var(self.ty_of(recv.v), Mode::Borrow);
+                self.b.def_var(var, recv.v);
+                return Ok((var, false));
+            }
         }
         let t = self.ty_of(recv.v);
         let var = self.fresh_var(t);
