@@ -562,7 +562,7 @@ mod tests {
             }
             _ => None,
         });
-        let done = handshake::check_response_head(&resp, &key).unwrap();
+        let done = handshake::check_response_head(&resp, &key, &protocols).unwrap();
         assert_eq!(done.compress, compression);
 
         let server = Socket::new(

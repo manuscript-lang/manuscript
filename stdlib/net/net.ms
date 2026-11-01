@@ -412,7 +412,7 @@ export interface Network:
         options: HttpServerOptions = HttpServerOptions()
     ) HttpServer!HttpError
     # Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.
-    # Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. Failures use WebSocketError.
+    # Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not offered fails the handshake. Failures use WebSocketError.
     fn web_socket(
         url: String,
         headers: HttpHeaders,
@@ -848,7 +848,7 @@ export fn serve(
     return host_network().serve(address, handler, options)
 
 # Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.
-# Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. Failures use WebSocketError.
+# Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not offered fails the handshake. Failures use WebSocketError.
 export fn web_socket(
     url: String,
     headers: HttpHeaders,
