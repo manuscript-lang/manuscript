@@ -261,6 +261,18 @@ jobs:
           else
             "../../$(basename "$ms")" run ms.toml
           fi
+      - name: Programs run on glibc 2.28
+        if: matrix.part == matrix.misc_part && matrix.os == 'linux'
+        run: |
+          target/debug/ms build tests/glibc-floor/floor.ms -o floor
+          # The link-time stubs bind nothing newer than glibc 2.28 (weak references aside).
+          if objdump -T floor | grep -v '^[0-9a-f]* *w ' | grep -E 'GLIBC_2\.(29|3[0-9])'; then
+            echo "floor binds a glibc symbol newer than 2.28" >&2
+            exit 1
+          fi
+          # AlmaLinux 8 ships glibc 2.28, the oldest that Linux programs support.
+          got=$(docker run --rm -v "$PWD:/w" -w /w almalinux:8 ./floor)
+          test "$got" = "144 true true true true 1030"
       - name: sccache statistics
         if: always()
         run: sccache --show-stats

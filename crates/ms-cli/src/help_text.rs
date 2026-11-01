@@ -98,6 +98,7 @@ Options:
   --json              Emit one versioned build result and artifact inventory
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
   --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
+  --static              Linux: link a static musl executable instead of the system glibc
   Default build type: Release
   -h, --help  Show this help without executing the command
 
@@ -131,6 +132,7 @@ Options:
   --watch               Rebuild and restart after each saved source change
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
   --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
+  --static              Linux: link a static musl executable instead of the system glibc
   Default build type: Release
   -h, --help  Show this help without executing the command
 
@@ -164,6 +166,7 @@ Options:
   --watch              Rebuild and rerun after each saved source change
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
   --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
+  --static              Linux: link a static musl executable instead of the system glibc
   Default build type: Release
   -h, --help  Show this help without executing the command
 
@@ -199,6 +202,7 @@ Options:
   --repeat <count>     Run the selected benches count times
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive); benchmark with the default Release
   --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
+  --static              Linux: link a static musl executable instead of the system glibc
   -h, --help  Show this help without executing the command
 
 Examples:

@@ -67,7 +67,7 @@ impl<L: Lower> Engine<L> {
             Some(runtime) => runtime.clone(),
             None => match ms_build::runtime_override()? {
                 Some(runtime) => runtime,
-                None => runtime::embedded()?,
+                None => runtime::embedded(ms_build::static_libc())?,
             },
         };
         let extra: Vec<PathBuf> = link.iter().map(PathBuf::from).collect();

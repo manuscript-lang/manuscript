@@ -1,9 +1,57 @@
 //! `@std/math` natives. Symbols are `msstd_math_<name>`; every function takes and returns
-//! scalars by value (`Float` = `f64`, `Int` = `i64`, `Bool` = `u8`), so the ABI is plain C.
+//! scalars by value or writes ordinary result records through the existing record mechanism.
 //!
 //! The generic `max` and `min` are not natives: they are lowered by the
 //! compiler through the element comparison.
-use ms_rt::ffi::native;
+use ms_rt::ffi::{STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, StatusCode, abi_record, native};
+
+abi_record! {
+    /// `WordSum`, in declaration order.
+    pub struct WordSumOut {
+        pub sum: u64,
+        pub carry: u8,
+    }
+}
+
+abi_record! {
+    /// `WordDifference`, in declaration order.
+    pub struct WordDifferenceOut {
+        pub difference: u64,
+        pub borrow: u8,
+    }
+}
+
+abi_record! {
+    /// `WideProduct`, in declaration order.
+    pub struct WideProductOut {
+        pub high: u64,
+        pub low: u64,
+    }
+}
+
+abi_record! {
+    /// `WordDivision`, in declaration order.
+    pub struct WordDivisionOut {
+        pub quotient: u64,
+        pub remainder: u64,
+    }
+}
+
+abi_record! {
+    /// `BinaryFloatParts`, in declaration order.
+    pub struct BinaryFloatPartsOut {
+        pub fraction: f64,
+        pub exponent: i64,
+    }
+}
+
+abi_record! {
+    /// `FloatParts`, in declaration order.
+    pub struct FloatPartsOut {
+        pub integer: f64,
+        pub fraction: f64,
+    }
+}
 
 macro_rules! unary {
     ($($sym:ident => $f:path),* $(,)?) => {$(
@@ -36,10 +84,99 @@ unary! {
     msstd_math_cbrt => f64::cbrt,
     msstd_math_expm1 => f64::exp_m1,
     msstd_math_log1p => f64::ln_1p,
+    msstd_math_exp2 => f64::exp2,
+    msstd_math_round_to_even => f64::round_ties_even,
     msstd_math_sign => sign,
 }
 
 native! {
+    fn msstd_math_add_with_carry(left: u64, right: u64, carry: bool) -> out WordSumOut {
+        let (sum, carry) = left.carrying_add(right, carry);
+        WordSumOut { sum, carry: u8::from(carry) }
+    }
+
+    fn msstd_math_subtract_with_borrow(left: u64, right: u64, borrow: bool) -> out WordDifferenceOut {
+        let (difference, borrow) = left.borrowing_sub(right, borrow);
+        WordDifferenceOut { difference, borrow: u8::from(borrow) }
+    }
+
+    fn msstd_math_multiply_wide(left: u64, right: u64) -> out WideProductOut {
+        let product = u128::from(left) * u128::from(right);
+        WideProductOut { high: (product >> 64) as u64, low: product as u64 }
+    }
+
+    fn msstd_math_divide_wide(high: u64, low: u64, divisor: u64) -> Result<WordDivisionOut, StatusCode> {
+        if divisor == 0 {
+            return Err(StatusCode(STATUS_INVALID_INPUT));
+        }
+        if high >= divisor {
+            return Err(StatusCode(STATUS_OUT_OF_RANGE));
+        }
+        let dividend = (u128::from(high) << 64) | u128::from(low);
+        let divisor = u128::from(divisor);
+        Ok(WordDivisionOut { quotient: (dividend / divisor) as u64, remainder: (dividend % divisor) as u64 })
+    }
+
+    fn msstd_math_remainder_wide(high: u64, low: u64, divisor: u64) -> Result<u64, StatusCode> {
+        if divisor == 0 {
+            return Err(StatusCode(STATUS_INVALID_INPUT));
+        }
+        let dividend = (u128::from(high) << 64) | u128::from(low);
+        Ok((dividend % u128::from(divisor)) as u64)
+    }
+
+    fn msstd_math_frexp(value: f64) -> out BinaryFloatPartsOut {
+        let (fraction, exponent) = libm::frexp(value);
+        BinaryFloatPartsOut { fraction, exponent: i64::from(exponent) }
+    }
+
+    fn msstd_math_modf(value: f64) -> out FloatPartsOut {
+        let (fraction, integer) = libm::modf(value);
+        FloatPartsOut { integer, fraction }
+    }
+
+    safe fn msstd_math_ldexp(fraction: f64, exponent: i64) -> f64 {
+        // Beyond i32's range every nonzero finite binary64 overflows or underflows.
+        // Clamping preserves that result and all zero, infinity and NaN cases.
+        libm::ldexp(fraction, exponent.clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32)
+    }
+
+    safe fn msstd_math_ieee_remainder(left: f64, right: f64) -> f64 {
+        libm::remainder(left, right)
+    }
+
+    safe fn msstd_math_reverse_bits(value: i64) -> i64 {
+        value.reverse_bits()
+    }
+
+    safe fn msstd_math_reverse_bytes(value: i64) -> i64 {
+        value.swap_bytes()
+    }
+
+    safe fn msstd_math_copy_sign(value: f64, sign: f64) -> f64 {
+        value.copysign(sign)
+    }
+
+    safe fn msstd_math_sign_bit(value: f64) -> bool {
+        value.is_sign_negative()
+    }
+
+    safe fn msstd_math_next_after(value: f64, toward: f64) -> f64 {
+        if value.is_nan() || toward.is_nan() {
+            f64::NAN
+        } else if value == toward {
+            toward
+        } else if value < toward {
+            value.next_up()
+        } else {
+            value.next_down()
+        }
+    }
+
+    safe fn msstd_math_fma(left: f64, right: f64, addend: f64) -> f64 {
+        left.mul_add(right, addend)
+    }
+
     safe fn msstd_math_atan2(y: f64, x: f64) -> f64 {
         y.atan2(x)
     }

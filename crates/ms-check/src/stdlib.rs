@@ -107,12 +107,12 @@ const NATIVE_WITH_FIELDS: &[&str] = &["List"];
 
 // -------------------------------------------------------------------- queries
 
-/// The bundled source modules that extend native standard types (List operations, Bytes codecs, scalar ordering); their
-/// methods apply to every program.
-const EXTENSION_MODULES: [&str; 3] = [
+/// Bundled source modules whose methods extend native standard types in every program.
+const EXTENSION_MODULES: [&str; 4] = [
     "@std/collections/collections.ms+source",
     "@std/bytes.ms+source",
     "@std/collections/ordering.ms",
+    "@std/string.ms+source",
 ];
 
 /// The directories that group bundled modules into packages; a module's native identifiers use its file stem without them.

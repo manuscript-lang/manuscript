@@ -1,5 +1,24 @@
 import msrt_string_from_scalars, msstd_regex_compile from "@std/internal/string.ms"
 
+interface StringAffixCuts:
+    fn cut_prefix(prefix: String) String?
+    fn cut_suffix(suffix: String) String?
+
+impl StringAffixCuts for String:
+    # Removes one exact prefix, or returns none when absent; an empty prefix succeeds unchanged.
+    fn cut_prefix(prefix: String) String?:
+        if self.starts_with(prefix):
+            return self.drop(prefix.length())
+
+        return none
+
+    # Removes one exact suffix, or returns none when absent; an empty suffix succeeds unchanged.
+    fn cut_suffix(suffix: String) String?:
+        if self.ends_with(suffix):
+            return self.take(self.length() - suffix.length())
+
+        return none
+
 # Errors returned by Unicode scalar conversions and bounded string operations.
 export type StringError:
     # Scalar values, normalization form or a supplied repeat/padding/output budget is invalid.

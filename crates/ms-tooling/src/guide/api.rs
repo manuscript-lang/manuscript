@@ -8,7 +8,7 @@ use ms_check::Program;
 use ms_check::checker::Names;
 use ms_check::stdlib;
 use ms_check::syntax::{DeclRef, FuncRef};
-use ms_check::types::{Definition, MethodRef, Name, SymKind, SymRef, Ty, n};
+use ms_check::types::{Definition, MethodRef, Name, SymKind, SymRef, Ty, n, same};
 use ms_syntax::{DeclKind, Func};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::rc::Rc;
@@ -138,8 +138,11 @@ fn compute_standard_library() -> Vec<ApiModule> {
     }
     let sources = Sources(sources);
     let mut methods = stdlib::standard_implementations();
-    for path in stdlib::standard_module_names() {
-        if let Some(done) = stdlib::done(n(path)) {
+    // Mixed native/source files keep their checked implementations under
+    // `<path>+source`, which the public module list deliberately omits.
+    let source_files: BTreeSet<_> = sources.0.keys().copied().collect();
+    for path in source_files {
+        if let Some(done) = stdlib::done(path) {
             methods.extend(done.methods.iter().cloned());
         }
     }
@@ -497,6 +500,25 @@ fn def_kind(def: &Definition) -> &'static str {
     def.kind.as_str()
 }
 
+fn receiver_context(method: &MethodRef, declaration: &Ty) -> String {
+    let bounds: Vec<_> = method
+        .split_variables()
+        .0
+        .iter()
+        .filter(|variable| !variable.bounds().is_empty())
+        .map(variable_text)
+        .collect();
+    if bounds.is_empty() && same(&method.receiver, declaration) {
+        return String::new();
+    }
+    let mut context = format!("# Receiver: {}", method.receiver);
+    if !bounds.is_empty() {
+        context += &format!("; {}", bounds.join(", "));
+    }
+    context.push('\n');
+    context
+}
+
 fn document_implementations(
     d: &mut ApiDeclaration,
     symbol: &SymRef,
@@ -505,7 +527,8 @@ fn document_implementations(
 ) {
     let ty = symbol.ty();
     let mut contracts: BTreeSet<String> = BTreeSet::new();
-    let mut seen: BTreeSet<String> = BTreeSet::new();
+    let mut seen: BTreeSet<String> = d.operations.iter().cloned().collect();
+    let mut declarations = BTreeSet::new();
     for method in methods {
         if method.receiver.id != ty.id {
             continue;
@@ -517,9 +540,15 @@ fn document_implementations(
         contracts.insert(contract.clone());
         let Some(decl) = &method.decl else { continue };
         let Some(f) = decl.func() else { continue };
+        // Imported source modules can expose the same checked implementation
+        // repeatedly. Its source identity distinguishes real overloads.
+        if !declarations.insert((method.module, decl.decl.id(), decl.index)) {
+            continue;
+        }
         let name = f.name.as_str();
+        let context = receiver_context(method, &ty);
         d.implementation_declarations.push(format!(
-            "impl {contract} for {}:\n    {}",
+            "{context}impl {contract} for {}:\n    {}",
             method.receiver,
             fn_declaration(name, f, decl.method().is_some_and(|m| m.mutating), None)
         ));
@@ -528,9 +557,10 @@ fn document_implementations(
         d.members.push(ApiMember {
             name: name.to_string(),
             kind: "operation".into(),
-            signature: fn_declaration(name, f, decl.method().is_some_and(|m| m.mutating), source)
-                .trim()
-                .to_string(),
+            signature: format!(
+                "{context}{}",
+                fn_declaration(name, f, decl.method().is_some_and(|m| m.mutating), source).trim()
+            ),
             doc: leading_comment(
                 source.map_or("", Source::text),
                 method_offset(decl) as usize,

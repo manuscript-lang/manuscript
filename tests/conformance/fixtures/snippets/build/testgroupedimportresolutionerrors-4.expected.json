@@ -9,7 +9,7 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export missing; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'",
+        "message": "module does not export missing; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'",
         "position": {
           "file": "testgroupedimportresolutionerrors-4.ms",
           "line": 4,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testgroupedimportresolutionerrors-4.ms:4:8: resolution: module does not export missing; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 4 | import missing from \"@std/collections/collections.ms\"\n   |        ^^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testgroupedimportresolutionerrors-4.ms:4:8: resolution: module does not export missing; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 4 | import missing from \"@std/collections/collections.ms\"\n   |        ^^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

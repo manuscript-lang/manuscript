@@ -16,6 +16,9 @@ Verified: LLVM's SLP vectorizer (in `opt`) and machine scheduler (in `llc`) are 
 Verified: an LLVM `br` on a compare that Cranelift widened to `i8` (`zext`, then `icmp ne 0`) made InstCombine 8x slower on an 8000-arm `if n == k: return` chain (15s to 2s), and a leftover unused `zext` blocked SimplifyCFG from turning the chain into a switch. Branch and select conditions use the `i1` directly; only values with a data use are widened.
 Evidence: [LLVM invocation](../../crates/ms-clif/src/llvm_obj.rs), [large literal regression](../../crates/ms-cli/tests/llvm.rs), [i1 condition test](../../crates/ms-clif/src/llvm_ir.rs).
 
+Verified: a `list.lit` over every element keeps all of them live, and Cranelift's register allocator is quadratic in the live set at each block (40000 runtime elements: 20s in Debug). A literal over 512 plain-value elements is built from 256-element chunks joined with `msrt_list_concat`, 1s. Pushing each element instead made the LLVM IR 18x larger and Release 5x slower, so measure both profiles.
+Evidence: [long literal lowering](../../crates/ms-lower/src/expr.rs), [Debug build-time regression](../../crates/ms-cli/tests/llvm.rs).
+
 Apply when: adding or changing a lexer, parser, checker, or lowering pass, or a cache or table they share.
 Evidence: [type recursion pass](../../crates/ms-check/src/recursion.rs), issues #490 and #491.
 Evidence: [method registration and lookup](../../crates/ms-check/src/contracts.rs), [candidate regressions](../../crates/ms-check/src/method_candidates_tests.rs), [editor queries](../../crates/ms-check/src/editor.rs).

@@ -10,23 +10,32 @@ fn main() {
     println!("cargo:rerun-if-changed={}", path.display());
     let version = std::fs::read_to_string(&path).unwrap_or_else(|_| "0.0.0".to_string());
     println!("cargo:rustc-env=MS_VERSION={}", version.trim());
-    embed_native(&manifest.join(".."));
+    embed_native(&manifest.join(".."), "libms_native.a", "MS_NATIVE");
+    // Linux also embeds the musl runtime that `ms build --static` links.
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
+        embed_native(
+            &manifest.join(".."),
+            "libms_native_musl.a",
+            "MS_NATIVE_MUSL",
+        );
+    }
 }
 
-/// Embed the `ms-native` archive: `MS_NATIVE_LIB` names one, else `target/ms-native/libms_native.a`,
-/// which `cargo xtask runtime` (`make runtime`) builds. The build script never compiles the runtime.
-fn embed_native(crates: &Path) {
-    println!("cargo:rerun-if-env-changed=MS_NATIVE_LIB");
-    let prebuilt = std::env::var_os("MS_NATIVE_LIB");
+/// Embed the `ms-native` archive `file`: the environment variable `var` names one, else
+/// `target/ms-native/<file>`, which `cargo xtask runtime` (`make runtime`) builds. The build script
+/// never compiles the runtime.
+fn embed_native(crates: &Path, file: &str, var: &str) {
+    println!("cargo:rerun-if-env-changed={var}_LIB");
+    let prebuilt = std::env::var_os(format!("{var}_LIB"));
     let archive = match &prebuilt {
         Some(prebuilt) => PathBuf::from(prebuilt),
-        None => crates.join("../target/ms-native/libms_native.a"),
+        None => crates.join("../target/ms-native").join(file),
     };
     println!("cargo:rerun-if-changed={}", archive.display());
     let bytes = std::fs::read(&archive).unwrap_or_else(|e| {
         panic!(
             "cannot read the native runtime {}: {e}\n\
-             build it first with `cargo xtask runtime` (or `make runtime`), or set MS_NATIVE_LIB to a prebuilt libms_native.a",
+             build it first with `cargo xtask runtime` (or `make runtime`), or set {var}_LIB to a prebuilt {file}",
             archive.display()
         )
     });
@@ -34,7 +43,7 @@ fn embed_native(crates: &Path) {
         reject_stale(crates, &archive);
     }
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
-    let embedded = out.join("libms_native.a.gz");
+    let embedded = out.join(format!("{file}.gz"));
     // Gzipped: raw, the archive is a third of `ms`. Written only when the content changed, so an
     // unchanged archive keeps downstream builds cached.
     let mut packed = Vec::new();
@@ -44,9 +53,9 @@ fn embed_native(crates: &Path) {
     if std::fs::read(&embedded).ok().as_deref() != Some(&packed) {
         std::fs::write(&embedded, &packed).expect("write embedded archive");
     }
-    println!("cargo:rustc-env=MS_NATIVE_LEN={}", bytes.len());
+    println!("cargo:rustc-env={var}_LEN={}", bytes.len());
     println!(
-        "cargo:rustc-env=MS_NATIVE_ID={:016x}-{}",
+        "cargo:rustc-env={var}_ID={:016x}-{}",
         fnv1a(&bytes),
         bytes.len()
     );
