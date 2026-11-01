@@ -495,25 +495,28 @@ impl ClientFailure {
 /// The outcome of a valid server response.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ClientAccepted {
-    /// `Sec-WebSocket-Protocol` of the response, taken as sent (it is not checked
-    /// against the offers); empty when absent.
+    /// `Sec-WebSocket-Protocol` of the response, one of the offers; empty when absent.
     pub subprotocol: String,
     pub compress: bool,
 }
 
 /// The client's checks on the response: status 101, `Upgrade` and `Connection` tokens,
-/// the accept key, then the extension (applied whenever the server sends it, as usual
-/// even when the client did not offer it).
+/// the accept key, a subprotocol the client offered (RFC 6455 section 4.1), then the
+/// extension (applied whenever the server sends it, as usual even when the client did
+/// not offer it).
 pub fn check_response(
     status: u16,
     fields: &Fields,
     key: &str,
+    offered: &[String],
 ) -> Result<ClientAccepted, ClientFailure> {
     let accept = first_text(fields, "Sec-WebSocket-Accept");
+    let subprotocol = first_text(fields, "Sec-WebSocket-Protocol");
     if status != 101
         || !token_list_contains(fields, "Upgrade", "websocket")
         || !token_list_contains(fields, "Connection", "upgrade")
         || accept != accept_key(key)
+        || (!subprotocol.is_empty() && !offered.contains(&subprotocol))
     {
         return Err(ClientFailure::BadHandshake);
     }
@@ -528,7 +531,7 @@ pub fn check_response(
         compress = true;
     }
     Ok(ClientAccepted {
-        subprotocol: first_text(fields, "Sec-WebSocket-Protocol"),
+        subprotocol,
         compress,
     })
 }
@@ -537,8 +540,9 @@ pub fn check_response(
 pub fn check_response_head(
     head: &ResponseHead,
     key: &str,
+    offered: &[String],
 ) -> Result<ClientAccepted, ClientFailure> {
-    check_response(head.status, &head.fields, key)
+    check_response(head.status, &head.fields, key, offered)
 }
 
 #[cfg(test)]
@@ -836,7 +840,7 @@ mod tests {
         let Parsed::Complete(resp) = parse_response(&accepted.response, 1 << 16) else {
             panic!("not a response");
         };
-        let done = check_response_head(&resp, SAMPLE_KEY).unwrap();
+        let done = check_response_head(&resp, SAMPLE_KEY, &["echo".to_string()]).unwrap();
         assert_eq!(
             done,
             ClientAccepted {
@@ -854,21 +858,21 @@ mod tests {
             ("Sec-WebSocket-Accept", SAMPLE_ACCEPT),
         ]);
         assert_eq!(
-            check_response(101, &ok, SAMPLE_KEY).unwrap(),
+            check_response(101, &ok, SAMPLE_KEY, &[]).unwrap(),
             ClientAccepted {
                 subprotocol: String::new(),
                 compress: false
             }
         );
         let bad = ClientFailure::BadHandshake;
-        assert_eq!(check_response(200, &ok, SAMPLE_KEY), Err(bad));
+        assert_eq!(check_response(200, &ok, SAMPLE_KEY, &[]), Err(bad));
         assert_eq!(
-            check_response(101, &ok, "AAAAAAAAAAAAAAAAAAAAAA=="),
+            check_response(101, &ok, "AAAAAAAAAAAAAAAAAAAAAA==", &[]),
             Err(bad)
         );
         let mut no_upgrade = ok.clone();
         no_upgrade.retain(|(n, _)| n != "Upgrade");
-        assert_eq!(check_response(101, &no_upgrade, SAMPLE_KEY), Err(bad));
+        assert_eq!(check_response(101, &no_upgrade, SAMPLE_KEY, &[]), Err(bad));
         assert_eq!(bad.message(), "websocket: bad handshake");
         assert_eq!(
             bad.error(),
@@ -880,13 +884,29 @@ mod tests {
             "Sec-WebSocket-Extensions",
             "permessage-deflate; server_no_context_takeover",
         )]));
-        let invalid = check_response(101, &partial, SAMPLE_KEY).unwrap_err();
+        let invalid = check_response(101, &partial, SAMPLE_KEY, &[]).unwrap_err();
         assert_eq!(
             invalid.message(),
             "websocket: invalid compression negotiation"
         );
+        let mut chosen = ok.clone();
+        chosen.extend(fields(&[("Sec-WebSocket-Protocol", "chat")]));
+        let offered = vec!["other".to_string(), "chat".to_string()];
+        let accepted = check_response(101, &chosen, SAMPLE_KEY, &offered).unwrap();
+        assert_eq!(accepted.subprotocol, "chat");
+        // A subprotocol the client did not offer fails the connection (RFC 6455 section 4.1).
+        assert_eq!(check_response(101, &chosen, SAMPLE_KEY, &[]), Err(bad));
+        assert_eq!(
+            check_response(101, &chosen, SAMPLE_KEY, &["other".to_string()]),
+            Err(bad)
+        );
+
         let mut full = ok;
         full.extend(fields(&[("Sec-WebSocket-Extensions", DEFLATE_RESPONSE)]));
-        assert!(check_response(101, &full, SAMPLE_KEY).unwrap().compress);
+        assert!(
+            check_response(101, &full, SAMPLE_KEY, &[])
+                .unwrap()
+                .compress
+        );
     }
 }
