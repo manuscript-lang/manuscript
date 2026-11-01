@@ -503,7 +503,13 @@ impl Checker {
                             method.func.name
                         ),
                     );
-                } else if !same(&Rc::new(t.clone()), &sub(&op.ty, &renamed)) {
+                } else if !same(&Rc::new(t.clone()), &sub(&op.ty, &renamed))
+                    || !t
+                        .params
+                        .iter()
+                        .zip(&op.ty.params)
+                        .all(|(have, want)| have.name == want.name)
+                {
                     self.type_error(
                         method.pos,
                         format!(
