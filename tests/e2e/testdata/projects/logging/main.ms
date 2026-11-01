@@ -10,28 +10,28 @@ type Service:
 fn exercise(mode: String, path: String) Unit!:
     if (mode == "file" or mode == "missing"):
         var root = try create(try file_transport(path), timestamp: false)
-        let logger = try root.child(Service("api"))
-        try emit(logger)
+        var logger = try root.child(Service("api"))
+        try emit(var logger)
         try logger.flush()
         root.close()
         return ok(unit)
 
     if mode == "limit":
-        let logger = try create(stdout_transport(), max_bytes: 1)
+        var logger = try create(stdout_transport(), max_bytes: 1)
         try logger.info("too large")
     else if mode == "closed":
         var root = try create(stdout_transport())
-        let logger = try root.child(Service("api"))
+        var logger = try root.child(Service("api"))
         root.close()
         try logger.info("closed")
     else:
         let root = try create(stdout_transport())
-        let logger = try root.child(Service("api"))
+        var logger = try root.child(Service("api"))
 
         if mode == "invalid":
             try logger.info_with("invalid", JsonValue.NumberValue("NaN"))
         else:
-            try emit(logger)
+            try emit(var logger)
             try logger.flush()
 
     var logger = try create(stdout_transport(), timestamp: false)

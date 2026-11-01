@@ -55,6 +55,7 @@ impl Checker {
             params.push(Param {
                 name: param.name,
                 ty: typ,
+                mutable: param.mutable,
             });
             if param.default.is_some() {
                 defaults.insert(param.name);

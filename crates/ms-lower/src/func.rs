@@ -751,6 +751,29 @@ impl<'a> FnLower<'a> {
         );
     }
 
+    /// Binds a `var` parameter passed as the caller's slot at `ptr`: the callee owns the value
+    /// it takes from the slot and puts back on return.
+    pub(crate) fn bind_var_slot(&mut self, b: &BindingRef, ptr: Value) -> Result<(), Error> {
+        let ty = self.mty(&b.ty)?;
+        let owned = self.needs_drop(ty);
+        let var = self
+            .b
+            .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
+        let x = self.move_out(ptr, ty);
+        self.b.def_var(var, x);
+        self.locals.insert(
+            b.uid,
+            Local {
+                var,
+                ty,
+                slot: None,
+            },
+        );
+        self.slotify(b.uid);
+        self.var_slots.push(VarSlot { uid: b.uid, ptr });
+        Ok(())
+    }
+
     /// Whether this instance's `var` parameters work in the caller's memory (`IN_MEMORY`).
     pub(crate) fn in_memory(&self) -> bool {
         self.subst.contains_key(&ct::n(IN_MEMORY))
@@ -999,24 +1022,7 @@ impl<'a> FnLower<'a> {
                 continue;
             }
             if vars.contains(&i) {
-                // The callee owns the value it takes from the slot and puts back on return.
-                let ty = self.mty(&b.ty)?;
-                let owned = self.needs_drop(ty);
-                let var = self
-                    .b
-                    .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
-                let x = self.move_out(v, ty);
-                self.b.def_var(var, x);
-                self.locals.insert(
-                    b.uid,
-                    Local {
-                        var,
-                        ty,
-                        slot: None,
-                    },
-                );
-                self.slotify(b.uid);
-                self.var_slots.push(VarSlot { uid: b.uid, ptr: v });
+                self.bind_var_slot(b, v)?;
                 continue;
             }
             if owned_mask.as_ref().is_some_and(|mask| mask[i]) && self.needs_drop(self.ty_of(v)) {

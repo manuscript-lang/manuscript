@@ -9,7 +9,7 @@ fn boom(xs: List[Int]) Int:
 # the first generated frame (Windows): the spawn and the callers inlined into it.
 export fn main() Int:
     var group = TaskGroup[Int]()
-    let task = group.spawn(fn ch: boom([1]))
+    var task = group.spawn(fn var ch: boom([1]))
     let _ = task.result()
     group.close().get(none)
     return 0

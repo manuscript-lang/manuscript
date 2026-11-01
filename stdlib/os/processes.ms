@@ -156,7 +156,7 @@ impl PipeEnd:
     # The next whole frame, waiting for more bytes as needed; `none` once the other process closed
     # the pipe or is gone. One task reads the pipe at a time: another waits, then returns a `RETRY`
     # frame so its caller sees what the reader recorded (a `RESULT` or `CLOSE`) before reading again.
-    fn next_frame() Frame?!ChannelError:
+    var fn next_frame() Frame?!ChannelError:
         while true:
             let available = self.inbox.pending.length()
 
@@ -188,21 +188,21 @@ impl PipeEnd:
         return ok(none)
 
     # Marks that the other end sent no more messages, keeping the result body if this was it.
-    fn finish(result: String?) Unit:
+    var fn finish(result: String?) Unit:
         self.inbox.finished = true
         if result.is_some():
             self.inbox.result = result
 
     # Marks this end closed and sends `close` once unless `notify` is False (a parent about to kill
     # the child: the write could wait forever on a full pipe the child never reads).
-    fn shut(notify: Bool = true) Unit:
+    var fn shut(notify: Bool = true) Unit:
         let first = not self.inbox.closed
         self.inbox.closed = true
         if first and notify:
             msstd_process_ipc_write(self.link, frame(CLOSE, ""))
 
     # Waits for the entry to return and gives its result, or `Exited` with the status of a child that ended first.
-    fn result[T: Data](native: NativeProcess) T!ProcessError:
+    var fn result[T: Data](native: NativeProcess) T!ProcessError:
         while true:
             if let body = self.inbox.result.clone():
                 match decode[T](body):
@@ -232,7 +232,7 @@ type ProcessTransport[In: Data, Out: Data]:
     inbox: Shared[Inbox]
 
 impl Transport[In, Out] for ProcessTransport[In, Out]:
-    fn send(value: In) Unit!ChannelError:
+    var fn send(value: In) Unit!ChannelError:
         if self.inbox.closed or self.inbox.finished:
             return error(ChannelError.Closed)
 
@@ -242,13 +242,13 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
 
         return ok(unit)
 
-    fn receive() Out?!ChannelError:
+    var fn receive() Out?!ChannelError:
         if self.inbox.closed:
             return error(ChannelError.Closed)
         if self.inbox.finished:
             return ok(none)
 
-        let end = PipeEnd(self.link.clone(), self.inbox)
+        var end = PipeEnd(self.link.clone(), self.inbox)
 
         while true:
             let next = try end.next_frame()
@@ -283,16 +283,13 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
 
 # The child's side: runs `entry` on the child's end of the channel, then sends `close` (if the
 # entry did not) and the result, and closes the pipe.
-fn serve[T: Data, In: Data, Out: Data](entry: fn(Channel[Out, In]) T) Unit:
+fn serve[T: Data, In: Data, Out: Data](entry: fn(var Channel[Out, In]) T) Unit:
     let link = msstd_process_ipc_child()
     let inbox = Shared(Inbox())
-    let value = entry(
-        Channel[Out, In](
-            transport: ProcessTransport[Out, In](
-                link: link.clone(), inbox: inbox
-            )
-        )
+    var channel = Channel[Out, In](
+        transport: ProcessTransport[Out, In](link: link.clone(), inbox: inbox)
     )
+    let value = entry(var channel)
     PipeEnd(link.clone(), inbox).shut()
 
     match encode(value):
@@ -404,8 +401,8 @@ impl ProcessGroup[T, In, Out]:
     # group's end. `stdin`, `stdout` and `stderr` each choose the parent's own stream (the
     # default), the null device, or a pipe the process's `stdin()`, `stdout()` or `stderr()`
     # reaches. Closing the process makes the group forget it.
-    fn spawn(
-        entry: fn(Channel[Out, In]) T,
+    var fn spawn(
+        entry: fn(var Channel[Out, In]) T,
         stdin: Stdio = Stdio.Inherit,
         stdout: Stdio = Stdio.Inherit,
         stderr: Stdio = Stdio.Inherit
@@ -436,13 +433,13 @@ impl ProcessGroup[T, In, Out]:
 
     # Waits for every open process's result in start order, or returns the first error.
     # Closed processes are not included.
-    fn results() List[T]!ProcessError:
+    var fn results() List[T]!ProcessError:
         let count = self.processes.length()
         var values = List[T]()
 
         for index in 0..count:
             let open = self.processes[index].clone()
-            let end = PipeEnd(open.link.clone(), open.inbox)
+            var end = PipeEnd(open.link.clone(), open.inbox)
             values.append(try end.result[T](open.native))
 
         return ok(values)

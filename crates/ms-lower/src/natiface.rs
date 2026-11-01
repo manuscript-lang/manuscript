@@ -875,7 +875,14 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         };
         // The rules flag leads a path entry point's arguments.
         let lead = sym.starts_with("msrt_path_");
-        decl.insert(if lead { 0 } else { decl.len() }, ct::Param { name, ty });
+        decl.insert(
+            if lead { 0 } else { decl.len() },
+            ct::Param {
+                name,
+                ty,
+                mutable: false,
+            },
+        );
         nargs.insert(
             if lead { 0 } else { nargs.len() },
             NArg {
@@ -989,6 +996,7 @@ impl FnLower<'_> {
             split.iter().map(|(name, _)| ct::Param {
                 name: *name,
                 ty: list_decl.clone(),
+                mutable: false,
             }),
         );
         nargs.splice(

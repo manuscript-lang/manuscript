@@ -31,7 +31,7 @@ fn route(request: HttpRequest) HttpResponse:
         status: 200, headers: fields, body: "{request.path}|{request.query}".to_bytes()
     )
 
-fn stream_route(exchange: HttpExchange) Unit!HttpError:
+fn stream_route(var exchange: HttpExchange) Unit!HttpError:
     var chain_1 = Map[String, List[String]]()
     chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 

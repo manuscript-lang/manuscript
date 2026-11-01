@@ -5,7 +5,7 @@ import connect, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 import memory_usage from "@std/os/process.ms"
 
-fn faulting(exchange: HttpExchange) Unit!HttpError:
+fn faulting(var exchange: HttpExchange) Unit!HttpError:
     let big = "x".repeat(1000000).get("")
     let xs: List[Int] = []
     let n = xs[big.length()]

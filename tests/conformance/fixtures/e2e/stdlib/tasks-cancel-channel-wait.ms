@@ -9,41 +9,39 @@ import nanoseconds, sleep from "@std/os/time.ms"
 # the receiver `var def` takes it out of the caller's slot, and the frames above own the same memory.
 # Later allocations expose the corrupted heap.
 
-fn receiver(ch: Channel[Int, Int]) Int:
-    var c = ch
-    if let _got = c.receive():
+fn receiver(var ch: Channel[Int, Int]) Int:
+    if let _got = ch.receive():
         return 1
 
     return 0
 
-fn sender(ch: Channel[Int, Int]) Int:
-    var c = ch
+fn sender(var ch: Channel[Int, Int]) Int:
     for i in 0..100:
-        let _ = c.send(i)
+        let _ = ch.send(i)
     return 0
 
 fn cancel_receiver() Unit:
-    let group = TaskGroup[Int, Int, Int]()
+    var group = TaskGroup[Int, Int, Int]()
     group.spawn(receiver)
     sleep(nanoseconds(1000000))
 
 fn cancel_sender() Unit:
-    let group = TaskGroup[Int, Int, Int]()
+    var group = TaskGroup[Int, Int, Int]()
     group.spawn(sender)
     sleep(nanoseconds(1000000))
 
 fn timeout_receiver() Unit:
-    let group = TaskGroup[Int, Int, Int]()
-    let task = group.spawn(receiver, timeout: nanoseconds(1000000))
+    var group = TaskGroup[Int, Int, Int]()
+    var task = group.spawn(receiver, timeout: nanoseconds(1000000))
     let _ = task.result()
 
 fn churn() Int:
     var total = 0
 
     for round in 0..20:
-        let group = TaskGroup[String]()
+        var group = TaskGroup[String]()
         for i in 0..5:
-            group.spawn(fn ch: "task {i}")
+            group.spawn(fn var ch: "task {i}")
         total += group.results().get([]).length()
 
     return total

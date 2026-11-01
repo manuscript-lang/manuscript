@@ -13,7 +13,7 @@ fn tls_options() TlsOptions:
         alpn: [], require_client_certificate: false
     )
 
-fn echo(exchange: HttpExchange) Unit!HttpError:
+fn echo(var exchange: HttpExchange) Unit!HttpError:
     if exchange.path() == "/ws":
         var socket = (
             try http_result(
@@ -102,7 +102,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     let message = (socket.receive() | try expect_ok).get()
     (not message.text or message.data != "é🙂".to_bytes()) | try expect_false
 
-fn report_host(exchange: HttpExchange) Unit!HttpError:
+fn report_host(var exchange: HttpExchange) Unit!HttpError:
     let hosts = exchange.headers().values("Host")
     let _started = try exchange.send_headers(status: 200, headers: headers())
     let _written = (try http_result(exchange.write(hosts.join(","))))

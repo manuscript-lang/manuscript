@@ -11,12 +11,10 @@ import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 # cover it: the heap must not grow across cancellations (#1513), and `make leak-check` finds no
 # live block at exit.
 
-fn echo(ch: Channel[Int, Int]) Unit:
-    var end = ch
-
+fn echo(var ch: Channel[Int, Int]) Unit:
     while true:
-        let value = end.receive().get().get(-1)
-        end.send(value).get()
+        let value = ch.receive().get().get(-1)
+        ch.send(value).get()
 
 fn waiting(ready: Channel[Unit, Unit], ch: Channel[Int, Int]) Unit:
     var started = ready
@@ -28,7 +26,7 @@ fn waiting(ready: Channel[Unit, Unit], ch: Channel[Int, Int]) Unit:
 fn cancel_one(ch: Channel[Int, Int]) Unit!:
     var group = TaskGroup[Unit]()
     let end = ch.clone()
-    var task = group.spawn(fn ready: waiting(ready, end.clone()))
+    var task = group.spawn(fn var ready: waiting(ready, end.clone()))
     task.channel.receive() | try expect_ok | try expect_equal(unit)
     try group.close()
     task.result() | try expect_error | try expect_equal(TaskError.Closed)

@@ -25,9 +25,9 @@ impl Error for ChannelError:
 # How one end of a channel moves values. Each kind of group provides its own; use `Channel`.
 export interface Transport[In, Out]:
     # Sends `value`, waiting while the other end has too many unread values.
-    fn send(value: In) Unit!ChannelError
+    var fn send(value: In) Unit!ChannelError
     # Waits for the next value. `ok(none)` means the other end closed and every value was read.
-    fn receive() Out?!ChannelError
+    var fn receive() Out?!ChannelError
     # Closes this end. Safe to call again.
     var fn close() Unit
 
@@ -35,7 +35,7 @@ export interface Transport[In, Out]:
 # A send waits while the other end has many unread values; a receive waits for the next one.
 # After either end closes, the other end still receives what was sent before, then `ok(none)`,
 # and its sends give `error(ChannelError.Closed)`. Using an end after closing it gives `Closed`.
-# An end is a handle on shared state, so `send` and `receive` work on a `let` binding or a plain parameter; only `close` needs `var`.
+# Sending, receiving and closing change the channel, so each needs a `var` end; a task's entry takes its end as `var`.
 export type Channel[In, Out]:
     # Internal state: how this end moves values.
     transport: Transport[In, Out]
@@ -43,12 +43,12 @@ export type Channel[In, Out]:
 impl Channel[In, Out]:
     # Sends `value` to the other end, waiting while it has many unread values.
     # Gives `Closed` once either end is closed.
-    fn send(value: In) Unit!ChannelError:
+    var fn send(value: In) Unit!ChannelError:
         return self.transport.send(value)
 
     # Waits for the next value from the other end. Gives `ok(none)` once the other end closed and
     # every value it sent was read, and `Closed` once this end is closed.
-    fn receive() Out?!ChannelError:
+    var fn receive() Out?!ChannelError:
         return self.transport.receive()
 
     # Closes this end: the other end reads what is left, then `ok(none)`. Safe to call again.

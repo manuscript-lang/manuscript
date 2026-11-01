@@ -4,41 +4,39 @@ import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
-fn send_one(ch: Channel[Int, Unit]) Unit!ChannelError:
+fn send_one(var ch: Channel[Int, Unit]) Unit!ChannelError:
     try ch.send(7)
     return ok(unit)
 
-fn send_nothing(ch: Channel[Int, Unit]) Unit!ChannelError:
+fn send_nothing(var ch: Channel[Int, Unit]) Unit!ChannelError:
     return ok(unit)
 
-fn retained_end(group: TaskGroup[Unit!ChannelError, Unit, Int]) Channel[Unit, Int]!:
-    let task = group.spawn(send_one)
+fn retained_end(var group: TaskGroup[Unit!ChannelError, Unit, Int]) Channel[Unit, Int]!:
+    var task = group.spawn(send_one)
     task.result() | try expect_ok | try expect_ok
     return ok(task.channel.clone())
 
-fn send_payloads(ch: Channel[String, Unit]) Unit!ChannelError:
-    var end = ch
+fn send_payloads(var ch: Channel[String, Unit]) Unit!ChannelError:
     for index in 0..16:
-        try end.send("unread channel payload".repeat(16).get(""))
+        try ch.send("unread channel payload".repeat(16).get(""))
     return ok(unit)
 
-fn collect_and_drop(group: TaskGroup[Unit!ChannelError, Unit, Int]) Unit!:
-    let task = group.spawn(send_one)
+fn collect_and_drop(var group: TaskGroup[Unit!ChannelError, Unit, Int]) Unit!:
+    var task = group.spawn(send_one)
     task.result() | try expect_ok | try expect_ok
     return ok(unit)
 
 fn close_on_return() Channel[Unit, Int]!:
-    let group = TaskGroup[Unit!ChannelError, Unit, Int]()
-    let task = group.spawn(send_one)
+    var group = TaskGroup[Unit!ChannelError, Unit, Int]()
+    var task = group.spawn(send_one)
     task.result() | try expect_ok | try expect_ok
     return ok(task.channel.clone())
 
-fn close_on_cancel(ch: Channel[Channel[Unit, Int], Unit]) Unit:
-    let group = TaskGroup[Unit!ChannelError, Unit, Int]()
-    let task = group.spawn(send_one)
+fn close_on_cancel(var ch: Channel[Channel[Unit, Int], Unit]) Unit:
+    var group = TaskGroup[Unit!ChannelError, Unit, Int]()
+    var task = group.spawn(send_one)
     let _sent = task.result()
-    var end = ch
-    let _ = end.send(task.channel.clone())
+    let _ = ch.send(task.channel.clone())
     sleep(nanoseconds(1000000000))
 
 test "collected buffered channels close with their group":
@@ -58,7 +56,7 @@ test "collected empty channels close with their group":
 
 test "results collection preserves group ownership of cloned channels":
     var group = TaskGroup[Unit!ChannelError, Unit, Int]()
-    let task = group.spawn(send_one)
+    var task = group.spawn(send_one)
     var end = task.channel.clone()
     let results = group.results() | try expect_ok
     results.length() | try expect_equal(1)
@@ -68,7 +66,7 @@ test "results collection preserves group ownership of cloned channels":
 
 test "a channel retained without its collected task closes with the group":
     var group = TaskGroup[Unit!ChannelError, Unit, Int]()
-    var end = retained_end(group) | try expect_ok
+    var end = retained_end(var group) | try expect_ok
     try group.close()
     end.receive() | try expect_error | try expect_equal(ChannelError.Closed)
 
@@ -94,7 +92,7 @@ test "repeated close cannot close another groups channels":
     old.result() | try expect_ok | try expect_ok
     try first.close()
 
-    let second = TaskGroup[Unit!ChannelError, Unit, Int]()
+    var second = TaskGroup[Unit!ChannelError, Unit, Int]()
     var fresh = second.spawn(send_one)
     fresh.result() | try expect_ok | try expect_ok
     try first.close()
@@ -114,13 +112,13 @@ test "group close releases unread payloads while the channel stays alive":
     task.channel.receive() | try expect_error | try expect_equal(ChannelError.Closed)
 
 test "a long lived group does not retain discarded collected channels":
-    let group = TaskGroup[Unit!ChannelError, Unit, Int]()
+    var group = TaskGroup[Unit!ChannelError, Unit, Int]()
     for index in 0..128:
-        try collect_and_drop(group)
+        try collect_and_drop(var group)
 
     let before = memory_usage() | try expect_ok
     for index in 0..2000:
-        try collect_and_drop(group)
+        try collect_and_drop(var group)
 
     let after = memory_usage() | try expect_ok
     try expect_true(after.heap_used <= before.heap_used + 1024)
@@ -140,7 +138,7 @@ test "return cleanup closes a collected channels retained end":
     end.receive() | try expect_error | try expect_equal(ChannelError.Closed)
 
 test "cancellation cleanup closes collected channels retained outside the task":
-    let outer = TaskGroup[Unit, Unit, Channel[Unit, Int]]()
+    var outer = TaskGroup[Unit, Unit, Channel[Unit, Int]]()
     var task = outer.spawn(close_on_cancel, timeout: nanoseconds(20000000))
 
     if var end = task.channel.receive() | try expect_ok:
@@ -149,7 +147,7 @@ test "cancellation cleanup closes collected channels retained outside the task":
     else:
         try expect_true(false)
 
-fn double_all(ch: Channel[Int, Int]) Int:
+fn double_all(var ch: Channel[Int, Int]) Int:
     var count = 0
 
     while true:
@@ -163,7 +161,7 @@ fn double_all(ch: Channel[Int, Int]) Int:
     return count
 
 test "channel ends send and receive without a var binding":
-    let group = TaskGroup[Int, Int, Int]()
-    let task = group.spawn(double_all)
+    var group = TaskGroup[Int, Int, Int]()
+    var task = group.spawn(double_all)
     task.channel.send(4) | try expect_ok
     task.channel.receive() | try expect_ok | try expect_equal(8)

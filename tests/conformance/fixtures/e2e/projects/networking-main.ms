@@ -37,7 +37,7 @@ fn socket_result[T](result: T!WebSocketError) T!HttpError:
         error(cause):
             return error(websocket_error(cause))
 
-fn echo(exchange: HttpExchange) Unit!HttpError:
+fn echo(var exchange: HttpExchange) Unit!HttpError:
     if exchange.path() == "/ws":
         var socket = try socket_result(
             result: exchange.upgrade(

@@ -84,7 +84,7 @@ fn write_and_read(path: String, payload: Bytes) Result[Bytes, Error]:
     return ok(try read_file(path))
 
 # The benchmark endpoints.
-fn make_handler(dir: String) fn(HttpExchange) Result[Unit, HttpError]:
+fn make_handler(dir: String) fn(var HttpExchange) Result[Unit, HttpError]:
     var text = "0123456789abcdef"
     var i = 0
 

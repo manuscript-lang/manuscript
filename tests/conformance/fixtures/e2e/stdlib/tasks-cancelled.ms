@@ -31,13 +31,13 @@ export fn main() Int:
     say("outside a group: {cancelled()}")
 
     var group = TaskGroup[Int]()
-    group.spawn(fn ch: returns_normally())
+    group.spawn(fn var ch: returns_normally())
 
     let _ = group.results()
     group.close().get(none)
 
     var group2 = TaskGroup[Int](timeout: nanoseconds(20000000))
-    group2.spawn(fn ch: sleep_with_reporter())
+    group2.spawn(fn var ch: sleep_with_reporter())
 
     let _ = group2.wait()
     group2.close().get(none)

@@ -13,19 +13,18 @@ import Channel, ChannelError from "@std/io/channels.ms"
 import ProcessGroup from "@std/os/processes.ms"
 import expect_equal, expect_ok from "@std/test/test.ms"
 
-fn square_all(ch: Channel[Int, Int]) Result[Int, ChannelError]:
-    var c = ch
+fn square_all(var ch: Channel[Int, Int]) Result[Int, ChannelError]:
     var count = 0
     while true:
-        if let n = try c.receive():
-            try c.send(n * n)
+        if let n = try ch.receive():
+            try ch.send(n * n)
             count += 1
         else:
             return ok(count)
     return ok(count)
 
 test "a child process answers messages on its channel":
-    let group = ProcessGroup[Result[Int, ChannelError], Int, Int]()
+    var group = ProcessGroup[Result[Int, ChannelError], Int, Int]()
     var child = group.spawn(square_all) | try expect_ok
     child.channel.send(3) | try expect_ok
     child.channel.receive() | try expect_ok | try expect_equal(9)

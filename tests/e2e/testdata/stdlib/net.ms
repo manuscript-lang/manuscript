@@ -111,8 +111,8 @@ test "two tasks accept on one listener":
     var group = TaskGroup[Int]()
     let a = shared
     let b = shared
-    group.spawn(fn ch: accept_one(a))
-    group.spawn(fn ch: accept_one(b))
+    group.spawn(fn var ch: accept_one(a))
+    group.spawn(fn var ch: accept_one(b))
     sleep(50.milliseconds)
 
     var c1 = try connect(shared.address(), 2.seconds)
@@ -140,8 +140,8 @@ test "two tasks read one connection":
     var group = TaskGroup[Int]()
     let a = shared
     let b = shared
-    group.spawn(fn ch: read_some(a))
-    group.spawn(fn ch: read_some(b))
+    group.spawn(fn var ch: read_some(a))
+    group.spawn(fn var ch: read_some(b))
     sleep(50.milliseconds)
     try client.write("xy", 2.seconds)
 
@@ -178,9 +178,9 @@ test "resolve returns typed DNS records from the configured resolver":
 
     let server: Shared[DatagramSocket] = Shared(try bind_datagram("127.0.0.1:0"))
     let derived = try with_resolver(server.address())
-    let group = TaskGroup[Int]()
+    var group = TaskGroup[Int]()
     let socket = server
-    group.spawn(fn ch: answer_mx(socket).get(0))
+    group.spawn(fn var ch: answer_mx(socket).get(0))
 
     let mx = try derived.resolve("example.test", DnsKind.MX, none, 2.seconds)
     try expect_equal(mx.length(), 1)

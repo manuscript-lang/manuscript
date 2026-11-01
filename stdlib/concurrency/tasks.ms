@@ -183,7 +183,7 @@ impl Lane[T]:
 
 impl TaskTransport[In, Out]:
     # Waits until `outgoing` has room. Nothing runs between this returning and the caller's send.
-    fn wait_for_room() Unit!ChannelError:
+    var fn wait_for_room() Unit!ChannelError:
         while true:
             match self.outgoing.claim_room():
                 Reserved.Ready:
@@ -197,13 +197,13 @@ impl TaskTransport[In, Out]:
         return ok(unit)
 
 impl Transport[In, Out] for TaskTransport[In, Out]:
-    fn send(value: In) Unit!ChannelError:
+    var fn send(value: In) Unit!ChannelError:
         try self.wait_for_room()
         self.outgoing.back.append(value)
         self.outgoing.wake()
         return ok(unit)
 
-    fn receive() Out?!ChannelError:
+    var fn receive() Out?!ChannelError:
         while true:
             if self.incoming.receiver_closed:
                 return error(ChannelError.Closed)
@@ -235,17 +235,17 @@ impl Closeable for TaskTransport[In, Out]:
 # The body of a task: runs `entry` on the task's end of its channel and returns its one result. The
 # end closes when the task ends, however it ends.
 fn run[T, In: Clonable, Out: Clonable](
-    entry: fn(Channel[Out, In]) T,
+    entry: fn(var Channel[Out, In]) T,
     up: Shared[Lane[Out]],
     down: Shared[Lane[In]]
 ) T:
     let end = TaskTransport[Out, In](outgoing: up, incoming: down)
     msrt_scope_started()
-    return entry(
-        Channel[Out, In](
-            transport: TaskTransport[Out, In](outgoing: up, incoming: down)
-        )
+
+    var channel = Channel[Out, In](
+        transport: TaskTransport[Out, In](outgoing: up, incoming: down)
     )
+    return entry(var channel)
 
 # The group's end of a task channel.
 fn group_end[In: Clonable, Out: Clonable](
@@ -271,7 +271,7 @@ export type Entry[T, In: Clonable, Out: Clonable]:
 impl Entry[T, In, Out]:
     # Waits for the task in `scope` and takes its result. The task is collected even when it has no
     # result, so the runtime lets go of it.
-    fn collect(scope: Int) T!TaskError:
+    var fn collect(scope: Int) T!TaskError:
         try outcome(msrt_scope_join(scope, self.handle, 0))
         return ok(take_result(var self.values))
 
@@ -297,7 +297,7 @@ export type Task[T, In: Clonable = Unit, Out: Clonable = Unit]:
 
 impl Task[T, In, Out]:
     # Waits for the task and returns its result, or why it has none. Takes the result, so call it once.
-    fn result() T!TaskError:
+    var fn result() T!TaskError:
         let ended = outcome(msrt_scope_join(self.scope, self.handle, 0))
         self.registry.remove(self.handle)
 
@@ -332,7 +332,7 @@ impl TaskGroup[T, In, Out]:
     # handle's `channel` is the group's end. The task's end closes when `entry` returns.
     # The task first runs when the caller waits.
     # `timeout` limits this task; the group's own limit still applies if it ends sooner.
-    fn spawn(entry: fn(Channel[Out, In]) T, timeout: Duration?) Task[T, In, Out]:
+    var fn spawn(entry: fn(var Channel[Out, In]) T, timeout: Duration?) Task[T, In, Out]:
         var down = Shared(Lane[In]())
         var up = Shared(Lane[Out]())
         let values = Shared(List[T]())
@@ -365,14 +365,15 @@ impl TaskGroup[T, In, Out]:
 
     # Waits for every uncollected task and returns their results in start order, or the first task's error.
     # Tasks already collected with `result` are not included; the ones returned are collected.
-    fn results() List[T]!TaskError:
+    var fn results() List[T]!TaskError:
         if msrt_scope_wait(self.scope) == 3:
             return error(TaskError.Closed)
 
         var values = List[T]()
 
         for handle in self.tasks.keys():
-            if let next = self.tasks.get(handle):
+            if let found = self.tasks.get(handle):
+                var next = found
                 let value = next.collect(self.scope)
                 self.tasks.remove(handle)
                 values.append(try value)

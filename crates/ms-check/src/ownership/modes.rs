@@ -115,6 +115,13 @@ pub fn call_modes(
         callbacks_borrowed: true,
         retained: Vec::new(),
     };
+    // A call of a computed function (`h.get()(x)`) runs a function value, whatever the inner
+    // call resolved to.
+    let computed = matches!(&call.kind, ExprKind::Call { callee, .. }
+        if !matches!(callee.kind, ExprKind::Name(_) | ExprKind::Member { .. } | ExprKind::Apply { .. }));
+    if computed {
+        return value_modes(m, call, borrow_all(None));
+    }
     match m.resolution(call) {
         Resolution::Constructor { .. } => CallModes {
             arguments: vec![ParamMode::Consume; args.len()],
@@ -158,9 +165,24 @@ pub fn call_modes(
         }
         Resolution::Method(method) => method_modes(summaries, &method, args.len(), label),
         Resolution::Native(_) | Resolution::Local(_) | Resolution::Type(_) | Resolution::Value => {
-            borrow_all(None)
+            value_modes(m, call, borrow_all(None))
         }
     }
+}
+
+/// A call through a function value changes the arguments its type marks `var`.
+fn value_modes(m: &ModuleHir, call: &Expr, mut modes: CallModes) -> CallModes {
+    if let ExprKind::Call { callee, .. } = &call.kind {
+        let t = m.ty(callee);
+        if t.kind == Kind::Function {
+            for (mode, p) in modes.arguments.iter_mut().zip(&t.params) {
+                if p.mutable {
+                    *mode = ParamMode::Mutate;
+                }
+            }
+        }
+    }
+    modes
 }
 
 fn from_summary(

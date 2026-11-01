@@ -25,8 +25,8 @@ fn faulting() Unit:
     panic("fault after the move")
 
 export fn main() Int:
-    let group = TaskGroup[Unit](contain_faults: true)
-    group.spawn(fn ch: faulting())
+    var group = TaskGroup[Unit](contain_faults: true)
+    group.spawn(fn var ch: faulting())
 
     let waited = group.wait()
     stdout().write("waited: {waited.is_error()}\n").get()

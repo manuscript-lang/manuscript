@@ -222,7 +222,7 @@ impl<'a> FnLower<'a> {
 
     /// Whether a place permits writeback: an owned local or shared mutable storage.
     /// A read-only borrow (a parameter of a default frame) takes no update.
-    fn place_is_owned(&mut self, place: &Expr) -> bool {
+    pub(crate) fn place_is_owned(&mut self, place: &Expr) -> bool {
         // A change through a `Shared` handle goes to its box, whoever holds the handle.
         if self.shared_root(place).is_some() {
             return true;

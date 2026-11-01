@@ -4,7 +4,7 @@ import Channel from "@std/io/channels.ms"
 import stdout from "@std/io/io.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 
-fn entry(ch: Channel[Unit, Unit]) Int:
+fn entry(var ch: Channel[Unit, Unit]) Int:
     return 6
 
 export fn main() Int:

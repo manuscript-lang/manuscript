@@ -91,7 +91,11 @@ impl FnLower<'_> {
 
     /// The handler closure the server calls, wrapping the user's `handler`; an owned
     /// temporary released at the end of the statement.
-    pub(crate) fn handler_env(&mut self, handler: Val) -> Result<ms_mir::ir::Value, Error> {
+    pub(crate) fn handler_env(
+        &mut self,
+        handler: Val,
+        exchange: Option<MTy>,
+    ) -> Result<ms_mir::ir::Value, Error> {
         let user_ty = self.ty_of(handler.v);
         let TyKind::Fn(params, result) = self.b.m.types.kind(user_ty).clone() else {
             return Err(Error::new("a server handler is not a function"));
@@ -100,7 +104,7 @@ impl FnLower<'_> {
         let thunk = match self.cx.helpers.get(&key) {
             Some(t) => *t,
             None => {
-                let f = self.stream_thunk(user_ty, params[0], result)?;
+                let f = self.stream_thunk(user_ty, exchange.unwrap_or(params[0]), result)?;
                 let id = self.b.m.add_func(f);
                 self.cx.helpers.insert(key, id);
                 id
@@ -167,8 +171,25 @@ impl FnLower<'_> {
         let ex =
             fl.b.emit(Op::IfaceNew, &[handle], Imm::Vtable(vt), Some(exchange))
                 .expect("iface");
-        let r = fl.b.call_ind(handler, &[ex]);
-        fl.drop_value(ex);
+        // A handler that takes the exchange as `var` gets the address of a slot holding it.
+        let by_slot = matches!(
+            fl.b.m.types.kind(user_ty).clone(),
+            TyKind::Fn(ps, _) if ps.first() == Some(&MTy::PTR)
+        );
+        let r = if by_slot {
+            let slot =
+                fl.b.emit(Op::Slot, &[], Imm::Ty(exchange), Some(MTy::PTR))
+                    .expect("slot");
+            fl.move_into(slot, ex);
+            let r = fl.b.call_ind(handler, &[slot]);
+            let back = fl.move_out(slot, exchange);
+            fl.drop_value(back);
+            r
+        } else {
+            let r = fl.b.call_ind(handler, &[ex]);
+            fl.drop_value(ex);
+            r
+        };
         let tag = fl.b.alt_tag(r);
         let ok_tag = fl.b.iconst(ok as i64);
         let is_ok = fl.b.icmp(Cc::Eq, tag, ok_tag);

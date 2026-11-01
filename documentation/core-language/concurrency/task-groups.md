@@ -16,15 +16,15 @@ fn square(n: Int) Int:
     return n * n
 
 test "a group collects its results in start order":
-    let group = TaskGroup[Int]()
+    var group = TaskGroup[Int]()
     for n in [1, 2, 3]:
-        group.spawn(fn ch: square(n))
+        group.spawn(fn var ch: square(n))
     group.results() | try expect_ok | try expect_equal([1, 4, 9])
 ```
 
 ## How tasks run
 
-- `spawn(entry)` starts `entry`, a function that takes the task's end of its channel and returns `T`, and returns a `Task[T]`. A task that sends no messages ignores its channel: `fn ch: square(n)`. The task first runs when the caller waits, in `result()`, `results()`, `wait()` or any call that suspends (sleeping, I/O).
+- `spawn(entry)` starts `entry`, a function that takes the task's end of its channel and returns `T`, and returns a `Task[T]`. The entry takes its end as `var`, since sending and receiving change it; a task that sends no messages ignores it: `fn var ch: square(n)`. Starting and collecting tasks change the group and the task, so bind both with `var`. The task first runs when the caller waits, in `result()`, `results()`, `wait()` or any call that suspends (sleeping, I/O).
 - Tasks share one thread. A task runs until it waits (including on a channel), so a loop that never waits keeps the other tasks from running.
 - `task.result()` waits for that task and returns `Result[T, TaskError]`. Call it once per task.
 - `group.results()` waits for every uncollected task and returns their results in start order, or the first task's error. A task collected with `result()` is not included. Collecting a task, by `result()` or `results()`, makes the group forget it, so a long-lived group holds only tasks that are running or uncollected. `group.wait()` waits for all of them and reports an error if any ended without a result.
@@ -46,13 +46,13 @@ import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
-fn wait_a_minute(ch: Channel[Unit, Unit]) Int:
+fn wait_a_minute(var ch: Channel[Unit, Unit]) Int:
     sleep(nanoseconds(60000000000))
     return 1
 
 test "a task that passes its timeout is cancelled":
-    let group = TaskGroup[Int]()
-    let task = group.spawn(wait_a_minute, timeout: nanoseconds(10000000))
+    var group = TaskGroup[Int]()
+    var task = group.spawn(wait_a_minute, timeout: nanoseconds(10000000))
     task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
 
@@ -74,17 +74,16 @@ import Channel, ChannelError from "@std/io/channels.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_ok from "@std/test/test.ms"
 
-fn square_all(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
-    var c = ch
+fn square_all(var ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     while true:
-        if let n = try c.receive():
-            try c.send(n * n)
+        if let n = try ch.receive():
+            try ch.send(n * n)
         else:
             return ok(unit)
     return ok(unit)
 
 test "a task answers messages on its channel":
-    let group = TaskGroup[Result[Unit, ChannelError], Int, Int]()
+    var group = TaskGroup[Result[Unit, ChannelError], Int, Int]()
     var task = group.spawn(square_all)
     task.channel.send(3) | try expect_ok
     task.channel.receive() | try expect_ok | try expect_equal(9)
@@ -99,4 +98,4 @@ test "a task answers messages on its channel":
 - Collecting a task's result leaves its channel readable, including buffered values. Closing the group closes retained and cloned channel handles too, even after result collection, and drops their unread values. Discarded collected channels are released without waiting for group close or another spawn.
 - Two tasks that each wait to send to the other while neither reads cannot make progress. The task scheduler can detect deadlocks within its own scheduler. Cycles spanning workers or processes are not covered by this guarantee; design protocols so each receive has a corresponding sender.
 - An end has one owner. `.clone()` makes another handle on the same end, so several tasks can send to or receive from it.
-- Write the parameter as `ch` and rebind it with `var c = ch`; a function with a `var` parameter cannot be passed as an entry yet ([#1191](https://github.com/manuscript-lang/manuscript/issues/1191)).
+- `send`, `receive` and `close` change the end, so each needs a `var` one; the entry type is `fn(var Channel[Out, In]) T`.

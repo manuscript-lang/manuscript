@@ -35,7 +35,7 @@ test "serve_cores serves clients across workers and fails when accepting fails":
     let listener = try listen("127.0.0.1:0")
     let address = listener.address()
     var group = TaskGroup[Unit!NetworkError]()
-    group.spawn(fn ch: run(listener))
+    group.spawn(fn var ch: run(listener))
 
     for i in 0..5:
         let text = get(address)

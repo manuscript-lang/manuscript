@@ -157,15 +157,15 @@ fn t_while_sleep() Int:
     return n
 
 fn run_one(which: Int) Unit:
-    let group = TaskGroup[Int](timeout: nanoseconds(1000000))
+    var group = TaskGroup[Int](timeout: nanoseconds(1000000))
 
-    if which == 0: group.spawn(fn ch: t_var_reassign())
-    else if which == 1: group.spawn(fn ch: t_var_list_swap())
-    else if which == 2: group.spawn(fn ch: t_partial())
-    else if which == 3: group.spawn(fn ch: t_conditional(true))
-    else if which == 4: group.spawn(fn ch: t_conditional(false))
-    else if which == 5: group.spawn(fn ch: t_loop_break())
-    else: group.spawn(fn ch: t_while_sleep())
+    if which == 0: group.spawn(fn var ch: t_var_reassign())
+    else if which == 1: group.spawn(fn var ch: t_var_list_swap())
+    else if which == 2: group.spawn(fn var ch: t_partial())
+    else if which == 3: group.spawn(fn var ch: t_conditional(true))
+    else if which == 4: group.spawn(fn var ch: t_conditional(false))
+    else if which == 5: group.spawn(fn var ch: t_loop_break())
+    else: group.spawn(fn var ch: t_while_sleep())
 
     let _ = group.wait()
 

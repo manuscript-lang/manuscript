@@ -1348,7 +1348,11 @@ impl Checker {
                 );
             }
             let ty = self.resolve(p.ty.as_ref());
-            result.push(Param { name: p.name, ty });
+            result.push(Param {
+                name: p.name,
+                ty,
+                mutable: p.mutable,
+            });
         }
         result
     }

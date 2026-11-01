@@ -22,11 +22,11 @@ export fn main() Int:
     var box = Shared(0)
     var g = TaskGroup[Int, Unit, Unit]()
     var first = box
-    g.spawn(fn ch: holder(var first, ch))
+    g.spawn(fn var ch: holder(var first, ch))
     sleep(nanoseconds(1000000))
 
     var second = box
-    let w = g.spawn(fn ch: waiter(var second))
+    var w = g.spawn(fn var ch: waiter(var second))
     let _ = stdout().write("waiting\n")
     let _ = w.result()
     g.close().get(none)

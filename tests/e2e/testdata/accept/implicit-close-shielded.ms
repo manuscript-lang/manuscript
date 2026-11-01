@@ -48,8 +48,8 @@ fn hold_fault_and_break(dir: String, id: Int) Unit:
     let _ = holder.id
 
 fn cancel_a_holder(dir: String, id: Int, pause: Bool) Unit:
-    let group = TaskGroup[Int](timeout: nanoseconds(20000000))
-    group.spawn(fn ch: hold_and_wait(dir.clone(), id, pause))
+    var group = TaskGroup[Int](timeout: nanoseconds(20000000))
+    group.spawn(fn var ch: hold_and_wait(dir.clone(), id, pause))
 
     let _ignored = group.wait()
 
@@ -77,7 +77,7 @@ test "a faulted task closes its binding before the group reports":
     let dir = temporary.path()
     let mine = dir.clone()
     var group = TaskGroup[Unit](contain_faults: true)
-    group.spawn(fn ch: hold_and_fault(mine.clone(), 4))
+    group.spawn(fn var ch: hold_and_fault(mine.clone(), 4))
 
     let _reason = group.wait() | try expect_error
     try group.close()

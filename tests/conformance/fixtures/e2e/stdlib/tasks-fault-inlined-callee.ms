@@ -14,7 +14,7 @@ fn boom() Int:
 
 export fn main() Int:
     var group = TaskGroup[Int]()
-    group.spawn(fn ch: boom())
+    group.spawn(fn var ch: boom())
 
     let _ = group.results()
     group.close().get(none)

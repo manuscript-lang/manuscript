@@ -9,10 +9,10 @@ fn show(xs: List[Int]) Int:
 
     # Each task owns its capture, and `xs` is only borrowed, so each one takes a clone.
     let first = xs.clone()
-    group.spawn(fn ch: first.length())
+    group.spawn(fn var ch: first.length())
 
     let second = xs.clone()
-    group.spawn(fn ch: second.length())
+    group.spawn(fn var ch: second.length())
     group.close().get(none)
     return 0
 

@@ -47,6 +47,8 @@ pub struct Outcome {
 enum Operand<'e> {
     Receiver(&'e Expr),
     Argument(&'e Expr),
+    /// The function value a call runs: a `var` argument may not reach it.
+    Callee(&'e Expr),
 }
 
 /// What an expression's value is used for.
@@ -1357,12 +1359,8 @@ impl Walker<'_> {
             );
             return;
         }
-        // A type's own methods change the `Shared` values in its fields: the hold of the box,
-        // not the receiver's binding, keeps those changes apart.
-        let own_handle = info.through_shared && receiver;
         match perm {
             Perm::Mutable | Perm::Captured | Perm::MutBorrowed => {}
-            _ if own_handle => {}
             Perm::Borrowed => {
                 let from = self
                     .meta
@@ -2263,15 +2261,20 @@ impl Walker<'_> {
         for (i, a) in args.iter().enumerate() {
             let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             let param = param_names.get(i).copied().unwrap_or_else(|| n("?"));
+            // A function type's parameters have no names (`_0`): say which argument instead.
+            let param = match param.as_str().strip_prefix('_') {
+                Some(k) if k.parse::<usize>().is_ok() => format!("argument {}", i + 1),
+                _ => format!("parameter `{param}`"),
+            };
             match (mode, a.mutable) {
                 (ParamMode::Mutate, false) => self.error_fix(
                     a.value.pos,
-                    format!("parameter `{param}` of `{name}` is declared var, so the call must say so; write `var {}`", self.expr_text(&a.value)),
+                    format!("{param} of `{name}` is declared var, so the call must say so; write `var {}`", self.expr_text(&a.value)),
                     insert_at(a.value.pos, "var "),
                 ),
                 (ParamMode::Borrow | ParamMode::Consume, true) => self.error_fix(
                     a.value.pos,
-                    format!("`{name}` does not change its parameter `{param}`; remove `var` from the argument"),
+                    format!("`{name}` does not change its {param}; remove `var` from the argument"),
                     DiagnosticFix {
                         pos: back(a.value.pos, 4),
                         end: a.value.pos,
@@ -2309,6 +2312,16 @@ impl Walker<'_> {
         } else {
             self.callees.insert(callee.id);
             self.expr(callee, Demand::Read);
+            // A function in a field (`m.step`) is a part of its record.
+            let root = match &callee.kind {
+                ExprKind::Member { left, .. } => left,
+                _ => callee,
+            };
+            if self.is_place(root) {
+                let held = self.pure_places(root).unwrap_or_default();
+                let held = held.into_iter().map(|p| (p, false)).collect();
+                operands.push((Operand::Callee(callee), held));
+            }
         }
         for (i, a) in args.iter().enumerate() {
             let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
@@ -2440,6 +2453,7 @@ impl Walker<'_> {
                 format!("the closure at {}", self.at(e.id))
             }
             Operand::Argument(e) => format!("argument `{}`", self.expr_text(e)),
+            Operand::Callee(e) => format!("the called function `{}`", self.expr_text(e)),
         }
     }
 

@@ -12,13 +12,13 @@ fn marker() String:
     let root = temporary_root().get("/tmp")
     return root + "/ms_group_nested_marker"
 
-fn leaf(ch: Channel[Unit, Unit]) Int:
+fn leaf(var ch: Channel[Unit, Unit]) Int:
     sleep(nanoseconds(2000000000))
 
     let _ = write_file(marker(), "outlived\n")
     return 0
 
-fn middle(ch: Channel[Unit, Unit]) Int:
+fn middle(var ch: Channel[Unit, Unit]) Int:
     var group = ProcessGroup[Int]()
     var _g = group.spawn(leaf).get()
     var _spin = 0
@@ -27,11 +27,10 @@ fn middle(ch: Channel[Unit, Unit]) Int:
     group.close().get(none)
     return 0
 
-fn top(ch: Channel[Unit, Unit]) Int:
+fn top(var ch: Channel[Unit, Unit]) Int:
     var group = ProcessGroup[Int]()
     var _m = group.spawn(middle).get()
-    var c = ch
-    let _ = c.send(unit)
+    let _ = ch.send(unit)
     sleep(nanoseconds(300000000))
     group.close().get(none)
 
@@ -47,9 +46,7 @@ export fn main() Int:
     c.result().get()
     group.close().get(none)
     stdout().write(
-        "leaf survived: " + read_file(
-            marker()
-        ).is_ok().to_string() + "\n"
+        "leaf survived: " + read_file(marker()).is_ok().to_string() + "\n"
     ).get()
 
     let _ = remove(marker())

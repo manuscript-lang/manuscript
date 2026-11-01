@@ -12,7 +12,7 @@ import TaskGroup from "@std/concurrency/tasks.ms"
 import Listener, Connection from "@std/net/net.ms"
 import certificate, private_key from "./support/certificates.ms"
 
-fn hello(exchange: HttpExchange) Unit!HttpError:
+fn hello(var exchange: HttpExchange) Unit!HttpError:
     let _started = try exchange.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
@@ -98,7 +98,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
         )
     )
 
-fn report_protocol(exchange: HttpExchange) Unit!HttpError:
+fn report_protocol(var exchange: HttpExchange) Unit!HttpError:
     let _started = try exchange.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
@@ -163,7 +163,7 @@ test "raw TLS listeners and clients handshake and report negotiated details":
     )
     var group = TaskGroup[Int]()
     let handle = listener
-    group.spawn(fn ch: serve_one_tls(handle))
+    group.spawn(fn var ch: serve_one_tls(handle))
 
     var client = try connect_tls_config(listener.address(), client_tls, 3.seconds)
     try client.write("ping", 3.seconds)
@@ -197,7 +197,7 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
     )
     var group = TaskGroup[Int]()
     let handle = listener
-    group.spawn(fn ch: serve_one_tls(handle))
+    group.spawn(fn var ch: serve_one_tls(handle))
 
     let _failure = try expect_error(
         connect_tls(listener.address(), "stdlib.test", 3.seconds)
@@ -244,7 +244,7 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
     )
     var group = TaskGroup[Int]()
     let handle = listener
-    group.spawn(fn ch: count_until_eof(handle))
+    group.spawn(fn var ch: count_until_eof(handle))
 
     var client = try connect_tls_config(listener.address(), client_tls, 5.seconds)
     try client.write("y".repeat(20000000).get(), 20.seconds)

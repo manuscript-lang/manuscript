@@ -748,6 +748,7 @@ impl<'a> FnLower<'a> {
             ct::Param {
                 name: ct::Name::from("value"),
                 ty: value_ty,
+                mutable: false,
             },
         ];
         let slot = self.put_slot(old);

@@ -34,7 +34,7 @@ fn fetch_thread() Unit:
 
         for i in 0..conns:
             let u = parts.get(0).clone()
-            group.spawn(fn task: worker(u, nanos))
+            group.spawn(fn var task: worker(u, nanos))
 
         for r in group.results().get():
             total += r
@@ -83,7 +83,7 @@ export fn main() Int:
 
     for i in 0..conns:
         let u = url.clone()
-        group.spawn(fn ch: worker(u, secs * 1000000000))
+        group.spawn(fn var ch: worker(u, secs * 1000000000))
 
     for r in group.results().get():
         total += r

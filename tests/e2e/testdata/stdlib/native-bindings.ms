@@ -138,9 +138,9 @@ test "close wakes a pending native next with Closed":
     var w: Shared[FileWatcher] = Shared(
         try watch_native(path: t.path(), recursive: false, overflow: "error")
     )
-    let group = TaskGroup[Int]()
+    var group = TaskGroup[Int]()
     let a = w
-    group.spawn(fn ch: wait_next(a))
+    group.spawn(fn var ch: wait_next(a))
     sleep(100.milliseconds)
     try w.close()
 
@@ -154,8 +154,8 @@ test "a group timeout cancels a task waiting on a watcher":
     )
     var group = TaskGroup[Int](timeout: 300.milliseconds)
     let a = w
-    let h = group.spawn(fn ch: wait_next(a))
-    let c = group.spawn(fn ch: 7)
+    var h = group.spawn(fn var ch: wait_next(a))
+    var c = group.spawn(fn var ch: 7)
     try expect_equal(c.result().get(-1), 7)
     try expect_true(h.result().is_error())
     try group.close()

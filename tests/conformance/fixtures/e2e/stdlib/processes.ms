@@ -11,26 +11,25 @@ type Job:
     name: String
     sizes: List[Int]
 
-fn square_all(ch: Channel[Int, Int]) Int!ChannelError:
-    var c = ch
+fn square_all(var ch: Channel[Int, Int]) Int!ChannelError:
     var count = 0
 
     while true:
-        if let n = try c.receive():
-            try c.send(n * n)
+        if let n = try ch.receive():
+            try ch.send(n * n)
             count += 1
         else:
             return ok(count)
 
     return ok(count)
 
-fn describe(ch: Channel[Unit, Unit]) Job:
+fn describe(var ch: Channel[Unit, Unit]) Job:
     return Job(name: "child", sizes: [1, 2, 3])
 
-fn quiet(ch: Channel[Unit, Unit]) Unit:
+fn quiet(var ch: Channel[Unit, Unit]) Unit:
     return unit
 
-fn shout(ch: Channel[Unit, Unit]) Int:
+fn shout(var ch: Channel[Unit, Unit]) Int:
     match read_line(stdin()):
         ok(next):
             let text = next.get("")
@@ -45,18 +44,17 @@ fn shout(ch: Channel[Unit, Unit]) Int:
 
     return -4
 
-fn crash(ch: Channel[Unit, Unit]) Unit:
+fn crash(var ch: Channel[Unit, Unit]) Unit:
     panic("the child faults on purpose")
 
-fn echo_jobs(ch: Channel[Job, Job]) Int:
-    var c = ch
+fn echo_jobs(var ch: Channel[Job, Job]) Int:
     var count = 0
 
     while true:
-        match c.receive():
+        match ch.receive():
             ok(next):
                 if let job = next:
-                    if c.send(
+                    if ch.send(
                         Job(
                             name: job.name + "!", sizes: job.sizes.clone()
                         )
@@ -71,15 +69,14 @@ fn echo_jobs(ch: Channel[Job, Job]) Int:
 
     return count
 
-fn report(ch: Channel[Int, Unit]) Int:
-    var c = ch
+fn report(var ch: Channel[Int, Unit]) Int:
     for n in [10, 20, 30]:
-        if c.send(n).is_error():
+        if ch.send(n).is_error():
             return -1
     return 3
 
 test "a child process answers each message in order":
-    let group = ProcessGroup[Int!ChannelError, Int, Int]()
+    var group = ProcessGroup[Int!ChannelError, Int, Int]()
     var child = group.spawn(square_all) | try expect_ok
 
     for n in [1, 2, 3]:
@@ -92,7 +89,7 @@ test "a child process answers each message in order":
     answered | try expect_ok | try expect_equal(3)
 
 test "records cross in both directions":
-    let group = ProcessGroup[Int, Job, Job]()
+    var group = ProcessGroup[Int, Job, Job]()
     var child = group.spawn(echo_jobs) | try expect_ok
     child.channel.send(Job(name: "a", sizes: [4, 5])) | try expect_ok
 
@@ -108,7 +105,7 @@ test "records cross in both directions":
     child.result() | try expect_ok | try expect_equal(1)
 
 test "the parent reads what a finished child sent, then the end":
-    let group = ProcessGroup[Int, Unit, Int]()
+    var group = ProcessGroup[Int, Unit, Int]()
     var child = group.spawn(report) | try expect_ok
     child.channel.receive() | try expect_ok | try expect_equal(10)
     child.channel.receive() | try expect_ok | try expect_equal(20)
@@ -118,7 +115,7 @@ test "the parent reads what a finished child sent, then the end":
     child.wait() | try expect_ok | try expect_equal(0)
 
 test "results come back in start order":
-    let group = ProcessGroup[Job]()
+    var group = ProcessGroup[Job]()
     let _first = group.spawn(describe) | try expect_ok
     let _second = group.spawn(describe) | try expect_ok
     let all = group.results() | try expect_ok
@@ -127,7 +124,7 @@ test "results come back in start order":
     try expect_equal(all[0].sizes, [1, 2, 3])
 
 test "a group forgets a closed process":
-    let group = ProcessGroup[Job]()
+    var group = ProcessGroup[Job]()
     var first = group.spawn(describe) | try expect_ok
     let _second = group.spawn(describe) | try expect_ok
     let kept = first.result() | try expect_ok
@@ -139,19 +136,19 @@ test "a group forgets a closed process":
     try expect_equal(all.length(), 1)
 
 test "a Unit result crosses":
-    let group = ProcessGroup[Unit]()
+    var group = ProcessGroup[Unit]()
     var child = group.spawn(quiet) | try expect_ok
     child.result() | try expect_ok
 
 test "a child that faults is data, not a parent fault":
-    let group = ProcessGroup[Unit]()
+    var group = ProcessGroup[Unit]()
     var child = group.spawn(crash, stderr: Stdio.Null) | try expect_ok
     child.result() | try expect_error | try expect_equal(ProcessError.Exited(67))
 
     let _refused = child.channel.send(unit) | try expect_error
 
 test "piped standard streams reach the parent":
-    let group = ProcessGroup[Int]()
+    var group = ProcessGroup[Int]()
     var child = group.spawn(
         shout, stdin: Stdio.Pipe, stdout: Stdio.Pipe, stderr: Stdio.Pipe
     ) | try expect_ok
@@ -166,7 +163,7 @@ test "piped standard streams reach the parent":
     child.result() | try expect_ok | try expect_equal(2)
 
 test "a stream that is not piped is closed":
-    let group = ProcessGroup[Unit]()
+    var group = ProcessGroup[Unit]()
     var child = group.spawn(quiet, stdout: Stdio.Null) | try expect_ok
     try expect_equal(child.stdout().read().is_ok(), false)
     try expect_equal(child.stdin().write("x").is_ok(), false)

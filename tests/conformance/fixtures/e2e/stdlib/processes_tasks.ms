@@ -7,7 +7,7 @@ import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_ok from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
-fn talker(ch: Channel[Int, Unit]) Int:
+fn talker(var ch: Channel[Int, Unit]) Int:
     var c = ch
 
     for i in 0..3:
@@ -17,7 +17,7 @@ fn talker(ch: Channel[Int, Unit]) Int:
 
     return 42
 
-fn late(ch: Channel[Int, Unit]) Int:
+fn late(var ch: Channel[Int, Unit]) Int:
     sleep(nanoseconds(300000000))
     return 42
 
@@ -46,7 +46,7 @@ test "result waits while another task receives from the same child":
     var child = procs.spawn(talker).get()
     let reader = child.channel.clone()
     let tasks = TaskGroup[Int]()
-    tasks.spawn(fn ch: read_all(reader.clone()))
+    tasks.spawn(fn var ch: read_all(reader.clone()))
 
     # The receiver is the one reading the pipe by now, so `result` waits for it.
     sleep(nanoseconds(150000000))
@@ -58,7 +58,7 @@ test "a task cancelled in a channel read releases the link":
     var child = group.spawn(late).get()
     let reader = child.channel.clone()
     var tasks = TaskGroup[Int](timeout: nanoseconds(50000000))
-    tasks.spawn(fn ch: first(reader.clone()))
+    tasks.spawn(fn var ch: first(reader.clone()))
     try expect_equal(tasks.wait().is_error(), true)
     try tasks.close()
     try expect_equal(child.result().get(-1), 42)
@@ -92,17 +92,13 @@ fn long_alive() Bool:
 # Names the error when the listing command cannot run, instead of failing inside `long_alive`.
 test "the process listing command runs":
     if os_type() == "windows":
-        try expect_ok(
-            run(
-                "tasklist", ["/FI", "IMAGENAME eq ping.exe", "/NH"]
-            )
-        )
+        try expect_ok(run("tasklist", ["/FI", "IMAGENAME eq ping.exe", "/NH"]))
     else:
         try expect_ok(run("pgrep", ["-f", "sleep 30.717"]))
 
 test "cancelling a task inside run kills the child":
     var group = TaskGroup[Int](timeout: nanoseconds(200000000))
-    let t = group.spawn(fn ch: run_long())
+    let t = group.spawn(fn var ch: run_long())
     try expect_equal(t.result().is_ok(), false)
     try group.close()
     sleep(nanoseconds(200000000))
@@ -114,7 +110,7 @@ fn wait_long() Int:
 
 test "cancelling a task inside Subprocess.wait kills the child":
     var group = TaskGroup[Int](timeout: nanoseconds(200000000))
-    let t = group.spawn(fn ch: wait_long())
+    let t = group.spawn(fn var ch: wait_long())
     try expect_equal(t.result().is_ok(), false)
     try group.close()
     sleep(nanoseconds(200000000))
@@ -125,7 +121,7 @@ test "cancelling a task inside Subprocess.wait kills the child":
 test "cancelling a task inside Subprocess.wait stops a child the task was handed":
     let child = spawn(long_program(), long_args()).get()
     var group = TaskGroup[Int](timeout: nanoseconds(200000000))
-    let t = group.spawn(fn ch: child.wait().get(-1))
+    let t = group.spawn(fn var ch: child.wait().get(-1))
     try expect_equal(t.result().is_ok(), false)
     try group.close()
     sleep(nanoseconds(200000000))
@@ -135,7 +131,7 @@ test "the liveness check sees a live child":
     let _child = try spawn(long_program(), long_args())
     try expect_equal(long_alive(), true)
 
-fn slow_sum(ch: Channel[Unit, Int]) Int:
+fn slow_sum(var ch: Channel[Unit, Int]) Int:
     var c = ch
     sleep(nanoseconds(200000000))
 
@@ -165,8 +161,8 @@ test "two tasks send to the same child while its pipe is full":
     let a = child.channel.clone()
     let b = child.channel.clone()
     var tasks = TaskGroup[Int]()
-    tasks.spawn(fn ch: send_many(a.clone(), 20000))
-    tasks.spawn(fn ch: send_many(b.clone(), 20000))
+    tasks.spawn(fn var ch: send_many(a.clone(), 20000))
+    tasks.spawn(fn var ch: send_many(b.clone(), 20000))
     try expect_equal(tasks.results().get([]), [20000, 20000])
     try tasks.close()
     child.channel.close()
@@ -178,8 +174,8 @@ test "two tasks receive from the same child":
     let a = child.channel.clone()
     let b = child.channel.clone()
     var tasks = TaskGroup[Int]()
-    tasks.spawn(fn ch: read_all(a.clone()))
-    tasks.spawn(fn ch: read_all(b.clone()))
+    tasks.spawn(fn var ch: read_all(a.clone()))
+    tasks.spawn(fn var ch: read_all(b.clone()))
 
     let got = tasks.results().get([])
     try expect_equal(got.length(), 2)

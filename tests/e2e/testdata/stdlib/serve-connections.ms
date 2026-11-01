@@ -3,7 +3,7 @@ import Connection, connect, listen, serve_connections from "@std/net/net.ms"
 import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
 import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 
-fn answer(id: Int) fn(HttpExchange) Unit!HttpError:
+fn answer(id: Int) fn(var HttpExchange) Unit!HttpError:
     let handler = fn(request: HttpRequest) HttpResponse:
         return HttpResponse(
             status: 200, headers: headers(), body: "worker {id}".to_bytes()
@@ -29,7 +29,7 @@ fn serves_handed() Unit:
 
 test "an acceptor deals connections round robin to serving workers":
     let listener = try listen("127.0.0.1:0")
-    let group = WorkerGroup[Int, Int]()
+    var group = WorkerGroup[Int, Int]()
     var workers: List[Worker[Int, Int]] = []
 
     for i in 0..3:

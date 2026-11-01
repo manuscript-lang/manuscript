@@ -15,15 +15,13 @@ export fn main() Int:
         big.append(i)
 
     var box: Shared[List[Int]] = Shared(big)
-
     for round in 0..3000:
         box[0] = round
-
     stdout().write("first {box[0]} length {box.length()}\n").get()
 
     var group = TaskGroup[Int]()
     for i in 0..20000:
-        group.spawn(fn ch: i)
+        group.spawn(fn var ch: i)
 
     let results = group.results().get([])
     stdout().write("tasks {results.length()} last {results[19999]}\n").get()

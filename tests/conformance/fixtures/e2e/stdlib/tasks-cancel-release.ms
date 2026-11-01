@@ -23,19 +23,19 @@ fn hold_in_callee() Int:
     return total + words.length()
 
 fn group_timeout() Unit:
-    let group = TaskGroup[Int](timeout: nanoseconds(1000000))
-    group.spawn(fn ch: hold_in_callee())
+    var group = TaskGroup[Int](timeout: nanoseconds(1000000))
+    group.spawn(fn var ch: hold_in_callee())
 
     let _ = group.wait()
 
 fn task_timeout() Unit:
-    let group = TaskGroup[Int]()
-    let held = group.spawn(fn ch: hold_in_callee(), timeout: nanoseconds(1000000))
+    var group = TaskGroup[Int]()
+    var held = group.spawn(fn var ch: hold_in_callee(), timeout: nanoseconds(1000000))
     let _ = held.result()
 
 fn leave_group() Unit:
-    let group = TaskGroup[Int]()
-    group.spawn(fn ch: hold_in_callee())
+    var group = TaskGroup[Int]()
+    group.spawn(fn var ch: hold_in_callee())
     sleep(nanoseconds(1000000))
 
 export fn main() Int:

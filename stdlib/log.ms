@@ -52,13 +52,13 @@ export interface Transport:
     # Accepts encoded record bytes and may return the original I/O cause. Errors can follow a partial
     # external write, without rollback. Child loggers call a shared transport concurrently, so an
     # implementation that keeps mutable state guards it itself, as the standard transports do.
-    fn write(data: String) Unit!LogError
+    var fn write(data: String) Unit!LogError
     # Accepts encoded record bytes with the same rules as write.
-    fn write_bytes(data: Bytes) Unit!LogError
+    var fn write_bytes(data: Bytes) Unit!LogError
     # Delegates flush to the destination; persistence and buffering depend on that destination.
-    fn flush() Unit!LogError
+    var fn flush() Unit!LogError
     # Releases owned resources; native close cancels admitted operations and leaves borrowed streams open.
-    fn close() Unit
+    var fn close() Unit
 
 # Level indexes shared with the encoder: Trace is 0 and Silent is 6.
 fn level_index(level: LogLevel) Int:
@@ -98,28 +98,28 @@ type StreamTransport:
     gate: LogGate
 
 impl Transport for StreamTransport:
-    fn write(data: String) Unit!LogError:
+    var fn write(data: String) Unit!LogError:
         if self.gate.is_shut(): return error(LogError.Closed)
 
         match self.stream.write(data):
             ok(_): return ok(unit)
             error(cause): return error(LogError.Io(cause))
 
-    fn write_bytes(data: Bytes) Unit!LogError:
+    var fn write_bytes(data: Bytes) Unit!LogError:
         if self.gate.is_shut(): return error(LogError.Closed)
 
         match self.stream.write_bytes(data):
             ok(_): return ok(unit)
             error(cause): return error(LogError.Io(cause))
 
-    fn flush() Unit!LogError:
+    var fn flush() Unit!LogError:
         if self.gate.is_shut(): return error(LogError.Closed)
 
         match self.stream.flush():
             ok(_): return ok(unit)
             error(cause): return error(LogError.Io(cause))
 
-    fn close() Unit:
+    var fn close() Unit:
         self.gate.shut()
 
 # Appends to a file the transport opened, and closes it with the transport.
@@ -128,16 +128,16 @@ type FileTransport:
     inner: StreamTransport
 
 impl Transport for FileTransport:
-    fn write(data: String) Unit!LogError:
+    var fn write(data: String) Unit!LogError:
         return self.inner.write(data)
 
-    fn write_bytes(data: Bytes) Unit!LogError:
+    var fn write_bytes(data: Bytes) Unit!LogError:
         return self.inner.write_bytes(data)
 
-    fn flush() Unit!LogError:
+    var fn flush() Unit!LogError:
         return self.inner.flush()
 
-    fn close() Unit:
+    var fn close() Unit:
         if not self.inner.gate.is_shut():
             self.inner.close()
             self.file.close().get(none)
@@ -153,21 +153,21 @@ export type Logger:
 
 impl Logger:
     # Internal: encodes a plain record at a level index and sends it.
-    fn emit(level: Int, message: String) Unit!LogError:
+    var fn emit(level: Int, message: String) Unit!LogError:
         let encoded = self.state.line(level, message, now_ms())
         if encoded.is_error(): return error(core_error(encoded.err()))
 
         return self.send(encoded.get())
 
     # Internal: encodes a record with fields given as JSON object text and sends it.
-    fn emit_json(level: Int, message: String, fields: String) Unit!LogError:
+    var fn emit_json(level: Int, message: String, fields: String) Unit!LogError:
         let encoded = self.state.line_json(level, message, fields, now_ms())
         if encoded.is_error(): return error(core_error(encoded.err()))
 
         return self.send(encoded.get())
 
     # Internal: a filtered record encodes to no text and never reaches the transport.
-    fn send(text: String) Unit!LogError:
+    var fn send(text: String) Unit!LogError:
         if text == "": return ok(unit)
 
         return self.transport.write(text)
@@ -178,7 +178,7 @@ impl Logger:
     # Any other value, such as a number, string, list, or `none`, is written under the key `data`.
     # A value that cannot be encoded, such as a cyclic one, returns `InvalidData`; encoding happens
     # only when the level is enabled. The reserved keys `level`, `msg`, and `time` are ignored.
-    fn log_with[F: Data](level: LogLevel, message: String, fields: F) Unit!LogError:
+    var fn log_with[F: Data](level: LogLevel, message: String, fields: F) Unit!LogError:
         if level == LogLevel.Silent: return error(LogError.InvalidInput)
         if not self.enabled(level): return ok(unit)
 
@@ -188,27 +188,27 @@ impl Logger:
         return self.emit_json(level_index(level), message, object_text(text.get()))
 
     # Like `trace`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    fn trace_with[F: Data](message: String, fields: F) Unit!LogError:
+    var fn trace_with[F: Data](message: String, fields: F) Unit!LogError:
         return self.log_with(LogLevel.Trace, message, fields)
 
     # Like `debug`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    fn debug_with[F: Data](message: String, fields: F) Unit!LogError:
+    var fn debug_with[F: Data](message: String, fields: F) Unit!LogError:
         return self.log_with(LogLevel.Debug, message, fields)
 
     # Like `info`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    fn info_with[F: Data](message: String, fields: F) Unit!LogError:
+    var fn info_with[F: Data](message: String, fields: F) Unit!LogError:
         return self.log_with(LogLevel.Info, message, fields)
 
     # Like `warn`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    fn warn_with[F: Data](message: String, fields: F) Unit!LogError:
+    var fn warn_with[F: Data](message: String, fields: F) Unit!LogError:
         return self.log_with(LogLevel.Warn, message, fields)
 
     # Like `error`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    fn error_with[F: Data](message: String, fields: F) Unit!LogError:
+    var fn error_with[F: Data](message: String, fields: F) Unit!LogError:
         return self.log_with(LogLevel.Error, message, fields)
 
     # Like `fatal`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    fn fatal_with[F: Data](message: String, fields: F) Unit!LogError:
+    var fn fatal_with[F: Data](message: String, fields: F) Unit!LogError:
         return self.log_with(LogLevel.Fatal, message, fields)
 
     # Returns a logger that adds the members of `fields` to each record, with the encoding rules of
@@ -222,31 +222,31 @@ impl Logger:
 
 impl Logger:
     # Writes a record at the selected level with no fields.
-    fn log(level: LogLevel, message: String) Unit!LogError:
+    var fn log(level: LogLevel, message: String) Unit!LogError:
         return self.emit(level_index(level), message)
 
     # Logs at Trace when enabled; a filtered call returns ok without encoding or transport access.
-    fn trace(message: String) Unit!LogError:
+    var fn trace(message: String) Unit!LogError:
         return self.emit(0, message)
 
     # Logs at Debug when enabled, including the logger's bound fields.
-    fn debug(message: String) Unit!LogError:
+    var fn debug(message: String) Unit!LogError:
         return self.emit(1, message)
 
     # Logs at Info when enabled; reserved level, msg, and time fields remain controlled by the logger.
-    fn info(message: String) Unit!LogError:
+    var fn info(message: String) Unit!LogError:
         return self.emit(2, message)
 
     # Logs at Warn when enabled, returning encoding, size-budget, or transport errors unchanged.
-    fn warn(message: String) Unit!LogError:
+    var fn warn(message: String) Unit!LogError:
         return self.emit(3, message)
 
     # Logs at Error when enabled; it records an expected diagnostic rather than raising a fault.
-    fn error(message: String) Unit!LogError:
+    var fn error(message: String) Unit!LogError:
         return self.emit(4, message)
 
     # Logs at Fatal when enabled; the caller remains responsible for process termination.
-    fn fatal(message: String) Unit!LogError:
+    var fn fatal(message: String) Unit!LogError:
         return self.emit(5, message)
 
     # Tests the current filtering threshold; Silent is never enabled as a record level.
@@ -258,11 +258,11 @@ impl Logger:
         return level_at(self.state.level())
 
     # Changes only this logger's threshold; existing child loggers retain their copied threshold.
-    fn set_level(level: LogLevel) Unit:
+    var fn set_level(level: LogLevel) Unit:
         self.state.set_level(level_index(level))
 
     # Flushes the logger's transport.
-    fn flush() Unit!LogError:
+    var fn flush() Unit!LogError:
         return self.transport.flush()
 
     # Closes the transport this logger shares with its children, so every one of them reports `Closed`

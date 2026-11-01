@@ -9,7 +9,7 @@ fn read_pipe(path: String) Int:
 
 fn cancel_read(path: String) Int:
     var group = TaskGroup[Int](timeout: 10.milliseconds)
-    let task = group.spawn(fn ch: read_pipe(path.clone()))
+    var task = group.spawn(fn var ch: read_pipe(path.clone()))
     if task.result().is_error():
         return 1
 
@@ -17,7 +17,7 @@ fn cancel_read(path: String) Int:
     return 0
 
 export fn main() Int:
-    let path = arguments() [0].clone()
+    let path = arguments()[0].clone()
     if cancel_read(path.clone()) != 1:
         return 1
 

@@ -26,9 +26,9 @@ fn bump(var total: Int) Unit:
 
 bench "tasks.spawn_results_1000":
     fn work() Result[Unit, Error]:
-        let g = TaskGroup[Int]()
+        var g = TaskGroup[Int]()
         for i in 0..1000:
-            g.spawn(fn ch: i * 2)
+            g.spawn(fn var ch: i * 2)
 
         let r = g.results().get([])
         return keep(r.length())
@@ -37,11 +37,11 @@ bench "tasks.spawn_results_1000":
 
 bench "tasks.spawn_result_each_1000":
     fn work() Result[Unit, Error]:
-        let g = TaskGroup[Int]()
+        var g = TaskGroup[Int]()
         var n = 0
 
         for i in 0..1000:
-            let t = g.spawn(fn ch: i * 2)
+            var t = g.spawn(fn var ch: i * 2)
             n += t.result().get(0)
 
         return keep(n)
@@ -50,14 +50,14 @@ bench "tasks.spawn_result_each_1000":
 
 bench "tasks.spawn_then_result_5000":
     fn work() Result[Unit, Error]:
-        let g = TaskGroup[Int]()
+        var g = TaskGroup[Int]()
         var ts: List[Task[Int]] = []
         for i in 0..5000:
-            ts.append(g.spawn(fn ch: i))
+            ts.append(g.spawn(fn var ch: i))
 
         var n = 0
-        for t in ts:
-            n += t.result().get(0)
+        for i in 0..ts.length():
+            n += ts[i].result().get(0)
         return keep(n)
 
     try measure(5000, work)
@@ -86,8 +86,8 @@ bench "shared.call":
 
 bench "chan.stream_100k":
     fn work() Result[Unit, Error]:
-        let g = TaskGroup[Int, Unit, Int]()
-        var t = g.spawn(fn ch: produce(ch))
+        var g = TaskGroup[Int, Unit, Int]()
+        var t = g.spawn(fn var ch: produce(ch))
         var n = 0
 
         while true:
@@ -103,8 +103,8 @@ bench "chan.stream_100k":
 
 bench "chan.pingpong_20k":
     fn work() Result[Unit, Error]:
-        let g = TaskGroup[Int, Int, Int]()
-        var t = g.spawn(fn ch: echo(ch))
+        var g = TaskGroup[Int, Int, Int]()
+        var t = g.spawn(fn var ch: echo(ch))
         var n = 0
 
         for i in 0..20000:

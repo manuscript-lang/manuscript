@@ -12,17 +12,16 @@ fn marker() String:
     let root = temporary_root().get("/tmp")
     return root + "/ms_group_grandchild_marker"
 
-fn grandchild(ch: Channel[Unit, Unit]) Int:
+fn grandchild(var ch: Channel[Unit, Unit]) Int:
     sleep(nanoseconds(2000000000))
 
     let _ = write_file(marker(), "outlived\n")
     return 0
 
-fn child(ch: Channel[Unit, Unit]) Int:
+fn child(var ch: Channel[Unit, Unit]) Int:
     var group = ProcessGroup[Int]()
     var g = group.spawn(grandchild).get()
-    var c = ch
-    let _ = c.send(unit)
+    let _ = ch.send(unit)
     g.result().get()
     group.close().get(none)
     return 0
@@ -35,9 +34,7 @@ export fn main() Int:
     group.close().get(none)
     sleep(nanoseconds(3500000000))
     stdout().write(
-        "grandchild survived: " + read_file(
-            marker()
-        ).is_ok().to_string() + "\n"
+        "grandchild survived: " + read_file(marker()).is_ok().to_string() + "\n"
     ).get()
 
     let _ = remove(marker())

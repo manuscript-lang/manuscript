@@ -313,9 +313,16 @@ impl Cx {
                 let mut params = Vec::new();
                 for p in &t.params {
                     let pt = self.lower_ty(m, &p.ty)?;
-                    // A parameter that may be omitted crosses a function value as an optional.
+                    // A parameter that may be omitted crosses a function value as an optional;
+                    // a `var` one as the address of the caller's slot.
                     let lifted = t.is_lifted(p.name) && !p.ty.is_std("Optional");
-                    params.push(if lifted { m.types.opt(pt) } else { pt });
+                    params.push(if p.mutable {
+                        MTy::PTR
+                    } else if lifted {
+                        m.types.opt(pt)
+                    } else {
+                        pt
+                    });
                 }
                 let ret = self.lower_ty(m, &t.result_ty())?;
                 Ok(m.types.func(params, ret))

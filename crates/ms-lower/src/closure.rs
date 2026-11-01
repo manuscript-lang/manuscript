@@ -202,6 +202,12 @@ impl FnLower<'_> {
                 ));
             }
         }
+        // A function value changes its `var` arguments in the caller's slot, so a cancelled call
+        // leaves them there for the caller's cleanup.
+        let mut subst = subst;
+        if !self.cx.var_positions(&callee).is_empty() {
+            subst.insert(ct::n(crate::func::IN_MEMORY), ct::primitive("in memory"));
+        }
         let fid = self.instance(&callee, &subst)?;
         if let Some(thunk) = self.default_thunk(e, fid, &callee, &subst, None, None)? {
             let fty = self.emty(e)?;
@@ -211,7 +217,19 @@ impl FnLower<'_> {
                 .expect("closure");
             return Ok(Val { v, own: true });
         }
-        let key = format!("thunk:{}", fid.index());
+        // A `var` parameter the function only reads: the thunk reads it from the slot.
+        let vars = self.cx.var_positions(&callee);
+        let marks = self.ety(e).params.clone();
+        let reads: Vec<Option<MTy>> = self.b.m.funcs[fid.index()]
+            .params
+            .iter()
+            .enumerate()
+            .map(|(i, p)| {
+                let read = marks.get(i).is_some_and(|q| q.mutable) && !vars.contains(&i);
+                read.then_some(p.ty)
+            })
+            .collect();
+        let key = format!("thunk:{}:{reads:?}", fid.index());
         let thunk = match self.cx.helpers.get(&key) {
             Some(t) => *t,
             None => {
@@ -220,12 +238,22 @@ impl FnLower<'_> {
                     ty: MTy::PTR,
                     mode: Mode::Borrow,
                 }];
-                ps.extend(proto.params.iter().cloned());
+                ps.extend(proto.params.iter().zip(&reads).map(|(p, read)| Param {
+                    ty: if read.is_some() { MTy::PTR } else { p.ty },
+                    mode: p.mode,
+                }));
                 let mut b = FuncBuilder::new(self.b.m, &proto.name, ps, proto.ret);
                 b.func_mut().kind = FuncKind::Closure {
                     captures: Vec::new(),
                 };
-                let args: Vec<_> = b.params().into_iter().skip(1).collect();
+                let mut args: Vec<_> = b.params().into_iter().skip(1).collect();
+                for (a, read) in args.iter_mut().zip(&reads) {
+                    if let Some(t) = read {
+                        *a = b
+                            .emit(Op::Load, &[*a], Imm::Ty(*t), Some(*t))
+                            .expect("load");
+                    }
+                }
                 let r = b.call(fid, &args);
                 b.ret(Some(r));
                 let f = b.into_func();
@@ -258,11 +286,20 @@ impl FnLower<'_> {
         let TyKind::Fn(ptys, ret) = self.b.m.types.kind(fty).clone() else {
             return Ok(None);
         };
+        // A `var` parameter crosses as a slot address whether or not the callee changes it.
+        let marks = self.ety(e).params.clone();
         let own: Vec<MTy> = self.b.m.funcs[fid.index()]
             .params
             .iter()
             .skip(usize::from(recv.is_some()))
-            .map(|p| p.ty)
+            .enumerate()
+            .map(|(i, p)| {
+                if marks.get(i).is_some_and(|q| q.mutable) {
+                    MTy::PTR
+                } else {
+                    p.ty
+                }
+            })
             .collect();
         if own.len() != ptys.len() || own == ptys {
             return Ok(None);
@@ -732,6 +769,7 @@ impl FnLower<'_> {
                     .map(|p| ct::Param {
                         name: p.name,
                         ty: ct::sub(&p.ty, &subst),
+                        mutable: p.mutable,
                     })
                     .collect();
                 self.cx.queue.push(Job {
@@ -959,7 +997,17 @@ impl FnLower<'_> {
             return Err(Error::new("call of a non-function value"));
         };
         let mut slots: Vec<Option<Value>> = vec![None; ptys.len()];
+        let mut places: Vec<Option<Expr>> = vec![None; ptys.len()];
         for (i, a) in view.arguments.iter().enumerate() {
+            let at = declared
+                .iter()
+                .position(|p| p.name == a.slot.name)
+                .unwrap_or(i);
+            if declared.get(at).is_some_and(|p| p.mutable) {
+                // A `var` argument is read after the others, which may change it.
+                places[at] = Some(a.expr.clone());
+                continue;
+            }
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(x);
@@ -972,12 +1020,29 @@ impl FnLower<'_> {
                 }
                 None => x,
             };
-            let at = declared
-                .iter()
-                .position(|p| p.name == a.slot.name)
-                .unwrap_or(i);
             let x = self.lift_argument(x, ptys[at]);
             slots[at] = Some(self.borrow(x));
+        }
+        // A `var` argument moves into a slot the callee changes and is written back after.
+        let holds = self.shared_hold(&places)?;
+        let mut written: Vec<(Value, MTy, Expr)> = Vec::new();
+        for (at, place) in places.iter().enumerate() {
+            let Some(place) = place else {
+                continue;
+            };
+            let x = self.expr(place)?;
+            if self.dead {
+                return Ok(x);
+            }
+            let ty = self.ty_of(x.v);
+            let x = self.owned(x);
+            let slot = self
+                .b
+                .emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))
+                .expect("slot");
+            self.move_into(slot, x);
+            slots[at] = Some(slot);
+            written.push((slot, ty, place.clone()));
         }
         // An omitted parameter of a function type is an optional one: it is `none`.
         let mut args = Vec::new();
@@ -992,6 +1057,19 @@ impl FnLower<'_> {
         }
         self.at(e.pos);
         let v = self.b.call_ind(fv, &args);
+        for (slot, ty, place) in written {
+            let new = self.move_out(slot, ty);
+            if self.is_place(&place) && self.place_is_owned(&place) {
+                let mut new = Some(new);
+                self.place_update(&place, &mut |s, old| {
+                    s.drop_value(old);
+                    Ok(new.take().expect("single use"))
+                })?;
+            } else {
+                self.drop_value(new);
+            }
+        }
+        self.shared_release(holds)?;
         Ok(self.val(v, true))
     }
 }
@@ -1503,6 +1581,22 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
             };
             let x = fl.unlift_param(*v, &mut |s| s.expr(d))?;
             fl.bind_local(b, x);
+        } else if lam.params.get(i).is_some_and(|p| p.mutable) {
+            // A `var` parameter is the caller's slot: the lambda changes the value there.
+            let ty = fl.mty(&b.ty)?;
+            let var = fl.b.declare_var(ty, Mode::Borrow);
+            fl.locals.insert(
+                b.uid,
+                crate::func::Local {
+                    var,
+                    ty,
+                    slot: Some(*v),
+                },
+            );
+            fl.var_slots.push(crate::func::VarSlot {
+                uid: b.uid,
+                ptr: *v,
+            });
         } else if mutated.contains(&b.uid) && fl.needs_drop(fl.ty_of(*v)) {
             // A parameter the body changes is the lambda's own copy.
             fl.bind_local(b, Val { v: *v, own: false });

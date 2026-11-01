@@ -398,11 +398,17 @@ impl FnLower<'_> {
                     let input = *inputs
                         .get(cursor)
                         .ok_or_else(|| Error::new(format!("{sym}: missing handler")))?;
+                    // The exchange type, which a `var` parameter's slot address hides.
+                    let declared = decl.get(cursor - usize::from(recv.is_some()));
+                    let exchange = match declared.and_then(|p| p.ty.params.first()) {
+                        Some(p) => Some(self.mty(&p.ty)?),
+                        None => None,
+                    };
                     cursor += 1;
                     let handler = input
                         .val
                         .ok_or_else(|| Error::new(format!("{sym}: missing handler")))?;
-                    let env = self.handler_env(handler)?;
+                    let env = self.handler_env(handler, exchange)?;
                     vals.push(env);
                 }
                 _ => {

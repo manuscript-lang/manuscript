@@ -1182,6 +1182,7 @@ impl Checker {
             let placeholder = Param {
                 name: n(""),
                 ty: target.clone().unwrap_or_else(invalid),
+                mutable: false,
             };
             self.match_binding_names(arm, &[placeholder]);
             let old = self.scope.clone();

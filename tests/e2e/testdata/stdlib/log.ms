@@ -51,7 +51,7 @@ test "non-object values are written under data":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
-    let logger = try create(stream_transport(file.writer()), timestamp: false)
+    var logger = try create(stream_transport(file.writer()), timestamp: false)
     try logger.info_with("n", 7)
     try logger.warn_with("l", ["a", "b"])
 
@@ -62,7 +62,7 @@ test "levels filter methods and function values":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
-    let logger = try create(stream_transport(file.writer()), LogLevel.Warn, false)
+    var logger = try create(stream_transport(file.writer()), LogLevel.Warn, false)
     try expect_false(
         (logger.enabled(LogLevel.Info) or not logger.enabled(LogLevel.Warn))
     )
@@ -106,8 +106,8 @@ test "child bindings snapshot values and merge without mutating inputs":
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
     let root = try create(stream_transport(file.writer()), timestamp: false)
-    let logger = try root.child(Service("api"))
-    let child = try logger.child(Request(7))
+    var logger = try root.child(Service("api"))
+    var child = try logger.child(Request(7))
     logger.set_level(LogLevel.Fatal)
     try expect_equal(child.level(), LogLevel.Info)
     try child.info_with("child", Service("worker"))
@@ -121,7 +121,7 @@ test "limits and unencodable values reject before writing":
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
     let line = "\{\"level\":30,\"msg\":\"x\"\}\n"
-    let logger = try create(
+    var logger = try create(
         stream_transport(file.writer()), timestamp: false,
         max_bytes: (line.to_bytes().length())
     )
@@ -132,7 +132,7 @@ test "limits and unencodable values reject before writing":
     let limited: Unit!LogError = error(LogError.LimitExceeded)
     try expect_equal(logger.info("xx"), limited)
 
-    let zero = try create(
+    var zero = try create(
         stream_transport(file.writer()), timestamp: false, max_bytes: 0
     )
     try expect_equal(zero.info(""), limited)
@@ -148,7 +148,7 @@ test "limits and unencodable values reject before writing":
         )
     )
 
-    let unlimited = try create(stream_transport(file.writer()), timestamp: false)
+    var unlimited = try create(stream_transport(file.writer()), timestamp: false)
     let bad = JsonValue.NumberValue("NaN")
     let invalid_data: Unit!LogError = error(LogError.InvalidData)
     try expect_equal(unlimited.info_with("bad", bad), invalid_data)
@@ -201,7 +201,7 @@ test "file transport appends and flushes with scoped cleanup":
     )
 
 test "stdout transport accepts records and leaves stdout open":
-    let logger = try create(stdout_transport(), timestamp: false)
+    var logger = try create(stdout_transport(), timestamp: false)
     try logger.info("stdout log")
     try logger.flush()
 
@@ -244,7 +244,7 @@ test "unencodable fields are rejected and non-objects go under data":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
-    let logger = try create(stream_transport(file.writer()), timestamp: false)
+    var logger = try create(stream_transport(file.writer()), timestamp: false)
     let invalid: Unit!LogError = error(LogError.InvalidData)
     let nan = JsonValue.NumberValue("NaN")
     try expect_equal(logger.info_with("m", nan), invalid)
@@ -278,18 +278,19 @@ impl WriteStream for SlowStream:
         return self.write(data.decode_utf8().get(""))
 
 fn chatter(logger: Logger, name: String) Unit!:
+    var log = logger.clone()
     for n in 0..3:
-        try logger.info_with("m", name)
+        try log.info_with("m", name)
     return ok(unit)
 
 test "concurrent tasks never interleave a record":
     let parts = Shared(List[String]())
     let logger = (create(stream_transport(SlowStream(parts)), timestamp: false)).get()
-    let group = TaskGroup[Unit!, Unit, Unit]()
+    var group = TaskGroup[Unit!, Unit, Unit]()
     let first = logger.clone()
     let second = logger.clone()
-    let a = group.spawn(fn ch: chatter(first, "a"))
-    let b = group.spawn(fn ch: chatter(second, "b"))
+    var a = group.spawn(fn var ch: chatter(first, "a"))
+    var b = group.spawn(fn var ch: chatter(second, "b"))
     a.result() | try expect_ok | try expect_ok
     b.result() | try expect_ok | try expect_ok
 

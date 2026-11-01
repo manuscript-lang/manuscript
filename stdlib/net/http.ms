@@ -270,7 +270,7 @@ export type HttpClientOptions:
 export interface HttpExchange:
     # Ends the exchange, interrupting reads or writes in progress.
     # Later operations return Closed.
-    fn close() Unit
+    var fn close() Unit
     # Returns an owned copy of the request headers with every repeated value retained.
     fn headers() HttpHeaders
     # Returns the request method, using the Custom case for extension tokens.
@@ -284,25 +284,25 @@ export interface HttpExchange:
     fn query() String
     # Returns the next chunk of the request body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past `max_body_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
-    fn read(max_bytes: Int?) Bytes?!IoError
+    var fn read(max_bytes: Int?) Bytes?!IoError
     # Sends a whole response: the status line, `headers`, and `body` with its length known, so the response carries `Content-Length` rather than chunked framing. Requests with HEAD and statuses without a body get the head alone.
     # The rules of `send_headers` apply, `body` is bounded by `max_response_bytes`, and nothing else may be sent afterwards.
-    fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!HttpError
+    var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!HttpError
     # Sends the status line and headers once, before any body is written.
     # The status must be 200 through 599, header names cannot be `Content-Length`, `Transfer-Encoding`, or `Connection`, and header bytes are bounded by `max_header_bytes`. A second call returns InvalidInput and a closed exchange returns Closed.
-    fn send_headers(status: Int, headers: HttpHeaders) Unit!HttpError
+    var fn send_headers(status: Int, headers: HttpHeaders) Unit!HttpError
     # Switches the connection to a WebSocket after checking the `Origin` header. Requests without an Origin are accepted; otherwise it must exactly match an entry of `allowed_origins`, or, when that list is empty, match the request's own scheme and host.
     # `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be positive when given. An exchange that already sent headers or upgraded returns InvalidInput, and a request that is not a valid WebSocket upgrade returns Failed.
-    fn upgrade(
+    var fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Int?
     ) WebSocket!WebSocketError
     # Writes one chunk of the response body and flushes it.
     # `send_headers` must come first, and writing beyond `max_response_bytes` returns IoError.Failed. Responses to HEAD requests and with status 204 or 304 cannot have a body.
-    fn write(data: String) Unit!IoError
+    var fn write(data: String) Unit!IoError
     # Writes one chunk of raw bytes with the same rules as write.
-    fn write_bytes(data: Bytes) Unit!IoError
+    var fn write_bytes(data: Bytes) Unit!IoError
 
 # Buffered request accepted by the simple HTTP server handler.
 export type HttpRequest:
@@ -437,15 +437,15 @@ export fn from_io(error: IoError) HttpError:
 
 # Reads the rest of the request body into one value.
 # A body over `max_body_bytes` of the server's options returns LimitExceeded; `limit` also bounds it when given.
-export fn read_body(exchange: HttpExchange, limit: Int?) Bytes!HttpError:
+export fn read_body(var exchange: HttpExchange, limit: Int?) Bytes!HttpError:
     let first = try exchange.read().map_error(from_io)
     if let head = first:
-        return read_rest(exchange, head, limit)
+        return read_rest(var exchange, head, limit)
 
     return ok("".to_bytes())
 
 # Joins `head` with the chunks after it. A body that fits one chunk is returned without copying.
-fn read_rest(exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!HttpError:
+fn read_rest(var exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!HttpError:
     var total = head.length()
     if over_limit(total, limit): return error(HttpError.LimitExceeded)
 
@@ -455,16 +455,11 @@ fn read_rest(exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!HttpError:
         total += next.length()
         if over_limit(total, limit): return error(HttpError.LimitExceeded)
 
-        return read_more(exchange, [head, next], total, limit)
+        return read_more(var exchange, [head, next], total, limit)
 
     return ok(head)
 
-fn read_more(
-    exchange: HttpExchange,
-    chunks: List[Bytes],
-    total: Int,
-    limit: Int?
-) Bytes!HttpError:
+fn read_more(var exchange: HttpExchange, chunks: List[Bytes], total: Int, limit: Int?) Bytes!HttpError:
     var parts = chunks
     var size = total
 
@@ -486,7 +481,7 @@ fn over_limit(total: Int, limit: Int?) Bool:
     return false
 
 # Sends `response` whole: its status and headers, then its body.
-export fn reply(exchange: HttpExchange, response: HttpResponse) Unit!HttpError:
+export fn reply(var exchange: HttpExchange, response: HttpResponse) Unit!HttpError:
     return exchange.send(response.status, response.headers, response.body)
 
 # Builds a response with a UTF-8 text body and no headers.
@@ -514,19 +509,19 @@ export fn redirect(location: String, status: Int = 303) HttpResponse!HttpError:
 # The request body is read in full first.
 export fn buffered(
     handler: fn(HttpRequest) HttpResponse
-) fn(HttpExchange) Unit!HttpError:
-    return fn exchange: serve_buffered(handler, exchange)
+) fn(var HttpExchange) Unit!HttpError:
+    return fn var exchange: serve_buffered(handler, var exchange)
 
 fn serve_buffered(
     handler: fn(HttpRequest) HttpResponse,
-    exchange: HttpExchange
+    var exchange: HttpExchange
 ) Unit!HttpError:
-    let body = try read_body(exchange)
+    let body = try read_body(var exchange)
     let request = HttpRequest(
         method: exchange.method(), path: exchange.path(), query: exchange.query(),
         headers: exchange.headers(), body: body, protocol: exchange.protocol()
     )
-    return reply(exchange, handler(request))
+    return reply(var exchange, handler(request))
 
 impl Error for HttpError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `HTTP: <reason>`.

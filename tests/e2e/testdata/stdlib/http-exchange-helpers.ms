@@ -20,9 +20,9 @@ import http_client, serve from "@std/net/net.ms"
 fn echo(request: HttpRequest) HttpResponse:
     return text(201, "{request.path}:{request.body.decode_utf8().get("")}")
 
-fn exchange_echo(exchange: HttpExchange) Unit!HttpError:
-    let body = try read_body(exchange, 8)
-    return reply(exchange, text(200, "{body.length()}"))
+fn exchange_echo(var exchange: HttpExchange) Unit!HttpError:
+    let body = try read_body(var exchange, 8)
+    return reply(var exchange, text(200, "{body.length()}"))
 
 test "buffered adapts a request-to-response handler":
     let server = try serve("127.0.0.1:0", buffered(echo), HttpServerOptions())

@@ -22,7 +22,9 @@ Function types name no parameters. Calls through function values are positional 
 
 ## Function type compatibility
 
-Parameter types in order and the result type are function-type identity, and compatibility is invariant. Parameter names are not part of it: `fn f(amount: Int) Int` and `fn g(value: Int) Int` both fit `fn(Int) Int`. A mismatch needs an explicit adapter function.
+Parameter types in order, their `var` marks, and the result type are function-type identity, and compatibility is invariant. Parameter names are not part of it: `fn f(amount: Int) Int` and `fn g(value: Int) Int` both fit `fn(Int) Int`. A mismatch needs an explicit adapter function.
+
+A parameter the function changes is marked `var` in its type too: `fn bump(var n: Int) Unit` is a `fn(var Int) Unit`, and a call through the value passes a variable or field with `var` (`f(var count)`), as a direct call does. A lambda marks it itself, `fn(var n: Int) Unit: n += 1` or `fn var n: n += 1`; it does not take `var` from the expected type. A `var` argument cannot reach the called value (`m.step(var m)` is rejected).
 
 ```manuscript
 fn subtract_one(amount: Int) Int:

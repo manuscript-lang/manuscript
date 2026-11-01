@@ -15,8 +15,8 @@ type Payload:
     msg: String
     time: Int
 
-export fn emit(logger: Logger) Unit!LogError:
-    let child = try logger.child(Request("req-1"))
+export fn emit(var logger: Logger) Unit!LogError:
+    var child = try logger.child(Request("req-1"))
     let fields = Payload(
         count: 9007199254740993, ok: true, nested: [none, false], service: "worker",
         level: 0, msg: "spoofed", time: 0

@@ -63,6 +63,9 @@ pub struct Param {
     pub name: Name,
     /// Type.
     pub ty: Ty,
+    /// A `var` parameter of a function: the call lends the argument with `var`. Part of the
+    /// function type's identity.
+    pub mutable: bool,
 }
 
 /// Parameters flagged as omittable on a source callable.
@@ -122,6 +125,9 @@ impl fmt::Display for Type {
             for (i, a) in self.params.iter().enumerate() {
                 if i > 0 {
                     f.write_str(", ")?;
+                }
+                if a.mutable {
+                    f.write_str("var ")?;
                 }
                 write!(f, "{}", a.ty)?;
             }
@@ -688,7 +694,7 @@ pub fn same(a: &Ty, b: &Ty) -> bool {
     }
     if a.kind == Kind::Function {
         for (p, q) in a.params.iter().zip(&b.params) {
-            if !same(&p.ty, &q.ty) {
+            if p.mutable != q.mutable || !same(&p.ty, &q.ty) {
                 return false;
             }
         }
@@ -754,6 +760,7 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
             Param {
                 name: p.name,
                 ty: r,
+                mutable: p.mutable,
             }
         })
         .collect();
@@ -856,6 +863,7 @@ pub fn fields(t: &Ty) -> Vec<Param> {
         .map(|p| Param {
             name: p.name,
             ty: sub(&p.ty, &s),
+            mutable: p.mutable,
         })
         .collect()
 }
@@ -875,6 +883,7 @@ pub fn field_of(t: &Ty, name: Name) -> Option<Param> {
     Some(Param {
         name: field.name,
         ty: sub(&field.ty, &substitution(t)),
+        mutable: false,
     })
 }
 
@@ -909,6 +918,7 @@ pub fn cases(t: &Ty) -> Vec<Case> {
                     .map(|p| Param {
                         name: p.name,
                         ty: sub(&p.ty, &s),
+                        mutable: p.mutable,
                     })
                     .collect(),
             }
@@ -936,6 +946,7 @@ pub fn case_of(t: &Ty, name: Name) -> Option<Case> {
             .map(|p| Param {
                 name: p.name,
                 ty: sub(&p.ty, &s),
+                mutable: p.mutable,
             })
             .collect(),
     })
@@ -948,12 +959,14 @@ pub fn constructor_signature(t: &Ty) -> Ty {
         params = vec![Param {
             name: n("values"),
             ty: standard("List", vec![primitive("UInt8")]),
+            mutable: false,
         }];
     }
     if t.is_std("Set") && t.args.len() == 1 {
         params = vec![Param {
             name: n("values"),
             ty: standard("List", vec![t.args[0].clone()]),
+            mutable: false,
         }];
     }
     let mut defaults: HashSet<Name> = HashSet::new();
@@ -993,6 +1006,9 @@ fn write_type_key(key: &mut String, t: &Ty, lifted: bool) {
     if t.kind == Kind::Function {
         for p in &t.params {
             key.push('[');
+            if p.mutable {
+                key.push_str("var ");
+            }
             write_type_key(key, &p.ty, lifted);
             if lifted && t.is_lifted(p.name) {
                 key.push('=');
@@ -1042,7 +1058,7 @@ pub fn unify(pattern: &Ty, actual: &Ty, vars: &VarSet, bindings: &mut Subst) -> 
     }
     if pattern.kind == Kind::Function {
         for (p, q) in pattern.params.iter().zip(&actual.params) {
-            if !unify(&p.ty, &q.ty, vars, bindings) {
+            if p.mutable != q.mutable || !unify(&p.ty, &q.ty, vars, bindings) {
                 return false;
             }
         }
@@ -1057,6 +1073,18 @@ pub fn unify(pattern: &Ty, actual: &Ty, vars: &VarSet, bindings: &mut Subst) -> 
 /// "expected X, found Y" plus a result hint.
 pub fn format_mismatch(actual: &Ty, expected: &Ty) -> String {
     let mut message = format!("expected {expected}, found {actual}");
+    let marks_differ = actual.kind == Kind::Function
+        && expected.kind == Kind::Function
+        && actual.params.len() == expected.params.len()
+        && actual
+            .params
+            .iter()
+            .zip(&expected.params)
+            .any(|(a, e)| a.mutable != e.mutable);
+    if marks_differ {
+        message.push_str("; `var` on a parameter is part of a function's type, so mark the same parameters `var` in the function and in the type it is passed as");
+        return message;
+    }
     let hint = crate::hints::result_use_hint(actual, expected);
     if !hint.is_empty() {
         message.push_str("; ");

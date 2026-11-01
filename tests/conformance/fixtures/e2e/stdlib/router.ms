@@ -32,13 +32,13 @@ fn request(method: HttpMethod, path: String) HttpRequest:
         method: method, path: path, query: "", headers: headers(), body: "".to_bytes()
     )
 
-fn say(label: String) fn(HttpExchange, RouteParams) Unit!HttpError:
-    return fn exchange, params: reply(exchange, text(200, label.clone()))
+fn say(label: String) fn(var HttpExchange, RouteParams) Unit!HttpError:
+    return fn var exchange, params: reply(var exchange, text(200, label.clone()))
 
-fn show(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+fn show(var exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     let id = params.get("id").get("-")
     let rest = params.get("rest").get("-")
-    return reply(exchange, text(200, "{id}|{rest}"))
+    return reply(var exchange, text(200, "{id}|{rest}"))
 
 fn body_of(response: HttpResponse) String:
     return response.body.decode_utf8().get("")
@@ -108,21 +108,21 @@ test "invalid and duplicate patterns are rejected":
 
 fn tag(
     label: String
-) fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError:
-    return fn exchange, next: tagged(label.clone(), exchange, next)
+) fn(var HttpExchange, fn(var HttpExchange) Unit!HttpError) Unit!HttpError:
+    return fn var exchange, next: tagged(label.clone(), var exchange, next)
 
 fn tagged(
     label: String,
-    exchange: HttpExchange,
-    next: fn(HttpExchange) Unit!HttpError
+    var exchange: HttpExchange,
+    next: fn(var HttpExchange) Unit!HttpError
 ) Unit!HttpError:
-    let seen = exchange.headers()
+    var seen = exchange.headers()
     try seen.append("X-Trail", label)
-    return next(exchange)
+    return next(var exchange)
 
-fn trail(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+fn trail(var exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     let values = exchange.headers().values("X-Trail")
-    return reply(exchange, text(200, values.join(">")))
+    return reply(var exchange, text(200, values.join(">")))
 
 test "middleware wraps routes outermost first":
     var r = Router()
@@ -136,11 +136,8 @@ test "middleware also wraps the 404 answer":
     r.use(tag("a"))
     try expect_equal((try r.call(get("/missing"))).status, 404)
 
-fn refuse(
-    exchange: HttpExchange,
-    next: fn(HttpExchange) Unit!HttpError
-) Unit!HttpError:
-    return reply(exchange, text(401, "no"))
+fn refuse(var exchange: HttpExchange, next: fn(var HttpExchange) Unit!HttpError) Unit!HttpError:
+    return reply(var exchange, text(401, "no"))
 
 test "middleware may answer without calling the rest":
     var r = Router()
@@ -150,7 +147,7 @@ test "middleware may answer without calling the rest":
     let response = try r.call(get("/t"))
     try expect_equal(response.status, 401)
 
-fn fail(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+fn fail(var exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     return error(HttpError.Failed("boom"))
 
 test "a handler error comes back from call":
@@ -160,7 +157,7 @@ test "a handler error comes back from call":
 
 test "a handler that sends nothing answers 204":
     var r = Router()
-    r.route(HttpMethod.Get, "/n", fn exchange, params: ok(unit)).get()
+    r.route(HttpMethod.Get, "/n", fn var exchange, params: ok(unit)).get()
     try expect_equal((try r.call(get("/n"))).status, 204)
 
 test "the router serves over a socket":
@@ -210,11 +207,11 @@ type Answer:
     name: String
     count: Int
 
-fn answer(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
-    return reply(exchange, try json(201, Answer(name: "ok", count: 2)))
+fn answer(var exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+    return reply(var exchange, try json(201, Answer(name: "ok", count: 2)))
 
-fn moved(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
-    return reply(exchange, try redirect("/elsewhere"))
+fn moved(var exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+    return reply(var exchange, try redirect("/elsewhere"))
 
 test "json and redirect build responses":
     var r = Router()
@@ -230,9 +227,9 @@ test "json and redirect build responses":
     try expect_equal(moved_to.status, 303)
     try expect_equal(moved_to.headers.values("Location").join(","), "/elsewhere")
 
-fn echo_id(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+fn echo_id(var exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     let seen = exchange.headers().values("X-Request-Id")
-    return reply(exchange, text(200, seen.join(",")))
+    return reply(var exchange, text(200, seen.join(",")))
 
 fn id_of(response: HttpResponse) String:
     return response.headers.values("X-Request-Id").join(",")
@@ -246,14 +243,14 @@ test "request_id keeps a usable id and makes one otherwise":
     try expect_equal(id_of(fresh).length(), 36)
     try expect_equal(body_of(fresh), id_of(fresh))
 
-    let incoming = get("/i")
+    var incoming = get("/i")
     incoming.headers.append("X-Request-Id", "abc-123").get()
 
     let kept = try r.call(incoming)
     try expect_equal(id_of(kept), "abc-123")
     try expect_equal(body_of(kept), "abc-123")
 
-    let bad = get("/i")
+    var bad = get("/i")
     bad.headers.append("X-Request-Id", "has space").get()
     try expect_equal(id_of(try r.call(bad)).length(), 36)
     try expect_equal(id_of(try r.call(get("/missing"))).length(), 36)
@@ -262,11 +259,11 @@ type Sink:
     lines: Shared[List[String]]
 
 impl Transport for Sink:
-    fn write(data: String) Unit!LogError:
+    var fn write(data: String) Unit!LogError:
         self.lines.append(data.clone())
         return ok(unit)
 
-    fn write_bytes(data: Bytes) Unit!LogError:
+    var fn write_bytes(data: Bytes) Unit!LogError:
         return self.write(data.decode_utf8().get(""))
 
     fn flush() Unit!LogError:

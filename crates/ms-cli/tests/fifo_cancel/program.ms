@@ -36,10 +36,10 @@ export fn main() Int:
     let first = path.clone()
     let second = path.clone()
     let third = path.clone()
-    let a = group.spawn(fn ch: read_whole(first.clone()))
-    let b = group.spawn(fn ch: open_then_read(second.clone()))
-    let d = group.spawn(fn ch: open_io_then_read(third.clone()))
-    let c = group.spawn(fn ch: 5)
+    var a = group.spawn(fn var ch: read_whole(first.clone()))
+    var b = group.spawn(fn var ch: open_then_read(second.clone()))
+    var d = group.spawn(fn var ch: open_io_then_read(third.clone()))
+    var c = group.spawn(fn var ch: 5)
     (
         stdout()
         .write(

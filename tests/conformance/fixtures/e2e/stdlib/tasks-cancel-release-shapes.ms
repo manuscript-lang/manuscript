@@ -92,17 +92,17 @@ fn t_nested(depth: Int) Int:
     return t_nested(depth - 1) + s.length()
 
 fn run_one(which: Int) Unit:
-    let group = TaskGroup[Int](timeout: nanoseconds(1000000))
+    var group = TaskGroup[Int](timeout: nanoseconds(1000000))
 
-    if which == 0: group.spawn(fn ch: t_record())
-    else if which == 1: group.spawn(fn ch: t_field_move())
-    else if which == 2: group.spawn(fn ch: t_map_loop())
-    else if which == 3: group.spawn(fn ch: t_consume_in_loop())
-    else if which == 4: group.spawn(fn ch: t_optional())
-    else if which == 5: group.spawn(fn ch: t_closure())
-    else if which == 6: group.spawn(fn ch: t_match())
-    else if which == 7: group.spawn(fn ch: t_chan(ch))
-    else: group.spawn(fn ch: t_nested(5))
+    if which == 0: group.spawn(fn var ch: t_record())
+    else if which == 1: group.spawn(fn var ch: t_field_move())
+    else if which == 2: group.spawn(fn var ch: t_map_loop())
+    else if which == 3: group.spawn(fn var ch: t_consume_in_loop())
+    else if which == 4: group.spawn(fn var ch: t_optional())
+    else if which == 5: group.spawn(fn var ch: t_closure())
+    else if which == 6: group.spawn(fn var ch: t_match())
+    else if which == 7: group.spawn(fn var ch: t_chan(ch))
+    else: group.spawn(fn var ch: t_nested(5))
 
     let _ = group.wait()
 

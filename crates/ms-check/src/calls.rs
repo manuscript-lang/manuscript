@@ -71,6 +71,7 @@ impl Checker {
                 vec![Param {
                     name: n("value"),
                     ty: value,
+                    mutable: false,
                 }],
                 t.clone(),
                 None,
@@ -794,6 +795,7 @@ impl Checker {
             .map(|f| Param {
                 name: f.name,
                 ty: sub(&f.ty, &subst),
+                mutable: false,
             })
             .collect();
         self.infer_arguments(args, &inferred_fields, &vars, &mut subst, None);
@@ -957,6 +959,7 @@ mod argument_tests {
                 .map(|name| Param {
                     name: n(name),
                     ty: invalid(),
+                    mutable: false,
                 })
                 .collect();
             for positional in [false, true] {

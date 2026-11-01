@@ -211,7 +211,7 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
         let me = h.name()
         let own = o.clone()
         let label = tag.clone()
-        group.spawn(fn _c: work(mine, me, own, label), none)
+        group.spawn(fn var _c: work(mine, me, own, label), none)
 
     for n in group.results().get([]): bad += n
     if oracle: remove(o.out, recursive: false).to_optional()

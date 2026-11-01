@@ -272,7 +272,7 @@ export fn main() Int:
         )
         else: parallel.append(f.clone())
 
-    let group = TaskGroup[List[String]]()
+    var group = TaskGroup[List[String]]()
     var tasks = List[Task[List[String], Unit, Unit]]()
 
     for worker in 0..jobs:
@@ -281,10 +281,10 @@ export fn main() Int:
             if (i + 1) % jobs == worker: mine.append(parallel[i].clone())
 
         let shared = ctx.clone()
-        tasks.append(group.spawn(fn ch: run_all(shared, mine.clone()), none))
+        tasks.append(group.spawn(fn var ch: run_all(shared, mine.clone()), none))
 
-    for task in tasks:
-        for message in task.result().get(List[String]()): messages.append(
+    for i in 0..tasks.length():
+        for message in tasks[i].result().get(List[String]()): messages.append(
             message.clone()
         )
     count += parallel.length()

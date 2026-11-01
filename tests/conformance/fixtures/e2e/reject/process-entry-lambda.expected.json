@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/process-entry-lambda.ms:8:29: type: process entry must name a top-level fn: it runs again in another process, which cannot carry a closure or the values it captures; move the work into a fn taking the channel\n   |\n 8 |     let child = group.spawn(fn ch: base)\n   |                             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/process-entry-lambda.ms:8:29: type: process entry must name a top-level fn: it runs again in another process, which cannot carry a closure or the values it captures; move the work into a fn taking the channel\n   |\n 8 |     let child = group.spawn(fn var ch: base)\n   |                             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

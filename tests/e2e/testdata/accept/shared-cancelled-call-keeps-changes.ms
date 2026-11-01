@@ -28,7 +28,7 @@ test "a task cancelled inside a call keeps its changes and frees the value":
     var box: Shared[List[Int]] = Shared([1])
     var mine = box
     var group = TaskGroup[Int](timeout: nanoseconds(20000000))
-    group.spawn(fn ch: hold(var mine))
+    group.spawn(fn var ch: hold(var mine))
 
     let _ignored = group.wait()
     try group.close()
@@ -41,8 +41,8 @@ test "a change from another task waits for the call in progress":
     var first = box
     var second = box
     var group = TaskGroup[Int]()
-    let a = group.spawn(fn ch: slowly(var first))
-    let b = group.spawn(fn ch: add(var second, 3))
+    var a = group.spawn(fn var ch: slowly(var first))
+    var b = group.spawn(fn var ch: add(var second, 3))
     let _first_done = try a.result()
     let _second_done = try b.result()
     try group.close()

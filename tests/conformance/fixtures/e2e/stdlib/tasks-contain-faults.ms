@@ -17,8 +17,8 @@ fn say(text: String) Unit:
 # A fault in a contained group ends only that task: siblings keep their results.
 export fn main() Int:
     var group = TaskGroup[Int](contain_faults: true)
-    let bad = group.spawn(fn ch: boom([1]))
-    let good = group.spawn(fn ch: 7)
+    var bad = group.spawn(fn var ch: boom([1]))
+    var good = group.spawn(fn var ch: 7)
 
     match bad.result():
         ok(_value): say("unexpected result")
@@ -31,7 +31,7 @@ export fn main() Int:
     group.close().get(none)
 
     var group2 = TaskGroup[Int](contain_faults: true)
-    group2.spawn(fn ch: boom([1]))
+    group2.spawn(fn var ch: boom([1]))
 
     match group2.wait():
         ok(_unit): say("wait ok")

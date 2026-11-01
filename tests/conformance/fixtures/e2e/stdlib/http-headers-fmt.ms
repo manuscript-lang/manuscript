@@ -18,7 +18,7 @@ import http_client, request, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 
 fn repeated_headers() HttpHeaders!:
-    let fields = headers()
+    var fields = headers()
     let _first = fields.append("x-dup", "first") | try expect_ok
     let _second = fields.append("X-Dup", "second") | try expect_ok
     let _cookie = fields.append(
@@ -38,7 +38,7 @@ fn handle_headers(request: HttpRequest) HttpResponse:
         "case-insensitive received fields"
     )
 
-    let fields = match repeated_headers():
+    var fields = match repeated_headers():
         ok(found): found
         error(cause): return header_failure(cause.message())
 
@@ -53,7 +53,7 @@ test "one header type preserves repeated values through buffered requests":
         method: HttpMethod.Get, url: "http://{server.address()}/",
         headers: (try repeated_headers()), body: ""
     ) | try expect_ok
-    let metadata = response.metadata()
+    var metadata = response.metadata()
     metadata.status | try expect_equal(200)
     metadata.headers.values("x-dup") | try expect_equal(["first", "second"])
     try expect_false(
@@ -73,13 +73,13 @@ test "one header type preserves repeated values through buffered requests":
         )
     )
 
-fn echo_headers(exchange: HttpExchange) Unit!HttpError:
+fn echo_headers(var exchange: HttpExchange) Unit!HttpError:
     let received = exchange.headers()
     if received.values("X-DUP") != ["first", "second"]: return error(
         HttpError.InvalidData
     )
 
-    let output = received.clone()
+    var output = received.clone()
     let _removed_connection = output.remove("Connection")
     let _removed_length = output.remove("Content-Length")
     return exchange.send_headers(status: 200, headers: output)
@@ -98,12 +98,12 @@ test "streaming proxy uses the same byte-valued header type":
     )
 
 test "lookup returns membership and clone separates it":
-    let fields = (try repeated_headers())
+    var fields = (try repeated_headers())
     let _appended = fields.append("x-dup", "third") | try expect_ok
     let values = fields.values("X-DUP")
     values.length() | try expect_equal(3)
 
-    let copy = fields.clone()
+    var copy = fields.clone()
     let _copy_appended = copy.append("x-dup", "copy") | try expect_ok
     fields.values("x-dup").length() | try expect_equal(3)
     (not fields.contains("missing")) | try expect_true
@@ -116,7 +116,7 @@ test "lookup returns membership and clone separates it":
     (fields.values("x-dup").length() != 1) | try expect_false
 
 test "string lookup leaves out values that are not UTF-8":
-    let fields = headers()
+    var fields = headers()
     let _valid = fields.append("Raw", "first") | try expect_ok
     let _invalid = fields.append_bytes("raw", Bytes(values: [255])) | try expect_ok
     fields.values("RAW") | try expect_equal(["first"])

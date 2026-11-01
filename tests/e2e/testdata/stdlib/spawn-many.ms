@@ -7,7 +7,7 @@ fn echo() Unit:
         let _ = ch.send(n + 1)
 
 test "spawn_many starts workers from one entry":
-    let group = WorkerGroup[Int, Int]()
+    var group = WorkerGroup[Int, Int]()
     var workers = try group.spawn_many(echo, 3)
     try expect_equal(workers.length(), 3)
     for i in 0..3:

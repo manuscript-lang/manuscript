@@ -388,10 +388,24 @@ pub(crate) fn changing_method_roots(
     }
     impl Visitor for Values<'_> {
         fn expr(&mut self, e: &Expr) {
-            if let ExprKind::Call { callee, .. } = &e.kind {
+            if let ExprKind::Call { callee, args } = &e.kind {
                 self.called.insert(callee.id);
                 if let ExprKind::Apply { left, .. } = &callee.kind {
                     self.called.insert(left.id);
+                }
+                // A call through a function value changes what its `var` arguments name.
+                let value = !matches!(
+                    self.hir.resolution(e),
+                    Resolution::Function(_)
+                        | Resolution::Method(_)
+                        | Resolution::Constructor { .. }
+                );
+                if value && self.hir.ty(callee).kind == Kind::Function {
+                    for a in args.iter().filter(|a| a.mutable) {
+                        if let Some(root) = place_root(self.hir, &a.value) {
+                            self.roots.insert(root);
+                        }
+                    }
                 }
             }
             let ExprKind::Member { left, .. } = &e.kind else {

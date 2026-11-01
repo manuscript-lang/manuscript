@@ -3,30 +3,24 @@ import memory_usage from "@std/os/process.ms"
 import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
-fn hold_receive(ch: Channel[Int, Int]) Unit:
-    var end = ch
-    end.receive().get()
+fn hold_receive(var ch: Channel[Int, Int]) Unit:
+    ch.receive().get()
 
-fn hold_send(ch: Channel[Int, Int]) Unit:
-    var end = ch
+fn hold_send(var ch: Channel[Int, Int]) Unit:
     for value in 0..17:
-        end.send(value).get()
+        ch.send(value).get()
 
-fn echo_rounds(ch: Channel[Int, Int]) Unit:
-    var end = ch
-
+fn echo_rounds(var ch: Channel[Int, Int]) Unit:
     while true:
-        let value = end.receive().get().get(-1)
-        end.send(value).get()
+        let value = ch.receive().get().get(-1)
+        ch.send(value).get()
 
-fn drain_rounds(ch: Channel[Int, Int]) Unit:
-    var end = ch
-
+fn drain_rounds(var ch: Channel[Int, Int]) Unit:
     while true:
         for value in 0..17:
-            end.send(value).get()
+            ch.send(value).get()
         for value in 0..17:
-            end.receive().get()
+            ch.receive().get()
 
 fn receive_value(ready: Channel[Unit, Unit], target: Channel[Int, Int]) Int:
     var started = ready
@@ -45,7 +39,7 @@ fn send_value(ready: Channel[Unit, Unit], target: Channel[Int, Int]) Unit:
 fn cancel_receive(target: Channel[Int, Int]) Unit!:
     var group = TaskGroup[Int]()
     let end = target.clone()
-    var task = group.spawn(fn ready: receive_value(ready, end))
+    var task = group.spawn(fn var ready: receive_value(ready, end))
     task.channel.receive() | try expect_ok | try expect_equal(unit)
 
     # The acknowledging task parks on the target before this receive resumes us.
@@ -57,7 +51,7 @@ fn cancel_receive(target: Channel[Int, Int]) Unit!:
 fn cancel_send(target: Channel[Int, Int]) Unit!:
     var group = TaskGroup[Unit]()
     let end = target.clone()
-    var task = group.spawn(fn ready: send_value(ready, end))
+    var task = group.spawn(fn var ready: send_value(ready, end))
     task.channel.receive() | try expect_ok | try expect_equal(unit)
     try group.close()
     task.result() | try expect_error | try expect_equal(TaskError.Closed)
@@ -80,9 +74,9 @@ fn wake_sender(target: Channel[Int, Int]) Unit!:
 
 # Both batches cancel identical tasks; waking only the control isolates waiter storage.
 test "cancelled receives retain no more storage than the woken control":
-    let owner = TaskGroup[Unit, Int, Int]()
+    var owner = TaskGroup[Unit, Int, Int]()
     let task = owner.spawn(hold_receive)
-    let comparison = TaskGroup[Unit, Int, Int]()
+    var comparison = TaskGroup[Unit, Int, Int]()
     let woken = comparison.spawn(echo_rounds)
 
     for index in 0..4:
@@ -108,12 +102,12 @@ test "cancelled receives retain no more storage than the woken control":
     )
 
 test "cancelled sends retain no more storage than the woken control":
-    let owner = TaskGroup[Unit, Int, Int]()
+    var owner = TaskGroup[Unit, Int, Int]()
     var task = owner.spawn(hold_send)
     for value in 0..16:
         task.channel.send(value) | try expect_ok
 
-    let comparison = TaskGroup[Unit, Int, Int]()
+    var comparison = TaskGroup[Unit, Int, Int]()
     var woken = comparison.spawn(drain_rounds)
     for value in 0..16:
         woken.channel.send(value) | try expect_ok
@@ -140,23 +134,22 @@ test "cancelled sends retain no more storage than the woken control":
         )
     )
 
-fn echo_one(ch: Channel[Int, Int]) Unit:
-    var end = ch
-    let value = end.receive().get().get(-1)
-    end.send(value).get()
-    end.receive().get()
+fn echo_one(var ch: Channel[Int, Int]) Unit:
+    let value = ch.receive().get().get(-1)
+    ch.send(value).get()
+    ch.receive().get()
 
 test "cancelling one receiver preserves another receivers wake":
-    let owner = TaskGroup[Unit, Int, Int]()
+    var owner = TaskGroup[Unit, Int, Int]()
     var target = owner.spawn(echo_one)
     let first_end = target.channel.clone()
     var cancelled = TaskGroup[Int]()
-    var removed = cancelled.spawn(fn ready: receive_value(ready, first_end))
+    var removed = cancelled.spawn(fn var ready: receive_value(ready, first_end))
     removed.channel.receive() | try expect_ok | try expect_equal(unit)
 
-    let survivor = TaskGroup[Int]()
+    var survivor = TaskGroup[Int]()
     let second_end = target.channel.clone()
-    var kept = survivor.spawn(fn ready: receive_value(ready, second_end))
+    var kept = survivor.spawn(fn var ready: receive_value(ready, second_end))
     kept.channel.receive() | try expect_ok | try expect_equal(unit)
     try cancelled.close()
     target.channel.send(7) | try expect_ok

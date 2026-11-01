@@ -475,7 +475,7 @@ export interface Network:
     # A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
     fn serve(
         address: String,
-        handler: fn(HttpExchange) Unit!HttpError,
+        handler: fn(var HttpExchange) Unit!HttpError,
         options: HttpServerOptions = HttpServerOptions()
     ) HttpServer!HttpError
     # Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.
@@ -489,7 +489,7 @@ export interface Network:
     # Starts an HTTP server that has no listener: it serves the connections handed to `HttpServer.adopt`, with the handler, limits, timeouts, and TLS of `serve`. Close the server to stop it.
     # Returns InvalidInput for invalid options.
     fn serve_connections(
-        handler: fn(HttpExchange) Unit!HttpError,
+        handler: fn(var HttpExchange) Unit!HttpError,
         options: HttpServerOptions = HttpServerOptions()
     ) HttpServer!HttpError
     # Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
@@ -775,12 +775,12 @@ export fn serve_cores(
     if cores < 1:
         return error(NetworkError.InvalidInput)
 
-    let group = WorkerGroup[Int, Int]()
+    var group = WorkerGroup[Int, Int]()
     let started = group.spawn_many(entry, cores)
     if started.is_error():
         return error(NetworkError.Failed("could not start a serving worker"))
 
-    let workers = started.get()
+    var workers = started.get()
     var next = 0
 
     while true:
@@ -797,7 +797,7 @@ export fn serve_cores(
 # Worker side of `serve_cores`: serves the connections dealt to this worker with
 # `handler` and `options`, until the acceptor ends. Returns InvalidInput for invalid options.
 export fn serve_core(
-    handler: fn(HttpExchange) Unit!HttpError,
+    handler: fn(var HttpExchange) Unit!HttpError,
     options: HttpServerOptions = HttpServerOptions()
 ) Unit!HttpError:
     var ch = worker_channel[Int, Int]()
@@ -932,7 +932,7 @@ export fn restrict(
 # A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
 export fn serve(
     address: String,
-    handler: fn(HttpExchange) Unit!HttpError,
+    handler: fn(var HttpExchange) Unit!HttpError,
     options: HttpServerOptions = HttpServerOptions()
 ) HttpServer!HttpError:
     return host_network().serve(address, handler, options)
@@ -950,7 +950,7 @@ export fn web_socket(
 # Starts an HTTP server that has no listener: it serves the connections handed to `HttpServer.adopt`, with the handler, limits, timeouts, and TLS of `serve`. Close the server to stop it.
 # Returns InvalidInput for invalid options.
 export fn serve_connections(
-    handler: fn(HttpExchange) Unit!HttpError,
+    handler: fn(var HttpExchange) Unit!HttpError,
     options: HttpServerOptions = HttpServerOptions()
 ) HttpServer!HttpError:
     return host_network().serve_connections(handler, options)

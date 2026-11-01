@@ -37,10 +37,10 @@ fn body_open() Int:
     return g.items.length()
 
 fn run_one(closed: Bool) Unit:
-    let group = TaskGroup[Int](timeout: nanoseconds(1000000))
+    var group = TaskGroup[Int](timeout: nanoseconds(1000000))
 
-    if closed: group.spawn(fn ch: body())
-    else: group.spawn(fn ch: body_open())
+    if closed: group.spawn(fn var ch: body())
+    else: group.spawn(fn var ch: body_open())
 
     let _ = group.wait()
 
