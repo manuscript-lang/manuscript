@@ -806,6 +806,7 @@ msstd_system_user_info_status() -> u8
 msstd_system_user_info_uid() -> i64
 msstd_system_user_info_username(out: *mut StrVal)
 msstd_system_working_directory(out: *mut StrVal)
+msstd_table_format(rows: *const VecVal, alignments: *const VecVal, padding: i64, has_max_rows: u8, max_rows: i64, has_max_cells: u8, max_cells: i64, has_max_bytes: u8, max_bytes: i64, out: *mut StrVal) -> u8
 msstd_terminal_capabilities_colors() -> i64
 msstd_terminal_capabilities_error_is_terminal() -> u8
 msstd_terminal_capabilities_input_is_terminal() -> u8

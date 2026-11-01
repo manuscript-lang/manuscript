@@ -1100,6 +1100,7 @@ dependencies = [
  "ms-std-process",
  "ms-std-regex",
  "ms-std-system",
+ "ms-std-table",
  "ms-std-terminal",
  "ms-std-time",
  "ms-std-url",
@@ -1300,6 +1301,15 @@ dependencies = [
  "ms-rt-abi",
  "ms-std-process",
  "rustix",
+]
+
+[[package]]
+name = "ms-std-table"
+version = "0.1.0"
+dependencies = [
+ "ms-rt",
+ "ms-rt-abi",
+ "unicode-width",
 ]
 
 [[package]]
@@ -2075,6 +2085,12 @@ checksum = "75cd3fb03d5288b3ba9a1ee103ac7e9cbb59f0b03d64f8ddfcc04dd42758a85d"
 dependencies = [
  "tinyvec",
 ]
+
+[[package]]
+name = "unicode-width"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca718471876992059f251e33aafc334346ada08042b7661dd1fe313a9bced557"
 
 [[package]]
 name = "universal-hash"
