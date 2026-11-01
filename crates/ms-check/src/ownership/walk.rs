@@ -1635,8 +1635,15 @@ impl Walker<'_> {
         let arm_mark = self.active.len();
         match binding {
             Some(p) => {
+                // A scalar entry is copied out of the map, so the entry's place is the map itself.
                 let probed = match &cond.kind {
                     ExprKind::Probe(target) if mutable => Some(&**target),
+                    ExprKind::Call { callee, .. } if mutable && self.map_get(cond) => {
+                        match &callee.kind {
+                            ExprKind::Member { left, .. } => Some(&**left),
+                            _ => None,
+                        }
+                    }
                     _ => None,
                 };
                 let scrutinee = self.scrutinee(s.id, probed.unwrap_or(cond));
