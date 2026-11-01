@@ -81,14 +81,17 @@ export fn main() Int:
         archive_name = "{name}.zip"
 
         let _ = remove(archive.clone(), recursive: false)
-        let zip_path = "{working_directory().get()}/dist"
+        let root = working_directory().get()
         change_directory(staging.path()).get()
         code = run_program(
             "7z",
             [
-                "a", "-tzip", "-bso0", "{zip_path}/{archive_name}", name.clone()
+                "a", "-tzip", "-bso0", "{root}/dist/{archive_name}", name.clone()
             ]
         )
+
+        # The checksum below reads the archive by its repository-relative path.
+        change_directory(root).get()
     else:
         code = run_program(
             "tar", ["-C", staging.path(), "-czf", archive.clone(), name.clone()]
