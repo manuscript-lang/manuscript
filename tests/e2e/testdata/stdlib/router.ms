@@ -180,7 +180,6 @@ test "a handler that sends nothing answers 204":
 
 fn whole_response(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     let body = if exchange.path() == "/empty": "" else: "done"
-
     try reply(exchange, text(200, body))
 
     for extra in ["extra", ""]:
@@ -221,7 +220,6 @@ test "in-process reads retain the unread body after a bounded chunk":
 
 fn read_sizes(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
     let limit: Int? = if params.get_or("mode", "") == "default": none else: 100000
-
     let first = try exchange.read(limit).map_error(from_io)
     let second = try exchange.read(limit).map_error(from_io)
     let end = try exchange.read(limit).map_error(from_io)
