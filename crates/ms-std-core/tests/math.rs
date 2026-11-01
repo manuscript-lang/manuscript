@@ -1,6 +1,6 @@
 // Links the msrt_* runtime symbols.
 use ms_rt as _;
-use ms_std_math::*;
+use ms_std_core::math::*;
 
 #[test]
 fn round_ties_toward_positive_infinity() {

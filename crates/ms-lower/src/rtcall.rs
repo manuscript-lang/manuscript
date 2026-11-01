@@ -141,7 +141,7 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
 }
 
 /// Native types whose methods are runtime symbols named after the type, and the module
-/// they live in: `msstd_time_timestamp_shift`, `msrt_regex_matches`.
+/// they live in: `msstd_time_timestamp_shift`, `msstd_regex_matches`.
 const TYPED_NATIVES: &[(&str, &str)] = &[("Regex", "regex")];
 
 /// The runtime symbol of `method` on a native type from [`TYPED_NATIVES`].
@@ -1044,7 +1044,7 @@ impl FnLower<'_> {
         };
         // Crypto uses status 6 for authentication failure (the shared host status
         // table uses it for AlreadyExists). Match the module's actual ABI.
-        let statuses: &[(i64, &str)] = if sym.starts_with("msrt_crypto_") {
+        let statuses: &[(i64, &str)] = if sym.starts_with("msstd_crypto_") {
             &[
                 (1, "InvalidInput"),
                 (9, "Unsupported"),
@@ -1173,10 +1173,10 @@ impl FnLower<'_> {
 /// (`ms-std-net/ABI.md`) instead of sharing the `STATUS_CASES` codes.
 fn ordinal_status(sym: &str) -> bool {
     [
-        "msrt_net_",
-        "msrt_http_",
-        "msrt_websocket_",
-        "msrt_tls_",
+        "msstd_net_",
+        "msstd_http_",
+        "msstd_websocket_",
+        "msstd_tls_",
         "msrt_pipe_",
         "extern:",
     ]
@@ -1193,5 +1193,5 @@ fn failure_symbol(sym: &str) -> Option<String> {
 
 /// Whether a runtime function returns a new runtime handle object for an interface value.
 fn is_handle_return(ret: &str) -> bool {
-    ret.starts_with("*mut Handle<") || ret == "*mut HasherObj"
+    ret.starts_with("*mut ObjCell<")
 }

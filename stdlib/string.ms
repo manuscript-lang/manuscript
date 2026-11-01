@@ -1,4 +1,4 @@
-import msrt_string_from_scalars, msrt_regex_compile from "@std/internal/string.ms"
+import msrt_string_from_scalars, msstd_regex_compile from "@std/internal/string.ms"
 
 # Errors returned by Unicode scalar conversions and bounded string operations.
 export type StringError:
@@ -99,7 +99,7 @@ impl Regex:
 
 # Compiles a regular expression. Invalid pattern syntax is returned as an error.
 export fn compile(pattern: String) Regex!RegexError:
-    return msrt_regex_compile(pattern)
+    return msstd_regex_compile(pattern)
 
 impl Error for RegexError:
     # Returns a regular-expression-prefixed diagnostic without echoing pattern or input text.

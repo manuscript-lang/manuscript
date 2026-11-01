@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/net/net.ms` (`msrt_url_*`).
+//! C ABI shims for `@std/net/net.ms` (`msstd_url_*`).
 //!
 //! `Url` and `QueryEntry` are records at their natural layout, fields in declaration order (see
 //! [`UrlRec`], [`QueryEntryRec`]). Strings inside a record written by the runtime are owned (+1)
@@ -51,27 +51,27 @@ fn write_url(c: Components) -> UrlRec {
 }
 
 native! {
-    fn msrt_url_encode_component(text: &str) -> String {
+    fn msstd_url_encode_component(text: &str) -> String {
         crate::encode_component(text)
     }
 
-    fn msrt_url_decode_component(text: &str) -> Result<String, Fail> {
+    fn msstd_url_decode_component(text: &str) -> Result<String, Fail> {
         crate::decode_component(text)
     }
 
-    fn msrt_url_parse(text: &str) -> Result<UrlRec, Fail> {
+    fn msstd_url_parse(text: &str) -> Result<UrlRec, Fail> {
         crate::parse(text).map(write_url)
     }
 
-    fn msrt_url_resolve(base: &UrlRec, reference: &str) -> Result<UrlRec, Fail> {
+    fn msstd_url_resolve(base: &UrlRec, reference: &str) -> Result<UrlRec, Fail> {
         crate::resolve(&read_url(base), reference).map(write_url)
     }
 
-    fn msrt_url_format(value: &UrlRec) -> Result<String, Fail> {
+    fn msstd_url_format(value: &UrlRec) -> Result<String, Fail> {
         crate::format(&read_url(value))
     }
 
-    fn msrt_url_parse_query(
+    fn msstd_url_parse_query(
         text: &str,
         has_max: bool,
         max: i64,
@@ -84,7 +84,7 @@ native! {
         })
     }
 
-    fn msrt_url_format_query(entries: &RecList<QueryEntryRec>) -> String {
+    fn msstd_url_format_query(entries: &RecList<QueryEntryRec>) -> String {
         let items: Vec<(&str, &str)> = entries
             .as_slice()
             .iter()
@@ -111,17 +111,17 @@ mod tests {
         let mut q = MaybeUninit::<VecVal>::uninit();
         // SAFETY: all pointers are live; results are released below.
         unsafe {
-            assert_eq!(msrt_url_parse(&text, rec.as_mut_ptr()), STATUS_OK);
+            assert_eq!(msstd_url_parse(&text, rec.as_mut_ptr()), STATUS_OK);
             let r = rec.assume_init_ref();
             assert_eq!((r.host.as_str(), r.port.get()), ("example.com", Some(81)));
-            assert_eq!(msrt_url_format(rec.as_ptr(), s.as_mut_ptr()), STATUS_OK);
+            assert_eq!(msstd_url_format(rec.as_ptr(), s.as_mut_ptr()), STATUS_OK);
             assert_eq!(str_ref(s.as_ptr()), "https://example.com:81/p?a=1&a=2#f");
             assert_eq!(
-                msrt_url_parse_query(r.query.as_ptr(), 0, 0, q.as_mut_ptr()),
+                msstd_url_parse_query(r.query.as_ptr(), 0, 0, q.as_mut_ptr()),
                 STATUS_OK
             );
             assert_eq!((*q.as_ptr()).len, 2);
-            let f = take_string(|o| msrt_url_format_query(q.as_ptr().cast(), o));
+            let f = take_string(|o| msstd_url_format_query(q.as_ptr().cast(), o));
             assert_eq!(f, "a=1&a=2");
             ms_rt::vec::msrt_list_drop(q.as_mut_ptr(), QueryEntryRec::desc());
             for o in [

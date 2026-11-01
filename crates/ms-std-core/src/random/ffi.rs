@@ -1,5 +1,5 @@
 //! C ABI shims for `@std/os/random.ms` (`msstd_random_*`): the operating-system `Entropy` source.
-use crate::{Draw, Kind, RandomFail};
+use super::{Draw, Kind, RandomFail};
 use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt::ffi::{Mut, Own, Ref, Status, StrVal, abi_handle, native};
@@ -38,7 +38,7 @@ native! {
 
     /// `Entropy.bytes` of the operating-system source.
     fn msstd_random_os_bytes(count: i64) -> Result<Vec<u8>, RandomFail> {
-        crate::os_bytes(count)
+        super::os_bytes(count)
     }
 
     /// Starts a [`Draw`]; `kind` is 0 `secure_int` (`a` min, `b` optional max), 1 `uuid_v4`,
@@ -102,7 +102,7 @@ mod tests {
         unsafe {
             assert_eq!(msstd_random_os_bytes(-1, out.as_mut_ptr()), 1);
             assert_eq!(
-                msstd_random_os_bytes(crate::MAX_BYTES + 1, out.as_mut_ptr()),
+                msstd_random_os_bytes(crate::random::MAX_BYTES + 1, out.as_mut_ptr()),
                 1
             );
             assert_eq!(msstd_random_os_bytes(32, out.as_mut_ptr()), 0);

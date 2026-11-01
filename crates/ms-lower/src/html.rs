@@ -1,4 +1,4 @@
-//! `@std/data/html.ms` `parse`: the runtime parses into a tree handle (`msrt_html_*`, see
+//! `@std/data/html.ms` `parse`: the runtime parses into a tree handle (`msstd_html_*`, see
 //! `ms-std-html`) and one generated function per `HtmlNode` type copies it into the sum type.
 //! `escape` and `unescape` are plain runtime functions.
 
@@ -13,14 +13,14 @@ use ms_mir::ir::{Cc, FuncId, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use std::rc::Rc;
 
-/// Node kinds returned by `msrt_html_kind`.
+/// Node kinds returned by `msstd_html_kind`.
 const KIND_DOCUMENT: i64 = 0;
 const KIND_ELEMENT: i64 = 1;
 const KIND_TEXT: i64 = 2;
 const KIND_COMMENT: i64 = 3;
 const KIND_DOCTYPE: i64 = 4;
 
-/// What `msrt_html_first_child` / `msrt_html_next_sibling` answer for no node.
+/// What `msstd_html_first_child` / `msstd_html_next_sibling` answer for no node.
 const NO_NODE: i64 = 0xffff_ffff;
 
 /// A queued tree-to-`HtmlNode` copy.
@@ -109,7 +109,7 @@ impl FnLower<'_> {
                 .position(|c| c.name.as_str() == name)
                 .ok_or_else(|| Error::new(format!("HtmlNode lacks {name}")))
         };
-        let kind = self.jcall_masked("msrt_html_kind", &[tree, id], 0xff)?;
+        let kind = self.jcall_masked("msstd_html_kind", &[tree, id], 0xff)?;
         let blocks: Vec<_> = (0..5).map(|_| self.b.new_block()).collect();
         let other = self.b.new_block();
         let arms: Vec<(i64, _)> = blocks
@@ -132,30 +132,30 @@ impl FnLower<'_> {
                 }
                 KIND_ELEMENT => {
                     let c = index("Element")?;
-                    let tag = self.hstr("msrt_html_data", tree, id)?;
-                    let ns = self.hstr("msrt_html_namespace", tree, id)?;
+                    let tag = self.hstr("msstd_html_data", tree, id)?;
+                    let ns = self.hstr("msstd_html_namespace", tree, id)?;
                     let attrs = self.html_attributes(&cases[c].fields[2].ty, tree, id)?;
                     let kids = self.html_children(&cases[c].fields[3].ty, tree, id)?;
                     self.b.alt_new(a, c as u32, &[tag, ns, attrs, kids])
                 }
                 KIND_TEXT => {
                     let c = index("Text")?;
-                    let s = self.hstr("msrt_html_data", tree, id)?;
+                    let s = self.hstr("msstd_html_data", tree, id)?;
                     self.b.alt_new(a, c as u32, &[s])
                 }
                 KIND_COMMENT => {
                     let c = index("Comment")?;
-                    let s = self.hstr("msrt_html_data", tree, id)?;
+                    let s = self.hstr("msstd_html_data", tree, id)?;
                     self.b.alt_new(a, c as u32, &[s])
                 }
                 KIND_DOCTYPE => {
                     let c = index("Doctype")?;
-                    let name = self.hstr("msrt_html_data", tree, id)?;
+                    let name = self.hstr("msstd_html_data", tree, id)?;
                     let mut ids = Vec::new();
                     for which in 0..2 {
                         let w = self.b.iconst(which);
                         ids.push(self.call_runtime(
-                            "msrt_html_doctype_id",
+                            "msstd_html_doctype_id",
                             &[tree, id, w],
                             MTy::STR,
                         )?);
@@ -184,7 +184,7 @@ impl FnLower<'_> {
         let empty = self.b.list_new(et, zero);
         self.b.def_var(acc, empty);
         let cur = self.b.declare_var(MTy::INT, Mode::Borrow);
-        let first = self.hlink("msrt_html_first_child", tree, id)?;
+        let first = self.hlink("msstd_html_first_child", tree, id)?;
         self.b.def_var(cur, first);
         let (head, body, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         self.b.br(head, &[]);
@@ -201,7 +201,7 @@ impl FnLower<'_> {
         let l2 = self.b.list_push(l, node);
         self.b.def_var(acc, l2);
         let c = self.b.use_var(cur);
-        let next = self.hlink("msrt_html_next_sibling", tree, c)?;
+        let next = self.hlink("msstd_html_next_sibling", tree, c)?;
         self.b.def_var(cur, next);
         self.b.br(head, &[]);
         self.b.seal_block(head);
@@ -221,7 +221,7 @@ impl FnLower<'_> {
         let TyKind::Rec(rec) = self.b.m.types.kind(et).clone() else {
             return Err(Error::new("HtmlAttribute is a record"));
         };
-        let n = self.call_runtime("msrt_html_attr_count", &[tree, id], MTy::INT)?;
+        let n = self.call_runtime("msstd_html_attr_count", &[tree, id], MTy::INT)?;
         let acc = self.jvar(lt);
         let zero = self.b.iconst(0);
         let empty = self.b.list_new(et, zero);
@@ -230,7 +230,7 @@ impl FnLower<'_> {
             let mut fields = Vec::new();
             for which in 0..3 {
                 let w = s.b.iconst(which);
-                fields.push(s.call_runtime("msrt_html_attr", &[tree, id, iv, w], MTy::STR)?);
+                fields.push(s.call_runtime("msstd_html_attr", &[tree, id, iv, w], MTy::STR)?);
             }
             let attr = s.b.rec_new(rec, &fields);
             let l = s.b.use_var(acc);
@@ -283,7 +283,7 @@ impl FnLower<'_> {
         vals.extend(flat);
         vals.push(tree_slot);
         vals.push(root_slot);
-        let code = self.status_code("msrt_html_parse", &vals)?;
+        let code = self.status_code("msstd_html_parse", &vals)?;
         let zero = self.b.iconst(0);
         let good = self.b.icmp(Cc::Eq, code, zero);
         let hir = self.hir.clone();

@@ -142,7 +142,7 @@ impl FnLower<'_> {
         let ok = if decode {
             let (has, max) = self.optional_int(find("max_bytes"))?;
             self.call_runtime(
-                "msrt_compress_decoder_new",
+                "msstd_compress_decoder_new",
                 &[name, has, max, slot],
                 MTy::BOOL,
             )?
@@ -150,7 +150,11 @@ impl FnLower<'_> {
             let level =
                 find("level").ok_or_else(|| Error::new("compress_stream without a level"))?;
             let level = self.borrow(level.val);
-            self.call_runtime("msrt_compress_encoder_new", &[name, level, slot], MTy::BOOL)?
+            self.call_runtime(
+                "msstd_compress_encoder_new",
+                &[name, level, slot],
+                MTy::BOOL,
+            )?
         };
         // The runtime answers zero for a codec it built; a rejected level leaves none behind.
         let zero = self.b.iconst(0);
@@ -255,7 +259,7 @@ impl FnLower<'_> {
         self.b.seal_block(start);
         self.enter(fail);
         let one = self.b.iconst(1);
-        let e = self.status_failure(ret, one, "msrt_compress_stream")?;
+        let e = self.status_failure(ret, one, "msstd_compress_stream")?;
         self.b.ret(Some(e));
         self.enter(start);
         let h = self.b.opt_get(codec);
@@ -270,7 +274,7 @@ impl FnLower<'_> {
             .expect("slot");
         let pull = self.b.new_block();
         if job.decode {
-            let st = self.call_runtime("msrt_compress_decoder_poll", &[h, n, slot], MTy::BOOL)?;
+            let st = self.call_runtime("msstd_compress_decoder_poll", &[h, n, slot], MTy::BOOL)?;
             let code = self
                 .b
                 .emit(Op::B2I, &[st], Imm::None, Some(MTy::INT))
@@ -301,19 +305,20 @@ impl FnLower<'_> {
             let v = self.b.alt_new(result, ok as u32, &[none]);
             self.b.ret(Some(v));
             self.enter(failed);
-            let e = self.status_failure(ret, code, "msrt_compress_decoder_poll")?;
+            let e = self.status_failure(ret, code, "msstd_compress_decoder_poll")?;
             self.b.ret(Some(e));
         } else {
-            let has_out = self.call_runtime("msrt_compress_encoder_has_output", &[h], MTy::BOOL)?;
+            let has_out =
+                self.call_runtime("msstd_compress_encoder_has_output", &[h], MTy::BOOL)?;
             let (take, rest) = (self.b.new_block(), self.b.new_block());
             self.b.br_if(has_out, take, &[], rest, &[]);
             self.b.seal_block(take);
             self.b.seal_block(rest);
             self.enter(take);
-            self.call_runtime("msrt_compress_encoder_take", &[h, n, slot], MTy::UNIT)?;
+            self.call_runtime("msstd_compress_encoder_take", &[h, n, slot], MTy::UNIT)?;
             self.chunk_result(slot, result, ok, some_ty);
             self.enter(rest);
-            let fin = self.call_runtime("msrt_compress_encoder_is_finished", &[h], MTy::BOOL)?;
+            let fin = self.call_runtime("msstd_compress_encoder_is_finished", &[h], MTy::BOOL)?;
             let (eof, more) = (self.b.new_block(), pull);
             self.b.br_if(fin, eof, &[], more, &[]);
             self.b.seal_block(eof);
@@ -350,12 +355,16 @@ impl FnLower<'_> {
         self.enter(feed);
         let data = self.b.opt_get(chunk);
         let side = if job.decode { "decoder" } else { "encoder" };
-        self.call_runtime(&format!("msrt_compress_{side}_feed"), &[h, data], MTy::UNIT)?;
+        self.call_runtime(
+            &format!("msstd_compress_{side}_feed"),
+            &[h, data],
+            MTy::UNIT,
+        )?;
         self.drop_value(r);
         self.b.br(header, &[]);
         self.enter(end);
         let finish = if job.decode { "finish_input" } else { "finish" };
-        self.call_runtime(&format!("msrt_compress_{side}_{finish}"), &[h], MTy::UNIT)?;
+        self.call_runtime(&format!("msstd_compress_{side}_{finish}"), &[h], MTy::UNIT)?;
         self.drop_value(r);
         self.b.br(header, &[]);
         self.b.seal_block(header);

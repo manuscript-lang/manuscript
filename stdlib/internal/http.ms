@@ -12,9 +12,9 @@ import (
 ) from "@std/net/http.ms"
 import Duration from "@std/os/time.ms"
 
-export extern fn msrt_http_client_close(handle: NativeHttpClient) Unit
+export extern fn msstd_http_client_close(handle: NativeHttpClient) Unit
 
-export extern fn msrt_http_client_request(
+export extern fn msstd_http_client_request(
     handle: NativeHttpClient,
     method: HttpMethod,
     url: String,
@@ -24,7 +24,7 @@ export extern fn msrt_http_client_request(
     timeout: Duration?
 ) ResponseBody!HttpError
 
-export extern fn msrt_http_client_request_bytes(
+export extern fn msstd_http_client_request_bytes(
     handle: NativeHttpClient,
     method: HttpMethod,
     url: String,
@@ -34,7 +34,7 @@ export extern fn msrt_http_client_request_bytes(
     timeout: Duration?
 ) ResponseBody!HttpError
 
-export extern fn msrt_http_client_request_stream(
+export extern fn msstd_http_client_request_stream(
     handle: NativeHttpClient,
     method: HttpMethod,
     url: String,
@@ -44,23 +44,23 @@ export extern fn msrt_http_client_request_stream(
     timeout: Duration?
 ) ResponseBody!HttpError
 
-export extern fn msrt_http_server_address(handle: NativeHttpServer) String
+export extern fn msstd_http_server_address(handle: NativeHttpServer) String
 
-export extern fn msrt_http_server_adopt(handle: NativeHttpServer, connection: Int) Unit
+export extern fn msstd_http_server_adopt(handle: NativeHttpServer, connection: Int) Unit
 
-export extern fn msrt_http_server_close(handle: NativeHttpServer) Unit
+export extern fn msstd_http_server_close(handle: NativeHttpServer) Unit
 
-export extern fn msrt_http_server_wait(handle: NativeHttpServer) Unit!IoError
+export extern fn msstd_http_server_wait(handle: NativeHttpServer) Unit!IoError
 
-export extern fn msrt_http_body_close(handle: NativeResponseBody) Unit
+export extern fn msstd_http_body_close(handle: NativeResponseBody) Unit
 
-export extern fn msrt_http_body_metadata(
+export extern fn msstd_http_body_metadata(
     handle: NativeResponseBody
 ) HttpResponseMetadata
 
-export extern fn msrt_http_body_read(
+export extern fn msstd_http_body_read(
     handle: NativeResponseBody,
     max_bytes: Int?
 ) Bytes?!IoError
 
-export extern fn msrt_http_body_read_all(handle: NativeResponseBody) Bytes!IoError
+export extern fn msstd_http_body_read_all(handle: NativeResponseBody) Bytes!IoError

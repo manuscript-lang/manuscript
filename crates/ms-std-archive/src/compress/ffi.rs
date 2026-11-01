@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/io/archive.ms` (`msrt_compress_*`). The format is passed by name
+//! C ABI shims for `@std/io/archive.ms` (`msstd_compress_*`). The format is passed by name
 //! (`"gzip"`, `"zlib"`, `"deflate"`); `CompressionFormat` methods pass the matching constant.
 //! Statuses: `STATUS_INVALID_INPUT`, `STATUS_INVALID_DATA`, `STATUS_LIMIT_EXCEEDED` and
 //! `STATUS_UNSUPPORTED` (9); `Failed(message)` is never produced.
@@ -48,7 +48,7 @@ fn format(name: &str) -> Result<Format, Fail> {
 }
 
 native! {
-    fn msrt_compress_compress(
+    fn msstd_compress_compress(
         data: &[u8],
         format: &str,
         level: i64,
@@ -58,7 +58,7 @@ native! {
         super::compress(data, format, level, has_max.then_some(max))
     }
 
-    fn msrt_compress_decompress(
+    fn msstd_compress_decompress(
         data: &[u8],
         format: &str,
         has_max: bool,
@@ -67,7 +67,7 @@ native! {
         super::decompress_bytes(data, format, has_max.then_some(max))
     }
 
-    fn msrt_compress_decoder_new(
+    fn msstd_compress_decoder_new(
         name: &str,
         has_max: bool,
         max: i64,
@@ -80,15 +80,15 @@ native! {
         Ok(())
     }
 
-    fn msrt_compress_decoder_feed(d: ObjRef<DecoderObj>, data: &[u8]) -> () {
+    fn msstd_compress_decoder_feed(d: ObjRef<DecoderObj>, data: &[u8]) -> () {
         d.codec.borrow_mut().feed(data);
     }
 
-    fn msrt_compress_decoder_finish_input(d: ObjRef<DecoderObj>) -> () {
+    fn msstd_compress_decoder_finish_input(d: ObjRef<DecoderObj>) -> () {
         d.codec.borrow_mut().finish_input();
     }
 
-    fn msrt_compress_decoder_poll(d: ObjRef<DecoderObj>, max: i64) -> Result<Vec<u8>, Stop> {
+    fn msstd_compress_decoder_poll(d: ObjRef<DecoderObj>, max: i64) -> Result<Vec<u8>, Stop> {
         match d.codec.borrow_mut().poll(usize::try_from(max).unwrap_or(1)) {
             Ok(Poll::Output(b)) => Ok(b),
             Ok(Poll::NeedInput) => Err(Stop::NeedInput),
@@ -97,7 +97,7 @@ native! {
         }
     }
 
-    fn msrt_compress_encoder_new(
+    fn msstd_compress_encoder_new(
         name: &str,
         level: i64,
         out: Out<Object<EncoderObj>>,
@@ -109,23 +109,23 @@ native! {
         Ok(())
     }
 
-    fn msrt_compress_encoder_feed(e: ObjRef<EncoderObj>, data: &[u8]) -> () {
+    fn msstd_compress_encoder_feed(e: ObjRef<EncoderObj>, data: &[u8]) -> () {
         e.codec.borrow_mut().feed(data);
     }
 
-    fn msrt_compress_encoder_finish(e: ObjRef<EncoderObj>) -> () {
+    fn msstd_compress_encoder_finish(e: ObjRef<EncoderObj>) -> () {
         e.codec.borrow_mut().finish();
     }
 
-    fn msrt_compress_encoder_has_output(e: ObjRef<EncoderObj>) -> bool {
+    fn msstd_compress_encoder_has_output(e: ObjRef<EncoderObj>) -> bool {
         e.codec.borrow().has_output()
     }
 
-    fn msrt_compress_encoder_is_finished(e: ObjRef<EncoderObj>) -> bool {
+    fn msstd_compress_encoder_is_finished(e: ObjRef<EncoderObj>) -> bool {
         e.codec.borrow().is_finished()
     }
 
-    fn msrt_compress_encoder_take(e: ObjRef<EncoderObj>, max: i64) -> out Vec<u8> {
+    fn msstd_compress_encoder_take(e: ObjRef<EncoderObj>, max: i64) -> out Vec<u8> {
         e.codec.borrow_mut().take(usize::try_from(max).unwrap_or(0))
     }
 }
@@ -157,15 +157,15 @@ mod tests {
         // SAFETY: all pointers are live; results are released below.
         unsafe {
             assert_eq!(
-                msrt_compress_compress(&input, &f, 6, 0, 0, packed.as_mut_ptr()),
+                msstd_compress_compress(&input, &f, 6, 0, 0, packed.as_mut_ptr()),
                 0
             );
             assert_eq!(
-                msrt_compress_decompress(packed.as_ptr(), &f, 1, 16, plain.as_mut_ptr()),
+                msstd_compress_decompress(packed.as_ptr(), &f, 1, 16, plain.as_mut_ptr()),
                 ms_rt::ffi::STATUS_LIMIT_EXCEEDED
             );
             assert_eq!(
-                msrt_compress_decompress(packed.as_ptr(), &f, 0, 0, plain.as_mut_ptr()),
+                msstd_compress_decompress(packed.as_ptr(), &f, 0, 0, plain.as_mut_ptr()),
                 0
             );
             assert_eq!(bytes_ref(plain.as_ptr()), b"hello hello hello");
@@ -190,31 +190,31 @@ mod tests {
         // SAFETY: all pointers are live; handles are released at the end.
         unsafe {
             assert_eq!(
-                msrt_compress_encoder_new(&f, 10, enc.as_mut_ptr()),
+                msstd_compress_encoder_new(&f, 10, enc.as_mut_ptr()),
                 ms_rt::ffi::STATUS_INVALID_INPUT
             );
-            assert_eq!(msrt_compress_encoder_new(&f, 6, enc.as_mut_ptr()), 0);
+            assert_eq!(msstd_compress_encoder_new(&f, 6, enc.as_mut_ptr()), 0);
             let enc = enc.assume_init();
-            msrt_compress_encoder_feed(enc, &data);
-            msrt_compress_encoder_finish(enc);
-            assert_eq!(msrt_compress_encoder_is_finished(enc), 1);
-            msrt_compress_encoder_take(enc, 1 << 20, chunk.as_mut_ptr());
-            assert_eq!(msrt_compress_decoder_new(&f, 0, 0, dec.as_mut_ptr()), 0);
+            msstd_compress_encoder_feed(enc, &data);
+            msstd_compress_encoder_finish(enc);
+            assert_eq!(msstd_compress_encoder_is_finished(enc), 1);
+            msstd_compress_encoder_take(enc, 1 << 20, chunk.as_mut_ptr());
+            assert_eq!(msstd_compress_decoder_new(&f, 0, 0, dec.as_mut_ptr()), 0);
             let dec = dec.assume_init();
             assert_eq!(
-                msrt_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
+                msstd_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
                 POLL_NEED_INPUT
             );
-            msrt_compress_decoder_feed(dec, chunk.as_ptr());
-            assert_eq!(msrt_compress_decoder_poll(dec, 100, plain.as_mut_ptr()), 0);
+            msstd_compress_decoder_feed(dec, chunk.as_ptr());
+            assert_eq!(msstd_compress_decoder_poll(dec, 100, plain.as_mut_ptr()), 0);
             assert_eq!(bytes_ref(plain.as_ptr()), b"hello hello hello");
             assert_eq!(
-                msrt_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
+                msstd_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
                 POLL_NEED_INPUT
             );
-            msrt_compress_decoder_finish_input(dec);
+            msstd_compress_decoder_finish_input(dec);
             assert_eq!(
-                msrt_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
+                msstd_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
                 POLL_DONE
             );
             ms_rt::obj::msrt_release(enc.cast());

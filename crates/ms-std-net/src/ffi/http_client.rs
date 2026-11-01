@@ -260,24 +260,24 @@ native! {
     // -------------------------------------------------------------------- errors
 
     /// `HttpError.message()` for a status and the `Failed` text (nullable).
-    fn msrt_http_error_message(status: u8, has_failed: bool, failed: &str) -> String {
+    fn msstd_http_error_message(status: u8, has_failed: bool, failed: &str) -> String {
         http_from_code(status, (if has_failed { failed } else { "" }).to_string()).message()
     }
 
     // ------------------------------------------------------------------- headers
 
     /// `HttpHeaders()`.
-    fn msrt_http_headers_new() -> Object<HeadersH> {
+    fn msstd_http_headers_new() -> Object<HeadersH> {
         new_headers(Headers::new())
     }
 
     /// `HttpHeaders.append(name, value)`.
-    fn msrt_http_headers_append(h: ObjRef<HeadersH>, name: &str, value: &[u8]) -> Result<(), StatusCode> {
+    fn msstd_http_headers_append(h: ObjRef<HeadersH>, name: &str, value: &[u8]) -> Result<(), StatusCode> {
         h.borrow_mut().append(name, value).map_err(code)
     }
 
     /// `HttpHeaders.values(name)`: 1 and the values when the field exists, 0 otherwise.
-    fn msrt_http_headers_values(h: ObjRef<HeadersH>, name: &str, out: Out<BytesList>) -> u8 {
+    fn msstd_http_headers_values(h: ObjRef<HeadersH>, name: &str, out: Out<BytesList>) -> u8 {
         let headers = h.borrow();
         let Some(values) = headers.values(name) else {
             return 0;
@@ -287,24 +287,24 @@ native! {
     }
 
     /// `HttpHeaders.names()`.
-    fn msrt_http_headers_names(h: ObjRef<HeadersH>, out: Out<Vec<String>>) -> () {
+    fn msstd_http_headers_names(h: ObjRef<HeadersH>, out: Out<Vec<String>>) -> () {
         out.write(h.borrow().names().into_iter().map(str::to_string).collect());
     }
 
     /// `HttpHeaders.remove(name)`.
-    fn msrt_http_headers_remove(h: ObjRef<HeadersH>, name: &str) -> bool {
+    fn msstd_http_headers_remove(h: ObjRef<HeadersH>, name: &str) -> bool {
         h.borrow_mut().remove(name)
     }
 
     /// `HttpHeaders.clone()`.
-    fn msrt_http_headers_clone(h: ObjRef<HeadersH>) -> Object<HeadersH> {
+    fn msstd_http_headers_clone(h: ObjRef<HeadersH>) -> Object<HeadersH> {
         new_headers(h.borrow().clone())
     }
 
     // -------------------------------------------------------------------- client
 
     /// `Network.http_client(options) -> Result[HttpClient, HttpError]`.
-    fn msrt_net_network_http_client(
+    fn msstd_net_network_http_client(
         net: ObjRef<NetH>,
         opts: &HttpClientOptionsWire,
         out: Out<Object<ClientH>>,
@@ -316,12 +316,12 @@ native! {
     }
 
     /// `HttpClient.close()`.
-    fn msrt_http_client_close(c: ObjRef<ClientH>) -> () {
+    fn msstd_http_client_close(c: ObjRef<ClientH>) -> () {
         c.close();
     }
 
     /// `HttpClient.request(method, address, headers, body, max_response, timeout)`.
-    fn msrt_http_client_request(
+    fn msstd_http_client_request(
         c: ObjRef<ClientH>,
         method: &str,
         address: &str,
@@ -346,7 +346,7 @@ native! {
     }
 
     /// `HttpClient.request` with a `Bytes` body.
-    fn msrt_http_client_request_bytes(
+    fn msstd_http_client_request_bytes(
         c: ObjRef<ClientH>,
         method: &str,
         address: &str,
@@ -371,7 +371,7 @@ native! {
     }
 
     /// `HttpClient.request` with a streamed body.
-    fn msrt_http_client_request_stream(
+    fn msstd_http_client_request_stream(
         c: ObjRef<ClientH>,
         method: &str,
         address: &str,
@@ -397,12 +397,12 @@ native! {
     // ------------------------------------------------------------ response body
 
     /// `HttpResponseBody.close()`.
-    fn msrt_http_body_close(b: ObjRef<BodyH>) -> () {
+    fn msstd_http_body_close(b: ObjRef<BodyH>) -> () {
         b.close();
     }
 
     /// `HttpResponseBody.metadata()`.
-    fn msrt_http_body_metadata(b: ObjRef<BodyH>) -> out MetadataWire {
+    fn msstd_http_body_metadata(b: ObjRef<BodyH>) -> out MetadataWire {
         MetadataWire {
             status: i64::from(b.status),
             headers: ObjSlot::new(HeadersH(Rc::new(RefCell::new(b.headers.borrow().clone())))),
@@ -411,7 +411,7 @@ native! {
     }
 
     /// `HttpResponseBody.read(max)`; the end of the body is `STATUS_NONE`.
-    fn msrt_http_body_read(
+    fn msstd_http_body_read(
         b: ObjRef<BodyH>,
         has_max: bool,
         max: i64,
@@ -427,7 +427,7 @@ native! {
     }
 
     /// `HttpResponseBody.read_all()`: the rest of the body in one buffer.
-    fn msrt_http_body_read_all(
+    fn msstd_http_body_read_all(
         b: ObjRef<BodyH>,
         out: Out<Vec<u8>>,
         err: ErrOut,
@@ -440,7 +440,7 @@ native! {
     // ----------------------------------------------------------------- one-shot
 
     /// `Network.request(method, address, headers, body, max_response, timeout)`.
-    fn msrt_net_network_request(
+    fn msstd_net_network_request(
         net: ObjRef<NetH>,
         method: &str,
         address: &str,
@@ -464,7 +464,7 @@ native! {
     }
 
     /// `Network.request` with a `Bytes` body.
-    fn msrt_net_network_request_bytes(
+    fn msstd_net_network_request_bytes(
         net: ObjRef<NetH>,
         method: &str,
         address: &str,
