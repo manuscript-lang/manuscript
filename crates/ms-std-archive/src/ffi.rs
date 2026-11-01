@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/io/archive.ms` (`msrt_archive_*`).
+//! C ABI shims for `@std/io/archive.ms` (`msstd_archive_*`).
 //!
 //! `ArchiveEntry` records are passed at their natural layout ([`EntryRec`]): a `List[ArchiveEntry]`
 //! holds them inline. The optional `ArchiveLimits` argument is flattened to a presence flag plus
@@ -18,7 +18,7 @@ abi_record! {
 }
 
 native! {
-    fn msrt_archive_pack(
+    fn msstd_archive_pack(
         entries: &RecList<EntryRec>,
         format: &str,
         has_max: bool,
@@ -36,7 +36,7 @@ native! {
         crate::pack(&entries, format, has_max.then_some(max))
     }
 
-    fn msrt_archive_unpack(
+    fn msstd_archive_unpack(
         data: &[u8],
         format: &str,
         has_limits: bool,

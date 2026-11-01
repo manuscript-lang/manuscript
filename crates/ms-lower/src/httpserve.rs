@@ -136,7 +136,7 @@ impl FnLower<'_> {
         let hir = self.hir.clone();
         let vt = self
             .cx
-            .handle_vtable_of(self.b.m, &hir, "msrt_http_exchange", iface)?;
+            .handle_vtable_of(self.b.m, &hir, "msstd_http_exchange", iface)?;
         let ht = crate::natiface::handle_ty(self.b.m);
         let b = FuncBuilder::new(
             self.b.m,

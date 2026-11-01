@@ -7,7 +7,7 @@ import ReadStream from "@std/io/io.ms"
 import TlsOptions from "@std/net/net.ms"
 import WebSocket from "@std/net/net.ms"
 import WebSocketError from "@std/net/net.ms"
-import msrt_http_client_close, msrt_http_client_request, msrt_http_client_request_bytes, msrt_http_client_request_stream, msrt_http_server_address, msrt_http_server_adopt, msrt_http_server_close, msrt_http_server_wait, msrt_http_body_close, msrt_http_body_metadata, msrt_http_body_read, msrt_http_body_read_all from "@std/internal/http.ms"
+import msstd_http_client_close, msstd_http_client_request, msstd_http_client_request_bytes, msstd_http_client_request_stream, msstd_http_server_address, msstd_http_server_adopt, msstd_http_server_close, msstd_http_server_wait, msstd_http_body_close, msstd_http_body_metadata, msstd_http_body_read, msstd_http_body_read_all from "@std/internal/http.ms"
 
 # Errors returned for invalid requests, transport failures, timeouts, and limits.
 export type HttpError:
@@ -38,17 +38,17 @@ impl HttpHeaders:
     # Appends a String value under a valid HTTP name; invalid names return InvalidInput.
     # Transport operations additionally validate framing and field values.
     var fn append(name: String, value: String) Unit!HttpError:
-        return msrt_http_headers_append(self, name, value.to_bytes())
+        return msstd_http_headers_append(self, name, value.to_bytes())
 
     # Appends raw bytes, for the rare field whose value is not UTF-8 text.
     var fn append_bytes(name: String, value: Bytes) Unit!HttpError:
-        return msrt_http_headers_append(self, name, value)
+        return msstd_http_headers_append(self, name, value)
 
     # Returns every value as an owned list, empty for an absent name.
     # A received value that is not valid UTF-8 is left out; read it with values_bytes.
     fn values(name: String) List[String]:
         var out: List[String] = []
-        let raw = msrt_http_headers_values(self, name)
+        let raw = msstd_http_headers_values(self, name)
         if let found = raw:
             for item in found:
                 if let text = item.decode_utf8(): out.append(text)
@@ -56,27 +56,27 @@ impl HttpHeaders:
 
     # Returns the raw bytes of every value as an owned list, or none for an absent name.
     fn values_bytes(name: String) List[Bytes]?:
-        return msrt_http_headers_values(self, name)
+        return msstd_http_headers_values(self, name)
 
     # Reports whether the name has any value, whatever its encoding.
     fn contains(name: String) Bool:
-        return msrt_http_headers_values(self, name).is_some()
+        return msstd_http_headers_values(self, name).is_some()
 
     # Returns first-inserted spellings in insertion order.
     fn names() List[String]:
-        return msrt_http_headers_names(self)
+        return msstd_http_headers_names(self)
 
     # Removes a name; existing list aliases are detached from this header object.
     var fn remove(name: String) Bool:
-        return msrt_http_headers_remove(self, name)
+        return msstd_http_headers_remove(self, name)
 
     # Copies name/list membership and shares immutable Bytes values.
     fn clone() HttpHeaders:
-        return msrt_http_headers_clone(self)
+        return msstd_http_headers_clone(self)
 
 # Creates empty mutable headers. No header values are joined or comma-combined.
 export fn headers() HttpHeaders:
-    return msrt_http_headers_new()
+    return msstd_http_headers_new()
 
 # Response status and headers shared by buffered and streaming response access.
 export type HttpResponseMetadata:
@@ -154,7 +154,7 @@ impl Closeable for HttpClient:
     # Cancels in-flight requests, closes open response bodies, and drops idle pooled connections.
     # Safe to call repeatedly; later requests return Closed.
     var fn close() Unit!:
-        msrt_http_client_close(self.native)
+        msstd_http_client_close(self.native)
         return ok(unit)
 
 impl HttpClient:
@@ -167,7 +167,7 @@ impl HttpClient:
         max_response_bytes: Int?,
         timeout: Duration?
     ) ResponseBody!HttpError:
-        return msrt_http_client_request(
+        return msstd_http_client_request(
             self.native, method, url, headers, body, max_response_bytes, timeout
         )
 
@@ -180,7 +180,7 @@ impl HttpClient:
         max_response_bytes: Int?,
         timeout: Duration?
     ) ResponseBody!HttpError:
-        return msrt_http_client_request_bytes(
+        return msstd_http_client_request_bytes(
             self.native, method, url, headers, body, max_response_bytes, timeout
         )
 
@@ -193,7 +193,7 @@ impl HttpClient:
         max_response_bytes: Int?,
         timeout: Duration?
     ) ResponseBody!HttpError:
-        return msrt_http_client_request_stream(
+        return msstd_http_client_request_stream(
             self.native, method, url, headers, body, max_response_bytes, timeout
         )
 
@@ -294,22 +294,22 @@ impl Closeable for HttpServer:
     # SIGINT/SIGTERM drains the same way when grace is nonzero: in-flight requests finish within the grace period before the program exits 130/143.
     # Safe to call repeatedly. A request handler calling close on its own server faults, and a shutdown error is raised as a fault.
     var fn close() Unit!:
-        msrt_http_server_close(self.native)
+        msstd_http_server_close(self.native)
         return ok(unit)
 
 impl HttpServer:
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
     fn address() String:
-        return msrt_http_server_address(self.native)
+        return msstd_http_server_address(self.native)
 
     # Serves the socket handle `Listener.accept_raw` returned, on the thread that started this server. The server owns the socket from here, also when it is closing and drops the connection. Use each handle once.
     fn adopt(connection: Int) Unit:
-        msrt_http_server_adopt(self.native, connection)
+        msstd_http_server_adopt(self.native, connection)
 
     # Blocks until the server stops. Returns Ok after a normal `close`, or IoError.Failed with the host's text if serving ended with an error.
     # Cancelling the waiting task stops the wait.
     fn wait() Unit!IoError:
-        return msrt_http_server_wait(self.native)
+        return msstd_http_server_wait(self.native)
 
 # Request and response limits, deadlines, graceful shutdown, and TLS server settings.
 export type HttpServerOptions:
@@ -341,23 +341,23 @@ impl Closeable for ResponseBody:
     # Cancels the rest of the response and releases its connection.
     # Safe to call repeatedly; reads afterwards return Closed. A fully read body lets the connection be reused.
     var fn close() Unit!:
-        msrt_http_body_close(self.native)
+        msstd_http_body_close(self.native)
         return ok(unit)
 
 impl ResponseBody:
     # Returns the response head (status and headers) without copying; it stays available after close.
     fn metadata() HttpResponseMetadata:
-        return msrt_http_body_metadata(self.native)
+        return msstd_http_body_metadata(self.native)
 
     # Returns the next chunk of the response body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past the request's `max_response_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
     fn read(max_bytes: Int?) Bytes?!IoError:
-        return msrt_http_body_read(self.native, max_bytes)
+        return msstd_http_body_read(self.native, max_bytes)
 
     # Reads the rest of the body into one value, with `read`'s limit and error rules.
     # A plain HTTP/1.1 body of known length arrives straight into the result without intermediate copies.
     fn read_all() Bytes!IoError:
-        return msrt_http_body_read_all(self.native)
+        return msstd_http_body_read_all(self.native)
 
 # Maps a stream failure to the HTTP error with the same meaning, so exchange handlers need one error type.
 export fn from_io(error: IoError) HttpError:
@@ -474,18 +474,18 @@ impl Error for HttpError:
             Timeout: return "HTTP: operation timed out"
             Failed(message): return message.clone()
 
-extern fn msrt_http_headers_append(
+extern fn msstd_http_headers_append(
     headers: HttpHeaders,
     name: String,
     value: Bytes
 ) Unit!HttpError
 
-extern fn msrt_http_headers_values(value: HttpHeaders, name: String) List[Bytes]?
+extern fn msstd_http_headers_values(value: HttpHeaders, name: String) List[Bytes]?
 
-extern fn msrt_http_headers_names(value: HttpHeaders) List[String]
+extern fn msstd_http_headers_names(value: HttpHeaders) List[String]
 
-extern fn msrt_http_headers_remove(value: HttpHeaders, name: String) Bool
+extern fn msstd_http_headers_remove(value: HttpHeaders, name: String) Bool
 
-extern fn msrt_http_headers_clone(value: HttpHeaders) HttpHeaders
+extern fn msstd_http_headers_clone(value: HttpHeaders) HttpHeaders
 
-extern fn msrt_http_headers_new() HttpHeaders
+extern fn msstd_http_headers_new() HttpHeaders

@@ -102,7 +102,7 @@ native! {
 
     /// `Network.serve(address, handler, options) -> Result[HttpServer, HttpError]`; the server takes a
     /// reference to the handler closure and releases it when dropped.
-    fn msrt_net_network_serve(
+    fn msstd_net_network_serve(
         net: ObjRef<NetH>,
         address: &str,
         env: Handler,
@@ -124,7 +124,7 @@ native! {
 
     /// `Network.serve_connections(handler, options) -> Result[HttpServer, HttpError]`: a server
     /// without a listener that serves what `HttpServer.adopt` hands it.
-    fn msrt_net_network_serve_connections(
+    fn msstd_net_network_serve_connections(
         net: ObjRef<NetH>,
         env: Handler,
         opts: &HttpServerOptionsWire,
@@ -140,24 +140,24 @@ native! {
     }
 
     /// `HttpServer.adopt(connection)`: serves a handle from `Listener.accept_raw`.
-    fn msrt_http_server_adopt(s: ObjRef<ServerH>, connection: i64) -> () {
+    fn msstd_http_server_adopt(s: ObjRef<ServerH>, connection: i64) -> () {
         s.adopt(connection);
     }
 
     /// `HttpServer.address()`.
-    fn msrt_http_server_address(s: ObjRef<ServerH>) -> String {
+    fn msstd_http_server_address(s: ObjRef<ServerH>) -> String {
         s.address().to_string()
     }
 
     /// `HttpServer.close()`; closing from one of its own handlers faults.
-    fn msrt_http_server_close(s: ObjRef<ServerH>) -> () {
+    fn msstd_http_server_close(s: ObjRef<ServerH>) -> () {
         if let Err(CloseError::FromHandler) = s.close() {
             fault("HTTP server cannot close from its own request");
         }
     }
 
     /// `HttpServer.wait()`.
-    fn msrt_http_server_wait(s: ObjRef<ServerH>) -> u8 {
+    fn msstd_http_server_wait(s: ObjRef<ServerH>) -> u8 {
         s.wait();
         0
     }
@@ -165,37 +165,37 @@ native! {
     // ------------------------------------------------------------------ exchange
 
     /// `HttpExchange.close()`.
-    fn msrt_http_exchange_close(x: ObjRef<ExchH>) -> () {
+    fn msstd_http_exchange_close(x: ObjRef<ExchH>) -> () {
         x.close();
     }
 
     /// `HttpExchange.headers()`.
-    fn msrt_http_exchange_headers(x: ObjRef<ExchH>) -> Object<HeadersH> {
+    fn msstd_http_exchange_headers(x: ObjRef<ExchH>) -> Object<HeadersH> {
         Object(HeadersH(Rc::new(RefCell::new(x.headers().borrow().clone()))))
     }
 
     /// `HttpExchange.method()`.
-    fn msrt_http_exchange_method(x: ObjRef<ExchH>) -> String {
+    fn msstd_http_exchange_method(x: ObjRef<ExchH>) -> String {
         x.method()
     }
 
     /// `HttpExchange.path()`.
-    fn msrt_http_exchange_path(x: ObjRef<ExchH>) -> String {
+    fn msstd_http_exchange_path(x: ObjRef<ExchH>) -> String {
         x.path()
     }
 
     /// `HttpExchange.protocol()`.
-    fn msrt_http_exchange_protocol(x: ObjRef<ExchH>) -> String {
+    fn msstd_http_exchange_protocol(x: ObjRef<ExchH>) -> String {
         x.protocol().to_string()
     }
 
     /// `HttpExchange.query()`.
-    fn msrt_http_exchange_query(x: ObjRef<ExchH>) -> String {
+    fn msstd_http_exchange_query(x: ObjRef<ExchH>) -> String {
         x.query()
     }
 
     /// `HttpExchange.read(max)`; the end of the body is `STATUS_NONE`.
-    fn msrt_http_exchange_read(
+    fn msstd_http_exchange_read(
         x: ObjRef<ExchH>,
         has_max: bool,
         max: i64,
@@ -206,7 +206,7 @@ native! {
     }
 
     /// `HttpExchange.send_headers(status, headers)`.
-    fn msrt_http_exchange_send_headers(
+    fn msstd_http_exchange_send_headers(
         x: ObjRef<ExchH>,
         status: i64,
         headers: ObjRef<HeadersH>,
@@ -217,7 +217,7 @@ native! {
     }
 
     /// `HttpExchange.send(status, headers, body)`.
-    fn msrt_http_exchange_send(
+    fn msstd_http_exchange_send(
         x: ObjRef<ExchH>,
         status: i64,
         headers: ObjRef<HeadersH>,
@@ -229,12 +229,12 @@ native! {
     }
 
     /// `HttpExchange.write(data)`.
-    fn msrt_http_exchange_write(x: ObjRef<ExchH>, data: &str, err: ErrOut) -> Result<(), StatusCode> {
+    fn msstd_http_exchange_write(x: ObjRef<ExchH>, data: &str, err: ErrOut) -> Result<(), StatusCode> {
         report(x.write(data.as_bytes()), &err)
     }
 
     /// `HttpExchange.write(data: Bytes)`.
-    fn msrt_http_exchange_write_bytes(x: ObjRef<ExchH>, data: &[u8], err: ErrOut) -> Result<(), StatusCode> {
+    fn msstd_http_exchange_write_bytes(x: ObjRef<ExchH>, data: &[u8], err: ErrOut) -> Result<(), StatusCode> {
         report(x.write(data), &err)
     }
 }

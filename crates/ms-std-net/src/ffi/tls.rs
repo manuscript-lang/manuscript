@@ -92,7 +92,7 @@ abi_record! {
 
 native! {
     /// `Network.connect_tls(address, server_name, timeout)`.
-    fn msrt_net_network_connect_tls(
+    fn msstd_net_network_connect_tls(
         net: ObjRef<NetH>,
         address: &str,
         server_name: &str,
@@ -107,7 +107,7 @@ native! {
     }
 
     /// `Network.connect_tls_config(address, options, timeout)`.
-    fn msrt_net_network_connect_tls_config(
+    fn msstd_net_network_connect_tls_config(
         net: ObjRef<NetH>,
         address: &str,
         opts: &TlsOptionsWire,
@@ -122,7 +122,7 @@ native! {
     }
 
     /// `Network.listen_tls(address, options, timeout)`.
-    fn msrt_net_network_listen_tls(
+    fn msstd_net_network_listen_tls(
         net: ObjRef<NetH>,
         address: &str,
         opts: &TlsOptionsWire,
@@ -137,7 +137,7 @@ native! {
     }
 
     /// `Connection.tls_info()`.
-    fn msrt_net_connection_tls_info(c: ObjRef<ConnH>) -> Result<TlsInfoWire, StatusCode> {
+    fn msstd_net_connection_tls_info(c: ObjRef<ConnH>) -> Result<TlsInfoWire, StatusCode> {
         let d = c.tls_info().map_err(|e| StatusCode(e.code()))?;
         Ok(TlsInfoWire {
             version: d.version,
@@ -149,7 +149,7 @@ native! {
     }
 
     /// `parse_certificates(pem, max)`: the certificates as a `List[CertificateInfo]`.
-    fn msrt_tls_parse_certificates(
+    fn msstd_tls_parse_certificates(
         pem: &str,
         has_max: bool,
         max: i64,
@@ -172,7 +172,7 @@ native! {
     }
 
     /// `verify_certificates(chain, roots, server_name, now)`.
-    fn msrt_tls_verify_certificates(
+    fn msstd_tls_verify_certificates(
         chain: &str,
         roots: &str,
         server_name: &str,
@@ -183,7 +183,7 @@ native! {
     }
 
     /// `TlsError.message()` for a status.
-    fn msrt_tls_error_message(status: u8) -> String {
+    fn msstd_tls_error_message(status: u8) -> String {
         match status {
             1 => TlsErr::InvalidInput,
             2 => TlsErr::InvalidData,
@@ -211,7 +211,7 @@ mod tests {
         unsafe {
             let mut certs = std::mem::MaybeUninit::<ms_rt_abi::VecVal>::zeroed();
             assert_eq!(
-                msrt_tls_parse_certificates(s(pem), 0, 0, certs.as_mut_ptr()),
+                msstd_tls_parse_certificates(s(pem), 0, 0, certs.as_mut_ptr()),
                 0
             );
             let certs = certs.assume_init();
@@ -220,7 +220,7 @@ mod tests {
             assert_eq!(first.not_after.seconds, 4_102_444_800);
             let mut limited = std::mem::MaybeUninit::<ms_rt_abi::VecVal>::zeroed();
             assert_eq!(
-                msrt_tls_parse_certificates(s(pem), 1, 0, limited.as_mut_ptr()),
+                msstd_tls_parse_certificates(s(pem), 1, 0, limited.as_mut_ptr()),
                 3
             );
             let now = Timestamp {
@@ -228,14 +228,14 @@ mod tests {
                 nanos: 0,
             };
             assert_eq!(
-                msrt_tls_verify_certificates(s(pem), s(pem), s("stdlib.test"), &now),
+                msstd_tls_verify_certificates(s(pem), s(pem), s("stdlib.test"), &now),
                 0
             );
             assert_eq!(
-                msrt_tls_verify_certificates(s(pem), s(pem), s("nope.test"), &now),
+                msstd_tls_verify_certificates(s(pem), s(pem), s("nope.test"), &now),
                 4
             );
-            let m = ms_rt::ffi::take_string(|o| msrt_tls_error_message(4, o));
+            let m = ms_rt::ffi::take_string(|o| msstd_tls_error_message(4, o));
             assert_eq!(m, "TLS: authentication failed");
         }
     }

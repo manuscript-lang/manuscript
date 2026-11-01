@@ -1383,9 +1383,9 @@ macro_rules! abi_record {
 ///
 /// ```ignore
 /// native! {
-///     fn msrt_path_basename(windows: bool, path: &str) -> String { rules(windows).basename(path) }
-///     fn msrt_path_relative(windows: bool, base: &str, target: &str) -> Result<String, InvalidInput> { .. }
-///     fn msrt_path_parse(windows: bool, path: &str) -> out PartsRec { .. }
+///     fn msstd_path_basename(windows: bool, path: &str) -> String { rules(windows).basename(path) }
+///     fn msstd_path_relative(windows: bool, base: &str, target: &str) -> Result<String, InvalidInput> { .. }
+///     fn msstd_path_parse(windows: bool, path: &str) -> out PartsRec { .. }
 /// }
 /// ```
 ///

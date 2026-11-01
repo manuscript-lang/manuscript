@@ -35,62 +35,62 @@ native! {
     // ----------------------------------------------------------------- IP values
 
     /// `parse_ip(text) -> Result[IpAddress, NetworkError]`.
-    fn msrt_net_parse_ip(text: &str, out: Out<Object<IpH>>, err: ErrOut) -> Result<(), StatusCode> {
+    fn msstd_net_parse_ip(text: &str, out: Out<Object<IpH>>, err: ErrOut) -> Result<(), StatusCode> {
         out.write(Object(IpH(report(crate::ip::parse_ip(text), &err)?)));
         Ok(())
     }
 
     /// `parse_cidr(text) -> Result[Cidr, NetworkError]`.
-    fn msrt_net_parse_cidr(text: &str, out: Out<Object<Cidr>>, err: ErrOut) -> Result<(), StatusCode> {
+    fn msstd_net_parse_cidr(text: &str, out: Out<Object<Cidr>>, err: ErrOut) -> Result<(), StatusCode> {
         out.write(Object(report(Cidr::parse(text), &err)?));
         Ok(())
     }
 
     /// `@std/data/json.ms` reading an `IpAddress` from its string form; the error text is dropped.
-    fn msrt_json_dec_ip(text: &str, out: Out<Object<IpH>>) -> Result<(), StatusCode> {
+    fn msstd_json_dec_ip(text: &str, out: Out<Object<IpH>>) -> Result<(), StatusCode> {
         out.write(Object(IpH(crate::ip::parse_ip(text).map_err(|_| StatusCode(1))?)));
         Ok(())
     }
 
     /// `@std/data/json.ms` reading a `Cidr` from its string form; the error text is dropped.
-    fn msrt_json_dec_cidr(text: &str, out: Out<Object<Cidr>>) -> Result<(), StatusCode> {
+    fn msstd_json_dec_cidr(text: &str, out: Out<Object<Cidr>>) -> Result<(), StatusCode> {
         out.write(Object(Cidr::parse(text).map_err(|_| StatusCode(1))?));
         Ok(())
     }
 
     /// `contains_ip(cidr, address) -> Result[Bool, NetworkError]`.
-    fn msrt_net_contains_ip(cidr: ObjRef<Cidr>, ip: ObjRef<IpH>, out: Out<bool>) -> Result<(), StatusCode> {
+    fn msstd_net_contains_ip(cidr: ObjRef<Cidr>, ip: ObjRef<IpH>, out: Out<bool>) -> Result<(), StatusCode> {
         out.write(cidr.contains(&ip));
         Ok(())
     }
 
     /// `IpAddress.text()`.
-    fn msrt_net_ip_address_text(ip: ObjRef<IpH>) -> String {
+    fn msstd_net_ip_address_text(ip: ObjRef<IpH>) -> String {
         ip_text(&ip)
     }
 
     /// `IpAddress.family()`: the `IpFamily` case index (`IPv4` = 0, `IPv6` = 1).
-    fn msrt_net_ip_address_family(ip: ObjRef<IpH>) -> u8 {
+    fn msstd_net_ip_address_family(ip: ObjRef<IpH>) -> u8 {
         u8::from(ip.is_ipv6())
     }
 
     /// `Cidr.text()`.
-    fn msrt_net_cidr_text(cidr: ObjRef<Cidr>) -> String {
+    fn msstd_net_cidr_text(cidr: ObjRef<Cidr>) -> String {
         cidr.text()
     }
 
     /// `IpFamily.text()` for a case index.
-    fn msrt_net_ip_family_text(family: u8) -> &'static str {
+    fn msstd_net_ip_family_text(family: u8) -> &'static str {
         if family == 0 { "IPv4" } else { "IPv6" }
     }
 
     /// `DnsKind.text()` for a case index.
-    fn msrt_net_dns_kind_text(kind: u8) -> &'static str {
+    fn msstd_net_dns_kind_text(kind: u8) -> &'static str {
         DnsKind::from_index(kind).map_or("", DnsKind::text)
     }
 
     /// `NetworkError.message()` for a status and the `Failed` text (nullable).
-    fn msrt_net_error_message(status: u8, has_failed: bool, failed: &str) -> String {
+    fn msstd_net_error_message(status: u8, has_failed: bool, failed: &str) -> String {
         let e = match status {
             1 => NetErr::InvalidInput,
             2 => NetErr::InvalidData,
@@ -108,12 +108,12 @@ native! {
 
     /// `network() -> Network` (a new handle on the isolate's root network). No handle is cached
     /// in a thread-local: its destructor would run after a worker's arena is gone.
-    fn msrt_net_network() -> Object<NetH> {
+    fn msstd_net_network() -> Object<NetH> {
         Object(NetH(root()))
     }
 
     /// `Network.close()`; closing from a handler of a server this network owns faults.
-    fn msrt_net_network_close(net: ObjRef<NetH>) -> () {
+    fn msstd_net_network_close(net: ObjRef<NetH>) -> () {
         if crate::http::server::Reactor::get().in_handler_of_network(&net) {
             ms_rt::ffi::fault("network cannot close from its own request");
         }
@@ -121,7 +121,7 @@ native! {
     }
 
     /// `Network.connect(address, timeout)`.
-    fn msrt_net_network_connect(
+    fn msstd_net_network_connect(
         net: ObjRef<NetH>,
         address: &str,
         has_timeout: bool,
@@ -135,7 +135,7 @@ native! {
     }
 
     /// `Network.connect_unix(path, timeout)`.
-    fn msrt_net_network_connect_unix(
+    fn msstd_net_network_connect_unix(
         net: ObjRef<NetH>,
         path: &str,
         has_timeout: bool,
@@ -149,7 +149,7 @@ native! {
     }
 
     /// `Network.listen(address)`.
-    fn msrt_net_network_listen(
+    fn msstd_net_network_listen(
         net: ObjRef<NetH>,
         address: &str,
         out: Out<Object<ListenerH>>,
@@ -160,7 +160,7 @@ native! {
     }
 
     /// `Network.listen_unix(path)`.
-    fn msrt_net_network_listen_unix(
+    fn msstd_net_network_listen_unix(
         net: ObjRef<NetH>,
         path: &str,
         out: Out<Object<ListenerH>>,
@@ -171,7 +171,7 @@ native! {
     }
 
     /// `Network.bind_datagram(address)`.
-    fn msrt_net_network_bind_datagram(
+    fn msstd_net_network_bind_datagram(
         net: ObjRef<NetH>,
         address: &str,
         out: Out<Object<DgramH>>,
@@ -182,7 +182,7 @@ native! {
     }
 
     /// `Network.restrict(hosts, cidrs, allow_listen)`.
-    fn msrt_net_network_restrict(
+    fn msstd_net_network_restrict(
         net: ObjRef<NetH>,
         hosts: Vec<&str>,
         cidrs: Vec<&str>,
@@ -195,7 +195,7 @@ native! {
     }
 
     /// `Network.with_resolver(address)`.
-    fn msrt_net_network_with_resolver(
+    fn msstd_net_network_with_resolver(
         net: ObjRef<NetH>,
         address: &str,
         out: Out<Object<NetH>>,
@@ -206,7 +206,7 @@ native! {
     }
 
     /// `Network.lookup(name, max, timeout)`.
-    fn msrt_net_network_lookup(
+    fn msstd_net_network_lookup(
         net: ObjRef<NetH>,
         name: &str,
         has_max: bool,
@@ -222,7 +222,7 @@ native! {
     }
 
     /// `Network.resolve(name, kind, max, timeout)`.
-    fn msrt_net_network_resolve(
+    fn msstd_net_network_resolve(
         net: ObjRef<NetH>,
         name: &str,
         kind: i64,
@@ -253,22 +253,22 @@ native! {
     // ---------------------------------------------------------------- Connection
 
     /// `Connection.close()`.
-    fn msrt_net_connection_close(c: ObjRef<ConnH>) -> () {
+    fn msstd_net_connection_close(c: ObjRef<ConnH>) -> () {
         c.close();
     }
 
     /// `Connection.local_address()`.
-    fn msrt_net_connection_local_address(c: ObjRef<ConnH>) -> String {
+    fn msstd_net_connection_local_address(c: ObjRef<ConnH>) -> String {
         c.local_address().to_string()
     }
 
     /// `Connection.peer_address()`.
-    fn msrt_net_connection_peer_address(c: ObjRef<ConnH>) -> String {
+    fn msstd_net_connection_peer_address(c: ObjRef<ConnH>) -> String {
         c.peer_address().to_string()
     }
 
     /// `Connection.read(max, timeout)`; end of stream is `STATUS_NONE`.
-    fn msrt_net_connection_read(
+    fn msstd_net_connection_read(
         c: ObjRef<ConnH>,
         has_max: bool,
         max: i64,
@@ -285,7 +285,7 @@ native! {
     }
 
     /// `Connection.write(data, timeout)`.
-    fn msrt_net_connection_write(
+    fn msstd_net_connection_write(
         c: ObjRef<ConnH>,
         data: &str,
         has_timeout: bool,
@@ -296,7 +296,7 @@ native! {
     }
 
     /// `Connection.write(data: Bytes, timeout)`.
-    fn msrt_net_connection_write_bytes(
+    fn msstd_net_connection_write_bytes(
         c: ObjRef<ConnH>,
         data: &[u8],
         has_timeout: bool,
@@ -307,7 +307,7 @@ native! {
     }
 
     /// `Connection.clone()`.
-    fn msrt_net_connection_clone(
+    fn msstd_net_connection_clone(
         c: ObjRef<ConnH>,
         out: Out<Object<ConnH>>,
         err: ErrOut,
@@ -318,14 +318,14 @@ native! {
     }
 
     /// `Connection.shutdown_write()`.
-    fn msrt_net_connection_shutdown_write(c: ObjRef<ConnH>, err: ErrOut) -> Result<(), StatusCode> {
+    fn msstd_net_connection_shutdown_write(c: ObjRef<ConnH>, err: ErrOut) -> Result<(), StatusCode> {
         report(c.shutdown_write(), &err)
     }
 
     // ------------------------------------------------------------------ Listener
 
     /// `Listener.accept(timeout)`.
-    fn msrt_net_listener_accept(
+    fn msstd_net_listener_accept(
         l: ObjRef<ListenerH>,
         has_timeout: bool,
         timeout: i64,
@@ -337,7 +337,7 @@ native! {
     }
 
     /// `Listener.accept_raw(timeout)`: the accepted socket's handle, for `HttpServer.adopt`.
-    fn msrt_net_listener_accept_raw(
+    fn msstd_net_listener_accept_raw(
         l: ObjRef<ListenerH>,
         has_timeout: bool,
         timeout: i64,
@@ -349,29 +349,29 @@ native! {
     }
 
     /// `Listener.address()`.
-    fn msrt_net_listener_address(l: ObjRef<ListenerH>) -> String {
+    fn msstd_net_listener_address(l: ObjRef<ListenerH>) -> String {
         l.address().to_string()
     }
 
     /// `Listener.close()`.
-    fn msrt_net_listener_close(l: ObjRef<ListenerH>) -> () {
+    fn msstd_net_listener_close(l: ObjRef<ListenerH>) -> () {
         l.close();
     }
 
     // ----------------------------------------------------------------- Datagrams
 
     /// `DatagramSocket.address()`.
-    fn msrt_net_datagram_address(sock: ObjRef<DgramH>) -> String {
+    fn msstd_net_datagram_address(sock: ObjRef<DgramH>) -> String {
         sock.address().to_string()
     }
 
     /// `DatagramSocket.close()`.
-    fn msrt_net_datagram_close(sock: ObjRef<DgramH>) -> () {
+    fn msstd_net_datagram_close(sock: ObjRef<DgramH>) -> () {
         sock.close();
     }
 
     /// `DatagramSocket.receive(max, timeout)`.
-    fn msrt_net_datagram_receive(
+    fn msstd_net_datagram_receive(
         sock: ObjRef<DgramH>,
         has_max: bool,
         max: i64,
@@ -389,7 +389,7 @@ native! {
     }
 
     /// `DatagramSocket.send(data, address, timeout)`.
-    fn msrt_net_datagram_send(
+    fn msstd_net_datagram_send(
         sock: ObjRef<DgramH>,
         data: &str,
         address: &str,
@@ -401,7 +401,7 @@ native! {
     }
 
     /// `DatagramSocket.send(data: Bytes, address, timeout)`.
-    fn msrt_net_datagram_send_bytes(
+    fn msstd_net_datagram_send_bytes(
         sock: ObjRef<DgramH>,
         data: &[u8],
         address: &str,
@@ -462,33 +462,33 @@ mod tests {
             let mut cidr = null_mut();
             let mut err = no_str();
             assert_eq!(
-                msrt_net_parse_ip(s("::ffff:192.0.2.1"), &mut ip, &mut err),
+                msstd_net_parse_ip(s("::ffff:192.0.2.1"), &mut ip, &mut err),
                 0
             );
             assert_eq!(
-                take_string(|o| msrt_net_ip_address_text(ip, o)),
+                take_string(|o| msstd_net_ip_address_text(ip, o)),
                 "192.0.2.1"
             );
-            assert_eq!(msrt_net_ip_address_family(ip), 0);
+            assert_eq!(msstd_net_ip_address_family(ip), 0);
             assert_eq!(
-                msrt_net_parse_cidr(s("192.0.2.3/24"), &mut cidr, &mut err),
+                msstd_net_parse_cidr(s("192.0.2.3/24"), &mut cidr, &mut err),
                 0
             );
-            assert_eq!(take_string(|o| msrt_net_cidr_text(cidr, o)), "192.0.2.0/24");
+            assert_eq!(take_string(|o| msstd_net_cidr_text(cidr, o)), "192.0.2.0/24");
             let mut yes = 0;
-            assert_eq!(msrt_net_contains_ip(cidr, ip, &mut yes), 0);
+            assert_eq!(msstd_net_contains_ip(cidr, ip, &mut yes), 0);
             assert_eq!(yes, 1);
-            assert_eq!(msrt_net_parse_ip(s("fe80::1%eth0"), &mut ip, &mut err), 2);
+            assert_eq!(msstd_net_parse_ip(s("fe80::1%eth0"), &mut ip, &mut err), 2);
             assert_eq!(
-                take_string(|o| msrt_net_error_message(2, 0, s(""), o)),
+                take_string(|o| msstd_net_error_message(2, 0, s(""), o)),
                 "network: invalid data"
             );
             assert_eq!(
-                take_string(|o| msrt_net_error_message(8, 1, s("boom"), o)),
+                take_string(|o| msstd_net_error_message(8, 1, s("boom"), o)),
                 "boom"
             );
-            assert_eq!(take_string(|o| msrt_net_dns_kind_text(3, o)), "MX");
-            assert_eq!(take_string(|o| msrt_net_ip_family_text(1, o)), "IPv6");
+            assert_eq!(take_string(|o| msstd_net_dns_kind_text(3, o)), "MX");
+            assert_eq!(take_string(|o| msstd_net_ip_family_text(1, o)), "IPv6");
         }
     }
 
@@ -496,31 +496,31 @@ mod tests {
     fn tcp_round_trip_through_the_abi() {
         // SAFETY: every pointer below is a live runtime object created in this test.
         unsafe {
-            let net = msrt_net_network();
+            let net = msstd_net_network();
             let (mut listener, mut client, mut server) = (null_mut(), null_mut(), null_mut());
             let mut err = no_str();
             assert_eq!(
-                msrt_net_network_listen(net, s("127.0.0.1:0"), &mut listener, &mut err),
+                msstd_net_network_listen(net, s("127.0.0.1:0"), &mut listener, &mut err),
                 0
             );
             let addr = Box::leak(Box::new(take_string_val(|o| {
-                msrt_net_listener_address(listener, o)
+                msstd_net_listener_address(listener, o)
             })));
             assert_eq!(
-                msrt_net_network_connect(net, addr, 1, 2_000_000_000, &mut client, &mut err),
+                msstd_net_network_connect(net, addr, 1, 2_000_000_000, &mut client, &mut err),
                 0
             );
             assert_eq!(
-                msrt_net_listener_accept(listener, 1, 2_000_000_000, &mut server, &mut err),
+                msstd_net_listener_accept(listener, 1, 2_000_000_000, &mut server, &mut err),
                 0
             );
             assert_eq!(
-                msrt_net_connection_write(client, s("hello"), 1, 2_000_000_000, &mut err),
+                msstd_net_connection_write(client, s("hello"), 1, 2_000_000_000, &mut err),
                 0
             );
             let mut out = MaybeUninit::<VecVal>::uninit();
             assert_eq!(
-                msrt_net_connection_read(
+                msstd_net_connection_read(
                     server,
                     1,
                     5,
@@ -532,9 +532,9 @@ mod tests {
                 0
             );
             assert_eq!(bytes_ref(out.as_ptr()), &b"hello"[..]);
-            assert_eq!(msrt_net_connection_shutdown_write(client, &mut err), 0);
+            assert_eq!(msstd_net_connection_shutdown_write(client, &mut err), 0);
             assert_eq!(
-                msrt_net_connection_read(
+                msstd_net_connection_read(
                     server,
                     0,
                     0,
@@ -547,17 +547,17 @@ mod tests {
             );
             // A timeout reports `Failed("operation timed out")` (IoError case 6).
             assert_eq!(
-                msrt_net_connection_read(client, 0, 0, 1, 20_000_000, out.as_mut_ptr(), &mut err),
+                msstd_net_connection_read(client, 0, 0, 1, 20_000_000, out.as_mut_ptr(), &mut err),
                 6
             );
             assert_eq!(take(err), "operation timed out");
             assert_eq!(
-                take_string(|o| msrt_net_connection_peer_address(server, o)),
-                take_string(|o| msrt_net_connection_local_address(client, o))
+                take_string(|o| msstd_net_connection_peer_address(server, o)),
+                take_string(|o| msstd_net_connection_local_address(client, o))
             );
-            msrt_net_connection_close(client);
-            msrt_net_connection_close(server);
-            msrt_net_listener_close(listener);
+            msstd_net_connection_close(client);
+            msstd_net_connection_close(server);
+            msstd_net_listener_close(listener);
             for h in [client.cast(), server.cast(), listener.cast(), net.cast()] {
                 ms_rt::obj::msrt_release(h);
             }
@@ -568,7 +568,7 @@ mod tests {
     fn restrict_and_resolve_through_the_abi() {
         // SAFETY: every pointer below is a live runtime object created in this test.
         unsafe {
-            let net = msrt_net_network();
+            let net = msstd_net_network();
             let mut child = null_mut();
             let mut err = no_str();
             let mut hosts = MaybeUninit::<VecVal>::uninit();
@@ -576,7 +576,7 @@ mod tests {
             let mut cidrs = MaybeUninit::<VecVal>::uninit();
             write_string_list(cidrs.as_mut_ptr(), ["127.0.0.0/8"]);
             assert_eq!(
-                msrt_net_network_restrict(
+                msstd_net_network_restrict(
                     net,
                     hosts.as_ptr(),
                     cidrs.as_ptr(),
@@ -588,12 +588,12 @@ mod tests {
             );
             let mut l = null_mut();
             assert_eq!(
-                msrt_net_network_listen(child, s("127.0.0.1:0"), &mut l, &mut err),
+                msstd_net_network_listen(child, s("127.0.0.1:0"), &mut l, &mut err),
                 4
             );
             let mut out = MaybeUninit::<VecVal>::uninit();
             assert_eq!(
-                msrt_net_network_lookup(
+                msstd_net_network_lookup(
                     net,
                     s("127.0.0.1"),
                     0,
@@ -608,7 +608,7 @@ mod tests {
             assert_eq!(read_string_list(out.as_ptr()), vec!["127.0.0.1"]);
             let mut records = MaybeUninit::<VecVal>::uninit();
             assert_eq!(
-                msrt_net_network_resolve(
+                msstd_net_network_resolve(
                     net,
                     s("127.0.0.1"),
                     0,
