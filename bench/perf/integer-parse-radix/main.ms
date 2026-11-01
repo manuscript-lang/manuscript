@@ -1,7 +1,7 @@
-import arguments from "@std/process.ms"
-import clock from "@std/time.ms"
-import stdout from "@std/io.ms"
-import parse_int from "@std/math.ms"
+import arguments from "@std/os/process.ms"
+import monotonic from "@std/os/time.ms"
+import stdout from "@std/io/io.ms"
+import parse_int from "@std/math/math.ms"
 
 export fn main() Int:
     let args = arguments()
@@ -11,20 +11,19 @@ export fn main() Int:
     let count = args[3].parse_int().get()
     let expected_checksum = args[4].parse_int().get()
     let expected_last = args[5]
-    let timer = clock()
 
     if operation == "parse_zero":
         let zeros = "0".repeat(4096).get()
         let text = "{zeros}1"
         var checksum = 0
         var last = 0
-        let start = timer.now()
+        let start = monotonic()
 
         for unused in 0..count:
             last = parse_int(text, digits).get()
             checksum += last
 
-        let elapsed = timer.now().difference(start).to_nanoseconds()
+        let elapsed = monotonic().difference(start).to_nanoseconds()
         let final_text = last.to_string()
         stdout().write("ns={elapsed} checksum={checksum} last={final_text}\n").get()
         if checksum != expected_checksum or final_text != expected_last:
@@ -46,13 +45,13 @@ export fn main() Int:
 
         var checksum = 0
         var last = ""
-        let start = timer.now()
+        let start = monotonic()
 
         for unused in 0..count:
             last = parse_int(text, digits).err().message()
             checksum += last.byte_length()
 
-        let elapsed = timer.now().difference(start).to_nanoseconds()
+        let elapsed = monotonic().difference(start).to_nanoseconds()
         stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
         if checksum != expected_checksum or last != expected_last:
             return 1
@@ -76,13 +75,13 @@ export fn main() Int:
 
         var checksum = 0
         var last = 0
-        let start = timer.now()
+        let start = monotonic()
 
         for i in 0..count:
             last = parse_int(texts[i % 1000], digits).get()
             checksum += last % 997
 
-        let elapsed = timer.now().difference(start).to_nanoseconds()
+        let elapsed = monotonic().difference(start).to_nanoseconds()
         let final_text = last.to_string()
         stdout().write("ns={elapsed} checksum={checksum} last={final_text}\n").get()
         if checksum != expected_checksum or final_text != expected_last:
@@ -92,7 +91,7 @@ export fn main() Int:
 
     var last = ""
     var checksum = 0
-    let start = timer.now()
+    let start = monotonic()
 
     for i in 0..count:
         var value = (i % 1000).to_float() / 8.0
@@ -119,7 +118,7 @@ export fn main() Int:
 
         checksum += last.byte_length()
 
-    let elapsed = timer.now().difference(start).to_nanoseconds()
+    let elapsed = monotonic().difference(start).to_nanoseconds()
     stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
     if checksum != expected_checksum or last != expected_last:
         return 1

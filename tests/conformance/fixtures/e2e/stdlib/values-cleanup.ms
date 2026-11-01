@@ -1,10 +1,10 @@
 # conform: tags=aliasing,closures,control-flow,faults,interfaces,lists,maps,match,modules,optional,records,stdlib-cleanup,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/values-cleanup.ms
-import expect_equal, expect_false, expect_not_equal, expect_ok, fail from "@std/test.ms"
+import expect_equal, expect_false, expect_not_equal, expect_ok, fail from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
-import JsonError from "@std/json.ms"
-import read_file, temporary, write_file from "@std/fs.ms"
+import JsonError from "@std/data/json.ms"
+import read_file, temporary, write_file from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 type Key:

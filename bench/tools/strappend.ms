@@ -4,8 +4,8 @@
 # wrong one (Git's `link` shadows MSVC's on Windows runners).
 import build_ms, build_rust, env, exe, finish, repeats, sample, usage from "./lib.ms"
 import summarize from "./strappend_table.ms"
-import copy_tree, temporary from "@std/fs.ms"
-import arguments from "@std/process.ms"
+import copy_tree, temporary from "@std/os/fs.ms"
+import arguments from "@std/os/process.ms"
 
 fn run(work: String, n: Int) Result[String, Error]:
     try copy_tree("bench/perf/strappend/ms", "{work}/ms", replace: true)

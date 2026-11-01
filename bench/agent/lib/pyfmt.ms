@@ -1,5 +1,5 @@
 # Number formatting that matches CPython's format specs, so regenerated Markdown tables stay identical.
-import round from "@std/math.ms"
+import round from "@std/math/math.ms"
 
 # Drops trailing zeros after a decimal point, and the point itself when nothing follows it.
 fn strip_zeros(text: String) String:

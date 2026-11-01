@@ -1,18 +1,17 @@
-import expect_equal, expect_error, expect_false from "@std/test.ms"
-import FileSystemError, open, temporary, write_file from "@std/fs.ms"
-import files, IoError from "@std/io.ms"
-import control from "@std/process.ms"
-import nanoseconds from "@std/time.ms"
-import compress, decompress, CompressionError from "@std/archive.ms"
-import pack, unpack, ArchiveEntry, ArchiveError from "@std/archive.ms"
+import expect_equal, expect_error, expect_false from "@std/test/test.ms"
+import FileSystemError, open, temporary, write_file from "@std/os/fs.ms"
+import IoError, open_read from "@std/io/io.ms"
+import monotonic_time, uptime from "@std/os/process.ms"
+import nanoseconds from "@std/os/time.ms"
+import compress, decompress, CompressionError from "@std/io/archive.ms"
+import pack, unpack, ArchiveEntry, ArchiveError from "@std/io/archive.ms"
 import StringError from "@std/string.ms"
 import Bytes from "@std/bytes.ms"
 
 test "raw monotonic nanoseconds share the typed process uptime origin":
-    let process = control()
-    let before = try process.uptime()
-    let reading = nanoseconds(process.monotonic_time())
-    let after = try process.uptime()
+    let before = try uptime()
+    let reading = nanoseconds(monotonic_time())
+    let after = try uptime()
     try expect_false(reading.compare(before) < 0 or reading.compare(after) > 0)
 
 test "closed codec strings reject spelling changes with their domain errors":
@@ -114,4 +113,4 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
     try expect_equal(
         (try expect_error(open(missing, "r", 384))), FileSystemError.NotFound
     )
-    try expect_equal((try expect_error(files().open(missing))), IoError.Unavailable)
+    try expect_equal((try expect_error(open_read(missing))), IoError.Unavailable)

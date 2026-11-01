@@ -1,6 +1,6 @@
 import operations, summarize, versions from "./datastructures_table.ms"
 import repeats from "./lib.ms"
-import expect_contains, expect_equal, expect_error, expect_ok from "@std/test.ms"
+import expect_contains, expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 fn trial(version: String, per: Int) List[String]:
     var lines = List[String]()

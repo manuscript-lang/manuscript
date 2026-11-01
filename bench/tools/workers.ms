@@ -1,8 +1,8 @@
 # Eight CPU-bound jobs (fib(38)) spread over 1, 2 and 4 workers; best wall time of N runs in ms (bench/perf/workers).
 # Usage: ms run bench/tools/workers.ms [-- repeats]; MS picks the compiler.
 import capture, finish, left, must, ms_binary, now_ns, repeats, right, usage from "./lib.ms"
-import temporary from "@std/fs.ms"
-import arguments from "@std/process.ms"
+import temporary from "@std/os/fs.ms"
+import arguments from "@std/os/process.ms"
 
 fn run(work: String, n: Int) Result[String, Error]:
     let app = "{work}/app"

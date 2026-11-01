@@ -1,4 +1,4 @@
-//! `@std/random.ms` operations over an `Entropy`: `secure_int`, `uuid_v4`, `float`, `shuffle`
+//! `@std/os/random.ms` operations over an `Entropy`: `secure_int`, `uuid_v4`, `float`, `shuffle`
 //! and `choice`.
 //!
 //! The runtime owns the algorithms as a `Draw` (`ms-std-random`). The loop asks it how many bytes
@@ -48,10 +48,10 @@ impl FnLower<'_> {
         result: MTy,
     ) -> Result<Val, Error> {
         let op = match native {
-            "random/secure_int" => Op::Int,
-            "random/uuid_v4" => Op::Uuid,
-            "random/float" => Op::Float,
-            "random/shuffle" => Op::Shuffle,
+            "random/draw_int" => Op::Int,
+            "random/draw_uuid" => Op::Uuid,
+            "random/draw_float" => Op::Float,
+            "random/draw_shuffle" => Op::Shuffle,
             _ => Op::Choice,
         };
         let find = |name: &str| args.iter().find(|a| a.name.as_str() == name).copied();

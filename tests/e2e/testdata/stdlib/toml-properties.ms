@@ -1,5 +1,5 @@
-import expect_not_equal, fail from "@std/test.ms"
-import parse, stringify, TomlValue from "@std/toml.ms"
+import expect_not_equal, fail from "@std/test/test.ms"
+import parse, stringify, TomlValue from "@std/data/toml.ms"
 import Rng, next, text, mutate from "./support/generator.ms"
 
 fn generated(var rng: Rng, depth: Int) TomlValue:

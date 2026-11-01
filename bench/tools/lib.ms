@@ -1,10 +1,10 @@
 # Shared helpers for the benchmark drivers under bench/. Run a driver from the repository root with
 # `ms run bench/tools/<name>.ms [-- arguments]`.
-import Stdio, commands, control, os_type, system from "@std/process.ms"
-import read_file, write_file, create_directory, is_absolute, join, remove, access from "@std/fs.ms"
-import stderr, stdin, stdout, read_all from "@std/io.ms"
-import JsonValue, parse, stringify from "@std/json.ms"
-import hex_encode from "@std/encoding.ms"
+import Stdio, os_type, change_directory, environment, monotonic_time, set_environment, working_directory, run, spawn, system_info from "@std/os/process.ms"
+import read_file, write_file, create_directory, is_absolute, join, remove, access from "@std/os/fs.ms"
+import stderr, stdin, stdout, read_all from "@std/io/io.ms"
+import JsonValue, parse, stringify from "@std/data/json.ms"
+import hex_encode from "@std/data/encoding.ms"
 import sha256 from "@std/crypto.ms"
 
 # Prints `message` and a newline to standard error.
@@ -26,14 +26,14 @@ export fn host() String:
 
 # The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
-    let all = control().environment().get(Map[String, String]())
+    let all = environment().get(Map[String, String]())
     if let value = all.get(name): return value.clone()
 
     return fallback
 
 # Nanoseconds since an arbitrary fixed origin on the monotonic clock.
 export fn now_ns() Int:
-    return control().monotonic_time()
+    return monotonic_time()
 
 # Output of a finished program; `ok` is false when it could not start.
 export type Ran:
@@ -44,7 +44,7 @@ export type Ran:
 
 # Runs `program` without a shell and captures both streams as text.
 export fn capture(program: String, arguments: List[String], input: String = "") Ran:
-    if let out = commands().run(program, arguments, input: input.to_bytes()):
+    if let out = run(program, arguments, input: input.to_bytes()):
         return Ran(
             true, out.exit_code, out.stdout.decode_utf8().get(""),
             out.stderr.decode_utf8().get("")
@@ -147,15 +147,15 @@ export fn repeats(text: String) Result[Int, Invalid]:
 export fn absolute(path: String) String:
     if is_absolute(path): return path.clone()
 
-    return join([control().working_directory().get("."), path])
+    return join([working_directory().get("."), path])
 
 # Workaround for #2165 (delete when run/spawn take a working directory). Runs `program` in directory `dir`, restoring the working directory afterwards; the working directory is process-wide.
 export fn run_in(dir: String, program: String, arguments: List[String]) Ran:
-    let here = control().working_directory().get(".")
-    control().change_directory(dir).get()
+    let here = working_directory().get(".")
+    change_directory(dir).get()
 
     let ran = capture(program, arguments)
-    control().change_directory(here).get()
+    change_directory(here).get()
     return ran
 
 # Fails with the program's stderr unless `ran` exited zero.
@@ -177,7 +177,7 @@ export fn build_ms(dir: String, out: String) Result[Unit, Invalid]:
 
 # Builds the Go module in `dir` as a static binary.
 export fn build_go(dir: String, out: String) Result[Unit, Invalid]:
-    control().set_environment("CGO_ENABLED", "0").get()
+    set_environment("CGO_ENABLED", "0").get()
 
     let go = env("GO", "go")
     let ran = run_in(
@@ -288,7 +288,7 @@ export fn exe() String:
 
 # A short platform description such as `linux-amd64`.
 export fn platform() String:
-    let info = system().info()
+    let info = system_info()
     return "{info.os}-{info.architecture}"
 
 # All of standard input as text.
@@ -326,12 +326,12 @@ export fn dump(value: JsonValue) String:
 
 # Runs `program` in `dir` with the parent's streams and returns its exit status (125 when it cannot start).
 export fn run_inherit(dir: String, program: String, arguments: List[String]) Int:
-    let here = control().working_directory().get(".")
-    control().change_directory(dir).get()
+    let here = working_directory().get(".")
+    change_directory(dir).get()
 
     var code = 125
 
-    if let child = commands().spawn(
+    if let child = spawn(
         program, arguments, stdin: Stdio.Null, stdout: Stdio.Inherit,
         stderr: Stdio.Inherit
     ):
@@ -340,7 +340,7 @@ export fn run_inherit(dir: String, program: String, arguments: List[String]) Int
     else:
         note("cannot start {program}")
 
-    control().change_directory(here).get()
+    change_directory(here).get()
     return code
 
 # Workaround for #2165 (delete when a finished child reports its peak RSS). Compiles bench/perf/representative/rss.c into `dir`. A parent cannot read the peak resident set of a finished child through

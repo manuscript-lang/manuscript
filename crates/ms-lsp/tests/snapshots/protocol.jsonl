@@ -8,26 +8,25 @@
 {"id":2,"jsonrpc":"2.0","result":[]}
 {"error":{"code":-32602,"message":"document is not open"},"id":3,"jsonrpc":"2.0"}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"file://$TMP/ms-lsp-protocol-PID/main.ms","version":1}}
-#large
+{"error":{"code":-32602,"message":"unknown standard-library module"},"id":4,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"unknown standard-library module"},"id":5,"jsonrpc":"2.0"}
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"manuscript-stdlib:///io.ms","version":1}}
-{"id":6,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nIterator: Iterator[T]\n```\n\nA source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.\n`for item in source:` calls `next` until `none`; a variable or field path advances in place and\nkeeps its final state, while any other expression is held by the loop alone. `next` should keep\nreturning `none` after the end. The item is a borrow: it stays valid, and the iterator\nunchanged, until the loop body ends; clone it to keep it."},"range":{"end":{"character":26,"line":0},"start":{"character":18,"line":0}}}}
-{"id":7,"jsonrpc":"2.0","result":[{"range":{"end":{"character":25,"line":76},"start":{"character":17,"line":76}},"uri":"manuscript-stdlib:///core.ms"}]}
-{"id":8,"jsonrpc":"2.0","result":[{"range":{"end":{"character":15,"line":0},"start":{"character":7,"line":0}},"uri":"manuscript-stdlib:///deque.ms"},{"range":{"end":{"character":15,"line":0},"start":{"character":7,"line":0}},"uri":"manuscript-stdlib:///queue.ms"},{"range":{"end":{"character":26,"line":0},"start":{"character":18,"line":0}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":13,"line":113},"start":{"character":5,"line":113}},"uri":"manuscript-stdlib:///io.ms"}]}
-{"id":9,"jsonrpc":"2.0","result":[{"detail":"@std/core.ms","filterText":"Iterator","insertTextFormat":1,"kind":7,"label":"Iterator","sortText":"Iterator","textEdit":{"newText":"Iterator","range":{"end":{"character":26,"line":0},"start":{"character":18,"line":0}}}}]}
+{"id":6,"jsonrpc":"2.0","result":null}
+{"id":7,"jsonrpc":"2.0","result":null}
+{"id":8,"jsonrpc":"2.0","result":null}
+{"id":9,"jsonrpc":"2.0","result":[]}
 {"id":10,"jsonrpc":"2.0","result":null}
 {"id":11,"jsonrpc":"2.0","result":null}
-{"id":12,"jsonrpc":"2.0","result":[]}
-#large
+{"id":12,"jsonrpc":"2.0","result":null}
+{"id":13,"jsonrpc":"2.0","result":[]}
 {"id":14,"jsonrpc":"2.0","result":null}
 {"id":15,"jsonrpc":"2.0","result":null}
-{"id":16,"jsonrpc":"2.0","result":[]}
-#large
+{"id":16,"jsonrpc":"2.0","result":null}
+{"id":17,"jsonrpc":"2.0","result":[]}
 {"id":18,"jsonrpc":"2.0","result":null}
 {"id":19,"jsonrpc":"2.0","result":null}
-{"id":20,"jsonrpc":"2.0","result":[]}
-{"id":21,"jsonrpc":"2.0","result":[{"filterText":"extern","insertTextFormat":1,"kind":14,"label":"extern","sortText":"05_extern","textEdit":{"newText":"extern ","range":{"end":{"character":6,"line":20},"start":{"character":0,"line":20}}}}]}
-#large
-#large
-{"id":24,"jsonrpc":"2.0","result":[]}
+{"id":20,"jsonrpc":"2.0","result":null}
+{"id":21,"jsonrpc":"2.0","result":[]}
+{"error":{"code":-32602,"message":"document is not open"},"id":22,"jsonrpc":"2.0"}
+{"id":23,"jsonrpc":"2.0","result":[]}
+{"error":{"code":-32602,"message":"document is not open"},"id":24,"jsonrpc":"2.0"}
 {"id":25,"jsonrpc":"2.0","result":null}

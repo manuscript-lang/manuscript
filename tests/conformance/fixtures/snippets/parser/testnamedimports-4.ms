@@ -4,4 +4,4 @@
 import (
     ListEntry,  # first
     MapEntry,
-) from "@std/collections.ms"
+) from "@std/collections/collections.ms"

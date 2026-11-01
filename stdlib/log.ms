@@ -1,13 +1,13 @@
 import Data from "@std/core.ms"
-import IoError from "@std/io.ms"
-import WriteStream from "@std/io.ms"
+import IoError from "@std/io/io.ms"
+import WriteStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
-import FileHandle, FileSystemError, open from "@std/fs.ms"
-import stdout from "@std/io.ms"
-import stringify from "@std/json.ms"
-import wall_clock from "@std/time.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
+import FileHandle, FileSystemError, open from "@std/os/fs.ms"
+import stdout from "@std/io/io.ms"
+import stringify from "@std/data/json.ms"
+import now from "@std/os/time.ms"
 import LogCoreError, LogGate, LogState, new_gate, new_state, object_text from "@std/logcore.ms"
 
 # Errors returned while validating or writing a structured log record.
@@ -126,7 +126,7 @@ fn core_error(cause: LogCoreError) LogError:
 
 # Milliseconds since the Unix epoch, the unit of the `time` field.
 fn now_ms() Int:
-    let now = wall_clock().now()
+    let now = now()
     return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
 
 # Writes to a byte stream the caller owns; closing the transport leaves the stream open.

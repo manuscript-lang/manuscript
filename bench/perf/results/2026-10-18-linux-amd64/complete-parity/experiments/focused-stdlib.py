@@ -3,7 +3,7 @@ import shutil
 root=Path('/workspace/manuscript');target=Path('/tmp/manuscript-focused-stdlib')
 if target.exists():shutil.rmtree(target)
 shutil.copytree(root/'bench/perf/stdlib',target)
-p=target/'src/harness.ms';s=p.read_text().replace('import range from','import arguments from "@std/process.ms"\nimport range from',1)
+p=target/'src/harness.ms';s=p.read_text().replace('import range from','import arguments from "@std/os/process.ms"\nimport range from',1)
 start=s.index('    let started =',s.index('export fn bench('));end=s.index('\nexport fn ints(',start)
 s=s[:start]+'''    let selected = arguments().get(0, "")
     if selected != name: return
@@ -16,7 +16,7 @@ s=s[:start]+'''    let selected = arguments().get(0, "")
         say("# checksum {name} {checksum}\\n")
         sample += 1
 ''' +s[end:];p.write_text(s)
-(target/'src/main.ms').write_text('''import arguments from "@std/process.ms"
+(target/'src/main.ms').write_text('''import arguments from "@std/os/process.ms"
 import bench_string from "./strings.ms"
 import bench_map_set from "./maps.ms"
 import bench_regex from "./regexbench.ms"

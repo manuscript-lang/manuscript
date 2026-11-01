@@ -1,6 +1,6 @@
-import base64_encode, base64_decode from "@std/encoding.ms"
+import base64_encode, base64_decode from "@std/data/encoding.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "empty Base64 accepts default and explicit alphabets":
     let empty = Bytes([])

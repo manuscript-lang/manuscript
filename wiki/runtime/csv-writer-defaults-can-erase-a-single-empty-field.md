@@ -6,5 +6,5 @@ Verified: a naive CSV writer emits the same bare line ending for zero fields and
 
 
 Apply when: changing CSV adapters or relying on a codec's round-trip behavior.
-Evidence: [called CSV regressions](../../tests/e2e/testdata/stdlib/csv.ms), [CSV crate](../crates/ms-std-csv/src), [CSV contract](../../stdlib/json.ms).
+Evidence: [called CSV regressions](../../tests/e2e/testdata/stdlib/csv.ms), [CSV crate](../crates/ms-std-csv/src), [CSV contract](../../stdlib/data/json.ms).
 Verify: round-trip consecutive single empty fields with LF/CRLF and alternate delimiters; check distinct empty-row output and exact byte, row, and cell budgets.

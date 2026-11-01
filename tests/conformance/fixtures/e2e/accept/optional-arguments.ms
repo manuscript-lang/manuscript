@@ -2,8 +2,8 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/optional-arguments.ms
 import TextError from "@std/core.ms"
-import expect_equal, expect_false from "@std/test.ms"
-import Queue from "@std/queue.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
+import Queue from "@std/collections/queue.ms"
 
 fn number(value: Int?) Int: value.get(-1)
 

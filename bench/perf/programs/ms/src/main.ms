@@ -1,6 +1,6 @@
 import TextError from "@std/core.ms"
-import stdout, stdin, read_line, ReadStream from "@std/io.ms"
-import clock, Instant from "@std/time.ms"
+import stdout, stdin, read_line, ReadStream from "@std/io/io.ms"
+import Instant, monotonic from "@std/os/time.ms"
 import StringBuilder from "@std/string.ms"
 
 interface Counter:
@@ -29,7 +29,7 @@ fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
 fn since(started: Instant) Int:
-    return clock().now().difference(started).to_nanoseconds()
+    return monotonic().difference(started).to_nanoseconds()
 
 fn report(name: String, ops: Int, started: Instant) Unit:
     say("{name} {ops} {since(started)}\n")
@@ -61,7 +61,7 @@ fn area(s: Shape) Int:
     return out
 
 fn bench_string() Int:
-    let t = clock().now()
+    let t = monotonic()
     var sb = StringBuilder()
     var i = 0
 
@@ -74,7 +74,7 @@ fn bench_string() Int:
     return built.byte_length()
 
 fn bench_read_line() Unit:
-    let t = clock().now()
+    let t = monotonic()
     let input = stdin()
     var lines = 0
     var more = true
@@ -88,7 +88,7 @@ fn bench_read_line() Unit:
     report("read_line", lines, t)
 
 fn bench_map() Int:
-    let t = clock().now()
+    let t = monotonic()
     var m = Map[Int, Int]()
     var i = 0
 
@@ -107,7 +107,7 @@ fn bench_map() Int:
     return sum
 
 fn bench_int_eq() Int:
-    let t = clock().now()
+    let t = monotonic()
     var hits = 0
     var i = 0
 
@@ -120,7 +120,7 @@ fn bench_int_eq() Int:
     return hits
 
 fn bench_generic() Int:
-    let t = clock().now()
+    let t = monotonic()
     var i = 0
     var g = 0
 
@@ -132,7 +132,7 @@ fn bench_generic() Int:
     return g
 
 fn bench_method() Int:
-    let t = clock().now()
+    let t = monotonic()
     var acc = Acc(0)
     var i = 0
 
@@ -144,7 +144,7 @@ fn bench_method() Int:
     return acc.total
 
 fn bench_try() Int:
-    let t = clock().now()
+    let t = monotonic()
     var i = 0
     var tr = 0
 
@@ -160,7 +160,7 @@ fn bench_try() Int:
     return tr
 
 fn bench_match() Int:
-    let t = clock().now()
+    let t = monotonic()
     let shapes = [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
     var i = 0
     var ma = 0
@@ -180,7 +180,7 @@ fn bench_length() Int:
         xs.append(i)
         i += 1
 
-    let t = clock().now()
+    let t = monotonic()
     i = 0
 
     var ln = 0
@@ -200,7 +200,7 @@ fn bench_for_list() Int:
         big.append(i)
         i += 1
 
-    let t = clock().now()
+    let t = monotonic()
     var fs = 0
     var rep = 0
 

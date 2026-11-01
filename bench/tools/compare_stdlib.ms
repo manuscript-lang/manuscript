@@ -2,8 +2,8 @@
 # Usage: ms run bench/tools/compare_stdlib.ms -- --before MS --after MS --output DIR [--repeats 5] [--samples 5] [--filter TEXT]
 import Invalid, absolute, dump, ensure_directory, fail, file_sha256, finish, invalid, jfloat, jint, jobject, jstr, median, options, platform, stdlib_bench, write_text from "./lib.ms"
 import Stats, case_labels, read_cases from "./stdlib_results.ms"
-import arguments from "@std/process.ms"
-import JsonValue from "@std/json.ms"
+import arguments from "@std/os/process.ms"
+import JsonValue from "@std/data/json.ms"
 
 # One document as `{case: operations}` and `{case: median ns/op}`.
 export type Sample:

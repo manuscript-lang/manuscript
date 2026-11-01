@@ -335,10 +335,11 @@ pub(crate) fn lower_tests(
             .callables
             .values()
             .find(|c| {
-                c.module.file.as_str() == "@std/bench.ms" && c.name.as_str() == "run_bench_block"
+                c.module.file.as_str() == "@std/test/bench.ms"
+                    && c.name.as_str() == "run_bench_block"
             })
             .cloned()
-            .ok_or_else(|| Error::new("the bench driver @std/bench.ms is not loaded"))?;
+            .ok_or_else(|| Error::new("the bench driver @std/test/bench.ms is not loaded"))?;
         let driver = cx.function_for(&mut m, &driver, &Subst::new())?;
         let per: Vec<i64> = tests
             .iter()

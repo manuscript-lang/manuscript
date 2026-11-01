@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/archive.ms` (`msrt_compress_*`). The format is passed by name
+//! C ABI shims for `@std/io/archive.ms` (`msrt_compress_*`). The format is passed by name
 //! (`"gzip"`, `"zlib"`, `"deflate"`); `CompressionFormat` methods pass the matching constant.
 //! Statuses: `STATUS_INVALID_INPUT`, `STATUS_INVALID_DATA`, `STATUS_LIMIT_EXCEEDED` and
 //! `STATUS_UNSUPPORTED` (9); `Failed(message)` is never produced.

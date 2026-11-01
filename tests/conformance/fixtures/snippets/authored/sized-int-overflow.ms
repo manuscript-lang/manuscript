@@ -1,7 +1,7 @@
 # conform: tags=numbers,types,faults,tier-core
 # conform: phase=run
 # conform: origin=sized numeric types stage 1
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     let a: Int8 = 100

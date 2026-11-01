@@ -1,8 +1,8 @@
 import Closeable, panic from "@std/core.ms"
-import read_file, temporary, write_file from "@std/fs.ms"
-import TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_error, expect_fault, expect_ok, expect_true from "@std/test.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import read_file, temporary, write_file from "@std/os/fs.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_error, expect_fault, expect_ok, expect_true from "@std/test/test.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 # The scope-end close of a binding runs on every exit and is shielded like any other close: cancellation and a
 # pending fault do not interrupt it, and a fault inside it follows the cleanup-failure table.

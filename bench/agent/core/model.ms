@@ -1,8 +1,8 @@
 # Data loading shared by the runner: challenges, languages, pricing. Paths are relative to the repository
 # root, where every command in README.md runs.
-import JsonValue, parse from "@std/json.ms"
+import JsonValue, parse from "@std/data/json.ms"
 import panic from "@std/core.ms"
-import access, list, read_file from "@std/fs.ms"
+import access, list, read_file from "@std/os/fs.ms"
 import env from "../lib/text.ms"
 
 # `bench/agent` when the command runs from the repository root, `.` when it runs inside this directory (as `ms test` does).

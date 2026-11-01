@@ -1,4 +1,4 @@
-import expect_equal, expect_error, expect_false, expect_ok, expect_true from "@std/test.ms"
+import expect_equal, expect_error, expect_false, expect_ok, expect_true from "@std/test/test.ms"
 import (
     Transport,
     LogLevel,
@@ -9,9 +9,9 @@ import (
     stdout_transport,
     file_transport
 ) from "@std/log.ms"
-import IoError from "@std/io.ms"
-import JsonValue from "@std/json.ms"
-import FileSystemError, append_file_bytes, open, read_file, temporary, write_file from "@std/fs.ms"
+import IoError from "@std/io/io.ms"
+import JsonValue from "@std/data/json.ms"
+import FileSystemError, append_file_bytes, open, read_file, temporary, write_file from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 type Items:

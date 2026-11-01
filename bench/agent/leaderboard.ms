@@ -6,12 +6,12 @@
 # Run from the repository root. Pass rate counts every trial. Cost, tokens, turns and time average over PASSING
 # trials only, so a cheap wrong answer never improves a ranking. Tokens are input (cache reads included) plus
 # output. Turns are agent steps in the Harbor trajectory. Ranking: pass rate, then mean cost of passing trials.
-import JsonValue, parse from "@std/json.ms"
-import access, glob, stat from "@std/fs.ms"
-import stdout, stderr from "@std/io.ms"
-import arguments from "@std/process.ms"
-import parse_timestamp, wall_clock from "@std/time.ms"
-import round from "@std/math.ms"
+import JsonValue, parse from "@std/data/json.ms"
+import access, glob, stat from "@std/os/fs.ms"
+import stdout, stderr from "@std/io/io.ms"
+import arguments from "@std/os/process.ms"
+import parse_timestamp, now from "@std/os/time.ms"
+import round from "@std/math/math.ms"
 import root from "./core/model.ms"
 import dumps, dumps_data from "./lib/pyjson.ms"
 import fixed, mean_scaled, pct0 from "./lib/pyfmt.ms"
@@ -54,7 +54,7 @@ fn lang_name(id: String) String:
     return id.clone()
 
 fn today() String:
-    return wall_clock().now().format("YYYY-MM-DD", "Local").get("")
+    return now().format("YYYY-MM-DD", "Local").get("")
 
 fn trials_file() String: "{root()}/results/trials-{today()}.jsonl"
 

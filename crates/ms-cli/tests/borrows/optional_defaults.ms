@@ -1,4 +1,4 @@
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import TextError from "@std/core.ms"
 
 fn fallback(var calls: Int) List[Int]?:

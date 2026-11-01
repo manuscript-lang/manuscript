@@ -1,4 +1,4 @@
-//! `@std/net.ms` natives, built on the byte-oriented parser in [`gourl`].
+//! `@std/net/net.ms` natives, built on the byte-oriented parser in [`gourl`].
 #![no_std]
 
 // Links the msrt_* runtime symbols into this crate's test binaries.
@@ -15,7 +15,7 @@ use alloc::vec::Vec;
 use gourl::{S, Url};
 use ms_rt::ffi::Fail;
 
-/// The `Url` record of `@std/net.ms`.
+/// The `Url` record of `@std/net/net.ms`.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Components {
     pub scheme: String,

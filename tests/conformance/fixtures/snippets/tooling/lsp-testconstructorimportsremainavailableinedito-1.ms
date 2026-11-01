@@ -1,8 +1,8 @@
 # conform: tags=diagnostics,modules,stdlib-collections,stdlib-csv,strings,tier-stdlib
 # conform: phase=check
 # conform: origin=pkg/tooling/lsp/constructor_imports_test.go:9 TestConstructorImportsRemainAvailableInEditor
-import Partition from "@std/collections.ms"
-import CsvOptions from "@std/csv.ms"
+import Partition from "@std/collections/collections.ms"
+import CsvOptions from "@std/data/csv.ms"
 
 fn example() Unit:
     Set[String]()

@@ -1,6 +1,6 @@
-diag parse 9:9:129 end=9:9:129 fix=- "expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body"
-import 1:1:0 1:8:7 "expect_equal" "@std/test.ms"
-(decl 3:1:41 interface "Increment" false false 0:0:0 false [] [] [] [(decl 4:8:69 fn "apply" false false 0:0:0 false [] [] [] [] [(param 4:14:75 "value" (type 4:21:82 "Int" [] [] nil) nil) ] (type 4:26:87 "Int" [] [] nil) nil nil []) ] [] nil nil nil [])
-(decl 6:1:92 record "Offset" false false 0:0:0 false [] [(param 7:5:109 "delta" (type 7:12:116 "Int" [] [] nil) nil) ] [] [] [] nil nil nil [])
+diag parse 9:9:134 end=9:9:134 fix=- "expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body"
+import 1:1:0 1:8:7 "expect_equal" "@std/test/test.ms"
+(decl 3:1:46 interface "Increment" false false 0:0:0 false [] [] [] [(decl 4:8:74 fn "apply" false false 0:0:0 false [] [] [] [] [(param 4:14:80 "value" (type 4:21:87 "Int" [] [] nil) nil) ] (type 4:26:92 "Int" [] [] nil) nil nil []) ] [] nil nil nil [])
+(decl 6:1:97 record "Offset" false false 0:0:0 false [] [(param 7:5:114 "delta" (type 7:12:121 "Int" [] [] nil) nil) ] [] [] [] nil nil nil [])
 omitted []
 recovered []

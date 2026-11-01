@@ -1,7 +1,7 @@
-import arguments from "@std/process.ms"
-import clock from "@std/time.ms"
-import stdout from "@std/io.ms"
-import extension, parse, normalize from "@std/fs.ms"
+import arguments from "@std/os/process.ms"
+import monotonic from "@std/os/time.ms"
+import stdout from "@std/io/io.ms"
+import extension, parse, normalize from "@std/os/fs.ms"
 
 export fn main() Int:
     let args = arguments()
@@ -15,7 +15,6 @@ export fn main() Int:
     let expected_3 = args[7]
     let expected_4 = args[8]
     let expected_5 = args[9]
-    let timer = clock()
     var checksum = 0
     var status = "OK"
     var f0 = ""
@@ -24,7 +23,7 @@ export fn main() Int:
     var f3 = ""
     var f4 = ""
     var f5 = ""
-    let started = timer.now()
+    let started = monotonic()
 
     for i in 0..count:
         if operation == "extension":
@@ -61,7 +60,7 @@ export fn main() Int:
         if status == "InvalidData":
             checksum += 1
 
-    let ns = timer.now().difference(started).to_nanoseconds()
+    let ns = monotonic().difference(started).to_nanoseconds()
     (
         stdout().write(
             "{count}\t{ns}\t{checksum}\t{status}\t{f0}\t{f1}\t{f2}\t{f3}\t{f4}\t{f5}\n"

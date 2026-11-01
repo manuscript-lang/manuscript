@@ -2,11 +2,11 @@
 # conform: phase=run
 # conform: timeout=30
 # Leaving a ProcessGroup block stops the children's own children too.
-import Channel from "@std/channels.ms"
-import read_file, remove, temporary_root, write_file from "@std/fs.ms"
-import stdout from "@std/io.ms"
-import ProcessGroup from "@std/processes.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import Channel from "@std/io/channels.ms"
+import read_file, remove, temporary_root, write_file from "@std/os/fs.ms"
+import stdout from "@std/io/io.ms"
+import ProcessGroup from "@std/os/processes.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 fn marker() String:
     let root = temporary_root().get("/tmp")

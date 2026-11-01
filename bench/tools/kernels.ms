@@ -4,8 +4,8 @@
 # MS, GO, RUSTC and CC pick the tools.
 import ablations, base_versions, c_versions, summarize from "./kernels_table.ms"
 import build_go, build_ms, build_rust, capture, env, fail, finish, must, repeats, rotate, sample from "./lib.ms"
-import copy_tree, create_directory, temporary from "@std/fs.ms"
-import arguments from "@std/process.ms"
+import copy_tree, create_directory, temporary from "@std/os/fs.ms"
+import arguments from "@std/os/process.ms"
 
 fn build_c(source: String, out: String, flags: List[String]) Result[Unit, Error]:
     var args = ["-O2", "-std=c11", "-ffp-contract=off"].concat(flags)

@@ -1,9 +1,9 @@
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 import first_view, first_method, first_generic, first_resource from "./first.ms"
 import second_view, second_method, second_generic, second_resource from "./second.ms"
 import Item, Resource from "./domain.ms"
 import Read, read_view from "./contracts.ms"
-import share from "@std/shared.ms"
+import share from "@std/concurrency/shared.ms"
 
 fn close_first(resource: Resource) Unit:
     let _held = first_resource(resource)

@@ -1,11 +1,11 @@
-import from_bytes, map, take, concat, tee, map_writer, digest from "@std/streams.ms"
-import read_all, copy, IoError, read_line from "@std/io.ms"
-import CompressionFormat from "@std/archive.ms"
+import from_bytes, map, take, concat, tee, map_writer, digest from "@std/io/streams.ms"
+import read_all, copy, IoError, read_line from "@std/io/io.ms"
+import CompressionFormat from "@std/io/archive.ms"
 import HashAlgorithm, sha256 from "@std/crypto.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
-import open, read_file, temporary from "@std/fs.ms"
-import expect_ok from "@std/test.ms"
+import open, read_file, temporary from "@std/os/fs.ms"
+import expect_ok from "@std/test/test.ms"
 
 fn upper(chunk: Bytes) Bytes:
     return chunk.decode_utf8().get("").upper().to_bytes()

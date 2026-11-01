@@ -1,4 +1,4 @@
-import Shared, share from "@std/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 
 interface Shape:
     fn area() Int

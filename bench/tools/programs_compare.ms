@@ -2,7 +2,7 @@
 # Usage: ms run bench/tools/programs_compare.ms -- --before B --after A --go G --input I --output DIR [--repeats 30]
 import absolute, ensure_directory, fail, finish, options, permutations, read_text, sample, write_text from "./lib.ms"
 import summarize from "./programs_table.ms"
-import arguments from "@std/process.ms"
+import arguments from "@std/os/process.ms"
 
 fn lines_of(version: String, content: String) List[String]:
     return content.split("\n").filter(fn l: l != "").map(fn l: "{version} {l}")

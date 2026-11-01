@@ -1,4 +1,4 @@
-import open from "@std/fs.ms"
+import open from "@std/os/fs.ms"
 
 # A file handle has one owner: moving it into a list ends its use here.
 fn reuse(path: String) Int!:

@@ -1,9 +1,9 @@
 # conform: tags=closures,scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
 import Closeable from "@std/core.ms"
-import stdout from "@std/io.ms"
-import TaskGroup, cancelled from "@std/tasks.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import TaskGroup, cancelled from "@std/concurrency/tasks.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 fn say(text: String) Unit:
     let _ = stdout().write(text + "\n")

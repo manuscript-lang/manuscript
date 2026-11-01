@@ -433,7 +433,7 @@ impl Checker {
         match name.as_str() {
             "range" => {
                 return format!(
-                    "{message}; there is no range function: write start..end for the integers from start up to but excluding end, or range_by from \"@std/collections.ms\" for a stepped list"
+                    "{message}; there is no range function: write start..end for the integers from start up to but excluding end, or range_by from \"@std/collections/collections.ms\" for a stepped list"
                 );
             }
             "nil" | "null" | "None" | "undefined" => {
@@ -474,32 +474,38 @@ impl Checker {
             }
             "float" | "parseFloat" | "parse_float" => {
                 return format!(
-                    "{message}; parse text with parse_float (import parse_float from \"@std/math.ms\"), which returns a Result; an Int converts with value.to_float()"
+                    "{message}; parse text with parse_float (import parse_float from \"@std/math/math.ms\"), which returns a Result; an Int converts with value.to_float()"
                 );
             }
             "Object" | "Array" | "dict" | "list" => {
                 return format!(
-                    "{message}; use List[T] and Map[K, V] from \"@std/collections.ms\"; read a Map with m.keys(), m.values() or m.entries()"
+                    "{message}; use List[T] and Map[K, V] from \"@std/collections/collections.ms\"; read a Map with m.keys(), m.values() or m.entries()"
                 );
             }
             "Math" | "math" => {
                 return format!(
-                    "{message}; the math functions (floor, sqrt, pow, ...) are in \"@std/math.ms\": import floor from \"@std/math.ms\""
+                    "{message}; the math functions (floor, sqrt, pow, ...) are in \"@std/math/math.ms\": import floor from \"@std/math/math.ms\""
                 );
             }
             "console" | "System" | "fmt" | "os" => {
                 return format!(
-                    "{message}; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")"
+                    "{message}; there is no built-in print: import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")"
                 );
             }
             "spawn" | "Promise" | "Future" | "Thread" | "thread" | "setTimeout" | "setInterval" => {
                 return format!(
-                    "{message}; there is no free {name}: start tasks with a TaskGroup from \"@std/tasks.ms\" bound to a local, e.g. group.spawn(fn ch: work(), timeout: some(nanoseconds(...)))"
+                    "{message}; there is no free {name}: start tasks with a TaskGroup from \"@std/concurrency/tasks.ms\" bound to a local, e.g. group.spawn(fn ch: work(), timeout: some(nanoseconds(...)))"
+                );
+            }
+            "filesystem" | "network" | "commands" | "control" | "system" | "clock"
+            | "wall_clock" | "entropy" | "terminal" | "files" => {
+                return format!(
+                    "{message}; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/os/time.ms\""
                 );
             }
             "print" | "println" | "printf" | "puts" | "echo" => {
                 return format!(
-                    "{message}; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")"
+                    "{message}; there is no built-in print: import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")"
                 );
             }
             _ => {}
@@ -750,18 +756,16 @@ impl Checker {
         if path.starts_with("@std/") {
             let pn = n(path);
             if !stdlib::is_native_module(pn) && stdlib::standard_source_module(pn).is_none() {
-                let stem = |p: &str| {
-                    p.trim_start_matches("@std/")
-                        .trim_end_matches(".ms")
-                        .to_string()
-                };
-                let stems: Vec<String> = stdlib::standard_module_names()
-                    .iter()
-                    .map(|s| stem(s))
-                    .collect();
-                let hint = did_you_mean(&stem(path), &stems)
-                    .replace("; did you mean '", "; did you mean '@std/")
-                    .replace("'?", ".ms'?");
+                let stem = |p: &str| stdlib::module_stem(p).to_string();
+                let names = stdlib::standard_module_names();
+                let stems: Vec<String> = names.iter().map(|s| stem(s)).collect();
+                let mut hint = did_you_mean(&stem(path), &stems);
+                let suggested = hint.split('\'').nth(1).map(str::to_string);
+                if let Some(found) = suggested
+                    && let Some(full) = names.iter().find(|name| stem(name) == found)
+                {
+                    hint = format!("; did you mean '{full}'?");
+                }
                 return format!("unknown standard module {path}{hint}");
             }
             exports.extend(
@@ -874,7 +878,7 @@ pub fn builtin_constructor_hint(typ: &Ty) -> String {
     match typ.to_string().as_str() {
         "String" => "; make text with interpolation \"{value}\" or value.to_string()".to_string(),
         "Int" => "; parse text with text.parse_int() (Int?); Float has truncate_to_int()".to_string(),
-        "Float" => "; convert an Int with value.to_float(); parse text with parse_float (import parse_float from \"@std/math.ms\")".to_string(),
+        "Float" => "; convert an Int with value.to_float(); parse text with parse_float (import parse_float from \"@std/math/math.ms\")".to_string(),
         _ => String::new(),
     }
 }

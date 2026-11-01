@@ -6,11 +6,11 @@
 # expect-fail.windows.txt). E2E_BUILD_TYPE picks the build type (default Release, which the deep-nesting
 # fixtures need to finish quickly); E2E_JOBS the number of parallel workers.
 # Usage: ms run tools/e2e.ms [-- fixture paths to run instead]
-import env, exe, host, note, run from "./lib.ms"
-import DirectoryEntry, access, list, read_file, stat from "@std/fs.ms"
-import CpuInfo, arguments, commands, control, system from "@std/process.ms"
-import TaskGroup, Task from "@std/tasks.ms"
-import stdout from "@std/io.ms"
+import env, exe, host, note, run_program from "./lib.ms"
+import DirectoryEntry, access, list, read_file, stat from "@std/os/fs.ms"
+import CpuInfo, arguments, change_directory, working_directory, run, cpus from "@std/os/process.ms"
+import TaskGroup, Task from "@std/concurrency/tasks.ms"
+import stdout from "@std/io/io.ms"
 
 # The exit status and combined output of one `ms` invocation.
 type Ran:
@@ -18,7 +18,7 @@ type Ran:
     output: String
 
 fn exec(ms: String, args: List[String]) Ran:
-    if let out = commands().run(ms, args):
+    if let out = run(ms, args):
         let text = out.stdout.decode_utf8().get("") + out.stderr.decode_utf8().get("")
         return Ran(out.exit_code, text)
 
@@ -81,7 +81,7 @@ fn covered_by_corpus(ctx: Context, case_path: String) Bool:
 # Whether the project's tests pass, or its main.ms checks and prints expected-output.txt.
 fn project_passes(ctx: Context, dir: String) Ran:
     if access("{dir}/conformance_test.ms", 0).is_ok():
-        control().change_directory(dir).get()
+        change_directory(dir).get()
 
         let ran = exec(
             ctx.ms,
@@ -89,7 +89,7 @@ fn project_passes(ctx: Context, dir: String) Ran:
                 "test", "conformance_test.ms", "--build-type", ctx.build_type.clone()
             ]
         )
-        control().change_directory(back(dir)).get()
+        change_directory(back(dir)).get()
         return ran
 
     if access("{dir}/ms.toml", 0).is_ok(): return exec(
@@ -100,10 +100,10 @@ fn project_passes(ctx: Context, dir: String) Ran:
     if checked.code != 0: return checked
     if not access("{dir}/expected-output.txt", 0).is_ok(): return checked
 
-    control().change_directory(dir).get()
+    change_directory(dir).get()
 
     let ran = exec(ctx.ms, ["run", "main.ms", "--build-type", ctx.build_type.clone()])
-    control().change_directory(back(dir)).get()
+    change_directory(back(dir)).get()
     if ran.code != 0: return ran
 
     let want = read_file("{dir}/expected-output.txt").get().decode_utf8().get("")
@@ -212,15 +212,15 @@ fn ms_files(dir: String) List[String]:
     return names.sorted(fn(a: String, b: String) Int: a.compare(b))
 
 export fn main() Int:
-    let root = control().working_directory().get()
+    let root = working_directory().get()
     let build_type = env("E2E_BUILD_TYPE", "Release")
     var expect_files = ["tests/e2e/expect-fail.txt"]
     if host() == "windows": expect_files.append("tests/e2e/expect-fail.windows.txt")
 
-    var code = run("cargo", ["xtask", "runtime"])
+    var code = run_program("cargo", ["xtask", "runtime"])
     if code != 0: return code
 
-    code = run(
+    code = run_program(
         "cargo", ["build", "--locked", "-q", "-p", "ms-cli", "--target-dir", "target"]
     )
     if code != 0: return code
@@ -257,7 +257,7 @@ export fn main() Int:
     var jobs = 2
 
     if let n = env("E2E_JOBS", "").parse_int(): jobs = n
-    else: jobs = system().cpus().get(List[CpuInfo]()).length()
+    else: jobs = cpus().get(List[CpuInfo]()).length()
 
     if jobs < 1: jobs = 1
 

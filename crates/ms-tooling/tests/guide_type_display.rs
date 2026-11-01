@@ -105,7 +105,7 @@ fn standard_source_signatures_do_not_teach_rejected_optional_syntax() {
     let matches = search("fs.read_file", 10);
     let read_file = matches
         .iter()
-        .find(|m| m.module == "@std/fs.ms" && m.name == "read_file")
+        .find(|m| m.module == "@std/os/fs.ms" && m.name == "read_file")
         .unwrap();
     assert!(
         read_file.signature.contains("max_bytes: Int?"),

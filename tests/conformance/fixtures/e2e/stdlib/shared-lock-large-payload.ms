@@ -1,10 +1,10 @@
 # conform: tags=stdlib-shared,stdlib-tasks,tier-io
 # conform: phase=run
 # conform: timeout=20
-import stdout from "@std/io.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
-import TaskGroup from "@std/tasks.ms"
+import stdout from "@std/io/io.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
 
 # Closing a guard hands the payload back without copying it, so locking costs the same for a large
 # payload, and a group of many tasks (whose registry is a locked list) stays linear.

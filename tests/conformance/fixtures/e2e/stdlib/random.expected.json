@@ -11,22 +11,22 @@
       "tests": [
         {
           "index": 0,
-          "name": "random.ms::random algorithms call Manuscript entropy implementations",
+          "name": "random.ms::random bytes returns the requested count and rejects out-of-range counts",
           "status": "passed"
         },
         {
           "index": 1,
-          "name": "random.ms::random errors propagate and invalid ranges do not read entropy",
+          "name": "random.ms::secure_int stays in range and rejects an empty range",
           "status": "passed"
         },
         {
           "index": 2,
-          "name": "random.ms::random accepts negative exclusive upper bounds",
+          "name": "random.ms::uuid_v4 has the version and variant bits",
           "status": "passed"
         },
         {
           "index": 3,
-          "name": "random.ms::float shuffle and choice use the supplied entropy",
+          "name": "random.ms::float shuffle and choice use operating system entropy",
           "status": "passed"
         }
       ],
@@ -40,7 +40,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN random.ms::random algorithms call Manuscript entropy implementations\nPASS random.ms::random algorithms call Manuscript entropy implementations\nRUN random.ms::random errors propagate and invalid ranges do not read entropy\nPASS random.ms::random errors propagate and invalid ranges do not read entropy\nRUN random.ms::random accepts negative exclusive upper bounds\nPASS random.ms::random accepts negative exclusive upper bounds\nRUN random.ms::float shuffle and choice use the supplied entropy\nPASS random.ms::float shuffle and choice use the supplied entropy\n4 tests, 0 failed\n",
+      "stdout": "RUN random.ms::random bytes returns the requested count and rejects out-of-range counts\nPASS random.ms::random bytes returns the requested count and rejects out-of-range counts\nRUN random.ms::secure_int stays in range and rejects an empty range\nPASS random.ms::secure_int stays in range and rejects an empty range\nRUN random.ms::uuid_v4 has the version and variant bits\nPASS random.ms::uuid_v4 has the version and variant bits\nRUN random.ms::float shuffle and choice use operating system entropy\nPASS random.ms::float shuffle and choice use operating system entropy\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

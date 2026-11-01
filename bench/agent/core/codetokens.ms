@@ -3,7 +3,7 @@
 # A token is an identifier or keyword, a number, a string literal, or one punctuation/operator character.
 # Comments are excluded. This is a size measure of the final program, not any model's tokenizer count.
 import compile from "@std/string.ms"
-import glob from "@std/fs.ms"
+import glob from "@std/os/fs.ms"
 import read_text from "../lib/text.ms"
 
 let SKIP_DIRS = [

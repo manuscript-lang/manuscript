@@ -2,7 +2,7 @@
 //! fault, abort or hang fails only that one.
 //!
 //! `ms bench` uses the same protocol over the `bench` blocks. Each runs under the
-//! `@std/bench.ms` driver, which calibrates, repeats and times the body, reads its
+//! `@std/test/bench.ms` driver, which calibrates, repeats and times the body, reads its
 //! settings from `MS_BENCH_TIME_MS`, `MS_BENCH_SAMPLES` and `MS_BENCH_ITERATIONS`,
 //! and writes one `MSBENCH {json}` line of per-iteration statistics to standard
 //! output. The bench's other standard output is discarded.

@@ -1,5 +1,5 @@
-import ascii_decode from "@std/encoding.ms"
-import expect_equal from "@std/test.ms"
+import ascii_decode from "@std/data/encoding.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn work() Unit!:
     let expected = try "A".repeat(1048576)

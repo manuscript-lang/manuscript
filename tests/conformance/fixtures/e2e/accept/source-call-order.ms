@@ -1,7 +1,7 @@
 # conform: tags=faults,generics,match,modules,mutation,optional,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/source-call-order.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn pair(a: Int, b: Int) Int: a * 10 + b
 

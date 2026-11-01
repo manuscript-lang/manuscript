@@ -1,9 +1,9 @@
 # Shared helpers for the repository tools in this directory. Run a tool from the repository root
 # with `ms run tools/<name>.ms [-- arguments]`.
-import Stdio, commands, control, os_type from "@std/process.ms"
-import canonicalize, read_file from "@std/fs.ms"
-import stderr from "@std/io.ms"
-import hex_encode from "@std/encoding.ms"
+import Stdio, os_type, environment, set_environment, run, spawn from "@std/os/process.ms"
+import canonicalize, read_file from "@std/os/fs.ms"
+import stderr from "@std/io/io.ms"
+import hex_encode from "@std/data/encoding.ms"
 import sha256 from "@std/crypto.ms"
 
 # `linux`, `macos` or `windows`.
@@ -39,7 +39,7 @@ export fn note(message: String) Unit:
 
 # The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
-    let all = control().environment().get(Map[String, String]())
+    let all = environment().get(Map[String, String]())
     if let value = all.get(name): return value.clone()
 
     return fallback
@@ -52,8 +52,8 @@ export fn status(code: Int) Int:
 
 # Runs `program` with the parent's streams and returns its exit status; the PATH is searched.
 # A program that cannot start, or one that ends with a status above 125, reports 125.
-export fn run(program: String, arguments: List[String]) Int:
-    if let child = commands().spawn(
+export fn run_program(program: String, arguments: List[String]) Int:
+    if let child = spawn(
         program, arguments, stdin: Stdio.Null, stdout: Stdio.Inherit,
         stderr: Stdio.Inherit
     ):
@@ -64,13 +64,13 @@ export fn run(program: String, arguments: List[String]) Int:
 
 # Runs `program` and returns its standard output; empty when it cannot run or fails.
 export fn capture(program: String, arguments: List[String]) String:
-    if let out = commands().run(program, arguments):
+    if let out = run(program, arguments):
         if out.exit_code == 0: return out.stdout.decode_utf8().get("")
     return ""
 
 # Whether `program` runs and exits zero with `arguments`.
 export fn works(program: String, arguments: List[String]) Bool:
-    if let out = commands().run(program, arguments): return out.exit_code == 0
+    if let out = run(program, arguments): return out.exit_code == 0
 
     return false
 
@@ -99,19 +99,17 @@ export fn use_stats_runtime() Int:
     if host() == "linux":
         target = "{arch}-unknown-linux-musl"
         release = "{target}/release"
-        control().set_environment(
-            "CC_{target.replace("-", "_")}", env("CC", "cc")
-        ).get()
+        set_environment("CC_{target.replace("-", "_")}", env("CC", "cc")).get()
     else if host() == "windows":
         target = "{arch}-pc-windows-gnullvm"
         release = "{target}/release"
 
         let mingw = env("MS_MINGW", "target/llvm-bundle/mingw")
-        control().set_environment(
+        set_environment(
             "CC_{target.replace("-", "_")}", "{mingw}/bin/{arch}-w64-mingw32-clang"
         ).get()
 
-    control().set_environment("CARGO_TARGET_DIR", stats_target).get()
+    set_environment("CARGO_TARGET_DIR", stats_target).get()
 
     var build = [
         "build", "--release", "--locked", "-q", "-p", "ms-native", "--features",
@@ -119,15 +117,15 @@ export fn use_stats_runtime() Int:
     ]
     if target != "": build = build.concat(["--target", target.clone()])
 
-    var code = run("cargo", build)
-    control().set_environment("CARGO_TARGET_DIR", none).get()
+    var code = run_program("cargo", build)
+    set_environment("CARGO_TARGET_DIR", none).get()
     if code != 0: return code
 
-    code = run("cargo", ["xtask", "runtime"])
+    code = run_program("cargo", ["xtask", "runtime"])
     if code != 0: return code
 
     let lib = canonicalize("{stats_target}/{release}/libms_native.a").get()
-    control().set_environment("MS_RT_LIB", lib).get()
+    set_environment("MS_RT_LIB", lib).get()
     return 0
 
 # The ms that runs the programs under test: `MS` (resolved against `root` when relative), else

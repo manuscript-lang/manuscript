@@ -5,4 +5,4 @@ import (
     List  # collection
     ,
     range
-) from "@std/collections.ms"
+) from "@std/collections/collections.ms"

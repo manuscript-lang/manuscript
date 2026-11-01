@@ -2,7 +2,7 @@
 # the Rust one, each printing its own timing.
 # Usage: ms run bench/tools/cargo_vs_ms.ms -- <toml|csv>   (MS picks the compiler)
 import ms_binary, run_inherit, usage from "./lib.ms"
-import arguments from "@std/process.ms"
+import arguments from "@std/os/process.ms"
 
 export fn main() Int:
     let args = arguments()

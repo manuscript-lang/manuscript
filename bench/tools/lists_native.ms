@@ -2,9 +2,9 @@
 # Usage: ms run bench/tools/lists_native.ms -- --cli MS --output DIR [--runs 3] [--cpu N]
 # Peak RSS needs a C compiler (bench/perf/representative/rss.c) and a Unix host; --cpu pins executions with `taskset` (Linux).
 import absolute, build_rss, dump, ensure_directory, fail, file_sha256, finish, jfloat, jint, jlist, jobject, jstr, median, must, capture, now_ns, options, read_text, rss_run, write_text from "./lib.ms"
-import arguments from "@std/process.ms"
-import JsonValue from "@std/json.ms"
-import stdout from "@std/io.ms"
+import arguments from "@std/os/process.ms"
+import JsonValue from "@std/data/json.ms"
+import stdout from "@std/io/io.ms"
 
 type Workload:
     name: String

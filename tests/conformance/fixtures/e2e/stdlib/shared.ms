@@ -1,8 +1,8 @@
 # conform: tags=records,interfaces,mutation,stdlib-shared,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import share, Shared from "@std/shared.ms"
-import lock from "@std/sync.ms"
-import expect_equal, expect_fault from "@std/test.ms"
+import share, Shared from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
+import expect_equal, expect_fault from "@std/test/test.ms"
 
 type Config:
     name: String

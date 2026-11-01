@@ -1,7 +1,7 @@
 # conform: tags=faults,formatter,match,modules,mutation,optional,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/collection-call-order.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "receiver before index":
     let values = [7]

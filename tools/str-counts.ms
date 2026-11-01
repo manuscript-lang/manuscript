@@ -3,10 +3,10 @@
 # change) and owned ones. Owned copies are the allocations unique ownership would add; `bench/tools/copy_report.ms` counts the static
 # sites.
 # Usage: ms run tools/str-counts.ms -- <ms.toml|file.ms>...
-import exe, note, run, use_stats_runtime, works from "./lib.ms"
-import canonicalize, temporary from "@std/fs.ms"
-import arguments, control, commands from "@std/process.ms"
-import stdout from "@std/io.ms"
+import exe, note, run_program, use_stats_runtime, works from "./lib.ms"
+import canonicalize, temporary from "@std/os/fs.ms"
+import arguments, set_environment, run from "@std/os/process.ms"
+import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     let programs = arguments()
@@ -18,13 +18,15 @@ export fn main() Int:
     let code = use_stats_runtime()
     if code != 0: return code
 
-    let built = run("cargo", ["build", "--release", "--locked", "-q", "-p", "ms-cli"])
+    let built = run_program(
+        "cargo", ["build", "--release", "--locked", "-q", "-p", "ms-cli"]
+    )
     if built != 0: return built
 
     let ms = canonicalize("target/release/ms{exe()}").get()
     let scratch = temporary("ms-str-counts-").get()
     let binary = "{scratch.path()}/program{exe()}"
-    control().set_environment("MS_COUNT_STR", "1").get()
+    set_environment("MS_COUNT_STR", "1").get()
 
     for program in programs:
         stdout().write("== {program}\n").get()
@@ -34,12 +36,7 @@ export fn main() Int:
             return 1
 
         var text = ""
-        if let out = commands().run(binary.clone(), []): text = (
-            out
-            .stderr
-            .decode_utf8()
-            .get("")
-        )
+        if let out = run(binary.clone(), []): text = out.stderr.decode_utf8().get("")
 
         var found = false
 

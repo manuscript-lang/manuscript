@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 
 test "index_of_byte finds a byte at or after start":

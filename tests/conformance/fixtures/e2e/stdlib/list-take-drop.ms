@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/list-take-drop.ms
 import TextError from "@std/core.ms"
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 test "List take and drop copy prefix and remainder":
     let values = [1, 2, 3]

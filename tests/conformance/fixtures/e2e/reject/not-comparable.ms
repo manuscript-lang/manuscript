@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,modules,records,stdlib-math,tier-stdlib
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/reject/not-comparable.ms
-import max from "@std/math.ms"
+import max from "@std/math/math.ms"
 
 type Point:
     x: Int

@@ -1,12 +1,12 @@
 # Agent-effectiveness benchmark runner. See README.md.
 # Usage (from the repository root): ms run bench/agent/run.ms -- <list|run|oracle> [options]
 import Command, Flag, FlagKind, command from "@std/cli.ms"
-import append_file, copy_file, remove, stat, temporary_directory, create_directory from "@std/fs.ms"
-import stdout from "@std/io.ms"
-import arguments from "@std/process.ms"
-import entropy, uuid_v4 from "@std/random.ms"
-import TaskGroup from "@std/tasks.ms"
-import wall_clock from "@std/time.ms"
+import append_file, copy_file, remove, stat, temporary_directory, create_directory from "@std/os/fs.ms"
+import stdout from "@std/io/io.ms"
+import arguments from "@std/os/process.ms"
+import uuid_v4 from "@std/os/random.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import now from "@std/os/time.ms"
 import Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms"
 import Grade, grade, make_workspace, read_log from "./core/workspace.ms"
 import Harness, AgentRun, Usage, run_agent from "./harnesses/harness.ms"
@@ -73,7 +73,7 @@ fn run_one(
     out_file: String,
     tag: String
 ) RunRecord:
-    let run_id = uuid_v4(entropy()).get("").replace("-", "").take(10)
+    let run_id = uuid_v4().get("").replace("-", "").take(10)
     let base = temporary_directory("agent-bench-").get()
     let ws = "{base}/ws"
     let prompt = make_workspace(ch, lang, ws)
@@ -112,7 +112,7 @@ fn run_one(
         g.llm_tokens = llm_tokens(sol)
 
     let rec = RunRecord(
-        run_id.clone(), wall_clock().now().unix_seconds(), tag.clone(), ch.id.clone(),
+        run_id.clone(), now().unix_seconds(), tag.clone(), ch.id.clone(),
         ch.category.clone(), ch.tier, lang.id.clone(), h.name(), model.clone(),
         agent.usage.clone(), agent.wall_s, agent.exit_code, agent.timed_out, log.builds,
         log.first_build_ok, log.checks, log.examples_pass, peeked, g.clone(), g.pass

@@ -4,9 +4,9 @@
 # the budget. Set RAW=1 for the unoptimized lowering. Loop membership is not reported.
 # Usage: ms run bench/tools/copy_report.ms -- <project ms.toml|file.ms>...   (MS picks the compiler)
 import capture, env, finish, ms_binary, must, read_text, right, usage from "./lib.ms"
-import temporary from "@std/fs.ms"
-import arguments, control from "@std/process.ms"
-import stdout from "@std/io.ms"
+import temporary from "@std/os/fs.ms"
+import arguments, set_environment from "@std/os/process.ms"
+import stdout from "@std/io/io.ms"
 
 # The type text of every `%N: type` block parameter on a `b<N>(...)` header line, keyed by `%N`.
 fn block_params(line: String, defs: Map[String, String]) Map[String, String]:
@@ -70,7 +70,7 @@ export fn main() Int:
 
     let tmp = temporary("copy-report-").get()
     let out = "{tmp.path()}/out.mir"
-    if env("RAW", "0") != "1": control().set_environment("MS_EMIT_OPT", "1").get()
+    if env("RAW", "0") != "1": set_environment("MS_EMIT_OPT", "1").get()
 
     for target in targets:
         let ran = capture(ms_binary(), ["emit", target.clone(), "-o", out.clone()])

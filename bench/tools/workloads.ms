@@ -5,12 +5,12 @@
 # Usage: ms run bench/tools/workloads.ms [-- repeats]; MS picks the compiler; BENCH_OUTPUT keeps the evidence directory.
 import Invalid, absolute, capture, dump, ensure_directory, env, file_sha256, finish, invalid, jint, jlist, jobject, jstr, must, ms_binary, read_text, repeats, run_in, sample, usage, write_text from "./lib.ms"
 import Measured, header, measure, row, versions from "./workloads_measure.ms"
-import hex_encode from "@std/encoding.ms"
+import hex_encode from "@std/data/encoding.ms"
 import sha256 from "@std/crypto.ms"
-import JsonValue from "@std/json.ms"
-import copy_tree, create_directory, list, temporary from "@std/fs.ms"
-import arguments from "@std/process.ms"
-import parse from "@std/json.ms"
+import JsonValue from "@std/data/json.ms"
+import copy_tree, create_directory, list, temporary from "@std/os/fs.ms"
+import arguments from "@std/os/process.ms"
+import parse from "@std/data/json.ms"
 
 type Case:
     name: String

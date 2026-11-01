@@ -2,9 +2,9 @@
 #
 # A harness drives one coding agent CLI inside a workspace. To add one, implement `Harness` in its own file
 # next to this one and register it in `all.ms`.
-import write_file from "@std/fs.ms"
-import JsonValue, parse from "@std/json.ms"
-import round from "@std/math.ms"
+import write_file from "@std/os/fs.ms"
+import JsonValue, parse from "@std/data/json.ms"
+import round from "@std/math/math.ms"
 import cost_from_tokens from "../core/model.ms"
 import run_in from "../lib/text.ms"
 

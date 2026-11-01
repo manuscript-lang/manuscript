@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "a closure that only assigns a captured variable changes it":
     var xs = ["a", "b"]

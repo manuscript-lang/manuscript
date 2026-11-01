@@ -1,7 +1,12 @@
-import expect_equal, expect_error, expect_false from "@std/test.ms"
+import expect_equal, expect_error, expect_false from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 import (
-    network,
+    bind_datagram,
+    connect,
+    listen,
+    resolve_dns,
+    restrict,
+    with_resolver,
     parse_ip,
     parse_cidr,
     contains_ip,
@@ -11,10 +16,10 @@ import (
     IpFamily,
     Listener,
     Connection
-) from "@std/net.ms"
-import Shared, share from "@std/shared.ms"
-import TaskGroup from "@std/tasks.ms"
-import sleep from "@std/time.ms"
+) from "@std/net/net.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import sleep from "@std/os/time.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -36,9 +41,8 @@ test "IP parsing CIDR normalization and containment":
     try expect_ip_error("999.1.1.1")
 
 test "TCP loopback writes reads half close and EOF":
-    let net = network()
-    let listener = try net.listen("127.0.0.1:0")
-    let client = try net.connect(listener.address(), 2.seconds)
+    let listener = try listen("127.0.0.1:0")
+    let client = try connect(listener.address(), 2.seconds)
     let server = try listener.accept(2.seconds)
     try client.write("hello", 2.seconds)
     try expect_equal((try server.read(5, 2.seconds)).get(), "hello".to_bytes())
@@ -47,9 +51,8 @@ test "TCP loopback writes reads half close and EOF":
     try expect_false(not (try server.read(5, 2.seconds)).is_none())
 
 test "UDP loopback preserves datagram data and sender":
-    let net = network()
-    let receiver = try net.bind_datagram("127.0.0.1:0")
-    let sender = try net.bind_datagram("127.0.0.1:0")
+    let receiver = try bind_datagram("127.0.0.1:0")
+    let sender = try bind_datagram("127.0.0.1:0")
     try sender.send("packet", receiver.address(), 2.seconds)
 
     let packet = try receiver.receive(64, 2.seconds)
@@ -61,8 +64,8 @@ test "UDP loopback preserves datagram data and sender":
     )
 
 test "network restriction denies admission and close rejects acquisitions":
-    let restricted = try network().restrict([], [], allow_listen: false)
-    var closing = try network().restrict([], [], allow_listen: false)
+    let restricted = try restrict([], [], allow_listen: false)
+    var closing = try restrict([], [], allow_listen: false)
     var scoped = restricted
     try expect_false(
         (
@@ -104,8 +107,7 @@ fn accept_one(l: Shared[Listener]) Int:
     return 0
 
 test "two tasks accept on one listener":
-    let net = network()
-    let shared: Shared[Listener] = share(try net.listen("127.0.0.1:0"))
+    let shared: Shared[Listener] = share(try listen("127.0.0.1:0"))
     var group = TaskGroup[Int]()
     let a = shared
     let b = shared
@@ -113,8 +115,8 @@ test "two tasks accept on one listener":
     group.spawn(fn ch: accept_one(b))
     sleep(50.milliseconds)
 
-    var c1 = try net.connect(shared.get().address(), 2.seconds)
-    var c2 = try net.connect(shared.get().address(), 2.seconds)
+    var c1 = try connect(shared.get().address(), 2.seconds)
+    var c2 = try connect(shared.get().address(), 2.seconds)
     let got = try group.results()
     try expect_equal(got.length(), 2)
     try expect_equal(got[0] + got[1], 2)
@@ -131,9 +133,8 @@ fn read_some(c: Shared[Connection]) Int:
     return 0
 
 test "two tasks read one connection":
-    let net = network()
-    let listener = try net.listen("127.0.0.1:0")
-    var client = try net.connect(listener.address(), 2.seconds)
+    let listener = try listen("127.0.0.1:0")
+    var client = try connect(listener.address(), 2.seconds)
     let server = try listener.accept(2.seconds)
     let shared: Shared[Connection] = share(server)
     var group = TaskGroup[Int]()
@@ -170,14 +171,13 @@ fn answer_mx(socket: Shared[DatagramSocket]) Int!NetworkError:
     return ok(1)
 
 test "resolve returns typed DNS records from the configured resolver":
-    let net = network()
-    let one = try net.resolve("127.0.0.1", DnsKind.A, none, 2.seconds)
+    let one = try resolve_dns("127.0.0.1", DnsKind.A, none, 2.seconds)
     try expect_equal(one.length(), 1)
     try expect_equal(one[0].value, "127.0.0.1")
     try expect_equal(one[0].kind.text(), "A")
 
-    let server: Shared[DatagramSocket] = share(try net.bind_datagram("127.0.0.1:0"))
-    let derived = try net.with_resolver(server.get().address())
+    let server: Shared[DatagramSocket] = share(try bind_datagram("127.0.0.1:0"))
+    let derived = try with_resolver(server.get().address())
     let group = TaskGroup[Int]()
     let socket = server
     group.spawn(fn ch: answer_mx(socket).get(0))
@@ -192,15 +192,14 @@ test "resolve returns typed DNS records from the configured resolver":
     try expect_equal(answered[0], 1)
 
 test "an empty host listens on every interface, with or without IPv6":
-    let net = network()
-    var listener = try net.listen(":0")
+    var listener = try listen(":0")
     let parts = listener.address().split(":")
     let port = parts[parts.length() - 1]
-    let client = try net.connect("127.0.0.1:{port}", 2.seconds)
+    let client = try connect("127.0.0.1:{port}", 2.seconds)
     let server = try listener.accept(2.seconds)
     try client.write("hi", 2.seconds)
     try expect_equal((try server.read(2, 2.seconds)).get(), "hi".to_bytes())
     try listener.close()
 
-    let socket = try net.bind_datagram(":0")
+    let socket = try bind_datagram(":0")
     try expect_false(socket.address().is_empty())

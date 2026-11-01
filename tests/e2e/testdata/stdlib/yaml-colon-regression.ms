@@ -1,5 +1,5 @@
-import expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test.ms"
-import parse, YamlValue, YamlError from "@std/yaml.ms"
+import expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test/test.ms"
+import parse, YamlValue, YamlError from "@std/data/yaml.ms"
 
 fn object(keys: List[String], values: List[YamlValue]) YamlValue:
     var result = Map[String, YamlValue]()

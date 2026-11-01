@@ -1,4 +1,4 @@
-import JsonValue from "@std/json.ms"
+import JsonValue from "@std/data/json.ms"
 import Harness, Usage, events, int_at from "./harness.ms"
 
 # UNTESTED: written from the documented `codex exec --json` event stream.

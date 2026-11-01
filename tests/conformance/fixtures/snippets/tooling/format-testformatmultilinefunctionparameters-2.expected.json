@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type WriteStream; add: import WriteStream from \"@std/io.ms\"",
+        "message": "unknown type WriteStream; add: import WriteStream from \"@std/io/io.ms\"",
         "position": {
           "file": "format-testformatmultilinefunctionparameters-2.ms",
           "line": 6,
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import WriteStream from \"@std/io.ms\"\n"
+          "replacement": "import WriteStream from \"@std/io/io.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/format-testformatmultilinefunctionparameters-2.ms:6:13: resolution: unknown type WriteStream; add: import WriteStream from \"@std/io.ms\"\n   |\n 6 |     output: WriteStream,\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/format-testformatmultilinefunctionparameters-2.ms:6:13: resolution: unknown type WriteStream; add: import WriteStream from \"@std/io/io.ms\"\n   |\n 6 |     output: WriteStream,\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

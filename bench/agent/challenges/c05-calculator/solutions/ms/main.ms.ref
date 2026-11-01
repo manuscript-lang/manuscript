@@ -1,5 +1,5 @@
 import TextError from "@std/core.ms"
-import stdin, stdout, read_line from "@std/io.ms"
+import stdin, stdout, read_line from "@std/io/io.ms"
 
 type Parser:
     chars: List[Int]

@@ -1,8 +1,8 @@
 # conform: tags=closures,stdlib-tasks,tier-core
 # conform: phase=run
 # conform: origin=foreign-syntax diagnostics
-import stdout from "@std/io.ms"
-import TaskGroup from "@std/tasks.ms"
+import stdout from "@std/io/io.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
 
 fn show(xs: List[Int]) Int:
     var group = TaskGroup[Int]()

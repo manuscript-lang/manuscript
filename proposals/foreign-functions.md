@@ -281,8 +281,8 @@ Manuscript side. It passes `ms check` against stubs: records stand in for the tw
 
 ```manuscript
 import Closeable from "@std/core.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
 
 export extern type Loop
 export extern type Timer

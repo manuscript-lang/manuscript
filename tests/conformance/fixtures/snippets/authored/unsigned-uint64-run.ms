@@ -1,7 +1,7 @@
 # conform: tags=numbers,types,tier-core
 # conform: phase=run
 # conform: origin=unsigned integer types stage 2
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 type Stamp:
     id: UInt64

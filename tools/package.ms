@@ -2,10 +2,10 @@
 # dist/manuscript-rust-<os>-<arch>.{tar.gz,zip} with a .sha256 beside it. The release runner for
 # each target builds it natively.
 # Usage: ms run tools/package.ms [-- OS ARCH]
-import capture, dist_arch, dist_os, file_sha256, note, run from "./lib.ms"
-import canonicalize, chmod, copy_file, create_directory, remove, temporary, write_file from "@std/fs.ms"
-import arguments, control from "@std/process.ms"
-import stdout from "@std/io.ms"
+import capture, dist_arch, dist_os, file_sha256, note, run_program from "./lib.ms"
+import canonicalize, chmod, copy_file, create_directory, remove, temporary, write_file from "@std/os/fs.ms"
+import arguments, change_directory, set_environment from "@std/os/process.ms"
+import stdout from "@std/io/io.ms"
 
 fn supported(target_os: String, target_arch: String) Bool:
     let key = "{target_os}/{target_arch}"
@@ -34,7 +34,7 @@ export fn main() Int:
     if target_os == "windows": executable = "ms.exe"
 
     # ms-native is built in release mode first; `ms-cli`'s build script embeds the archive.
-    var code = run("cargo", ["xtask", "runtime"])
+    var code = run_program("cargo", ["xtask", "runtime"])
     if code != 0: return code
 
     # Debug sections are dropped from the shipped binary (symbol names stay for fault traces and
@@ -45,8 +45,8 @@ export fn main() Int:
         if line.starts_with("host: "): triple = line.slice(
             6, line.length()
         ).get("").trim()
-    control().set_environment("CARGO_PROFILE_RELEASE_STRIP", "debuginfo").get()
-    code = run(
+    set_environment("CARGO_PROFILE_RELEASE_STRIP", "debuginfo").get()
+    code = run_program(
         "cargo",
         [
             "build", "--release", "--locked", "-p", "ms-cli", "--target",
@@ -82,15 +82,17 @@ export fn main() Int:
 
         let _ = remove(archive.clone(), recursive: false)
         let zip_path = canonicalize("dist").get()
-        control().change_directory(staging.path()).get()
-        code = run(
+        change_directory(staging.path()).get()
+        code = run_program(
             "7z",
             [
                 "a", "-tzip", "-bso0", "{zip_path}/{archive_name}", name.clone()
             ]
         )
     else:
-        code = run("tar", ["-C", staging.path(), "-czf", archive.clone(), name.clone()])
+        code = run_program(
+            "tar", ["-C", staging.path(), "-czf", archive.clone(), name.clone()]
+        )
 
     if code != 0: return code
 

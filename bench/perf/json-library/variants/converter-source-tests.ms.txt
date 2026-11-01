@@ -1,5 +1,5 @@
-import expect_equal from "@std/test.ms"
-import parse, stringify from "@std/json.ms"
+import expect_equal from "@std/test/test.ms"
+import parse, stringify from "@std/data/json.ms"
 
 test "JSON floats retain halfway ties and notation boundaries":
     let input = "[1658206780088562.25,-1658206780088562.25,2.98023223876953125e-8,-2.98023223876953125e-8,1e-6,1e21,-0.0]"

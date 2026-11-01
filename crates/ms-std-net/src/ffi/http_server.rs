@@ -1,4 +1,4 @@
-//! Natives for the server half of `@std/http.ms`: `Network.serve`, servers and exchanges.
+//! Natives for the server half of `@std/net/http.ms`: `Network.serve`, servers and exchanges.
 
 use super::handler::Program;
 use super::http_client::{chunk, limit};

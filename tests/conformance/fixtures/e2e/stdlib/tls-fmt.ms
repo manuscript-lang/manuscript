@@ -1,14 +1,14 @@
 # conform: tags=faults,formatter,interpolation,lists,maps,modules,parser,stdlib-http,stdlib-net,stdlib-testing,stdlib-time,stdlib-tls,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/tls.ms
-import expect_equal, expect_false, expect_ok from "@std/test.ms"
+import expect_equal, expect_false, expect_ok from "@std/test/test.ms"
 import http_result from "./support/http.ms"
-import headers, HttpMethod, buffered from "@std/http.ms"
+import headers, HttpMethod, buffered from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
-import parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions from "@std/net.ms"
-import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/http.ms"
-import network from "@std/net.ms"
-import timestamp from "@std/time.ms"
+import parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions from "@std/net/net.ms"
+import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/net/http.ms"
+import http_client, serve from "@std/net/net.ms"
+import timestamp from "@std/os/time.ms"
 import certificate, private_key from "./support/certificates.ms"
 
 fn hello(exchange: HttpExchange) Unit!HttpError:
@@ -68,7 +68,6 @@ test "TLS rejects malformed PEM and certificate budgets":
     )
 
 test "HTTPS trusts only the explicitly supplied local test root":
-    let net = network()
     let server_tls = TlsOptions(
         server_name: "", roots_pem: "", certificate_pem: certificate(),
         private_key_pem: private_key(), alpn: ["http/1.1"],
@@ -77,14 +76,14 @@ test "HTTPS trusts only the explicitly supplied local test root":
     let server_options = HttpServerOptions(
         timeout: 3.seconds, grace: 0.seconds, tls: server_tls
     )
-    let server = net.serve(
+    let server = serve(
         address: "127.0.0.1:0", handler: hello, options: server_options
     ) | try expect_ok
     let client_tls = TlsOptions(
         server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
         private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: false
     )
-    let client = net.http_client(
+    let client = http_client(
         HttpClientOptions(decompress: false, cookies: false, tls: client_tls)
     ) | try expect_ok
     let response = client.request(
@@ -108,7 +107,6 @@ fn report_protocol(exchange: HttpExchange) Unit!HttpError:
     return ok(unit)
 
 test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
-    let net = network()
     let server_options = HttpServerOptions(
         timeout: 3.seconds,
         grace: 0.seconds,
@@ -118,14 +116,14 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
             require_client_certificate: false
         )
     )
-    let server = net.serve(
+    let server = serve(
         address: "127.0.0.1:0", handler: report_protocol, options: server_options
     ) | try expect_ok
     let client_tls = TlsOptions(
         server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
         private_key_pem: "", alpn: ["h2", "http/1.1"], require_client_certificate: false
     )
-    let client = net.http_client(
+    let client = http_client(
         HttpClientOptions(decompress: false, cookies: false, tls: client_tls)
     ) | try expect_ok
     let response = client.request(

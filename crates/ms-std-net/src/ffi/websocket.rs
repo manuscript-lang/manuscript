@@ -1,4 +1,4 @@
-//! Natives for `@std/net.ms`, `Network.web_socket` and `HttpExchange.upgrade`.
+//! Natives for `@std/net/net.ms`, `Network.web_socket` and `HttpExchange.upgrade`.
 
 use super::tls::tls_options;
 use super::{ExchH, HeadersH, NetH, SocketH, opt, report};

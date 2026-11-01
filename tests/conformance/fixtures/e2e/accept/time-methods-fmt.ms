@@ -1,8 +1,8 @@
 # conform: tags=formatter,modules,parser,stdlib-testing,stdlib-time,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/time-methods.ms
-import expect_equal, expect_false from "@std/test.ms"
-import nanoseconds, clock, wall_clock, timestamp, parse_timestamp, TimeError from "@std/time.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
+import nanoseconds, timestamp, parse_timestamp, TimeError, monotonic, now from "@std/os/time.ms"
 
 test "duration arithmetic and conversion":
     let interval = nanoseconds(1500000000)
@@ -53,7 +53,7 @@ test "duration arithmetic and conversion":
     try expect_equal(convert(), 1.5)
 
 test "monotonic instant methods":
-    let start = clock().now()
+    let start = monotonic()
     let later = start.shift(2.seconds)
     try expect_false(
         (
@@ -112,6 +112,6 @@ test "timestamp methods and expected range failures":
     try expect_equal(difference.err(), TimeError.OutOfRange)
     try expect_equal(maximum.compare(minimum), 1)
 
-    let now = wall_clock().now()
+    let now = now()
     let roundtrip = try parse_timestamp(now.to_string())
     try expect_equal(roundtrip, now)

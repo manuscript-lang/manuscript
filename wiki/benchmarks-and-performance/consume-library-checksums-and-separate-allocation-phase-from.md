@@ -2,7 +2,7 @@
 
 # Consume library checksums and separate allocation phase from local cost
 
-Verified: a returned checksum that the harness discards is not evidence that the work stayed observable. Consume each result with `keep` from `@std/bench.ms` so the work stays observable, and reject missing, duplicate, failed, or changed cases and operation counts on every trial (`compare_stdlib.py` validates all stdlib cases from `ms bench --json`).
+Verified: a returned checksum that the harness discards is not evidence that the work stayed observable. Consume each result with `keep` from `@std/test/bench.ms` so the work stays observable, and reject missing, duplicate, failed, or changed cases and operation counts on every trial (`compare_stdlib.py` validates all stdlib cases from `ms bench --json`).
 
 Apply when: retaining a benchmark win or diagnosing a nominal unrelated slowdown.
 Evidence: [stdlib validator](../../bench/tools/compare_stdlib.ms), [program measurements](../../bench/perf/programs/results.md), [normalization attribution and rollback](../../bench/perf/string-normalization-rollback/README.md).

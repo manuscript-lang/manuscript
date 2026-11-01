@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn scaled(x: Int8) Int8:
     return (1 + 2) * x

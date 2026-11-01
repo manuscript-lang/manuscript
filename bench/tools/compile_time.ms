@@ -3,10 +3,10 @@
 # OUT keeps the generated sources; MS picks the compiler; SKIP_LLVM=1 skips the release build.
 # Generated Manuscript and Go source contains many braces; `q` writes them as ‹ and › so the generator reads as source.
 import absolute, env, fail, ms_binary, must, now_ns, run_in, usage, write_text from "./lib.ms"
-import create_directory, remove, temporary from "@std/fs.ms"
-import arguments, control from "@std/process.ms"
-import shift_right_unsigned, wrapping_add, wrapping_multiply from "@std/math.ms"
-import stdout from "@std/io.ms"
+import create_directory, remove, temporary from "@std/os/fs.ms"
+import arguments, set_environment from "@std/os/process.ms"
+import shift_right_unsigned, wrapping_add, wrapping_multiply from "@std/math/math.ms"
+import stdout from "@std/io/io.ms"
 
 fn q(text: String) String:
     return text.replace("‹", "\{").replace("›", "\}")
@@ -192,7 +192,7 @@ fn generate(out: String, packages: Int, files: Int, fns: Int) Unit:
             g.append(q("\treturn t % 100000\n›\n"))
             write_text("{out}/go/p{p}/f{f}.go", g.join(""))
 
-    var ms = ["import stdout from \"@std/io.ms\"\n"]
+    var ms = ["import stdout from \"@std/io/io.ms\"\n"]
     for p in 0..packages:
         for f in 0..files:
             ms.append("import all_{p}_{f} from \"./pkg{p}/f{f}.ms\"\n")
@@ -248,9 +248,9 @@ fn run(out: String, p: Int, f: Int, k: Int) Result[Unit, Error]:
         ["build", "ms.toml", "-o", "../msbin_d", "--build-type", "Debug"]
     )
     drop_cache("{out}/ms")
-    control().set_environment("MS_BACKEND", "cranelift").get()
+    set_environment("MS_BACKEND", "cranelift").get()
     try timed("ms clif:  ", "{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin_c"])
-    control().set_environment("MS_BACKEND", none).get()
+    set_environment("MS_BACKEND", none).get()
 
     if env("SKIP_LLVM", "") == "":
         drop_cache("{out}/ms")

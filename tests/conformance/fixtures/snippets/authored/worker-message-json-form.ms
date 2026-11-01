@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,stdlib-workers,tier-core
 # conform: phase=check
-import ReadStream from "@std/io.ms"
-import worker_channel from "@std/workers.ms"
+import ReadStream from "@std/io/io.ms"
+import worker_channel from "@std/concurrency/workers.ms"
 
 type Job:
     id: Int

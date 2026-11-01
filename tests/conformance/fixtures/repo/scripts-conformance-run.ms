@@ -1,12 +1,12 @@
 # conform: tags=closures,control-flow,faults,interpolation,lists,match,modules,mutation,records,stdlib-fs,stdlib-io,stdlib-json,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
 # conform: phase=run
 # conform: origin=scripts/conformance.ms
-import expect_equal, expect_false, expect_some, expect_true, fail from "@std/test.ms"
-import stdout from "@std/io.ms"
-import arguments from "@std/process.ms"
-import glob from "@std/fs.ms"
-import commands from "@std/process.ms"
-import parse from "@std/json.ms"
+import expect_equal, expect_false, expect_some, expect_true, fail from "@std/test/test.ms"
+import stdout from "@std/io/io.ms"
+import arguments from "@std/os/process.ms"
+import glob from "@std/os/fs.ms"
+import run from "@std/os/process.ms"
+import parse from "@std/data/json.ms"
 
 # Run from the repository root: ms run scripts/conformance.ms -- /absolute/path/to/ms all 0 1.
 # Each source file keeps its own compiler graph, process, host roots and test report.
@@ -95,7 +95,7 @@ fn inventory(suite: String) Result[List[String], Error]:
 fn selected(index: Int, shard: Int, count: Int) Bool:
     return index % count == shard
 
-fn run(args: List[String]) Result[Unit, Error]:
+fn run_conformance(args: List[String]) Result[Unit, Error]:
     if args.length() != 4:
         return fail(
             "usage: conformance <ms executable> <all|core|stdlib> <shard> <count>"
@@ -134,7 +134,7 @@ fn run(args: List[String]) Result[Unit, Error]:
     return ok(unit)
 
 fn run_file(ms: String, file: String) Result[Unit, Error]:
-    let output = try commands().run(
+    let output = try run(
         ms, ["test", file, "--json", "--timeout=30s"], timeout: 3.minutes,
         max_output_bytes: 16000000
     )
@@ -154,7 +154,7 @@ fn check_output(status: Int, text: String) Result[Unit, Error]:
     return validate(report)
 
 export fn main() Int:
-    match run(arguments()):
+    match run_conformance(arguments()):
         ok(_): return 0
         error(cause):
             let _written = stdout().write("{cause.message()}\n")
@@ -198,12 +198,12 @@ fn emit(text: String) Result[Unit, Error]:
     return ok(unit)
 
 test "invalid suite and shard arguments fail before running children":
-    run([]).is_error() | try expect_true
-    run(["ms", "unknown", "0", "1"]).is_error() | try expect_true
-    run(["ms", "core", "0", "0"]).is_error() | try expect_true
-    run(["ms", "core", "-1", "3"]).is_error() | try expect_true
-    run(["ms", "core", "3", "3"]).is_error() | try expect_true
-    run(["ms", "core", "no", "3"]).is_error() | try expect_true
+    run_conformance([]).is_error() | try expect_true
+    run_conformance(["ms", "unknown", "0", "1"]).is_error() | try expect_true
+    run_conformance(["ms", "core", "0", "0"]).is_error() | try expect_true
+    run_conformance(["ms", "core", "-1", "3"]).is_error() | try expect_true
+    run_conformance(["ms", "core", "3", "3"]).is_error() | try expect_true
+    run_conformance(["ms", "core", "no", "3"]).is_error() | try expect_true
 
 test "child launch failures are returned to the fixture dispatcher":
     run_file(".", "fixture.ms").is_error() | try expect_true

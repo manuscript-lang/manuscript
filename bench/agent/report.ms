@@ -3,9 +3,9 @@
 # Pass rate counts every run. Tokens, turns, time and cost average over PASSING runs only,
 # so a cheap wrong answer never improves a language's numbers.
 # Usage (from the repository root): ms run bench/agent/report.ms [-- path/to/runs.jsonl]
-import parse from "@std/json.ms"
-import stdout, stderr from "@std/io.ms"
-import arguments from "@std/process.ms"
+import parse from "@std/data/json.ms"
+import stdout, stderr from "@std/io/io.ms"
+import arguments from "@std/os/process.ms"
 import root from "./core/model.ms"
 import fmt_g, mean_scaled, pct0 from "./lib/pyfmt.ms"
 import nonblank_lines, read_text from "./lib/text.ms"

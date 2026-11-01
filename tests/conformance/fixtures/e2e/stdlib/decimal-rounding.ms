@@ -1,9 +1,9 @@
 # conform: tags=closures,decimal,interpolation,modules,optional,stdlib-decimal,stdlib-numbers,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/decimal-rounding.ms
-import expect_equal from "@std/test.ms"
-import Decimal, RoundingMode from "@std/decimal.ms"
-import NumberError from "@std/math.ms"
+import expect_equal from "@std/test/test.ms"
+import Decimal, RoundingMode from "@std/math/decimal.ms"
+import NumberError from "@std/math/math.ms"
 
 test "decimal cents stay exact and fixed places retain zeros":
     let total = 19.99d * 3d

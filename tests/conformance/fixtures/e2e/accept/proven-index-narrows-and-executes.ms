@@ -1,7 +1,7 @@
 # conform: tags=control-flow,lists,modules,mutation,optional,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/proven-index-narrows-and-executes.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn read(values: List[Int], index: Int) Int:
     if index < 0 or index >= values.length():

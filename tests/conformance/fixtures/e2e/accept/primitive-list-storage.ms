@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,generics,lists,modules,mutation,numbers,optional,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/primitive-list-storage.ms
-import expect_equal, expect_false, fail from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test/test.ms"
 
 fn append_value[T](var values: List[T], value: T) List[T]:
     values.append(value)

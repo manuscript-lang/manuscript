@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,modules,stdlib-faults,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/intentional_faults_test.go:12 TestIntentionalFaultContracts
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 import panic from "@std/core.ms"
 
 fn positive(value: Int) Int:

@@ -1,12 +1,12 @@
 # Small helpers shared by the benchmark tools: environment, files, shell commands.
-import read_file, write_file, create_directory, dirname from "@std/fs.ms"
+import read_file, write_file, create_directory, dirname from "@std/os/fs.ms"
 import compile from "@std/string.ms"
-import seconds from "@std/time.ms"
-import CommandError, commands, control from "@std/process.ms"
+import seconds from "@std/os/time.ms"
+import CommandError, environment, monotonic_time, run from "@std/os/process.ms"
 
 # The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
-    let all = control().environment().get(Map[String, String]())
+    let all = environment().get(Map[String, String]())
     if let value = all.get(name): return value.clone()
 
     return fallback
@@ -57,11 +57,11 @@ export fn run_in(
     timeout_s: Int,
     input: String
 ) Ran:
-    let start = control().monotonic_time()
-    let result = commands().run(
+    let start = monotonic_time()
+    let result = run(
         program, arguments, input: input.to_bytes(), timeout: seconds(timeout_s)
     )
-    let elapsed = (control().monotonic_time() - start).to_float() / 1000000000.0
+    let elapsed = (monotonic_time() - start).to_float() / 1000000000.0
     if let done = result.to_optional():
         return Ran(
             done.exit_code, done.stdout.decode_utf8().get(""),

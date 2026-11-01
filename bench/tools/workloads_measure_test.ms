@@ -1,6 +1,6 @@
 import Invalid, invalid, repeats from "./lib.ms"
 import measure, versions from "./workloads_measure.ms"
-import expect_equal, expect_error, expect_ok from "@std/test.ms"
+import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 # A producer for `version` that prints "correct" unless `mode` says otherwise for `bad`. Calls are counted per version.
 type Producer:

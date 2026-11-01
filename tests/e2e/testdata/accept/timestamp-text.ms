@@ -1,5 +1,5 @@
-import timestamp, parse_timestamp from "@std/time.ms"
-import expect_equal from "@std/test.ms"
+import timestamp, parse_timestamp from "@std/os/time.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "timestamp text pads and trims fractions across UTC boundaries":
     for nanos in [0, 1, 9, 10, 99, 100, 99999999, 100000000, 250000000, 999999999]:

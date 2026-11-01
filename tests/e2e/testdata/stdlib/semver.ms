@@ -1,6 +1,6 @@
-import expect_equal, expect_false, expect_ok, fail from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms"
 import TextError from "@std/core.ms"
-import parse, format, compare, Version, SemverError from "@std/semver.ms"
+import parse, format, compare, Version, SemverError from "@std/data/semver.ms"
 
 fn failure(result: Version!SemverError) SemverError!:
     match result:

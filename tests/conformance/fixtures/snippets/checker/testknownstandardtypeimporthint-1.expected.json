@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Partition; add: import Partition from \"@std/collections.ms\"",
+        "message": "unknown type Partition; add: import Partition from \"@std/collections/collections.ms\"",
         "position": {
           "file": "testknownstandardtypeimporthint-1.ms",
           "line": 4,
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Partition from \"@std/collections.ms\"\n"
+          "replacement": "import Partition from \"@std/collections/collections.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testknownstandardtypeimporthint-1.ms:4:17: resolution: unknown type Partition; add: import Partition from \"@std/collections.ms\"\n   |\n 4 | fn boxed(value: Partition[Int]) Unit: return\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testknownstandardtypeimporthint-1.ms:4:17: resolution: unknown type Partition; add: import Partition from \"@std/collections/collections.ms\"\n   |\n 4 | fn boxed(value: Partition[Int]) Unit: return\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

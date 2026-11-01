@@ -7,17 +7,17 @@
 
 wrong: print("hi")
 right: stdout().write("hi\n").get()
-setup: import stdout from "@std/io.ms"
+setup: import stdout from "@std/io/io.ms"
 diag: no built-in print
 
 wrong: stdout().write("hi\n")
 right: stdout().write("hi\n").get()
-setup: import stdout from "@std/io.ms"
+setup: import stdout from "@std/io/io.ms"
 diag: this statement discards
 
 wrong: f"n={n}"
 right: "n={n}"
-setup: import stdout from "@std/io.ms"
+setup: import stdout from "@std/io/io.ms"
 body: let n = 1;;stdout().write({}).get()
 diag: no f-string prefix
 

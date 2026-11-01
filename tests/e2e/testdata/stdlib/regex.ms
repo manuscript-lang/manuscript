@@ -1,4 +1,4 @@
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 import compile, RegexError from "@std/string.ms"
 
 test "regex receivers execute matching replacement and empty results":

@@ -1,8 +1,8 @@
 # Runs the packaged ms for this host (built by package.ms) on the hello example, from a path that
 # contains spaces. Usage: ms run tools/dist-check.ms
-import dist_arch, dist_os, host, note, run, capture from "./lib.ms"
-import create_directory, temporary from "@std/fs.ms"
-import stdout from "@std/io.ms"
+import dist_arch, dist_os, host, note, run_program, capture from "./lib.ms"
+import create_directory, temporary from "@std/os/fs.ms"
+import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     if host() == "windows":
@@ -14,13 +14,13 @@ export fn main() Int:
     let base = "{staging.path()}/extracted distribution"
     create_directory(base, recursive: true).get()
 
-    var code = run("tar", ["-xzf", "dist/{name}.tar.gz", "-C", base.clone()])
+    var code = run_program("tar", ["-xzf", "dist/{name}.tar.gz", "-C", base.clone()])
     if code != 0: return code
 
     let bundle = "{base}/{name}"
     let ms = "{bundle}/ms"
     let hello = "{bundle}/examples/hello"
-    code = run(ms, ["--version"])
+    code = run_program(ms, ["--version"])
     if code != 0: return code
 
     var out = capture(ms, ["run", "{hello}/ms.toml", "--", "first", "second"]).trim()
@@ -30,7 +30,7 @@ export fn main() Int:
         return 1
 
     let exe = "{staging.path()}/hello"
-    code = run(ms, ["build", "{hello}/ms.toml", "-o", exe.clone()])
+    code = run_program(ms, ["build", "{hello}/ms.toml", "-o", exe.clone()])
     if code != 0: return code
 
     out = capture(exe, ["first", "second"]).trim()
@@ -39,6 +39,6 @@ export fn main() Int:
         note("built hello printed {out}")
         return 1
 
-    code = run(ms, ["test", "{hello}/test.ms"])
+    code = run_program(ms, ["test", "{hello}/test.ms"])
     if code == 0: stdout().write("dist-check ok\n").get()
     return code

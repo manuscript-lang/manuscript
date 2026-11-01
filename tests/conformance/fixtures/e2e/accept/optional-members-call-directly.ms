@@ -1,7 +1,7 @@
 # conform: tags=closures,faults,lists,modules,optional,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/optional-members-call-directly.ms
-import expect_equal, expect_true from "@std/test.ms"
+import expect_equal, expect_true from "@std/test/test.ms"
 
 fn fallback() Int: 9
 

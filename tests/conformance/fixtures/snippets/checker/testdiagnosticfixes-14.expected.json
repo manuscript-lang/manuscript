@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Queue; add: import Queue from \"@std/queue.ms\"",
+        "message": "unknown binding Queue; add: import Queue from \"@std/collections/queue.ms\"",
         "position": {
           "file": "testdiagnosticfixes-14.ms",
           "line": 7,
@@ -29,13 +29,13 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Queue from \"@std/queue.ms\"\n"
+          "replacement": "import Queue from \"@std/collections/queue.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Queue; add: import Queue from \"@std/queue.ms\"",
+        "message": "unknown binding Queue; add: import Queue from \"@std/collections/queue.ms\"",
         "position": {
           "file": "testdiagnosticfixes-14.ms",
           "line": 8,
@@ -55,14 +55,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Queue from \"@std/queue.ms\"\n"
+          "replacement": "import Queue from \"@std/collections/queue.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticfixes-14.ms:7:13: resolution: unknown binding Queue; add: import Queue from \"@std/queue.ms\"\n   |\n 7 |     var m = Queue[Int]()\n   |             ^\n<DIR>/testdiagnosticfixes-14.ms:8:13: resolution: unknown binding Queue; add: import Queue from \"@std/queue.ms\"\n   |\n 8 |     var n = Queue[Int]()\n   |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticfixes-14.ms:7:13: resolution: unknown binding Queue; add: import Queue from \"@std/collections/queue.ms\"\n   |\n 7 |     var m = Queue[Int]()\n   |             ^\n<DIR>/testdiagnosticfixes-14.ms:8:13: resolution: unknown binding Queue; add: import Queue from \"@std/collections/queue.ms\"\n   |\n 8 |     var n = Queue[Int]()\n   |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

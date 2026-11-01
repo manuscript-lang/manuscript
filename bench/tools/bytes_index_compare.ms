@@ -5,9 +5,9 @@
 import Identity, run_rows from "./string_lines_compare.ms"
 import absolute, fail, jbool, jint, jlist, jobject, jstr, median, options, permutations, platform, write_text from "./lib.ms"
 import binaries_json, fresh_directory, labeled, write_json from "./study.ms"
-import arguments from "@std/process.ms"
-import JsonValue from "@std/json.ms"
-import stdout from "@std/io.ms"
+import arguments from "@std/os/process.ms"
+import JsonValue from "@std/data/json.ms"
+import stdout from "@std/io/io.ms"
 
 fn sizes() List[Int]:
     return [0, 1, 7, 15, 31, 32, 64, 256, 4096, 1048576]

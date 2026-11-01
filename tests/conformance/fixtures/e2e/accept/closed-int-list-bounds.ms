@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,faults,lists,match,modules,mutation,optional,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/closed-int-list-bounds.ms
-import expect_contains, expect_equal, expect_fault from "@std/test.ms"
+import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
 fn filled_sum() Int:
     var values: List[Int] = []

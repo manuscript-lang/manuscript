@@ -1,6 +1,5 @@
 import Bytes from "@std/bytes.ms"
-
-extern fn msrt_crypto_constant_time_equal(left: Bytes, right: Bytes) Bool
+import msrt_crypto_constant_time_equal, msrt_crypto_verify from "@std/internal/crypto.ms"
 
 extern fn msrt_crypto_open(
     key: Bytes,
@@ -19,8 +18,6 @@ extern fn msrt_crypto_seal(
 ) Bytes!CryptoError
 
 extern fn msrt_crypto_sign(seed: Bytes, data: Bytes) Bytes!CryptoError
-
-extern fn msrt_crypto_verify(key: Bytes, data: Bytes, signature: Bytes) Bool
 
 extern fn msrt_crypto_aes_ctr(key: Bytes, iv: Bytes, data: Bytes) Bytes!CryptoError
 

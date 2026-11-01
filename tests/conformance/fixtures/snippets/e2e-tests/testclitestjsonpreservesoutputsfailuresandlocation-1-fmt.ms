@@ -1,8 +1,8 @@
 # conform: tags=formatter,modules,parser,stdlib-io,stdlib-testing,testing,tier-core
 # conform: phase=parse
 # conform: origin=tests/e2e/cli_json_test.go:70 TestCLITestJSONPreservesOutputsFailuresAndLocations
-import stdout, stderr from "@std/io.ms"
-import fail from "@std/test.ms"
+import stdout, stderr from "@std/io/io.ms"
+import fail from "@std/test/test.ms"
 
 test "first=pass":
     let _out = stdout().write(data: "PASS fake test\nuser stdout\n")

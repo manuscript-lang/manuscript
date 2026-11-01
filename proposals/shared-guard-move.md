@@ -19,7 +19,7 @@ Status: **implemented** (2026-10-26, checked against `fe773726`). Direction (coo
 ## Design
 
 - `with` close (normal exit): for a `var def close` the binding's value is passed to `close` through its slot (a slotted `with var`) or moved into a temporary slot and moved back (no copy). The scope still drops what close leaves.
-- `Shared.put` (callable only from `@std/sync.ms`) moves its argument bitwise. Its one caller, `SharedGuard.close`, clears `held` first.
+- `Shared.put` (callable only from `@std/concurrency/sync.ms`) moves its argument bitwise. Its one caller, `SharedGuard.close`, clears `held` first.
 - Glue for a record named `SharedGuard[..]` with fields `box, value, held`: drop and copy skip `value` when `held` is false. The cleanup-thunk copy in `close_call` is unchanged: it runs on faults and cancellation only.
 - `TaskGroup.results` collects the registry snapshot by index and drops the collected prefix once (`forget_first`).
 - Cancellation: unchanged. The guard's `with` cleanup closes it; a cancelled close leaves `held` set and the payload in the guard.

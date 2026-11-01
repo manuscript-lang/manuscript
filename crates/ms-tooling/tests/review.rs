@@ -103,7 +103,7 @@ fn facts_of(list: Vec<Fact>) -> Facts {
 fn program(add_effect: bool) -> Facts {
     let mut say = fact("r.ms", "fn", "say", 3);
     say.effects = vec!["io".into()];
-    say.external = vec!["@std/io.ms#stdout".into()];
+    say.external = vec!["@std/io/io.ms#stdout".into()];
     let mut add = fact("r.ms", "fn", "add", 7);
     let mut run = fact("r.ms", "fn", "run", 10);
     run.exported = true;
@@ -136,7 +136,7 @@ fn effect_gain_ranks_through_callers() {
     for want in [
         "EFFECT+",
         "effects: none -> io",
-        "path: add -> say -> @std/io.ms#stdout",
+        "path: add -> say -> @std/io/io.ms#stdout",
     ] {
         assert!(text.contains(want), "lacks {want:?}:\n{text}");
     }
@@ -248,7 +248,7 @@ fn views_answer_one_question_each() {
         effects.contains("EFFECTS VIEW") && effects.contains("`- say  effects: io"),
         "{effects}"
     );
-    assert!(effects.contains("@std/io.ms#stdout"));
+    assert!(effects.contains("@std/io/io.ms#stdout"));
     let calls = build_view(&facts, "calls", "run", 0).unwrap().ascii();
     assert!(
         calls.contains("run  [fn] r.ms:10") && calls.contains("add  [fn]"),
@@ -406,7 +406,7 @@ fn flow_view_expands_calls_and_scope_prunes() {
         children: vec![
             Node {
                 kind: "native".into(),
-                label: "native @std/io.ms#stdout".into(),
+                label: "native @std/io/io.ms#stdout".into(),
                 ..Node::default()
             },
             Node {
@@ -423,7 +423,7 @@ fn flow_view_expands_calls_and_scope_prunes() {
     facts.flows.insert(main.key.clone(), vec![call]);
     facts.flows.insert(guarded.key.clone(), vec![with]);
     let flow = build_view(&facts, "flow", "main", 2).unwrap().ascii();
-    let want = "FLOW VIEW\n`- main  [fn] r.ms:15\n   `- call guarded\n      `- let out = stdout()  [closed on exit]\n         |- native @std/io.ms#stdout\n         `- try call load\n";
+    let want = "FLOW VIEW\n`- main  [fn] r.ms:15\n   `- call guarded\n      `- let out = stdout()  [closed on exit]\n         |- native @std/io/io.ms#stdout\n         `- try call load\n";
     assert_eq!(flow, want);
     let scope = build_view(&facts, "scope", "guarded", 0).unwrap().ascii();
     assert_eq!(

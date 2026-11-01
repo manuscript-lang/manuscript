@@ -1,4 +1,4 @@
-import parse, format from "@std/semver.ms"
+import parse, format from "@std/data/semver.ms"
 
 export fn main() Int:
     let v = parse("1.2.3").get()

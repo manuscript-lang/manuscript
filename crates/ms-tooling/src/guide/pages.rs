@@ -66,7 +66,15 @@ pub fn mistakes() -> String {
     out
 }
 
+/// The name `ms search_symbol` shows for a module: `json` for `@std/data/json.ms`.
 pub(crate) fn short_name(path: &str) -> &str {
+    let path = path.strip_prefix("@std/").unwrap_or(path);
+    let path = path.strip_suffix(".ms").unwrap_or(path);
+    path.rsplit('/').next().unwrap_or(path)
+}
+
+/// The module path without `@std/` and `.ms`: `data/json`.
+fn package_name(path: &str) -> &str {
     let path = path.strip_prefix("@std/").unwrap_or(path);
     path.strip_suffix(".ms").unwrap_or(path)
 }
@@ -232,7 +240,9 @@ fn split_path(path: &str) -> Vec<String> {
 }
 
 fn find_module(name: &str) -> Option<&'static ApiModule> {
-    modules().iter().find(|m| short_name(&m.path) == name)
+    modules()
+        .iter()
+        .find(|m| short_name(&m.path) == name || package_name(&m.path) == name)
 }
 
 fn import_line(m: &ApiModule) -> String {

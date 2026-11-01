@@ -1,4 +1,4 @@
-import range from "@std/collections.ms"
+import range from "@std/collections/collections.ms"
 
 fn compute() Int:
     var result = 0

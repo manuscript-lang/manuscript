@@ -2,15 +2,15 @@
 # Known failures: tests/conformance/expect-fail.txt plus expect-fail.<os>.txt when present.
 # CONFORM_SHARD=i/n splits the run. Arguments after `--` go to `ms-conform run`.
 # Usage: ms run tools/conform.ms [-- extra ms-conform run arguments]
-import env, exe, host, run from "./lib.ms"
-import access, create_directory, read_file, write_file from "@std/fs.ms"
-import arguments from "@std/process.ms"
+import env, exe, host, run_program from "./lib.ms"
+import access, create_directory, read_file, write_file from "@std/os/fs.ms"
+import arguments from "@std/os/process.ms"
 
 export fn main() Int:
-    var code = run("cargo", ["xtask", "runtime"])
+    var code = run_program("cargo", ["xtask", "runtime"])
     if code != 0: return code
 
-    code = run(
+    code = run_program(
         "cargo",
         [
             "build", "--locked", "-q", "-p", "ms-cli", "-p", "ms-conform",
@@ -36,7 +36,7 @@ export fn main() Int:
     let conform = "target/debug/ms-conform{exe()}"
     let ms = "target/debug/ms{exe()}"
     let shard = env("CONFORM_SHARD", "0/1")
-    code = run(conform, ["lint"])
+    code = run_program(conform, ["lint"])
     if code != 0: return code
 
     let extra = arguments()
@@ -45,7 +45,7 @@ export fn main() Int:
         "aliasing", "--expect-fail", allow.clone(), "--strict", "--shard",
         shard.clone(), "--quiet", "--markdown", ".artifacts/conform.md"
     ]
-    code = run(conform, main_run.concat(extra.clone()))
+    code = run_program(conform, main_run.concat(extra.clone()))
     if code != 0: return code
 
     # Parsing and formatting do not depend on aliasing, so the parse phase replays every fixture.
@@ -54,4 +54,4 @@ export fn main() Int:
         "--strict", "--shard", shard.clone(), "--quiet", "--markdown",
         ".artifacts/conform-parse.md"
     ]
-    return run(conform, parse_run.concat(extra))
+    return run_program(conform, parse_run.concat(extra))

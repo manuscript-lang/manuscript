@@ -1,5 +1,5 @@
-import Decimal from "@std/decimal.ms"
-import expect_equal from "@std/test.ms"
+import Decimal from "@std/math/decimal.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "decimal zero identities preserve signs and exponent extremes":
     for value in [

@@ -12,7 +12,7 @@ User code cannot run two things at once. The runtime already has stackful corout
 
 | Item | Stage | Status |
 | --- | --- | --- |
-| `TaskGroup[T]` in `@std/tasks.ms`, used with `with`; leaving the block cancels unfinished tasks and waits for them | 3 | built |
+| `TaskGroup[T]` in `@std/concurrency/tasks.ms`, used with `with`; leaving the block cancels unfinished tasks and waits for them | 3 | built |
 | `spawn(work, timeout:) -> Task[T]` and `Task[T].result() -> Result[T, TaskError]` | 3 | built |
 | `results()` (all results in start order) and `wait()` (reports a timeout or cancellation) | 3 | built |
 | Opt-in timeouts: per task and per group, `TaskError.TimedOut` / `Cancelled` | 3 | built |
@@ -37,7 +37,7 @@ User code cannot run two things at once. The runtime already has stackful corout
 **Surface.**
 
 ```manuscript
-import TaskGroup from "@std/tasks.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
 
 fn fetch_all(urls: List[String]) Result[List[Int], TaskError]:
     with let group = TaskGroup[Int](timeout: some(duration(5000000000))):
@@ -71,7 +71,7 @@ Transport (from the child-processes proposal, PR #1183): processes use `Sender[T
 
 - Runtime (`ms-rt`): `scope.rs` keeps the task list of each scope. `msrt_scope_new`, `msrt_scope_spawn(scope, closure, task_limit_ns, scope_limit_ns)` (retains the closure, starts a `SPAWN_FATAL` task, registers a kill deadline), `msrt_scope_join(scope, handle, keep)` and `msrt_scope_wait(scope)` (0 returned, 1 timed out, 2 cancelled, 3 collected or closed). Scope ids carry a generation, so a closed group's id never reaches a later group, and `msrt_scope_close(scope)` (cancel, wait, release).
 - Compiler: no TaskGroup-specific code. An `extern def` parameter of function type passes the closure object, lent. A `with` binding whose `close` is in a generic `impl` binds the impl's type variables.
-- Library: `@std/tasks.ms` is about 100 lines with comments over five externs. A task's result travels in a `Shared[List[T]]` slot filled by the task.
+- Library: `@std/concurrency/tasks.ms` is about 100 lines with comments over five externs. A task's result travels in a `Shared[List[T]]` slot filled by the task.
 
 ## Alternatives
 

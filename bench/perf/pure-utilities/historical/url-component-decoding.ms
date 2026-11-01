@@ -1,5 +1,5 @@
-import decode_component, UrlError from "@std/net.ms"
-import expect_equal from "@std/test.ms"
+import decode_component, UrlError from "@std/net/net.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "component decoding preserves plus Unicode and escaped percent":
     for input in ["", "hello-._~AZ09", "資料+é🕰"]:

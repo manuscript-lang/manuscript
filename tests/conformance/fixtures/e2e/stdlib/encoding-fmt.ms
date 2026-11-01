@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,modules,parser,stdlib-bytes,stdlib-encoding,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/encoding.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 import (
     base64_encode,
     base64_decode,
@@ -14,7 +14,7 @@ import (
     latin1_decode,
     ascii_encode,
     ascii_decode
-) from "@std/encoding.ms"
+) from "@std/data/encoding.ms"
 import Bytes from "@std/bytes.ms"
 
 test "encoding known vectors and exact output limits":

@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,generics,modules,mutation,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/closures.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn apply(value: Int, action: fn(Int) Int) Int:
     return action(value)

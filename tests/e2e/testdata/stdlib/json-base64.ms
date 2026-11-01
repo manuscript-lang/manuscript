@@ -1,6 +1,6 @@
-import parse, stringify, JsonError from "@std/json.ms"
+import parse, stringify, JsonError from "@std/data/json.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "typed JSON Base64 decodes every byte and preserves strict syntax":
     var bytes = BytesBuilder()

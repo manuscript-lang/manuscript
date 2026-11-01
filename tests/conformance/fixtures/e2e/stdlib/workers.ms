@@ -1,15 +1,15 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import Channel, ChannelError from "@std/channels.ms"
+import Channel, ChannelError from "@std/io/channels.ms"
 import panic from "@std/core.ms"
-import fetch from "@std/fetch.ms"
-import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/http.ms"
-import stdin from "@std/io.ms"
-import network from "@std/net.ms"
-import TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_error, expect_ok, expect_true from "@std/test.ms"
-import nanoseconds, sleep from "@std/time.ms"
-import Worker, WorkerError, WorkerGroup, worker_bytes, worker_channel from "@std/workers.ms"
+import fetch from "@std/net/fetch.ms"
+import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/net/http.ms"
+import stdin from "@std/io/io.ms"
+import serve from "@std/net/net.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
+import Worker, WorkerError, WorkerGroup, worker_bytes, worker_channel from "@std/concurrency/workers.ms"
 
 type Job:
     id: Int
@@ -276,7 +276,6 @@ test "cancelling a worker that is joining another ends it as cancelled":
 
 fn touches_network() Unit:
     var ch = worker_channel[Int, Int]()
-    let _net = network()
     let _ = ch.send(1)
 
 test "a worker that uses the network ends cleanly":
@@ -301,7 +300,7 @@ fn page(request: HttpRequest) HttpResponse:
 
 test "workers fetch from the starter's server at the same time":
     let handler = buffered(page)
-    let acquired = network().serve(address: "127.0.0.1:0", handler: handler).get(none)
+    let acquired = serve(address: "127.0.0.1:0", handler: handler).get(none)
     var server = acquired
     var group = WorkerGroup[String, Int]()
     var workers: List[Worker[String, Int]] = []

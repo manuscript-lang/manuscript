@@ -1,5 +1,5 @@
 import TextError from "@std/core.ms"
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Counter:
     n: Int

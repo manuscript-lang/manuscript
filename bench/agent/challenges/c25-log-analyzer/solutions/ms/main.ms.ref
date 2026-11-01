@@ -1,4 +1,4 @@
-import stdin, stdout, read_all from "@std/io.ms"
+import stdin, stdout, read_all from "@std/io/io.ms"
 
 fn all_digits(s: String) Bool:
     if s.is_empty():

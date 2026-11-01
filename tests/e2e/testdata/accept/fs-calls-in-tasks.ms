@@ -1,7 +1,7 @@
 import Bytes from "@std/bytes.ms"
-import append_file, copy_file, create_directory, list, read_file, remove, rename, temporary_directory, write_file from "@std/fs.ms"
-import TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_ok from "@std/test.ms"
+import append_file, copy_file, create_directory, list, read_file, remove, rename, temporary_directory, write_file from "@std/os/fs.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_ok from "@std/test/test.ms"
 
 # With several tasks alive, file-system calls run on the blocking pool; the results must match
 # the single-task behaviour.

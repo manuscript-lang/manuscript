@@ -1,6 +1,6 @@
 # Validates the shared `ms bench --json` result protocol before rendering comparisons (bench/perf/stdlib).
 import Invalid, invalid from "./lib.ms"
-import parse from "@std/json.ms"
+import parse from "@std/data/json.ms"
 
 export type Stats:
     operations: Int

@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "cleanup faulting\n",
-    "stderr": "index 3 out of range for length 0; pass a default: get(index:, default: ...)\n  at tasks-cancel-cleanup-fault.ms:16 in Bad.close\n  at @std/time.ms:<LINE> in sleep\n  at tasks-cancel-cleanup-fault.ms:21 in work\n  at tasks-cancel-cleanup-fault.ms:26 in <anonymous>\n  at @std/tasks.ms:<LINE> in run\n  at @std/tasks.ms:<LINE> in <anonymous>\n  task started by:\n  at @std/tasks.ms:<LINE> in TaskGroup.spawn\n  at tasks-cancel-cleanup-fault.ms:26 in main\n"
+    "stderr": "index 3 out of range for length 0; pass a default: get(index:, default: ...)\n  at tasks-cancel-cleanup-fault.ms:16 in Bad.close\n  at @std/os/time.ms:<LINE> in sleep\n  at tasks-cancel-cleanup-fault.ms:21 in work\n  at tasks-cancel-cleanup-fault.ms:26 in <anonymous>\n  at @std/concurrency/tasks.ms:<LINE> in run\n  at @std/concurrency/tasks.ms:<LINE> in <anonymous>\n  task started by:\n  at @std/concurrency/tasks.ms:<LINE> in TaskGroup.spawn\n  at tasks-cancel-cleanup-fault.ms:26 in main\n"
   }
 }

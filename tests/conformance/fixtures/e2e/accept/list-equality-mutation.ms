@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,interfaces,interpolation,lists,match,modules,mutation,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/list-equality-mutation.ms
-import fail from "@std/test.ms"
+import fail from "@std/test/test.ms"
 
 type Element:
     id: Int

@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/direct-method-semantics.ms
 import TextError from "@std/core.ms"
-import expect_true, fail from "@std/test.ms"
+import expect_true, fail from "@std/test/test.ms"
 
 interface Shape:
     fn area() Int

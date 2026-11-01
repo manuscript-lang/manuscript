@@ -1,6 +1,6 @@
 import Bytes from "@std/bytes.ms"
-import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import clock from "@std/os/time.ms"
 
 fn measure(name: String, data: Bytes, start: Int, expected: Int, iterations: Int) Int:
     let checked = data.index_of_byte(255, start)

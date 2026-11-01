@@ -2,8 +2,8 @@
 # Usage: ms run bench/tools/programs.ms [-- repeats]; MS, GO, RUSTC pick tools; BENCH_OUTPUT keeps binaries, input and raw samples.
 import absolute, build_go, build_ms, build_rust, env, fail, finish, repeats, sample from "./lib.ms"
 import summarize from "./programs_table.ms"
-import copy_tree, create_directory, temporary, write_file from "@std/fs.ms"
-import arguments from "@std/process.ms"
+import copy_tree, create_directory, temporary, write_file from "@std/os/fs.ms"
+import arguments from "@std/os/process.ms"
 
 fn orders() List[List[String]]:
     return [

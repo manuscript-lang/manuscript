@@ -1,10 +1,10 @@
 # conform: tags=formatter,modules,parser,stdlib-bigint,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/library-bigint.ms
-import expect_false from "@std/test.ms"
-import parse from "@std/math.ms"
-import BigInt from "@std/math.ms"
-import BigIntError from "@std/math.ms"
+import expect_false from "@std/test/test.ms"
+import parse from "@std/math/math.ms"
+import BigInt from "@std/math/math.ms"
+import BigIntError from "@std/math/math.ms"
 
 fn verify_bigint() Unit!:
     let large = try parse(text: "18446744073709551616", radix: 10, max_digits: 30)

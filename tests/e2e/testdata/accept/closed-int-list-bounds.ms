@@ -1,4 +1,4 @@
-import expect_contains, expect_equal, expect_fault from "@std/test.ms"
+import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
 fn filled_sum() Int:
     var values: List[Int] = []

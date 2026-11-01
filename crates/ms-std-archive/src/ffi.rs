@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/archive.ms` (`msrt_archive_*`).
+//! C ABI shims for `@std/io/archive.ms` (`msrt_archive_*`).
 //!
 //! `ArchiveEntry` records are passed at their natural layout ([`EntryRec`]): a `List[ArchiveEntry]`
 //! holds them inline. The optional `ArchiveLimits` argument is flattened to a presence flag plus

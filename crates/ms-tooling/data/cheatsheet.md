@@ -1,11 +1,11 @@
 # Manuscript cheat sheet
 
-Statically typed; native code. Four-space indentation, `#` comments. No `print`: write text via `@std/io.ms`.
+Statically typed; native code. Four-space indentation, `#` comments. No `print`: write text via `@std/io/io.ms`.
 
 <!-- complete -->
 ```manuscript
-import open from "@std/fs.ms"
-import stdout from "@std/io.ms"
+import open from "@std/os/fs.ms"
+import stdout from "@std/io/io.ms"
 
 type Doc:
     lines: List[String]
@@ -33,13 +33,13 @@ export fn main() Int:
 
 - Helpful commands: `ms search_symbol <name or words>`; `ms verify` (check, fmt, lint, test); `ms review`.
 - Be terse: infer closure types, one-line bodies (`fn f(x: Int) Int: x * 2`), `map`/`filter`/`fold`/`join`/`get(d)` over loops.
-- `main() Int` returns the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test.ms`), `bench "name":` under `ms bench`.
+- `main() Int` returns the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
 - Stdlib (`@std/<m>.ms`): `io` `fs` `streams` (`read_lines(stdin())`) `string` (regex `compile`) `collections` `bytes` `decimal` `json` `csv` `toml` `yaml` `time` `math` `random` `crypto` `process` `http` `net` `tasks` `channels` `workers` `sync` `shared`.
 - Imports: `import a, b from "@std/x.ms"`, `import a from "./local.ms"`; `export` shares. `List Map Set Optional Result Error` need none.
 - Lines: a `:` ending a line needs an indented body; `else if` chains; lines starting `|` or `.` continue. Module constants: `let LIMIT = 3`.
 - Bindings: `let` once, `var` reassigns, `n += 1`; destructure `let [a, b] = xs`, `let {name} = rec`. Operators `and or not`.
 - Types: `Int Float Bool String Unit`, no implicit casts. `"{expr}"` interpolates (`\{` is a literal brace). `true`/`false`, `unit`.
-- Control: `if`/`else if`/`else`, `while c:`, `for i in 0..n:` (excludes `n`; steps `range_by`, `@std/collections.ms`), `break`, `continue`. `if` is a statement; the expression is `if c: a else: b`.
+- Control: `if`/`else if`/`else`, `while c:`, `for i in 0..n:` (excludes `n`; steps `range_by`, `@std/collections/collections.ms`), `break`, `continue`. `if` is a statement; the expression is `if c: a else: b`.
 - Functions: `fn f(a: Int, b: Int = 1) Int:`, called `f(1, b: 2)`; generics `fn f[T](x: T) T`; closures `fn x: x + 1`, typed `fn(x: Int) Int: x + 1`; types `fn(Int) Int`.
 - Collections: `[1, 2]`, `xs[i] = v`, `List[T](reserve: n)`, `xs.slice(a, b)` is a `Result`; `Map[K, V]()`, `Set[T]()` mutate in place; `for e in m.entries():`, `if var n = m.get(k): n += 1`; `contains`, `split`.
 - Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)` or `T(1)`; alternatives `case A`, `case B(x: Int)`. Methods in `impl T:` (`var fn` mutates `self`), never in `type`; `interface I:` with `impl I for T:`, and a `T` passes where `I` is expected.

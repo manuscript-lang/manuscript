@@ -2,10 +2,10 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/to-string.ms
 import TextError from "@std/core.ms"
-import fail from "@std/test.ms"
+import fail from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
-import Decimal from "@std/decimal.ms"
-import Queue from "@std/queue.ms"
+import Decimal from "@std/math/decimal.ms"
+import Queue from "@std/collections/queue.ms"
 
 type Person:
     name: String

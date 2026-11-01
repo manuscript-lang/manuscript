@@ -1,6 +1,6 @@
 import bench from "./harness.ms"
 import StringBuilder from "@std/string.ms"
-import parse, stringify, JsonValue from "@std/json.ms"
+import parse, stringify, JsonValue from "@std/data/json.ms"
 
 fn json_doc(count: Int) String:
     var sb = StringBuilder()

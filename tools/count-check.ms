@@ -6,9 +6,9 @@
 # MS names the ms that runs the programs (default target/release/ms).
 # Usage: ms run tools/count-check.ms [-- files]
 import tool_ms, host, use_stats_runtime from "./lib.ms"
-import glob, read_file, temporary from "@std/fs.ms"
-import arguments, commands, control from "@std/process.ms"
-import stdout from "@std/io.ms"
+import glob, read_file, temporary from "@std/os/fs.ms"
+import arguments, change_directory, working_directory, run from "@std/os/process.ms"
+import stdout from "@std/io/io.ms"
 
 # The text after `prefix` on every line that starts with it.
 fn after(text: String, prefix: String) List[String]:
@@ -23,7 +23,7 @@ export fn main() Int:
     let code = use_stats_runtime()
     if code != 0: return code
 
-    let root = control().working_directory().get()
+    let root = working_directory().get()
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
     if files.length() == 0:
@@ -44,7 +44,7 @@ export fn main() Int:
 
     let ms = tool_ms(root.clone())
     let scratch = temporary("ms-counts-").get()
-    control().change_directory(scratch.path()).get()
+    change_directory(scratch.path()).get()
 
     var failures = 0
     var checked = 0
@@ -57,7 +57,7 @@ export fn main() Int:
             var out = ""
             var err = ""
 
-            if let ran = commands().run(
+            if let ran = run(
                 ms.clone(), ["run", "{root}/{f}", "--build-type", build.clone()]
             ):
                 out = ran.stdout.decode_utf8().get("")
@@ -107,7 +107,7 @@ export fn main() Int:
                     failures += 1
                     stdout().write("stdout: {f} ({build}) differs:\n{out}\n").get()
 
-    control().change_directory(root).get()
+    change_directory(root).get()
     stdout().write("checked {checked} expectations, {failures} failing\n").get()
 
     if checked == 0:

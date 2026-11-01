@@ -5,10 +5,10 @@
 # Environment: MS, GO, SERVER_CPUS (0,1), LOAD_CPUS (2,3), MS_THREADS (2). Without taskset or with fewer than 4 CPUs nothing is pinned.
 import absolute, build_go, build_ms, capture, env, fail, fixed, must, platform, read_text, usage, write_text from "./lib.ms"
 import Invalid, Ran, invalid from "./lib.ms"
-import Stdio, arguments, commands, Subprocess from "@std/process.ms"
-import copy_tree, create_directory, list, temporary from "@std/fs.ms"
-import stdout from "@std/io.ms"
-import milliseconds, sleep from "@std/time.ms"
+import Stdio, arguments, Subprocess, spawn from "@std/os/process.ms"
+import copy_tree, create_directory, list, temporary from "@std/os/fs.ms"
+import stdout from "@std/io/io.ms"
+import milliseconds, sleep from "@std/os/time.ms"
 
 fn say(text: String) Unit:
     stdout().write(text + "\n").get()
@@ -31,7 +31,7 @@ fn raised(argv: List[String]) Ran:
 fn background(argv: List[String], out: String) Result[Subprocess, Invalid]:
     let script = "out=$1; shift; ulimit -n 20000 2>/dev/null; exec \"$@\" >\"$out\" 2>/dev/null"
     let args = ["-c", script, "sh", out.clone()].concat(argv)
-    if let child = commands().spawn(
+    if let child = spawn(
         "sh", args, stdin: Stdio.Null, stdout: Stdio.Null, stderr: Stdio.Null
     ):
         return ok(child)

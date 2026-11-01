@@ -1,8 +1,8 @@
-import parse, stringify from "@std/toml.ms"
-import arguments from "@std/process.ms"
-import read_file, write_file from "@std/fs.ms"
-import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import parse, stringify from "@std/data/toml.ms"
+import arguments from "@std/os/process.ms"
+import read_file, write_file from "@std/os/fs.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
 
 export fn main() Int:
     let args = arguments()
@@ -20,7 +20,7 @@ export fn main() Int:
         write_file(args.get(2), "ready").get()
 
     var checksum = 0
-    let start = clock().now()
+    let start = monotonic()
 
     for unused in 0..count:
         let current = read_file(path).get().decode_utf8().get()
@@ -29,6 +29,6 @@ export fn main() Int:
 
         checksum += output.byte_length()
 
-    let elapsed = clock().now().difference(start).to_nanoseconds()
+    let elapsed = monotonic().difference(start).to_nanoseconds()
     stdout().write("{elapsed}\t{checksum}\t{expected.byte_length()}\n").get()
     return 0

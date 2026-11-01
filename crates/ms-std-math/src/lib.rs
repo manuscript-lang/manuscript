@@ -15,12 +15,6 @@ macro_rules! unary {
     )*};
 }
 
-macro_rules! constant {
-    ($($sym:ident: $t:ty = $v:expr),* $(,)?) => {$(
-        native! { safe fn $sym() -> $t { $v } }
-    )*};
-}
-
 unary! {
     msstd_math_acos => f64::acos,
     msstd_math_asin => f64::asin,
@@ -105,23 +99,3 @@ fn is_integer(v: f64) -> bool {
 }
 
 const MAX_SAFE_INTEGER: i64 = (1 << 53) - 1;
-
-constant! {
-    msstd_math_e: f64 = core::f64::consts::E,
-    msstd_math_pi: f64 = core::f64::consts::PI,
-    msstd_math_infinity: f64 = f64::INFINITY,
-    msstd_math_nan: f64 = f64::NAN,
-    msstd_math_epsilon: f64 = 1.0 / (1u64 << 52) as f64,
-    msstd_math_max_float: f64 = f64::MAX,
-    msstd_math_min_float: f64 = 5e-324,
-    msstd_math_max_int: i64 = i64::MAX,
-    msstd_math_min_int: i64 = i64::MIN,
-    msstd_math_max_safe_integer: i64 = MAX_SAFE_INTEGER,
-    msstd_math_min_safe_integer: i64 = -MAX_SAFE_INTEGER,
-    msstd_math_ln2: f64 = core::f64::consts::LN_2,
-    msstd_math_ln10: f64 = core::f64::consts::LN_10,
-    msstd_math_log2e: f64 = core::f64::consts::LOG2_E,
-    msstd_math_log10e: f64 = core::f64::consts::LOG10_E,
-    msstd_math_sqrt2: f64 = core::f64::consts::SQRT_2,
-    msstd_math_sqrt_half: f64 = core::f64::consts::SQRT_2 / 2.0,
-}

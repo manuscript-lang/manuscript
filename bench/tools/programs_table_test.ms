@@ -1,5 +1,5 @@
 import SINK, ops, summarize from "./programs_table.ms"
-import expect_contains, expect_equal, expect_error from "@std/test.ms"
+import expect_contains, expect_equal, expect_error from "@std/test/test.ms"
 
 fn sample(version: String) List[String]:
     var lines = ops().map(fn op: "{version} {op.name} {op.count} {op.count * 2}")

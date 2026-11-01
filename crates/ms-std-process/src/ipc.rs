@@ -1,7 +1,7 @@
 //! The IPC pipe between a parent and a child it starts (`proposals/child-processes.md`): a
 //! dedicated duplex byte stream beside the standard streams, as Node's `NODE_CHANNEL_FD`, so the
 //! child's own output never mixes with messages. Framing and encoding live in Manuscript
-//! (`@std/channels.ms`); this module only makes the pipe, hands the child its end, and reads and
+//! (`@std/io/channels.ms`); this module only makes the pipe, hands the child its end, and reads and
 //! writes bytes.
 //!
 //! Unix uses a `socketpair`; the child's end becomes descriptor [`CHILD_FD`]. Windows uses an

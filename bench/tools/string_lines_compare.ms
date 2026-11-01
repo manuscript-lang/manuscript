@@ -4,8 +4,8 @@
 # A program prints CSV `case,input_bytes,iterations,elapsed_ns,checksum`; the identity file is `{case: [input bytes, iterations, checksum]}`.
 import Invalid, absolute, fail, finish, invalid, median, options, read_text, write_text from "./lib.ms"
 import all_ints, run_pinned from "./study.ms"
-import arguments from "@std/process.ms"
-import JsonValue, parse from "@std/json.ms"
+import arguments from "@std/os/process.ms"
+import JsonValue, parse from "@std/data/json.ms"
 
 export type Identity:
     input_bytes: Int

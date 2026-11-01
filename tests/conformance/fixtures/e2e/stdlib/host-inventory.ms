@@ -1,11 +1,11 @@
 # conform: tags=control-flow,stdlib-system,stdlib-testing,testing,tier-io,try-result
 # conform: phase=test
-import expect_equal, expect_false, expect_true from "@std/test.ms"
-import system from "@std/process.ms"
-import IpFamily from "@std/net.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
+import cpus, metrics, network_interfaces from "@std/os/process.ms"
+import IpFamily from "@std/net/net.ms"
 
 test "network interfaces describe each address and include a loopback":
-    let found = system().network_interfaces()
+    let found = network_interfaces()
 
     if let items = found:
         var loopback = false
@@ -24,7 +24,7 @@ test "network interfaces describe each address and include a loopback":
         try expect_true(loopback)
 
 test "cpus report non-negative cumulative times":
-    let found = system().cpus()
+    let found = cpus()
 
     if let cpus = found:
         try expect_false(cpus.is_empty())
@@ -35,7 +35,7 @@ test "cpus report non-negative cumulative times":
             try expect_true(cpu.system >= 0 and cpu.idle >= 0 and cpu.irq >= 0)
 
 test "metrics report memory, uptime, load averages and parallelism":
-    let found = system().metrics()
+    let found = metrics()
 
     if let m = found:
         try expect_true(m.total_memory > 0)

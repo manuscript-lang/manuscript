@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,interpolation,lists,maps,match,modules,optional,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/terse-data.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 fn subtract(amount: Int, deduction: Int = 1) Int: amount - deduction
 

@@ -1,7 +1,7 @@
 # conform: tags=aliasing,control-flow,formatter,match,modules,parser,stdlib-bytes,stdlib-crypto,stdlib-encoding,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/crypto.ms
-import expect_equal, expect_false, expect_true from "@std/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import (
     sha256,
     sha384,
@@ -32,7 +32,7 @@ import (
     CryptoError,
     HashAlgorithm
 ) from "@std/crypto.ms"
-import hex_encode, hex_decode from "@std/encoding.ms"
+import hex_encode, hex_decode from "@std/data/encoding.ms"
 import Bytes from "@std/bytes.ms"
 
 test "crypto known SHA256 HMAC and PBKDF2 vectors":

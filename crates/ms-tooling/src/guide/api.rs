@@ -17,7 +17,7 @@ use std::sync::{Arc, OnceLock};
 /// A detached documentation snapshot of an importable module.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ApiModule {
-    /// Import path (`@std/json.ms`, `prelude`, or a program file).
+    /// Import path (`@std/data/json.ms`, `prelude`, or a program file).
     pub path: String,
     /// Exported declarations sorted by name.
     pub declarations: Vec<ApiDeclaration>,

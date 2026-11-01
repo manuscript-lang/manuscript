@@ -1,11 +1,11 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-processes,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import Channel, ChannelError from "@std/channels.ms"
+import Channel, ChannelError from "@std/io/channels.ms"
 import panic from "@std/core.ms"
-import read_line, stderr, stdin, stdout from "@std/io.ms"
-import Stdio from "@std/process.ms"
-import ProcessError, ProcessGroup from "@std/processes.ms"
-import expect_equal, expect_error, expect_ok from "@std/test.ms"
+import read_line, stderr, stdin, stdout from "@std/io/io.ms"
+import Stdio from "@std/os/process.ms"
+import ProcessError, ProcessGroup from "@std/os/processes.ms"
+import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 type Job:
     name: String

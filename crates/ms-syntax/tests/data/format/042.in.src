@@ -1,5 +1,5 @@
-import expect_equal from "@std/test.ms"
-import Queue from "@std/queue.ms"
+import expect_equal from "@std/test/test.ms"
+import Queue from "@std/collections/queue.ms"
 
 test "each paragraph develops one case":
     var queue = Queue[Int]()

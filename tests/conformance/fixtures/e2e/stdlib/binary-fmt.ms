@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,modules,parser,stdlib-binary,stdlib-bytes,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/binary.ms
-import expect_equal, expect_contains, expect_fault from "@std/test.ms"
+import expect_equal, expect_contains, expect_fault from "@std/test/test.ms"
 import Bytes, BytesBuilder, BinaryError from "@std/bytes.ms"
 
 test "integers round-trip in both byte orders":

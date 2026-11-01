@@ -435,7 +435,7 @@ impl Checker {
         if name.as_str() != "spawn"
             || !m
                 .receiver
-                .is_source_type("@std/processes.ms", "ProcessGroup")
+                .is_source_type("@std/os/processes.ms", "ProcessGroup")
         {
             return;
         }
@@ -501,7 +501,7 @@ impl Checker {
         i
     }
 
-    /// `Shared` is changed through `lock` from `@std/sync.ms`, which is the one place that may call
+    /// `Shared` is changed through `lock` from `@std/concurrency/sync.ms`, which is the one place that may call
     /// its raw `take`, `put`, `locked` and `id`. A `Shared` is not `Data`, so the `Data` bound on
     /// worker and process messages already keeps it from crossing as a silent copy.
     fn check_shared_use(&mut self, e: &Expr, callee: &Expr, callable: &Info) {
@@ -512,12 +512,12 @@ impl Checker {
         if let Some(m) = callable.method.as_ref()
             && m.receiver.is_std("Shared")
             && matches!(name.as_str(), "take" | "put" | "locked" | "id")
-            && self.m().file.as_str() != "@std/sync.ms"
+            && self.m().file.as_str() != "@std/concurrency/sync.ms"
         {
             self.type_error(
                 e.pos,
                 format!(
-                    "Shared.{name} is internal; change a Shared with `var guard = lock(box)` from \"@std/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()"
+                    "Shared.{name} is internal; change a Shared with `var guard = lock(box)` from \"@std/concurrency/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()"
                 ),
             );
         }
@@ -527,13 +527,17 @@ impl Checker {
     /// that captured anything: `WorkerGroup.spawn` and `spawn_many` take the name of a top-level `def`.
     fn check_worker_entry(&mut self, callable: &Info, args: &[Arg]) {
         let is_spawn = callable.method.as_ref().is_some_and(|m| {
-            m.receiver.is_source_type("@std/workers.ms", "WorkerGroup")
+            m.receiver
+                .is_source_type("@std/concurrency/workers.ms", "WorkerGroup")
                 && m.decl
                     .as_ref()
                     .is_some_and(|d| matches!(d.name().as_str(), "spawn" | "spawn_many" | "start"))
-        }) && !matches!(self.m().file.as_str(), "@std/workers.ms" | "@std/net.ms");
+        }) && !matches!(
+            self.m().file.as_str(),
+            "@std/concurrency/workers.ms" | "@std/net/net.ms"
+        );
         let is_serve_cores = callable.symbol.as_ref().is_some_and(|s| {
-            s.module.as_str() == "@std/net.ms" && s.name.as_str() == "serve_cores"
+            s.module.as_str() == "@std/net/net.ms" && s.name.as_str() == "serve_cores"
         });
         if !is_spawn && !is_serve_cores {
             return;
@@ -808,7 +812,7 @@ impl Checker {
         {
             self.type_error(
                 pos,
-                "error(...) needs a value that implements Error, not a String; to fail a test write `try fail(\"message\")` (from @std/test.ms), otherwise wrap the message in a type that implements Error"
+                "error(...) needs a value that implements Error, not a String; to fail a test write `try fail(\"message\")` (from @std/test/test.ms), otherwise wrap the message in a type that implements Error"
                     .to_string(),
             );
             self.unresolved_constructors.insert(pos);

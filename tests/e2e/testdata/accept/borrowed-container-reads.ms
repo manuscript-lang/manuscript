@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 # `let x = m.get(k)`, `if let x = m.get(k)`, `xs.first()`, `xs.last()`, `m[k]` and
 # `m.get_or(k, d)` read the entry in place (a borrow the checker already enforces) instead of

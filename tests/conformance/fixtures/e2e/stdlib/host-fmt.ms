@@ -1,16 +1,16 @@
 # conform: tags=control-flow,faults,formatter,modules,optional,parser,stdlib-io,stdlib-process,stdlib-system,stdlib-testing,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/host.ms
-import expect_equal, expect_false, expect_not_equal from "@std/test.ms"
-import arguments from "@std/process.ms"
-import system, endianness, end_of_line, os_type, dev_null from "@std/process.ms"
-import control, commands, CommandError, CommandOutput, Stdio from "@std/process.ms"
-import read_line from "@std/io.ms"
+import expect_equal, expect_false, expect_not_equal from "@std/test/test.ms"
+import arguments from "@std/os/process.ms"
+import endianness, end_of_line, os_type, dev_null, system_info from "@std/os/process.ms"
+import CommandError, CommandOutput, Stdio, run, spawn, environment, process_info, set_environment from "@std/os/process.ms"
+import read_line from "@std/io/io.ms"
 
 test "CLI test roots have empty arguments and host metadata agrees":
     try expect_false(not arguments().is_empty())
 
-    let info = system().info()
+    let info = system_info()
     try expect_false(
         (
             info.cpu_count <= 0
@@ -19,7 +19,7 @@ test "CLI test roots have empty arguments and host metadata agrees":
         )
     )
 
-    let process = try control().info()
+    let process = try process_info()
     try expect_false(
         (
             process.pid <= 0
@@ -27,7 +27,6 @@ test "CLI test roots have empty arguments and host metadata agrees":
             or process.architecture != info.architecture
         )
     )
-    try expect_equal(system().working_directory(), (try control().working_directory()))
     try expect_false(endianness() != "LE" and endianness() != "BE")
     try expect_false(end_of_line() != "\n" and end_of_line() != "\r\n")
     try expect_not_equal(os_type().byte_length(), 0)
@@ -35,21 +34,21 @@ test "CLI test roots have empty arguments and host metadata agrees":
 
 test "process environment reflects live changes":
     let name = "MANUSCRIPT_STDLIB_CONFORMANCE"
-    let before = (try control().environment()).get(name)
-    try control().set_environment(name, "stdlib")
-    try expect_equal((try control().environment()).get(name), "stdlib")
-    try control().set_environment(name, before)
+    let before = (try environment()).get(name)
+    try set_environment(name, "stdlib")
+    try expect_equal((try environment()).get(name), "stdlib")
+    try set_environment(name, before)
 
 test "subprocess validation returns expected domain errors":
     let invalid: CommandOutput!CommandError = error(CommandError.InvalidInput)
-    try expect_equal(commands().run("", [], "".to_bytes()), invalid)
+    try expect_equal(run("", [], "".to_bytes()), invalid)
 
     let unavailable: CommandOutput!CommandError = error(
         CommandError.Unavailable
     )
     try expect_false(
         (
-            commands().run(
+            run(
                 "manuscript-nonexistent-command-stdlib", [], "".to_bytes()
             ) != unavailable
         )
@@ -58,7 +57,7 @@ test "subprocess validation returns expected domain errors":
 test "subprocess streams that are not piped are closed":
     if os_type() == "windows": return
 
-    let child = try commands().spawn(
+    let child = try spawn(
         "sh", ["-c", "cat; echo done >&2"], stdin: Stdio.Null, stdout: Stdio.Null
     )
     try expect_equal((try child.wait()), 0)
@@ -71,7 +70,7 @@ test "subprocess streams that are not piped are closed":
 test "managed subprocess streams incrementally and cleans up on scope exit":
     if os_type() == "windows": return
 
-    let child = try commands().spawn("cat", [])
+    let child = try spawn("cat", [])
     try child.stdin().write("ping\n")
 
     let line = try read_line(child.stdout())

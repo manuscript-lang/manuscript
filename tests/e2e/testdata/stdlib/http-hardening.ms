@@ -1,4 +1,4 @@
-import expect_ok, expect_equal from "@std/test.ms"
+import expect_ok, expect_equal from "@std/test/test.ms"
 import (
     headers,
     reply,
@@ -9,12 +9,12 @@ import (
     HttpResponse,
     buffered,
     HttpServerOptions
-) from "@std/http.ms"
+) from "@std/net/http.ms"
 import TextError from "@std/core.ms"
-import network, Connection from "@std/net.ms"
+import Connection, connect, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
-import read_file, temporary, write_file_bytes from "@std/fs.ms"
-import sleep from "@std/time.ms"
+import read_file, temporary, write_file_bytes from "@std/os/fs.ms"
+import sleep from "@std/os/time.ms"
 
 fn ok_route(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
@@ -24,12 +24,11 @@ fn slow_route(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "late".to_bytes())
 
 test "serve ends a connection that trickles its request head":
-    let net = network()
-    let server = net.serve(
+    let server = serve(
         address: "127.0.0.1:0", handler: buffered(ok_route),
         options: HttpServerOptions(timeout: 400.milliseconds)
     ) | try expect_ok
-    let client = net.connect(server.address(), 2.seconds) | try expect_ok
+    let client = connect(server.address(), 2.seconds) | try expect_ok
     client.write("GET / HTTP/1.1\r\nHost: t\r\nX-Slow: ", 2.seconds) | try expect_ok
 
     # One byte every 100 ms never completes the head; the budget still runs out.
@@ -54,12 +53,11 @@ test "serve ends a connection that trickles its request head":
         )
 
 test "close cancels a handler that outlives the grace period":
-    let net = network()
-    var server = net.serve(
+    var server = serve(
         address: "127.0.0.1:0", handler: buffered(slow_route),
         options: HttpServerOptions(grace: 200.milliseconds)
     ) | try expect_ok
-    let client = net.connect(server.address(), 2.seconds) | try expect_ok
+    let client = connect(server.address(), 2.seconds) | try expect_ok
     client.write("GET / HTTP/1.1\r\nHost: t\r\n\r\n", 2.seconds) | try expect_ok
     sleep(100.milliseconds)
     try server.close()
@@ -81,7 +79,6 @@ fn expect_file_reply(conn: Connection) Unit!:
     return ok(unit)
 
 test "serve answers requests while handlers read and write files":
-    let net = network()
     var dir = temporary("ms-http-io") | try expect_ok
     let root = dir.path()
     let payload = ("0123456789abcdef".repeat(262144) | try expect_ok).to_bytes()
@@ -98,11 +95,9 @@ test "serve answers requests while handlers read and write files":
 
         return HttpResponse(200, headers(), "{read.get().length()}".to_bytes())
 
-    var server = net.serve(
-        address: "127.0.0.1:0", handler: buffered(io_route)
-    ) | try expect_ok
-    let a = net.connect(server.address(), 2.seconds) | try expect_ok
-    let b = net.connect(server.address(), 2.seconds) | try expect_ok
+    var server = serve(address: "127.0.0.1:0", handler: buffered(io_route)) | try expect_ok
+    let a = connect(server.address(), 2.seconds) | try expect_ok
+    let b = connect(server.address(), 2.seconds) | try expect_ok
     a.write(
         "GET /io?1 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n", 2.seconds
     ) | try expect_ok
@@ -118,12 +113,11 @@ fn oversized(exchange: HttpExchange) Unit!HttpError:
     return reply(exchange, text(200, "z".repeat(5000).get("")))
 
 test "serve answers 500 when a whole response exceeds max_response_bytes":
-    let net = network()
-    let server = net.serve(
+    let server = serve(
         address: "127.0.0.1:0", handler: oversized,
         options: HttpServerOptions(max_response_bytes: 100)
     ) | try expect_ok
-    let client = net.connect(server.address(), 2.seconds) | try expect_ok
+    let client = connect(server.address(), 2.seconds) | try expect_ok
     client.write(
         "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n", 2.seconds
     ) | try expect_ok
@@ -135,7 +129,7 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
     )
 
 fn raw_status(address: String, request: String) String!:
-    let client = network().connect(address, 2.seconds) | try expect_ok
+    let client = connect(address, 2.seconds) | try expect_ok
     client.write(request, 2.seconds) | try expect_ok
 
     let reply = client.read(timeout: 2.seconds) | try expect_ok
@@ -143,9 +137,7 @@ fn raw_status(address: String, request: String) String!:
     return ok(text.split("\r\n")[0].clone())
 
 test "asterisk-form target is accepted only for OPTIONS":
-    let server = network().serve(
-        address: "127.0.0.1:0", handler: buffered(ok_route)
-    ) | try expect_ok
+    let server = serve(address: "127.0.0.1:0", handler: buffered(ok_route)) | try expect_ok
     let tail = "HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
     let get = raw_status(server.address(), "GET * {tail}") | try expect_ok
     let options = raw_status(server.address(), "OPTIONS * {tail}") | try expect_ok

@@ -1,4 +1,4 @@
-import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
 import (
     timestamp,
     parse_timestamp,
@@ -6,12 +6,12 @@ import (
     local_zone,
     Timestamp,
     TimeError,
-    clock,
-    wall_clock,
+    monotonic,
+    now,
     sleep,
     microseconds,
     milliseconds
-) from "@std/time.ms"
+) from "@std/os/time.ms"
 
 test "timestamps preserve nanoseconds and shift across epoch":
     let epoch = try timestamp(0, 123)
@@ -30,13 +30,12 @@ test "time rejects invalid timestamps and out of range nanoseconds":
     try expect_equal(timestamp(0, 1000000000), out_of_range)
 
 test "host clocks are usable and zero sleep completes":
-    let monotonic = clock()
-    let before = monotonic.now()
+    let before = monotonic()
     sleep(0.milliseconds)
-    try expect_false(monotonic.now() < before)
+    try expect_false(monotonic() < before)
 
-    let now = wall_clock().now()
-    try expect_equal((try parse_timestamp(now.to_string())), now)
+    let current = now()
+    try expect_equal((try parse_timestamp(current.to_string())), current)
 
 test "parse_timestamp reports offsets that leave years 1 through 9999 as out of range":
     let out_of_range: Timestamp!TimeError = error(TimeError.OutOfRange)
@@ -80,17 +79,16 @@ test "calendar rejects unknown zones and impossible dates":
     try expect_false(local_zone() == "")
 
 test "sub-millisecond sleeps are not rounded up to a millisecond":
-    let monotonic = clock()
     var fastest = milliseconds(5000)
 
     # Rounding each sleep up to 1 ms would take at least 500 ms; 50 us sleeps take about 25 ms.
     # A loaded or coarse-timer runner can stretch one pass, so the fastest of a few passes decides.
     for attempt in 0..5:
-        let start = monotonic.now()
+        let start = monotonic()
         for round in 0..500:
             sleep(microseconds(50))
 
-        let elapsed = monotonic.now().difference(start)
+        let elapsed = monotonic().difference(start)
         if elapsed.compare(fastest) < 0:
             fastest = elapsed
 

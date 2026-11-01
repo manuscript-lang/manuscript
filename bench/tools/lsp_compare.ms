@@ -3,8 +3,8 @@
 # Suites are the case lists of the three studies: `hover` (bench/perf/lsp), `outline` (lsp-outline), `semantic` (lsp-semantic).
 # Harness output is `mode,count,rounds,shape,elapsed_ns,checksum,size,rss`. The CSV has a cpu column (empty without --cpu).
 import Invalid, absolute, fail, invalid, median, options, sample, write_text from "./lib.ms"
-import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
+import arguments from "@std/os/process.ms"
+import stdout from "@std/io/io.ms"
 
 type Case:
     mode: String

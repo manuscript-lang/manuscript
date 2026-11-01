@@ -2,8 +2,8 @@
 # conform: phase=check
 # conform: origin=tests/e2e/library_project_test.go:32 TestLibraryProjectCommandsAndCache
 import value from "@lib/value.ms"
-import read_file from "@std/fs.ms"
-import fail from "@std/test.ms"
+import read_file from "@std/os/fs.ms"
+import fail from "@std/test/test.ms"
 
 test "root":
     if value() != 3: return fail("bad value")

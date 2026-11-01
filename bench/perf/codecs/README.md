@@ -3,7 +3,7 @@
 This focused runtime benchmark decodes `List[Bytes]` through typed JSON parsing. Each
 list has a configurable number of identical Base64 strings. Empty and small blobs
 expose per-value setup; larger blobs check scaling. The public
-`@std/encoding.ms` Base64 functions have source implementations; this benchmark
+`@std/data/encoding.ms` Base64 functions have source implementations; this benchmark
 measures the native decoder used by typed JSON, not that source decoder.
 
 The program builds inputs before starting its timer. Each timed iteration parses,

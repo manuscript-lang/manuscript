@@ -1,5 +1,5 @@
 import case_names, checksum, summarize from "./strappend_table.ms"
-import expect_equal, expect_error, expect_ok from "@std/test.ms"
+import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 fn sample(trial: Int, version: String, elapsed: Int) List[String]:
     return case_names().map(

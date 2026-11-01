@@ -1,7 +1,7 @@
-import HttpExchange, HttpError, HttpRequest, HttpResponse, buffered, headers from "@std/http.ms"
-import network, Connection from "@std/net.ms"
-import expect_equal, expect_ok, expect_true from "@std/test.ms"
-import Worker, WorkerGroup, worker_channel from "@std/workers.ms"
+import HttpExchange, HttpError, HttpRequest, HttpResponse, buffered, headers from "@std/net/http.ms"
+import Connection, connect, listen, serve_connections from "@std/net/net.ms"
+import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
+import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 
 fn answer(id: Int) fn(HttpExchange) Unit!HttpError:
     let handler = fn(request: HttpRequest) HttpResponse:
@@ -15,7 +15,7 @@ fn serves_handed() Unit:
     var ch = worker_channel[Int, Int]()
     let id = ch.receive().get(none).get(0)
 
-    if let acquired = network().serve_connections(handler: answer(id)):
+    if let acquired = serve_connections(handler: answer(id)):
         var server = acquired
 
         while true:
@@ -28,8 +28,7 @@ fn serves_handed() Unit:
         server.close().get(none)
 
 test "an acceptor deals connections round robin to serving workers":
-    let net = network()
-    let listener = try net.listen("127.0.0.1:0")
+    let listener = try listen("127.0.0.1:0")
     let group = WorkerGroup[Int, Int]()
     var workers: List[Worker[Int, Int]] = []
 
@@ -42,7 +41,7 @@ test "an acceptor deals connections round robin to serving workers":
     var clients: List[Connection] = []
 
     for i in 0..6:
-        var client = try net.connect(listener.address(), 2.seconds)
+        var client = try connect(listener.address(), 2.seconds)
         try client.write("GET /x HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
         clients.append(client)
 

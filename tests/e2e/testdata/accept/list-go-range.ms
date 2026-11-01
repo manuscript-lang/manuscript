@@ -1,4 +1,4 @@
-import expect_false from "@std/test.ms"
+import expect_false from "@std/test/test.ms"
 
 fn replace[T](var values: List[T], value: T) Unit:
     values.set(1, value)

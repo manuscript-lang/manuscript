@@ -178,7 +178,7 @@ Examples:
 pub const HELP_BENCH: &str = r#"Usage: ms bench <file.ms|ms.toml> [--json] [--filter text] [--time duration] [--samples count] [--iterations count] [--timeout duration] [--build-type level] [-- program arguments]
 
 Build and run bench blocks in the module and its imported modules. A project also loads bench.ms and *_bench.ms files.
-A bench body is one iteration: the @std/bench.ms driver repeats it until a sample takes --time (this calibration is the warmup),
+A bench body is one iteration: the @std/test/bench.ms driver repeats it until a sample takes --time (this calibration is the warmup),
 then times --samples samples and reports per-iteration min, median, mean, max, and standard deviation.
 Each bench runs in its own process with the project directory (or the file's directory) as the working directory. A bench that
 fails (an error, a fault, or the timeout) fails by name. Standard output written by a bench is discarded.

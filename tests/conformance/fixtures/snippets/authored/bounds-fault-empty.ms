@@ -1,7 +1,7 @@
 # conform: tags=lists,faults,perf,tier-core
 # conform: phase=run
 # conform: origin=range pass: relational bounds proofs
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 fn last_after_loop(a: List[Int]) Int:
     var t = 0

@@ -5,10 +5,10 @@
 # MS names the ms that runs the programs (default target/release/ms).
 # Usage: ms run tools/leak-check.ms [-- files]
 import tool_ms, use_stats_runtime from "./lib.ms"
-import glob, read_file, temporary from "@std/fs.ms"
-import arguments, commands, control from "@std/process.ms"
-import seconds from "@std/time.ms"
-import stdout from "@std/io.ms"
+import glob, read_file, temporary from "@std/os/fs.ms"
+import arguments, change_directory, working_directory, run from "@std/os/process.ms"
+import seconds from "@std/os/time.ms"
+import stdout from "@std/io/io.ms"
 
 # The live block counts the runtime printed on standard error; a program that starts child
 # processes prints one per process, and their sum is what leaked. Empty when none was printed.
@@ -25,7 +25,7 @@ export fn main() Int:
     let code = use_stats_runtime()
     if code != 0: return code
 
-    let root = control().working_directory().get()
+    let root = working_directory().get()
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
 
@@ -42,7 +42,7 @@ export fn main() Int:
 
     let ms = tool_ms(root.clone())
     let scratch = temporary("ms-leak-").get()
-    control().change_directory(scratch.path()).get()
+    change_directory(scratch.path()).get()
 
     var swept = 0
     var leaks = 0
@@ -50,9 +50,7 @@ export fn main() Int:
     for f in files:
         let absolute = "{root}/{f}"
 
-        if let out = commands().run(
-            ms.clone(), ["run", absolute.clone()], timeout: seconds(60)
-        ):
+        if let out = run(ms.clone(), ["run", absolute.clone()], timeout: seconds(60)):
             let counts = live_blocks(out.stderr.decode_utf8().get(""))
             if counts.length() == 0: continue
 
@@ -64,7 +62,7 @@ export fn main() Int:
                 leaks += 1
                 stdout().write("leak: {absolute} left {total} live blocks\n").get()
 
-    control().change_directory(root).get()
+    change_directory(root).get()
     stdout().write("swept {swept} programs, {leaks} leaking\n").get()
 
     if swept == 0:

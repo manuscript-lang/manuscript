@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import Duration from \"@std/time.ms\"\n\nimpl Duration:\n    fn f() Int:\n        return 1\n"
+    "fmt": "import Duration from \"@std/os/time.ms\"\n\nimpl Duration:\n    fn f() Int:\n        return 1\n"
   }
 }

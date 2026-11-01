@@ -1,7 +1,7 @@
 # conform: tags=control-flow,modules,stdlib-fs,tier-io,try-result
 # conform: phase=run
 # conform: origin=tests/e2e/fs_remove_test.go:17 TestFileSystemRemoveProtectsWorkingDirectory
-import FileSystemError, canonicalize, remove, rename from "@std/fs.ms"
+import FileSystemError, canonicalize, remove, rename from "@std/os/fs.ms"
 
 export fn main() Int:
     let invalid: Unit!FileSystemError = error(FileSystemError.InvalidInput)

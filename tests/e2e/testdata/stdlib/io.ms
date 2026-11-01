@@ -1,7 +1,7 @@
-import expect_equal, expect_false from "@std/test.ms"
-import ReadStream, WriteStream, IoError, read_all, read_line, copy from "@std/io.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
+import ReadStream, WriteStream, IoError, read_all, read_line, copy from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
-import open, read_file, temporary, write_file from "@std/fs.ms"
+import open, read_file, temporary, write_file from "@std/os/fs.ms"
 import MemoryStream from "./support/streams.ms"
 
 test "stream compositions invoke source implementations and preserve EOF":

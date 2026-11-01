@@ -3,8 +3,8 @@
 # Usage (from the repository root): ms run bench/agent/tokens.ms   # needs `pip install tiktoken`
 # The reference table shows how verbose each language is when the same program is written by hand;
 # agent-written sizes come from `llm_tokens` in results/runs.jsonl (see README).
-import glob from "@std/fs.ms"
-import stdout, stderr from "@std/io.ms"
+import glob from "@std/os/fs.ms"
+import stdout, stderr from "@std/io/io.ms"
 import load_challenges from "./core/model.ms"
 import bash from "./lib/text.ms"
 

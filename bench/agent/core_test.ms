@@ -1,7 +1,7 @@
 # Unit tests for the runner's core. Run from the repository root: ms test bench/agent/core_test.ms
-import access, glob from "@std/fs.ms"
-import JsonValue, parse from "@std/json.ms"
-import expect_close, expect_equal, expect_false, expect_true, fail from "@std/test.ms"
+import access, glob from "@std/os/fs.ms"
+import JsonValue, parse from "@std/data/json.ms"
+import expect_close, expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
 import cost_from_tokens, load_challenges, load_languages from "./core/model.ms"
 import count_text from "./core/codetokens.ms"
 import ClaudeCode from "./harnesses/claude_code.ms"

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,generics,lists,maps,match,modules,parser,stdlib-http,strings,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/support/http.ms
-import headers, HttpHeaders, HttpError from "@std/http.ms"
+import headers, HttpHeaders, HttpError from "@std/net/http.ms"
 
 # Explicit fixture migration from the old text maps; no runtime coercion.
 export fn text_headers(fields: Map[String, String]) HttpHeaders!HttpError:

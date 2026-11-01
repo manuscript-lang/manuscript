@@ -1,7 +1,7 @@
 # conform: tags=numbers,types,tier-core
 # conform: phase=run
 # conform: origin=sized numeric types stage 1
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 fn total(values: List[Int8]) Int8:
     var sum: Int8 = 0

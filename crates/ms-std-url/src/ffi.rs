@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/net.ms` (`msrt_url_*`).
+//! C ABI shims for `@std/net/net.ms` (`msrt_url_*`).
 //!
 //! `Url` and `QueryEntry` are records at their natural layout, fields in declaration order (see
 //! [`UrlRec`], [`QueryEntryRec`]). Strings inside a record written by the runtime are owned (+1)

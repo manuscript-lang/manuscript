@@ -157,7 +157,7 @@ pub fn file_uri(path: &str) -> String {
     format!("file://{}", escape_path(&p))
 }
 
-/// The URI of a bundled standard module such as `@std/io.ms`.
+/// The URI of a bundled standard module such as `@std/io/io.ms`.
 pub fn standard_library_uri(file: &str) -> String {
     let rest = file.strip_prefix("@std/").unwrap_or(file);
     // The source half of a mixed module (`collections.ms+source`) shares its file's text.
@@ -218,12 +218,12 @@ mod tests {
     #[test]
     fn standard_library_uris() {
         assert_eq!(
-            standard_library_uri("@std/io.ms"),
-            "manuscript-stdlib:///io.ms"
+            standard_library_uri("@std/io/io.ms"),
+            "manuscript-stdlib:///io/io.ms"
         );
         assert_eq!(
-            standard_library_path("manuscript-stdlib:///io.ms").as_deref(),
-            Ok("/io.ms")
+            standard_library_path("manuscript-stdlib:///io/io.ms").as_deref(),
+            Ok("/io/io.ms")
         );
         assert!(standard_library_path("manuscript-stdlib://host/io.ms").is_err());
         assert!(standard_library_path("file:///io.ms").is_err());

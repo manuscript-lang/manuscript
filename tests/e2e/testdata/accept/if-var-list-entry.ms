@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn bump(var xs: List[Int], i: Int) Bool:
     if var n = xs[i]?:

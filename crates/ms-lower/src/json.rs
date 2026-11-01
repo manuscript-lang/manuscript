@@ -1,4 +1,4 @@
-//! `@std/json.ms` `parse` and `stringify` for any type: one decoder and one encoder per type,
+//! `@std/data/json.ms` `parse` and `stringify` for any type: one decoder and one encoder per type,
 //! built in MIR over the runtime's document arena (`msrt_json_*`, see `ms-std-json`).
 //!
 //! A decoder takes the document handle, a node id and the strict flag (unknown object members
@@ -297,7 +297,7 @@ impl FnLower<'_> {
         let p = self.b.params();
         let (doc, id, strict) = (p[0], p[1], p[2]);
         let mt = self.jmty(t)?;
-        if t.is_source_type("@std/json.ms", "JsonValue") {
+        if t.is_source_type("@std/data/json.ms", "JsonValue") {
             return self.jdecode_tree(t, mt, doc, id, strict);
         }
         match t.id.as_str() {
@@ -412,11 +412,11 @@ impl FnLower<'_> {
             Some((KIND_STRING, "msstd_time_parse_timestamp", false))
         } else if t.is_std("Bytes") {
             Some((KIND_STRING, "msrt_encoding_base64_decode", true))
-        } else if t.is_source_type("@std/net.ms", "Url") {
+        } else if t.is_source_type("@std/net/net.ms", "Url") {
             Some((KIND_STRING, "msrt_url_parse", false))
-        } else if t.is_source_type("@std/net.ms", "IpAddress") {
+        } else if t.is_source_type("@std/net/net.ms", "IpAddress") {
             Some((KIND_STRING, "msrt_json_dec_ip", false))
-        } else if t.is_source_type("@std/net.ms", "Cidr") {
+        } else if t.is_source_type("@std/net/net.ms", "Cidr") {
             Some((KIND_STRING, "msrt_json_dec_cidr", false))
         } else if t.is_std("Decimal") {
             Some((KIND_NUMBER, "msstd_decimal_parse", false))
@@ -956,7 +956,7 @@ impl FnLower<'_> {
     /// Writes `value` (borrowed) to the writer `w`; 0, or -1 when it has no JSON form and nothing
     /// was written.
     fn jencode(&mut self, t: &ct::Ty, mt: MTy, w: Value, value: Value) -> Result<Value, Error> {
-        if t.is_source_type("@std/json.ms", "JsonValue") {
+        if t.is_source_type("@std/data/json.ms", "JsonValue") {
             return self.jencode_tree(t, mt, w, value);
         }
         match t.id.as_str() {
@@ -1072,7 +1072,7 @@ impl FnLower<'_> {
             return Ok(self.jwritten());
         }
         // A URL is its formatted text.
-        if t.is_source_type("@std/net.ms", "Url") {
+        if t.is_source_type("@std/net/net.ms", "Url") {
             return self.jencode_url(w, value);
         }
         // An address or network is its text.
@@ -1080,7 +1080,7 @@ impl FnLower<'_> {
             ("IpAddress", "msrt_net_ip_address_text"),
             ("Cidr", "msrt_net_cidr_text"),
         ] {
-            if t.is_source_type("@std/net.ms", name) {
+            if t.is_source_type("@std/net/net.ms", name) {
                 let text = self.call_runtime(sym, &[value], MTy::STR)?;
                 self.jw("msrt_json_w_string", &[w, text])?;
                 self.drop_value(text);
@@ -1165,7 +1165,7 @@ impl FnLower<'_> {
         let m = self.cx.methods.iter().find(|m| {
             m.contract
                 .as_ref()
-                .is_some_and(|c| c.is_source_type("@std/json.ms", "JsonEncode"))
+                .is_some_and(|c| c.is_source_type("@std/data/json.ms", "JsonEncode"))
                 && ct::type_key(&m.receiver) == key
         })?;
         let decl = m.decl.as_ref()?;
@@ -1409,7 +1409,7 @@ impl FnLower<'_> {
             .map(|a| a.val);
         let flat = self.jlimits(limits)?;
         // An untyped parse is built by the runtime while scanning, without a document.
-        let tree = t.is_source_type("@std/json.ms", "JsonValue");
+        let tree = t.is_source_type("@std/data/json.ms", "JsonValue");
         let doc_ty = self.jdoc_ty();
         let mut vals = vec![text];
         vals.extend(flat);

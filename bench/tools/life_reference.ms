@@ -1,5 +1,5 @@
 # Independent checksum oracle for bench/language/life.ms (not a performance comparator).
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     let size = 128

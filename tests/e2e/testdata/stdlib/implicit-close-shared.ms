@@ -1,8 +1,8 @@
-import expect_equal, expect_ok from "@std/test.ms"
+import expect_equal, expect_ok from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/fs.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import append_file, read_file, temporary from "@std/os/fs.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
 
 # Close appends the id to a log file, so the log is the order in which the closes ran.
 type Tracked:

@@ -1,4 +1,4 @@
-//! `@std/archive.ms` natives: gzip, zlib and raw deflate with the framing, checks and error
+//! `@std/io/archive.ms` natives: gzip, zlib and raw deflate with the framing, checks and error
 //! mapping. The compressed bytes are produced by miniz_oxide.
 #![no_std]
 

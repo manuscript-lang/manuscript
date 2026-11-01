@@ -3,9 +3,9 @@
 # Cancelling a task parked after a closing `var` binding must drop what the binding holds, closed by hand or not.
 # CI runs this program against the counting runtime (tools/leak-check.ms): any live block fails.
 import Closeable from "@std/core.ms"
-import stdout from "@std/io.ms"
-import TaskGroup from "@std/tasks.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 type G:
     held: Bool

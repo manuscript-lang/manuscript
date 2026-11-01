@@ -1,18 +1,18 @@
 # conform: tags=control-flow,diagnostics,faults,generics,match,modules,stdlib-fs,stdlib-path,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,strings,tier-io,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/library/main.ms
-import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
-import control from "@std/process.ms"
-import arguments from "@std/process.ms"
-import entropy from "@std/random.ms"
-import append_file, open, read_file, remove, stat, watch_native, write_file from "@std/fs.ms"
-import system from "@std/process.ms"
-import wall_clock from "@std/time.ms"
-import uuid_v4 from "@std/random.ms"
-import secure_int from "@std/random.ms"
-import parse_timestamp from "@std/time.ms"
-import posix from "@std/fs.ms"
-import win32 from "@std/fs.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
+import memory_usage, process_info from "@std/os/process.ms"
+import arguments from "@std/os/process.ms"
+import random_bytes from "@std/os/random.ms"
+import append_file, open, read_file, remove, stat, watch_native, write_file from "@std/os/fs.ms"
+import system_info from "@std/os/process.ms"
+import now from "@std/os/time.ms"
+import uuid_v4 from "@std/os/random.ms"
+import secure_int from "@std/os/random.ms"
+import parse_timestamp from "@std/os/time.ms"
+import posix from "@std/os/fs.ms"
+import win32 from "@std/os/fs.ms"
 
 fn common_result[T, E: Error](result: T!E) T!:
     match result:
@@ -41,22 +41,22 @@ fn exercise(path: String) Unit!:
     info.size | try expect_equal(5)
     (not info.directory) | try expect_true
 
-    let bytes = try common_result(result: entropy().bytes(count: 16))
+    let bytes = try common_result(result: random_bytes(count: 16))
     bytes.length() | try expect_equal(16)
 
-    let identifier = try common_result(result: uuid_v4(entropy: entropy()))
+    let identifier = try common_result(result: uuid_v4())
     identifier.byte_length() | try expect_equal(36)
 
     let random = try common_result(
-        result: secure_int(entropy: entropy(), min: -2, max_exclusive: 3)
+        result: secure_int(min: -2, max_exclusive: 3)
     )
     (random >= -2 and random < 3) | try expect_true
 
-    let now = wall_clock().now()
+    let now = now()
     (try common_result(result: parse_timestamp(text: now.to_string()))) | try expect_equal(
         now
     )
-    (system().info().cpu_count > 0) | try expect_true
+    (system_info().cpu_count > 0) | try expect_true
 
     var file = try common_result(
         result: open(path: path, flags: "r+", mode: 384)
@@ -102,10 +102,10 @@ fn exercise(path: String) Unit!:
     let windows = win32()
     windows.parse("C:/work/file.txt").extension | try expect_equal(".txt")
 
-    let process_info = try common_result(result: control().info())
+    let process_info = try common_result(result: process_info())
     (process_info.pid > 0) | try expect_true
 
-    let memory = try common_result(result: control().memory_usage())
+    let memory = try common_result(result: memory_usage())
     (memory.heap_system > 0) | try expect_true
 
     let _removed = try common_result(

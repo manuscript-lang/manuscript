@@ -1,7 +1,7 @@
-import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import TextError from "@std/core.ms"
-import parse, stringify, TomlValue, TomlError, TomlLimits from "@std/toml.ms"
-import clock from "@std/time.ms"
+import parse, stringify, TomlValue, TomlError, TomlLimits from "@std/data/toml.ms"
+import monotonic from "@std/os/time.ms"
 
 fn entries(value: TomlValue) Map[String, TomlValue]!:
     match value:
@@ -273,9 +273,9 @@ test "TOML stringify rejects invalid date-time text":
 test "TOML deeply nested inline tables parse in linear time":
     let n = 6000
     let text = "a = " + "\{ b = ".repeat(n).get() + "1" + " \}".repeat(n).get()
-    let started = clock().now()
+    let started = monotonic()
     let parsed = parse(text, TomlLimits())
-    let elapsed = clock().now().difference(started).to_milliseconds()
+    let elapsed = monotonic().difference(started).to_milliseconds()
     let value = try parsed
     try expect_true(entries(value).is_ok())
     if elapsed > 3000: return fail("nested inline tables took {elapsed} ms")

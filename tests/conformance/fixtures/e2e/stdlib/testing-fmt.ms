@@ -16,7 +16,7 @@ import (
     expect_some,
     expect_true,
     fail
-) from "@std/test.ms"
+) from "@std/test/test.ms"
 
 fn identity[T](value: T) T:
     return value

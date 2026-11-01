@@ -1,7 +1,7 @@
-import arguments from "@std/process.ms"
-import clock from "@std/time.ms"
-import stdout from "@std/io.ms"
-import parse_int from "@std/math.ms"
+import arguments from "@std/os/process.ms"
+import clock from "@std/os/time.ms"
+import stdout from "@std/io/io.ms"
+import parse_int from "@std/math/math.ms"
 
 export fn main() Int:
     let args = arguments()

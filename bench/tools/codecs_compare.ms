@@ -5,9 +5,9 @@
 # Pair -1 is an untimed warm-up and is excluded from the printed summary.
 import absolute, fail, invalid, jfloat, jint, jobject, jstr, jbool, median, options, write_text from "./lib.ms"
 import all_ints, append_json_line, binaries_json, fresh_directory, labeled, run_pinned, write_json from "./study.ms"
-import arguments from "@std/process.ms"
-import JsonValue from "@std/json.ms"
-import stdout from "@std/io.ms"
+import arguments from "@std/os/process.ms"
+import JsonValue from "@std/data/json.ms"
+import stdout from "@std/io/io.ms"
 
 type Decode:
     size: Int
