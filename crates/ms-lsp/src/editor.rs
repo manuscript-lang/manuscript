@@ -614,6 +614,16 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
                 return;
             }
             let facts = self.module.facts();
+            if facts
+                .info(e.id)
+                .and_then(|i| i.constructor.as_ref())
+                .is_some_and(|ty| {
+                    ty.opaque_module()
+                        .is_some_and(|file| file != self.module.file)
+                })
+            {
+                return;
+            }
             if let Some(info) = facts.info(callee.id)
                 && let Some(ty) = &info.ty
                 && ty.kind == Kind::Function
@@ -641,6 +651,12 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
                 }
             }
             if let Some(ty) = type_expression(callee, self.scope) {
+                if ty
+                    .opaque_module()
+                    .is_some_and(|file| file != self.module.file)
+                {
+                    return;
+                }
                 let sig = ms_check::types::constructor_signature(&ty);
                 self.found = Some((e.clone(), sig));
             }

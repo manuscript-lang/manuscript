@@ -1,4 +1,4 @@
-import Vault, Open, vault from "./vault.ms"
+import Vault, Open, Choice, vault from "./vault.ms"
 
 fn inspect(value: Vault[Int]) Int:
     return 1

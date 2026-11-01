@@ -1,7 +1,7 @@
 //! Completion must not advertise an opaque record's private constructor fields.
 
 use ms_lsp::analysis::{Document, Documents, analyze};
-use ms_lsp::completion::completion_at;
+use ms_lsp::completion::{completion_at, signature_help};
 use ms_lsp::text::{self, Range};
 use ms_rt as _;
 
@@ -130,5 +130,96 @@ fn ordinary_constructors_and_opaque_type_arguments_keep_their_snippets() {
             "{:?}",
             checked.diagnostics
         );
+    }
+}
+
+#[test]
+fn opaque_constructor_argument_labels_and_signatures_stay_private() {
+    let workspace = Workspace::new("opaque-constructor-help");
+    let library = include_str!("opaque_completion/vault.ms");
+    std::fs::write(workspace.path("vault.ms"), library).unwrap();
+    let outside = include_str!("opaque_completion/outside.ms");
+    for newline in ["\n", "\r\n"] {
+        for (file, fixture, original) in [
+            ("vault.ms", library, "Vault[Int](7)"),
+            ("outside.ms", outside, "inspect(hidden)"),
+        ] {
+            for argument in ["", "sec"] {
+                let call = format!("Vault[Int]({argument})");
+                let source = fixture.replace(original, &call).replace('\n', newline);
+                let prefix = format!("return Vault[Int]({argument}");
+                let offset = source.find(&prefix).unwrap() + prefix.len();
+                let document = Document::new(workspace.uri(file), source);
+                for snippets in [false, true] {
+                    let items = completion_at(
+                        &document,
+                        &Documents::new(),
+                        text::position(&document.text, offset),
+                        snippets,
+                    )
+                    .unwrap();
+                    let labels: Vec<_> = items.into_iter().map(|item| item.json()).collect();
+                    let secret = labels
+                        .iter()
+                        .find(|item| item.get("label").and_then(|j| j.as_str()) == Some("secret"));
+                    assert_eq!(secret.is_some(), file == "vault.ms", "{file}: {labels:?}");
+                }
+                let help = signature_help(
+                    &document,
+                    &Documents::new(),
+                    text::position(&document.text, offset),
+                )
+                .unwrap();
+                if file == "outside.ms" {
+                    assert!(help.is_null(), "{help:?}");
+                } else {
+                    let signature = &help.get("signatures").and_then(|j| j.as_array()).unwrap()[0];
+                    assert_eq!(
+                        signature.get("label").and_then(|j| j.as_str()),
+                        Some("Vault[Int](secret: Int) Vault[Int]")
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn opaque_alternative_argument_labels_and_signatures_stay_private() {
+    let workspace = Workspace::new("opaque-case-help");
+    let library = include_str!("opaque_completion/vault.ms");
+    std::fs::write(workspace.path("vault.ms"), library).unwrap();
+    let outside = include_str!("opaque_completion/outside.ms");
+    for newline in ["\n", "\r\n"] {
+        for (file, fixture, original) in [
+            ("vault.ms", library, "Choice.Payload(7)"),
+            ("outside.ms", outside, "inspect(hidden)"),
+        ] {
+            let source = fixture
+                .replace(original, "Choice.Payload(va)")
+                .replace('\n', newline);
+            let prefix = "return Choice.Payload(va";
+            let offset = source.find(prefix).unwrap() + prefix.len();
+            let document = Document::new(workspace.uri(file), source);
+            let items = completion_at(
+                &document,
+                &Documents::new(),
+                text::position(&document.text, offset),
+                true,
+            )
+            .unwrap();
+            let labels: Vec<_> = items.into_iter().map(|item| item.json()).collect();
+            let value = labels
+                .iter()
+                .find(|item| item.get("label").and_then(|j| j.as_str()) == Some("value"));
+            assert_eq!(value.is_some(), file == "vault.ms", "{file}: {labels:?}");
+            let help = signature_help(
+                &document,
+                &Documents::new(),
+                text::position(&document.text, offset),
+            )
+            .unwrap();
+            assert_eq!(help.is_null(), file == "outside.ms", "{help:?}");
+        }
     }
 }
