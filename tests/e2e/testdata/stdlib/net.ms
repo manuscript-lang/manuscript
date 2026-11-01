@@ -50,6 +50,13 @@ test "TCP loopback writes reads half close and EOF":
     try client.shutdown_write()
     try expect_false(not (try server.read(5, 2.seconds)).is_none())
 
+test "host names resolve whatever their case":
+    let listener = try listen("127.0.0.1:0")
+    let port = listener.address().split(":").last().get("")
+    let client = try connect("LocalHost:{port}", 2.seconds)
+    let server = try listener.accept(2.seconds)
+    try expect_equal(server.peer_address(), client.local_address())
+
 test "UDP loopback preserves datagram data and sender":
     let receiver = try bind_datagram("127.0.0.1:0")
     let sender = try bind_datagram("127.0.0.1:0")

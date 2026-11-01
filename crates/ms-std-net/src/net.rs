@@ -626,9 +626,12 @@ impl Network {
 }
 
 /// The system resolver's addresses for `host`; runs on a pool thread.
+///
+/// Host names are case-insensitive, but the static musl resolver Linux programs link matches
+/// `/etc/hosts` names exactly, so `LOCALHOST` would fail there while it resolves elsewhere.
 #[expect(clippy::ptr_arg, reason = "a pool job takes `&I` for its input type")]
 fn resolve(host: &String) -> io::Result<Vec<IpAddr>> {
-    (host.as_str(), 0u16)
+    (host.to_ascii_lowercase().as_str(), 0u16)
         .to_socket_addrs()
         .map(|it| it.map(|a| a.ip()).collect())
 }
@@ -758,6 +761,8 @@ mod tests {
         );
         let localhost = n.lookup("localhost", None, Some(5_000_000_000)).unwrap();
         assert!(!localhost.is_empty());
+        let shouted = n.lookup("LocalHost", None, Some(5_000_000_000)).unwrap();
+        assert_eq!(shouted, localhost);
     }
 
     #[test]
