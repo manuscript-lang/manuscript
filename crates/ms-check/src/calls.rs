@@ -1036,6 +1036,16 @@ mod argument_tests {
     }
 
     #[test]
+    fn generic_source_method_value_needs_type_arguments() {
+        let source = "type Out:\n    n: Int\nimpl Out:\n    fn put[F](value: F) Int:\n        return 1\nfn bare(o: Out) Unit:\n    let g = o.put\nfn fixed(o: Out) Unit:\n    let g = o.put[Int]\n    let n = o.put(1)\n";
+        let p = check(source);
+        let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();
+        assert_eq!(messages.len(), 1, "{messages:?}");
+        assert!(messages[0].starts_with("a generic method value requires"));
+        assert_eq!(p.diagnostics[0].pos.line, 7);
+    }
+
+    #[test]
     fn named_only_constructor_keeps_labels_and_rejects_positional_arguments() {
         let p = check(include_str!("../tests/call_arguments/named_only.ms"));
         let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();

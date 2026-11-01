@@ -64,3 +64,22 @@ export extern fn msstd_http_body_read(
 ) Bytes?!IoError
 
 export extern fn msstd_http_body_read_all(handle: NativeResponseBody) Bytes!IoError
+
+export extern fn msstd_http_headers_append(
+    headers: HttpHeaders,
+    name: String,
+    value: Bytes
+) Unit!HttpError
+
+export extern fn msstd_http_headers_values(
+    value: HttpHeaders,
+    name: String
+) List[Bytes]?
+
+export extern fn msstd_http_headers_names(value: HttpHeaders) List[String]
+
+export extern fn msstd_http_headers_remove(value: HttpHeaders, name: String) Bool
+
+export extern fn msstd_http_headers_clone(value: HttpHeaders) HttpHeaders
+
+export extern fn msstd_http_headers_new() HttpHeaders
