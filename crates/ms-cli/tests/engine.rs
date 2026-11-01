@@ -878,3 +878,46 @@ fn bench_without_bench_blocks_reports_none() {
     assert!(stdout.contains("no bench blocks found"), "{stdout}");
     assert!(!err.contains("bench driver"), "{err}");
 }
+
+/// A single-file build takes its aliases from the enclosing `ms.toml`, so editing the manifest
+/// invalidates the cached build.
+#[test]
+fn cached_file_build_notices_enclosing_manifest_changes() {
+    let dir = scratch("cache-manifest");
+    for lib in ["lib", "lib2"] {
+        std::fs::create_dir_all(dir.join("src").join(lib)).unwrap();
+    }
+    write(
+        &dir.join("src/lib"),
+        "m.ms",
+        "export fn code() Int:\n    return 3\n",
+    );
+    write(
+        &dir.join("src/lib2"),
+        "m.ms",
+        "export fn code() Int:\n    return 4\n",
+    );
+    let manifest = |alias: &str| {
+        format!(
+            "[project]\nname = \"p\"\nsource = \"src\"\n\n[aliases]\n\"@lib\" = \"src/{alias}\"\n"
+        )
+    };
+    write(&dir, "ms.toml", &manifest("lib"));
+    std::fs::create_dir_all(dir.join("bin")).unwrap();
+    let entry = write(
+        &dir.join("bin"),
+        "a.ms",
+        "import code from \"@lib/m.ms\"\nexport fn main() Int:\n    return code()\n",
+    );
+    let output = dir.join("a.out");
+    let backend = Engine::new(Native);
+    let build = || {
+        let (status, _, err) = ms(&backend, &["build", &entry, "-o", output.to_str().unwrap()]);
+        assert_eq!((status, err.as_str()), (0, ""));
+        Command::new(&output).status().unwrap().code()
+    };
+    assert_eq!(build(), Some(3));
+    assert_eq!(build(), Some(3));
+    write(&dir, "ms.toml", &manifest("lib2"));
+    assert_eq!(build(), Some(4));
+}
