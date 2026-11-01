@@ -34,9 +34,9 @@ fn consume[T: ReadValue[Int]](source: T) Int:
 
 test "contract views and callbacks":
     let box = Box[Int](7)
-    let first = make_view(box.clone())
+    let first = make_view(box)
     let identity: ReadValue[Int] = forward_view(box.clone())
-    let copied: ReadValue[Int] = forward_view(box.clone())
+    let copied: ReadValue[Int] = forward_view(box)
     let holder = ReaderHolder(identity)
     let _readers: List[ReadValue[Int]] = [forward_view(box.clone())]
     let _optional: ReadValue[Int]? = forward_view(box)

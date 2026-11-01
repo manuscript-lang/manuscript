@@ -149,6 +149,9 @@ impl<'a> FnLower<'a> {
                 }
             }
             StmtKind::Return(e) => {
+                // A view moved out of its local on this path (`view_moves`) is not dropped by
+                // this return; the other paths still drop it.
+                let moved_before = self.closed_on_path.clone();
                 let x = match e {
                     Some(e) => self.expr(e)?,
                     None => Val {
@@ -166,6 +169,7 @@ impl<'a> FnLower<'a> {
                     x
                 };
                 self.emit_return(Some(x));
+                self.closed_on_path = moved_before;
                 // The return released this statement's temporaries.
                 self.temps.truncate(mark);
                 return Ok(());

@@ -15,18 +15,18 @@ test "views and functions retain local implementations across modules":
     let item = Item(2)
     item.original() | try expect_equal(2)
 
-    let first = first_view(item.clone())
-    let second = second_view(item.clone())
+    let first = first_view(item)
+    let second = second_view(item)
     (first.get() != 12 or second.get() != 22) | try expect_false
     try expect_false((read_view(first) != 12 or read_view(second) != 22))
 
-    let first_call = first_method(item.clone())
-    let second_call = second_method(item.clone())
+    let first_call = first_method(item)
+    let second_call = second_method(item)
     (first_call() != 12 or second_call() != 22) | try expect_false
 
     let first_fn = first_generic()
     let second_fn = second_generic()
-    (first_fn(item.clone()) != 12 or second_fn(item) != 22) | try expect_false
+    (first_fn(item) != 12 or second_fn(item) != 22) | try expect_false
 
     let events = share(List[Int]())
     let resource = Resource(events)

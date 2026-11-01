@@ -24,6 +24,10 @@ pub struct Lend {
     /// Every return path yields a part of the receiver or of a parameter, so the result is a
     /// reference into those arguments: the caller holds it as a borrow of them.
     pub lends: bool,
+    /// The result is an owned interface view of the sources (a lent value converted to an
+    /// interface on the way out): lowering returns an owned value the caller drops, and the
+    /// caller still holds the sources. A path returning a new value is allowed beside it.
+    pub view: bool,
     /// The receiver is a source.
     pub receiver: bool,
     /// The parameters that are sources, by label.
@@ -40,6 +44,7 @@ impl Lend {
     fn optimistic(params: &[ms_syntax::ast::Param]) -> Lend {
         Lend {
             lends: true,
+            view: false,
             receiver: true,
             params: params.iter().map(|p| p.name).collect(),
             path: None,

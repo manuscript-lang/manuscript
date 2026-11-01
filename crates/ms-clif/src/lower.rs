@@ -712,13 +712,21 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             TyKind::Alt(a) => self.glue_drop_alt(ty, a, vs),
             TyKind::Iface(_) => {
-                // vtable[0] is the payload destructor.
+                // The vtable word's low bits say what the value owns: 0 the box and its payload
+                // (vtable[0] is the payload destructor), 1 only the box (`iface.lend`), 2
+                // nothing (`iface.view`).
                 let (data, vt) = (vs[0], vs[1]);
-                let f = self.b.ins().load(types::I64, flags(), vt, 0);
-                let mut sig = self.g.module.make_signature();
-                sig.params.push(ir::AbiParam::new(types::I64));
-                let sr = self.b.import_signature(sig);
-                self.b.ins().call_indirect(sr, f, &[data]);
+                let tag = self.b.ins().band_imm_s(vt, 3);
+                let owned = self.b.ins().icmp_imm_s(IntCC::Equal, tag, 0);
+                self.if_then(owned, |s| {
+                    let f = s.b.ins().load(types::I64, flags(), vt, 0);
+                    let mut sig = s.g.module.make_signature();
+                    sig.params.push(ir::AbiParam::new(types::I64));
+                    let sr = s.b.import_signature(sig);
+                    s.b.ins().call_indirect(sr, f, &[data]);
+                });
+                let lent = self.b.ins().icmp_imm_s(IntCC::Equal, tag, 1);
+                self.if_then(lent, |s| s.free(data));
             }
             _ => {}
         }
@@ -1103,8 +1111,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.load_leaves(dst, 0, &leaves)
             }
             TyKind::Iface(i) => {
-                // The payload copier sits after the methods in the vtable.
-                let (data, vt) = (vs[0], vs[1]);
+                // The payload copier sits after the methods in the vtable. The copy owns its
+                // payload whatever the source owned, so the tag bits come off.
+                let (data, vt) = (vs[0], self.b.ins().band_imm_s(vs[1], !3));
                 let slot = 8 * (1 + self.g.m.ifaces[i.index()].methods.len()) as i32;
                 let f = self.b.ins().load(types::I64, flags(), vt, slot);
                 let mut sig = self.g.module.make_signature();
@@ -2328,12 +2337,34 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let addr = self.data_addr(id);
                 vec![blk, addr]
             }
+            Op::IfaceLend => {
+                // A box holding the borrowed leaves as they are; the tag says only the box is
+                // freed.
+                let Imm::Vtable(vt) = inst.imm else {
+                    unreachable!()
+                };
+                let ty = f.ty(inst.args[0]);
+                let leaves = self.g.lay.leaves(ty);
+                let size = mem_layout(&leaves).size as i64;
+                let blk = self.alloc(size);
+                let v = self.a(inst, 0);
+                self.store_leaves(blk, 0, &leaves, &v);
+                let id = self.g.vtables[vt.index()];
+                let addr = self.data_addr(id);
+                vec![blk, self.b.ins().bor_imm_s(addr, 1)]
+            }
+            Op::IfaceView => {
+                let v = self.a(inst, 0);
+                let vt = self.b.ins().band_imm_s(v[1], !3);
+                vec![v[0], self.b.ins().bor_imm_s(vt, 2)]
+            }
             Op::IfaceData => vec![self.a(inst, 0)[0]],
             Op::IfaceIs => {
                 let Imm::Vtable(vt) = inst.imm else {
                     unreachable!()
                 };
                 let have = self.a(inst, 0)[1];
+                let have = self.b.ins().band_imm_s(have, !3);
                 let id = self.g.vtables[vt.index()];
                 let want = self.data_addr(id);
                 vec![self.b.ins().icmp(IntCC::Equal, have, want)]
@@ -2877,10 +2908,11 @@ impl<'a, 'm> Lower<'a, 'm> {
         let rets = self.g.lay.leaves(sig.ret);
         let csig = self.g.sig(&params, &rets);
         let sr = self.b.import_signature(csig);
+        let vt = self.b.ins().band_imm_s(recv[1], !3);
         let code = self
             .b
             .ins()
-            .load(types::I64, flags(), recv[1], 8 * (1 + k as i32));
+            .load(types::I64, flags(), vt, 8 * (1 + k as i32));
         let mut args = vec![recv[0]];
         for i in 1..inst.args.len() {
             args.extend(self.a(inst, i));

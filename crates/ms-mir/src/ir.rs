@@ -290,7 +290,7 @@ pub enum Op {
     // Shared[T].
     SharedNew, SharedGet, SharedAddr,
     // Closures and interface views.
-    ClosureNew, ClosureCap, IfaceNew, IfaceData, IfaceIs,
+    ClosureNew, ClosureCap, IfaceNew, IfaceLend, IfaceView, IfaceData, IfaceIs,
     // Ownership.
     Copy, Drop, DropIf, MoveOut,
     // Raw memory: stack slots, interior pointers into lists and records.
@@ -407,7 +407,7 @@ impl Op {
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
         Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
         Op::StrLen, Op::StrByte, Op::StrAscii, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
-        Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData, Op::IfaceIs,
+        Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceLend, Op::IfaceView, Op::IfaceData, Op::IfaceIs,
         Op::Copy, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
         Op::TypeDesc, Op::FuncAddr, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
@@ -510,6 +510,8 @@ impl Op {
             Op::ClosureNew => ("closure.new", K::Func, true, effects!(alloc)),
             Op::ClosureCap => ("closure.cap", K::Idx, true, effects!(reads)),
             Op::IfaceNew => ("iface.new", K::Vtable, true, effects!()),
+            Op::IfaceLend => ("iface.lend", K::Vtable, true, effects!(alloc)),
+            Op::IfaceView => ("iface.view", K::None, true, effects!()),
             Op::IfaceData => ("iface.data", K::None, true, effects!()),
             Op::IfaceIs => ("iface.is", K::Vtable, true, effects!()),
             Op::Copy => ("copy", K::None, true, effects!(reads, alloc, rc)),
@@ -828,6 +830,10 @@ pub struct Func {
     /// holds it as a borrow for as long as those arguments live and never releases it. The
     /// verifier rejects an owned value returned from such a function.
     pub ret_borrowed: bool,
+    /// The result is an owned interface value (or holds one) whose payload is borrowed from the
+    /// arguments (a view lender, `iface.lend`): the caller drops it, which frees only the box,
+    /// and holds the arguments for as long as it lives.
+    pub ret_view: bool,
     /// Visibility.
     pub linkage: Linkage,
     /// Role of the function.
@@ -865,6 +871,7 @@ impl Func {
             params: params.clone(),
             ret,
             ret_borrowed: false,
+            ret_view: false,
             linkage: Linkage::Internal,
             kind: FuncKind::Normal,
             inline: InlineHint::Auto,
@@ -1319,6 +1326,17 @@ impl Module {
             }
             _ => Mode::Own,
         })
+    }
+
+    /// Whether `inst`'s owned result points into its operands: an interface view (`iface.lend`,
+    /// `iface.view`) or a call to a view lender. Passes that move drops or elide copies treat
+    /// the result as a borrow of the operands and never move it into an owning position.
+    pub fn result_views(&self, inst: &Inst) -> bool {
+        match inst.op {
+            Op::IfaceLend | Op::IfaceView => true,
+            Op::Call => matches!(inst.imm, Imm::Func(g) if self.funcs[g.index()].ret_view),
+            _ => false,
+        }
     }
 }
 

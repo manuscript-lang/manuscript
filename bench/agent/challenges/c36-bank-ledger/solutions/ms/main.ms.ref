@@ -167,7 +167,7 @@ fn step(var l: Ledger, t: List[String]) Unit:
         if l.accounts.get(id).is_none():
             return emit(var l, "error: unknown account {id}")
 
-        var a = l.accounts.get(id).get().clone()
+        var a = l.accounts.get(id).get()
         a.frozen = cmd == "freeze"
         l.accounts.add(key: id.clone(), value: a)
         return emit(var l, "ok")

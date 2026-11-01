@@ -53,7 +53,7 @@ test "infer success and preserve concrete error identity":
     let inferred = erase(r)
     let explicit = erase[Int](r)
     let wrapped = optional(r)
-    let forwarded = forward(r)
+    let forwarded = forward(r.clone())
     let known: Error = Failure(5)
     let inferred_from_known = both(known, r)
 
