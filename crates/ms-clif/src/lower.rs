@@ -1988,7 +1988,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 obj.splice(at..at + w, new);
                 obj
             }
-            Op::AltNew => self.alt_new(inst, res_ty.expect("alt.new result")),
+            Op::AltNew | Op::AltView => self.alt_new(inst, res_ty.expect("alt.new result")),
             Op::AltTag => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);

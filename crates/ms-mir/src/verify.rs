@@ -774,7 +774,7 @@ impl Verifier<'_> {
                     )
                 }
             }
-            Op::AltNew => {
+            Op::AltNew | Op::AltView => {
                 let Imm::Case(a, c) = inst.imm else {
                     return Err("missing case".into());
                 };
@@ -795,6 +795,11 @@ impl Verifier<'_> {
                     res.map(|r| matches!(m.types.kind(r), TyKind::Alt(x) if *x == a))
                         .unwrap_or(false),
                     "alt.new yields the alternative type",
+                )?;
+                // A boxed alternative holds its payload in a heap block, which a borrow cannot own.
+                want(
+                    inst.op == Op::AltNew || !Boxing::default().alt(m, a),
+                    "alt.view cannot lend a boxed alternative",
                 )
             }
             Op::AltTag => {

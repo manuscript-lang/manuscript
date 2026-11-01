@@ -162,6 +162,8 @@ pub fn analyze(cx: &Context) -> Outcome {
         lend_path: None,
         owned_return: None,
         lent_return: None,
+        wrap_returns: Vec::new(),
+        plain_lent: false,
     };
     w.run();
     w.mixed_returns();
@@ -253,6 +255,11 @@ struct Walker<'a> {
     /// The first `return` of an owned value and of a reference, for the mixed-path error.
     owned_return: Option<Pos>,
     lent_return: Option<Pos>,
+    /// Returned references that are wrappers (`x?`, `ok(x)`, the error of a `try`): beside an
+    /// owned path they become new values again instead of an error.
+    wrap_returns: Vec<NodeId>,
+    /// Some returned reference is the part itself, not a wrapper of it.
+    plain_lent: bool,
 }
 
 /// A fix that inserts `text` at `pos`.
@@ -484,13 +491,21 @@ impl Walker<'_> {
             return;
         }
         // A resource is never lent: returning one hands it to the caller, which closes it.
+        let wrapped = self.wrapped_lend(e).is_some();
         if self.class_of(e) == Class::Move
-            && self.returns_as_declared(e)
+            && (self.returns_as_declared(e) || wrapped)
             && !self.implements_contract()
         {
             if let Some(src) = self.lend_source(e) {
-                // A part of an argument comes back as a reference into it: nothing moves.
+                // A part of an argument comes back as a reference into it: nothing moves. A
+                // wrapper around it (`x?`, `ok(x)`) adds no storage and stays a reference too.
                 self.lent_return.get_or_insert(e.pos);
+                if wrapped {
+                    self.facts.view_wraps.insert(e.id);
+                    self.wrap_returns.push(e.id);
+                } else {
+                    self.plain_lent = true;
+                }
                 self.lend_receiver |= src.receiver;
                 for p in src.params {
                     if !self.lend_params.contains(&p) {
@@ -507,7 +522,19 @@ impl Walker<'_> {
             }
             self.owned_return.get_or_insert(e.pos);
         }
-        self.expr(e, Demand::Consume);
+        // A reference converted on the way out (a lending call widened to another error type or
+        // an interface) is read: the conversion builds the new value from it.
+        let converted = self.cx.m.info(e).error_source.is_some()
+            && matches!(e.kind, ExprKind::Call { .. })
+            && self.lends(e);
+        self.expr(
+            e,
+            if converted {
+                Demand::Read
+            } else {
+                Demand::Consume
+            },
+        );
     }
 
     /// Whether `e` is a `Copy` handle such as `Shared[T]`: it is not the storage it lends from,
@@ -566,6 +593,15 @@ impl Walker<'_> {
         let (Some(owned), Some(lent)) = (self.owned_return, self.lent_return) else {
             return;
         };
+        // A wrapper of a part is a reference only when every path lends; beside a new value it
+        // is built as a new value of its own (its payload copied), as before.
+        if !self.plain_lent {
+            self.lent_return = None;
+            for n in std::mem::take(&mut self.wrap_returns) {
+                self.facts.view_wraps.remove(&n);
+            }
+            return;
+        }
         self.error(
             owned,
             format!(
@@ -642,10 +678,83 @@ impl Walker<'_> {
         self.cx.m.info(e).arguments.as_ref()?.get(i).map(|s| s.name)
     }
 
+    /// The value `e` wraps without adding storage on its way to a binding or a return: `e`
+    /// itself when it is wrapped into an `Optional` (`x` as `x?`), or the payload of `ok(x)` /
+    /// `error(x)`. `None` when the value is converted (an interface, a widened error).
+    fn wrapped_lend<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        let info = self.cx.m.info(e);
+        if info.error_source.is_some() {
+            return None;
+        }
+        if info.wrap_some.is_some() {
+            return Some(e);
+        }
+        let inner = self.result_payload(e)?;
+        let inner_info = self.cx.m.info(inner);
+        (inner_info.error_source.is_none()
+            && inner_info.wrap_some.is_none()
+            && self.class_of(inner) != Class::Copy)
+            .then_some(inner)
+    }
+
+    /// The error path of `try operand` returns the operand's error: a reference when the operand
+    /// lends it from the arguments as it is, otherwise a new value, like any `return`.
+    fn try_return(&mut self, e: &Expr, operand: &Expr) {
+        if !self.captured.is_empty() || self.implements_contract() {
+            return;
+        }
+        let result = match (self.cx.c.func.method(), self.cx.c.func.func()) {
+            (Some(m), _) => m.func.result.id,
+            (None, Some(f)) => f.result.id,
+            (None, None) => return,
+        };
+        let Some(declared) = self.cx.m.type_ref(result) else {
+            return;
+        };
+        if self.cx.classes.class(&declared) == Class::Copy {
+            return;
+        }
+        let converted = self.cx.m.info(e).propagated_error.is_some();
+        if !converted
+            && self.class_of(operand) == Class::Move
+            && let Some(src) = self.lend_source(operand)
+        {
+            self.lent_return.get_or_insert(e.pos);
+            self.facts.view_wraps.insert(e.id);
+            self.wrap_returns.push(e.id);
+            self.lend_receiver |= src.receiver;
+            for p in src.params {
+                if !self.lend_params.contains(&p) {
+                    self.lend_params.push(p);
+                }
+            }
+            // The error is one case of the result, never a field chain of a source.
+            self.lend_path = Some(None);
+            return;
+        }
+        self.owned_return.get_or_insert(e.pos);
+    }
+
+    /// The payload expression of an `ok(x)` or `error(x)` constructor call.
+    fn result_payload<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return None;
+        };
+        let Resolution::Constructor { ty, case: Some(_) } = self.cx.m.resolution(e) else {
+            return None;
+        };
+        (ty.is_std("Result") && args.len() == 1 && args[0].name.is_none()).then(|| &args[0].value)
+    }
+
     /// The parameters and receiver a returned expression is a part of, when it is one: a place
     /// rooted in a parameter or the receiver, or a lending call whose sources all are. `None`
     /// for an owned value, including a part of a local, a temporary or a default argument.
     fn lend_source(&self, e: &Expr) -> Option<LendSource> {
+        // `ok(x)` and `error(x)` are references when `x` is: the wrapper adds no storage. A
+        // payload converted on the way in (`error(cause)` as `Error`) or copied is a new value.
+        if self.result_payload(e).is_some() {
+            return self.lend_source(self.wrapped_lend(e)?);
+        }
         // A field or element of what a lending call returns (`self.head().tags[0]`) is a part of
         // the same sources; a field chain extends the path, an element ends it.
         if let Some((call, fields)) = self.part_of_call(e) {
@@ -1471,9 +1580,37 @@ impl Walker<'_> {
                     self.declare(&b, role, Perm::Mutable, None, false);
                 }
             } else {
+                // A part wrapped on the way in (`let o: String? = r.name`) stays a reference.
+                if self.wrapped_lend(value).is_some() {
+                    self.facts.view_wraps.insert(value.id);
+                }
                 self.expr(value, Demand::Read);
                 self.declare_borrow(&b, role, origins, pattern.pos, "binding of a part of it");
             }
+            return;
+        }
+        // A name wrapped on the way into the binding (`let o: Item? = item`, `let r = ok(x)`)
+        // is a reference to it, as a plain name is, unless this is the source's last use.
+        if !mutable
+            && class != Class::Copy
+            && let Some(inner) = self.wrapped_lend(value)
+            && let ExprKind::Name(_) = &inner.kind
+            && let Resolution::Local(src) = self.cx.m.resolution(inner)
+            && let Some(src_meta) = self.meta.get(&src.uid)
+            && self.cx.classes.class(&src.ty) != Class::Copy
+            && (!self.is_last(inner.id, &src)
+                || matches!(src_meta.perm, Perm::Borrowed | Perm::MutBorrowed))
+        {
+            let origins = self.resolve(&Place::local(src.uid));
+            self.facts.view_wraps.insert(value.id);
+            self.expr(value, Demand::Read);
+            self.declare_borrow(
+                &b,
+                role,
+                origins,
+                pattern.pos,
+                "binding of a borrowed value",
+            );
             return;
         }
         if let ExprKind::Lambda(_) = &value.kind {
@@ -2136,6 +2273,18 @@ impl Walker<'_> {
         if let ExprKind::Match { arms, .. } = &e.kind {
             return self.arm_origins(arms);
         }
+        // `try f(a)` yields the payload of what `f` lends: a reference into the same places.
+        if let ExprKind::Unary {
+            op: UnaryOp::Try,
+            operand,
+        } = &e.kind
+        {
+            return if self.is_place(operand) {
+                self.pure_places(operand)
+            } else {
+                self.pure_origins(operand)
+            };
+        }
         let ExprKind::Call { .. } = &e.kind else {
             return None;
         };
@@ -2305,7 +2454,16 @@ impl Walker<'_> {
                 }
             }
             ExprKind::Unary { op, operand } => {
-                let inner = if *op == UnaryOp::Try { d } else { Demand::Read };
+                if *op == UnaryOp::Try {
+                    self.try_return(e, operand);
+                }
+                // `try` hands its payload on with the position's demand; a copied payload only
+                // reads the result it comes out of.
+                let inner = if *op == UnaryOp::Try && self.class_of(e) != Class::Copy {
+                    d
+                } else {
+                    Demand::Read
+                };
                 self.expr(operand, inner);
             }
             ExprKind::Binary { left, right, op } => {
@@ -2766,7 +2924,14 @@ impl Walker<'_> {
 
     fn call(&mut self, e: &Expr, callee: &Expr, args: &[Argument], d: Demand) {
         let cx = self.cx;
-        let modes = call_modes(cx.m, e, args, cx.summaries);
+        let mut modes = call_modes(cx.m, e, args, cx.summaries);
+        // `ok(x)` / `error(x)` kept as a reference (`view_wraps`) only reads its payload.
+        if self.facts.view_wraps.contains(&e.id) {
+            modes
+                .arguments
+                .iter_mut()
+                .for_each(|m| *m = ParamMode::Borrow);
+        }
         self.facts.calls.insert(e.id, modes.clone());
         let name = self.call_name(callee);
         let receiver_expr = match (&callee.kind, cx.m.resolution(e)) {

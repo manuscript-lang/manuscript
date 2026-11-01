@@ -286,6 +286,12 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.alt(a);
         self.val(Op::AltNew, fields, Imm::Case(a, case), t)
     }
+    /// `alt.view`: an alternative holding the borrowed `fields` themselves, which it neither
+    /// retains nor releases.
+    pub fn alt_view(&mut self, a: AltId, case: u32, fields: &[Value]) -> Value {
+        let t = self.m.types.alt(a);
+        self.val(Op::AltView, fields, Imm::Case(a, case), t)
+    }
     /// `alt.tag`.
     pub fn alt_tag(&mut self, obj: Value) -> Value {
         self.val(Op::AltTag, &[obj], Imm::None, Ty::INT)

@@ -928,6 +928,30 @@ impl<'a> FnLower<'a> {
         {
             return self.construct_collection(view, mt);
         }
+        // `ok(x)` / `error(x)` of a reference the checker keeps one: `alt.view` of the payload.
+        if let (TyKind::Alt(a), Some(c), [arg]) = (
+            self.b.m.types.kind(mt).clone(),
+            case,
+            view.arguments.as_slice(),
+        ) && self.cx.view_wraps.contains(&(self.hir.data.file, e.id))
+        {
+            let x = self.expr(arg.expr)?;
+            if self.dead {
+                return Ok(x);
+            }
+            let idx = self.b.m.alts[a.index()]
+                .cases
+                .iter()
+                .position(|x| x.name == c.as_str())
+                .ok_or_else(|| Error::new("unknown case"))?;
+            if !x.own && arg.wrap_optional.is_none() {
+                let v = self.b.alt_view(a, idx as u32, &[x.v]);
+                return Ok(Val { v, own: false });
+            }
+            let o = self.owned(x);
+            let v = self.b.alt_new(a, idx as u32, &[o]);
+            return Ok(Val { v, own: true });
+        }
         // Parameter names and types of the constructor.
         let params: Vec<ct::Param> = match case {
             Some(c) => ct::case_of(&t, c)

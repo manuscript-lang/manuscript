@@ -52,7 +52,7 @@ fn visit[T, E: Error](result: T!E, var visits: List[Int]) T!E:
     return result
 
 fn tail[T, E: Error](result: T!E, var visits: List[Int]) T!E:
-    let value = try visit(result, var visits).clone()
+    let value = try visit(result, var visits)
     return ok(value)
 
 type TailCleanup:
@@ -70,7 +70,7 @@ fn tail_cleanup(
     marker: String
 ) Int!TextError:
     let _resource = TailCleanup(marker)
-    let value = try visit(result, var visits).clone()
+    let value = try visit(result, var visits)
     return ok(value)
 
 fn function_tail(result: (fn() Int)!TextError) (fn() Int)!TextError:
