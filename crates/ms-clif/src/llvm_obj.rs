@@ -49,10 +49,14 @@ fn largest_function_lines(ir: &str) -> usize {
     let (mut longest, mut current) = (0, 0);
     for line in ir.lines() {
         if line.starts_with("define ") {
+            current = 1;
+        } else if current != 0 {
+            current += 1;
+        }
+        longest = longest.max(current);
+        if line == "}" {
             current = 0;
         }
-        current += 1;
-        longest = longest.max(current);
     }
     longest
 }
@@ -203,6 +207,27 @@ mod tests {
         let ir = "define void @a() {\n  ret void\n}\ndefine void @b() {\n  %x = add i64 1, 2\n  %y = add i64 %x, 2\n  ret void\n}\n";
         assert_eq!(largest_function_lines(ir), 5);
         assert_eq!(largest_function_lines(""), 0);
+    }
+
+    #[test]
+    fn function_size_ignores_declarations_and_trailing_metadata() {
+        let outside = "!0 = !{i32 0}\n".repeat(HUGE_FUNCTION_LINE_LIMIT + 1);
+        let tiny = "define void @tiny() {\n  ret void\n}\n";
+        assert_eq!(largest_function_lines(&outside), 0);
+        assert_eq!(
+            largest_function_lines(&format!("{outside}{tiny}{outside}")),
+            3
+        );
+        assert_eq!(largest_function_lines(&format!("{tiny}{outside}{tiny}")), 3);
+    }
+
+    #[test]
+    fn function_size_preserves_the_huge_function_boundary() {
+        for lines in [HUGE_FUNCTION_LINE_LIMIT, HUGE_FUNCTION_LINE_LIMIT + 1] {
+            let body = "  call void @work()\n".repeat(lines - 2);
+            let ir = format!("declare void @work()\ndefine void @large() {{\n{body}}}\n");
+            assert_eq!(largest_function_lines(&ir), lines);
+        }
     }
 
     const HOT: &str = "define noundef i64 @msrt_map_length(i64 noundef %m) alwaysinline #0 {\n\
