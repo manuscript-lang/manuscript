@@ -1038,8 +1038,9 @@ impl Walker<'_> {
             self.declare(&b, role, Perm::Mutable, None, false);
             return;
         }
-        // A `let` of a scalar copies; a `var` borrows its place whatever the type.
-        if (mutable || class != Class::Copy)
+        // A scalar copies, `let` or `var`; any other binding of a place borrows it, shared for
+        // `let` and exclusive for `var`.
+        if class != Class::Copy
             && let Some(origins) = self.projection_origins(value)
         {
             // Reading part of a value that stays where it is.
