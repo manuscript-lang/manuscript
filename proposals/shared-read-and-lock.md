@@ -28,7 +28,11 @@ view.hits                        # 1: reads see the current value
 view.hits = 0                    # rejected: "view is a let binding; declare it with var to change the shared value"
 ```
 
-- **Payload.** `T` is a record or alternative you declare: `Shared(Stats(...))`, not `Shared([1])`. To replace a whole list, write `stats.items = []`, so neither the handle nor `=` is ambiguous. The 19 stdlib handles of `List`, `Map`, `Int` and `WriteStream` get small wrapper records.
+- **Payload.** Any `T`, including `List`, `Map` and `Int`. The type decides what a handle means:
+  - Where a `T` is expected, the handle stands for the value: `stats = [1, 2]` replaces the payload, and `let xs: List[Int] = stats` copies it out.
+  - Where a `Shared[T]` is expected, it is the handle: `stats = other` points at another value, and `let s = stats` adds a holder.
+  - A generic `T` binds the handle, never the payload.
+  - `Shared[Shared[T]]` is rejected, so the two readings never collide.
 - **Ownership.** `Shared(value)` moves the value in. Copying the handle adds a holder, and the last holder drops and closes the payload (today's `register_shared_close`).
 - **Mutability.** Changing a value through a handle follows the ordinary rules (`OWNERSHIP.md` Mutability): it needs a `var` binding, a `var` parameter (`f(var stats)`) or a `var fn` receiver whose field holds the handle. A `let` handle reads only. `let` still means "this binding cannot change it"; another holder can.
 - **Members.** Fields, `[i]` and methods on a `Shared[T]` resolve to `T`'s. `Shared` declares no members of its own, so no name can clash. It takes on none of `T`'s interfaces. A `close` on the payload is a call like any other, and the last holder closes it.
@@ -53,7 +57,7 @@ view.hits = 0                    # rejected: "view is a let binding; declare it 
 | `crates/ms-check` | member lookup through `Shared` (`exprs.rs:336`, `calls.rs`, `receivers.rs`); `var` rule on handles; read copies | accept/reject snippets: write through `let`, re-entry |
 | `crates/ms-lower` | hold and release around calls through a handle, with cleanup on cancel | cancellation fixture ported from `shared-lock-survives-cancellation` |
 | `ms-clif`, `ms-lower` `close.rs`, `constfaults.rs` | delete guard glue, close skip, lint | existing glue tests |
-| stdlib callers | the 34 lock sites become methods on their payload types (`Lane`, `Inbox`); wrapper records for the 19 std-type handles (14 `List`, 3 `Map`, `Int`, `WriteStream`); sites that hold while waiting stay valid (`Worker.wait` `workers.ms:161`, `stop_child` `processes.ms:465`, log writes `log.ms:104-122`) | `make verify-full` |
+| stdlib callers | the 34 lock sites become methods on their payload types (`Lane`, `Inbox`); the 19 std-type handles (14 `List`, 3 `Map`, `Int`, `WriteStream`) stay as they are; sites that hold while waiting stay valid (`Worker.wait` `workers.ms:161`, `stop_child` `processes.ms:465`, log writes `log.ms:104-122`) | `make verify-full` |
 
 ## Alternatives
 
