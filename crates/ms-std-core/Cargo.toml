@@ -3,7 +3,7 @@ name = "ms-std-core"
 version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
-description = "Small native math, random, encoding and checksum operations"
+description = "Small native math, random, encoding, checksum and template operations"
 
 [lib]
 crate-type = ["rlib"]
@@ -13,6 +13,8 @@ crabmole = { version = "0.1.8", default-features = false, features = ["ascii85"]
 crc32fast = "1.5.2"
 data-encoding = { version = "2.11.1", default-features = false, features = ["alloc"] }
 simd-adler32 = { version = "0.3.10", default-features = false, features = ["std"] }
+leon = { version = "3.0.3", default-features = false, features = ["miette"] }
+miette = { version = "7.2", default-features = false }
 getrandom = { version = "0.4", default-features = false, features = ["sys_rng"] }
 libm = { version = "0.2", default-features = false }
 ms-rt-abi = { path = "../ms-rt-abi" }

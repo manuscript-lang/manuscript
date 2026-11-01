@@ -31,6 +31,7 @@ fn declaration_kind_presentation() {
         ("fn", "Function"),
         ("record", "Record"),
         ("alternative", "Alternative"),
+        ("opaque", "Opaque type"),
         ("interface", "Interface"),
         ("type", "Type"),
         ("native", "Native type"),

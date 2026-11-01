@@ -13,6 +13,7 @@ fn declaration_kind(kind: &str) -> &str {
         "constant" => "Constant",
         "record" => "Record",
         "alternative" => "Alternative",
+        "opaque" => "Opaque type",
         "interface" => "Interface",
         "type" => "Type",
         "native" => "Native type",

@@ -32,7 +32,7 @@ pub struct ApiDeclaration {
     pub name: String,
     /// Leading comment text.
     pub doc: String,
-    /// `fn`, `record`, `alternative`, `interface`, `native`, `constant`, `type`.
+    /// `fn`, `record`, `alternative`, `opaque`, `interface`, `native`, `constant`, `type`.
     pub kind: String,
     /// The checked type, spelled as the checker prints it.
     pub ty: String,
@@ -267,15 +267,17 @@ fn document_declaration(
     keyword: &str,
     name: &str,
     source: Option<&Source>,
+    opaque: bool,
 ) -> String {
     if let Some(f) = decl.func() {
         return fn_declaration(name, f, false, source);
     }
     let mut b = format!(
-        "{keyword} {name}{}:\n",
+        "{}{keyword} {name}{}:\n",
+        if opaque { "opaque " } else { "" },
         render::type_parameters(decl.type_params())
     );
-    for field in decl.record_fields() {
+    for field in decl.record_fields().iter().filter(|_| !opaque) {
         b += &format!(
             "    {}: {}",
             field.name,
@@ -286,7 +288,7 @@ fn document_declaration(
         }
         b.push('\n');
     }
-    for c in decl.cases() {
+    for c in decl.cases().iter().filter(|_| !opaque) {
         b += &format!("    case {}", c.name);
         if !c.fields.is_empty() {
             b += &render::parameters(&c.fields, source);
@@ -333,7 +335,8 @@ fn document_members(decl: &DeclRef, source: Option<&Source>, receiver: &Ty) -> V
     let text = source.map_or("", Source::text);
     let comment = |offset: u32| leading_comment(text, offset as usize);
     let mut members = Vec::new();
-    for field in decl.record_fields() {
+    let opaque = receiver.opaque_module().is_some();
+    for field in decl.record_fields().iter().filter(|_| !opaque) {
         let mut signature = format!(
             "{}: {}",
             field.name,
@@ -350,7 +353,7 @@ fn document_members(decl: &DeclRef, source: Option<&Source>, receiver: &Ty) -> V
             contract: String::new(),
         });
     }
-    for c in decl.cases() {
+    for c in decl.cases().iter().filter(|_| !opaque) {
         let mut signature = format!("case {}", c.name);
         if !c.fields.is_empty() {
             signature += &render::parameters(&c.fields, None);
@@ -406,6 +409,7 @@ fn document_members(decl: &DeclRef, source: Option<&Source>, receiver: &Ty) -> V
 
 fn document_symbol(symbol: &SymRef, sources: &Sources) -> ApiDeclaration {
     let ty = symbol.ty();
+    let opaque = ty.opaque_module().is_some();
     let source = sources.of(symbol.module);
     let kind = match symbol.kind {
         SymKind::Type => "type",
@@ -432,7 +436,7 @@ fn document_symbol(symbol: &SymRef, sources: &Sources) -> ApiDeclaration {
             }
             _ => "type",
         };
-        d.declaration = document_declaration(decl, keyword, symbol.name.as_str(), source);
+        d.declaration = document_declaration(decl, keyword, symbol.name.as_str(), source, opaque);
         if decl.is_constant() {
             d.kind = "constant".into();
             d.ty = ty.result_ty().to_string();
@@ -447,7 +451,7 @@ fn document_symbol(symbol: &SymRef, sources: &Sources) -> ApiDeclaration {
         .and_then(|s| s.decl.clone().map(|decl| (decl, s.module)))
     {
         let (decl, module) = decl;
-        d.declaration = document_declaration(&decl, "type", symbol.name.as_str(), None);
+        d.declaration = document_declaration(&decl, "type", symbol.name.as_str(), None, opaque);
         d.members = document_members(&decl, sources.of(module), &ty);
     } else {
         d.declaration = format!("type {}:\n", symbol.name);
@@ -459,10 +463,13 @@ fn document_symbol(symbol: &SymRef, sources: &Sources) -> ApiDeclaration {
         if symbol.decl.as_ref().is_some_and(is_interface) {
             d.kind = "interface".into();
         }
-        for f in def.fields.borrow().iter() {
+        if opaque {
+            d.kind = "opaque".into();
+        }
+        for f in def.fields.borrow().iter().filter(|_| !opaque) {
             d.fields.push(format!("{}: {}", f.name, f.ty));
         }
-        for c in def.cases.borrow().iter() {
+        for c in def.cases.borrow().iter().filter(|_| !opaque) {
             let mut value = c.name.as_str().to_string();
             if !c.fields.is_empty() {
                 let fields: Vec<String> = c

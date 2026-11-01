@@ -1,6 +1,7 @@
 //! Small standard-library natives that share one crate: `@std/math` (`msstd_math_*`),
 //! `@std/os/random.ms` (`msstd_random_*`) and Base64 for `@std/data/encoding.ms`
-//! (`msstd_encoding_*`), plus `@std/data/checksum.ms` (`msstd_checksum_*`).
+//! (`msstd_encoding_*`), `@std/data/checksum.ms` (`msstd_checksum_*`) and
+//! plain-text template compilation (`msstd_template_*`).
 
 extern crate alloc;
 
@@ -12,3 +13,4 @@ pub mod checksum;
 pub mod encoding;
 pub mod math;
 pub mod random;
+pub mod template;
