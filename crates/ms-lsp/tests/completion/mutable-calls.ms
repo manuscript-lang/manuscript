@@ -24,3 +24,11 @@ fn method() Int:
 fn ordinary() Int:
     let values = [1]
     return observe(values: values)
+
+export fn update_generic[T](var values: List[T], value: T) Int:
+    values.append(value)
+    return values.length()
+
+fn generic() Int:
+    var values = [1]
+    return update_generic[Int](values: var values, value: 2)

@@ -470,6 +470,12 @@ fn callable_snippets_preserve_mutable_arguments() {
                 "adjust(values: ${1:values})$0",
             ),
             (
+                "update_generic[Int](values: var values, value: 2)",
+                "update_ge",
+                "update_generic",
+                "update_generic[${1:T}](values: var ${2:values}, value: ${3:value})$0",
+            ),
+            (
                 "observe(values: values)",
                 "obs",
                 "observe",
@@ -503,7 +509,12 @@ fn callable_snippets_preserve_mutable_arguments() {
             let range = Range::from_json(edit.get("range").unwrap()).unwrap();
             let start = ms_lsp::text::offset(&document.text, range.start).unwrap();
             let end = ms_lsp::text::offset(&document.text, range.end).unwrap();
-            let insertion = insertion.replace("${1:values}", "values").replace("$0", "");
+            let insertion = insertion
+                .replace("${1:values}", "values")
+                .replace("${1:T}", "Int")
+                .replace("${2:values}", "values")
+                .replace("${3:value}", "2")
+                .replace("$0", "");
             document.text.replace_range(start..end, &insertion);
             let checked = analyze(&document, &Documents::new());
             assert!(
@@ -641,5 +652,47 @@ fn argument_completion_and_signature_help_preserve_mutation() {
             signature.get("label").and_then(|j| j.as_str()),
             Some("update(var values: List[Int], amount: Int = ...) Int")
         );
+    }
+}
+
+#[test]
+fn mutable_positional_arguments_complete_local_bindings() {
+    let workspace = Workspace::new("completion-mutable-positional");
+    let fixture = include_str!("completion/mutable-calls.ms");
+    for newline in ["\n", "\r\n"] {
+        let fixture = fixture.replace('\n', newline);
+        for argument in ["var val", "var ", "values: var val"] {
+            for snippets in [false, true] {
+                let prefix = format!("return update({argument}");
+                let source =
+                    fixture.replace("return update(values: var values)", &format!("{prefix})"));
+                let offset = source.find(&prefix).unwrap() + prefix.len();
+                let mut document = Document::new(workspace.uri("mutable.ms"), source);
+                let item = completion_at(
+                    &document,
+                    &Documents::new(),
+                    ms_lsp::text::position(&document.text, offset),
+                    snippets,
+                )
+                .unwrap()
+                .into_iter()
+                .map(|item| item.json())
+                .find(|item| item.get("label").and_then(|j| j.as_str()) == Some("values"))
+                .expect("local values binding");
+                let edit = item.get("textEdit").unwrap();
+                let insertion = edit.get("newText").and_then(|j| j.as_str()).unwrap();
+                assert_eq!(insertion, "values");
+                let range = Range::from_json(edit.get("range").unwrap()).unwrap();
+                let start = ms_lsp::text::offset(&document.text, range.start).unwrap();
+                let end = ms_lsp::text::offset(&document.text, range.end).unwrap();
+                document.text.replace_range(start..end, insertion);
+                let checked = analyze(&document, &Documents::new());
+                assert!(
+                    checked.diagnostics.is_empty(),
+                    "{argument}: {:?}",
+                    checked.diagnostics
+                );
+            }
+        }
     }
 }
