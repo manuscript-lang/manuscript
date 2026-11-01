@@ -1,8 +1,13 @@
-//! `@std/data/encoding.ms` natives: Base64 (hex, UTF-16, Latin-1 and ASCII are Manuscript).
+//! `@std/data/encoding.ms` natives: RFC 4648 codecs and ASCII85.
 //!
 //! Limits are `Option<i64>`; `None` is unlimited.
 
+mod ascii85;
 pub mod ffi;
+mod variants;
+
+pub use ascii85::{ascii85_decode, ascii85_encode};
+pub use variants::{base32_decode, base32_encode, base64_decode_unpadded, base64_encode_unpadded};
 
 use alloc::string::String;
 use alloc::vec::Vec;

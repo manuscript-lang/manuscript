@@ -74,6 +74,20 @@ fn checksum_imports_preserve_numeric_fuzzy_completions() {
                 Some("@std/data/checksum.ms"),
                 Some("${1:data}"),
             ),
+            (
+                "base32_encode",
+                3,
+                "fn(Bytes, Bool, Bool) String — @std/data/encoding.ms",
+                Some("@std/data/encoding.ms"),
+                Some("data: ${1:data}"),
+            ),
+            (
+                "base32_decode",
+                3,
+                "fn(String, Bool, Bool, Int?) Result[Bytes, EncodingError] — @std/data/encoding.ms",
+                Some("@std/data/encoding.ms"),
+                Some("text: ${1:text}"),
+            ),
         ] {
             let matches: Vec<_> = items
                 .iter()
