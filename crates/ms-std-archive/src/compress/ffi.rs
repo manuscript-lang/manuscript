@@ -3,8 +3,8 @@
 //! Statuses: `STATUS_INVALID_INPUT`, `STATUS_INVALID_DATA`, `STATUS_LIMIT_EXCEEDED` and
 //! `STATUS_UNSUPPORTED` (9); `Failed(message)` is never produced.
 
-use crate::Format;
-use crate::stream::{Decoder, Encoder, Poll};
+use super::Format;
+use super::stream::{Decoder, Encoder, Poll};
 use alloc::vec::Vec;
 use core::cell::RefCell;
 use ms_rt::ffi::{Fail, ObjRef, Object, Out, Status, abi_handle, native};
@@ -55,7 +55,7 @@ native! {
         has_max: bool,
         max: i64,
     ) -> Result<Vec<u8>, Fail> {
-        crate::compress(data, format, level, has_max.then_some(max))
+        super::compress(data, format, level, has_max.then_some(max))
     }
 
     fn msrt_compress_decompress(
@@ -64,7 +64,7 @@ native! {
         has_max: bool,
         max: i64,
     ) -> Result<Vec<u8>, Fail> {
-        crate::decompress_bytes(data, format, has_max.then_some(max))
+        super::decompress_bytes(data, format, has_max.then_some(max))
     }
 
     fn msrt_compress_decoder_new(

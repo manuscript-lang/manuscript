@@ -1089,7 +1089,6 @@ dependencies = [
  "ms-rt-abi",
  "ms-std-archive",
  "ms-std-bigint",
- "ms-std-compress",
  "ms-std-crypto",
  "ms-std-decimal",
  "ms-std-encoding",
@@ -1145,9 +1144,9 @@ dependencies = [
 name = "ms-std-archive"
 version = "0.1.0"
 dependencies = [
+ "miniz_oxide",
  "ms-rt",
  "ms-rt-abi",
- "ms-std-compress",
 ]
 
 [[package]]
@@ -1158,15 +1157,6 @@ dependencies = [
  "ms-rt-abi",
  "num-bigint 0.5.1",
  "num-traits",
-]
-
-[[package]]
-name = "ms-std-compress"
-version = "0.1.0"
-dependencies = [
- "miniz_oxide",
- "ms-rt",
- "ms-rt-abi",
 ]
 
 [[package]]
