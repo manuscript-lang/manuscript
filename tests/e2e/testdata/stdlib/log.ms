@@ -309,3 +309,77 @@ test "concurrent tasks never interleave a record":
                 or line == "\{\"level\":30,\"msg\":\"m\",\"data\":\"b\"\}",
                 true
             )
+
+# A transport that keeps every record in memory.
+type Memory:
+    out: Shared[List[String]]
+
+impl Transport for Memory:
+    fn write(data: String) Unit!LogError:
+        var guard = lock(self.out)
+        guard.value.append(data.clone())
+        return ok(unit)
+
+    fn write_bytes(data: Bytes) Unit!LogError:
+        return self.write(data.decode_utf8().get(""))
+
+    fn flush() Unit!LogError:
+        return ok(unit)
+
+    fn close() Unit:
+        return unit
+
+fn recorded(out: Shared[List[String]]) String:
+    var guard = lock(out)
+    return guard.value.join("")
+
+test "messages are escaped and fields keep their shape under data":
+    let out = share(List[String]())
+    let logger = try create(Memory(out), timestamp: false)
+    try logger.info("a<b>&\"\n\t\u{1}é")
+    try logger.info("m", Items([none, 1]))
+    try logger.info("m", "text")
+    try logger.info("m", JsonValue.Null)
+    try logger.info("m", JsonValue.ObjectValue(Map[String, JsonValue]()))
+
+    let expected = "\{\"level\":30,\"msg\":\"a<b>&\\\"\\n\\t\\u0001é\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\{\"items\":[null,1]\}\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\"text\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":null\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\{\}\}\n"
+    try expect_equal(recorded(out), expected)
+
+test "child context merges per child and the newer value wins":
+    let out = share(List[String]())
+    let root = try create(Memory(out), timestamp: false)
+    let api = try root.child(Service("api"))
+    let both = try api.child(Request(7))
+    let renamed = try both.child(Service("worker"))
+    let replaced = try both.child(3)
+    try root.info("root")
+    try api.info("api")
+    try both.info("both", Request(9))
+    try renamed.info("renamed")
+    try replaced.info("replaced")
+
+    let expected = "\{\"level\":30,\"msg\":\"root\"\}\n\{\"level\":30,\"msg\":\"api\",\"context\":\{\"service\":\"api\"\}\}\n\{\"level\":30,\"msg\":\"both\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"request\":9\}\}\n\{\"level\":30,\"msg\":\"renamed\",\"context\":\{\"service\":\"worker\",\"request\":7\}\}\n\{\"level\":30,\"msg\":\"replaced\",\"context\":3\}\n"
+    try expect_equal(recorded(out), expected)
+
+test "the time field is a millisecond count and the size limit counts the newline":
+    let out = share(List[String]())
+    let stamped = try create(Memory(out))
+    try stamped.info("t")
+
+    let line = recorded(out)
+    try expect_true(line.starts_with("\{\"level\":30,\"msg\":\"t\",\"time\":1"))
+
+    let quiet = share(List[String]())
+    let plain = "\{\"level\":30,\"msg\":\"ab\"\}\n"
+    let exact = try create(
+        Memory(quiet), timestamp: false, max_bytes: plain.to_bytes().length()
+    )
+    try exact.info("ab")
+    try expect_equal(recorded(quiet), plain)
+
+    let tight = try create(
+        Memory(quiet), timestamp: false, max_bytes: plain.to_bytes().length() - 1
+    )
+    let limited: Unit!LogError = error(LogError.LimitExceeded)
+    try expect_equal(tight.info("ab"), limited)
+    try expect_equal(recorded(quiet), plain)
