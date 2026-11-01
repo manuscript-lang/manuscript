@@ -21,7 +21,6 @@ fn run(work: String, n: Int) Result[String, Error]:
     for i in 0..n:
         for v in ["ms", "rust"]:
             let path = if v == "ms": "{work}/ms/bench{exe()}" else: "{work}/rust{exe()}"
-
             for line in (try sample(path, [])).split("\n"):
                 if line != "": raw.append("{i} {v} {line}")
 

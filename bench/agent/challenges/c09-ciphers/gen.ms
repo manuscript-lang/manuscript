@@ -16,9 +16,7 @@ fn shift(text: String, keys: List[Int], fixed: Int, use_keys: Bool, sign: Int) S
 
         if lower or (ch >= 65 and ch <= 90):
             let base = if lower: 97 else: 65
-
             let k = if use_keys: keys[i % keys.length()] else: fixed
-
             out.append((((ch - base + sign * k) % 26) + 26) % 26 + base)
             i += 1
         else:
@@ -29,7 +27,6 @@ fn shift(text: String, keys: List[Int], fixed: Int, use_keys: Bool, sign: Int) S
 # A caesar key: an optional minus sign and one to seven digits.
 fn caesar_key(key: String) Bool:
     let digits = if key.starts_with("-"): key.slice(1, key.length()).get("") else: key.clone()
-
     return (
         digits.length() >= 1
         and digits.length() <= 7

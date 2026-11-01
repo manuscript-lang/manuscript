@@ -456,3 +456,14 @@ fn project_exports_are_offered_before_standard_ones() {
     let first = found.iter().find(|a| title(a) == titles[0]).unwrap();
     assert!(apply(source, first).starts_with("import Bytes from \"./lib/blobs.ms\"\n"));
 }
+
+#[test]
+fn checker_fixes_become_quick_fixes() {
+    let source = "export fn main() Int:\n    let n: Strin = \"a\"\n    return n.length()\n";
+    let (_, found) = actions(source, "quickfix");
+    let action = found
+        .iter()
+        .find(|a| title(a) == "Replace with `String`")
+        .expect("misspelling fix");
+    assert_eq!(apply(source, action), source.replace("Strin ", "String "));
+}

@@ -64,7 +64,7 @@ interface StringOperations:
     fn split(separator: String, max_parts: Int?) List[String]
     # Tests whether the receiver begins with this exact prefix.
     fn starts_with(prefix: String) Bool
-    # Removes Unicode whitespace at both ends; see the exact whitespace set in the text guide.
+    # Removes Unicode whitespace at both ends; the exact set is listed in the text guide.
     fn trim() String
     # Returns locale-independent full Unicode uppercase mapping; the scalar length can change.
     fn upper() String

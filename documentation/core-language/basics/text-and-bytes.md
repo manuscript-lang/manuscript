@@ -128,15 +128,17 @@ The removed spellings migrate as follows.
 | --- | --- |
 | `String` | `byte_length() Int`; `to_bytes() Bytes`; `parse_int() Int?`; `parse_float() Float?` |
 | `Bytes(values: List[UInt8])` | Immutable bytes; `Bytes([104, 105])` types its literals as `UInt8`, so a value outside 0–255 is a compile error |
-| `Bytes` | `length() Int`; `get(index: Int, default: UInt8?) UInt8`; `[index] UInt8`; `concat(values: Bytes) Bytes` |
-| `Bytes` | `to_string() String?` |
+| `Bytes` | `length() Int`; `get(index: Int, default: UInt8?) UInt8`; `[index] UInt8`; `concat(other: Bytes) Bytes` |
+| `Bytes` | `decode_utf8() String?`; `decode_utf8_range(start: Int, end: Int) String?` |
 | `Bytes` | `values() List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
 
-`to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` and `data[index]` return the byte as `UInt8`; convert with `to_int()` for arithmetic; negative indexes count from the end, and `[]` faults out of range where `get` takes a default. Bytes are immutable, so `data[i] = v` is rejected.
+`to_bytes` encodes UTF-8. `Bytes.decode_utf8` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` and `data[index]` return the byte as `UInt8`; convert with `to_int()` for arithmetic; negative indexes count from the end, and `[]` faults out of range where `get` takes a default. Bytes are immutable, so `data[i] = v` is rejected.
 
 `Bytes(values:)` copies its list, and `data.values()` (like the free function `values(data:)` in `@std/bytes.ms`) returns a fresh copy; editing either never changes the Bytes. `values` is a method, not a data field.
 
 `parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`. `parse_float` takes an optional sign, digits, an optional fraction with digits on both sides of the point, an optional exponent, or `NaN`, `Infinity` and `-Infinity`; anything else, or a finite-looking value beyond the Float range, gives `none`. Use `math.parse_float` and `math.parse_int(text, radix)` when the failure cause or a radix is needed. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations are unsupported.
+
+`trim`, `trim_start` and `trim_end` remove the Unicode `White_Space` scalars: U+0009 to U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F and U+3000. Zero-width spaces (U+200B), U+180E and U+FEFF are not whitespace.
 
 ```manuscript
 import panic from "@std/core.ms"

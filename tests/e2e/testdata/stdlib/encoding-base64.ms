@@ -47,7 +47,6 @@ fn padded_input(length: Int) Bytes:
 
     for i in 0..length:
         let byte = if i % 3 == 0: 251 else: (if i % 3 == 1: 255 else: 0)
-
         out.append(byte.to_uint8().get(0))
 
     out.append(42)
@@ -64,11 +63,9 @@ test "Base64 preserves tails across small and batch boundaries":
         let tail = if length % 3 == 1: "+w==" else: (
             if length % 3 == 2: "+/8=" else: ""
         )
-
         let url_tail = if length % 3 == 1: "-w==" else: (
             if length % 3 == 2: "-_8=" else: ""
         )
-
         try expect_equal(base64_encode(data), (try "+/8A".repeat(length / 3)) + tail)
         try expect_equal(
             base64_encode(data, true), (try "-_8A".repeat(length / 3)) + url_tail

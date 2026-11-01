@@ -37,7 +37,6 @@ export fn main() Int:
                 right
             ) else: left.is_disjoint_from(right)
         )
-
         if answer:
             checksum += 1
 

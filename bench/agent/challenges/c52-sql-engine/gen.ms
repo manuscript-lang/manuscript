@@ -24,9 +24,7 @@ fn gen_big() String:
         let it = items[x / 4 % 6]
         let qty = x % 13 + 1
         let price = x / 7 % 50 + 5
-
         let note = if x % 9 == 0: "NULL" else: "'n{x % 5}'"
-
         vals.append("({i}, '{r}', '{it}', {qty}, {price}, {note})")
 
     var i = 0

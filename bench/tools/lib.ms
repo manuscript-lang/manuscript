@@ -155,9 +155,7 @@ export fn fixed(value: Float, digits: Int) String:
     let text = value.to_fixed(digits)
     let parts = text.split(".")
     let whole = parts[0].parse_int().get(0)
-
     let head = if text.starts_with("-") and whole == 0: "-0" else: grouped(whole)
-
     if parts.length() == 1: return head
 
     return "{head}.{parts[1]}"

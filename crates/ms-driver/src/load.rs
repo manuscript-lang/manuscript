@@ -383,6 +383,12 @@ impl Loader<'_> {
                     let secondary: Arc<[Diagnostic]> = issues
                         .into_iter()
                         .filter(|d| d.pos != first.pos && d.pos.line > 0)
+                        // One unclosed delimiter is one mistake: the strict
+                        // parse reports it at the end of the file and recovery
+                        // at the next declaration, naming the same opener.
+                        .filter(|d| {
+                            !(d.message == first.message && d.message.contains(" opened at line "))
+                        })
                         .collect();
                     self.graph.diagnostics.extend(secondary.iter().cloned());
                     return Err(Failure::Diagnostic(first, secondary));

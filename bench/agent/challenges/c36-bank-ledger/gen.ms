@@ -83,7 +83,6 @@ fn solve(s: String) String:
             continue
 
         let ids = if c == "transfer": t.slice(1, 3).get([]) else: t.slice(1, 2).get([])
-
         let amount = t[t.length() - 1].clone()
         var unknown = ""
         for i in ids:

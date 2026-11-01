@@ -740,7 +740,6 @@ impl Repo:
             self.merging = false
 
         let root = if head.is_empty(): " (root-commit)" else: ""
-
         self.emit("[" + self.label() + root + " " + short(id) + "] " + message)
 
     var fn cmd_status() Unit:

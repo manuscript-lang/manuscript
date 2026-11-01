@@ -88,3 +88,24 @@ fn recovered_outline_selects_exact_declaration_names() {
         }
     }
 }
+
+#[test]
+fn a_statement_cut_off_mid_expression_keeps_hover_and_definition() {
+    for tail in ["g.", "g +", "g and"] {
+        for newline in ["\n", "\r\n"] {
+            let ws = Workspace::new("cut-off-statement");
+            let source = format!(
+                "fn f(s: String) String:\n    let g = s\n    return {tail}\n\nfn other() Int: 1\n"
+            )
+            .replace('\n', newline);
+            let document = Document::new(ws.uri("cut.ms"), source.clone());
+            let analysis = analyze(&document, &Documents::new());
+            assert!(!analysis.diagnostics.is_empty());
+            let at = text::position(&source, source.find(&format!("return {tail}")).unwrap() + 7);
+            for method in [Navigate::Hover, Navigate::Definition] {
+                let found = nav::navigation(&analysis, &document, at, method, analysis.index());
+                assert!(!matches!(found, Json::Null), "{tail:?}");
+            }
+        }
+    }
+}

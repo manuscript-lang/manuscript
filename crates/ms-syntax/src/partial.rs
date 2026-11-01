@@ -327,6 +327,15 @@ fn recover_statements(
         if lines[at].trim().is_empty() || indent == 0 {
             return None;
         }
+        // A one-line statement cut off mid-expression (`return g.`, `let v = a +`)
+        // keeps its operands for navigation once the dangling tail is trimmed.
+        let single = lines
+            .get(at + 1..)
+            .and_then(|rest| rest.iter().find(|l| !l.trim().is_empty()))
+            .is_none_or(|next| leading_space(next) <= indent);
+        if single && let Some(trimmed) = trim_dangling(file, &lines, at) {
+            return Some((trimmed, issues));
+        }
         for (index, text) in lines.iter_mut().enumerate().skip(at) {
             if index > at && !text.trim().is_empty() && leading_space(text) <= indent {
                 break;
@@ -337,6 +346,45 @@ fn recover_statements(
         match parse(file, &text) {
             Ok(_) => return Some((text, issues)),
             Err(e) => issue = *e,
+        }
+    }
+    None
+}
+
+/// Removes the dangling tail of line `at` (a trailing `.`, `?.`, operator or
+/// separator) until the declaration parses, keeping the line's columns by
+/// padding with spaces. `None` when trimming does not make it parse.
+fn trim_dangling(file: &Arc<str>, lines: &[String], at: usize) -> Option<String> {
+    let line = &lines[at];
+    let newline = &line[line.trim_end_matches(['\n', '\r']).len()..];
+    let mut code = line.trim_end_matches(['\n', '\r']).trim_end().to_string();
+    if code.contains('#') || code.contains('"') {
+        return None;
+    }
+    for _ in 0..3 {
+        let kept = code.trim_end_matches(|c: char| {
+            matches!(
+                c,
+                '.' | '?' | '+' | '-' | '*' | '/' | '%' | '<' | '>' | '=' | '!' | ',' | '|'
+            ) || c == ' '
+        });
+        let kept = ["and", "or", "not"]
+            .iter()
+            .find_map(|w| kept.strip_suffix(w).filter(|r| r.ends_with(' ')))
+            .unwrap_or(kept);
+        if kept.len() == code.len() || kept.trim().is_empty() {
+            return None;
+        }
+        code = kept.trim_end().to_string();
+        let mut attempt = lines.to_vec();
+        attempt[at] = format!(
+            "{}{}{newline}",
+            code,
+            " ".repeat(line.trim_end_matches(['\n', '\r']).len() - code.len())
+        );
+        let text = attempt.concat();
+        if parse(file, &text).is_ok() {
+            return Some(text);
         }
     }
     None

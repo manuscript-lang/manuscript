@@ -51,9 +51,7 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
     let mapping = {"count": COUNT, "ratio": RATIO}
     let plain = "Literal \{braces\}, # text, \"quote\", \\, \t, \r, \n, \u{1F642}"
     let message = "\{escaped\} {mapping.get("count")} {"{callback(1)}"} \u{41}"
-
     let selected = if true and not false or as == 0: first else: second
-
     var total = 0
     total += 1
     total -= 2

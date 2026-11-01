@@ -1,0 +1,9 @@
+type P:
+    n: Int
+
+fn f(p: P?) Int:
+    let a = p?.n
+    let b = 1
+    let c = if b > 0: 1 else: 2
+    let d = 3
+    return a.get(0) + b + c + d

@@ -59,7 +59,6 @@ fn solve(s: String) String:
 
     for raw in s.split("\n"):
         let line = if raw.ends_with("\r"): raw.slice(0, raw.length() - 1).get("") else: raw.clone()
-
         if line.trim().is_empty(): continue
 
         if let row = parse_line(line):

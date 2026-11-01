@@ -396,7 +396,6 @@ fn parseFence(lines: List[String], i: Int, ind: Int, f: Int) Step:
                 break
 
         let k = if lead(l) < ind: lead(l) else: ind
-
         body = body + sub(l, k) + "\n"
         j += 1
 
@@ -441,9 +440,7 @@ fn parseIndented(lines: List[String], i: Int) Step:
 
     while k <= last:
         let l = lines[k]
-
         let r = if lead(l) < 4: lead(l) else: 4
-
         body = body + sub(l, r) + "\n"
         k += 1
 
@@ -930,11 +927,8 @@ fn scan(text: String) List[Node]:
                 i += run
         else if c == "*" or c == "_":
             let run = runAt(cs, i, c)
-
             let pc = if i > 0: cs[i - 1].clone() else: " "
-
             let nc = if i + run < n: cs[i + run].clone() else: " "
-
             let lf = (not isWs(nc)) and ((not isPunct(nc)) or isWs(pc) or isPunct(pc))
             let rf = (not isWs(pc)) and ((not isPunct(pc)) or isWs(nc) or isPunct(nc))
             var co = lf
@@ -1023,7 +1017,6 @@ fn findOpener(nodes: List[Node], c: Int) Int:
 
 fn joinEmph(nodes: List[Node], f: Int, c: Int) Joined:
     let amount = if nodes[f].count >= 2 and nodes[c].count >= 2: 2 else: 1
-
     let oLeft = nodes[f].count - amount
     let cLeft = nodes[c].count - amount
     var inner = List[Node]()

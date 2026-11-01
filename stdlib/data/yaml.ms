@@ -665,7 +665,6 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
     while true:
         if phase == 0:
             let child_depth = if kind == 0: depth else: level + 1
-
             var written: List[String] = []
             var is_key = child_key
             child_key = false
@@ -706,9 +705,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!YamlError:
                 explicit_stack.append(explicit)
                 name_stack.append(name)
                 quoted_stack.append(quoted_key)
-
                 kind = if c == 91: 1 else: 2
-
                 level = child_depth
                 anchors = written
                 items = []

@@ -55,7 +55,6 @@ impl Parser:
             self.pos += 1
 
             let r = self.term()
-
             v = if plus: v + r else: v - r
 
         return v

@@ -44,7 +44,6 @@ fn identities() Map[String, Identity]:
 
             if kind.starts_with("near"):
                 let want = kind.slice(4, kind.length()).get("0").parse_int().get(0)
-
                 position = if want < size - 1: want else: size - 1
 
             if kind == "middle": position = size / 2
@@ -58,22 +57,17 @@ fn identities() Map[String, Identity]:
 
             # The first 0xFF at or after `from`, or -1.
             let found = if position >= 0 and position < size and position >= from: position else: -1
-
             let expected = if found == -1: size else: found
-
             var work = size
             if expected < size: work = expected + 1 - start
             if start < 0: work = expected + 1
             if start >= size: work = 1
 
             let divisor = if work > 32: work else: 32
-
             let by_work = 67108864 / divisor
-
             let iterations = if by_work < 256: 256 else: (
                 if by_work > 1000000: 1000000 else: by_work
             )
-
             rows.add("{kind}_{size}", Identity(size, iterations, expected * iterations))
 
     return rows

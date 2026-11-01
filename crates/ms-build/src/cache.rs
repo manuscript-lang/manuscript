@@ -120,6 +120,7 @@ pub fn lookup(dir: &Path, key: &str) -> Option<Entry> {
     if files.is_empty() || files.iter().any(|(s, p)| stamp(Path::new(p)) != Some(*s)) {
         return None;
     }
+    touch(&entry);
     Some(Entry {
         dir: entry,
         source_root,
@@ -178,8 +179,24 @@ pub fn store(
     prune(dir, KEEP);
 }
 
-/// Entries kept per cache directory; the oldest are removed when a build stores another.
+/// Entries kept per cache directory; the least recently used are removed when a build stores another.
 const KEEP: usize = 8;
+
+/// When an entry was last stored or hit: the modification time of its manifest.
+fn used(entry: &Path) -> Option<std::time::SystemTime> {
+    std::fs::metadata(entry.join("manifest"))
+        .ok()?
+        .modified()
+        .ok()
+}
+
+/// Marks an entry as just used so pruning removes the least recently hit entries.
+fn touch(entry: &Path) {
+    let _ = std::fs::OpenOptions::new()
+        .write(true)
+        .open(entry.join("manifest"))
+        .and_then(|f| f.set_modified(std::time::SystemTime::now()));
+}
 
 fn prune(dir: &Path, keep: usize) {
     let Ok(entries) = std::fs::read_dir(dir) else {
@@ -188,7 +205,7 @@ fn prune(dir: &Path, keep: usize) {
     let mut entries: Vec<_> = entries
         .filter_map(Result::ok)
         .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
-        .filter_map(|e| Some((e.metadata().ok()?.modified().ok()?, e.path())))
+        .filter_map(|e| Some((used(&e.path())?, e.path())))
         .collect();
     entries.sort();
     let excess = entries.len().saturating_sub(keep);
@@ -281,6 +298,46 @@ mod tests {
         assert!(lookup(&cache, "k").is_none());
         std::fs::remove_file(&source).unwrap();
         assert!(lookup(&cache, "k").is_none());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_hit_keeps_its_entry_from_being_pruned() {
+        let dir = scratch("lru");
+        let cache = dir.join("build");
+        let built = dir.join("built");
+        let source = dir.join("a.ms");
+        std::fs::write(&built, b"x").unwrap();
+        std::fs::write(&source, b"y").unwrap();
+        let put = |name: &str| {
+            store(
+                &cache,
+                name,
+                "/r",
+                std::slice::from_ref(&source),
+                &built,
+                None,
+            );
+        };
+        put("old");
+        let past = std::time::SystemTime::now() - std::time::Duration::from_secs(1000);
+        let age = |name: &str, secs: u64| {
+            let f = std::fs::OpenOptions::new()
+                .write(true)
+                .open(cache.join(name).join("manifest"))
+                .unwrap();
+            f.set_modified(past + std::time::Duration::from_secs(secs))
+                .unwrap();
+        };
+        age("old", 0);
+        for i in 0..KEEP - 1 {
+            put(&format!("e{i}"));
+            age(&format!("e{i}"), 10 + i as u64);
+        }
+        assert!(lookup(&cache, "old").is_some());
+        put("new");
+        assert!(cache.join("old").exists());
+        assert!(!cache.join("e0").exists());
         let _ = std::fs::remove_dir_all(dir);
     }
 

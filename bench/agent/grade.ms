@@ -31,9 +31,7 @@ export fn main() Int:
     let build = args[1].clone()
     let run = args[2].clone()
     let timeout = args[3].parse_int().get(5)
-
     let suffix = if args.length() > 4: args[4].clone() else: ""
-
     let app = env("MSBENCH_APP", "/app")
     let out_dir = env("MSBENCH_VERIFIER", "/logs/verifier")
     create_directory(out_dir, recursive: true).get()
@@ -74,6 +72,5 @@ export fn main() Int:
     write_file("{out_dir}/detail.json", stringify(detail).get(""), replace: true).get()
 
     let reward = if detail.built and detail.passed == detail.total: "1" else: "0"
-
     write_file("{out_dir}/reward.txt", reward, replace: true).get()
     return 0
