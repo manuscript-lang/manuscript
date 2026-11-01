@@ -2,6 +2,7 @@
 
 use ms_lsp::analysis::{Document, Documents, analyze};
 use ms_lsp::completion::{completion_at, signature_help};
+use ms_lsp::nav::{self, Navigate};
 use ms_lsp::text::{self, Range};
 use ms_rt as _;
 
@@ -221,5 +222,133 @@ fn opaque_alternative_argument_labels_and_signatures_stay_private() {
             .unwrap();
             assert_eq!(help.is_null(), file == "outside.ms", "{help:?}");
         }
+    }
+}
+
+#[test]
+fn opaque_representation_hover_and_navigation_stay_private() {
+    let workspace = Workspace::new("opaque-hover");
+    let library = include_str!("opaque_completion/vault.ms");
+    std::fs::write(workspace.path("vault.ms"), library).unwrap();
+    let fixture = include_str!("opaque_completion/outside.ms");
+    for newline in ["\n", "\r\n"] {
+        for (expression, selected) in [
+            ("Vault[Int](secret: 7)", "secret"),
+            ("hidden.secret", "secret"),
+            ("Choice.Payload(7)", "Payload"),
+        ] {
+            let source = fixture
+                .replace("inspect(hidden)", expression)
+                .replace('\n', newline);
+            let offset = source.find(expression).unwrap() + expression.find(selected).unwrap();
+            let document = Document::new(workspace.uri("outside.ms"), source);
+            let checked = analyze(&document, &Documents::new());
+            assert!(
+                checked
+                    .diagnostics
+                    .iter()
+                    .any(|d| d.message.contains("opaque")),
+                "{:?}",
+                checked.diagnostics
+            );
+            let index = checked.index();
+            let at = text::position(&document.text, offset);
+            assert!(nav::occurrence_at(&checked, &document, at, index).is_none());
+            for index in [index, &[][..]] {
+                assert!(
+                    nav::navigation(&checked, &document, at, Navigate::Hover, index).is_null(),
+                    "{expression}"
+                );
+                assert!(
+                    nav::navigation(&checked, &document, at, Navigate::Definition, index).is_null(),
+                    "{expression}"
+                );
+            }
+        }
+        let document = Document::new(workspace.uri("vault.ms"), library.replace('\n', newline));
+        let checked = analyze(&document, &Documents::new());
+        let index = checked.index();
+        let offset = document.text.find("secret").unwrap();
+        let hover = nav::navigation(
+            &checked,
+            &document,
+            text::position(&document.text, offset),
+            Navigate::Hover,
+            index,
+        );
+        assert!(!hover.is_null());
+        let document = Document::new(workspace.uri("outside.ms"), fixture.replace('\n', newline));
+        let checked = analyze(&document, &Documents::new());
+        for token in ["Vault", "public.value", "hidden.size"] {
+            let offset = if token == "Vault" {
+                document.text.find("value: Vault").unwrap() + "value: ".len()
+            } else {
+                document.text.find(token).unwrap() + token.find('.').unwrap() + 1
+            };
+            let hover = nav::navigation(
+                &checked,
+                &document,
+                text::position(&document.text, offset),
+                Navigate::Hover,
+                checked.index(),
+            );
+            assert!(!hover.is_null(), "{token}");
+        }
+    }
+}
+
+#[test]
+fn opaque_public_methods_remain_discoverable() {
+    let workspace = Workspace::new("opaque-public-method");
+    std::fs::write(
+        workspace.path("vault.ms"),
+        include_str!("opaque_completion/vault.ms"),
+    )
+    .unwrap();
+    let fixture = include_str!("opaque_completion/outside.ms");
+    for newline in ["\n", "\r\n"] {
+        let source = fixture
+            .replace("hidden.size()", "hidden.si")
+            .replace('\n', newline);
+        let offset = source.find("hidden.si").unwrap() + "hidden.si".len();
+        let mut document = Document::new(workspace.uri("outside.ms"), source);
+        let items: Vec<_> = completion_at(
+            &document,
+            &Documents::new(),
+            text::position(&document.text, offset),
+            true,
+        )
+        .unwrap()
+        .into_iter()
+        .map(|item| item.json())
+        .collect();
+        assert!(
+            !items
+                .iter()
+                .any(|item| item.get("label").and_then(|j| j.as_str()) == Some("secret"))
+        );
+        let method = items
+            .iter()
+            .find(|item| item.get("label").and_then(|j| j.as_str()) == Some("size"))
+            .unwrap();
+        let edit = method.get("textEdit").unwrap();
+        assert_eq!(
+            edit.get("newText").and_then(|j| j.as_str()),
+            Some("size()$0")
+        );
+        let range = Range::from_json(edit.get("range").unwrap()).unwrap();
+        let start = text::offset(&document.text, range.start).unwrap();
+        let end = text::offset(&document.text, range.end).unwrap();
+        document.text.replace_range(start..end, "size()");
+        let checked = analyze(&document, &Documents::new());
+        assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
+        let offset = document.text.find("hidden.size(").unwrap() + "hidden.size(".len();
+        let help = signature_help(
+            &document,
+            &Documents::new(),
+            text::position(&document.text, offset),
+        )
+        .unwrap();
+        assert!(!help.is_null());
     }
 }

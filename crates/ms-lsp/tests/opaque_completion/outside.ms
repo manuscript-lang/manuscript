@@ -6,4 +6,4 @@ fn inspect(value: Vault[Int]) Int:
 fn use() Int:
     let hidden = vault()
     let public = Open[Int](7)
-    return inspect(hidden) + public.value
+    return inspect(hidden) + public.value + hidden.size()

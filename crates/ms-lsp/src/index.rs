@@ -44,6 +44,24 @@ impl OccInfo {
     }
 }
 
+/// Recovery facts can retain types for a rejected opaque representation access.
+/// Editors must not advertise those fields, cases or constructor parameters.
+pub(crate) fn hidden_structure(module: &ModRef, e: &Expr, info: &Info) -> bool {
+    let hidden = |ty: &Ty| ty.opaque_module().is_some_and(|file| file != module.file);
+    if info.constructor.as_ref().is_some_and(hidden) {
+        return true;
+    }
+    let ExprKind::Member { left, .. } = &e.kind else {
+        return false;
+    };
+    info.method.is_none()
+        && module
+            .facts()
+            .info(left.id)
+            .and_then(|i| i.ty.as_ref())
+            .is_some_and(hidden)
+}
+
 /// One occurrence of an identity in source.
 #[derive(Clone)]
 pub struct Occurrence {
@@ -683,6 +701,9 @@ impl UseWalker<'_> {
 
     fn expression(&mut self, e: &Expr) {
         let Some(info) = self.info_of(e) else { return };
+        if hidden_structure(self.module, e, &info) {
+            return;
+        }
         let occ = OccInfo::of(&info);
         match &e.kind {
             ExprKind::Name(name) => {

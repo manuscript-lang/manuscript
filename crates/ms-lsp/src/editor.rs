@@ -6,7 +6,7 @@
 //! neither diagnostics nor edits are derived from the fabricated text.
 
 use crate::analysis::{self, Analysis, Document, Documents, Options};
-use crate::index::expr_text;
+use crate::index::{expr_text, hidden_structure};
 use crate::text::{self, EditorKind, EditorToken, Position};
 use crate::uri;
 use ms_check::syntax::{ModRef, ScopeState};
@@ -616,11 +616,7 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
             let facts = self.module.facts();
             if facts
                 .info(e.id)
-                .and_then(|i| i.constructor.as_ref())
-                .is_some_and(|ty| {
-                    ty.opaque_module()
-                        .is_some_and(|file| file != self.module.file)
-                })
+                .is_some_and(|info| hidden_structure(self.module, e, info))
             {
                 return;
             }

@@ -2,7 +2,7 @@
 //! references and highlights.
 
 use crate::analysis::{Analysis, Document};
-use crate::index::{DeclFiles, OccInfo, Occurrence, callables, expr_text};
+use crate::index::{DeclFiles, OccInfo, Occurrence, callables, expr_text, hidden_structure};
 use crate::json::{Json, obj};
 use crate::text::{self, Position, Range};
 use ms_check::syntax::ModRef;
@@ -49,6 +49,9 @@ impl Finder<'_> {
         let Some(info) = self.module.facts().info(e.id).cloned() else {
             return;
         };
+        if hidden_structure(self.module, e, &info) {
+            return;
+        }
         let offset = e.pos.offset as usize;
         let end = offset + text.len();
         let inside = if let Ok(cursor) = self.cursor
