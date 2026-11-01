@@ -1,13 +1,5 @@
-//! `@std/io/archive.ms` natives: gzip, zlib and raw deflate with the framing, checks and error
+//! gzip, zlib and raw deflate with the framing, checks and error
 //! mapping. The compressed bytes are produced by miniz_oxide.
-#![no_std]
-
-// Links the msrt_* runtime symbols into this crate's test binaries.
-#[cfg(test)]
-use ms_rt as _;
-
-extern crate alloc;
-
 pub mod ffi;
 pub mod stream;
 

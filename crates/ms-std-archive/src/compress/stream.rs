@@ -4,7 +4,7 @@
 //! [`Decoder::finish_input`] (or [`Encoder::feed`] / [`Encoder::finish`]) and drains the codec
 //! with `poll` / `take`. Framing, checks and error mapping are: malformed data is `InvalidData`, exceeding `max_bytes` is
 //! `LimitExceeded`, and an out-of-range level is `InvalidInput`.
-use crate::{Format, adler32_update, crc32};
+use super::{Format, adler32_update, crc32};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use miniz_oxide::deflate::core::{
