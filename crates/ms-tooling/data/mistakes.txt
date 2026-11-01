@@ -103,6 +103,12 @@ right: out.append(first.clone())
 body: let xs = ["a"];;var out = ["b"];;let first = xs[0];;{}
 diag: cannot move
 
+wrong: names.append(name_of(u))
+right: names.append(name_of(u).clone())
+setup: type User:;;    name: String;;;;fn name_of(u: User) String:;;    return u.name
+body: let u = User(name: "a");;var names = ["b"];;{}
+diag: returns a reference into
+
 wrong: let xs = [1]
 right: var xs = [1]
 body: {};;xs.append(2)

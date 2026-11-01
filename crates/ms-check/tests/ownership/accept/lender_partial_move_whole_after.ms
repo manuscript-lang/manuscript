@@ -9,5 +9,5 @@ fn show(b: Big) Int:
     return b.name.length()
 
 fn whole(b: Big) Int:
-    let a = keep(b.items)  # error: moved here but used again
+    let a = keep(b.items)
     return a.length() + show(b)

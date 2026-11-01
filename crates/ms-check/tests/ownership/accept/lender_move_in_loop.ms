@@ -6,7 +6,8 @@ fn f() Int:
     var i = 0
 
     while i < 3:
-        let b = keep(a)  # error: moved here but used again
+        let b = keep(a)
+        i += b.length()
         i += 1
 
     return 0

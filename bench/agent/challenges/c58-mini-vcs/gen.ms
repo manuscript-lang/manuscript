@@ -6,7 +6,7 @@ import compile from "@std/string.ms"
 # The `{cN}` placeholders stand for the short id of the N-th commit; a dry run with a dummy id finds them.
 fn resolve_hashes(oracle: String, script: String) String:
     if not script.contains("\{c"):
-        return script
+        return script.clone()
 
     let marker = compile("\\\{c[0-9]+\\\}").to_optional()
     let probe = marker.get().replace_all(script, "0000000").get("")

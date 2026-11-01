@@ -105,8 +105,9 @@ fn money(var l: Ledger, cmd: String, t: List[String]) Unit:
     if cmd == "deposit":
         a.bal = a.bal + n
         a.ops = a.ops + 1
+        let bal = a.bal
         l.accounts.add(key: first.clone(), value: a)
-        return emit(var l, "ok {a.bal}")
+        return emit(var l, "ok {bal}")
 
     var next = a.bal - n
     var fee = 0
@@ -132,8 +133,9 @@ fn money(var l: Ledger, cmd: String, t: List[String]) Unit:
     var b = l.accounts.get(ids.get(1)).get()
     b.bal = b.bal + n
     b.ops = b.ops + 1
+    let bbal = b.bal
     l.accounts.add(key: ids.get(1).clone(), value: b)
-    emit(var l, "ok {next} {b.bal}{sfx}")
+    emit(var l, "ok {next} {bbal}{sfx}")
 
 fn step(var l: Ledger, t: List[String]) Unit:
     let cmd = t.get(0)
@@ -162,11 +164,10 @@ fn step(var l: Ledger, t: List[String]) Unit:
 
     if cmd == "freeze" or cmd == "unfreeze":
         let id = t.get(1)
-        let found = l.accounts.get(id)
-        if found.is_none():
+        if l.accounts.get(id).is_none():
             return emit(var l, "error: unknown account {id}")
 
-        var a = found.get().clone()
+        var a = l.accounts.get(id).get().clone()
         a.frozen = cmd == "freeze"
         l.accounts.add(key: id.clone(), value: a)
         return emit(var l, "ok")

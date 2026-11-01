@@ -1374,7 +1374,17 @@ impl Verifier<'_> {
             blk.term.for_each_target(|t| edges.push(t.clone()));
             if let Term::Ret(v) = &blk.term {
                 if let Some(v) = v.filter(|v| rc(*v)) {
-                    if !owned_def[v.index()] {
+                    if f.ret_borrowed {
+                        if owned_def[v.index()] {
+                            self.err(
+                                Some(bi),
+                                format!(
+                                    "ret: %{} is owned, but this function lends its result; it would leak",
+                                    v.0
+                                ),
+                            );
+                        }
+                    } else if !owned_def[v.index()] {
                         self.err(
                             Some(bi),
                             format!(

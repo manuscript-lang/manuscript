@@ -17,6 +17,16 @@ pub use classify::{Class, Classifier};
 pub use modes::{CallModes, ParamMode};
 pub use places::{Place, Step};
 
+/// How the caller comes to own the result of a lending call over a temporary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OwnedLend {
+    /// The result is a part of the temporary: copied out before the temporary is dropped.
+    Copy,
+    /// The result is the whole temporary passed as the receiver (`None`) or as the parameter
+    /// with this label: the caller keeps the temporary instead of dropping it, no copy.
+    Whole(Option<Name>),
+}
+
 use crate::hir::*;
 use crate::types::*;
 use modes::{Key, Summaries};
@@ -166,6 +176,18 @@ pub struct CallableOwnership {
     pub parameters: Vec<ParamMode>,
     /// The receiver's mode, for a method.
     pub receiver: Option<ParamMode>,
+    /// The result is a reference into the receiver or a parameter on every path: lowering
+    /// returns it without copying, and the caller holds it without dropping.
+    pub lends: bool,
+    /// Calls of lending callables whose sources are temporaries: the caller owns the result,
+    /// by taking the temporary over or by a copy made before it is dropped.
+    pub owned_lends: HashMap<NodeId, OwnedLend>,
+    /// Calls bound with `var` as an exclusive borrow of the field chain the callee returns, by
+    /// call node: lowering names that place instead of calling.
+    pub getter_borrows: HashMap<NodeId, Vec<Name>>,
+    /// Conditional and match expressions whose value is a reference on every arm: lowering
+    /// joins the arms without copying.
+    pub lent_matches: HashSet<NodeId>,
 }
 
 impl CallableOwnership {
@@ -201,6 +223,16 @@ pub struct Ownership {
     /// For each callable with a `Consume` parameter or receiver, which parameters (declaration
     /// order, the receiver first for a method) the body moves, stores or returns.
     pub consumes: HashMap<Key, Vec<bool>>,
+    /// Callables whose result is a reference into their arguments.
+    pub lenders: HashSet<Key>,
+    /// Lending calls whose result the caller owns (a source was a temporary), by module file and
+    /// call node.
+    pub owned_lends: HashMap<(Name, NodeId), OwnedLend>,
+    /// `var` bindings of a lending call, by module file and call node: the field chain of the
+    /// argument the binding borrows exclusively.
+    pub getter_borrows: HashMap<(Name, NodeId), Vec<Name>>,
+    /// Conditional and match expressions whose value is a reference, by module file and node.
+    pub lent_matches: HashSet<(Name, NodeId)>,
 }
 
 impl Ownership {
@@ -285,7 +317,27 @@ impl Hir<'_> {
         let mut resource_moves = HashMap::new();
         let mut borrowed_captures = HashSet::new();
         let mut consumes = HashMap::new();
+        let mut lenders = HashSet::new();
+        let mut owned_lends = HashMap::new();
+        let mut getter_borrows = HashMap::new();
+        let mut lent_matches = HashSet::new();
         for (c, out) in callables.iter().zip(outcomes) {
+            lent_matches.extend(out.facts.lent_matches.iter().map(|n| (c.module.file, *n)));
+            if out.facts.lends {
+                lenders.insert((c.module.file, c.id()));
+            }
+            owned_lends.extend(
+                out.facts
+                    .owned_lends
+                    .iter()
+                    .map(|(n, how)| ((c.module.file, *n), *how)),
+            );
+            getter_borrows.extend(
+                out.facts
+                    .getter_borrows
+                    .iter()
+                    .map(|(n, f)| ((c.module.file, *n), f.clone())),
+            );
             for (node, lambda) in &out.facts.lambdas {
                 for (uid, mode) in &lambda.captures {
                     if !lambda.escaping && *mode == CaptureMode::Borrow {
@@ -337,6 +389,10 @@ impl Hir<'_> {
             moved_payloads,
             borrowed_captures,
             consumes,
+            lenders,
+            owned_lends,
+            getter_borrows,
+            lent_matches,
         }
     }
 }

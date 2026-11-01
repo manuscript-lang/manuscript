@@ -1,10 +1,12 @@
-# expect-debug: allocs=15 alloc_bytes=779
+# expect-debug: allocs=16 alloc_bytes=803
 # expect-release: allocs=12 alloc_bytes=747
 # expect-stdout: 6
 # expect-stdout: 3
 # expect-stdout: 2
-# One allocation fewer than a clone-based version: copyelim moves the field out of the dying record (rec.release).
-# A field of an owned record moves out at its last use; the rest of the record is still cleaned up exactly once.
+# `items_of` lends a field of its parameter; over a temporary (`items_of(Big(..))`) the caller owns a
+# copy of that field in Debug (one 24-byte list), and copyelim moves it out of the dying record in
+# Release (rec.release). A field of an owned record moves out at its last use; the rest of the record
+# is still cleaned up exactly once.
 import stdout from "@std/io/io.ms"
 
 type Big:

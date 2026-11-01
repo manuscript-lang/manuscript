@@ -7,5 +7,5 @@ fn keep(xs: List[Int]) List[Int]:
 
 fn captured(b: Big) Int:
     let f = fn: b.items.length()
-    let a = keep(b.items)  # error: while `f` borrows it
+    let a = keep(b.items)
     return a.length() + f()

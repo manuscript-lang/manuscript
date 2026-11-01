@@ -1,4 +1,4 @@
 fn f() Int:
     let a = [1, 2, 3]
-    let b = a  # error: moved here but used again
+    let b = a
     return a.length() + b.length()

@@ -640,7 +640,7 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
 
 fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
-    if count == 1: return text
+    if count == 1: return text.clone()
 
     let half = repeated(text: text.clone(), count: count / 2)
     if count % 2 == 1: return half.concat(half).concat(text)

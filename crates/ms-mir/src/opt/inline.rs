@@ -321,7 +321,7 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
         }
         for (ii, gi) in picks.into_iter().rev() {
             let callee = m.funcs[gi].clone();
-            let ret_own = m.needs_drop(callee.ret);
+            let ret_own = m.needs_drop(callee.ret) && !callee.ret_borrowed;
             let cont = inline_at(&mut m.funcs[fi], bi, ii, &callee, ret_own);
             // Only the call definition is replaced; existing constants keep their IDs when
             // the tail moves. Fresh callee definitions follow the continuation block.

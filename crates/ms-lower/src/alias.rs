@@ -79,6 +79,12 @@ impl<'a> FnLower<'a> {
                     (ExprKind::Member { left, .. }, Resolution::Method(_)) => &**left,
                     _ => &args[0].value,
                 };
+                // The callee runs for its effects; the borrow then names the part it returned,
+                // which the checker found to be this field chain of the argument.
+                let result = self.expr(e)?;
+                if result.own {
+                    self.drop_value(result.v);
+                }
                 let mut a = self.alias_chain(arg)?;
                 a.steps.extend(fields.into_iter().map(AStep::Field));
                 Ok(a)
@@ -98,15 +104,26 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    /// The place `if var name = recv[key]?` names, and the test for whether it exists.
+    /// The place `if var name = recv[key]?` (or `if var name = map.get(key)`) names, and the
+    /// test for whether it exists.
     pub(crate) fn alias_accessor(&mut self, cond: &Expr) -> Result<(Alias, Value), Error> {
-        let ExprKind::Probe(target) = &cond.kind else {
-            return Err(Error::new(
-                "`if var` borrows an entry written as `place[key]?`",
-            ));
-        };
-        let Some((left, index)) = crate::mutation::index_parts(&self.hir, target) else {
-            return Err(Error::new("`?` needs an index of a map or list"));
+        let (left, index) = match &cond.kind {
+            ExprKind::Probe(target) => crate::mutation::index_parts(&self.hir, target)
+                .ok_or_else(|| Error::new("`?` needs an index of a map or list"))?,
+            ExprKind::Call { callee, args }
+                if matches!(&callee.kind, ExprKind::Member { name, .. } if name.as_str() == "get")
+                    && args.len() == 1 =>
+            {
+                let ExprKind::Member { left, .. } = &callee.kind else {
+                    unreachable!("matched above")
+                };
+                (&**left, &args[0].value)
+            }
+            _ => {
+                return Err(Error::new(
+                    "`if var` borrows an entry written as `place[key]?` or `map.get(key)`",
+                ));
+            }
         };
         let mut a = self.alias_chain(left)?;
         let whole = self.alias_read(&a)?;

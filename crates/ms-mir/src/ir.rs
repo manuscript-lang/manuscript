@@ -821,8 +821,12 @@ pub struct Func {
     pub name: String,
     /// Parameters; `blocks[0].params` define their values.
     pub params: Vec<Param>,
-    /// Result type; results are owned.
+    /// Result type. Results are owned unless `ret_borrowed`.
     pub ret: Ty,
+    /// The result is a reference into one or more parameters (a lending function): the caller
+    /// holds it as a borrow for as long as those arguments live and never releases it. The
+    /// verifier rejects an owned value returned from such a function.
+    pub ret_borrowed: bool,
     /// Visibility.
     pub linkage: Linkage,
     /// Role of the function.
@@ -859,6 +863,7 @@ impl Func {
             name: name.to_string(),
             params: params.clone(),
             ret,
+            ret_borrowed: false,
             linkage: Linkage::Internal,
             kind: FuncKind::Normal,
             inline: InlineHint::Auto,
@@ -1306,6 +1311,10 @@ impl Module {
             | Op::StrAscii
             | Op::OptView
             | Op::OptNone => Mode::Borrow,
+            // A lending function hands back a reference into its arguments.
+            Op::Call if matches!(inst.imm, Imm::Func(g) if self.funcs[g.index()].ret_borrowed) => {
+                Mode::Borrow
+            }
             _ => Mode::Own,
         })
     }

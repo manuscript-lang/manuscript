@@ -1,1 +1,1 @@
-error parse 2:9:36 "`ref` was removed: a result or field owns its value, so drop `ref` and write `.clone()` where a function returns part of a parameter"
+error parse 2:9:36 "`ref` was removed: drop it; a function that returns part of a parameter lends it without a marker, and a field owns its value"

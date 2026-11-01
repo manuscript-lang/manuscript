@@ -5,6 +5,6 @@ type Tree:
 fn f(var t: Tree) Tree:
     match t:
         Node(l, v):
-            return l  # error: only borrows its value
+            return l
         Leaf:
-            return Leaf
+            return Leaf  # error: returns a reference into its arguments

@@ -38,7 +38,7 @@ test "instances copy non-scalar arguments":
     try expect_equal(same.x, 4)
     try expect_equal(point.x, 3)
 
-    var alias = pick(first: true, left: point, right: Point(9)).clone()
+    var alias = pick(first: true, left: point.clone(), right: Point(9)).clone()
     alias.x = 5
     try expect_equal(alias.x, 5)
     try expect_equal(point.x, 3)

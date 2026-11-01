@@ -5,13 +5,13 @@ weight = 5
 
 # Mutation and references
 
-Strings, records, lists, maps, sets, and alternatives are values. Scalars and records of scalars copy implicitly; a `String` is owned like a list, so storing a borrowed string in an owned position (a record field, `Map.add`, a returned value) needs an explicit `.clone()`, which makes the copy visible. Other values move at their last use into consuming positions; local place bindings and projections can borrow. `.clone()` explicitly duplicates nested data. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) for parameter modes and borrow checking.
+Every value has one owner. Primitives (`Int`, `Float`, `Bool`, `Unit`, alternatives without payloads, and `Shared` handles) copy implicitly. Everything else, including strings and records, is a container of data with one owner: binding it borrows it, passing it borrows it, storing it moves it, and only `.clone()` copies it, which makes every copy visible. `.clone()` explicitly duplicates nested data. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) for parameter modes and borrow checking.
 
 ## Borrowing
 
 A borrow is a handle to a value another binding owns: many readers, or one writer, until the borrow's last use. Binding a place borrows it without a marker: `let x = a.b` is a shared borrow and `var x = a.b` an exclusive one. A loop variable and a match payload borrow the same way.
 
-- A result owns its value. A function that returns part of a parameter or the receiver returns `.clone()`: `fn list() List[Int]: return self.items.clone()`. The compiler elides the copy when the source is dead or the caller only reads the result, so a getter costs a copy only where the value is kept.
+- A function that returns a part of a parameter or the receiver on every path returns a reference to it (a lending function): `fn list() List[Int]: return self.items`. The caller holds the result as a borrow of the arguments, so `let xs = b.list()` reads `b.items` in place and `var xs = b.list()` changes it. Storing or returning the result elsewhere needs `.clone()`, and a function that returns a part on one path and a new value on another is an error until the part is cloned. A lambda or an interface method always owns its result. Names bound to a lending result are borrows: `let first = xs.first()` keeps `xs` readable but not changeable until `first` is last used.
 - A record field owns its value. A record cannot view another variable.
 - A place changed in place (a `var` argument, a `var` receiver, a `var` borrow, a closure that assigns) may not overlap any other operand or live borrow of the same call or scope. Distinct fields (`var p.left`, `var p.right`) and distinct non-negative literal list indexes (`var xs[0]`, `var xs[1]`) are disjoint; every other pair of element accesses (`xs[i]`, `xs[0]` with `xs[-1]`, map entries) may be the same element and is rejected, as is any change to the list itself while an element borrow is live. A read that finishes before the change starts, such as an `Int` argument `f(var xs, xs[0])`, stays valid.
 
@@ -21,14 +21,14 @@ type Box:
 
 impl Box:
     fn list() List[Int]:
-        return self.items.clone()
+        return self.items
 
 fn grow(var b: Box) Int:
     var xs = b.list()
     xs.append(1)
     return b.items.length()
 ```
-`grow` returns the old length: `xs` is a copy, so `append` does not reach `b`. The standard library follows the same rule: `trim`, `List.first`, `Map.get` and `Optional.get` return owned values, and a read-only use of one is not copied. `Error.message` owns its result, so an implementation may build the text; one that returns a stored field writes `.clone()`.
+`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` lend the element, so `let x = m.get(k)` keeps `m` unchangeable until `x` is last used and `if var x = m.get(k)` changes the entry in place; `trim` and `Optional.get` return owned values. `Error.message` is an interface method, so an implementation that returns a stored field writes `.clone()`.
 
 ## Reassignment
 

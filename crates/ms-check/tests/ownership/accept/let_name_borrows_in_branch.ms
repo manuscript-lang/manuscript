@@ -3,7 +3,7 @@ fn f(c: Bool) Int:
     var n = 0
 
     if c:
-        let b = a  # error: moved here but used again
+        let b = a
         n = b.length()
 
     return n + a.length()

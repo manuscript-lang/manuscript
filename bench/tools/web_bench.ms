@@ -18,7 +18,7 @@ fn tail(text: String) String:
 
 # The command line with CPU pinning when `cpus` is set.
 fn pinned(cpus: String, argv: List[String]) List[String]:
-    if cpus == "": return argv
+    if cpus == "": return argv.clone()
 
     return ["taskset", "-c", cpus].concat(argv)
 
