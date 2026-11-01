@@ -29,7 +29,7 @@ A recorded eight-job run achieved 3.95x scaling from one to four workers ([worke
 
 ## Ownership you can follow
 
-Records, lists, maps, strings and alternatives are values with one owner. The compiler moves them at their last use, borrows them for reads and drops them deterministically, with no tracing collector and no reference counting on ordinary data. `var` marks mutation at the declaration and at the call, `.clone()` marks a copy, borrows are lexical with no lifetimes in source, and a scope closes the external resources bound in it.
+Records, lists, maps, strings and alternatives are values with one owner. The compiler moves them at their last use, borrows them for reads and drops them deterministically, with no tracing collector and no reference counting on ordinary data. `var` marks mutation at the declaration and at the call, `.clone()` marks a copy, borrows are lexical with no lifetimes in source, and a scope closes the external resources bound in it. Returning a part of an argument, wrapping it in `Optional` or `Result`, or converting it to an interface hands back a reference, so ordinary code rarely needs `.clone()`.
 
 The web benchmark records both benefits and costs. The October 25 run at `6003f16b` used 93 MB for 10,000 idle connections versus Go's 197 MB, but memory after load was higher (70 MB versus 15 MB) and `/io` throughput was lower. See the dated [web results](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/web/results.md#2026-10-25) and later experiments. The language's exact rules are in [references and borrowing](../core-language/types/references.md).
 
