@@ -1,5 +1,8 @@
 import msrt_string_from_scalars, msstd_regex_compile from "@std/internal/string.ms"
-import msstd_unicode_fields from "@std/internal/unicode.ms"
+import (
+    msstd_unicode_fields,
+    msstd_unicode_is_alphanumeric
+) from "@std/internal/unicode.ms"
 import (
     msstd_regex_find_all_spans,
     msstd_regex_capture_spans,
@@ -144,6 +147,165 @@ impl String:
     # Exact field text is preserved without normalization; the byte-order mark and zero-width space are not separators.
     fn fields() List[String]:
         return msstd_unicode_fields(self)
+
+interface StringTextOperations:
+    fn fields_by(is_separator: fn(String) Bool) List[String]
+    fn equal_fold(other: String) Bool
+    fn count(part: String) Int
+    fn trim_chars(set: String) String
+    fn trim_start_chars(set: String) String
+    fn trim_end_chars(set: String) String
+    fn contains_any(set: String) Bool
+    fn index_any(set: String) Int?
+    fn split_after(separator: String) List[String]
+    fn capitalize() String
+    fn title() String
+    fn map_chars(transform: fn(String) String) String
+    fn find_char(predicate: fn(String) Bool) Int?
+    fn replace_each(pairs: Map[String, String]) String
+
+impl StringTextOperations for String:
+    # Splits around runs of characters (one-scalar strings) the predicate accepts; no empty items.
+    fn fields_by(is_separator: fn(String) Bool) List[String]:
+        var out = List[String]()
+        var current = StringBuilder()
+        var open = false
+
+        for c in self.chars():
+            if is_separator(c):
+                if open:
+                    out.append(current.drain())
+                    open = false
+            else:
+                current.append(c)
+                open = true
+
+        if open:
+            out.append(current.drain())
+        return out
+
+    # Compares text ignoring case using Unicode full case mapping (no locale), so "Straße" equals "STRASSE".
+    fn equal_fold(other: String) Bool:
+        return self.upper().lower() == other.upper().lower()
+
+    # Counts non-overlapping occurrences; an empty part counts the scalars plus one.
+    fn count(part: String) Int:
+        if part.is_empty():
+            return self.length() + 1
+
+        return self.split(part, none).length() - 1
+
+    # Removes every leading and trailing scalar that occurs in set.
+    fn trim_chars(set: String) String:
+        return self.trim_start_chars(set).trim_end_chars(set)
+
+    # Removes every leading scalar that occurs in set.
+    fn trim_start_chars(set: String) String:
+        let cs = self.chars()
+        var i = 0
+        while i < cs.length() and set.contains(cs[i]):
+            i += 1
+        return self.drop(i)
+
+    # Removes every trailing scalar that occurs in set.
+    fn trim_end_chars(set: String) String:
+        let cs = self.chars()
+        var n = cs.length()
+        while n > 0 and set.contains(cs[n - 1]):
+            n -= 1
+        return self.take(n)
+
+    # Reports whether any scalar of set occurs in the text.
+    fn contains_any(set: String) Bool:
+        return self.index_any(set).is_some()
+
+    # Scalar index of the first scalar that occurs in set, or none.
+    fn index_any(set: String) Int?:
+        return self.find_char(fn c: set.contains(c))
+
+    # Splits after each separator, keeping it at the end of each piece; an empty separator splits into scalars.
+    fn split_after(separator: String) List[String]:
+        if separator.is_empty():
+            return self.chars()
+
+        var out = List[String]()
+        let parts = self.split(separator, none)
+
+        for i in 0..parts.length():
+            if i + 1 < parts.length():
+                out.append(parts[i].concat(separator))
+            else if not parts[i].is_empty():
+                out.append(parts[i].clone())
+
+        return out
+
+    # Uppercases the first scalar and leaves the rest unchanged.
+    fn capitalize() String:
+        return self.take(1).upper().concat(self.drop(1))
+
+    # Capitalizes the first letter of each run of letters, digits and apostrophes and lowercases the others.
+    fn title() String:
+        var out = StringBuilder()
+        var in_word = false
+
+        for c in self.chars():
+            let word = is_word_scalar(c)
+
+            if word and in_word:
+                out.append(c.lower())
+            else if word:
+                out.append(c.upper())
+            else:
+                out.append(c)
+
+            in_word = word
+
+        return out.build()
+
+    # Replaces each scalar with the transform's result; an empty result deletes it.
+    fn map_chars(transform: fn(String) String) String:
+        var out = StringBuilder()
+        for c in self.chars():
+            out.append(transform(c))
+        return out.build()
+
+    # Scalar index of the first scalar the predicate accepts, or none.
+    fn find_char(predicate: fn(String) Bool) Int?:
+        let cs = self.chars()
+        for i in 0..cs.length():
+            if predicate(cs[i]):
+                return i
+        return none
+
+    # Replaces many patterns in one pass. At each position the first pair, in map order, whose key matches
+    # wins and its replacement is not rescanned; empty keys are ignored.
+    fn replace_each(pairs: Map[String, String]) String:
+        var out = StringBuilder()
+        let olds = pairs.keys()
+        let news = pairs.values()
+        let n = self.length()
+        var i = 0
+
+        while i < n:
+            var hit = false
+
+            for j in 0..olds.length():
+                let key = olds[j]
+
+                if not key.is_empty() and self.drop(i).starts_with(key):
+                    out.append(news[j])
+                    i += key.length()
+                    hit = true
+                    break
+
+            if not hit:
+                out.append(self.slice(i, i + 1).get(""))
+                i += 1
+
+        return out.build()
+
+fn is_word_scalar(c: String) Bool:
+    return msstd_unicode_is_alphanumeric(c.scalar_at(0, -1)) or c == "'"
 
 fn capture_slots(raw: List[Int], start: Int, count: Int) List[RegexSpan?]:
     var out = List[RegexSpan?](reserve: count)
