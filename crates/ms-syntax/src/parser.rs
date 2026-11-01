@@ -658,6 +658,14 @@ impl<'a> Parser<'a> {
                 while self.take(Tok::Amp) {
                     bounds.push(self.named_type()?);
                 }
+                if matches!(self.kind(), Tok::Plus | Tok::And) {
+                    let t = self.peek();
+                    return self.fail_fix(
+                        t,
+                        "combine bounds with '&', as in T: Comparable & Clonable",
+                        "&",
+                    );
+                }
             }
             if self.take(Tok::Assign) {
                 default = Some(self.typ()?);

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "BigInt has no cases or static members, so `BigInt.from_int(...)` does not exist; if from_int is a module function, import it and call from_int(...); if it is a method, call it on a value",
+        "position": {
+          "file": "diag-type-static-member.ms",
+          "line": 7,
+          "column": 20,
+          "offset": 225
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-type-static-member.ms:7:20: resolution: BigInt has no cases or static members, so `BigInt.from_int(...)` does not exist; if from_int is a module function, import it and call from_int(...); if it is a method, call it on a value\n   |\n 7 |     let b = BigInt.from_int(2)\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

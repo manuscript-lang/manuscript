@@ -1,0 +1,2 @@
+fn f[T: Comparable + Clonable](x: T) T:
+    return x.clone()
