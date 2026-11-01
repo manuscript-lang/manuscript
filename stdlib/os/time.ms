@@ -62,14 +62,14 @@ impl Duration:
         if other.compare(self) < 0:
             return other
 
-        return self
+        return self.clone()
 
     # Returns the greater of this value and `other`, or this value when they compare equal.
     fn max(other: Duration) Duration:
         if other.compare(self) > 0:
             return other
 
-        return self
+        return self.clone()
 
     # Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
     fn clamp(low: Duration, high: Duration) Duration:
@@ -80,7 +80,7 @@ impl Duration:
         if self.compare(high) > 0:
             return high
 
-        return self
+        return self.clone()
 
     # Converts this duration to an integer number of nanoseconds.
     fn to_nanoseconds() Int:
@@ -165,14 +165,14 @@ impl Instant:
         if other.compare(self) < 0:
             return other
 
-        return self
+        return self.clone()
 
     # Returns the greater of this value and `other`, or this value when they compare equal.
     fn max(other: Instant) Instant:
         if other.compare(self) > 0:
             return other
 
-        return self
+        return self.clone()
 
     # Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
     fn clamp(low: Instant, high: Instant) Instant:
@@ -183,7 +183,7 @@ impl Instant:
         if self.compare(high) > 0:
             return high
 
-        return self
+        return self.clone()
 
 # A wall-clock time with Unix seconds and nanoseconds.
 export type Timestamp:
@@ -223,14 +223,14 @@ impl Timestamp:
         if other.compare(self) < 0:
             return other
 
-        return self
+        return self.clone()
 
     # Returns the greater of this value and `other`, or this value when they compare equal.
     fn max(other: Timestamp) Timestamp:
         if other.compare(self) > 0:
             return other
 
-        return self
+        return self.clone()
 
     # Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
     fn clamp(low: Timestamp, high: Timestamp) Timestamp:
@@ -241,7 +241,7 @@ impl Timestamp:
         if self.compare(high) > 0:
             return high
 
-        return self
+        return self.clone()
 
     # Breaks this timestamp into calendar fields in a time zone: `"UTC"`, `"Local"`, an IANA name such as `"America/New_York"`, or a fixed offset such as `"+05:30"`.
     # An unknown zone returns InvalidInput.

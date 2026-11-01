@@ -26,7 +26,7 @@ fn compare[T: Equal & Clonable](box: Box[T], other: T) Bool:
 test "generic implementations":
     let number = Box[Int](7)
     let text = Box[String]("hello")
-    let number_view: ReadValue[Int] = number
+    let number_view: ReadValue[Int] = number.clone()
     let text_view: ReadValue[String] = text
     try expect_equal(number_view.get(), 7)
     try expect_equal(text_view.get(), "hello")

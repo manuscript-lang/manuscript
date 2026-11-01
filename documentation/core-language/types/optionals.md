@@ -100,7 +100,7 @@ fn first_number(text: String?) Int?:
 ```manuscript
 fn display_name(name: String?) String:
     if let value = name:
-        return value
+        return value.clone()
     return "Anonymous"
 ```
 

@@ -50,12 +50,12 @@ fn ordered[T](
 test "infer success and preserve concrete error identity":
     let cause = Failure(11)
     let r: Int!Failure = error(cause)
-    let inferred = erase(r)
-    let explicit = erase[Int](r)
+    let inferred = erase(r).clone()
+    let explicit = erase[Int](r).clone()
     let wrapped = optional(r)
     let forwarded = forward(r)
     let known: Error = Failure(5)
-    let inferred_from_known = both(known, r)
+    let inferred_from_known = both(known, r).clone()
 
     for value in [inferred, explicit, wrapped, forwarded, inferred_from_known]:
         try expect_false(not value.is_error())
@@ -82,7 +82,7 @@ test "infer success and preserve concrete error identity":
 
 test "nested success preserves its domain and inferred errors remain exact":
     let inner: Int!Failure = error(Failure(41))
-    let outer: Result[Int!Failure, Tagged[Int]] = ok(inner)
+    let outer: Result[Int!Failure, Tagged[Int]] = ok(inner.clone())
     let value = erase(outer).get()
     try expect_false(not value.is_error())
     try expect_equal(value.err().code, 41)

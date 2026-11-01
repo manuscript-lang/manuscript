@@ -467,7 +467,8 @@ impl Walker<'_> {
             self.expr(e, Demand::Consume);
             return;
         }
-        if self.class_of(e) != Class::Copy
+        // A resource is never lent: returning one hands it to the caller, which closes it.
+        if self.class_of(e) == Class::Move
             && self.returns_as_declared(e)
             && !self.implements_contract()
         {
@@ -539,7 +540,7 @@ impl Walker<'_> {
         let Some(declared) = self.cx.m.type_ref(result) else {
             return false;
         };
-        same(&self.cx.m.ty(e), &declared)
+        self.cx.m.info(e).error_source.is_none() && same(&self.cx.m.ty(e), &declared)
     }
 
     /// Reports a function that returns a reference on one path and an owned value on another:
@@ -558,10 +559,12 @@ impl Walker<'_> {
     }
 
     /// The arguments a lending call returns a reference into: the receiver and the parameters
-    /// `lend` names, as written.
-    fn lend_operands<'e>(&self, e: &'e Expr, lend: &Lend) -> Vec<&'e Expr> {
+    /// `lend` names, as written. `None` when one of them is converted on the way in (wrapped
+    /// into an `Optional`, widened to an interface or another error type): the callee then lends
+    /// a temporary, and the result is a new value of the caller's.
+    fn lend_operands<'e>(&self, e: &'e Expr, lend: &Lend) -> Option<Vec<&'e Expr>> {
         let ExprKind::Call { callee, args } = &e.kind else {
-            return Vec::new();
+            return Some(Vec::new());
         };
         let mut out = Vec::new();
         if lend.receiver
@@ -573,12 +576,48 @@ impl Walker<'_> {
         let slots = self.cx.m.info(e).arguments.clone().unwrap_or_default();
         for (i, a) in args.iter().enumerate() {
             if slots.get(i).is_some_and(|s| lend.params.contains(&s.name)) {
+                if self.converted_argument(e, &a.value) {
+                    return None;
+                }
                 out.push(&a.value);
             }
         }
         // A copied argument is never lent from, whatever an optimistic summary says.
         out.retain(|a| self.class_of(a) != Class::Copy);
-        out
+        Some(out)
+    }
+
+    /// Whether argument `arg` of call `e` is converted to its parameter's type on the way in.
+    /// An argument whose type does not unify with the parameter's is converted; so is one
+    /// wrapped into an `Optional`.
+    fn converted_argument(&self, e: &Expr, arg: &Expr) -> bool {
+        let Some(view) = self.cx.m.call(e) else {
+            return true;
+        };
+        let Some(a) = view.arguments.iter().find(|a| a.expr.id == arg.id) else {
+            return true;
+        };
+        // A widened error or interface value is recorded with its source type.
+        if a.wrap_optional.is_some() || self.cx.m.info(arg).error_source.is_some() {
+            return true;
+        }
+        let (sig, variables): (Option<Ty>, Vec<Ty>) = match &view.target {
+            Resolution::Function(s) | Resolution::Constant(s) => {
+                (s.ty.borrow().clone(), s.variables.borrow().clone())
+            }
+            Resolution::Method(m) => (Some(m.ty.clone()), m.variables.clone()),
+            _ => return true,
+        };
+        let Some(sig) = sig else {
+            return true;
+        };
+        let Some(p) = sig.params.iter().find(|p| p.name == a.slot.name) else {
+            return true;
+        };
+        let mut vars = variable_set(&variables);
+        vars.extend(variable_set(&sig.args));
+        let mut bound = Subst::new();
+        !unify(&p.ty, &self.cx.m.ty(arg), &vars, &mut bound)
     }
 
     /// The label of the parameter written at argument `i` of call `e`.
@@ -649,7 +688,7 @@ impl Walker<'_> {
             if !lend.lends {
                 return None;
             }
-            let operands = self.lend_operands(e, &lend);
+            let operands = self.lend_operands(e, &lend)?;
             if operands.is_empty() {
                 return None;
             }
@@ -733,6 +772,20 @@ impl Walker<'_> {
             _ => false,
         };
         lends.then_some(&**left)
+    }
+
+    /// Whether `e` is `map.get(key)` on a `Map`: an entry read in place.
+    fn map_get(&self, e: &Expr) -> bool {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return false;
+        };
+        let ExprKind::Member { left, name } = &callee.kind else {
+            return false;
+        };
+        name.as_str() == "get"
+            && args.len() == 1
+            && self.cx.m.ty(left).is_std("Map")
+            && matches!(self.cx.m.resolution(e), Resolution::Method(m) if !m.native.as_str().is_empty())
     }
 
     fn receiver_consumed(&self) -> bool {
@@ -1426,7 +1479,7 @@ impl Walker<'_> {
         let pos = s.pos;
         let text = self.expr_text(value);
         let lend = call_lend(self.cx.m, value, self.cx.summaries);
-        let operands = self.lend_operands(value, &lend);
+        let operands = self.lend_operands(value, &lend).unwrap_or_default();
         let target = match (&lend.path, operands.as_slice()) {
             (Some((None, fields)), [recv]) if lend.receiver => Some((*recv, fields.clone())),
             (Some((Some(label), fields)), [arg])
@@ -1853,7 +1906,8 @@ impl Walker<'_> {
         let Some(b) = self.cx.m.pattern_binding(p) else {
             return;
         };
-        let probe = matches!(value.kind, ExprKind::Probe(_));
+        // `place[key]?` and `map.get(key)` both find an entry in place.
+        let probe = matches!(value.kind, ExprKind::Probe(_)) || self.map_get(value);
         let value = match &value.kind {
             ExprKind::Probe(target) => &**target,
             _ => value,
@@ -1879,7 +1933,7 @@ impl Walker<'_> {
             self.error(
                 p.pos,
                 format!(
-                    "`if var` borrows an entry written as `place[key]?`, but `{}` is not one; bind a copy with `if let`, then `var x = x.clone()`, or write the changed value back",
+                    "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `{}` is not one; bind a copy with `if let`, then `var x = x.clone()`, or write the changed value back",
                     info.text
                 ),
             );
@@ -1997,7 +2051,7 @@ impl Walker<'_> {
                 if !lend.lends {
                     return None;
                 }
-                self.lend_operands(e, &lend)
+                self.lend_operands(e, &lend)?
             }
         };
         if operands.is_empty() {

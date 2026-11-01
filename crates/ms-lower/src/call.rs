@@ -480,7 +480,7 @@ impl<'a> FnLower<'a> {
                 _ => self.drop_value(new),
             }
         }
-        if self.b.is_borrowed(v) {
+        if self.b.m.funcs[fid.index()].ret_borrowed {
             // A lending callee: the result points into the arguments. When one of them is a
             // temporary, the caller owns a copy taken before the temporary is dropped.
             if self.cx.owned_lends.contains(&(self.hir.data.file, e.id)) {
