@@ -1,8 +1,9 @@
 name: Cache maintenance
 
-# Two jobs. `warm` starts a manual CI/CD run on main every hour, because only a finished manual run
-# saves the sccache caches (push runs are replaced before they finish, and a `schedule` trigger on
-# cicd.yml never fired, see #2158). `prune` keeps one cache per name.
+# Two jobs. `warm` starts a manual CI/CD run on main at most once an hour, because only a finished
+# manual run saves the sccache caches (push runs are replaced before they finish). It starts from
+# the hourly schedule and, because new schedules have not fired (#2158), from the end of any push
+# run on main. `prune` keeps one cache per name.
 #
 # Keeps one cache per name. A lockfile change writes a new cargo cache and nothing removes the old
 # one, so copies pile up until GitHub evicts at the 10 GB limit and takes live entries with it.
@@ -28,19 +29,23 @@ concurrency:
 
 jobs:
   warm:
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Start a manual CI/CD run on main unless one is pending
+      - name: Start a manual CI/CD run on main unless one is pending or started within the hour
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          pending=$(gh run list --workflow cicd.yml --event workflow_dispatch --branch main --json status \
-            --jq '[.[] | select(.status != "completed")] | length')
-          if [ "$pending" -gt 0 ]; then
+          last=$(gh run list --workflow cicd.yml --event workflow_dispatch --branch main --limit 1 \
+            --json status,createdAt --jq '.[0] // empty | "\(.status) \(.createdAt)"')
+          status=${last%% *}
+          started=$(date -d "${last#* }" +%s 2>/dev/null || echo 0)
+          if [ -n "$last" ] && [ "$status" != completed ]; then
             echo "A manual run is already pending"
+          elif [ $(( $(date +%s) - started )) -lt 3300 ]; then
+            echo "The last manual run started within the hour"
           else
             gh workflow run cicd.yml --ref main
           fi
