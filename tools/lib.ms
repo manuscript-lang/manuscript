@@ -119,7 +119,7 @@ export fn use_stats_runtime() Int:
 
     var build = [
         "build", "--release", "--locked", "-q", "-p", "ms-native", "--features",
-        "ms-rt/stats"
+        "ms-rt/stats,ms-native/entry"
     ]
     if target != "": build = build.concat(["--target", target.clone()])
 

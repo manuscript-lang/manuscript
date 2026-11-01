@@ -279,9 +279,14 @@ fn real_runtime() -> &'static PathBuf {
         let target = root.join("target").join("ms-native-for-clif");
         let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
         let mut command = Command::new(cargo);
-        command
-            .current_dir(&root)
-            .args(["build", "--release", "-p", "ms-native"]);
+        command.current_dir(&root).args([
+            "build",
+            "--release",
+            "-p",
+            "ms-native",
+            "--features",
+            "entry",
+        ]);
         #[cfg(windows)]
         let gnullvm = format!("{}-pc-windows-gnullvm", std::env::consts::ARCH);
         #[cfg(windows)]

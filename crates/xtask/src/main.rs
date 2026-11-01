@@ -355,6 +355,8 @@ fn build_archive(
             "--locked",
             "-p",
             "ms-native",
+            "--features",
+            "entry",
             "--manifest-path",
         ])
         .arg(root.join("Cargo.toml"))
