@@ -760,6 +760,14 @@ impl Checker {
                 let names = stdlib::standard_module_names();
                 let stems: Vec<String> = names.iter().map(|s| stem(s)).collect();
                 let mut hint = did_you_mean(&stem(path), &stems);
+                // The right module under another folder (`@std/json/json.ms` for `@std/data/json.ms`)
+                // has the same stem, which a spelling suggestion does not report.
+                let base = |p: &str| p.rsplit('/').next().unwrap_or(p).to_string();
+                if hint.is_empty()
+                    && let Some(same) = names.iter().find(|name| base(name) == base(path))
+                {
+                    hint = format!("; did you mean '{same}'?");
+                }
                 let suggested = hint.split('\'').nth(1).map(str::to_string);
                 if let Some(found) = suggested
                     && let Some(full) = names.iter().find(|name| stem(name) == found)
