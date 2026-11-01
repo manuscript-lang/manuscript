@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member no_such_method on String; available starting with 'n': normalize; 41 members in total",
+        "message": "unknown or ambiguous member no_such_method on String; available starting with 'n': normalize; 42 members in total",
         "position": {
           "file": "seed-0222.ms",
           "line": 18,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0222.ms:18:21: resolution: unknown or ambiguous member no_such_method on String; available starting with 'n': normalize; 41 members in total\n    |\n 18 |     let bad = \"abc\".no_such_method()\n    |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0222.ms:18:21: resolution: unknown or ambiguous member no_such_method on String; available starting with 'n': normalize; 42 members in total\n    |\n 18 |     let bad = \"abc\".no_such_method()\n    |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

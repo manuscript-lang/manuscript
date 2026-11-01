@@ -209,6 +209,106 @@ impl Regex {
             .map(|m| [m.start() as i64, m.end() as i64])
     }
 
+    /// Byte span pairs, with the same empty-match adjacency rule as `find_all`.
+    pub fn find_all_spans(&self, text: &str, max: Option<i64>) -> Result<Vec<i64>, Fail> {
+        let max = limit(max)?;
+        let mut out = Vec::new();
+        for (start, end) in self.spans_iter(text) {
+            if out.len() / 2 == max {
+                return Err(Fail::LimitExceeded);
+            }
+            out.try_reserve(2).map_err(|_| Fail::LimitExceeded)?;
+            out.extend([start as i64, end as i64]);
+        }
+        Ok(out)
+    }
+
+    /// Capture slots of the first match. Empty when absent; otherwise a slot-count header
+    /// followed by byte pairs, with `[-1, -1]` for a group that did not participate.
+    pub fn capture_spans(&self, text: &str, max_captures: Option<i64>) -> Result<Vec<i64>, Fail> {
+        let max = limit(max_captures)?;
+        let count = self.pattern.captures_len();
+        if count > max {
+            return if self.pattern.is_match(text) {
+                Err(Fail::LimitExceeded)
+            } else {
+                Ok(Vec::new())
+            };
+        }
+        if count == 1 {
+            let Some(found) = self.pattern.find(text) else {
+                return Ok(Vec::new());
+            };
+            let mut out = Vec::new();
+            out.try_reserve(3).map_err(|_| Fail::LimitExceeded)?;
+            out.extend([1, found.start() as i64, found.end() as i64]);
+            return Ok(out);
+        }
+        // A first-match query can collect captures directly, without first locating and
+        // then re-matching the same span as the all-match iterator must do.
+        let Some(captures) = self.pattern.captures(text) else {
+            return Ok(Vec::new());
+        };
+        let words = count
+            .checked_mul(2)
+            .and_then(|n| n.checked_add(1))
+            .ok_or(Fail::LimitExceeded)?;
+        let mut out = Vec::new();
+        out.try_reserve(words).map_err(|_| Fail::LimitExceeded)?;
+        out.push(count as i64);
+        for group in captures.iter() {
+            let (start, end) = group.map_or((-1, -1), |m| (m.start() as i64, m.end() as i64));
+            out.extend([start, end]);
+        }
+        Ok(out)
+    }
+
+    /// All capture rows in the same private flat format as `capture_spans`.
+    pub fn capture_all_spans(
+        &self,
+        text: &str,
+        max_matches: Option<i64>,
+        max_captures: Option<i64>,
+    ) -> Result<Vec<i64>, Fail> {
+        let max_matches = limit(max_matches)?;
+        let max_captures = limit(max_captures)?;
+        let count = self.pattern.captures_len();
+        let words = count.checked_mul(2).ok_or(Fail::LimitExceeded)?;
+        let mut out = Vec::new();
+        let mut locations = None;
+        let mut slots = 0;
+        for (matches, (start, end)) in self.spans_iter(text).enumerate() {
+            if matches == max_matches || count > max_captures - slots {
+                return Err(Fail::LimitExceeded);
+            }
+            let needed = words
+                .checked_add(usize::from(out.is_empty()))
+                .ok_or(Fail::LimitExceeded)?;
+            out.try_reserve(needed).map_err(|_| Fail::LimitExceeded)?;
+            if out.is_empty() {
+                out.push(count as i64);
+            }
+            if count == 1 {
+                out.extend([start as i64, end as i64]);
+            } else {
+                let locations = locations.get_or_insert_with(|| self.pattern.capture_locations());
+                let whole = self
+                    .pattern
+                    .captures_read_at(locations, text, start)
+                    .ok_or(Fail::InvalidData)?;
+                debug_assert_eq!((whole.start(), whole.end()), (start, end));
+                for group in 0..count {
+                    let (a, b) = locations
+                        .get(group)
+                        .map_or((-1, -1), |(a, b)| (a as i64, b as i64));
+                    out.extend([a, b]);
+                }
+            }
+            slots += count;
+        }
+        Ok(out)
+    }
+
     /// Pieces between matches; a supplied cap bounds the piece count like `find_all`.
     pub fn split(&self, text: &str, max: Option<i64>) -> Result<Vec<String>, Fail> {
         let max = limit(max)?;
@@ -316,6 +416,76 @@ fn limit(max: Option<i64>) -> Result<usize, Fail> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn result_spans_preserve_bytes_presence_and_match_order() {
+        let re = compile("(a)?()").unwrap();
+        assert_eq!(
+            re.capture_spans("", None),
+            Ok(alloc::vec![3, 0, 0, -1, -1, 0, 0])
+        );
+        assert_eq!(
+            compile("x").unwrap().capture_spans("", Some(0)),
+            Ok(Vec::new())
+        );
+        assert_eq!(
+            compile("a*").unwrap().find_all_spans("a🙂🙂a", None),
+            Ok(alloc::vec![0, 1, 5, 5, 9, 10])
+        );
+        assert_eq!(
+            compile("").unwrap().find_all_spans("é🙂", None),
+            Ok(alloc::vec![0, 0, 2, 2, 6, 6])
+        );
+        let unicode = compile("(é)|(🙂)").unwrap();
+        assert_eq!(
+            unicode.capture_all_spans("é🙂", None, None),
+            Ok(alloc::vec![3, 0, 2, 0, 2, -1, -1, 2, 6, -1, -1, 2, 6,])
+        );
+    }
+
+    #[test]
+    fn span_budgets_validate_before_search_and_stop_before_next_row() {
+        let re = compile("(x)(y)?").unwrap();
+        let text = "x".repeat(10_000);
+        assert_eq!(re.find_all_spans(&text, Some(-1)), Err(Fail::InvalidInput));
+        assert_eq!(
+            re.capture_all_spans(&text, None, Some(-1)),
+            Err(Fail::InvalidInput)
+        );
+        assert_eq!(re.scans.get(), 0);
+        assert_eq!(
+            re.capture_all_spans(&text, None, Some(2)),
+            Err(Fail::LimitExceeded)
+        );
+        assert_eq!(re.scans.get(), 1);
+        assert_eq!(
+            re.capture_all_spans(&text, Some(1), Some(6)),
+            Err(Fail::LimitExceeded)
+        );
+        assert_eq!(re.scans.get(), 3);
+        assert!(re.capture_spans(&text, Some(3)).is_ok());
+        assert_eq!(re.scans.get(), 3);
+        assert_eq!(
+            re.capture_all_spans("xx", Some(2), Some(6)).unwrap().len(),
+            13
+        );
+        assert_eq!(
+            re.capture_all_spans("xx", Some(2), Some(5)),
+            Err(Fail::LimitExceeded)
+        );
+        assert_eq!(re.capture_all_spans("", Some(0), Some(0)), Ok(Vec::new()));
+    }
+
+    #[test]
+    fn span_captures_keep_original_anchor_context() {
+        let re = compile(r"(?m)(^a)|(b$)").unwrap();
+        assert_eq!(
+            re.capture_all_spans("za b\na b", None, None),
+            Ok(alloc::vec![
+                3, 3, 4, -1, -1, 3, 4, 5, 6, 5, 6, -1, -1, 7, 8, -1, -1, 7, 8,
+            ])
+        );
+    }
 
     #[test]
     fn hex_escapes_reject_non_hexadecimal_characters() {
