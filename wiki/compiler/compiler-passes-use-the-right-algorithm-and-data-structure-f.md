@@ -13,7 +13,8 @@ Evidence: [speculative parser](../../crates/ms-syntax/src/parser.rs), [metadata 
 Verified: repeatedly recomputing use counts and scanning a function to delete the last unused instruction makes dead-expression chains quadratic. Decrement operand use counts as dead users are removed, and visit newly dead definitions with a worklist. Preserve faulting instructions and owned results as roots.
 
 Verified: LLVM's SLP vectorizer (in `opt`) and machine scheduler (in `llc`) are quadratic in the length of one function, so a 20000-element list literal built in 127s in Release against 0.4s in Cranelift. A function body over 12000 IR lines turns both off for the module; loop vectorization stays on. Time Release builds, not only Debug, at N/2N/4N, and read `opt -time-passes` and `llc -time-passes` before blaming the frontend.
-Evidence: [LLVM invocation](../../crates/ms-clif/src/llvm_obj.rs), [large literal regression](../../crates/ms-cli/tests/llvm.rs).
+Verified: an LLVM `br` on a compare that Cranelift widened to `i8` (`zext`, then `icmp ne 0`) made InstCombine 8x slower on an 8000-arm `if n == k: return` chain (15s to 2s), and a leftover unused `zext` blocked SimplifyCFG from turning the chain into a switch. Branch and select conditions use the `i1` directly; only values with a data use are widened.
+Evidence: [LLVM invocation](../../crates/ms-clif/src/llvm_obj.rs), [large literal regression](../../crates/ms-cli/tests/llvm.rs), [i1 condition test](../../crates/ms-clif/src/llvm_ir.rs).
 
 Apply when: adding or changing a lexer, parser, checker, or lowering pass, or a cache or table they share.
 Evidence: [type recursion pass](../../crates/ms-check/src/recursion.rs), issues #490 and #491.
