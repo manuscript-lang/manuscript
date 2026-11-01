@@ -524,8 +524,16 @@ impl Walker<'_> {
     /// cannot know which implementation runs, so every implementation owns its result.
     fn implements_contract(&self) -> bool {
         let c = self.cx.c;
-        c.func.index.is_some()
-            && matches!(&c.func.decl.0.decl.kind, DeclKind::Impl(i) if i.contract.is_some())
+        if c.func.index.is_none() {
+            return false;
+        }
+        let DeclKind::Impl(i) = &c.func.decl.0.decl.kind else {
+            return false;
+        };
+        // A type's own methods are checked as an implementation of a synthesized interface.
+        i.contract
+            .as_ref()
+            .is_some_and(|t| !t.name().ends_with(crate::passes::INHERENT_SUFFIX))
     }
 
     /// Whether a returned expression has the declared result type itself: a value converted on
