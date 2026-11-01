@@ -12,6 +12,9 @@ Evidence: [speculative parser](../../crates/ms-syntax/src/parser.rs), [metadata 
 
 Verified: repeatedly recomputing use counts and scanning a function to delete the last unused instruction makes dead-expression chains quadratic. Decrement operand use counts as dead users are removed, and visit newly dead definitions with a worklist. Preserve faulting instructions and owned results as roots.
 
+Verified: LLVM's SLP vectorizer (in `opt`) and machine scheduler (in `llc`) are quadratic in the length of one function, so a 20000-element list literal built in 127s in Release against 0.4s in Cranelift. A function body over 12000 IR lines turns both off for the module; loop vectorization stays on. Time Release builds, not only Debug, at N/2N/4N, and read `opt -time-passes` and `llc -time-passes` before blaming the frontend.
+Evidence: [LLVM invocation](../../crates/ms-clif/src/llvm_obj.rs), [large literal regression](../../crates/ms-cli/tests/llvm.rs).
+
 Apply when: adding or changing a lexer, parser, checker, or lowering pass, or a cache or table they share.
 Evidence: [type recursion pass](../../crates/ms-check/src/recursion.rs), issues #490 and #491.
 Evidence: [method registration and lookup](../../crates/ms-check/src/contracts.rs), [candidate regressions](../../crates/ms-check/src/method_candidates_tests.rs), [editor queries](../../crates/ms-check/src/editor.rs).

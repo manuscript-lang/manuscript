@@ -38,6 +38,25 @@ impl Drop for LlvmObject {
     }
 }
 
+/// A function body longer than this many IR lines turns off the SLP vectorizer and the machine
+/// instruction scheduler. Both grow with the square of straight-line code: a 20000-element list
+/// literal took 127s to build (SLP was 96% of `opt`, the scheduler 80% of `llc`) and 14s without
+/// the vectorizer. Loop vectorization, which carries the real speedups, stays on.
+const HUGE_FUNCTION_LINE_LIMIT: usize = 12_000;
+
+/// The line count of the longest function body in `ir`.
+fn largest_function_lines(ir: &str) -> usize {
+    let (mut longest, mut current) = (0, 0);
+    for line in ir.lines() {
+        if line.starts_with("define ") {
+            current = 0;
+        }
+        current += 1;
+        longest = longest.max(current);
+    }
+    longest
+}
+
 /// Optimizes and assembles `ir` at `-O<level>`.
 pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
     let dir: PathBuf = std::env::temp_dir().join(format!(
@@ -95,9 +114,12 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
         run(link, "llvm-link (runtime helpers)")?;
         input = linked;
     }
+    let huge = largest_function_lines(ir) > HUGE_FUNCTION_LINE_LIMIT;
     let mut opt = tool("opt");
     if !crate::vectorize() {
         opt.args(["-vectorize-loops=false", "-vectorize-slp=false"]);
+    } else if huge {
+        opt.arg("-vectorize-slp=false");
     }
     opt.arg(format!("-passes={pipeline}"))
         .arg(&input)
@@ -116,6 +138,9 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
     .arg(&bitcode)
     .arg("-o")
     .arg(&obj);
+    if huge {
+        llc.arg("-enable-misched=false");
+    }
     if cfg!(target_arch = "x86_64") {
         // Start every loop on a 32-byte boundary. At the default 16 a small loop may straddle a
         // 32-byte or cache-line boundary depending on where the linker put the function, which
@@ -172,6 +197,13 @@ impl LlvmObject {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn measures_the_longest_function_body() {
+        let ir = "define void @a() {\n  ret void\n}\ndefine void @b() {\n  %x = add i64 1, 2\n  %y = add i64 %x, 2\n  ret void\n}\n";
+        assert_eq!(largest_function_lines(ir), 5);
+        assert_eq!(largest_function_lines(""), 0);
+    }
 
     const HOT: &str = "define noundef i64 @msrt_map_length(i64 noundef %m) alwaysinline #0 {\n\
                        define internal i64 @_ZN6ms_rt_hot3foo() #1 {\n";
