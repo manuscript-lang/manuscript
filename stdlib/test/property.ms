@@ -1,7 +1,13 @@
 import Pair from "@std/collections/collections.ms"
 import panic from "@std/core.ms"
 import stderr from "@std/io/io.ms"
-import (bit_xor, shift_right_unsigned, wrapping_add, wrapping_multiply, max_int) from "@std/math/math.ms"
+import (
+    bit_xor,
+    shift_right_unsigned,
+    wrapping_add,
+    wrapping_multiply,
+    max_int
+) from "@std/math/math.ms"
 import environment from "@std/os/process.ms"
 import secure_int from "@std/os/random.ms"
 import expect_fault, fail from "@std/test/test.ms"

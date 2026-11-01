@@ -1,5 +1,11 @@
 import ReadStream, WriteStream from "@std/io/io.ms"
-import (CommandError, Commands, NativeSubprocess, ProcessControl, System) from "@std/os/process.ms"
+import (
+    CommandError,
+    Commands,
+    NativeSubprocess,
+    ProcessControl,
+    System
+) from "@std/os/process.ms"
 import Duration from "@std/os/time.ms"
 
 export extern fn msrt_args() List[String]

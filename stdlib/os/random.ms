@@ -1,6 +1,12 @@
 import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
-import (bit_xor, shift_right_unsigned, wrapping_add, wrapping_multiply, max_int) from "@std/math/math.ms"
+import (
+    bit_xor,
+    shift_right_unsigned,
+    wrapping_add,
+    wrapping_multiply,
+    max_int
+) from "@std/math/math.ms"
 import (
     msstd_random_draw_int,
     msstd_random_draw_uuid,
