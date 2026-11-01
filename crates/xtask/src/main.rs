@@ -86,12 +86,12 @@ fn symbols(check: bool) -> Result<String, String> {
         std::fs::read_to_string(&recorded).map_err(|e| format!("{}: {e}", recorded.display()))?;
     for line in text.lines().filter(|l| !l.is_empty()) {
         let name = line.split('(').next().unwrap_or(line).to_string();
-        if let Some(old) = table.insert(name.clone(), line.to_string()) {
-            if old != line {
-                return Err(format!(
-                    "{name} is declared twice with different signatures"
-                ));
-            }
+        if let Some(old) = table.insert(name.clone(), line.to_string())
+            && old != line
+        {
+            return Err(format!(
+                "{name} is declared twice with different signatures"
+            ));
         }
     }
     let mut files = Vec::new();
@@ -110,13 +110,13 @@ fn symbols(check: bool) -> Result<String, String> {
         let source =
             std::fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
         for (name, line) in scan_exports(&source) {
-            if let Some(old) = table.insert(name.clone(), line.clone()) {
-                if old != line {
-                    return Err(format!(
-                        "{name} has two signatures: `{old}` and `{line}` ({})",
-                        file.display()
-                    ));
-                }
+            if let Some(old) = table.insert(name.clone(), line.clone())
+                && old != line
+            {
+                return Err(format!(
+                    "{name} has two signatures: `{old}` and `{line}` ({})",
+                    file.display()
+                ));
             }
         }
     }
