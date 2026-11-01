@@ -683,6 +683,9 @@ impl<'a> FnLower<'a> {
         let name = m.name()?;
         let contract = m.contract.as_ref()?;
         let scope = self.evidence();
+        // A receiver may implement one generic contract at several applications
+        // (`Scorer[String]` and `Scorer[Int]`), so the arguments choose among them.
+        let wanted = ct::sub(contract, &self.subst);
         self.cx
             .methods
             .iter()
@@ -690,13 +693,13 @@ impl<'a> FnLower<'a> {
                 mm.name() == Some(name)
                     && !mm.id.as_str().is_empty()
                     && mm.visible_in(scope)
-                    && mm.contract.as_ref().is_some_and(|c| c.id == contract.id)
-                    && ct::unify(
-                        &mm.receiver,
-                        recv,
-                        &ct::variable_set(&mm.variables),
-                        &mut ct::Subst::new(),
-                    )
+                    && mm.contract.as_ref().is_some_and(|c| {
+                        let vars = ct::variable_set(&mm.variables);
+                        let mut bound = ct::Subst::new();
+                        c.id == contract.id
+                            && ct::unify(&mm.receiver, recv, &vars, &mut bound)
+                            && ct::unify(c, &wanted, &vars, &mut bound)
+                    })
             })
             .cloned()
     }

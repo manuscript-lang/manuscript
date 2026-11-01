@@ -345,7 +345,7 @@ pub fn arity_mismatch_hint(actual: &Ty, expected: &Ty) -> String {
 /// Explains a missing type argument.
 pub fn missing_type_argument_hint(
     name: &str,
-    missing: Name,
+    missing: &[Name],
     variables: &[Ty],
     arguments: &[Option<Ty>],
 ) -> String {
@@ -357,8 +357,18 @@ pub fn missing_type_argument_hint(
             _ => v.name.to_string(),
         })
         .collect();
+    let list = missing
+        .iter()
+        .map(|m| m.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let (noun, each) = if missing.len() == 1 {
+        ("argument", "an explicit type for")
+    } else {
+        ("arguments", "explicit types for")
+    };
     format!(
-        "cannot infer type argument {missing} for {name}; write {name}[{}](...) with an explicit type for {missing}; call arguments and the expected result must determine every type parameter",
+        "cannot infer type {noun} {list} for {name}; write {name}[{}](...) with {each} {list}; call arguments and the expected result must determine every type parameter",
         parts.join(", ")
     )
 }
