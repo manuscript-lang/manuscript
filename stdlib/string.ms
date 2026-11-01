@@ -1,8 +1,6 @@
 import msrt_string_from_scalars, msstd_regex_compile from "@std/internal/string.ms"
-import (
-    msstd_unicode_fields,
-    msstd_unicode_is_alphanumeric
-) from "@std/internal/unicode.ms"
+import msstd_unicode_fields from "@std/internal/unicode.ms"
+import msstd_unicode_is_alphanumeric from "@std/internal/unicode.ms"
 import (
     msstd_regex_find_all_spans,
     msstd_regex_capture_spans,
