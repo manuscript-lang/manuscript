@@ -699,6 +699,14 @@ impl<'a> Parser<'a> {
                 let mut ty = None;
                 let mut default = None;
                 if self.take(Tok::Colon) {
+                    if self.kind() == Tok::Var {
+                        let t = self.peek();
+                        let msg = format!(
+                            "'var' goes before the parameter name, not its type; write var {}: Type",
+                            self.text(name)
+                        );
+                        return self.fail(t, msg);
+                    }
                     ty = Some(self.typ()?);
                 } else if !inferred || self.kind() == Tok::Name {
                     self.need_name_colon(name)?;
