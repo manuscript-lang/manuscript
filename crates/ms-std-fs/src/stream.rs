@@ -687,6 +687,21 @@ mod tests {
     }
 
     #[test]
+    fn close_reports_release_errors_and_retires_the_stream() {
+        // This positive descriptor/handle cannot name an open file. No resource is acquired,
+        // and the failed release must not be hidden by File's infallible destructor.
+        let mut stream = Stream::new(sys::Fd::MAX, true, b"invalid-handle");
+        let failure = stream.close().unwrap_err();
+        assert_eq!(failure.status, STATUS_FAILED);
+        assert!(failure.message.starts_with(b"close invalid-handle: "));
+        assert!(stream.is_closed());
+        assert_eq!(stream.read(None).unwrap_err().status, STATUS_CLOSED);
+        assert_eq!(stream.write(b"x").unwrap_err().status, STATUS_CLOSED);
+        assert_eq!(stream.flush().unwrap_err().status, STATUS_CLOSED);
+        assert_eq!(stream.close(), Ok(()));
+    }
+
+    #[test]
     fn an_unterminated_carriage_return_is_line_content() {
         for text in [b"\r".as_slice(), b"tail\r", b"tail\r\r"] {
             let (r, w) = pipe();
