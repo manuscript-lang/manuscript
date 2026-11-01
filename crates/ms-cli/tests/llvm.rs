@@ -152,3 +152,41 @@ fn llvm_builds_a_huge_straight_line_function_in_bounded_time() {
         "build took {elapsed:?}"
     );
 }
+
+/// A Debug build keeps every element of one `list.lit` live at once, and the Cranelift register
+/// allocator is quadratic in that: 40000 elements took 20s. A long literal of plain values is
+/// built in chunks, in order, and builds in about a second.
+#[test]
+fn debug_builds_a_long_list_literal_in_bounded_time() {
+    let dir = std::env::temp_dir().join(format!("ms-long-literal-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let items: Vec<String> = (0..40_000)
+        .map(|i| format!("n + {}", i * 7 % 1000))
+        .collect();
+    let source =
+        include_str!("llvm/long_literal.ms").replace("[n + 0]", &format!("[{}]", items.join(", ")));
+    std::fs::write(dir.join("long.ms"), source).unwrap();
+    let started = std::time::Instant::now();
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .current_dir(&dir)
+        .args(["build", "long.ms", "--build-type", "Debug", "-o", "long"])
+        .output()
+        .unwrap();
+    let elapsed = started.elapsed();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let run = Command::new(dir.join("long")).output().unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    let expected = (0..40_000i64).fold(0, |t, i| (t * 31 + i * 7 % 1000) % 1_000_003);
+    assert_eq!(
+        String::from_utf8_lossy(&run.stdout),
+        format!("{expected} 40000\n")
+    );
+    assert!(
+        elapsed < std::time::Duration::from_secs(12),
+        "build took {elapsed:?}"
+    );
+}

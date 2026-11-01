@@ -18,6 +18,7 @@ extern crate ms_std_path;
 extern crate ms_std_process;
 extern crate ms_std_regex;
 extern crate ms_std_system;
+extern crate ms_std_table;
 extern crate ms_std_terminal;
 extern crate ms_std_time;
 extern crate ms_std_url;
@@ -26,3 +27,6 @@ extern crate ms_std_url;
 #[cfg(target_os = "linux")]
 #[global_allocator]
 static HEAP: ms_rt::alloc::StdHeap = ms_rt::alloc::StdHeap;
+
+#[cfg(all(feature = "entry", target_os = "linux", target_env = "gnu"))]
+mod entry;

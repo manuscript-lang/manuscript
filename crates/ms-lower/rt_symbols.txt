@@ -361,6 +361,9 @@ msstd_bigint_subtract(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> *mu
 msstd_bigint_to_float(a: *const ObjCell<Big>) -> f64
 msstd_bigint_to_int(a: *const ObjCell<Big>, out: *mut i64) -> u8
 msstd_bigint_to_string_radix(a: *const ObjCell<Big>, radix: i64, out: *mut StrVal)
+msstd_checksum_adler32_update(initial: i64, data: *const VecVal) -> i64
+msstd_checksum_crc32(data: *const VecVal) -> i64
+msstd_checksum_crc32_update(initial: i64, data: *const VecVal) -> i64
 msstd_compress_compress(data: *const VecVal, format: *const StrVal, level: i64, has_max: u8, max: i64, out: *mut VecVal) -> u8
 msstd_compress_decoder_feed(d: *const ObjCell<DecoderObj>, data: *const VecVal)
 msstd_compress_decoder_finish_input(d: *const ObjCell<DecoderObj>)
@@ -809,6 +812,7 @@ msstd_system_user_info_status() -> u8
 msstd_system_user_info_uid() -> i64
 msstd_system_user_info_username(out: *mut StrVal)
 msstd_system_working_directory(out: *mut StrVal)
+msstd_table_format(rows: *const VecVal, alignments: *const VecVal, padding: i64, has_max_rows: u8, max_rows: i64, has_max_cells: u8, max_cells: i64, has_max_bytes: u8, max_bytes: i64, out: *mut StrVal) -> u8
 msstd_terminal_capabilities_colors() -> i64
 msstd_terminal_capabilities_error_is_terminal() -> u8
 msstd_terminal_capabilities_input_is_terminal() -> u8

@@ -279,15 +279,14 @@ fn real_runtime() -> &'static PathBuf {
         let target = root.join("target").join("ms-native-for-clif");
         let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
         let mut command = Command::new(cargo);
-        command
-            .current_dir(&root)
-            .args(["build", "--release", "-p", "ms-native"]);
-        // The bundled Linux linker links musl, so the runtime is a musl build.
-        let musl = format!("{}-unknown-linux-musl", std::env::consts::ARCH);
-        if cfg!(target_os = "linux") {
-            command.args(["--target", &musl]);
-            command.env(format!("CC_{}", musl.replace('-', "_")), "cc");
-        }
+        command.current_dir(&root).args([
+            "build",
+            "--release",
+            "-p",
+            "ms-native",
+            "--features",
+            "entry",
+        ]);
         #[cfg(windows)]
         let gnullvm = format!("{}-pc-windows-gnullvm", std::env::consts::ARCH);
         #[cfg(windows)]
@@ -308,11 +307,7 @@ fn real_runtime() -> &'static PathBuf {
         #[cfg(windows)]
         let release = target.join(&gnullvm).join("release");
         #[cfg(not(windows))]
-        let release = if cfg!(target_os = "linux") {
-            target.join(&musl).join("release")
-        } else {
-            target.join("release")
-        };
+        let release = target.join("release");
         let name = "libms_native.a";
         // Parallel test processes share this target directory and each cargo
         // run briefly replaces the archive, so take a private copy to link.

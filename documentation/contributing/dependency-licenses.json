@@ -901,6 +901,11 @@
       "license": "(MIT OR Apache-2.0) AND Unicode-3.0"
     },
     {
+      "name": "unicode-width",
+      "version": "0.2.3",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
       "name": "universal-hash",
       "version": "0.6.1",
       "license": "MIT OR Apache-2.0"

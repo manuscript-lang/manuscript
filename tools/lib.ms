@@ -95,7 +95,7 @@ export fn rust_arch() String:
     return "x86_64"
 
 # Builds the native runtime with allocation counters (`ms-rt` feature `stats`) for the target the
-# programs link against (musl on Linux, mingw-w64 on Windows) and points MS_RT_LIB at it. The caller's
+# programs link against (glibc on Linux, mingw-w64 on Windows) and points MS_RT_LIB at it. The caller's
 # `ms` is the release build (`make build`). Returns a nonzero status when a build fails. LEAK_TARGET_DIR overrides the directory.
 export fn use_stats_runtime() Int:
     let stats_target = env("LEAK_TARGET_DIR", "target/leak-stats")
@@ -104,9 +104,8 @@ export fn use_stats_runtime() Int:
     let arch = rust_arch()
 
     if host() == "linux":
-        target = "{arch}-unknown-linux-musl"
+        target = "{arch}-unknown-linux-gnu"
         release = "{target}/release"
-        set_environment("CC_{target.replace("-", "_")}", env("CC", "cc")).get()
     else if host() == "windows":
         target = "{arch}-pc-windows-gnullvm"
         release = "{target}/release"
@@ -120,7 +119,7 @@ export fn use_stats_runtime() Int:
 
     var build = [
         "build", "--release", "--locked", "-q", "-p", "ms-native", "--features",
-        "ms-rt/stats"
+        "ms-rt/stats,ms-native/entry"
     ]
     if target != "": build = build.concat(["--target", target.clone()])
 
