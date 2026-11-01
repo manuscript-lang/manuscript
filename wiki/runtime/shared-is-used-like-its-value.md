@@ -16,7 +16,7 @@ Indirect `var` calls: the unwind pass covers a caller slot passed to `call.ind` 
 
 Migrating to the copy rule: a helper that copies its parameter (`var end = target.clone()`) takes it `var` or consumes it (`var end = target`, the caller passes a clone); a task closure that passes a captured handle as `var` needs the binding declared `var`. A fixer that adds `var` mechanically cascades into `var x.clone()` arguments and `var` on parameters that only read; fix each helper by hand.
 
-Open failure mode: in `TaskGroup.results`, `for handle in self.tasks.keys()` (a `Shared` map) with `var found = self.tasks[handle]` and `self.tasks.remove(handle)` in the body made lowering treat `found` as a keyed borrow of the box and fail with "a keyed borrow needs a map"; binding the keys first (`let handles = self.tasks.keys()`) avoids it. Find why the checker marks `found` exclusive there before relying on the pattern elsewhere.
+Open failure mode: in `TaskGroup.results`, `for handle in self.tasks.keys()` (a `Shared` map) with `var found = self.tasks[handle]` and `self.tasks.remove(handle)` in the body made lowering treat `found` as a keyed borrow of the box and fail with "a keyed borrow needs a map"; binding the keys first (`let handles = self.tasks.keys()`) avoids it. Workaround tracked in #2236; delete it once that is fixed.
 
 Apply when: adding shared state to the stdlib, or touching `Shared`, holds, scope-end cleanup or cancellation cleanup.
 Evidence: [proposal](../../proposals/shared-read-and-lock.md), [cancel regression](../../tests/e2e/testdata/accept/shared-cancelled-call-keeps-changes.ms), [reads copy](../../tests/e2e/testdata/accept/shared-reads-copy.ms).

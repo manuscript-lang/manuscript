@@ -380,6 +380,7 @@ impl TaskGroup[T, In, Out]:
             return error(TaskError.Closed)
 
         var values = List[T]()
+        # The keys are bound first to work around #2236.
         let handles = self.tasks.keys()
 
         for handle in handles:
