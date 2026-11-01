@@ -37,8 +37,6 @@ pub struct LlvmModule {
     decls: BTreeMap<String, String>,
     /// External data symbols referenced.
     data: BTreeMap<String, ()>,
-    /// Symbols defined in this module.
-    defined: Vec<String>,
     /// Internal functions' parameters that are exclusive pointers, by symbol. They are passed as
     /// `ptr noalias`, so LLVM knows nothing else the function reaches overlaps them.
     exclusive: HashMap<String, Vec<usize>>,
@@ -249,7 +247,6 @@ impl LlvmModule {
             defs: Vec::new(),
             decls: BTreeMap::new(),
             data: BTreeMap::new(),
-            defined: Vec::new(),
             exclusive: HashMap::new(),
         };
         // Placeholder slots for the fixed ids and one `DIFile` per file.
@@ -1138,7 +1135,6 @@ impl LlvmModule {
             (h, b)
         });
         let copies = avx2.is_some();
-        self.defined.push(name.to_string());
         self.defs.push(Def {
             name: name.to_string(),
             public,
@@ -1411,14 +1407,21 @@ impl LlvmModule {
             };
             let _ = write!(s, "define {vis}{header}{}", d.body);
         }
+        // References can precede definitions. Index their borrowed names once instead of
+        // scanning every definition for each call or function address in the module.
+        let defined: HashSet<&str> = if self.decls.is_empty() && self.data.is_empty() {
+            HashSet::new()
+        } else {
+            self.defs.iter().map(|d| d.name.as_str()).collect()
+        };
         for (name, decl) in &self.decls {
-            if !self.defined.contains(name) {
+            if !defined.contains(name.as_str()) {
                 s.push_str(decl);
                 s.push('\n');
             }
         }
         for name in self.data.keys() {
-            if !self.defined.contains(name) {
+            if !defined.contains(name.as_str()) {
                 let _ = writeln!(s, "@\"{name}\" = external global i8");
             }
         }
@@ -1716,6 +1719,57 @@ mod tests {
             page_size_align_log2: 12,
         });
         f
+    }
+
+    #[test]
+    fn definitions_filter_call_and_address_declarations_without_losing_externals() {
+        // Calls and function addresses enter separate declaration maps, including forward
+        // references. Similar external names must survive, and emission stays sorted.
+        let mut m = LlvmModule::new(vec![Some("symbols.ms".into())], ".".into());
+        let f = returning(1);
+        for i in 0..256 {
+            let name = format!("function_{i:06}");
+            m.decls
+                .insert(name.clone(), format!("declare i64 @\"{name}\"()"));
+            m.data.insert(name.clone(), ());
+            m.add_function(&name, &name, (0, 1), &f, &TestSymbols, i == 0);
+        }
+        for name in ["function_000256", "function_000000_external"] {
+            m.decls
+                .insert(name.into(), format!("declare i64 @\"{name}\"()"));
+        }
+        m.data.insert("function_000000_address".into(), ());
+        let pinned = HashSet::from(["function_000001".into()]);
+        for anchored in [false, true] {
+            let text = m.finish("x86_64-unknown-linux-gnu", &pinned, anchored);
+            let declarations: Vec<_> = text
+                .lines()
+                .filter(|l| l.starts_with("declare i64 @\""))
+                .collect();
+            assert_eq!(
+                declarations,
+                [
+                    "declare i64 @\"function_000000_external\"()",
+                    "declare i64 @\"function_000256\"()",
+                ]
+            );
+            let data: Vec<_> = text.lines().filter(|l| l.starts_with("@\"")).collect();
+            assert_eq!(data, ["@\"function_000000_address\" = external global i8"]);
+            assert!(text.contains("define i64 @\"function_000000\""));
+            assert!(text.contains("define hidden i64 @\"function_000001\""));
+            let visibility = if anchored { "internal" } else { "hidden" };
+            assert!(text.contains(&format!("define {visibility} i64 @\"function_000002\"")));
+            assert_eq!(
+                text,
+                m.finish("x86_64-unknown-linux-gnu", &pinned, anchored)
+            );
+        }
+        // A previously external reference can acquire a definition before the next finish.
+        let name = "function_000256";
+        m.add_function(name, name, (0, 1), &f, &TestSymbols, false);
+        let text = m.finish("x86_64-unknown-linux-gnu", &pinned, false);
+        assert!(!text.contains("declare i64 @\"function_000256\"()"));
+        assert!(text.contains("define hidden i64 @\"function_000256\""));
     }
 
     /// `fn(base, i) -> f32 { load(base + i * 4) }`.
