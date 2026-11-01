@@ -3,7 +3,9 @@ import Bytes from "@std/bytes.ms"
 import (
     bind_datagram,
     connect,
+    connect_unix,
     listen,
+    listen_unix,
     resolve_dns,
     restrict,
     with_resolver,
@@ -56,6 +58,12 @@ test "host names resolve whatever their case":
     let client = try connect("LocalHost:{port}", 2.seconds)
     let server = try listener.accept(2.seconds)
     try expect_equal(server.peer_address(), client.local_address())
+
+test "an empty Unix socket path is invalid input":
+    try expect_equal(try expect_error(listen_unix("")), NetworkError.InvalidInput)
+    try expect_equal(
+        try expect_error(connect_unix("", 1.seconds)), NetworkError.InvalidInput
+    )
 
 test "UDP loopback preserves datagram data and sender":
     let receiver = try bind_datagram("127.0.0.1:0")

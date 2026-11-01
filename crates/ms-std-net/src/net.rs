@@ -467,6 +467,9 @@ impl Network {
         if self.policy.is_some() {
             return Err(NetErr::PermissionDenied);
         }
+        if path.is_empty() {
+            return Err(NetErr::InvalidInput);
+        }
         let sock =
             Socket::new(Domain::UNIX, Type::STREAM, None).map_err(|e| self.io_failure(&e))?;
         sock.set_nonblocking(true)
@@ -546,6 +549,10 @@ impl Network {
     pub fn listen_unix(&self, path: &str) -> Result<Socket, NetErr> {
         if self.policy.is_some() {
             return Err(NetErr::PermissionDenied);
+        }
+        // An empty path would autobind an abstract address that nothing can connect to.
+        if path.is_empty() {
+            return Err(NetErr::InvalidInput);
         }
         let sock =
             Socket::new(Domain::UNIX, Type::STREAM, None).map_err(|e| self.io_failure(&e))?;

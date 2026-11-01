@@ -342,7 +342,7 @@ export interface Network:
         timeout: Duration?
     ) Connection!NetworkError
     # Connects to the Unix domain socket at `path`.
-    # Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks. `timeout` bounds the attempt.
+    # Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path returns InvalidInput. `timeout` bounds the attempt.
     fn connect_unix(path: String, timeout: Duration?) Connection!NetworkError
     # Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
     # Invalid or negative options return InvalidInput. Closing the network closes the client.
@@ -358,7 +358,7 @@ export interface Network:
         handshake_timeout: Duration?
     ) Listener!NetworkError
     # Listens on a Unix domain socket at `path`.
-    # Any restricted network returns PermissionDenied.
+    # Any restricted network returns PermissionDenied, and an empty path returns InvalidInput.
     fn listen_unix(path: String) Listener!NetworkError
     # Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
     # More than `max_records` addresses returns LimitExceeded, `timeout` bounds the lookup, and a failed lookup returns Failed.
@@ -752,7 +752,7 @@ export fn connect_tls_config(
     return host_network().connect_tls_config(address, options, timeout)
 
 # Connects to the Unix domain socket at `path`.
-# Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks. `timeout` bounds the attempt.
+# Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path returns InvalidInput. `timeout` bounds the attempt.
 export fn connect_unix(path: String, timeout: Duration?) Connection!NetworkError:
     return host_network().connect_unix(path, timeout)
 
@@ -776,7 +776,7 @@ export fn listen_tls(
     return host_network().listen_tls(address, options, handshake_timeout)
 
 # Listens on a Unix domain socket at `path`.
-# Any restricted network returns PermissionDenied.
+# Any restricted network returns PermissionDenied, and an empty path returns InvalidInput.
 export fn listen_unix(path: String) Listener!NetworkError:
     return host_network().listen_unix(path)
 
