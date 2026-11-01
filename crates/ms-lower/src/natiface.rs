@@ -16,26 +16,6 @@ use ms_mir::ir::{FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, Param, Vtable
 use ms_mir::types::{IfaceId, Ty as MTy, TyKind};
 use std::rc::Rc;
 
-/// Native functions that return an interface over a runtime handle: the function, the
-/// interface module, and the runtime call that makes the handle with its constant argument.
-pub(crate) const HANDLE_FUNCTIONS: &[(&str, &str, &str, i64)] = &[
-    ("io/stdin", "io", "msstd_io_standard", 0),
-    // No handle: the interface value carries nothing and its operations open handles.
-    ("io/files", "io", "", 0),
-    ("fs/filesystem", "fs", "", 0),
-    ("process/commands", "process", "", 0),
-    ("process/control", "process", "", 0),
-    ("process/system", "system", "", 0),
-    ("io/terminal", "terminal", "", 0),
-    ("time/clock", "time", "", 0),
-    ("time/wall_clock", "time", "", 0),
-    // The rules are the table: `path_win` forwards with the Windows flag set.
-    ("random/host_entropy", "random", "", 0),
-    ("fs/posix", "path", "", 0),
-    ("fs/win32", "path_win", "", 0),
-    ("net/network", "net", "msrt_net_network", 0),
-];
-
 /// Interfaces whose values carry no data.
 const UNIT_DATA: &[(&str, &str)] = &[
     ("io", "Files"),

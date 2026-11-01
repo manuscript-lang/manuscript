@@ -43,6 +43,7 @@ mod rtcall;
 mod runner;
 mod scope;
 mod sharedbuilder;
+mod stdnative;
 mod stmt;
 mod streamloop;
 mod testing;

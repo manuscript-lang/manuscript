@@ -9,7 +9,7 @@
 
 ## Status
 
-Proposal, 2026-10-31, checked against `9cf35d57`. Triggered by the maintainer asking why lowering knows about html, fs and serve, and asking for a sound boundary between compilation layers. Direction: "Manuscript first, Rust limited to small general runtime primitives".
+Proposal, 2026-10-31, checked against `9cf35d57`. Triggered by the maintainer asking why lowering knows about html, fs and serve, and asking for a sound boundary between compilation layers. Stage 1 (single table `crates/ms-lower/src/stdnative.rs`, stale-entry test) landed 2026-11-01; its test found and removed the dead `time/duration` entry. Later stages are not started. Direction: "Manuscript first, Rust limited to small general runtime primitives".
 
 ## Problem
 
