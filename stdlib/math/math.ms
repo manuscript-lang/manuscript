@@ -274,6 +274,10 @@ export extern type BigInt
 impl Data for BigInt:
 
 impl BigInt:
+    # Returns an independent copy, so `var acc = base.clone()` starts an accumulator.
+    fn clone() BigInt:
+        return msstd_bigint_add(self, msstd_bigint_from_int(0))
+
     # Returns the exact sum; arbitrary precision means it cannot overflow.
     fn add(other: BigInt) BigInt:
         return msstd_bigint_add(self, other)
