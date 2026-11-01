@@ -119,6 +119,9 @@ struct LendSource {
     params: Vec<Name>,
     /// The field chain from one source, when the expression is a plain chain of fields.
     path: Option<(Option<Name>, Vec<Name>)>,
+    /// The value is an owned interface view of the sources (a view lender's result, or a local
+    /// holding one): it is returned as an owned value, never as a plain reference.
+    view: bool,
 }
 
 /// A place expression resolved to its root.
@@ -164,6 +167,10 @@ pub fn analyze(cx: &Context) -> Outcome {
         lent_return: None,
         wrap_returns: Vec::new(),
         plain_lent: false,
+        view_return: false,
+        view_locals: HashSet::new(),
+        view_calls: HashSet::new(),
+        view_move: None,
     };
     w.run();
     w.mixed_returns();
@@ -192,13 +199,21 @@ pub fn analyze(cx: &Context) -> Outcome {
             })
             .collect(),
         result: Lend {
-            lends: w.lent_return.is_some() && w.owned_return.is_none(),
+            // A view lender returns owned values on every path, so a new value beside a view
+            // is no mix.
+            lends: w.lent_return.is_some() && (w.owned_return.is_none() || w.view_return),
+            view: w.view_return,
             receiver: w.lend_receiver,
             params: w.lend_params.clone(),
-            path: w.lend_path.clone().flatten(),
+            path: if w.view_return {
+                None
+            } else {
+                w.lend_path.clone().flatten()
+            },
         },
     };
     w.facts.lends = summary.result.lends;
+    w.facts.view = summary.result.view;
     w.facts.parameters = summary.params.iter().map(|(_, m)| *m).collect();
     w.facts.receiver = cx.c.self_binding.as_ref().map(|_| summary.receiver);
     Outcome {
@@ -260,6 +275,17 @@ struct Walker<'a> {
     wrap_returns: Vec<NodeId>,
     /// Some returned reference is the part itself, not a wrapper of it.
     plain_lent: bool,
+    /// Some returned value is an interface view of the arguments (a lent value converted to an
+    /// interface, a view lender's result, a local holding one): the function is a view lender.
+    view_return: bool,
+    /// Locals that hold an interface view: they own the view's box and borrow its payload's
+    /// origins, so they are returned as owned values, never lent as plain references.
+    view_locals: HashSet<usize>,
+    /// `ok(x)` / `error(x)` returned as views: their payload is read, not consumed.
+    view_calls: HashSet<NodeId>,
+    /// The name of a view local being returned: moving it out of the function is allowed even
+    /// though it borrows, because the result holds the same origins.
+    view_move: Option<NodeId>,
 }
 
 /// A fix that inserts `text` at `pos`.
@@ -490,6 +516,12 @@ impl Walker<'_> {
             self.match_expr(e, scrutinee, arms, Demand::Consume, true);
             return;
         }
+        // A lent value converted to an interface on the way out (`return cause` as `Error`,
+        // `error(cause)` as `Int!`, a widened lending call), a view lender's result or a local
+        // holding a view: the result is an owned view whose payload stays in the arguments.
+        if !self.implements_contract() && self.view_return_source(e) {
+            return;
+        }
         // A resource is never lent: returning one hands it to the caller, which closes it.
         let wrapped = self.wrapped_lend(e).is_some();
         if self.class_of(e) == Class::Move
@@ -556,6 +588,121 @@ impl Walker<'_> {
         }
     }
 
+    /// Classifies `e` as a returned interface view when it is one, recording the sources and
+    /// walking it; `false` when `e` is not a view (a plain reference or a new value).
+    fn view_return_source(&mut self, e: &Expr) -> bool {
+        let via = self.view_source(e);
+        let src = match via {
+            Some(x) => self.lend_source(x),
+            None => self.lend_source(e).filter(|s| s.view),
+        };
+        let Some(src) = src else {
+            return false;
+        };
+        self.lent_return.get_or_insert(e.pos);
+        self.view_return = true;
+        self.lend_receiver |= src.receiver;
+        for p in src.params {
+            if !self.lend_params.contains(&p) {
+                self.lend_params.push(p);
+            }
+        }
+        self.lend_path = Some(None);
+        // The payload of `ok(x)` / `error(x)` is read into the view, not consumed.
+        if self.result_payload(e).is_some() {
+            self.view_calls.insert(e.id);
+        }
+        // A local holding a view is moved out: the box it owns becomes the result. The same
+        // when a lender hands the local back whole (`return relay(e)`): the box moves into the
+        // call and comes back as the result instead of being copied.
+        let moved = via.unwrap_or(e);
+        let moved = self.result_payload(moved).unwrap_or(moved);
+        if let Some(operand) = self.whole_lent_operand(moved) {
+            // The call reads its argument; lowering moves the box in and keeps it as the result.
+            self.facts.view_moves.insert(operand.id);
+            self.expr(e, Demand::Read);
+        } else if let ExprKind::Name(_) = &moved.kind
+            && let Resolution::Local(b) = self.cx.m.resolution(moved)
+            && self.view_locals.contains(&b.uid)
+            && b.ty.kind == Kind::Contract
+        {
+            self.view_calls.remove(&e.id);
+            self.facts.view_moves.insert(moved.id);
+            self.view_move = Some(moved.id);
+            self.expr(e, Demand::Consume);
+            self.view_move = None;
+        } else {
+            self.expr(e, Demand::Read);
+        }
+        true
+    }
+
+    /// The one operand a plain lending call `e` hands back whole (`relay(x)` for
+    /// `relay(e: Error) Error: return e`), when it is a name of an interface view local at its
+    /// last use: moving the local into the call lets the caller keep its box as the result.
+    fn whole_lent_operand<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        if !matches!(e.kind, ExprKind::Call { .. }) {
+            return None;
+        }
+        let lend = call_lend(self.cx.m, e, self.cx.summaries);
+        if !lend.lends || lend.view {
+            return None;
+        }
+        let operands = self.lend_operands(e, &lend)?;
+        let [operand] = operands.as_slice() else {
+            return None;
+        };
+        let Some((_, fields)) = &lend.path else {
+            return None;
+        };
+        let Resolution::Local(b) = self.cx.m.resolution(operand) else {
+            return None;
+        };
+        (fields.is_empty()
+            && matches!(operand.kind, ExprKind::Name(_))
+            && self.view_locals.contains(&b.uid)
+            && b.ty.kind == Kind::Contract
+            && self.is_last(operand.id, &b))
+        .then_some(*operand)
+    }
+
+    /// The expression a conversion to an interface reads, when `e` converts a `Move`-class
+    /// value: `e` itself (`cause` as `Error`, a widened lending call, `cause` as `Error?`), or
+    /// the payload of `ok(x)` / `error(x)`. `None` when nothing is converted or the source is a
+    /// scalar, which the interface copies.
+    fn view_source<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        let converted = |x: &Expr| {
+            // A conversion to an interface with a `var fn` copies: a call through the view
+            // could change leaves the view only borrows.
+            let target = self.cx.m.ty(x);
+            let iface = if target.is_std("Result") {
+                target.args.get(1).cloned()
+            } else {
+                Some(target)
+            };
+            if iface.is_none_or(|t| crate::types::contract_mutates(&t)) {
+                return false;
+            }
+            self.cx
+                .m
+                .info(x)
+                .error_source
+                .as_ref()
+                .is_some_and(|src| self.cx.classes.class(src) == Class::Move)
+        };
+        if converted(e) {
+            return Some(e);
+        }
+        let x = self.result_payload(e)?;
+        converted(x).then_some(x)
+    }
+
+    /// Whether `e` is an interface view or holds one: a conversion of a lent value, a view
+    /// lender's call, or a local holding a view.
+    fn is_view(&self, e: &Expr) -> bool {
+        self.view_source(e).is_some() || self.lend_source(e).is_some_and(|s| s.view)
+    }
+
     /// Whether this callable implements an interface method. A call through the interface
     /// cannot know which implementation runs, so every implementation owns its result.
     fn implements_contract(&self) -> bool {
@@ -570,6 +717,20 @@ impl Walker<'_> {
         i.contract
             .as_ref()
             .is_some_and(|t| !t.name().ends_with(crate::passes::INHERENT_SUFFIX))
+    }
+
+    /// Whether the declared result type is an interface.
+    fn result_is_interface(&self) -> bool {
+        let c = self.cx.c;
+        let result = match (c.func.method(), c.func.func()) {
+            (Some(m), _) => m.func.result.id,
+            (None, Some(f)) => f.result.id,
+            (None, None) => return false,
+        };
+        self.cx
+            .m
+            .type_ref(result)
+            .is_some_and(|t| t.kind == Kind::Contract)
     }
 
     /// Whether a returned expression has the declared result type itself: a value converted on
@@ -590,6 +751,25 @@ impl Walker<'_> {
     /// Reports a function that returns a reference on one path and an owned value on another:
     /// the caller could not tell whether to hold or drop the result.
     fn mixed_returns(&mut self) {
+        if self.view_return {
+            // Every path of a view lender returns an owned value. A plain reference to an
+            // interface value is handed on as a view that owns nothing; a wrapper of a part
+            // becomes a new value of its own, as beside an owned path; any other plain
+            // reference has no owned form.
+            for n in std::mem::take(&mut self.wrap_returns) {
+                self.facts.view_wraps.remove(&n);
+            }
+            if self.plain_lent && !self.result_is_interface() {
+                let lent = self.lent_return.unwrap_or_default();
+                self.error(
+                    lent,
+                    format!(
+                        "this function returns an interface view of its arguments on another path but a reference here; return `.{COPY}()` of the part, or convert it on every path"
+                    ),
+                );
+            }
+            return;
+        }
         let (Some(owned), Some(lent)) = (self.owned_return, self.lent_return) else {
             return;
         };
@@ -629,7 +809,9 @@ impl Walker<'_> {
         let slots = self.cx.m.info(e).arguments.clone().unwrap_or_default();
         for (i, a) in args.iter().enumerate() {
             if slots.get(i).is_some_and(|s| lend.params.contains(&s.name)) {
-                if self.converted_argument(e, &a.value) {
+                // A lent value converted to an interface on the way in is a view of it: what
+                // the callee lends from the view is a reference into the value.
+                if self.converted_argument(e, &a.value) && !self.converted_lend(&a.value) {
                     return None;
                 }
                 out.push(&a.value);
@@ -638,6 +820,23 @@ impl Walker<'_> {
         // A copied argument is never lent from, whatever an optimistic summary says.
         out.retain(|a| self.class_of(a) != Class::Copy);
         Some(out)
+    }
+
+    /// Whether `arg` is a `Move`-class reference converted to an interface on the way in
+    /// (`relay(cause)` for `relay(e: Error)`): the converted temporary is a view of it.
+    fn converted_lend(&self, arg: &Expr) -> bool {
+        self.view_source(arg).is_some_and(|x| std::ptr::eq(x, arg))
+            && self.lend_source(arg).is_some()
+    }
+
+    /// Whether a lent operand of call `e` is a converted view temporary: the caller owns what
+    /// the callee lends from it (the temporary itself when handed back whole, else a copy) and
+    /// still holds the value it views.
+    fn lends_through_view(&self, e: &Expr, lend: &Lend) -> bool {
+        self.lend_operands(e, lend).is_some_and(|ops| {
+            ops.iter()
+                .any(|o| self.converted_lend(o) || self.is_view(o))
+        })
     }
 
     /// Whether argument `arg` of call `e` is converted to its parameter's type on the way in.
@@ -715,13 +914,18 @@ impl Walker<'_> {
             return;
         }
         let converted = self.cx.m.info(e).propagated_error.is_some();
-        if !converted
-            && self.class_of(operand) == Class::Move
+        if self.class_of(operand) == Class::Move
             && let Some(src) = self.lend_source(operand)
         {
             self.lent_return.get_or_insert(e.pos);
-            self.facts.view_wraps.insert(e.id);
-            self.wrap_returns.push(e.id);
+            if converted || src.view {
+                // The error leaves as an interface view (converted on the way out, or a view
+                // already): an owned value whose payload stays in the operand's sources.
+                self.view_return = true;
+            } else {
+                self.facts.view_wraps.insert(e.id);
+                self.wrap_returns.push(e.id);
+            }
             self.lend_receiver |= src.receiver;
             for p in src.params {
                 if !self.lend_params.contains(&p) {
@@ -759,6 +963,10 @@ impl Walker<'_> {
         // the same sources; a field chain extends the path, an element ends it.
         if let Some((call, fields)) = self.part_of_call(e) {
             let mut src = self.lend_source(call)?;
+            // A part of an owned view is a part of a temporary.
+            if src.view {
+                return None;
+            }
             src.path = match (src.path.take(), fields) {
                 (Some((root, mut path)), Some(more)) => {
                     path.extend(more);
@@ -788,6 +996,7 @@ impl Walker<'_> {
                     receiver: false,
                     params: Vec::new(),
                     path: None,
+                    view: self.view_locals.contains(&b.uid),
                 };
                 let places = self.pure_places(e)?;
                 for place in places {
@@ -810,6 +1019,7 @@ impl Walker<'_> {
                     receiver: true,
                     params: Vec::new(),
                     path: path.map(|f| (None, f)),
+                    view: false,
                 }),
                 (Role::Parameter, Some(i)) => {
                     let label = self.parameter_label(i)?;
@@ -817,6 +1027,7 @@ impl Walker<'_> {
                         receiver: false,
                         params: vec![label],
                         path: path.map(|f| (Some(label), f)),
+                        view: false,
                     })
                 }
                 _ => None,
@@ -835,10 +1046,12 @@ impl Walker<'_> {
                 receiver: false,
                 params: Vec::new(),
                 path: None,
+                view: lend.view,
             };
             let mut paths: Vec<Option<(Option<Name>, Vec<Name>)>> = Vec::new();
             for (k, operand) in operands.iter().enumerate() {
                 let src = self.lend_source(operand)?;
+                out.view |= src.view || self.view_source(operand).is_some();
                 out.receiver |= src.receiver;
                 for p in src.params {
                     if !out.params.contains(&p) {
@@ -1584,9 +1797,36 @@ impl Walker<'_> {
                 if self.wrapped_lend(value).is_some() {
                     self.facts.view_wraps.insert(value.id);
                 }
+                // A part converted to an interface (`let e: Error = r.cause`) or a view
+                // lender's result: the binding owns the view's box and borrows the sources.
+                if self.is_view(value) {
+                    self.view_locals.insert(b.uid);
+                    if self.result_payload(value).is_some() {
+                        self.view_calls.insert(value.id);
+                    }
+                }
                 self.expr(value, Demand::Read);
                 self.declare_borrow(&b, role, origins, pattern.pos, "binding of a part of it");
             }
+            return;
+        }
+        // A name converted to an interface on the way into the binding (`let e: Error = cause`,
+        // `let r: Int! = error(cause)`) is a view of it: the binding owns the view's box and
+        // borrows the name, whether or not this is the name's last use.
+        if !mutable
+            && class != Class::Copy
+            && let Some(inner) = self.view_source(value)
+            && let ExprKind::Name(_) = &inner.kind
+            && let Resolution::Local(src) = self.cx.m.resolution(inner)
+            && self.meta.contains_key(&src.uid)
+        {
+            let origins = self.resolve(&Place::local(src.uid));
+            self.view_locals.insert(b.uid);
+            if self.result_payload(value).is_some() {
+                self.view_calls.insert(value.id);
+            }
+            self.expr(value, Demand::Read);
+            self.declare_borrow(&b, role, origins, pattern.pos, "binding of a view of it");
             return;
         }
         // A name wrapped on the way into the binding (`let o: Item? = item`, `let r = ok(x)`)
@@ -1650,6 +1890,26 @@ impl Walker<'_> {
                     return;
                 }
             } else {
+                // A view local named for the last time hands its box on: the new name is the
+                // view local now, borrowing the same origins, and the old one owns nothing.
+                // Named again later, the new name is a plain reference to the box.
+                if self.view_locals.contains(&src.uid) && self.is_last(value.id, &src) {
+                    let origins = self.meta[&src.uid].origins.clone();
+                    self.view_locals.insert(b.uid);
+                    self.facts.view_moves.insert(value.id);
+                    self.view_move = Some(value.id);
+                    self.expr(value, Demand::Consume);
+                    self.view_move = None;
+                    self.declare_borrow(&b, role, origins, pattern.pos, "binding of a view of it");
+                    return;
+                }
+                // Named again later, the new name points at the view local's box, which ends
+                // with it, not at what the view borrows.
+                let origins = if self.view_locals.contains(&src.uid) {
+                    vec![Place::local(src.uid)]
+                } else {
+                    origins
+                };
                 self.expr(value, Demand::Read);
                 self.declare_borrow(
                     &b,
@@ -2246,6 +2506,10 @@ impl Walker<'_> {
         let mut out: Vec<Place> = Vec::new();
         for arm in arms {
             let v = arm.value.as_ref()?;
+            // An owned view joined with plain references would leak or dangle.
+            if self.is_view(v) {
+                return None;
+            }
             let places = if self.is_place(v) {
                 self.pure_places(v)?
             } else {
@@ -2567,7 +2831,9 @@ impl Walker<'_> {
             self.record(e.id, b, Access::Move);
             return;
         }
-        if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured) {
+        if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured)
+            && self.view_move != Some(e.id)
+        {
             // Moving a part out of a parameter's match or loop makes that scrutinee consume it;
             // the next pass of the fixpoint sees the parts as owned.
             if let Some(scrutinee) = self.meta[&b.uid].deferred {
@@ -2926,7 +3192,7 @@ impl Walker<'_> {
         let cx = self.cx;
         let mut modes = call_modes(cx.m, e, args, cx.summaries);
         // `ok(x)` / `error(x)` kept as a reference (`view_wraps`) only reads its payload.
-        if self.facts.view_wraps.contains(&e.id) {
+        if self.facts.view_wraps.contains(&e.id) || self.view_calls.contains(&e.id) {
             modes
                 .arguments
                 .iter_mut()
@@ -3042,25 +3308,15 @@ impl Walker<'_> {
                         copy_after(e),
                     );
                 }
+                Some(_) if self.lends_through_view(e, &lend) => {
+                    // The callee lends from a view temporary of a held value: the caller owns
+                    // the result (the view itself when it comes back whole) and holds the value.
+                    let how = self.owned_lend(e, &lend, true);
+                    self.facts.owned_lends.insert(e.id, how);
+                }
                 Some(_) => {}
                 None => {
-                    // The whole of one temporary operand comes back (`id(make())`): the caller
-                    // keeps that temporary as the result instead of copying it.
-                    let whole = match (&lend.path, self.lend_operands(e, &lend)) {
-                        (Some((source, fields)), Some(operands))
-                            if fields.is_empty()
-                                && operands.len() == 1
-                                && !self.is_place(operands[0])
-                                && !matches!(operands[0].kind, ExprKind::Name(_)) =>
-                        {
-                            Some(*source)
-                        }
-                        _ => None,
-                    };
-                    let how = match whole {
-                        Some(source) => OwnedLend::Whole(source),
-                        None => OwnedLend::Copy,
-                    };
+                    let how = self.owned_lend(e, &lend, false);
                     self.facts.owned_lends.insert(e.id, how);
                 }
             }
@@ -3071,6 +3327,29 @@ impl Walker<'_> {
                 e.pos,
                 format!("`{name}` changes `{recv}` in place and its result cannot be used, because the collection has one owner; call it as a statement and keep using `{recv}`"),
             );
+        }
+    }
+
+    /// How the caller owns the result of a lending call over a temporary: the whole of one
+    /// temporary operand comes back (`id(make())`, or `relay(cause)` through a view temporary
+    /// when `through_view`), so the caller keeps that temporary as the result instead of
+    /// copying it; otherwise a copy is taken before the temporary is dropped.
+    fn owned_lend(&self, e: &Expr, lend: &Lend, through_view: bool) -> OwnedLend {
+        let whole = match (&lend.path, self.lend_operands(e, lend)) {
+            (Some((source, fields)), Some(operands))
+                if fields.is_empty()
+                    && operands.len() == 1
+                    && (through_view
+                        || (!self.is_place(operands[0])
+                            && !matches!(operands[0].kind, ExprKind::Name(_)))) =>
+            {
+                Some(*source)
+            }
+            _ => None,
+        };
+        match whole {
+            Some(source) => OwnedLend::Whole(source),
+            None => OwnedLend::Copy,
         }
     }
 
@@ -3350,6 +3629,7 @@ impl Walker<'_> {
             && self.class_of(e) != Class::Copy
             && self.arm_origins(arms).is_some();
         let lent_before = self.lent_return;
+        let view_before = self.view_return;
         let entry = self.active.clone();
         let mut joined: Vec<Borrow> = Vec::new();
         for arm in arms {
@@ -3386,8 +3666,10 @@ impl Walker<'_> {
         }
         self.active = Self::join_active(entry, joined);
         // A returned match lends when its arms all did; a mix is reported by `mixed_returns`.
-        let returned_lent =
-            returning && self.owned_return.is_none() && self.lent_return != lent_before;
+        let returned_lent = returning
+            && self.owned_return.is_none()
+            && self.lent_return != lent_before
+            && self.view_return == view_before;
         if lent || returned_lent {
             self.facts.lent_matches.insert(e.id);
         }

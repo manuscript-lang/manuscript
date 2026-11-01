@@ -895,6 +895,13 @@ impl<'m> Interp<'m> {
                 };
                 set!(Val::Iface(v, Rc::new(arg(f, regs, a[0], true, m))));
             }
+            Op::IfaceLend => {
+                let Imm::Vtable(v) = inst.imm else {
+                    return Err(Raw::internal("iface.lend without vtable"));
+                };
+                set!(Val::Iface(v, Rc::new(arg(f, regs, a[0], false, m))));
+            }
+            Op::IfaceView => set!(regs[a[0].index()].clone()),
             Op::IfaceIs => {
                 let (Imm::Vtable(want), Val::Iface(have, _)) = (inst.imm, &regs[a[0].index()])
                 else {

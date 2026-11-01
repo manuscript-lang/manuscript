@@ -179,9 +179,15 @@ pub struct CallableOwnership {
     /// The result is a reference into the receiver or a parameter on every path: lowering
     /// returns it without copying, and the caller holds it without dropping.
     pub lends: bool,
+    /// With `lends`: the result is an owned interface view of the arguments (a converted lent
+    /// value, `iface.lend`): the caller drops it and holds the arguments while it lives.
+    pub view: bool,
     /// Wrappers of a lent value (`x` as `x?`, `ok(x)`, `error(x)`) that stay references:
     /// lowering builds them with `opt.view` / `alt.view` instead of copying the payload.
     pub view_wraps: HashSet<NodeId>,
+    /// Name expressions that move an interface view out of the local holding it, into a result
+    /// that holds the same origins: lowering takes the value and leaves a view that owns nothing.
+    pub view_moves: HashSet<NodeId>,
     /// Calls of lending callables whose sources are temporaries: the caller owns the result,
     /// by taking the temporary over or by a copy made before it is dropped.
     pub owned_lends: HashMap<NodeId, OwnedLend>,
@@ -228,8 +234,13 @@ pub struct Ownership {
     pub consumes: HashMap<Key, Vec<bool>>,
     /// Callables whose result is a reference into their arguments.
     pub lenders: HashSet<Key>,
+    /// Callables whose result is an owned interface view of their arguments: the caller drops
+    /// it and holds the arguments while it lives (`ret_view` in MIR).
+    pub view_lenders: HashSet<Key>,
     /// Wrappers of lent values that stay references, by module file and node.
     pub view_wraps: HashSet<(Name, NodeId)>,
+    /// Name expressions moving an interface view out of its local, by module file and node.
+    pub view_moves: HashSet<(Name, NodeId)>,
     /// Lending calls whose result the caller owns (a source was a temporary), by module file and
     /// call node.
     pub owned_lends: HashMap<(Name, NodeId), OwnedLend>,
@@ -323,16 +334,21 @@ impl Hir<'_> {
         let mut borrowed_captures = HashSet::new();
         let mut consumes = HashMap::new();
         let mut lenders = HashSet::new();
+        let mut view_lenders = HashSet::new();
         let mut view_wraps = HashSet::new();
+        let mut view_moves = HashSet::new();
         let mut owned_lends = HashMap::new();
         let mut getter_borrows = HashMap::new();
         let mut lent_matches = HashSet::new();
         for (c, out) in callables.iter().zip(outcomes) {
             lent_matches.extend(out.facts.lent_matches.iter().map(|n| (c.module.file, *n)));
-            if out.facts.lends {
+            if out.facts.lends && out.facts.view {
+                view_lenders.insert((c.module.file, c.id()));
+            } else if out.facts.lends {
                 lenders.insert((c.module.file, c.id()));
             }
             view_wraps.extend(out.facts.view_wraps.iter().map(|n| (c.module.file, *n)));
+            view_moves.extend(out.facts.view_moves.iter().map(|n| (c.module.file, *n)));
             owned_lends.extend(
                 out.facts
                     .owned_lends
@@ -397,7 +413,9 @@ impl Hir<'_> {
             borrowed_captures,
             consumes,
             lenders,
+            view_lenders,
             view_wraps,
+            view_moves,
             owned_lends,
             getter_borrows,
             lent_matches,

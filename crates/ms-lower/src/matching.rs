@@ -370,6 +370,12 @@ impl FnLower<'_> {
             // The operand lends its error from this function's arguments: hand the reference on.
             let out = self.b.alt_view(ra, ret_err as u32, &[x.v]);
             self.emit_return(Some(Val { v: out, own: false }));
+        } else if hidden && !x.own && self.ty_of(payload) == want {
+            // The operand is ours: its error moves into the result and the rest is released.
+            let po = self.b.alt_take(a, err as u32, 0, cur);
+            self.b.alt_release(a, err as u32, 1, cur);
+            let out = self.b.alt_new(ra, ret_err as u32, &[po]);
+            self.emit_return(Some(Val { v: out, own: true }));
         } else {
             let po = self.owned(x);
             let out = self.b.alt_new(ra, ret_err as u32, &[po]);

@@ -340,6 +340,19 @@ impl FnLower<'_> {
         };
         let scope = self.evidence();
         let vt = self.cx.vtable_for(self.b.m, concrete, have, iface, scope)?;
+        let mutates = self
+            .cx
+            .contracts
+            .get(&iface)
+            .is_some_and(ms_check::types::contract_mutates);
+        if !x.own && !mutates {
+            // A borrowed value becomes a view: a box of its leaves as they are, which owns only
+            // the box. The checker holds the value's owner for as long as the view lives. An
+            // interface with a `var fn` copies instead: a call through it (a native stream
+            // reader, say) would change leaves the view only borrows.
+            let v = self.b.iface_lend(vt, x.v, want);
+            return Ok(Val { v, own: true });
+        }
         let o = self.owned(x);
         let v = self
             .b
@@ -493,19 +506,20 @@ impl FnLower<'_> {
             self.enter(blk);
             let cur = self.b.use_var(held);
             let (sc, dc) = if is_error { (serr, derr) } else { (sok, dok) };
-            let payload = self.b.alt_get(src, sc as u32, 0, cur);
-            let mut p = Val {
-                v: payload,
-                own: false,
+            let mut p = if x.own {
+                // The source is ours: the payload moves out and the rest is released.
+                let v = self.b.alt_take(src, sc as u32, 0, cur);
+                self.b.alt_release(src, sc as u32, 1, cur);
+                Val { v, own: true }
+            } else {
+                let v = self.b.alt_get(src, sc as u32, 0, cur);
+                Val { v, own: false }
             };
             if is_error {
                 p = self.fit_ty(p, &failure, want_err)?;
             }
             let po = self.owned(p);
             let out = self.b.alt_new(dst, dc as u32, &[po]);
-            if x.own {
-                self.drop_value(cur);
-            }
             self.b.def_var(res, out);
             self.b.br(join, &[]);
         }

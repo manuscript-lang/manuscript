@@ -266,6 +266,9 @@ impl Cx {
         f.noalias = vars.iter().map(|&i| i as u32).collect();
         // The checker found every result a reference into the arguments.
         f.ret_borrowed = self.lenders.contains(&(c.module.file, c.id()));
+        // The checker found the result an interface view of the arguments: owned, dropped by
+        // the caller, held as a borrow of the arguments while it lives.
+        f.ret_view = self.view_lenders.contains(&(c.module.file, c.id()));
         let id = m.add_func(f);
         self.insts.insert(key, id);
         self.queue.push(Job {
@@ -412,11 +415,13 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     let mut fl = FnLower::new(cx, b, hir, jsubst, file, proto.ret);
     // A lending function returns references as they are; `emit_return` reads the flag.
     fl.b.func_mut().ret_borrowed = proto.ret_borrowed;
+    fl.b.func_mut().ret_view = proto.ret_view;
     let result = fl.lower_callable(&c);
     let mut func = fl.b.into_func();
     result?;
     func.noalias = proto.noalias;
     func.ret_borrowed = proto.ret_borrowed;
+    func.ret_view = proto.ret_view;
     func.compact_blocks();
     m.funcs[job.func.index()] = func;
     Ok(())
@@ -498,6 +503,14 @@ impl<'a> FnLower<'a> {
     }
 
     /// Whether values of `t` are resources, which must be closed whatever their storage.
+    /// Whether `v` is an interface value.
+    pub fn is_iface(&self, v: ms_mir::ir::Value) -> bool {
+        matches!(
+            self.b.m.types.kind(self.ty_of(v)),
+            ms_mir::types::TyKind::Iface(_)
+        )
+    }
+
     pub fn is_resource(&self, t: MTy) -> bool {
         self.cx
             .source_tys
@@ -916,7 +929,18 @@ impl<'a> FnLower<'a> {
         }
         // A lending function returns the reference itself; the caller never releases it.
         let lends = self.b.func_mut().ret_borrowed;
-        let v = value.map(|x| if lends { x.v } else { self.owned(x) });
+        let views = self.b.func_mut().ret_view;
+        let v = value.map(|x| {
+            if lends {
+                x.v
+            } else if views && !x.own && self.is_iface(x.v) {
+                // A view lender hands a plain reference to an interface value on as a value that
+                // owns nothing (`iface.view`); the caller drops it like the views it builds.
+                self.b.iface_view(x.v)
+            } else {
+                self.owned(x)
+            }
+        });
         // A close error returned from inside this unwinding re-enters here with the prologue done.
         let nested = self.prologue_done;
         if !nested {
@@ -1089,8 +1113,10 @@ impl<'a> FnLower<'a> {
                 }
             }
             ms_check::hir::Body::Expr(e) => {
+                let moved_before = self.closed_on_path.clone();
                 let x = self.expr(e)?;
                 self.emit_return(Some(x));
+                self.closed_on_path = moved_before;
             }
         }
         Ok(())

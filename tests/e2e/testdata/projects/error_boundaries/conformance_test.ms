@@ -22,7 +22,7 @@ test "Error boundaries retain selected local and generic implementations":
         cause.message() | try expect_equal("first 7")
     original.code = 8
 
-    for result in [first_result(original.clone()), first_propagated(original)]:
+    for result in [first_result(original.clone()), first_propagated(original.clone())]:
         match result:
             ok(_):
                 return fail(message: "expected domain failure")

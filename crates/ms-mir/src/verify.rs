@@ -1005,7 +1005,7 @@ impl Verifier<'_> {
                     "closure.cap reads the environment (ptr) and yields the capture type",
                 )
             }
-            Op::IfaceNew => {
+            Op::IfaceNew | Op::IfaceLend => {
                 arity(1)?;
                 let Imm::Vtable(v) = inst.imm else {
                     return Err("missing vtable".into());
@@ -1016,7 +1016,14 @@ impl Verifier<'_> {
                         && res
                             .map(|r| matches!(m.types.kind(r), TyKind::Iface(i) if *i == vt.iface))
                             .unwrap_or(false),
-                    "iface.new wraps the vtable's data type",
+                    "iface.new and iface.lend wrap the vtable's data type",
+                )
+            }
+            Op::IfaceView => {
+                arity(1)?;
+                want(
+                    matches!(m.types.kind(t(0)), TyKind::Iface(_)) && res == Some(t(0)),
+                    "iface.view takes an interface value and yields the same type",
                 )
             }
             Op::IfaceIs => {
