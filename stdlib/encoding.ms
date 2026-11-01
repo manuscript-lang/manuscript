@@ -104,21 +104,16 @@ fn budget(max_bytes: Int?) Int:
 
 # Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
 export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
+    var out = StringBuilder()
+    var batch = BytesBuilder()
     let table = base64_table(url_safe)
     let bytes = data.values()
     let length = bytes.length()
-
-    # Small inputs skip the intermediate output list and final string builder.
-    if length <= 32: return base64_encode_small(bytes, table)
-
-    var out = StringBuilder()
     var index = 0
 
     # Batch at most 16 KiB of ASCII before converting it to text.
     while index < length:
         let end = if length - index > 12288: index + 12288 else: length
-
-        var batch = List[UInt8](reserve: (end - index + 2) / 3 * 4)
 
         while index < end:
             let remaining = length - index
@@ -139,35 +134,9 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
 
             index += 3
 
-        out.append(Bytes(batch).decode_utf8().get(""))
+        out.append(batch.drain().decode_utf8().get(""))
 
     return out.build()
-
-fn base64_encode_small(bytes: List[UInt8], table: List[UInt8]) String:
-    var out = BytesBuilder()
-    let length = bytes.length()
-    var index = 0
-
-    while index < length:
-        let remaining = length - index
-        var second = 0
-        var third = 0
-        if remaining > 1: second = bytes[index + 1].to_int()
-        if remaining > 2: third = bytes[index + 2].to_int()
-
-        let value = bytes[index].to_int() * 65536 + second * 256 + third
-        out.append(table[value / 262144 % 64])
-        out.append(table[value / 4096 % 64])
-
-        if remaining > 1: out.append(table[value / 64 % 64])
-        else: out.append(61)
-
-        if remaining > 2: out.append(table[value % 64])
-        else: out.append(61)
-
-        index += 3
-
-    return out.build().decode_utf8().get("")
 
 # Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
 export fn hex_decode(text: String, max_bytes: Int?) Bytes!EncodingError:
