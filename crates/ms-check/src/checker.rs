@@ -1397,7 +1397,7 @@ impl Checker {
         let defaults = if defaults.is_empty() {
             None
         } else {
-            Some(Rc::new(defaults))
+            Some(Rc::new(ParameterDefaults::new(defaults)))
         };
         function_with(ps, r, defaults)
     }

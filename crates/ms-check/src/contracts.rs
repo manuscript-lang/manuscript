@@ -476,12 +476,12 @@ impl Checker {
                     let mut merged: HashSet<Name> = t
                         .defaults
                         .as_ref()
-                        .map(|d| (**d).clone())
+                        .map(|d| d.iter().copied().collect())
                         .unwrap_or_default();
                     if let Some(allowed) = &op.ty.defaults {
                         merged.extend(allowed.iter().copied());
                     }
-                    t.defaults = Some(Rc::new(merged));
+                    t.defaults = Some(Rc::new(ParameterDefaults::new(merged)));
                 }
                 let declared = stdlib::operation_variables(&format!("{}/{}", contract.id, op.name));
                 let renamed: Subst = declared
