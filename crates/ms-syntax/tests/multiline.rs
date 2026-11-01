@@ -159,7 +159,7 @@ fn parts_of(dump: &str) -> &str {
 #[test]
 fn recovery_keeps_a_multi_line_import_path_in_one_chunk() {
     let file: Arc<str> = Arc::from("m.ms");
-    let source = "import f from r\"\"\"\n./lib.ms\n\"\"\"\nexport fn main() Int:\n    return 0\n";
+    let source = include_str!("data/multiline/import_path.ms");
     let (_, issues) = ms_syntax::parse_partial(&file, source);
     let messages: Vec<&str> = issues.iter().map(|d| d.message.as_str()).collect();
     assert_eq!(messages.len(), 1, "{messages:?}");
