@@ -721,6 +721,124 @@ impl ListKeyedExtremes[T] for List[T]:
 
         return self[at].clone()
 
+# Reverses the elements of `items` in [start, end) in place; used by `rotate`.
+fn reverse_span[T](var items: List[T], start: Int, end: Int) Unit:
+    var low = start
+    var high = end - 1
+
+    while low < high:
+        items.swap(low, high)
+        low += 1
+        high -= 1
+
+# In-place List operations that move elements and never copy them, so they apply to any element type.
+interface ListReshape[T]:
+    var fn retain(keep: fn(T) Bool) Unit
+    var fn compact_by(same: fn(T, T) Bool) Unit
+    var fn rotate(by: Int) Unit
+    var fn sort_by_key[K: Comparable](key: fn(T) K) Unit
+    fn is_sorted_by(compare: fn(T, T) Int) Bool
+
+impl ListReshape[T] for List[T]:
+    # Keeps only the elements for which `keep` is True, in place and in their original order; `keep` is called once per element in order.
+    # Dropped elements are dropped (closed when they are resources), kept ones are moved, not copied.
+    # Example: `var xs = [1, 2, 3, 4]` then `xs.retain(fn x: x % 2 == 0)` leaves `[2, 4]`.
+    var fn retain(keep: fn(T) Bool) Unit:
+        var kept = 0
+
+        for i in 0..self.length():
+            if keep(self[i]):
+                self.swap(kept, i)
+                kept += 1
+
+        self.splice(kept, self.length() - kept, List[T]())
+
+    # Collapses each run of consecutive elements that `same` calls equal into its first element, in place.
+    # `same(previous, next)` gets the last kept element and the candidate, so it runs once per element after the first.
+    # Example: `var xs = [1, 1, 2, 1]` then `xs.compact_by(fn a, b: a == b)` leaves `[1, 2, 1]`.
+    var fn compact_by(same: fn(T, T) Bool) Unit:
+        if self.length() < 2:
+            return
+
+        var kept = 1
+
+        for i in 1..self.length():
+            if not same(self[kept - 1], self[i]):
+                self.swap(kept, i)
+                kept += 1
+
+        self.splice(kept, self.length() - kept, List[T]())
+
+    # Moves every element `by` places toward the front in place, wrapping the first ones around to the end;
+    # a negative `by` rotates toward the back and any magnitude is reduced modulo the length. An empty list is unchanged.
+    # Example: `var xs = [1, 2, 3, 4]` then `xs.rotate(1)` leaves `[2, 3, 4, 1]`.
+    var fn rotate(by: Int) Unit:
+        let size = self.length()
+        if size < 2:
+            return
+
+        let shift = (by % size + size) % size
+        if shift == 0:
+            return
+
+        reverse_span(var self, 0, shift)
+        reverse_span(var self, shift, size)
+        reverse_span(var self, 0, size)
+
+    # Sorts in place, stably, by the natural order of `key(element)`; `key` runs on every comparison, so keep it cheap.
+    # Example: `words.sort_by_key(fn w: w.length())` orders by length.
+    var fn sort_by_key[K: Comparable](key: fn(T) K) Unit:
+        self.sort(fn a, b: key(a).compare(key(b)))
+
+    # Reports whether the list is already in the order `compare` defines: no element sorts after its successor.
+    # Empty and one-element lists are sorted.
+    fn is_sorted_by(compare: fn(T, T) Int) Bool:
+        for i in 1..self.length():
+            if compare(self[i - 1], self[i]) > 0:
+                return false
+        return true
+
+interface ListCompact[T: Equal]:
+    var fn compact() Unit
+
+impl ListCompact[T] for List[T]:
+    # Collapses each run of consecutive equal elements into its first element, in place; elements require Equal.
+    # Sort first to remove every duplicate; `distinct()` keeps the first of all equal elements without sorting.
+    # Example: `var xs = [1, 1, 2, 2, 1]` then `xs.compact()` leaves `[1, 2, 1]`.
+    var fn compact() Unit:
+        self.compact_by(fn a, b: a.equals(b))
+
+interface ListIsSorted[T: Comparable]:
+    fn is_sorted() Bool
+
+impl ListIsSorted[T] for List[T]:
+    # Reports whether the list is in ascending natural order, the order `sorted()` produces; empty and one-element lists are.
+    # Example: `[1, 2, 2, 5].is_sorted()` is `true`.
+    fn is_sorted() Bool:
+        return self.is_sorted_by(fn a, b: a.compare(b))
+
+interface ListCopiesKeyed[T: Clonable]:
+    fn sorted_by_key[K: Comparable](key: fn(T) K) List[T]
+    fn repeated(count: Int) List[T]
+
+impl ListCopiesKeyed[T] for List[T]:
+    # Returns a new list ordered by the natural order of `key(element)`; the receiver is unchanged and the sort is stable.
+    # `key` runs on every comparison. Example: `people.sorted_by_key(fn p: p.age)`.
+    fn sorted_by_key[K: Comparable](key: fn(T) K) List[T]:
+        return self.sorted(fn a, b: key(a).compare(key(b)))
+
+    # Returns a new list holding the elements `count` times over, in order; zero gives an empty list and a negative `count` faults.
+    # Example: `[1, 2].repeated(2)` is `[1, 2, 1, 2]`.
+    fn repeated(count: Int) List[T]:
+        if count < 0:
+            panic("List.repeated: count {count} must not be negative")
+
+        var out = List[T](reserve: self.length() * count)
+        for round in 0..count:
+            for x in self:
+                out.append(x.clone())
+        return out
+
 # Map operations written in Manuscript. A Map[T, U] has them only when T can be cloned for storage.
 interface MapUpdate[T: Hashable & Clonable, U: Clonable]:
     var fn update(key: T, initial: U, change: fn(U) U) Unit
@@ -731,7 +849,7 @@ impl MapUpdate[T, U] for Map[T, U]:
     var fn update(key: T, initial: U, change: fn(U) U) Unit:
         self.add(key.clone(), change(self.get_or(key, initial)))
 
-import Closeable from "@std/core.ms"
+import Closeable, panic from "@std/core.ms"
 import StringBuilder from "@std/string.ms"
 import (
     msrt_list_distinct,
@@ -754,3 +872,37 @@ impl MapCloseValues[U] for Map[T, U]:
             if var value = self[keys[i]]?:
                 value.close().get(none)
             i -= 1
+
+interface MapRemoveIf[T: Hashable & Clonable, U]:
+    var fn remove_if(predicate: fn(T, U) Bool) Unit
+
+impl MapRemoveIf[T, U] for Map[T, U]:
+    # Removes every entry for which `predicate(key, value)` is True, in place; the rest keep their insertion order.
+    # `predicate` is called once per entry in insertion order, before any removal.
+    # Example: `cache.remove_if(fn key, hits: hits == 0)` evicts unused entries.
+    var fn remove_if(predicate: fn(T, U) Bool) Unit:
+        var doomed = List[T]()
+        self.for_each(
+            fn key,
+            value:
+                if predicate(key, value):
+                    doomed.append(key.clone())
+        )
+        for key in doomed:
+            self.remove(key)
+
+interface SetRemoveIf[T: Hashable & Clonable]:
+    var fn remove_if(predicate: fn(T) Bool) Unit
+
+impl SetRemoveIf[T] for Set[T]:
+    # Removes every value for which `predicate` is True, in place; the rest keep their insertion order.
+    # Example: `seen.remove_if(fn n: n < 0)`.
+    var fn remove_if(predicate: fn(T) Bool) Unit:
+        var doomed = List[T]()
+        self.for_each(
+            fn value:
+                if predicate(value):
+                    doomed.append(value.clone())
+        )
+        for value in doomed:
+            self.remove(value)
