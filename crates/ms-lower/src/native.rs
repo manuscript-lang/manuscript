@@ -98,43 +98,6 @@ pub(crate) struct NArg {
     pub wrapped: bool,
 }
 
-/// Externs the compiler lowers itself, by runtime symbol, with the native identity the lowering arms and
-/// `natiface::HANDLE_FUNCTIONS` use. Every other extern is a plain runtime call marshalled from its signature.
-const HAND_LOWERED: &[(&str, &str)] = &[
-    ("msrt_html_parse", "html/parse"),
-    ("msrt_net_network", "net/network"),
-    ("msstd_fs_filesystem", "fs/filesystem"),
-    ("msstd_fs_posix", "fs/posix"),
-    ("msstd_fs_win32", "fs/win32"),
-    ("msstd_io_copy", "io/copy"),
-    ("msstd_io_files", "io/files"),
-    ("msstd_io_read_all", "io/read_all"),
-    ("msstd_io_read_line", "io/read_line"),
-    ("msstd_io_stderr", "io/stderr"),
-    ("msstd_io_stdin", "io/stdin"),
-    ("msstd_io_stdout", "io/stdout"),
-    ("msstd_io_terminal", "io/terminal"),
-    ("msstd_process_commands", "process/commands"),
-    ("msstd_random_draw_choice", "random/draw_choice"),
-    ("msstd_random_draw_float", "random/draw_float"),
-    ("msstd_random_draw_int", "random/draw_int"),
-    ("msstd_random_draw_shuffle", "random/draw_shuffle"),
-    ("msstd_random_draw_uuid", "random/draw_uuid"),
-    ("msstd_random_entropy", "random/host_entropy"),
-    ("msstd_process_control", "process/control"),
-    ("msstd_process_system", "process/system"),
-    ("msstd_time_clock", "time/clock"),
-    ("msstd_time_duration", "time/duration"),
-    ("msstd_time_wall_clock", "time/wall_clock"),
-];
-
-fn hand_lowered(symbol: &str) -> Option<&'static str> {
-    HAND_LOWERED
-        .iter()
-        .find(|(s, _)| *s == symbol)
-        .map(|(_, n)| *n)
-}
-
 /// The native identity of `@std/data/json.ms`'s typed calls, which its source module declares as externs.
 pub(crate) fn json_native(native: &str) -> &str {
     match native {
@@ -225,8 +188,8 @@ impl<'a> FnLower<'a> {
                 return self.codec_stream(args[0].val, &args[1..], decode, result);
             }
             // A symbol that is lowered by hand keeps its native identity.
-            if let Some(legacy) = hand_lowered(symbol) {
-                return self.native_function(e, view, legacy, params, sym);
+            if let Some(hand) = crate::stdnative::by_symbol(symbol) {
+                return self.native_function(e, view, hand.identity, params, sym);
             }
             // A bundled extern is a runtime symbol; its convention comes from the runtime's declaration.
             let args = self.native_args(view)?;
@@ -389,17 +352,10 @@ impl<'a> FnLower<'a> {
             "math/max" => self.math_extreme(view, true),
             "io/read_all" => self.stream_native(e, view, crate::streamloop::Loop::ReadAll),
             "io/copy" => self.stream_native(e, view, crate::streamloop::Loop::Copy),
-            other
-                if crate::natiface::HANDLE_FUNCTIONS
-                    .iter()
-                    .any(|f| f.0 == other) =>
-            {
-                let &(_, module, make, constant) = crate::natiface::HANDLE_FUNCTIONS
-                    .iter()
-                    .find(|f| f.0 == other)
-                    .expect("listed");
+            other if crate::stdnative::handle_of(other).is_some() => {
+                let handle = crate::stdnative::handle_of(other).expect("checked");
                 let (ity, want) = (self.ety(e), self.emty(e)?);
-                self.handle_interface(&ity, want, module, make, constant)
+                self.handle_interface(&ity, want, handle.module, handle.make, handle.constant)
             }
             other if other.starts_with("test/") => {
                 self.testing_native(e, view, &other["test/".len()..])
@@ -436,7 +392,6 @@ impl<'a> FnLower<'a> {
             native,
             "math/min"
                 | "math/max"
-                | "time/duration"
                 | "shared/share"
                 | "core/category"
                 | "math/bit_and"
@@ -492,12 +447,6 @@ impl<'a> FnLower<'a> {
             let payload = self.owned(args[0].val);
             let v = self.shared_new(payload, result);
             return Ok(Val { v, own: true });
-        }
-        if native == "time/duration" {
-            return Ok(Val {
-                v: self.borrow(args[0].val),
-                own: false,
-            });
         }
         if native == "collections/map_from_entries" {
             return self.map_from_entries(args[0].val, result);
