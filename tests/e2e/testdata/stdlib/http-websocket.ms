@@ -1,8 +1,9 @@
 import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
+import Bytes from "@std/bytes.ms"
 import http_result from "./support/http.ms"
 import headers, HttpMethod, buffered from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
-import http_client, request, serve, web_socket from "@std/net/net.ms"
+import connect, http_client, request, serve, web_socket from "@std/net/net.ms"
 import (
     HttpExchange,
     HttpError,
@@ -106,6 +107,35 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     let _sent = socket.send(data: "é🙂") | try expect_ok
     let message = (socket.receive() | try expect_ok).get()
     (not message.text or message.data != "é🙂".to_bytes()) | try expect_false
+
+fn upgrade_status(address: String, version: String, extra: String) String!:
+    let client = try connect(address, 2.seconds)
+    let key = "dGhlIHNhbXBsZSBub25jZQ=="
+    let request = (
+        "GET /ws {version}\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+        + "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: {key}\r\n{extra}\r\n"
+    )
+    try client.write(request, 2.seconds)
+
+    let reply = (try client.read(timeout: 2.seconds)).get(Bytes([]))
+    return ok(reply.decode_utf8().get("").split("\r\n").first().get(""))
+
+test "WebSocket upgrades need HTTP/1.1 and one key":
+    let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
+    let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
+    let address = server.address()
+    try expect_equal(
+        try upgrade_status(address, "HTTP/1.1", ""), "HTTP/1.1 101 Switching Protocols"
+    )
+    try expect_equal(
+        try upgrade_status(address, "HTTP/1.0", ""), "HTTP/1.1 400 Bad Request"
+    )
+    try expect_equal(
+        try upgrade_status(
+            address, "HTTP/1.1", "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+        ),
+        "HTTP/1.1 400 Bad Request"
+    )
 
 fn report_host(exchange: HttpExchange) Unit!HttpError:
     let hosts = exchange.headers().values("Host")

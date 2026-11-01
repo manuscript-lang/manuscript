@@ -544,6 +544,11 @@ impl Exchange {
             return Err(self.upgrade_h2(&request, &options));
         }
         let deadline = self.deadline();
+        // RFC 6455 section 4.2.1: the opening handshake is an HTTP/1.1 (or later) request.
+        if self.st.borrow().minor == 0 {
+            let rejected = handshake::Rejected::new(400, "websocket: upgrade needs HTTP/1.1");
+            return Err(self.reject(rejected, deadline));
+        }
         match handshake::accept(&request, &options) {
             Err(rejected) => Err(self.reject(rejected, deadline)),
             Ok(accepted) => {
