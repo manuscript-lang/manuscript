@@ -212,6 +212,53 @@ pub fn editor_actions(
             ));
         }
     }
+    // The checker's machine-applicable fixes (misspellings, `let` to `var`,
+    // conversions), the same edits `ms check --fix` applies. Import fixes and
+    // redundant-prelude removal have their own actions.
+    for issue in &checked.diagnostics {
+        let Some(m) = &module else { break };
+        let Some(fix) = &issue.fix else { continue };
+        if issue.file.as_ref() != m.file.as_str()
+            || issue.code() == "MS2003"
+            || fix.replacement.starts_with("import ")
+        {
+            continue;
+        }
+        let fix_range = Range {
+            start: text::position(&d.text, fix.pos.offset as usize),
+            end: text::position(&d.text, fix.end.offset as usize),
+        };
+        let start = text::position(&d.text, issue.pos.offset as usize);
+        let r = Range {
+            start,
+            end: issue.end.map_or(fix_range.end, |e| {
+                text::position(&d.text, e.offset as usize)
+            }),
+        };
+        if !eligible(r) {
+            continue;
+        }
+        let title = if fix.replacement.is_empty() {
+            "Remove the flagged text".to_string()
+        } else if fix.pos.offset == fix.end.offset {
+            format!("Insert `{}`", fix.replacement)
+        } else {
+            format!("Replace with `{}`", fix.replacement)
+        };
+        let diagnostic = obj([
+            ("range", r.json()),
+            ("message", issue.message.clone().into()),
+            ("code", issue.code().into()),
+            ("source", "manuscript".into()),
+        ]);
+        result.push(action_for(
+            d,
+            &title,
+            "quickfix",
+            vec![edit(fix_range, &fix.replacement)],
+            vec![diagnostic],
+        ));
+    }
     let mut project: Option<Vec<(String, String)>> = None;
     for issue in &checked.diagnostics {
         let Some(m) = &module else { break };

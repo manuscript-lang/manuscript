@@ -15,6 +15,8 @@ test "raw monotonic nanoseconds share the typed process uptime origin":
     let before = try uptime()
     let reading = nanoseconds(monotonic_time())
     let after = try uptime()
+    try expect_false(before.compare(nanoseconds(0)) < 0)
+    try expect_false(after.compare(nanoseconds(600000000000)) > 0)
     try expect_false(reading.compare(before) < 0 or reading.compare(after) > 0)
 
 test "closed codec strings reject spelling changes with their domain errors":
