@@ -365,7 +365,7 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     /// With `MS_COUNT_STR` set at compile time, reports each executed string drop (`kind` 0) or copy
     /// (1) with its capacity word to the counting runtime (`ms-rt` feature `stats`), which prints
-    /// the dynamic totals at exit. `bench/perf/copy-report.sh` counts the static sites.
+    /// the dynamic totals at exit. `bench/tools/copy_report.ms` counts the static sites.
     fn count_str(&mut self, kind: i64, cap: Value) {
         if !self.g.count_str {
             return;

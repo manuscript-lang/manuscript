@@ -33,7 +33,7 @@
             "file": "testcollectionpreludeandshadowing-18.ms",
             "line": 5,
             "column": 1,
-            "offset": 212
+            "offset": 224
           },
           "replacement": ""
         }
@@ -46,26 +46,26 @@
           "file": "testcollectionpreludeandshadowing-18.ms",
           "line": 5,
           "column": 8,
-          "offset": 219
+          "offset": 231
         },
         "end": {
           "file": "testcollectionpreludeandshadowing-18.ms",
           "line": 5,
           "column": 11,
-          "offset": 222
+          "offset": 234
         },
         "fix": {
           "position": {
             "file": "testcollectionpreludeandshadowing-18.ms",
             "line": 5,
             "column": 1,
-            "offset": 212
+            "offset": 224
           },
           "end": {
             "file": "testcollectionpreludeandshadowing-18.ms",
             "line": 6,
             "column": 1,
-            "offset": 250
+            "offset": 274
           },
           "replacement": ""
         }
@@ -78,14 +78,14 @@
           "file": "testcollectionpreludeandshadowing-18.ms",
           "line": 5,
           "column": 8,
-          "offset": 219
+          "offset": 231
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testcollectionpreludeandshadowing-18.ms:4:8: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n   |\n 4 | import Set from \"@std/collections.ms\"\n   |        ^^^\n<DIR>/testcollectionpreludeandshadowing-18.ms:5:8: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n   |\n 5 | import Set from \"@std/collections.ms\"\n   |        ^^^\n<DIR>/testcollectionpreludeandshadowing-18.ms:5:8: resolution: duplicate or intrinsic name Set; this name is already declared, imported, or built in, so rename one of them\n   |\n 5 | import Set from \"@std/collections.ms\"\n   |        ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testcollectionpreludeandshadowing-18.ms:4:8: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n   |\n 4 | import Set from \"@std/collections/collections.ms\"\n   |        ^^^\n<DIR>/testcollectionpreludeandshadowing-18.ms:5:8: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n   |\n 5 | import Set from \"@std/collections/collections.ms\"\n   |        ^^^\n<DIR>/testcollectionpreludeandshadowing-18.ms:5:8: resolution: duplicate or intrinsic name Set; this name is already declared, imported, or built in, so rename one of them\n   |\n 5 | import Set from \"@std/collections/collections.ms\"\n   |        ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

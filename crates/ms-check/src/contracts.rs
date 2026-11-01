@@ -814,7 +814,7 @@ impl Checker {
             self.method_visible(m)
                 && m.contract
                     .as_ref()
-                    .is_some_and(|c| c.is_source_type("@std/json.ms", "JsonEncode"))
+                    .is_some_and(|c| c.is_source_type("@std/data/json.ms", "JsonEncode"))
                 && {
                     let mut s = Subst::new();
                     unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
@@ -1259,6 +1259,11 @@ impl Checker {
                 }
                 for op in def.operations.borrow().clone() {
                     self.check_declared(&op.ty, d.pos(), s.export);
+                    for v in stdlib::operation_variables(&format!("{}/{}", t.id, op.name)) {
+                        for b in v.bounds() {
+                            self.check_declared(&b, d.pos(), s.export);
+                        }
+                    }
                 }
             }
             for v in s.variables() {

@@ -1,5 +1,5 @@
-import PriorityQueue from "@std/queue.ms"
-import expect_equal, expect_false, expect_true from "@std/test.ms"
+import PriorityQueue from "@std/collections/queue.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
 type Job:
     priority: Int

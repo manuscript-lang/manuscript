@@ -2,8 +2,8 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/runtime-1.ms
 import TextError from "@std/core.ms"
-import expect_equal from "@std/test.ms"
-import Decimal from "@std/decimal.ms"
+import expect_equal from "@std/test/test.ms"
+import Decimal from "@std/math/decimal.ms"
 
 fn amount() Decimal!TextError:
     return ok(12.50d)

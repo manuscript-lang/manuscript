@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import stdin, stdout, read_line from \"@std/io.ms\"\n\nfn run() Result[Unit, Error]:\n    let input = stdin()\n\n    while true:\n        let line = try read_line(input, max_bytes: 4096)\n\n        if let text = line:\n            try stdout().write(\"{text}\\n\")\n        else:\n            break\n\n    return stdout().flush()\n\nexport fn main() Int:\n    if run().is_error():\n        return 1\n\n    return 0\n"
+    "fmt": "import stdin, stdout, read_line from \"@std/io/io.ms\"\n\nfn run() Result[Unit, Error]:\n    let input = stdin()\n\n    while true:\n        let line = try read_line(input, max_bytes: 4096)\n\n        if let text = line:\n            try stdout().write(\"{text}\\n\")\n        else:\n            break\n\n    return stdout().flush()\n\nexport fn main() Int:\n    if run().is_error():\n        return 1\n\n    return 0\n"
   }
 }

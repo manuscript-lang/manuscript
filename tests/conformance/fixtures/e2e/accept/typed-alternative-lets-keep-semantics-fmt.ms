@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/typed-alternative-lets-keep-semantics.ms
 import TextError from "@std/core.ms"
-import expect_true from "@std/test.ms"
+import expect_true from "@std/test/test.ms"
 
 fn halve(n: Int) Int?:
     if n % 2 != 0:

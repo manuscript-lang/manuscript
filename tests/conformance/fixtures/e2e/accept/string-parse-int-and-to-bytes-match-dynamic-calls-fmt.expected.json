@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_true from \"@std/test.ms\"\n\nfn parsed(text: String) Int:\n    match text.parse_int():\n        v:\n            return v\n        none:\n            return 0 - 1\n\ntest \"parse_int\":\n    try expect_true((parsed(text: \"123\") == 123))\n    try expect_true((parsed(text: \"-7\") == 0 - 7 and parsed(text: \"+8\") == 8))\n    try expect_true(\n        (\n            parsed(text: \"\") == 0 - 1\n            and parsed(text: \"-\") == 0 - 1\n            and parsed(text: \"1x\") == 0 - 1\n        )\n    )\n    try expect_true((parsed(text: \"99999999999999999999\") == 0 - 1))\n    try expect_true((\"héllo\".to_bytes().length() == 6))\n"
+    "fmt": "import expect_true from \"@std/test/test.ms\"\n\nfn parsed(text: String) Int:\n    match text.parse_int():\n        v:\n            return v\n        none:\n            return 0 - 1\n\ntest \"parse_int\":\n    try expect_true((parsed(text: \"123\") == 123))\n    try expect_true((parsed(text: \"-7\") == 0 - 7 and parsed(text: \"+8\") == 8))\n    try expect_true(\n        (\n            parsed(text: \"\") == 0 - 1\n            and parsed(text: \"-\") == 0 - 1\n            and parsed(text: \"1x\") == 0 - 1\n        )\n    )\n    try expect_true((parsed(text: \"99999999999999999999\") == 0 - 1))\n    try expect_true((\"héllo\".to_bytes().length() == 6))\n"
   }
 }

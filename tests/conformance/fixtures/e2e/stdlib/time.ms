@@ -1,7 +1,7 @@
 # conform: tags=control-flow,interpolation,modules,stdlib-testing,stdlib-time,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/time.ms
-import expect_equal, expect_false, fail from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test/test.ms"
 import (
     timestamp,
     parse_timestamp,
@@ -9,10 +9,10 @@ import (
     local_zone,
     Timestamp,
     TimeError,
-    clock,
-    wall_clock,
+    monotonic,
+    now,
     sleep
-) from "@std/time.ms"
+) from "@std/os/time.ms"
 
 test "timestamps preserve nanoseconds and shift across epoch":
     let epoch = try timestamp(0, 123)
@@ -31,13 +31,12 @@ test "time rejects invalid timestamps and out of range nanoseconds":
     try expect_equal(timestamp(0, 1000000000), out_of_range)
 
 test "host clocks are usable and zero sleep completes":
-    let monotonic = clock()
-    let before = monotonic.now()
+    let before = monotonic()
     sleep(0.milliseconds)
-    try expect_false(monotonic.now() < before)
+    try expect_false(monotonic() < before)
 
-    let now = wall_clock().now()
-    try expect_equal((try parse_timestamp(now.to_string())), now)
+    let current = now()
+    try expect_equal((try parse_timestamp(current.to_string())), current)
 
 test "parse_timestamp reports offsets that leave years 1 through 9999 as out of range":
     let out_of_range: Timestamp!TimeError = error(TimeError.OutOfRange)

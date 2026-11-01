@@ -1,8 +1,8 @@
 # conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,interpolation,lists,modules,mutation,optional,records,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/argument-labels.ms
-import expect_equal, expect_true from "@std/test.ms"
-import sqrt from "@std/math.ms"
+import expect_equal, expect_true from "@std/test/test.ms"
+import sqrt from "@std/math/math.ms"
 
 fn increment(value: Int) Int:
     return value + 1

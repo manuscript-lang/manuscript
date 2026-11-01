@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: `Network.request` and `HttpClient` are complete transports (pooling, redirects, TLS, gzip, cookies, limits), but a plain GET-and-parse-JSON takes a `Network`, a `HttpClientOptions`, a `headers()`, an `HttpMethod`, a `Result` unwrap, a UTF-8 decode, and a `json.parse`.
-- Change: a new `@std/fetch.ms`, written entirely in Manuscript on top of `@std/http.ms`, `@std/net.ms`, and `@std/json.ms`. One call for the common case, a reusable `Fetcher` for pooling and a restricted network.
+- Change: a new `@std/net/fetch.ms`, written entirely in Manuscript on top of `@std/net/http.ms`, `@std/net/net.ms`, and `@std/data/json.ms`. One call for the common case, a reusable `Fetcher` for pooling and a restricted network.
 - Cost: no Rust, no `bindings.json` change, no new language feature. About 250 lines of `.ms`.
 - Decision requested: sign-off on the names and defaults below.
 
@@ -23,7 +23,7 @@
 Reuse the server's types. `HttpMethod`, `HttpHeaders`, `HttpError`, `Bytes` and `Duration` are exactly the ones `HttpRequest` and `HttpResponse` use, so a handler and a client share vocabulary.
 
 ```manuscript
-import fetch, FetchOptions, json_body from "@std/fetch.ms"
+import fetch, FetchOptions, json_body from "@std/net/fetch.ms"
 
 type User:
     name: String
@@ -40,7 +40,7 @@ fn create(user: User) Result[Int, FetchError]:
     return ok(try response.error_for_status().status)
 ```
 
-API (all in `@std/fetch.ms`):
+API (all in `@std/net/fetch.ms`):
 
 - `fetch(url, options: Optional[FetchOptions] = none) -> Result[FetchResponse, FetchError]`: one buffered call on a one-shot client, closed before returning.
 - `fetcher(network = network(), options = FetchOptions()) -> Result[Fetcher, FetchError]` and `Fetcher.fetch(url, options)` (interface defaults must be `none`, so `options` is `Optional[FetchOptions]`), `Fetcher.stream(url, options) -> Result[ResponseBody, FetchError]`, `Fetcher.close()`. `Fetcher` holds an `HttpClient`, so connections are reused and the `Network`'s restrictions apply to every request and redirect.
@@ -49,7 +49,7 @@ API (all in `@std/fetch.ms`):
   - `body: FetchBody = FetchBody.Empty`.
   - `timeout: Optional[Duration] = some(seconds(30))` and `max_response_bytes: Optional[Int] = some(16 MiB)`; pass `none` to remove either. A fetch is bounded by default, unlike the raw transport.
   - `FetcherOptions` (client creation): `max_redirects = some(20)`, `decompress = True`, `cookies = False`, `tls`.
-- `FetchBody`: `Empty`, `Text(String)`, `Raw(Bytes)`, `Stream(ReadStream)`. `json_body[T](value) -> Result[FetchBody, FetchError]` stringifies with `@std/json.ms` and records the `application/json` content type; `fetch` sets `Content-Type` only when the caller's headers lack one (`text/plain; charset=utf-8` for `Text`, `application/octet-stream` for `Raw`).
+- `FetchBody`: `Empty`, `Text(String)`, `Raw(Bytes)`, `Stream(ReadStream)`. `json_body[T](value) -> Result[FetchBody, FetchError]` stringifies with `@std/data/json.ms` and records the `application/json` content type; `fetch` sets `Content-Type` only when the caller's headers lack one (`text/plain; charset=utf-8` for `Text`, `application/octet-stream` for `Raw`).
 - `FetchResponse`: `head: HttpResponseMetadata` and `body: Bytes` (the existing `ClientResponse` shape, no third shape), with `ok() -> Bool` (200 to 299), `text() -> Result[String, FetchError]` (UTF-8), `read_json[T](response)` is a free function because source methods cannot declare type parameters. `check_status(response) -> Result[FetchResponse, FetchError]` is a free function that consumes the response (a method cannot return its owned receiver).
 - `FetchError`: `Http(HttpError)`, `Io(IoError)`, `Status(code: Int)` (only from `check_status`), `InvalidText`, `Json(JsonError)`; implements `Error`.
 - Body drain is written in Manuscript over `ResponseBody.read`: it counts bytes itself and returns `Http(LimitExceeded)` past `max_response_bytes`; a read error after the deadline maps to `Http(Timeout)`, otherwise `Io`. No Rust change.

@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/try-statement.ms
 import TextError from "@std/core.ms"
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn parse(n: Int) Int!TextError:
     if n < 0:

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,generics,interfaces,interpolation,lists,match,modules,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/result-argument-inference.ms
-import expect_equal, expect_false, fail from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test/test.ms"
 
 type Failure:
     code: Int

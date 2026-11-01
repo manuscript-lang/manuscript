@@ -40,7 +40,7 @@ fn fix_renames_misspellings_and_adds_imports() {
     assert!(text.contains("applied 3 fixes in 1 file"), "{text}");
     let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
     assert!(
-        fixed.starts_with("import stdout from \"@std/io.ms\"\n"),
+        fixed.starts_with("import stdout from \"@std/io/io.ms\"\n"),
         "{fixed}"
     );
     assert!(fixed.contains("return sum\n"), "{fixed}");
@@ -83,7 +83,7 @@ fn fix_repairs_habits_and_mutation_and_decimal_import() {
     assert_eq!(status, Some(0), "{text}");
     let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
     assert!(
-        fixed.starts_with("import Decimal from \"@std/decimal.ms\"\n"),
+        fixed.starts_with("import Decimal from \"@std/math/decimal.ms\"\n"),
         "{fixed}"
     );
     assert!(fixed.contains("return Red\n"), "{fixed}");
@@ -256,6 +256,6 @@ fn unknown_standard_module_suggests_the_extended_name() {
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("a.ms"), "import x from \"@std/testing.ms\"\n").unwrap();
     let (_, text) = ms(&["check", "a.ms"], &dir);
-    assert!(text.contains("did you mean '@std/test.ms'?"), "{text}");
+    assert!(text.contains("did you mean '@std/test/test.ms'?"), "{text}");
     let _ = std::fs::remove_dir_all(&dir);
 }

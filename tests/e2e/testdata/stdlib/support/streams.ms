@@ -1,4 +1,4 @@
-import ReadStream, WriteStream, IoError from "@std/io.ms"
+import ReadStream, WriteStream, IoError from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 
 export type MemoryStream:

@@ -1,7 +1,7 @@
 # conform: tags=formatter,lists,modules,mutation,optional,parser,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/string-split-replace-join-match-dynamic-calls.ms
-import expect_true from "@std/test.ms"
+import expect_true from "@std/test/test.ms"
 
 test "omitted and supplied caps":
     try expect_true(("a,b,c".split(separator: ",").length() == 3))

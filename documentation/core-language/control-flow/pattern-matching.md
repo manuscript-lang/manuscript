@@ -114,7 +114,7 @@ Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return c
 A contract view keeps its concrete receiver. `ConcreteType(receiver)` recovers it for a particular implementation, and `_:` handles the rest. This is not a constructor call.
 
 ```text
-import JsonError from "@std/json.ms"
+import JsonError from "@std/data/json.ms"
 
 fn describe(cause: Error) String:
     match cause:

@@ -1,15 +1,11 @@
 //! Review and diagram must be usable through the installed CLI surface.
 
-use ms_json::Json;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+mod common;
 
-fn scratch(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("ms-review-diagram-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
-}
+use common::scratch;
+use ms_json::Json;
+use std::path::Path;
+use std::process::{Command, Output};
 
 fn ms(dir: &Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_ms"))
@@ -211,7 +207,7 @@ fn json_project_reports_are_complete_while_text_stays_bounded() {
 #[test]
 fn standard_library_is_a_boundary_rather_than_the_project_surface() {
     let dir = scratch("boundaries");
-    std::fs::write(dir.join("main.ms"), "import arguments from \"@std/process.ms\"\n\nexport fn main() Int:\n    return arguments().length()\n").unwrap();
+    std::fs::write(dir.join("main.ms"), "import arguments from \"@std/os/process.ms\"\n\nexport fn main() Int:\n    return arguments().length()\n").unwrap();
     let report = json(&ms(&dir, &["review", "main.ms", "--json"]));
     assert_eq!(
         report.get("result").unwrap().as_str(),
@@ -235,7 +231,7 @@ fn standard_library_is_a_boundary_rather_than_the_project_surface() {
     assert!(
         calls
             .pretty(ms_json::Escape::Plain)
-            .contains("@std/process.ms#fn#arguments")
+            .contains("@std/os/process.ms#fn#arguments")
     );
     let ascii = ms(&dir, &["diagram", "main.ms"]);
     let ascii = String::from_utf8_lossy(&ascii.stdout);
@@ -243,7 +239,7 @@ fn standard_library_is_a_boundary_rather_than_the_project_surface() {
         ascii.lines().filter(|line| line.ends_with("[fn]")).count(),
         1
     );
-    assert!(ascii.contains("@std/process.ms#fn#arguments"));
+    assert!(ascii.contains("@std/os/process.ms#fn#arguments"));
     let mermaid = ms(&dir, &["diagram", "main.ms", "--format", "mermaid"]);
     let mermaid = String::from_utf8_lossy(&mermaid.stdout);
     assert!(mermaid.contains("arguments"));

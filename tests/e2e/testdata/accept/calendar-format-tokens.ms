@@ -1,5 +1,5 @@
-import timestamp, TimeError from "@std/time.ms"
-import expect_equal from "@std/test.ms"
+import timestamp, TimeError from "@std/os/time.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "calendar format keeps token boundaries and literal text":
     let moment = timestamp(1710073815, 250999999).get()

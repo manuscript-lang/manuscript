@@ -6,5 +6,5 @@ Decision: `Set(list)` constructs from a list; Map and Set iterate in insertion o
 
 
 Apply when: adding collection constructors, conversions (`to_set`), or fixtures.
-Evidence: commit c025937b, [collections.ms](../../stdlib/collections.ms).
+Evidence: commit c025937b, [collections.ms](../../stdlib/collections/collections.ms).
 Verify: `Set([3, 1, 2])` iterates 3, 1, 2.

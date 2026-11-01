@@ -1,9 +1,9 @@
 # conform: tags=strings,numbers,lists,interpolation,tier-stdlib
 # conform: phase=run
 # conform: origin=perf fast paths: builder append fusion, chars, parse_int, sort
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import StringBuilder from "@std/string.ms"
-import parse_int from "@std/math.ms"
+import parse_int from "@std/math/math.ms"
 
 fn compare(left: Int, right: Int) Int:
     if left < right: return -1

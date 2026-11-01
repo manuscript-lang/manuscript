@@ -3,7 +3,7 @@
 ## Summary
 
 - `for i in range(0, n)` needs an import line and a call; `for i in 0..n` is shorter and removes the import.
-- Add `a..b` as an exclusive Int range expression that means exactly `range(a, b)` from `@std/collections.ms`.
+- Add `a..b` as an exclusive Int range expression that means exactly `range(a, b)` from `@std/collections/collections.ms`.
 - No new type, keyword, step syntax, or runtime entry point; the existing counter-loop lowering applies unchanged.
 - Decision requested: approve exclusive `..`, expression-wide use, and no step or inclusive form.
 
@@ -13,7 +13,7 @@ Proposal, 2026-10-24, checked against `main`. Direction: "lets add support for 0
 
 ## Problem
 
-- Counting needs `from "@std/collections.ms" import range` plus `range(0, n)`. Verified: without the import, `ms check` reports `unknown binding range; add: from "@std/collections.ms" import range`.
+- Counting needs `from "@std/collections/collections.ms" import range` plus `range(0, n)`. Verified: without the import, `ms check` reports `unknown binding range; add: from "@std/collections/collections.ms" import range`.
 - `0..5` is rejected today: `parse: Manuscript has no '..' range; to count, \`for i in range(0, 10):\` ...` (`crates/ms-syntax/src/parser.rs`).
 - `documentation/core-language/control-flow/loops.md` states "no range syntax" and that `for index in 0..5:` is unsupported.
 - Non-goals: steps, descending ranges, inclusive ranges, lazy range values, iteration protocols.
@@ -32,7 +32,7 @@ Proposal, 2026-10-24, checked against `main`. Direction: "lets add support for 0
 Intended examples (checked after implementation):
 
 ```manuscript
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 fn main() Unit:
     var total = 0

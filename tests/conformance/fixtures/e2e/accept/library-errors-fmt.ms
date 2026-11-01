@@ -1,9 +1,9 @@
 # conform: tags=aliasing,alternatives,control-flow,formatter,generics,interfaces,interpolation,lists,match,modules,parser,records,stdlib-encoding,stdlib-fs,stdlib-io,stdlib-json,stdlib-log,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/library-errors.ms
-import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
-import parse, JsonError, JsonLimits from "@std/json.ms"
-import EncodingError, hex_decode from "@std/encoding.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
+import parse, JsonError, JsonLimits from "@std/data/json.ms"
+import EncodingError, hex_decode from "@std/data/encoding.ms"
 
 type ApplicationError:
     case Json(cause: JsonError)
@@ -47,7 +47,7 @@ test "explicit error mapping preserves the cause":
     decode_bad_input() | try expect_equal(expected)
 
 # Error is an ordinary operation contract. Custom errors use ordinary impl blocks.
-import IoError from "@std/io.ms"
+import IoError from "@std/io/io.ms"
 
 type CustomError:
     detail: String
@@ -301,9 +301,9 @@ test "standard error diagnostics work directly":
     (cause.message() != "read failed" or message() != "read failed") | try expect_false
     JsonError.InvalidData.message() | try expect_equal("JSON: invalid data")
 
-import FileSystemError from "@std/fs.ms"
+import FileSystemError from "@std/os/fs.ms"
 import LogError from "@std/log.ms"
-import CommandError from "@std/process.ms"
+import CommandError from "@std/os/process.ms"
 
 test "standard diagnostics preserve messages and wrapped causes":
     let sink = LogError.Io(IoError.Failed("sink diagnostic"))
@@ -358,14 +358,13 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
     let view = Label[String](Labelled("separate handler"))
     match_label(view) | try expect_equal("separate handler")
 
-import filesystem from "@std/fs.ms"
+import read_file, remove, stat, temporary_directory from "@std/os/fs.ms"
 
 fn check_missing_file() Unit!:
-    let fs = filesystem()
-    let directory = try fs.temporary_directory("manuscript-errors-")
+    let directory = try temporary_directory("manuscript-errors-")
     let missing = "{directory}/missing-secret-token"
 
-    let cause = match fs.read_file(path: missing):
+    let cause = match read_file(path: missing):
         ok(_):
             return fail(message: "missing file read succeeded")
         error(cause): cause
@@ -385,7 +384,7 @@ fn check_missing_file() Unit!:
         _:
             return fail(message: "missing file changed error case")
 
-    match fs.stat(path: missing, follow_links: true):
+    match stat(path: missing, follow_links: true):
         ok(_):
             return fail(message: "missing file stat succeeded")
         error(stat_cause):
@@ -393,7 +392,7 @@ fn check_missing_file() Unit!:
                 stat_cause.message(), "filesystem: file or directory not found"
             )
 
-    let removed = try fs.remove(path: directory, recursive: false)
+    let removed = try remove(path: directory, recursive: false)
     return ok(unit)
 
 test "missing file diagnostics preserve the filesystem case":

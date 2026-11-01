@@ -1,4 +1,4 @@
-import expect_contains, expect_fault, expect_true from "@std/test.ms"
+import expect_contains, expect_fault, expect_true from "@std/test/test.ms"
 import StringBuilder from "@std/string.ms"
 
 type Folded:

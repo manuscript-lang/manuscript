@@ -1,4 +1,4 @@
-//! `@std/html.ms` `parse`: the runtime parses into a tree handle (`msrt_html_*`, see
+//! `@std/data/html.ms` `parse`: the runtime parses into a tree handle (`msrt_html_*`, see
 //! `ms-std-html`) and one generated function per `HtmlNode` type copies it into the sum type.
 //! `escape` and `unescape` are plain runtime functions.
 

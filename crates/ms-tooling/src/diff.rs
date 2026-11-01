@@ -189,21 +189,12 @@ fn parse_range(text: &str) -> Result<(i64, i64), String> {
         Some((a, b)) => (a, Some(b)),
         None => (text, None),
     };
-    let start = atoi(first).ok_or_else(malformed)?;
+    let start = first.parse().map_err(|_| malformed())?;
     let length = match second {
-        Some(s) => atoi(s).ok_or_else(malformed)?,
+        Some(s) => s.parse().map_err(|_| malformed())?,
         None => 1,
     };
     Ok((start, length))
-}
-
-/// Go's `strconv.Atoi`: optional sign, then ASCII digits only.
-pub(crate) fn atoi(text: &str) -> Option<i64> {
-    let digits = text.strip_prefix(['+', '-']).unwrap_or(text);
-    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-        return None;
-    }
-    text.parse().ok()
 }
 
 /// Reconstructs the base file from the head file and the hunks. Every context

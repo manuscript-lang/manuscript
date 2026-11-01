@@ -1,3 +1,5 @@
+import msrt_logcore_object_text from "@std/internal/logcore.ms"
+
 extern fn msrt_logcore_child(value: LogState, fields: String) LogState!LogCoreError
 
 extern fn msrt_logcore_enabled(value: LogState, level: Int) Bool
@@ -32,8 +34,6 @@ extern fn msrt_logcore_shut(value: LogGate) Unit
 extern fn msrt_logcore_is_shut(value: LogGate) Bool
 
 extern fn msrt_logcore_new_gate() LogGate
-
-extern fn msrt_logcore_object_text(text: String) String
 
 # Encoder state behind `@std/log.ms`. Import that module instead; these declarations are its native base.
 # Errors the encoder returns; `@std/log.ms` maps them to `LogError`.

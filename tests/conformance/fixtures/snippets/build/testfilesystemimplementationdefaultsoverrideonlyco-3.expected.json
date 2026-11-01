@@ -9,34 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type FileSystem; add: import FileSystem from \"@std/fs.ms\"",
+        "message": "unknown type FileSystem; declare it with 'type FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it",
         "position": {
           "file": "testfilesystemimplementationdefaultsoverrideonlyco-3.ms",
           "line": 9,
           "column": 6,
           "offset": 319
-        },
-        "fix": {
-          "position": {
-            "file": "testfilesystemimplementationdefaultsoverrideonlyco-3.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "end": {
-            "file": "testfilesystemimplementationdefaultsoverrideonlyco-3.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "replacement": "import FileSystem from \"@std/fs.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testfilesystemimplementationdefaultsoverrideonlyco-3.ms:9:6: resolution: unknown type FileSystem; add: import FileSystem from \"@std/fs.ms\"\n   |\n 9 | impl FileSystem for Override:\n   |      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testfilesystemimplementationdefaultsoverrideonlyco-3.ms:9:6: resolution: unknown type FileSystem; declare it with 'type FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it\n   |\n 9 | impl FileSystem for Override:\n   |      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -1,4 +1,4 @@
-import stdin, stdout, read_line from "@std/io.ms"
+import stdin, stdout, read_line from "@std/io/io.ms"
 
 # True when s is a non-empty run of ASCII digits.
 fn all_digits(s: String) Bool:
@@ -34,7 +34,7 @@ fn parse_amount(s: String) Int?:
         else:
             cents = cents + digits
 
-    return some(cents)
+    return cents
 
 type Record:
     category: String
@@ -73,7 +73,7 @@ fn parse_line(line: String) Record?:
     if cents.is_none():
         return none
 
-    return some(Record(category: category, cents: cents.get()))
+    return Record(category: category, cents: cents.get())
 
 fn two_digits(n: Int) String:
     if n < 10:

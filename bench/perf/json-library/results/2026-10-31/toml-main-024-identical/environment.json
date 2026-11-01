@@ -1,0 +1,108 @@
+{
+  "command": [
+    "bench/perf/toml-control-scan/file-run.py",
+    "--before",
+    ".artifacts/integrated-024/same-worktree/toml-before",
+    "--after",
+    ".artifacts/integrated-024/same-worktree/toml-after",
+    "--rust",
+    "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/file",
+    "--error-before",
+    ".artifacts/integrated-024/same-worktree/error-before",
+    "--error-after",
+    ".artifacts/integrated-024/same-worktree/error-after",
+    "--writer-before",
+    ".artifacts/integrated-024/same-worktree/writer-before",
+    "--writer-after",
+    ".artifacts/integrated-024/same-worktree/writer-after",
+    "--read-before",
+    ".artifacts/integrated-024/same-worktree/read-before",
+    "--read-after",
+    ".artifacts/integrated-024/same-worktree/read-after",
+    "--rust-writer",
+    "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/file-writer",
+    "--rust-read",
+    "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/read",
+    "--output",
+    ".artifacts/integrated-024/same-worktree/full",
+    "--revision",
+    "024af5e2e544f7c9d2ccccc1c333b92b70db0ef3"
+  ],
+  "revision": "024af5e2e544f7c9d2ccccc1c333b92b70db0ef3",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "before_toml_sha256": "79b719c6bfab6b57566bebb644b7523c172f74d610dd2778e051b76c674ab522",
+  "after_toml_sha256": "79b719c6bfab6b57566bebb644b7523c172f74d610dd2778e051b76c674ab522",
+  "binaries": {
+    "before": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/toml-before",
+      "sha256": "bad6d0750f592c8afa71f1616dafa22df135fcf67949140a2f0e96e969de5647"
+    },
+    "after": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/toml-after",
+      "sha256": "bad6d0750f592c8afa71f1616dafa22df135fcf67949140a2f0e96e969de5647"
+    },
+    "rust": {
+      "path": "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/file",
+      "sha256": "db46b21bb7225895b0bf97f429033764eb02e2a6a19ee6389e9f358f662aeed7"
+    }
+  },
+  "error_binaries": {
+    "before": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/error-before",
+      "sha256": "70a403a95ccaaa52e780fd8e4a2d43e5ba3ac3b22df78a7bf8d168de22795b1d"
+    },
+    "after": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/error-after",
+      "sha256": "70a403a95ccaaa52e780fd8e4a2d43e5ba3ac3b22df78a7bf8d168de22795b1d"
+    }
+  },
+  "writer_binaries": {
+    "before": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/writer-before",
+      "sha256": "7250f330fd2460c9a7305298ba75383877396183644625b0ba9e8209a00e9123"
+    },
+    "after": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/writer-after",
+      "sha256": "7250f330fd2460c9a7305298ba75383877396183644625b0ba9e8209a00e9123"
+    },
+    "rust": {
+      "path": "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/file-writer",
+      "sha256": "1aad86292f5c3d8ad30e88731ef49122fa441522a45beae583cb3de93c77b485"
+    }
+  },
+  "read_binaries": {
+    "before": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/read-before",
+      "sha256": "d814a0052f474256eaf878a0b5d50b55b54dad9975bd3c7e9325abb7936d584e"
+    },
+    "after": {
+      "path": "/workspace/json-perf/.artifacts/integrated-024/same-worktree/read-after",
+      "sha256": "d814a0052f474256eaf878a0b5d50b55b54dad9975bd3c7e9325abb7936d584e"
+    },
+    "rust": {
+      "path": "/workspace/toml-scan/bench/perf/toml-control-scan/rust/target/release/read",
+      "sha256": "dd743861f8f37ab8e5bc316b425034bcdf0d7a437bc77d2d93173da751c139a3"
+    }
+  },
+  "source_and_runtime_sha256": {
+    "bench/perf/toml-control-scan/file.ms": "67a34a271bad946a300786a0383ac5ad1a14a2a2c12ffd6a7a423053949bffa7",
+    "bench/perf/toml-control-scan/file-error.ms": "78f35a3599c26400828da932322123f204ab47155b61d45503af98de9500594d",
+    "bench/perf/toml-control-scan/file-writer.ms": "857702d1d2b8fc75d9ed74046c98dbba4a17447a6a7c5a7c7a3d7cb62ae8853b",
+    "bench/perf/toml-control-scan/read.ms": "1dbb460759b61a3bcea33d04106ef8721d26466ed6d1e80a3205a26df00d02ff",
+    "bench/perf/toml-control-scan/file-run.py": "571037cfe672a77d09268485bbaad62ebfc90af61bbdccb3a59763c50c29f32d",
+    "bench/perf/toml-control-scan/rust/src/bin/file.rs": "60c9be0e755902f6009b9fb3a24ba0d7ed8e7ebd797a1f772417cb3acd55bf66",
+    "bench/perf/toml-control-scan/rust/src/bin/file-writer.rs": "63e85dbc32f1ec321360ddf3665cae0349741e6017f0d1e0731e13c47e6eb4f1",
+    "bench/perf/toml-control-scan/rust/src/bin/read.rs": "3b7f306f9f3bfec57d285cd1a2974d6aedaeef7c3bdfb0a5d0b4c0438ee75b26",
+    "bench/perf/toml-control-scan/rust/Cargo.toml": "ef79c60baceaaa7ba8eb9ca85dfff347733fdc5723c0500626d4dbc34ee12798",
+    "bench/perf/toml-control-scan/rust/Cargo.lock": "21b823c8a50ae6ef118aaaae5bcbce499e870ad5a30ed65d7c284ff8c2b056f2",
+    "Cargo.lock": "ac80e0b9b741b44d914f94c1cf520ff65c7f2e8fedd946051d2ae117e1dd055e",
+    "rust-toolchain.toml": "7f5140056a968f51f7a91e1d73fd6b8c226054ecb5c6d39e791de484f9616457",
+    ".cargo/config.toml": "c411c17fbefc5c7148567d4a348fbf29cde557426121c29c6ae0525fbbd8c34e",
+    "scripts/lld.lock": "6026878d9013e192ec3d1fc384691808383f0593d386d52b5faa2ca2d903fa41",
+    "target/ms-native/libms_native.a": "a31bf57c132afafdecdd9e2ded807e501ef84d00d9290d8a70c6000b15ef6188"
+  },
+  "build": "cargo xtask runtime; cargo build --release --locked -p ms-cli; ms build each unchanged source producer --build-type Release; Rust standalone Cargo release opt-level3 panic=abort with repository frame pointers",
+  "trials": 12,
+  "note": "Each measured iteration reads fresh UTF-8 file input; cached-file ingestion includes I/O and prevents treating parser input as loop-invariant. Full equivalent string-table values; possible different TOML quoting. Read-only and writer-only controls retain I/O. Errors compare exact MS diagnostics only. Setup/printing excluded; read/parse/serialization/destruction/full-output guards timed. Counts calibrated separately per producer; retain actual counts."
+}

@@ -1,0 +1,14 @@
+{
+  "baseline-a": {
+    "path": "/workspace/json-escapes/.artifacts/escape-runs/before",
+    "sha256": "0ae1a4461d61aa915fb89f5f4f53228969b01b79dd0fadbe2d0797291cab473f"
+  },
+  "baseline-b": {
+    "path": "/workspace/json-escapes/.artifacts/escape-runs/before",
+    "sha256": "0ae1a4461d61aa915fb89f5f4f53228969b01b79dd0fadbe2d0797291cab473f"
+  },
+  "candidate": {
+    "path": "/workspace/json-escapes/.artifacts/escape-runs/after",
+    "sha256": "77e44b5a44cbf87d1c513ad7cfff82886d53ebe0f1408c7ca21bdb61be798db5"
+  }
+}

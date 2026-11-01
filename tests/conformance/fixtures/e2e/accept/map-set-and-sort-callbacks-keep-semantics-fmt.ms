@@ -1,7 +1,7 @@
 # conform: tags=closures,faults,formatter,lists,modules,optional,parser,stdlib-testing,strings,testing,tier-core,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/map-set-and-sort-callbacks-keep-semantics.ms
-import expect_true from "@std/test.ms"
+import expect_true from "@std/test/test.ms"
 
 fn byLength(left: String, right: String) Int: left.length() - right.length()
 

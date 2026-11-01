@@ -1,8 +1,8 @@
 # conform: tags=aliasing,control-flow,formatter,interpolation,lists,maps,modules,mutation,parser,stdlib-collections,stdlib-testing,stdlib-yaml,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/yaml-properties.ms
-import expect_not_equal, fail from "@std/test.ms"
-import parse, stringify, YamlValue from "@std/yaml.ms"
+import expect_not_equal, fail from "@std/test/test.ms"
+import parse, stringify, YamlValue from "@std/data/yaml.ms"
 import Rng, next, text, mutate from "./support/generator.ms"
 
 fn generated(var rng: Rng, depth: Int) YamlValue:

@@ -9,30 +9,30 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "Shared.take is internal; change a Shared with `var guard = lock(box)` from \"@std/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()",
+        "message": "Shared.take is internal; change a Shared with `var guard = lock(box)` from \"@std/concurrency/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()",
         "position": {
           "file": "shared-raw-take-put.ms",
           "line": 6,
           "column": 21,
-          "offset": 177
+          "offset": 189
         }
       },
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "Shared.put is internal; change a Shared with `var guard = lock(box)` from \"@std/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()",
+        "message": "Shared.put is internal; change a Shared with `var guard = lock(box)` from \"@std/concurrency/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()",
         "position": {
           "file": "shared-raw-take-put.ms",
           "line": 8,
           "column": 9,
-          "offset": 212
+          "offset": 224
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/shared-raw-take-put.ms:6:21: type: Shared.take is internal; change a Shared with `var guard = lock(box)` from \"@std/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()\n   |\n 6 |     var items = box.take()\n   |                     ^\n<DIR>/shared-raw-take-put.ms:8:9: type: Shared.put is internal; change a Shared with `var guard = lock(box)` from \"@std/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()\n   |\n 8 |     box.put(items)\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/shared-raw-take-put.ms:6:21: type: Shared.take is internal; change a Shared with `var guard = lock(box)` from \"@std/concurrency/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()\n   |\n 6 |     var items = box.take()\n   |                     ^\n<DIR>/shared-raw-take-put.ms:8:9: type: Shared.put is internal; change a Shared with `var guard = lock(box)` from \"@std/concurrency/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()\n   |\n 8 |     box.put(items)\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

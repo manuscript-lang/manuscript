@@ -1,7 +1,7 @@
 # conform: tags=scope-cleanup,records,interfaces,tier-io
 # conform: phase=run
 # conform: origin=value-semantics-audit
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import Closeable, TextError from "@std/core.ms"
 
 # Each resource closes exactly once, whichever owner holds it when its scope ends.

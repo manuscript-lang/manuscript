@@ -31,7 +31,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it",
+        "message": "make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it",
         "position": {
           "file": "testfilefixturecontracts-4.ms",
           "line": 8,
@@ -54,7 +54,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testfilefixturecontracts-4.ms:8:19: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n   |\n 8 | fn make_fixture() State:\n   |                   ^\n<DIR>/testfilefixturecontracts-4.ms:4:20: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n   |\n 4 | impl TestHooks for State:\n   |                    ^\n<DIR>/testfilefixturecontracts-4.ms:8:1: type: make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it\n   |\n 8 | fn make_fixture() State:\n   | ^\n<DIR>/testfilefixturecontracts-4.ms:9:12: resolution: unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a module\n   |\n 9 |     return State(value: 1)\n   |            ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testfilefixturecontracts-4.ms:8:19: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n   |\n 8 | fn make_fixture() State:\n   |                   ^\n<DIR>/testfilefixturecontracts-4.ms:4:20: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n   |\n 4 | impl TestHooks for State:\n   |                    ^\n<DIR>/testfilefixturecontracts-4.ms:8:1: type: make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it\n   |\n 8 | fn make_fixture() State:\n   | ^\n<DIR>/testfilefixturecontracts-4.ms:9:12: resolution: unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a module\n   |\n 9 |     return State(value: 1)\n   |            ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

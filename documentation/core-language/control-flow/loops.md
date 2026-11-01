@@ -20,7 +20,7 @@ fn sum(values: List[Int]) Int:
 
 ## Counting loops
 
-`start..end` includes `start`, excludes `end`, and counts up by one; it needs no import. It is the standard `range` call from `@std/collections.ms`, which is not importable by name, so it binds looser than `+` and `-` (`0..n + 1` is `0..(n + 1)`), is not chainable, and takes `Int` bounds. A `for` over `start..end` or a direct `range` call is a counter loop that allocates no list.
+`start..end` includes `start`, excludes `end`, and counts up by one; it needs no import. It is the standard `range` call from `@std/collections/collections.ms`, which is not importable by name, so it binds looser than `+` and `-` (`0..n + 1` is `0..(n + 1)`), is not chainable, and takes `Int` bounds. A `for` over `start..end` or a direct `range` call is a counter loop that allocates no list.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -60,8 +60,8 @@ Increment the counter before any `continue` that would skip its update.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import range_by from "@std/collections.ms"
-import expect_equal from "@std/test.ms"
+import range_by from "@std/collections/collections.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "sum even indexes":
     let indexes = try range_by(start: 0, end: 6, step: 2)
@@ -85,7 +85,7 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 | `Iterator[T]` implementation | `T` | Order of `next()` results |
 | `Iterable[T]` implementation (`Deque`, `Queue`, `PriorityQueue`) | owned `T` | Index order of `at(index)` |
 
-`MapEntry[K, V]` is a record with `key: K` and `value: V` (constructor from `@std/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body. The entry is borrowed from the map, not copied. A loop header `for e in m.entries()`, `m.values()` or `m.keys()` over a map the body does not change walks the map the same way instead of building the list; when the body changes the map, the list is built first, so the loop sees the entries as they were.
+`MapEntry[K, V]` is a record with `key: K` and `value: V` (constructor from `@std/collections/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body. The entry is borrowed from the map, not copied. A loop header `for e in m.entries()`, `m.values()` or `m.keys()` over a map the body does not change walks the map the same way instead of building the list; when the body changes the map, the list is built first, so the loop sees the entries as they were.
 
 ```manuscript
 fn total(values: Map[String, Int]) Int:
@@ -105,7 +105,7 @@ A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n2\n1\n"} -->
 ```manuscript
 import Iterator from "@std/core.ms"
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 type Countdown:
     left: Int
@@ -126,13 +126,13 @@ export fn main() Int:
 
 ## Borrowing containers
 
-A type that implements `Iterable[T]` from `@std/iterable.ms` (`fn length() Int` and `fn at(index: Int) T?`) is iterable: `for item in container:` reads `length()` once and then `at(index)` for each index, so the container is read in place and never copied, and `item` is an owned element. A place is read where it stands, so it need not be `var`; any other expression is held by the loop. `Deque` iterates front to back, `Queue` oldest first, and `PriorityQueue` in heap order, not dequeue order. A type that implements both `Iterator` and `Iterable` iterates with `Iterator`. The item count is fixed when the loop starts; a body that changes the container sees the new values at later indexes.
+A type that implements `Iterable[T]` from `@std/collections/iterable.ms` (`fn length() Int` and `fn at(index: Int) T?`) is iterable: `for item in container:` reads `length()` once and then `at(index)` for each index, so the container is read in place and never copied, and `item` is an owned element. A place is read where it stands, so it need not be `var`; any other expression is held by the loop. `Deque` iterates front to back, `Queue` oldest first, and `PriorityQueue` in heap order, not dequeue order. A type that implements both `Iterator` and `Iterable` iterates with `Iterator`. The item count is fixed when the loop starts; a body that changes the container sees the new values at later indexes.
 
 
 <!-- manuscript-example: {"mode":"run","stdout":"11\n12\n"} -->
 ```manuscript
-import Deque from "@std/deque.ms"
-import stdout from "@std/io.ms"
+import Deque from "@std/collections/deque.ms"
+import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     var steps = Deque[Int]()
@@ -165,4 +165,4 @@ Each of the three runs cleanup for the scopes it exits. Each iteration is its ow
 
 ## Cancellation
 
-Tasks share one thread and are cancelled at their next wait, so a loop that never waits is not stopped by cancellation or a timeout and keeps other tasks from running. Wait inside the loop, or poll `cancelled()` and return. Lint rule **MSL111** flags a `while true` loop in a module that imports `@std/tasks.ms` when its body neither waits nor exits.
+Tasks share one thread and are cancelled at their next wait, so a loop that never waits is not stopped by cancellation or a timeout and keeps other tasks from running. Wait inside the loop, or poll `cancelled()` and return. Lint rule **MSL111** flags a `while true` loop in a module that imports `@std/concurrency/tasks.ms` when its body neither waits nor exits.

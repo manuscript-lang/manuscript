@@ -1,7 +1,7 @@
 # conform: tags=formatter,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=documentation/learn/tour.md:237
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Reading:
     celsius: Int

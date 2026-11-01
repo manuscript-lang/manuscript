@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,lists,maps,modules,optional,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/data-1.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn positives(values: List[Int]) List[Int]:
     var result: List[Int] = []

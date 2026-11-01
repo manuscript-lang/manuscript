@@ -6,5 +6,5 @@ Decision: the user explicitly removed the "Application hosts" section. CLI entry
 
 
 Apply when: organizing the standard-library guide or adding application-entry documentation.
-Evidence: [standard-library navigation](../../stdlib/intrinsics.ms), [CLI guide](../../stdlib/process.ms), [HTTP guide](../../stdlib/http.ms).
+Evidence: [standard-library navigation](../../stdlib/intrinsics.ms), [CLI guide](../../stdlib/os/process.ms), [HTTP guide](../../stdlib/net/http.ms).
 Verify: build the book with destination cleanup and confirm there is no standard-library/hosts route or sidebar section; existing entry and request links resolve to package pages.

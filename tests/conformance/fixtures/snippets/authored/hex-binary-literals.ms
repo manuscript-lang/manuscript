@@ -1,7 +1,7 @@
 # conform: tags=numbers,lexer,tier-core
 # conform: phase=run
 # conform: origin=hex, binary and separator literals
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     let a = 0xFF_FF

@@ -3,8 +3,11 @@
 //! tests supply the MIR the lowering would produce.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
+mod common;
+
+use common::scratch;
 use ms_rt as _;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 use ms_build::{Lower, Module, Native};
@@ -22,13 +25,6 @@ impl Lower for Fixed {
 
 const EXIT_SEVEN: &str =
     "module \"t\"\nentry @main\nfn @main() -> int {\nb0:\n  %c: int = iconst 7\n  ret %c\n}\n";
-
-fn scratch(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("ms-engine-{name}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
-}
 
 fn ms<L: Lower>(backend: &Engine<L>, args: &[&str]) -> (i32, String, String) {
     let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();

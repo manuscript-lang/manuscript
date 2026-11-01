@@ -7,21 +7,21 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3001",
-        "phase": "type",
-        "message": "expected fn(String, Bytes, Bool) Result[Unit, FileSystemError], found fn(String, String, Bool) Result[Unit, FileSystemError] (in the return value)",
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding fs; declare it with 'let fs = ...' before use, define 'fn fs(...) T:', or import it from a module",
         "position": {
           "file": "lowering-native-defaults.ms",
-          "line": 53,
-          "column": 15,
-          "offset": 1757
+          "line": 51,
+          "column": 12,
+          "offset": 1629
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/lowering-native-defaults.ms:53:15: type: expected fn(String, Bytes, Bool) Result[Unit, FileSystemError], found fn(String, String, Bool) Result[Unit, FileSystemError] (in the return value)\n    |\n 53 |     return fs.write_file\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/lowering-native-defaults.ms:51:12: resolution: unknown binding fs; declare it with 'let fs = ...' before use, define 'fn fs(...) T:', or import it from a module\n    |\n 51 |     return fs.write_file\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

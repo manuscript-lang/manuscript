@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,closures,stdlib-tasks,tier-core
 # conform: phase=check
-import Channel from "@std/channels.ms"
-import TaskGroup from "@std/tasks.ms"
+import Channel from "@std/io/channels.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
 
 fn start(entry: fn(Channel[Unit, Unit]) Int) Int:
     var group = TaskGroup[Int]()

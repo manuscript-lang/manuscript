@@ -1,16 +1,16 @@
-import fetcher, FetchOptions from "@std/fetch.ms"
-import stdout from "@std/io.ms"
-import arguments from "@std/process.ms"
-import TaskGroup from "@std/tasks.ms"
-import clock, nanoseconds from "@std/time.ms"
-import Worker, WorkerGroup, worker_channel from "@std/workers.ms"
+import fetcher, FetchOptions from "@std/net/fetch.ms"
+import stdout from "@std/io/io.ms"
+import arguments from "@std/os/process.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import nanoseconds, monotonic from "@std/os/time.ms"
+import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 
 fn worker(url: String, nanos: Int) Int:
     var f = fetcher().get()
-    let started = clock().now()
+    let started = monotonic()
     var n = 0
 
-    while clock().now().difference(started).compare(nanoseconds(nanos)) < 0:
+    while monotonic().difference(started).compare(nanoseconds(nanos)) < 0:
         if let r = f.fetch(url):
             n += r.body.length()
             n -= r.body.length() - 1

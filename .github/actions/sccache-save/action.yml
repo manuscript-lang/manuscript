@@ -1,5 +1,5 @@
 name: sccache save
-description: Save the sccache cache from the scheduled or manual runs on main.
+description: Save the sccache cache from manual runs on main.
 
 inputs:
   cache-hit:
@@ -16,7 +16,7 @@ runs:
     # is still valid, and a red main would otherwise leave every later main run (and the PRs that restore
     # from it) compiling from scratch.
     - name: Save cargo cache
-      if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
+      if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' }}
       uses: actions/cache/save@v6
       with:
         path: |

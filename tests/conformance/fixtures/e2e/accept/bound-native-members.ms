@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,lists,modules,optional,records,sets,stdlib-collections,stdlib-math,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/bound-native-members.ms
-import expect_contains, expect_fault, expect_true from "@std/test.ms"
+import expect_contains, expect_fault, expect_true from "@std/test/test.ms"
 import StringBuilder from "@std/string.ms"
 
 type Folded:

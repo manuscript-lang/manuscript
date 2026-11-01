@@ -1,4 +1,4 @@
-//! `@std/math.ms` natives. Symbols are `msstd_bigint_<name>`.
+//! `@std/math/math.ms` natives. Symbols are `msstd_bigint_<name>`.
 //!
 //! A `BigInt` is an immutable refcounted [`Big`] handle; operations return fresh handles.
 //! Fallible calls return a `STATUS_*` code and write `out` only on success; `to_int` returns
@@ -300,7 +300,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_matches_go() {
+    fn parse_matches_oracle() {
         assert_eq!(parse(b"+-1", 10, Some(2)), Err(STATUS_INVALID_DATA));
         assert_eq!(parse(b"+-1", 10, Some(1)), Err(STATUS_LIMIT_EXCEEDED));
         assert_eq!(parse(b"1_0", 10, None), Err(STATUS_INVALID_DATA));

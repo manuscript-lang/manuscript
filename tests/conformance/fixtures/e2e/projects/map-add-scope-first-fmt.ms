@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/projects/map_add_scope/first.ms
 import Key from "./domain.ms"
 import insert, insert_bound from "./helper.ms"
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 impl Equal for Key:
     fn equals(other: Key) Bool:

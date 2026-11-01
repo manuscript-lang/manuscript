@@ -572,14 +572,14 @@ impl<'a> FnLower<'a> {
         Ok(Val { v, own: true })
     }
 
-    /// The text of a `Duration`: `Duration.to_string` from `@std/time.ms`.
+    /// The text of a `Duration`: `Duration.to_string` from `@std/os/time.ms`.
     pub(crate) fn duration_text(&mut self, x: Val) -> Result<Val, Error> {
         let n = self.borrow(x);
         let v = self.time_call("Duration", "to_string", &[n])?;
         Ok(Val { v, own: true })
     }
 
-    /// Calls the method `name` of a record of `@std/time.ms` (`Duration`, `Instant`,
+    /// Calls the method `name` of a record of `@std/os/time.ms` (`Duration`, `Instant`,
     /// `Timestamp`) with the receiver first.
     pub(crate) fn time_call(
         &mut self,

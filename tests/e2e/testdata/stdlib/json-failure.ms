@@ -1,5 +1,5 @@
-import parse, JsonValue, JsonError, JsonLimits from "@std/json.ms"
-import expect_equal from "@std/test.ms"
+import parse, JsonValue, JsonError, JsonLimits from "@std/data/json.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "JSON syntax errors keep their identity with unread Unicode suffixes":
     let invalid: JsonValue!JsonError = error(JsonError.InvalidData)

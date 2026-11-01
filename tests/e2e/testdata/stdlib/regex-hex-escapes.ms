@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 import compile, RegexError from "@std/string.ms"
 
 test "regex hexadecimal escapes reject signed numbers":

@@ -32,7 +32,7 @@
 ## API
 
 ```manuscript
-# @std/channels.ms
+# @std/io/channels.ms
 interface Transport[In, Out]:
     var fn send(value: In) Result[Unit, ChannelError]
     var fn receive() Result[Optional[Out], ChannelError]   # ok(none): closed and drained

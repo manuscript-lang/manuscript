@@ -9,12 +9,12 @@
 
 ## Status
 
-Decided 2026-10-27: document the limit, no runtime check (Chinmay: "1536 is okay to document, thats how all languages work"). The documentation and MSL111 already state it. Checked against `origin/main` at `5f28e5d0`. Verified: `documentation/core-language/control-flow/loops.md#cancellation` documents the gap, and lint **MSL111** flags `while True` loops without a wait in modules importing `@std/tasks.ms`. No runtime enforcement exists. No repro was attached to #1536.
+Decided 2026-10-27: document the limit, no runtime check (Chinmay: "1536 is okay to document, thats how all languages work"). The documentation and MSL111 already state it. Checked against `origin/main` at `5f28e5d0`. Verified: `documentation/core-language/control-flow/loops.md#cancellation` documents the gap, and lint **MSL111** flags `while True` loops without a wait in modules importing `@std/concurrency/tasks.ms`. No runtime enforcement exists. No repro was attached to #1536.
 
 ## Problem
 
 - A task running `while True: counter += 1` is never stopped by a `TaskGroup` timeout or by cancellation, and no other task runs.
-- The lint is advisory, covers only `while True`, and is off for modules that do not import `@std/tasks.ms` yet are called from tasks.
+- The lint is advisory, covers only `while True`, and is off for modules that do not import `@std/concurrency/tasks.ms` yet are called from tasks.
 - Non-goals: preemption of native calls, and changing cancel-at-wait for loops that do wait.
 
 ## Design

@@ -1,8 +1,8 @@
 # conform: tags=aliasing,closures,faults,generics,modules,optional,records,stdlib-json,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/optional-methods.ms
-import expect_equal, expect_false from "@std/test.ms"
-import JsonLimits from "@std/json.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
+import JsonLimits from "@std/data/json.ms"
 
 type Counter:
     calls: Int

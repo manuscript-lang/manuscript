@@ -128,7 +128,7 @@ Two small commands answer what the compiler commands do not and print only what 
 
 | Command | Behavior |
 | --- | --- |
-| `ms search_symbol [<name or words>... \| <path>]` | Fuzzy, case-insensitive lookup over project and standard-library symbols (`--limit n`, default 5, max 10; `--json`). Project matches print `file:line:column`, type, description, and up to five uses; standard matches print signature and path. A lone module or declaration path (`json`, `prelude.List`, `prelude.List.sorted`) prints that page, capped near 3.5 KB; no argument lists modules |
+| `ms search_symbol [<name or words>... \| <path>]` | Fuzzy, case-insensitive lookup over project and standard-library symbols (`--limit n`, default 5, max 10 total matches; `--json`). Project matches come first and print `file:line:column`, type, description, and up to five uses; standard matches fill remaining places and print signature and path. A lone module or declaration path (`json`, `prelude.List`, `prelude.List.sorted`) prints that page, capped near 3.5 KB; no argument lists modules |
 | `ms guide` | The language cheat sheet with a checked example program, then common mistakes beside their fixes (`crates/ms-tooling/data/mistakes.txt`, verified against the compiler by `guide_pages`) |
 
 Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which print compact diagnostics (`--json` for complete documents).
@@ -236,7 +236,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL108 | warning | `match` on an Optional with only `some` and `none` arms; use `if let` or an Optional method |
 | MSL109 | warning | `match` on a Result with only `ok` and `error` arms; use `try`, `if let` or a Result method |
 | MSL110 | warning | `Optional.get()` without a default, which faults when the value is absent; use `if let`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
-| MSL111 | error | `while true` loop in a module that imports `@std/tasks.ms` whose body neither waits nor exits; other tasks cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
+| MSL111 | error | `while true` loop in a module that imports `@std/concurrency/tasks.ms` whose body neither waits nor exits; other tasks cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
 | MSL112 | error | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
 | MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. `close` cannot report a failure, so call `try x.flush()` before the scope ends. See [scopes](../core-language/cleanup/scopes.md) |
 

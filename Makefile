@@ -1,22 +1,29 @@
 HUGO ?= hugo
+VSCODE_CLI ?= code
 RELEASE_MS ?= $(CURDIR)/target/release/ms
+# The ms that runs the repository tools in tools/ (`make build` produces it).
+MS ?= $(RELEASE_MS)
 BENCHREPEATS ?= 5
 BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime setup tools doctor verify verify-full check lint repo-check unit test build conform e2e leak-check count-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench
+.PHONY: runtime doctor verify verify-full check repo-check unit test build conform e2e leak-check count-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
-setup: tools
+doctor: build
+	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
 
-tools:
-	sh scripts/bootstrap-tools.sh
+# Use the locked editor dependencies; packaging runs the extension checks and bundle.
+vscode-package:
+	cd extensions/vscode && npm ci && npm run package
 
-doctor:
-	HUGO="$(HUGO)" sh scripts/doctor.sh
+vscode-install: vscode-package
+	@command -v "$(VSCODE_CLI)" >/dev/null 2>&1 || { echo 'VS Code CLI not found; add code to PATH or set VSCODE_CLI=/path/to/code.' >&2; exit 1; }
+	@vsix=$$(node -p 'const p = require("./extensions/vscode/package.json"); "extensions/vscode/" + p.name + "-" + p.version + ".vsix"') && \
+		"$(VSCODE_CLI)" --install-extension "$$vsix" --force
 
 # Routine feedback excludes native distributions. The merge gate adds the conformance corpus and the book.
-verify: check lint repo-check bench-check unit docs-check licenses-check
+verify: check repo-check bench-check unit docs-check licenses-check
 
 verify-full: verify conform e2e book-check dist-check
 
@@ -30,11 +37,6 @@ check: runtime
 
 fmt:
 	cargo fmt --all
-
-lint:
-	@test -x .tools/actionlint -a -x .tools/shellcheck || (echo 'Run make setup to install pinned linters'; exit 1)
-	.tools/actionlint -shellcheck .tools/shellcheck
-	.tools/shellcheck -x scripts/*.sh
 
 # Nested matches, .ms formatting, stdlib syntax, release pins, workflow triggers, Rust unsafe allow-list.
 repo-check:
@@ -52,20 +54,20 @@ build: runtime
 # The run, check and test phases of the frozen conformance corpus against the Rust `ms`, excluding fixtures whose
 # answer depends on aliasing; known differences are listed in tests/conformance/expect-fail.txt.
 # CONFORM_SHARD=i/n splits the run.
-conform:
-	sh scripts/conform.sh
+conform: build
+	$(MS) run tools/conform.ms
 
 # Every `tests/e2e/testdata` fixture: accept fixtures pass `ms test`, reject fixtures fail `ms check`.
 # E2E_BUILD_TYPE picks the build type (default Release).
-e2e:
-	sh scripts/e2e.sh
+e2e: build
+	$(MS) run tools/e2e.ms
 
 # Runs corpus programs against a runtime that counts live heap blocks and fails on any block left at exit.
-count-check:
-	sh scripts/count-check.sh
+count-check: build
+	$(MS) run tools/count-check.ms
 
-leak-check:
-	sh scripts/leak-check.sh
+leak-check: build
+	$(MS) run tools/leak-check.ms
 
 # The dependency license inventory: crate licenses from cargo metadata plus bundled notice hashes.
 licenses:
@@ -92,23 +94,25 @@ book-check: docs-check docs
 	"$(HUGO)" --source website --minify --panicOnWarning --cleanDestinationDir --destination "$(BOOK_CHECK_DIR)" --baseURL "https://example.org/manuscript/"
 	MANUSCRIPT_BOOK_DIR="$(BOOK_CHECK_DIR)" node --test tests/docs/publication.test.cjs
 
-dist:
-	sh scripts/package-rust.sh
+dist: build
+	$(MS) run tools/package.ms
 
 # Extracts the archive for this host and runs the packaged binary on the hello example.
 dist-check: dist
-	sh scripts/dist-check.sh
+	$(MS) run tools/dist-check.ms
 
 agent-bench-check: build
-	PATH="$(dir $(RELEASE_MS)):$$PATH" python3 bench/agent/run.py oracle
-	python3 -m unittest discover -s bench/agent/tests
+	PATH="$(dir $(RELEASE_MS)):$$PATH" "$(RELEASE_MS)" run bench/agent/run.ms -- oracle
+	"$(RELEASE_MS)" test bench/agent/core_test.ms
 
 # Type-checks every benchmark project so the suites cannot rot unnoticed.
 bench-check: build
 	@for t in $$(find bench/perf -name ms.toml | sort); do \
 		(cd $$(dirname $$t) && "$(RELEASE_MS)" check ms.toml) || exit 1; \
 	done
+	@for t in bench/tools/*.ms; do "$(RELEASE_MS)" check $$t || exit 1; done
+	@for t in bench/tools/*_test.ms; do "$(RELEASE_MS)" test $$t || exit 1; done
 
 # Runs the bench blocks of bench/perf/stdlib; BENCHREPEATS is the sample count per case.
 stdlib-bench: build
-	MS="$(RELEASE_MS)" bench/perf/stdlib-bench.sh $(BENCHREPEATS) $(BENCHFILTER)
+	MS="$(RELEASE_MS)" "$(RELEASE_MS)" run bench/tools/stdlib_bench.ms -- $(BENCHREPEATS) $(BENCHFILTER)

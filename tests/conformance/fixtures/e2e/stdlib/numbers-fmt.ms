@@ -1,8 +1,8 @@
 # conform: tags=control-flow,formatter,modules,numbers,optional,parser,stdlib-numbers,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/numbers.ms
-import expect_equal from "@std/test.ms"
-import parse_int, parse_float, NumberError from "@std/math.ms"
+import expect_equal from "@std/test/test.ms"
+import parse_int, parse_float, NumberError from "@std/math/math.ms"
 
 test "numbers radix and signed boundaries":
     try expect_equal((try parse_int("7fffffffffffffff", 16)), 9223372036854775807)

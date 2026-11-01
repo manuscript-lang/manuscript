@@ -1,5 +1,5 @@
 import TextError from "@std/core.ms"
-import expect_equal, expect_false, fail from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test/test.ms"
 
 type Expr:
     case Num(value: Int)

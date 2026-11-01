@@ -1,5 +1,5 @@
-import expect_equal from "@std/test.ms"
-import IoError, LineReader, lines from "@std/io.ms"
+import expect_equal from "@std/test/test.ms"
+import IoError, LineReader, lines from "@std/io/io.ms"
 import Iterator from "@std/core.ms"
 import MemoryStream from "./support/streams.ms"
 

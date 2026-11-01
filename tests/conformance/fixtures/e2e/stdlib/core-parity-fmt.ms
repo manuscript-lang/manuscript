@@ -3,8 +3,8 @@
 # conform: origin=tests/e2e/testdata/stdlib/core-parity.ms
 import TextError from "@std/core.ms"
 import panic from "@std/core.ms"
-import expect_equal, expect_false from "@std/test.ms"
-import JsonLimits from "@std/json.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
+import JsonLimits from "@std/data/json.ms"
 
 type Counter:
     calls: Int

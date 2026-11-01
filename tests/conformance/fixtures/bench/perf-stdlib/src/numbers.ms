@@ -1,10 +1,10 @@
 import bench from "./harness.ms"
 import Bytes from "@std/bytes.ms"
-import Decimal from "@std/decimal.ms"
-import from_int from "@std/math.ms"
-import compress, decompress from "@std/archive.ms"
-import parse_timestamp from "@std/time.ms"
-import PriorityQueue, Queue from "@std/queue.ms"
+import Decimal from "@std/math/decimal.ms"
+import from_int from "@std/math/math.ms"
+import compress, decompress from "@std/io/archive.ms"
+import parse_timestamp from "@std/os/time.ms"
+import PriorityQueue, Queue from "@std/collections/queue.ms"
 
 export fn bench_numbers() Unit:
     let rate: Decimal = 1.12345d

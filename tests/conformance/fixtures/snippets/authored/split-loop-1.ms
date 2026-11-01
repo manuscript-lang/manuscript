@@ -1,7 +1,7 @@
 # conform: tags=strings,lists,control-flow,tier-stdlib
 # conform: phase=run
 # conform: origin=perf: split loops yield pieces one at a time; a kept piece must stay intact
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
     let _ignored = stdout().write(text)

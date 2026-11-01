@@ -80,12 +80,12 @@ A closure that is returned or stored owns what it captures instead, so it cannot
 Open a resource inside the callback that uses it:
 
 ```manuscript
-import filesystem, FileSystemError from "@std/fs.ms"
+import FileSystemError, open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 fn notes_reader(path: String) fn() Result[Bytes, FileSystemError]:
     return fn:
-        let file = try filesystem().open(path: path, flags: "r", mode: 0)
+        let file = try open(path: path, flags: "r", mode: 0)
         return file.read_file(max_bytes: 1048576)
 ```
 

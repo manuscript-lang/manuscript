@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn singleton(var values: List[Int]) List[Int]:
     values.append(1)

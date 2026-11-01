@@ -1,5 +1,5 @@
-import expect_not_equal, fail from "@std/test.ms"
-import parse, stringify, YamlValue from "@std/yaml.ms"
+import expect_not_equal, fail from "@std/test/test.ms"
+import parse, stringify, YamlValue from "@std/data/yaml.ms"
 import Rng, next, text, mutate from "./support/generator.ms"
 
 fn generated(var rng: Rng, depth: Int) YamlValue:

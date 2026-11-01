@@ -1,0 +1,60 @@
+import hashlib,json,pathlib,statistics,subprocess
+root=pathlib.Path(__file__).resolve().parent
+result=root/'structure-discovery';result.mkdir(exist_ok=False)
+versions={'before':root/'file-latest-before','after':root/'file-latest-after','rust':pathlib.Path('bench/perf/toml-control-scan/rust/target/release/file').resolve()}
+quote=lambda x:json.dumps(x,ensure_ascii=False)
+cases={
+ 'nested8':'['+'.'.join('k'+str(i) for i in range(8))+']\nvalue="Ada"\n',
+ 'nested32':'['+'.'.join('k'+str(i) for i in range(32))+']\nvalue="Ada"\n',
+ 'strings1024':'values=['+','.join(quote('v'+str(i)) for i in range(1024))+']\n',
+ 'tables128':''.join('[[entries]]\nvalue='+quote('v'+str(i))+'\n' for i in range(128)),
+ 'dotted128':''.join('root.shared.k'+str(i)+'='+quote('v'+str(i))+'\n' for i in range(128)),
+ 'unicodekeys':''.join(quote('é🙂 key '+str(i))+'='+quote('value '+str(i))+'\n' for i in range(128)),
+ 'emptykey':'""="Ada"\n',
+ 'multiline':'value="""'+('é🙂plain\n'*4096)+'"""\n',
+ 'integers':'values=['+','.join(str(i*7919-4_000_000) for i in range(1024))+']\n',
+}
+meta={'binaries':{k:{'path':str(v),'sha256':hashlib.sha256(v.read_bytes()).hexdigest()} for k,v in versions.items()},'driver_sha256':hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),'note':'Fresh discovery only; cached-file input each iteration; per-producer counts, six balanced three-label trials.'}
+(result/'environment.json').write_text(json.dumps(meta,indent=2)+'\n')
+rows=[];blocked=[]
+for case,text in cases.items():
+ path=(result/(case+'.input')).resolve();path.write_text(text)
+ try:
+  outputs={k:subprocess.check_output([v,path,'0'],stderr=subprocess.PIPE) for k,v in versions.items()}
+  if outputs['before']!=outputs['after']:raise ValueError('before/after output changed')
+  for label,out in outputs.items():
+   file=(result/(case+'-'+label+'.out')).resolve();file.write_bytes(out)
+   subprocess.run([versions['rust'],'--validate',path,file],check=True,stderr=subprocess.PIPE)
+ except (subprocess.CalledProcessError,ValueError) as error:
+  blocked.append({'case':case,'error':str(error),'stderr':getattr(error,'stderr',b'').decode()});continue
+ def invoke(label,count):
+  ns,checksum,size=map(int,subprocess.check_output([versions[label],path,str(count)]).split())
+  if ns<=0 or size!=len(outputs[label]) or checksum!=size*count:raise ValueError('wrong producer')
+  return ns/count
+ counts={}
+ for label in versions:
+  count=1
+  while True:
+   ns=invoke(label,count)
+   if ns*count>=50_000_000:break
+   count=min(max(count+1,int(60_000_000/ns)),count*10)
+  counts[label]=count
+ labels=list(versions)
+ for trial in range(6):
+  order=labels[trial%3:]+labels[:trial%3]
+  if trial%2:order.reverse()
+  for label in order:
+   row={'case':case,'label':label,'trial':trial,'count':counts[label],'ns':invoke(label,counts[label])};rows.append(row)
+   with (result/'samples.jsonl').open('a') as log:log.write(json.dumps(row)+'\n')
+summary=[]
+for case in cases:
+ if any(x['case']==case for x in blocked):continue
+ d={}
+ for label in versions:
+  v=[r['ns'] for r in rows if r['case']==case and r['label']==label]
+  if len(v)!=6:raise ValueError('missing samples')
+  m=statistics.median(v);d[label]={'median_ns':m,'mad_ns':statistics.median(abs(x-m) for x in v),'min_ns':min(v),'max_ns':max(v)}
+ summary.append({'case':case,'distributions':d,'before_over_after':d['before']['median_ns']/d['after']['median_ns'],'after_over_rust':d['after']['median_ns']/d['rust']['median_ns']})
+(result/'summary.json').write_text(json.dumps(summary,indent=2)+'\n');(result/'blocked.json').write_text(json.dumps(blocked,indent=2)+'\n')
+for row in summary:print(row['case'],row['before_over_after'],row['after_over_rust'])
+print('blocked',blocked)

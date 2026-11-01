@@ -2,12 +2,12 @@
 
 A record, alternative, `Optional`, `List` or `Map` closes the resources it holds when its scope ends ([proposal](../../../proposals/close-owned-parts.md)). A holder of values that are not resources must pay nothing for that: its class stays `Copy` or `Move`, no binding is registered, and the lowering emits no closer.
 
-[`run.sh`](run.sh) checks it: it lowers every `ms.toml` project under `bench/perf` with a compiler from before the change and one with it, in the same directory, and compares the lowered MIR (`ms emit`) and the linked binaries byte for byte.
+[`bench/tools/close_parts.ms`](../../tools/close_parts.ms) checks it: it lowers every `ms.toml` project under `bench/perf` with a compiler from before the change and one with it, in the same directory, and compares the lowered MIR (`ms emit`) and the linked binaries byte for byte.
 
 ```sh
 git worktree add /tmp/base 8f2c47fe9 && (cd /tmp/base && cargo xtask runtime && cargo build --release --locked -p ms-cli)
 make build
-sh bench/perf/close-parts/run.sh /tmp/base/target/release/ms ./target/release/ms
+ms run bench/tools/close_parts.ms -- /tmp/base/target/release/ms ./target/release/ms
 ```
 
 ## 2026-10-28

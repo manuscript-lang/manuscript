@@ -2,7 +2,7 @@
 # expect-mir: "iface.new"
 # expect-mir: "call.method"
 
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import TextError from "@std/core.ms"
 
 interface Shape:

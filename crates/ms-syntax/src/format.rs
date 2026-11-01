@@ -869,11 +869,13 @@ impl<'a> Layout<'a> {
     fn flat(&self, nodes: &[Node]) -> String {
         let mut out = String::new();
         let mut last_line = 0u32;
-        for (index, node) in nodes.iter().enumerate() {
+        let mut flow = FlowPrefix::default();
+        for node in nodes {
+            let joined = flow.advance(node, last_line);
             if layout_token(node.tok.kind) || node.tok.kind == Tok::Comment {
                 continue;
             }
-            if joined_flow_dot(&nodes[..index], node, last_line) {
+            if joined {
                 out.push_str(" | ");
             } else if !out.is_empty() && node.space {
                 out.push(' ');
@@ -1191,7 +1193,9 @@ impl<'a> Layout<'a> {
             }
         }
         let (mut pending, mut suite, mut last_line) = (false, false, 0u32);
+        let mut flow = FlowPrefix::default();
         for (index, node) in nodes.iter().enumerate() {
+            let joined = flow.advance(node, last_line);
             if layout_token(node.tok.kind) {
                 pending = pending || node.tok.kind == Tok::Newline;
                 suite = suite || node.tok.kind == Tok::Newline;
@@ -1234,7 +1238,7 @@ impl<'a> Layout<'a> {
                 }
             } else if comment {
                 w.write("  ");
-            } else if joined_flow_dot(&nodes[..index], node, last_line) {
+            } else if joined {
                 w.write(" | ");
             } else if node.space {
                 w.write(" ");
@@ -1257,20 +1261,28 @@ impl<'a> Layout<'a> {
 /// A line starting with `.` after a flow step applies to the whole flow so far.
 /// Joined onto the previous line it must read `| .name(...)`, since `step.name`
 /// would instead select a member of the step.
-fn joined_flow_dot(before: &[Node], node: &Node, last_line: u32) -> bool {
-    if node.tok.kind != Tok::Dot || last_line == 0 || last_line == node.tok.pos.line {
-        return false;
+#[derive(Default)]
+struct FlowPrefix {
+    previous: Option<Tok>,
+    has_pipe: bool,
+}
+
+impl FlowPrefix {
+    fn advance(&mut self, node: &Node, last_line: u32) -> bool {
+        let joined = node.tok.kind == Tok::Dot
+            && last_line != 0
+            && last_line != node.tok.pos.line
+            && self.has_pipe
+            && !matches!(self.previous, Some(Tok::Pipe | Tok::Try));
+        // Only preceding code in the current comma-separated item contributes.
+        if node.group.is_none() && node.tok.kind == Tok::Comma {
+            *self = Self::default();
+        } else if !layout_token(node.tok.kind) && node.tok.kind != Tok::Comment {
+            self.previous = Some(node.tok.kind);
+            self.has_pipe |= node.tok.kind == Tok::Pipe;
+        }
+        joined
     }
-    // Only the current comma-separated item is part of the flow.
-    let item = before
-        .iter()
-        .rposition(|n| n.group.is_none() && n.tok.kind == Tok::Comma)
-        .map_or(before, |comma| &before[comma + 1..]);
-    let mut code = item
-        .iter()
-        .filter(|n| !layout_token(n.tok.kind) && n.tok.kind != Tok::Comment);
-    let previous = code.clone().next_back().map(|n| n.tok.kind);
-    !matches!(previous, Some(Tok::Pipe | Tok::Try)) && code.any(|n| n.tok.kind == Tok::Pipe)
 }
 
 fn is_comparison(k: Tok) -> bool {

@@ -1,0 +1,16 @@
+diff --git a/stdlib/yaml.ms b/stdlib/yaml.ms
+index fa1925652..c54cdf6f4 100644
+--- a/stdlib/yaml.ms
++++ b/stdlib/yaml.ms
+@@ -1827,5 +1826,0 @@ export fn parse(text: String, limits: YamlLimits?) YamlValue!YamlError:
+-fn hex4(code: Int) String:
+-    var digits = code.to_string_radix(16)
+-    while digits.length() < 4: digits = "0".concat(digits)
+-    return digits
+-
+@@ -1856,2 +1851,3 @@ fn quote_text(text: String) String:
+-            result.append("\\u")
+-            result.append(hex4(code))
++            result.append("\\u00")
++            result.append("0123456789abcdef".get(code / 16))
++            result.append("0123456789abcdef".get(code % 16))

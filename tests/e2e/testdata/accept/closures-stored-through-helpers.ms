@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn store(var fs: List[fn() Int], f: fn() Int) Unit:
     fs.append(f)

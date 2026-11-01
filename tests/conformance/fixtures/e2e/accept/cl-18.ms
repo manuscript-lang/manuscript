@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,lists,modules,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cl-18.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn apply(value: Int, transform: fn(Int) Int) Int:
     return transform(value)

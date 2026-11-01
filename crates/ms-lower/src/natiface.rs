@@ -30,7 +30,7 @@ pub(crate) const HANDLE_FUNCTIONS: &[(&str, &str, &str, i64)] = &[
     ("time/clock", "time", "", 0),
     ("time/wall_clock", "time", "", 0),
     // The rules are the table: `path_win` forwards with the Windows flag set.
-    ("random/entropy", "random", "", 0),
+    ("random/host_entropy", "random", "", 0),
     ("fs/posix", "path", "", 0),
     ("fs/win32", "path_win", "", 0),
     ("net/network", "net", "msrt_net_network", 0),

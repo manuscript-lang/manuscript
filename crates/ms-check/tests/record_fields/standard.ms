@@ -1,5 +1,5 @@
-import Pair from "@std/collections.ms"
-import Deque from "@std/deque.ms"
+import Pair from "@std/collections/collections.ms"
+import Deque from "@std/collections/deque.ms"
 
 fn pair_value(pair: Pair[Int, String]) String:
     return pair.second

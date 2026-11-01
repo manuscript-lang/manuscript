@@ -1,0 +1,66 @@
+{
+  "baseline-lib.rs": {
+    "sha256": "0bfa3d3dbd6a32a4c1b18692685c796d992c1efb297f10ea270736f063206071",
+    "bytes": 56236
+  },
+  "final-lib.rs": {
+    "sha256": "97a92356a415764d4c815898dc0e88bc5a7b02b8bec1acf6bd7576f7f2051a16",
+    "bytes": 61487
+  },
+  "float-oracle-before.tsv": {
+    "sha256": "5bcd38bdba0747ea6a073f899cf3360d0283eacb90987ed1eb1aba255c00f860",
+    "bytes": 36563797
+  },
+  "final-float-oracle.tsv": {
+    "sha256": "5bcd38bdba0747ea6a073f899cf3360d0283eacb90987ed1eb1aba255c00f860",
+    "bytes": 36563797
+  },
+  "before": {
+    "sha256": "43675321a65ee94ed79d64b180bd3c57222fb0b586f621f4a4b62800fa4d4972",
+    "bytes": 698216
+  },
+  "after": {
+    "sha256": "6e4209d1e46332298453371d87306c62068af0e099595a47f3d47bfdaaa13f4c",
+    "bytes": 714496
+  },
+  "after-zmij": {
+    "sha256": "79d9e119c5978d32de8331aba2d2bc4f4b2f9fbec59b64010b5f2b993408c1d8",
+    "bytes": 697064
+  },
+  "final-before": {
+    "sha256": "986e0947a3cdc595372db9b6582dd6d0339316bfc022187216e78c7849afe775",
+    "bytes": 698720
+  },
+  "final-after": {
+    "sha256": "598a17a9959f6306c5a1ec42788f59057539ee22d310559b6aa68766217e0cbb",
+    "bytes": 697056
+  },
+  "final-edges-before": {
+    "sha256": "f3186460e767819f7306586b2ba5b4aec2891bc4f54eef7ae25866660f3eae40",
+    "bytes": 667960
+  },
+  "final-edges-after": {
+    "sha256": "4ed6a9e6561d005894d822bdcf54194b30ed164950efbed09850976499c48fef",
+    "bytes": 666320
+  },
+  "precision-before": {
+    "sha256": "1e9aff4b43d124362184f88966097b7c214ca6d475fc90575fbc2f2c8d78e3ed",
+    "bytes": 706792
+  },
+  "precision-after": {
+    "sha256": "519584d9194280815925c6b4488d70f98d165e5ca832369a4df2d794b9747e49",
+    "bytes": 703928
+  },
+  "precision-edges-before": {
+    "sha256": "960d960cd4e7f6415ac54b6542cb1d1adfafa5ace709aa7e29eea3e52f49c26e",
+    "bytes": 676960
+  },
+  "precision-edges-after": {
+    "sha256": "7f89d0ca5179a614af4ead94adb969bb70fe2b5f3357fbf5472c37c2193a3f74",
+    "bytes": 675312
+  },
+  "precision-float-oracle.tsv": {
+    "sha256": "5bcd38bdba0747ea6a073f899cf3360d0283eacb90987ed1eb1aba255c00f860",
+    "bytes": 36563797
+  }
+}

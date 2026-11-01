@@ -23,8 +23,8 @@ Read known JSON shapes with `parse[T]`. Unknown members are ignored unless you p
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import expect_equal, expect_error from "@std/test.ms"
-import parse, JsonError from "@std/json.ms"
+import expect_equal, expect_error from "@std/test/test.ms"
+import parse, JsonError from "@std/data/json.ms"
 
 type Config:
     port: Int = 8080

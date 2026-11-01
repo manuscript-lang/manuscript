@@ -8,10 +8,6 @@ use crate::conn::{Io, OwnedSock, Step, TlsDetails};
 use crate::error::{NetErr, TlsErr, describe_io_error};
 use crate::sys::{AsSock, Borrowed};
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
-use base64::Engine as _;
-use base64::alphabet::STANDARD;
-use base64::engine::DecodePaddingMode;
-use base64::engine::general_purpose::{GeneralPurpose, GeneralPurposeConfig};
 use ms_rt::fault::with_cleanup;
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerifier};
 use rustls::crypto::{CryptoProvider, WebPkiSupportedAlgorithms, ring};
@@ -27,13 +23,6 @@ use std::sync::{Arc, OnceLock};
 use x509_parser::prelude::*;
 
 // ------------------------------------------------------------------------ PEM
-
-const LENIENT: GeneralPurpose = GeneralPurpose::new(
-    &STANDARD,
-    GeneralPurposeConfig::new()
-        .with_decode_allow_trailing_bits(true)
-        .with_decode_padding_mode(DecodePaddingMode::RequireCanonical),
-);
 
 /// Decodes one block at the start of `text` as PEM requires,
 /// returning its label, bytes and the remaining text. Blocks with headers are
@@ -62,7 +51,7 @@ fn decode_block(text: &str, skip_junk: bool) -> Option<(String, Vec<u8>, &str)> 
         };
         let trimmed = line.trim();
         if trimmed == end {
-            let bytes = LENIENT.decode(body.as_bytes()).ok()?;
+            let bytes = ms_std_encoding::base64_decode_lenient(&body)?;
             return Some((label, bytes, after));
         }
         if trimmed.contains(':') {
@@ -111,7 +100,7 @@ fn blocks_labeled(text: &str, wanted: impl Fn(&str) -> bool) -> Vec<Vec<u8>> {
 
 // -------------------------------------------------------------------- Options
 
-/// Explicit TLS settings (`TlsOptions` of `@std/net.ms`).
+/// Explicit TLS settings (`TlsOptions` of `@std/net/net.ms`).
 #[derive(Clone, Debug, Default)]
 pub struct TlsOptions {
     pub server_name: String,
@@ -761,11 +750,13 @@ pub struct TlsIo {
     verified: bool,
 }
 
-fn go_handshake_error(e: &rustls::Error) -> String {
+fn handshake_error_text(e: &rustls::Error) -> String {
     match e {
         rustls::Error::General(m) => m.clone(),
-        rustls::Error::AlertReceived(a) => format!("remote error: tls: {}", alert_text(a)),
-        other => format!("tls: {other}"),
+        rustls::Error::AlertReceived(a) => {
+            format!("TLS handshake: peer sent alert: {}", alert_text(a))
+        }
+        other => format!("TLS handshake: {other}"),
     }
 }
 
@@ -835,7 +826,7 @@ impl TlsIo {
                 Ok(false) => return Handshake::WantRead,
                 Err(HandshakeFail::Tls(e)) => {
                     let _ = self.write_pending();
-                    return Handshake::Failed(NetErr::Failed(go_handshake_error(&e)));
+                    return Handshake::Failed(NetErr::Failed(handshake_error_text(&e)));
                 }
                 Err(HandshakeFail::Io(e)) => {
                     return Handshake::Failed(NetErr::Failed(describe_io_error(&e)));
@@ -943,7 +934,7 @@ impl Io for TlsIo {
                 Err(HandshakeFail::Io(e)) => return Step::Err(e),
                 Err(HandshakeFail::Tls(e)) => {
                     let _ = self.write_pending();
-                    return Step::Err(io::Error::other(go_handshake_error(&e)));
+                    return Step::Err(io::Error::other(handshake_error_text(&e)));
                 }
             }
         }
@@ -1030,7 +1021,7 @@ pub fn connect(
 ) -> Result<Box<dyn Io>, NetErr> {
     let name = server_name_for(server_name)?;
     let conn = rustls::ClientConnection::new(config, name)
-        .map_err(|e| NetErr::Failed(go_handshake_error(&e)))?;
+        .map_err(|e| NetErr::Failed(handshake_error_text(&e)))?;
     let io = TlsIo::handshake(sock, rustls::Connection::Client(conn), deadline, true)?;
     Ok(Box::new(io))
 }
@@ -1048,7 +1039,7 @@ pub fn accept(
     verified_clients: bool,
 ) -> Result<Box<dyn Io>, NetErr> {
     let conn = rustls::ServerConnection::new(config)
-        .map_err(|e| NetErr::Failed(go_handshake_error(&e)))?;
+        .map_err(|e| NetErr::Failed(handshake_error_text(&e)))?;
     let io = TlsIo::handshake(sock, rustls::Connection::Server(conn), deadline, false)?;
     // A server verified the client when one presented a certificate.
     let verified = verified_clients && io.state.borrow().peer_certificates().is_some();

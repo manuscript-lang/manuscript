@@ -1,0 +1,41 @@
+{
+  "base": "72a0274844d124b7f3184b738f2826f82a8a619c",
+  "before": {
+    "Cargo.lock": "e96faf9c82ccbee53188e7ac9f736577c77e6c4c1c8073b055664431768674b8",
+    "crates/ms-std-json/Cargo.toml": "e1d53b114ae7bcc766fc1d783b624254edb6376d9ba352c90ee1cf579b4d80b8",
+    "crates/ms-std-json/src/lib.rs": "0bfa3d3dbd6a32a4c1b18692685c796d992c1efb297f10ea270736f063206071",
+    "stdlib/toml.ms": "79b719c6bfab6b57566bebb644b7523c172f74d610dd2778e051b76c674ab522",
+    "stdlib/yaml.ms": "692b6804ca6eabe6996f0c3ebf47c7327c025fa622c1c4bb0feb01520b1f9350",
+    "target/release/ms": "6e704be91289cfa774185cf7ab914d886a9857715e2fc22464f6a4b65c8eef6e",
+    "target/ms-native/libms_native.a": "e4558c61146a6b0dce2bd903632f03793222b08c7fd4900f1d159319de1343a5"
+  },
+  "note": "Initial attempted merge used a nonexistent remote-tracking ref; this complete build is clean-main72 baseline. Its scalar_tests filter selected zero tests and is not counted as candidate coverage; 18 existing scoped JSON tests passed. Candidate validation follows the exact reviewed commit merge separately.",
+  "integrated_head": "075bc92918422bfcc2a47889378039de2e31dfd8",
+  "after": {
+    "Cargo.lock": "ac80e0b9b741b44d914f94c1cf520ff65c7f2e8fedd946051d2ae117e1dd055e",
+    "crates/ms-std-json/Cargo.toml": "bf8648784dafb89ecc0b079af4a7634e0398bec6ab781738d16a11eda7051b55",
+    "crates/ms-std-json/src/lib.rs": "97a92356a415764d4c815898dc0e88bc5a7b02b8bec1acf6bd7576f7f2051a16",
+    "stdlib/toml.ms": "79b719c6bfab6b57566bebb644b7523c172f74d610dd2778e051b76c674ab522",
+    "stdlib/yaml.ms": "692b6804ca6eabe6996f0c3ebf47c7327c025fa622c1c4bb0feb01520b1f9350",
+    "target/release/ms": "39e644c68bfa2e581cf54920262e6bcf9687193ae95738f584b72e31657557aa",
+    "target/ms-native/libms_native.a": "cfc09e1e76a185a93d43124edd2795d2da6bd8e00b98d419c8cae7ffc818bfec"
+  },
+  "binaries": {
+    "toml": {
+      "before": "81029d88745a3b1abd2b08523b6353541509324b7c5b7ee0336cb0a51c97a67a",
+      "after": "8869751aac59b16b5049258b8523b58244044210c88f6c9b171d70e058a81673"
+    },
+    "error": {
+      "before": "f1bd91d3e4153047c33daefe6887f2ae5b1c5c349bb2d7f524b48308837252a6",
+      "after": "163c7997b1c88f651e2c24d454e36576e26a17123e91c8d3c218a6f8b5eb1d7c"
+    },
+    "writer": {
+      "before": "b9806ccbcceecd823f290e6018e0dbe34d449ac416f1aa6d5b10c6996c97d3fa",
+      "after": "1f74253b75f954304b8bca0e0b54edaad9362a04ddfc5dda3bb6b61b15762993"
+    },
+    "read": {
+      "before": "829ba5cd824bd32f486030b5c4589bd8a5f553fb4d1aa2044f2b5bd79e500ea6",
+      "after": "5435084f734cbd6885d7da30992ef23574d0c2937d5d1d23744918daaf4397ec"
+    }
+  }
+}

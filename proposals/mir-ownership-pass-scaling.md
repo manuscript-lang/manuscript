@@ -77,7 +77,7 @@
 ```python
 import sys
 n = int(sys.argv[1])
-print('''from "@std/io.ms" import stdout
+print('''from "@std/io/io.ms" import stdout
 
 def show(o: Optional[Int]) -> String:
     if let v = o:

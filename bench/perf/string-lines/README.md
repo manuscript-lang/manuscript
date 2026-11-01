@@ -30,7 +30,7 @@ Apply the runtime patch, rebuild its archive, and build the second executable:
 cargo xtask runtime
 MS_RT_LIB="$PWD/target/ms-native/libms_native.a" target/release/ms build \
     bench/perf/string-lines/main.ms --build-type Release -o /tmp/string-lines-after
-python3 bench/perf/string-lines/compare.py \
+ms run bench/tools/string_lines_compare.ms -- \
     /tmp/string-lines-before /tmp/string-lines-after /tmp/string-lines-samples.csv
 ```
 

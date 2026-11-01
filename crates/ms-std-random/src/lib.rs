@@ -1,4 +1,4 @@
-//! `@std/random.ms` natives. The operating-system `Entropy` source is a plain function; the
+//! `@std/os/random.ms` natives. The operating-system `Entropy` source is a plain function; the
 //! algorithms over any `Entropy` are a [`Draw`] the generated code feeds with the bytes it
 //! fetches through the interface.
 #![no_std]
@@ -90,7 +90,7 @@ impl Range {
     }
 }
 
-/// One `@std/random.ms` operation over an `Entropy`. The generated code asks [`Draw::want`] how
+/// One `@std/os/random.ms` operation over an `Entropy`. The generated code asks [`Draw::want`] how
 /// many bytes to fetch through the interface, hands them to [`Draw::push`], and stops when
 /// `want` answers zero; [`Draw::status`] then says whether the operation succeeded.
 pub struct Draw {

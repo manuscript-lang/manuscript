@@ -74,7 +74,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:4:8: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry, MapEntry, Partition, filled, map_from_entries from \"@std/collections.ms\"\n   |        ^^^^^^^^^\n<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:4:19: resolution: redundant prelude import MapEntry; remove MapEntry from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry, MapEntry, Partition, filled, map_from_entries from \"@std/collections.ms\"\n   |                   ^^^^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:4:8: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry, MapEntry, Partition, filled, map_from_entries from \"@std/collections/collections.ms\"\n   |        ^^^^^^^^^\n<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:4:19: resolution: redundant prelude import MapEntry; remove MapEntry from this import and use its prelude declaration directly\n   |\n 4 | import ListEntry, MapEntry, Partition, filled, map_from_entries from \"@std/collections/collections.ms\"\n   |                   ^^^^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

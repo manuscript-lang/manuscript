@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,lists,modules,mutation,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/compound-assignment.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 type Counter:
     count: Int

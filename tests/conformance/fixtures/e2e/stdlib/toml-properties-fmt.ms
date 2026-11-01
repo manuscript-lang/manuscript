@@ -1,8 +1,8 @@
 # conform: tags=aliasing,control-flow,formatter,generics,interpolation,lists,maps,modules,mutation,numbers,parser,stdlib-collections,stdlib-testing,stdlib-toml,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/toml-properties.ms
-import expect_not_equal, fail from "@std/test.ms"
-import parse, stringify, TomlValue from "@std/toml.ms"
+import expect_not_equal, fail from "@std/test/test.ms"
+import parse, stringify, TomlValue from "@std/data/toml.ms"
 import Rng, next, text, mutate from "./support/generator.ms"
 
 fn generated(var rng: Rng, depth: Int) TomlValue:

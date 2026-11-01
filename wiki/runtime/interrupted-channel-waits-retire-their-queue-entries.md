@@ -9,5 +9,5 @@ remove only its own ID on exit, and release an empty list's capacity. Preserve o
 
 
 Apply when: parking on a source-managed queue or changing task-channel cancellation.
-Evidence: [channel wait cleanup](../../stdlib/tasks.ms), [deterministic sender/receiver checks](../../tests/e2e/testdata/stdlib/task-channel-wait-cancellation.ms), and [retention finding #1505](https://github.com/manuscript-lang/manuscript/issues/1505).
+Evidence: [channel wait cleanup](../../stdlib/concurrency/tasks.ms), [deterministic sender/receiver checks](../../tests/e2e/testdata/stdlib/task-channel-wait-cancellation.ms), and [retention finding #1505](https://github.com/manuscript-lang/manuscript/issues/1505).
 Verify: acknowledged waits cancelled without sleeps retain no excess heap over an equally cancelled, woken control; another live waiter still wakes. Keep samples within the small-block heap counter's range, and report profile-specific cancellation allocations separately from queue storage.

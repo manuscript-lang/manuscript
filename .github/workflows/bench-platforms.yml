@@ -76,13 +76,13 @@ jobs:
           if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
           # Git's `link.exe` shadows MSVC's on the Windows runner, so rustc gets the linker explicitly.
           export RUSTC_LINKER="${CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER:-}"
-          MS="$PWD/$ms" sh bench/perf/strappend/run.sh 5 | tee strappend-${{ matrix.name }}.txt
+          MS="$PWD/$ms" "$PWD/$ms" run bench/tools/strappend.ms -- 5 | tee strappend-${{ matrix.name }}.txt
       - name: Run bench/perf/json
         run: |
           ms=target/release/ms
           if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
           for _ in 1 2 3; do
-            MS="$PWD/$ms" sh bench/perf/json/run.sh
+            MS="$PWD/$ms" "$PWD/$ms" run bench/tools/json_bench.ms
           done | tee json-${{ matrix.name }}.txt
       - uses: actions/upload-artifact@v7
         with:

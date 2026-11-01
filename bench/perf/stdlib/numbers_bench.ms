@@ -1,10 +1,10 @@
-import keep, measure from "@std/bench.ms"
+import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
-import Decimal from "@std/decimal.ms"
-import from_int from "@std/math.ms"
-import compress, decompress from "@std/archive.ms"
-import parse_timestamp from "@std/time.ms"
-import PriorityQueue, Queue from "@std/queue.ms"
+import Decimal from "@std/math/decimal.ms"
+import from_int from "@std/math/math.ms"
+import compress, decompress from "@std/io/archive.ms"
+import parse_timestamp from "@std/os/time.ms"
+import PriorityQueue, Queue from "@std/collections/queue.ms"
 
 fn unpacked_length(data: Bytes) Int:
     if let b = decompress(data, "gzip"):
@@ -24,7 +24,7 @@ bench "bigint.factorial_1000":
 bench "bigint.multiply_100_digits":
     fn work() Result[Unit, Error]:
         let base = from_int(7).pow(118).get(from_int(0))
-        var acc = base
+        var acc = from_int(0)
         for i in 0..20000:
             acc = base * base
         return keep(acc.to_string_radix(10).length())

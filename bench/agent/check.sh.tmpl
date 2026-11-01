@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Builds the solution and runs every example in examples/. Use this to check your work.
+cd "$(dirname "$0")"
+log() { printf '{"t":%s,"phase":"%s","ok":%s}\n' "$(date +%s)" "$1" "$2" >> .bench/log.jsonl; }
+mkdir -p .bench
+if ! ( {build} ) ; then log build false; echo "BUILD FAILED"; exit 1; fi
+log build true
+fail=0
+for inp in examples/*.in; do
+  name="${inp%.in}"
+  if ! timeout 10 bash -c '{run}' < "$inp" > "$name.actual" 2> "$name.err"; then :; fi
+  if diff <(sed -e 's/[[:space:]]*$//' "$name.out") <(sed -e 's/[[:space:]]*$//' "$name.actual") > "$name.diff"; then
+    echo "PASS $name"
+  else
+    echo "FAIL $name (see $name.diff, $name.err)"; fail=1
+  fi
+done
+log check $([ $fail = 0 ] && echo true || echo false)
+exit $fail

@@ -13,7 +13,7 @@ Save this complete program as `hello.ms` and run `ms run hello.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
 ```manuscript
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     if stdout().write("Hello, Manuscript!\n").is_error():
@@ -29,7 +29,7 @@ Complete examples below use `test` blocks: save as `example.ms` and run `ms test
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "unread message count":
     let customer = "Sam"
@@ -49,7 +49,7 @@ test "unread message count":
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "collections and lookup":
     var tags = ["docs", "release"]
@@ -78,7 +78,7 @@ test "collections and lookup":
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "free shipping for orders of at least 40":
     let prices = [12, 8, 25]
@@ -98,7 +98,7 @@ Count with an exclusive range:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "count five iterations":
     var total = 0
@@ -139,7 +139,7 @@ let affordable = discounted.filter(fn value: value <= 10)
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Todo:
     title: String
@@ -220,7 +220,7 @@ Module-level `let` is a constant used without `()`. Import standard APIs from `@
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn apply(value: Int, transform: fn(Int) Int) Int:
     return transform(value)
@@ -241,7 +241,7 @@ Prepare a value before a borrowing closure uses it. Non-escaping closures borrow
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Reading:
     celsius: Int
@@ -269,7 +269,7 @@ Methods live in `impl` blocks, never inside the `type`. Declare an `interface`, 
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 interface Increment:
     var fn increment() Unit
@@ -296,7 +296,7 @@ A type's own methods go in `impl Counter:`, without an interface:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Counter:
     value: Int
@@ -318,12 +318,12 @@ Use an interface when callers should depend on behavior rather than on the type.
 ## Files and cleanup
 
 ```manuscript
-import filesystem, FileSystemError from "@std/fs.ms"
+import FileSystemError, open, write_file_bytes from "@std/os/fs.ms"
 
 fn copy_notes() Result[Unit, FileSystemError]:
-    var source = try filesystem().open("notes.txt", flags: "r", mode: 0)
+    var source = try open("notes.txt", flags: "r", mode: 0)
     let contents = try source.read_file(max_bytes: 1048576)
-    try filesystem().write_file_bytes(path: "backup.txt", data: contents, replace: true)
+    try write_file_bytes(path: "backup.txt", data: contents, replace: true)
     return ok(unit)
 ```
 

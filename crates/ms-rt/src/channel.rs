@@ -1,4 +1,4 @@
-//! Park and wake for the task channels of `@std/tasks.ms`. The queues live in Manuscript; a task
+//! Park and wake for the task channels of `@std/concurrency/tasks.ms`. The queues live in Manuscript; a task
 //! that finds its queue empty (or full) makes a token, records it beside the queue, and parks on
 //! it until the other end posts it. A token lasts for one wait, so a post that arrives after the
 //! wait ended, or a second post, finds no token and is dropped.

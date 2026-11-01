@@ -1,5 +1,5 @@
 import bench from "./harness.ms"
-import filesystem, FileSystem from "@std/fs.ms"
+import FileSystem, list, read_file, stat, temporary from "@std/os/fs.ms"
 import create, file_transport, Transport, Logger from "@std/log.ms"
 
 fn run(fs: FileSystem, root: String) Unit:
@@ -28,7 +28,7 @@ fn run(fs: FileSystem, root: String) Unit:
         fn() Int:
             var n = 0
             for i in 0..200:
-                if let b = fs.read_file("{root}/f{i}.bin"):
+                if let b = read_file("{root}/f{i}.bin"):
                     n += b.length()
             return n
     )
@@ -39,7 +39,7 @@ fn run(fs: FileSystem, root: String) Unit:
         fn() Int:
             var n = 0
             for i in 0..200:
-                if fs.stat("{root}/f{i}.bin", follow_links: true).is_ok():
+                if stat("{root}/f{i}.bin", follow_links: true).is_ok():
                     n += 1
             return n
     )
@@ -48,7 +48,7 @@ fn run(fs: FileSystem, root: String) Unit:
         "fs.list_200",
         1,
         fn() Int:
-            if let entries = fs.list(root):
+            if let entries = list(root):
                 return entries.length()
 
             return 0
@@ -75,9 +75,8 @@ fn log_many(logger: Logger) Unit:
     )
 
 export fn bench_fs() Unit:
-    let fs = filesystem()
 
-    if var dir = fs.temporary("ms-bench-"):
+    if var dir = temporary("ms-bench-"):
         run(fs, dir.path())
         log_run("{dir.path()}/log.txt")
         dir.close().get(none)

@@ -7,4 +7,6 @@ Decision: `bench/perf/` measures compiler/runtime speed (`stdlib/` ns per operat
 
 Apply when: reporting numbers, adding a benchmark, or moving either directory.
 Evidence: [bench/perf](../../bench/perf/README.md), [bench/agent](../../bench/agent/README.md), [maintenance skill](../../skills/repository-maintenance/SKILL.md).
-Verify: `make agent-bench-check` (oracle plus unit tests) passes; every path in the Makefile, docs, and skills resolves after a move (`make repo-check`).
+Verify: `make agent-bench-check` (oracle plus `ms test` of the harness core) passes; every path in the Makefile, docs, and skills resolves after a move (`make repo-check`).
+
+Tooling: `bench/agent/` is driven by `ms run` programs (run, report, tokens, leaderboard, export_harbor, grade, gen), not Python; only `harbor/local_env.py` stays Python because Harbor loads it as a plugin. Entry files sit directly in `bench/agent/` because an entry cannot import from a parent directory ([#2163](https://github.com/manuscript-lang/manuscript/issues/2163)). `lib/pyrandom.ms` and `lib/pyjson.ms` reproduce CPython `random` and `json.dumps` so regenerated `cases.json` stay byte-identical.

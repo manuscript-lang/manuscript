@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type JsonError; add: import JsonError from \"@std/json.ms\"",
+        "message": "unknown type JsonError; add: import JsonError from \"@std/data/json.ms\"",
         "position": {
           "file": "testcommonerrorrejectsinvalidcontractpatterns-3.ms",
           "line": 5,
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import JsonError from \"@std/json.ms\"\n"
+          "replacement": "import JsonError from \"@std/data/json.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testcommonerrorrejectsinvalidcontractpatterns-3.ms:5:24: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n   |\n 5 |     return Result[Int, JsonError].ok(value: 1)\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testcommonerrorrejectsinvalidcontractpatterns-3.ms:5:24: resolution: unknown type JsonError; add: import JsonError from \"@std/data/json.ms\"\n   |\n 5 |     return Result[Int, JsonError].ok(value: 1)\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -33,7 +33,7 @@ There is no implicit unwrapping or flattening: `Int??` differs from `Int?`. `Res
 An argument for a standard `T?` parameter may be a plain `T`; it is wrapped as the present case. An argument already `T?` passes unchanged, including `none`.
 
 ```manuscript
-import Queue from "@std/queue.ms"
+import Queue from "@std/collections/queue.ms"
 
 fn main() Unit:
     var _bounded = Queue[Int](capacity: 4)

@@ -9,7 +9,7 @@ weight = 3
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 extern fn llabs(value: Int) Int
 

@@ -1,5 +1,5 @@
-//! Natives for the client half of `@std/http.ms` and the `Network.request` entry points of
-//! `@std/net.ms`: headers, clients, response bodies and one-shot requests.
+//! Natives for the client half of `@std/net/http.ms` and the `Network.request` entry points of
+//! `@std/net/net.ms`: headers, clients, response bodies and one-shot requests.
 
 use super::tls::TlsOptionsWire;
 use super::{BodyH, ClientH, HeadersH, NetH, code, opt, report};

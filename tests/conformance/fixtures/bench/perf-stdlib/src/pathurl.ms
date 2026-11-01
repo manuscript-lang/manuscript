@@ -1,7 +1,7 @@
 import bench from "./harness.ms"
-import basename, join, normalize from "@std/fs.ms"
-import parse, encode_component from "@std/net.ms"
-import sqrt, sin from "@std/math.ms"
+import basename, join, normalize from "@std/os/fs.ms"
+import parse, encode_component from "@std/net/net.ms"
+import sqrt, sin from "@std/math/math.ms"
 
 export fn bench_path_url_math() Unit:
     bench(

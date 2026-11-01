@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "lines preserve boundaries across search windows and unaligned starts":
     for width in [0, 1, 7, 8, 15, 16, 31, 32, 63, 64, 1024]:

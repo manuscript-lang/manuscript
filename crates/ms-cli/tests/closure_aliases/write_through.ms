@@ -1,4 +1,4 @@
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 fn invoke(f: fn() Unit) Unit:
     f()

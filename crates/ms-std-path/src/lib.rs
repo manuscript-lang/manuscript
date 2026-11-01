@@ -1,4 +1,4 @@
-//! `@std/fs.ms` natives. Every operation is a
+//! `@std/os/fs.ms` natives. Every operation is a
 //! method of [`Rules`], which selects POSIX or Windows conventions; the host-rule functions of the
 //! language pass the host's flag.
 #![no_std]
@@ -11,7 +11,7 @@ pub mod glob;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-/// The `PathParts` record of `@std/fs.ms`.
+/// The `PathParts` record of `@std/os/fs.ms`.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Parts {
     pub root: String,
@@ -121,11 +121,12 @@ impl Rules {
     }
 
     pub fn normalize(self, s: &str) -> String {
-        let s = self.slash(s);
+        let normalized = self.windows.then(|| self.slash(s));
+        let s = normalized.as_deref().unwrap_or(s);
         if s.is_empty() {
             return ".".to_string();
         }
-        let mut root = self.root_of(&s);
+        let mut root = self.root_of(s);
         let tail = &s[root.len()..];
         if self.windows && root.starts_with("//") && !root.ends_with('/') {
             root.push('/');
@@ -159,7 +160,11 @@ impl Rules {
         if self.windows && root.is_empty() && !stack.is_empty() && !self.root(stack[0]).is_empty() {
             value = alloc::format!("./{value}");
         }
-        self.native(&value)
+        if self.windows {
+            self.native(&value)
+        } else {
+            value
+        }
     }
 
     pub fn parse(self, original: &str) -> Parts {
@@ -187,7 +192,7 @@ impl Rules {
             dir = root_original;
         }
         let mut ext = ext_of(base);
-        if base == "." || base == ".." || base.starts_with('.') && base.matches('.').count() == 1 {
+        if base == ".." || ext.len() == base.len() {
             ext = "";
         }
         Parts {
@@ -200,6 +205,16 @@ impl Rules {
     }
 
     pub fn extension(self, s: &str) -> String {
+        if !self.windows {
+            let base = s.trim_end_matches('/').rsplit('/').next().unwrap_or("");
+            let Some(at) = base.rfind('.') else {
+                return String::new();
+            };
+            if at == 0 || base == ".." {
+                return String::new();
+            }
+            return base[at..].to_string();
+        }
         self.parse(s).extension
     }
 
@@ -426,6 +441,135 @@ impl Rules {
 mod tests {
     extern crate std;
     use super::*;
+
+    // Frozen POSIX behavior from before the basename-only extension fast path.
+    fn previous_posix_parts(original: &str) -> Parts {
+        let s = original.to_string();
+        let root = if s.starts_with('/') { "/" } else { "" };
+        let trimmed = s.trim_end_matches('/');
+        let mut base = "";
+        let mut dir = "";
+        if !trimmed.is_empty() {
+            let at = trimmed.rfind('/');
+            base = &trimmed[at.map_or(0, |i| i + 1)..];
+            if let Some(at) = at {
+                dir = &original[..at];
+            }
+            if dir.len() < root.len() {
+                dir = root;
+            }
+        }
+        if base.is_empty() && !root.is_empty() {
+            dir = root;
+        }
+        let mut ext = "";
+        for (i, c) in base.bytes().enumerate().rev() {
+            if c == b'/' {
+                break;
+            }
+            if c == b'.' {
+                ext = &base[i..];
+                break;
+            }
+        }
+        if base == "." || base == ".." || base.starts_with('.') && base.matches('.').count() == 1 {
+            ext = "";
+        }
+        Parts {
+            root: root.to_string(),
+            directory: dir.to_string(),
+            base: base.to_string(),
+            extension: ext.to_string(),
+            name: base.strip_suffix(ext).unwrap_or(base).to_string(),
+        }
+    }
+
+    fn previous_posix_normalize(input: &str) -> String {
+        let s = input.to_string();
+        if s.is_empty() {
+            return ".".to_string();
+        }
+        let root = if s.starts_with('/') { "/" } else { "" };
+        let mut stack: Vec<&str> = Vec::new();
+        for part in s[root.len()..].split('/') {
+            match part {
+                "" | "." => {}
+                ".." => {
+                    if stack.last().is_some_and(|&last| last != "..") {
+                        stack.pop();
+                    } else if !root.ends_with('/') {
+                        stack.push(part);
+                    }
+                }
+                _ => stack.push(part),
+            }
+        }
+        let mut value = alloc::format!("{root}{}", stack.join("/"));
+        if value.is_empty() {
+            value = ".".to_string();
+        }
+        if s.ends_with('/') && !value.ends_with('/') {
+            value.push('/');
+        }
+        value.to_string()
+    }
+
+    #[test]
+    fn posix_component_fast_paths_preserve_parts() {
+        let check = |input: &str| {
+            let expected = previous_posix_parts(input);
+            assert_eq!(POSIX.parse(input), expected, "parse {input:?}");
+            assert_eq!(
+                POSIX.extension(input),
+                expected.extension,
+                "extension {input:?}"
+            );
+            assert_eq!(
+                POSIX.normalize(input),
+                previous_posix_normalize(input),
+                "normalize {input:?}"
+            );
+        };
+        for input in [
+            "",
+            "/",
+            "////",
+            ".",
+            "..",
+            "...",
+            ".env",
+            ".env.local",
+            "a.",
+            "a..",
+            "a.tar.gz/",
+            "/a//b/.env//",
+            "a\\b.txt",
+            "a\0b.ext",
+            "a/../",
+            "../../a/../b/",
+            "/../../a/../",
+        ] {
+            check(input);
+        }
+        let chunks = ["a", ".", "/", "\\", "é", "🕰", "\0"];
+        for mut seed in 0..chunks.len().pow(5) {
+            let mut path = String::new();
+            for _ in 0..5 {
+                path.push_str(chunks[seed % chunks.len()]);
+                seed /= chunks.len();
+            }
+            check(&path);
+            check(&alloc::format!("/{path}//"));
+        }
+        for input in [
+            "x".repeat(16384),
+            alloc::format!(".{}", "x".repeat(16384)),
+            ".".repeat(16384),
+            alloc::format!("/{}/file.tar.gz///", "dir/".repeat(4096)),
+        ] {
+            check(&input);
+        }
+    }
 
     #[test]
     fn posix_basics() {

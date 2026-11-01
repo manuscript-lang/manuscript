@@ -1,13 +1,13 @@
 # conform: tags=formatter,modules,parser,stdlib-testing,stdlib-url,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/library-url.ms
-import expect_equal from "@std/test.ms"
-import parse from "@std/net.ms"
-import format from "@std/net.ms"
-import encode_component from "@std/net.ms"
-import decode_component from "@std/net.ms"
-import resolve from "@std/net.ms"
-import UrlError from "@std/net.ms"
+import expect_equal from "@std/test/test.ms"
+import parse from "@std/net/net.ms"
+import format from "@std/net/net.ms"
+import encode_component from "@std/net/net.ms"
+import decode_component from "@std/net/net.ms"
+import resolve from "@std/net/net.ms"
+import UrlError from "@std/net/net.ms"
 
 fn verify_url() Unit!:
     let url = try parse(text: "https://EXAMPLE.COM/a%2Fb?q=x#frag")

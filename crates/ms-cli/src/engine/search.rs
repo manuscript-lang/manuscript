@@ -118,8 +118,7 @@ fn describe_project(m: SymbolMatch) -> Described {
     }
 }
 
-/// Standard-library symbols follow, matched on names only and leaving room for
-/// at least two even when the project fills the limit.
+/// Standard-library symbols follow project matches within the same result limit.
 fn library_matches(query: &str, words: usize, project: usize, limit: usize) -> Vec<Described> {
     let concept = ms_tooling::guide::search(query, 50);
     let mut library: Vec<(i32, &Match)> = Vec::new();
@@ -147,7 +146,7 @@ fn library_matches(query: &str, words: usize, project: usize, limit: usize) -> V
     library.sort_by_key(|(rank, _)| *rank);
     library
         .into_iter()
-        .take(limit.saturating_sub(project).max(2))
+        .take(limit.saturating_sub(project))
         .map(|(_, m)| Described {
             name: m.path.clone(),
             kind: m.kind.clone(),

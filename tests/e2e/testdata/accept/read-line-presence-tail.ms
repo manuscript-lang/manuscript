@@ -1,6 +1,6 @@
-import expect_equal, expect_false, expect_ok, expect_true from "@std/test.ms"
-import ReadStream, IoError, read_line from "@std/io.ms"
-import filesystem from "@std/fs.ms"
+import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
+import ReadStream, IoError, read_line from "@std/io/io.ms"
+import open, read_file, temporary, write_file from "@std/os/fs.ms"
 import Closeable from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 
@@ -38,7 +38,7 @@ type LineTailCleanup:
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for LineTailCleanup:
     var fn close() Unit!:
-        let _written = filesystem().write_file(self.marker, "closed", true)
+        let _written = write_file(self.marker, "closed", true)
         return ok(unit)
 
 fn with_cleanup(var input: ReadStream, marker: String) Bool:
@@ -83,22 +83,20 @@ test "presence retains written argument order and cleanup":
     reordered(var visits) | try expect_true
     visits | try expect_equal([1, 2])
 
-    let fs = filesystem()
-    let temporary = fs.temporary("manuscript-presence-") | try expect_ok
+    let temporary = temporary("manuscript-presence-") | try expect_ok
     let first = "{temporary.path()}/first"
     let second = "{temporary.path()}/second"
     with_cleanup(var input, first.clone()) | try expect_true
-    fs.read_file(first).is_ok() | try expect_true
-    fs.read_file(second).is_ok() | try expect_false
+    read_file(first).is_ok() | try expect_true
+    read_file(second).is_ok() | try expect_false
     with_cleanup(var input, second.clone()) | try expect_false
-    fs.read_file(second).is_ok() | try expect_true
+    read_file(second).is_ok() | try expect_true
 
 test "presence and text reads share buffered consumption":
-    let fs = filesystem()
-    let temporary = fs.temporary("manuscript-presence-") | try expect_ok
+    let temporary = temporary("manuscript-presence-") | try expect_ok
     let path = "{temporary.path()}/lines"
-    let _written = fs.write_file(path, "\nλ\r\nlast") | try expect_ok
-    let handle = fs.open(path, "r", 384) | try expect_ok
+    let _written = write_file(path, "\nλ\r\nlast") | try expect_ok
+    let handle = open(path, "r", 384) | try expect_ok
     let input = handle.reader()
     present(input) | try expect_true
     (try read_line(input)) | try expect_equal("λ")

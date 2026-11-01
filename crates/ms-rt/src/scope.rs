@@ -1,4 +1,4 @@
-//! Task scopes for `@std/tasks.ms`: a scope owns the tasks started in it, so a group can wait for
+//! Task scopes for `@std/concurrency/tasks.ms`: a scope owns the tasks started in it, so a group can wait for
 //! them, or cancel and collect them, with one call.
 //!
 //! A task started in a scope may carry its own time limit; the scope may carry one for every task,

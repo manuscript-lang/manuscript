@@ -1329,7 +1329,7 @@ crate::isolate_static! {
     static TIMED_OUT: bool = false;
 }
 
-// ---- closure tasks (`@std/tasks.ms`) ----
+// ---- closure tasks (`@std/concurrency/tasks.ms`) ----
 
 /// Entry of a task that runs a `fn() Unit`: calls the closure with itself as its
 /// environment, as every closure call does.

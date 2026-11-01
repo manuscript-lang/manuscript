@@ -1,8 +1,8 @@
 # conform: tags=aliasing,faults,modules,stdlib-net,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/net.ms
-import expect_equal, expect_error, expect_false from "@std/test.ms"
-import network, parse_ip, parse_cidr, contains_ip, NetworkError, IpFamily from "@std/net.ms"
+import expect_equal, expect_error, expect_false from "@std/test/test.ms"
+import parse_ip, parse_cidr, contains_ip, NetworkError, IpFamily, bind_datagram, connect, listen, restrict from "@std/net/net.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -24,9 +24,8 @@ test "IP parsing CIDR normalization and containment":
     try expect_ip_error("999.1.1.1")
 
 test "TCP loopback writes reads half close and EOF":
-    let net = network()
-    let listener = try net.listen("127.0.0.1:0")
-    let client = try net.connect(listener.address(), 2.seconds)
+    let listener = try listen("127.0.0.1:0")
+    let client = try connect(listener.address(), 2.seconds)
     let server = try listener.accept(2.seconds)
     try client.write("hello", 2.seconds)
     try expect_equal((try server.read(5, 2.seconds)).get(), "hello".to_bytes())
@@ -35,9 +34,8 @@ test "TCP loopback writes reads half close and EOF":
     try expect_false(not (try server.read(5, 2.seconds)).is_none())
 
 test "UDP loopback preserves datagram data and sender":
-    let net = network()
-    let receiver = try net.bind_datagram("127.0.0.1:0")
-    let sender = try net.bind_datagram("127.0.0.1:0")
+    let receiver = try bind_datagram("127.0.0.1:0")
+    let sender = try bind_datagram("127.0.0.1:0")
     try sender.send("packet", receiver.address(), 2.seconds)
 
     let packet = try receiver.receive(64, 2.seconds)
@@ -49,7 +47,7 @@ test "UDP loopback preserves datagram data and sender":
     )
 
 test "network restriction denies admission and close rejects acquisitions":
-    let restricted = try network().restrict([], [], allow_listen: false)
+    let restricted = try restrict([], [], allow_listen: false)
     try expect_false(
         (
             (

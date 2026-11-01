@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding parse; add: import parse from \"@std/csv.ms\"",
+        "message": "unknown binding parse; add: import parse from \"@std/data/csv.ms\"",
         "position": {
           "file": "format-testformatparagraphs-5.ms",
           "line": 5,
@@ -29,7 +29,7 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import parse from \"@std/csv.ms\"\n"
+          "replacement": "import parse from \"@std/data/csv.ms\"\n"
         }
       },
       {
@@ -69,7 +69,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/format-testformatparagraphs-5.ms:5:19: resolution: unknown binding parse; add: import parse from \"@std/csv.ms\"\n   |\n 5 |     let records = parse(input)\n   |                   ^\n<DIR>/format-testformatparagraphs-5.ms:9:18: resolution: unknown binding summarize; declare it with 'let summarize = ...' before use, define 'fn summarize(...) T:', or import it from a module\n   |\n 9 |     let report = summarize(records)\n   |                  ^\n<DIR>/format-testformatparagraphs-5.ms:10:19: resolution: unknown binding encode; declare it with 'let encode = ...' before use, define 'fn encode(...) T:', or import it from a module\n    |\n 10 |     let payload = encode(report)\n    |                   ^\n<DIR>/format-testformatparagraphs-5.ms:12:11: resolution: unknown binding save; declare it with 'let save = ...' before use, define 'fn save(...) T:', or import it from a module\n    |\n 12 |     match save(payload):\n    |           ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/format-testformatparagraphs-5.ms:5:19: resolution: unknown binding parse; add: import parse from \"@std/data/csv.ms\"\n   |\n 5 |     let records = parse(input)\n   |                   ^\n<DIR>/format-testformatparagraphs-5.ms:9:18: resolution: unknown binding summarize; declare it with 'let summarize = ...' before use, define 'fn summarize(...) T:', or import it from a module\n   |\n 9 |     let report = summarize(records)\n   |                  ^\n<DIR>/format-testformatparagraphs-5.ms:10:19: resolution: unknown binding encode; declare it with 'let encode = ...' before use, define 'fn encode(...) T:', or import it from a module\n    |\n 10 |     let payload = encode(report)\n    |                   ^\n<DIR>/format-testformatparagraphs-5.ms:12:11: resolution: unknown binding save; declare it with 'let save = ...' before use, define 'fn save(...) T:', or import it from a module\n    |\n 12 |     match save(payload):\n    |           ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

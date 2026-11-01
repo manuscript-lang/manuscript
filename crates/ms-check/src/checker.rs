@@ -696,7 +696,8 @@ impl Checker {
                     })
                 })
             };
-            let usable = found.as_ref().filter(|f| f.export).cloned();
+            let hidden = stdlib::is_internal(path) && !module.file.starts_with("@std/");
+            let usable = found.as_ref().filter(|f| f.export && !hidden).cloned();
             let Some(found) = usable else {
                 let end = Pos::new(
                     item.name_pos.offset + item.name.len() as u32,
@@ -1559,7 +1560,7 @@ impl Checker {
         {
             self.type_error(
                 decl.pos(),
-                "make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it",
+                "make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it",
             );
             return;
         }
@@ -1594,7 +1595,9 @@ impl Checker {
             }
         }
         // `a..b` is parsed as a call of `..`, which is always the standard `range`.
-        if let Some(range) = stdlib::standard_module_symbol(n("@std/collections.ms"), n("range")) {
+        if let Some(range) =
+            stdlib::standard_module_symbol(n("@std/collections/collections.ms"), n("range"))
+        {
             self.names.borrow_mut().insert(n(".."), range);
         }
         for name in stdlib::STANDARD_PRELUDE_NAMES {
@@ -1617,11 +1620,12 @@ impl Checker {
 }
 
 pub(crate) fn hex(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() * 2);
-    for b in s.bytes() {
-        out.push_str(&format!("{b:02x}"));
-    }
-    out
+    use std::fmt::Write;
+    s.bytes()
+        .fold(String::with_capacity(s.len() * 2), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        })
 }
 
 /// Drops repeats of one message at one position.

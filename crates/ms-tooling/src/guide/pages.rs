@@ -66,7 +66,15 @@ pub fn mistakes() -> String {
     out
 }
 
+/// The name `ms search_symbol` shows for a module: `json` for `@std/data/json.ms`.
 pub(crate) fn short_name(path: &str) -> &str {
+    let path = path.strip_prefix("@std/").unwrap_or(path);
+    let path = path.strip_suffix(".ms").unwrap_or(path);
+    path.rsplit('/').next().unwrap_or(path)
+}
+
+/// The module path without `@std/` and `.ms`: `data/json`.
+fn package_name(path: &str) -> &str {
     let path = path.strip_prefix("@std/").unwrap_or(path);
     path.strip_suffix(".ms").unwrap_or(path)
 }
@@ -232,7 +240,9 @@ fn split_path(path: &str) -> Vec<String> {
 }
 
 fn find_module(name: &str) -> Option<&'static ApiModule> {
-    modules().iter().find(|m| short_name(&m.path) == name)
+    modules()
+        .iter()
+        .find(|m| short_name(&m.path) == name || package_name(&m.path) == name)
 }
 
 fn import_line(m: &ApiModule) -> String {
@@ -359,7 +369,9 @@ pub(crate) fn clip_text(s: &str, limit: usize) -> String {
     if s.len() <= limit {
         return s.to_string();
     }
-    let (head, tail) = (limit * 2 / 3, limit / 3);
+    // The omission marker counts against the limit.
+    let room = limit.saturating_sub(48);
+    let (head, tail) = (room * 2 / 3, room / 3);
     let bytes = s.as_bytes();
     let mut out = Vec::new();
     out.extend_from_slice(&bytes[..head]);

@@ -1,7 +1,7 @@
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import StringBuilder from "@std/string.ms"
-import clock from "@std/time.ms"
-import parse from "@std/toml.ms"
+import monotonic from "@std/os/time.ms"
+import parse from "@std/data/toml.ms"
 
 fn document(count: Int) String:
     var sb = StringBuilder()
@@ -22,10 +22,10 @@ export fn main() Int:
     var ok = 0
 
     for run in 0..200:
-        let started = clock().now()
+        let started = monotonic()
         ok = parse_ok(text) + run * 0
 
-        let elapsed = clock().now().difference(started).to_nanoseconds()
+        let elapsed = monotonic().difference(started).to_nanoseconds()
         if elapsed < best: best = elapsed
 
     let _ignored = stdout().write(

@@ -1,16 +1,17 @@
-import filesystem from "@std/fs.ms"
-import stdout, files from "@std/io.ms"
-import TaskGroup from "@std/tasks.ms"
+import open, read_file from "@std/os/fs.ms"
+import arguments from "@std/os/process.ms"
+import stdout, open_read from "@std/io/io.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
 
 fn read_whole(path: String) Int:
-    let read = filesystem().read_file(path)
+    let read = read_file(path)
     if let bytes = read:
         return bytes.length()
 
     return -1
 
 fn open_then_read(path: String) Int:
-    let opened = filesystem().open(path, "r", 420)
+    let opened = open(path, "r", 420)
 
     if var file = opened:
         let _data = file.read_file()
@@ -20,7 +21,7 @@ fn open_then_read(path: String) Int:
     return -1
 
 fn open_io_then_read(path: String) Int:
-    let opened = files().open(path)
+    let opened = open_read(path)
 
     if let file = opened:
         let _data = file.read()
@@ -30,7 +31,7 @@ fn open_io_then_read(path: String) Int:
     return -1
 
 export fn main() Int:
-    let path = arguments() [0].clone()
+    let path = arguments()[0].clone()
     var group = TaskGroup[Int](timeout: 300.milliseconds)
     let first = path.clone()
     let second = path.clone()

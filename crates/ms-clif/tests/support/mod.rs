@@ -13,7 +13,7 @@ pub fn mingw_triple() -> &'static str {
     }
 }
 
-/// llvm-mingw's clang: `MS_MINGW`, else the tree `scripts/fetch-mingw.sh` leaves in `target/llvm-bundle`.
+/// llvm-mingw's clang: `MS_MINGW`, else the tree `toolchain/fetch-mingw.sh` leaves in `target/llvm-bundle`.
 #[cfg(windows)]
 #[allow(dead_code)]
 pub fn mingw_clang() -> std::path::PathBuf {

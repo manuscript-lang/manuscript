@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type JsonError; add: import JsonError from \"@std/json.ms\"",
+        "message": "unknown type JsonError; add: import JsonError from \"@std/data/json.ms\"",
         "position": {
           "file": "testlibraryerrordomainsaredistinct-4.ms",
           "line": 6,
           "column": 17,
-          "offset": 239
+          "offset": 244
         },
         "fix": {
           "position": {
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import JsonError from \"@std/json.ms\"\n"
+          "replacement": "import JsonError from \"@std/data/json.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testlibraryerrordomainsaredistinct-4.ms:6:17: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n   |\n 6 | fn wrong() Unit!JsonError:\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testlibraryerrordomainsaredistinct-4.ms:6:17: resolution: unknown type JsonError; add: import JsonError from \"@std/data/json.ms\"\n   |\n 6 | fn wrong() Unit!JsonError:\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

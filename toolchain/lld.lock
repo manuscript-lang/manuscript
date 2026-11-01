@@ -1,0 +1,16 @@
+# Pinned static lld from https://github.com/manuscript-lang/llvm-bundle, downloaded by `ms` on first use.
+# Update the tag and every digest together; digests are the release's SHA256SUMS.
+tag llvm-23.1.1-r3
+version 23.1.1
+e470fd74eae2f2b236fa990a42fe787b5d46f2353a3689d6c12f3ecaecb30804  lld-23.1.1-darwin-amd64.tar.gz
+dfdc831386a62963b63784d1bcae5cf90b64bb2b8d521d91231e7f7226472329  lld-23.1.1-darwin-arm64.tar.gz
+f84a36f58d4943ea126f5ec1162be9e90d6c36d388fcd1a07aaa7e38b9a222c1  lld-23.1.1-linux-amd64.tar.gz
+988ff07170a77c32f532cfc664f7bd4e66813bd67e7796c0b5389e73404f57fb  lld-23.1.1-linux-arm64.tar.gz
+d0e0f5d7390553f40ceb53bd5334afbc2a787c82b95d4e7aebf44fa0918f5e09  lld-23.1.1-windows-amd64.tar.gz
+63527fa91e55991baf666697ec3200ec90026ff267dd5190cb35e375d90d28cc  lld-23.1.1-windows-arm64.tar.gz
+391d08110840efce47a4d17a08f5e331ddc5a8d448433797c37c8421b99bb6a1  llvm-tools-23.1.1-darwin-amd64.tar.gz
+e1f11e5df2a880b5c75cf8ebc3df0119a4f4d570deae854866aadfdc5de92ed3  llvm-tools-23.1.1-darwin-arm64.tar.gz
+d19868df5ca10629be51e6bf885adc1c30b45a4d6b7563afb128d8a6578994d9  llvm-tools-23.1.1-linux-amd64.tar.gz
+43b9ee390d3821096c835e31eb741b661fb6154c1e30943eae0fad0bd85313a6  llvm-tools-23.1.1-linux-arm64.tar.gz
+5f95a4f575541a0e8de85f60b96c5e7b92d25f7fd56dd76e96d48e474f404254  llvm-tools-23.1.1-windows-amd64.tar.gz
+9ec54f55ea4166e655638efd505bf7fca00c4d85a72fa0cacf410675b039e715  llvm-tools-23.1.1-windows-arm64.tar.gz

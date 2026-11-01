@@ -6,5 +6,5 @@ Decision: the user removed `describe` and `it` callback helpers because wrapping
 
 
 Apply when: adding BDD helpers or test suite grouping.
-Evidence: the user's explicit removal request; [testing declarations](../../stdlib/test.ms).
+Evidence: the user's explicit removal request; [testing declarations](../../stdlib/test/test.ms).
 Verify: standard testing exports contain assertions, fail and skip, with no callback suite wrappers.

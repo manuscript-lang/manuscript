@@ -1,4 +1,4 @@
-//! `@std/archive.ms` natives: in-memory zip and tar packing and unpacking with the validation,
+//! `@std/io/archive.ms` natives: in-memory zip and tar packing and unpacking with the validation,
 //! limits and error mapping.
 //! Zip members are compressed with miniz_oxide.
 #![no_std]

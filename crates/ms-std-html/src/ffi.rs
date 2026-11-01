@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/html.ms` (`msrt_html_*`).
+//! C ABI shims for `@std/data/html.ms` (`msrt_html_*`).
 //!
 //! `HtmlNode` is a sum type with recursive lists, so a parse returns a refcounted tree handle
 //! ([`TreeObj`]) and the generated lowering walks it with `u32` node ids: `kind`, `text`, `tag`,

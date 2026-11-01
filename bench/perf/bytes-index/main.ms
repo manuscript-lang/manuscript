@@ -1,6 +1,6 @@
 import Bytes from "@std/bytes.ms"
-import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
 
 fn measure(name: String, data: Bytes, start: Int, expected: Int, iterations: Int) Int:
     let checked = data.index_of_byte(255, start)
@@ -11,11 +11,11 @@ fn measure(name: String, data: Bytes, start: Int, expected: Int, iterations: Int
         if checked.get(-1) != expected: return 1
 
     var checksum = 0
-    let started = clock().now()
+    let started = monotonic()
     for unused in 0..iterations:
         checksum += data.index_of_byte(255, start).get(data.length())
 
-    let elapsed = clock().now().difference(started).to_nanoseconds()
+    let elapsed = monotonic().difference(started).to_nanoseconds()
     if checksum != expected * iterations: return 1
 
     let _written = stdout().write(

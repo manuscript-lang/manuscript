@@ -1,9 +1,9 @@
 import bench from "./harness.ms"
 import Bytes from "@std/bytes.ms"
-import pack, unpack, ArchiveEntry from "@std/archive.ms"
-import decoder, SseDecoder from "@std/sse.ms"
-import parse_timestamp from "@std/time.ms"
-import uuid_v4, entropy from "@std/random.ms"
+import pack, unpack, ArchiveEntry from "@std/io/archive.ms"
+import decoder, SseDecoder from "@std/net/sse.ms"
+import parse_timestamp from "@std/os/time.ms"
+import uuid_v4 from "@std/os/random.ms"
 
 fn entries(count: Int) List[ArchiveEntry]:
     var out: List[ArchiveEntry] = []
@@ -97,9 +97,8 @@ export fn bench_host() Unit:
         20000,
         fn() Int:
             var n = 0
-            let source = entropy()
             for i in 0..20000:
-                if let u = uuid_v4(source):
+                if let u = uuid_v4():
                     n += u.length()
             return n
     )

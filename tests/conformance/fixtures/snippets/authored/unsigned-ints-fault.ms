@@ -1,7 +1,7 @@
 # conform: tags=numbers,faults,tier-core
 # conform: phase=run
 # conform: origin=unsigned integer types stage 1
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     let a: UInt8 = 5

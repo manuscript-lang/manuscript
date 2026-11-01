@@ -1,4 +1,4 @@
-import readFileSync from "node:fs";
+import { readFileSync } from "node:fs";
 
 const LEVELS = ["DEBUG", "INFO", "WARN", "ERROR"];
 const METHODS = ["GET", "POST", "PUT", "DELETE"];

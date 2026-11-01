@@ -1,4 +1,4 @@
-import Shared from "@std/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import Read from "./contracts.ms"
 
 export interface Original:

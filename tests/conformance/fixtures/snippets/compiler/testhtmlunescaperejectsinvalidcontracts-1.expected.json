@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding unescape; add: import unescape from \"@std/html.ms\"",
+        "message": "unknown binding unescape; add: import unescape from \"@std/data/html.ms\"",
         "position": {
           "file": "testhtmlunescaperejectsinvalidcontracts-1.ms",
           "line": 5,
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import unescape from \"@std/html.ms\"\n"
+          "replacement": "import unescape from \"@std/data/html.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testhtmlunescaperejectsinvalidcontracts-1.ms:5:19: resolution: unknown binding unescape; add: import unescape from \"@std/html.ms\"\n   |\n 5 |     let convert = unescape\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testhtmlunescaperejectsinvalidcontracts-1.ms:5:19: resolution: unknown binding unescape; add: import unescape from \"@std/data/html.ms\"\n   |\n 5 |     let convert = unescape\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

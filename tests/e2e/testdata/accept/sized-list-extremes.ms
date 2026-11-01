@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn first_copy[T: Clonable](xs: List[T]) T?:
     return xs[0].clone()

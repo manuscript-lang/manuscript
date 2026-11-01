@@ -1,7 +1,7 @@
 # conform: tags=strings,tier-core
 # conform: phase=run
 # conform: origin=agent token study: String.take and String.drop
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     var out = stdout()

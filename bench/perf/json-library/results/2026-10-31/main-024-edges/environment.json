@@ -1,0 +1,33 @@
+{
+  "revision": "024af5e2e544f7c9d2ccccc1c333b92b70db0ef3",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "binaries": {
+    "before": {
+      "path": "/workspace/json-perf/.artifacts/json-library/024-edges-before",
+      "sha256": "960d960cd4e7f6415ac54b6542cb1d1adfafa5ace709aa7e29eea3e52f49c26e"
+    },
+    "after": {
+      "path": "/workspace/json-perf/.artifacts/json-library/024-edges-after",
+      "sha256": "7f89d0ca5179a614af4ead94adb969bb70fe2b5f3357fbf5472c37c2193a3f74"
+    },
+    "rust": {
+      "path": "/workspace/json-perf/.artifacts/json-library/024-edges-before",
+      "sha256": "960d960cd4e7f6415ac54b6542cb1d1adfafa5ace709aa7e29eea3e52f49c26e"
+    }
+  },
+  "source_sha256": {
+    "bench/perf/json-library/src/bin/float-edges.rs": "c0c912ea6f14943b030dd8766a8e443e22cc099992e1436ac7984a34f45ea60d",
+    "bench/perf/json-library/edges.py": "f09bce94ef8819e586959c087034f47dd5bb33176edb5b131aaa2a0268440fc1",
+    "bench/perf/json-library/Cargo.toml": "c20940ae8c19243122504862a07f57f42e8c04b9173e68672a654af0a829001f",
+    "bench/perf/json-library/Cargo.lock": "c0d530dd24689e5119037b81a8ea77b7aaef0b3da0833b7ecb97c319b05bcf2f",
+    "bench/perf/json-library/run.py": "814a1b8793471391299c8ba330f797b765d30dda9bb182da38c6550691a33f81",
+    "crates/ms-std-json/src/lib.rs": "97a92356a415764d4c815898dc0e88bc5a7b02b8bec1acf6bd7576f7f2051a16",
+    "crates/ms-std-json/Cargo.toml": "bf8648784dafb89ecc0b079af4a7634e0398bec6ab781738d16a11eda7051b55",
+    "rust-toolchain.toml": "7f5140056a968f51f7a91e1d73fd6b8c226054ecb5c6d39e791de484f9616457",
+    ".cargo/config.toml": "c411c17fbefc5c7148567d4a348fbf29cde557426121c29c6ae0525fbbd8c34e"
+  },
+  "flags": "Cargo release opt-level3 panic=abort; repository force-frame-pointers; same host allocator for library and Serde; native library component, not Manuscript generated code",
+  "build": "cargo build --release --locked --manifest-path bench/perf/json-library/Cargo.toml --bin float-edges",
+  "trials": 12
+}

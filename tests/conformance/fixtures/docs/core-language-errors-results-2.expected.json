@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"",
         "position": {
           "file": "core-language-errors-results-2.ms",
           "line": 4,
@@ -29,13 +29,13 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
+          "replacement": "import Decimal from \"@std/math/decimal.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"",
         "position": {
           "file": "core-language-errors-results-2.ms",
           "line": 4,
@@ -55,7 +55,7 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
+          "replacement": "import Decimal from \"@std/math/decimal.ms\"\n"
         }
       },
       {
@@ -73,7 +73,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-results-2.ms:4:28: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n   |\n 4 | fn discount_message(price: Decimal, percent: Decimal) String:\n   |                            ^\n<DIR>/core-language-errors-results-2.ms:4:46: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n   |\n 4 | fn discount_message(price: Decimal, percent: Decimal) String:\n   |                                              ^\n<DIR>/core-language-errors-results-2.ms:5:20: resolution: unknown binding discount; declare it with 'let discount = ...' before use, define 'fn discount(...) T:', or import it from a module\n   |\n 5 |     if let value = discount(price, percent):\n   |                    ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-results-2.ms:4:28: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 4 | fn discount_message(price: Decimal, percent: Decimal) String:\n   |                            ^\n<DIR>/core-language-errors-results-2.ms:4:46: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 4 | fn discount_message(price: Decimal, percent: Decimal) String:\n   |                                              ^\n<DIR>/core-language-errors-results-2.ms:5:20: resolution: unknown binding discount; declare it with 'let discount = ...' before use, define 'fn discount(...) T:', or import it from a module\n   |\n 5 |     if let value = discount(price, percent):\n   |                    ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -35,12 +35,12 @@ bundled!(
 bundled!();
 
 /// Where `ms` fetches `lld` the first time it links, and the SHA-256 of that archive, from
-/// `scripts/lld.lock`. Empty on targets without a published archive.
+/// `toolchain/lld.lock`. Empty on targets without a published archive.
 pub(super) const LLD_URL: &str = env!("MS_LLD_URL");
 pub(super) const LLD_SHA256: &str = env!("MS_LLD_SHA256");
 
 /// Where `ms` fetches the LLVM tools (`opt`, `llc`, `llvm-link`) on the first release build, and the
-/// SHA-256 of that archive, from `scripts/lld.lock`. Empty on targets without a published archive.
+/// SHA-256 of that archive, from `toolchain/lld.lock`. Empty on targets without a published archive.
 pub(super) const LLVM_TOOLS_URL: &str = env!("MS_LLVM_TOOLS_URL");
 pub(super) const LLVM_TOOLS_SHA256: &str = env!("MS_LLVM_TOOLS_SHA256");
 

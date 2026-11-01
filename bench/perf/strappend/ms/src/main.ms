@@ -1,6 +1,6 @@
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import StringBuilder from "@std/string.ms"
-import clock from "@std/time.ms"
+import monotonic from "@std/os/time.ms"
 
 # Builds a about 1 MB string from pieces of each size and prints the best of 40 runs per size in microseconds.
 fn run(piece: String, count: Int) Int:
@@ -31,10 +31,10 @@ export fn main() Int:
         var checksum = 0
 
         for rep in 0..40:
-            let started = clock().now()
+            let started = monotonic()
             checksum += run(piece, count)
 
-            let elapsed = clock().now().difference(started).to_nanoseconds()
+            let elapsed = monotonic().difference(started).to_nanoseconds()
             if elapsed < best:
                 best = elapsed
 
@@ -45,10 +45,10 @@ export fn main() Int:
         var checksum = 0
 
         for rep in 0..40:
-            let started = clock().now()
+            let started = monotonic()
             checksum += fill(count)
 
-            let elapsed = clock().now().difference(started).to_nanoseconds()
+            let elapsed = monotonic().difference(started).to_nanoseconds()
             if elapsed < best:
                 best = elapsed
 

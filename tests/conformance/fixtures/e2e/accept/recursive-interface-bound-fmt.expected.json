@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test.ms\"\n\ninterface Compare[T]:\n    fn compare(other: T) Int\n\nfn compare[T: Compare[T]](first: T, second: T) Int: first.compare(second)\n\ntype Key:\n    value: Int\n\nimpl Compare[Key] for Key:\n    fn compare(other: Key) Int: self.value - other.value\n\ntest \"interface bounds may reference their parameter\":\n    try expect_equal(compare(Key(7), Key(4)), 3)\n"
+    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ninterface Compare[T]:\n    fn compare(other: T) Int\n\nfn compare[T: Compare[T]](first: T, second: T) Int: first.compare(second)\n\ntype Key:\n    value: Int\n\nimpl Compare[Key] for Key:\n    fn compare(other: Key) Int: self.value - other.value\n\ntest \"interface bounds may reference their parameter\":\n    try expect_equal(compare(Key(7), Key(4)), 3)\n"
   }
 }

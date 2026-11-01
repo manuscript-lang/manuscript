@@ -1,9 +1,9 @@
 # conform: tags=control-flow,formatter,lists,modules,parser,stdlib-archive,stdlib-bytes,stdlib-compress,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/compress-archive.ms
-import expect_equal from "@std/test.ms"
-import compress, decompress, CompressionError from "@std/archive.ms"
-import pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError from "@std/archive.ms"
+import expect_equal from "@std/test/test.ms"
+import compress, decompress, CompressionError from "@std/io/archive.ms"
+import pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError from "@std/io/archive.ms"
 import Bytes from "@std/bytes.ms"
 
 test "compression formats roundtrip and enforce expanded byte budgets":

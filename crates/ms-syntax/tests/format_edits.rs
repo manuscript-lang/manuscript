@@ -59,6 +59,19 @@ fn collapsing_a_flow_keeps_a_leading_dot_line_applied_to_the_whole_flow() {
 }
 
 #[test]
+fn flow_prefixes_keep_comments_nested_groups_and_item_boundaries() {
+    let file: Arc<str> = Arc::from("edits.ms");
+    let source = include_str!("format_edits/flow_prefix.src");
+    let expected = include_str!("format_edits/flow_prefix.expected");
+    for input in [source.to_string(), source.replace('\n', "\r\n")] {
+        ms_syntax::parser::parse(&file, &input).unwrap();
+        let actual = ms_syntax::format(&file, &input).unwrap();
+        assert_eq!(actual, expected);
+        assert_eq!(ms_syntax::format(&file, &actual).unwrap(), actual);
+    }
+}
+
+#[test]
 fn statement_grouping_keeps_complete_inline_conditional_expressions() {
     let file: Arc<str> = Arc::from("bounds.ms");
     let source = include_str!("format_edits/expression_bounds.src");
@@ -85,4 +98,17 @@ fn syntax_shape(module: &ms_syntax::Module) -> String {
         })
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+#[test]
+fn chain_hugging_preserves_first_call_width_and_later_operators() {
+    let file: Arc<str> = Arc::from("call-prefix.ms");
+    let source = include_str!("format_edits/call_prefix.src");
+    let expected = include_str!("format_edits/call_prefix.expected");
+    for input in [source.to_string(), source.replace('\n', "\r\n")] {
+        ms_syntax::parser::parse(&file, &input).unwrap();
+        let actual = ms_syntax::format(&file, &input).unwrap();
+        assert_eq!(actual, expected);
+        assert_eq!(ms_syntax::format(&file, &actual).unwrap(), actual);
+    }
 }

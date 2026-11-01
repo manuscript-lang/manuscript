@@ -1,7 +1,7 @@
 # conform: tags=scope-cleanup,tier-core
 # conform: phase=run
 # conform: origin=an if let payload resource closes when its branch ends
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import Closeable, TextError from "@std/core.ms"
 
 fn say(s: String) Unit:

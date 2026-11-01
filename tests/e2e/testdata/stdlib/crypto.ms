@@ -1,4 +1,4 @@
-import expect_equal, expect_false, expect_true from "@std/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import (
     sha256,
     sha384,
@@ -29,7 +29,7 @@ import (
     CryptoError,
     HashAlgorithm
 ) from "@std/crypto.ms"
-import hex_encode, hex_decode from "@std/encoding.ms"
+import hex_encode, hex_decode from "@std/data/encoding.ms"
 import Bytes from "@std/bytes.ms"
 
 test "crypto known SHA256 HMAC and PBKDF2 vectors":

@@ -1,6 +1,6 @@
-import keep, measure from "@std/bench.ms"
+import keep, measure from "@std/test/bench.ms"
 import compile, RegexError from "@std/string.ms"
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn rows_bench(count: Int, grouped: Bool) Result[Unit, Error]:
     let pattern = if grouped: "(word)([0-9]+)" else: "word[0-9]+"

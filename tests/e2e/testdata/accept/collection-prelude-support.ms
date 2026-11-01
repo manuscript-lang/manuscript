@@ -1,4 +1,4 @@
-import expect_equal, expect_false, fail from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test/test.ms"
 
 fn slice(values: List[Int]) List[Int]!CollectionError: values.slice(0, 1)
 

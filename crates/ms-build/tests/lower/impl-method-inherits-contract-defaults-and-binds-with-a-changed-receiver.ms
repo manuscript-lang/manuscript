@@ -1,10 +1,10 @@
 # Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
 # expect-mir: "msrt_string_to_bytes"
 
-import Subprocess, CommandOutput, CommandError from "@std/process.ms"
+import Subprocess, CommandOutput, CommandError from "@std/os/process.ms"
 import Bytes from "@std/bytes.ms"
-import Duration from "@std/time.ms"
-import CsvOptions from "@std/csv.ms"
+import Duration from "@std/os/time.ms"
+import CsvOptions from "@std/data/csv.ms"
 
 interface Runner:
     var fn run(

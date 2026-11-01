@@ -1,8 +1,8 @@
-import Channel, ChannelError from "@std/channels.ms"
-import control from "@std/process.ms"
-import TaskError, TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_error, expect_ok, expect_true from "@std/test.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import Channel, ChannelError from "@std/io/channels.ms"
+import memory_usage from "@std/os/process.ms"
+import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 fn send_one(ch: Channel[Int, Unit]) Unit!ChannelError:
     try ch.send(7)
@@ -106,10 +106,10 @@ test "group close releases unread payloads while the channel stays alive":
     var task = group.spawn(send_payloads)
     task.result() | try expect_ok | try expect_ok
 
-    let before = control().memory_usage() | try expect_ok
+    let before = memory_usage() | try expect_ok
     try group.close()
 
-    let after = control().memory_usage() | try expect_ok
+    let after = memory_usage() | try expect_ok
     try expect_true(before.heap_used - after.heap_used >= 16 * 352)
     task.channel.receive() | try expect_error | try expect_equal(ChannelError.Closed)
 
@@ -118,11 +118,11 @@ test "a long lived group does not retain discarded collected channels":
     for index in 0..128:
         try collect_and_drop(group)
 
-    let before = control().memory_usage() | try expect_ok
+    let before = memory_usage() | try expect_ok
     for index in 0..2000:
         try collect_and_drop(group)
 
-    let after = control().memory_usage() | try expect_ok
+    let after = memory_usage() | try expect_ok
     try expect_true(after.heap_used <= before.heap_used + 1024)
     group.tasks.get().length() | try expect_equal(0)
 

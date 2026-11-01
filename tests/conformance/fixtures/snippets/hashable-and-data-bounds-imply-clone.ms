@@ -1,7 +1,7 @@
 # conform: tags=generics,tier-io
 # conform: phase=run
 # conform: origin=thread/type-checker-bug-bash
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 type Box[T]:
     v: T
 fn a[T: Clonable](xs: List[Box[T]]) List[Box[T]]: xs.concat(xs)

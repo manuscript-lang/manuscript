@@ -366,7 +366,7 @@ impl Checker {
                 self.res_error_name(
                     e.pos,
                     text.len(),
-                    "Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"".to_string(),
+                    "Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/math/decimal.ms\"".to_string(),
                 );
             }
             i.ty = Some(standard("Decimal", vec![]));

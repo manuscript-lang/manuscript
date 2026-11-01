@@ -1,4 +1,4 @@
-//! HTTP for `@std/http.ms`: headers, the HTTP/1.1 codec, server and client.
+//! HTTP for `@std/net/http.ms`: headers, the HTTP/1.1 codec, server and client.
 
 pub mod client;
 pub mod cookies;

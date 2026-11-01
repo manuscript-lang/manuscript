@@ -243,7 +243,13 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         // A value that needs no drop stays valid, and keeps the value of its written position.
         let _ = at;
-        if x.own || self.dead || !self.needs_drop(self.ty_of(x.v)) || !self.is_place(e) {
+        // Evaluating a place again would repeat a call in its index (`xs[f()]`).
+        if x.own
+            || self.dead
+            || !self.needs_drop(self.ty_of(x.v))
+            || !self.is_place(e)
+            || crate::mutation::has_call(e)
+        {
             return Ok(x);
         }
         self.expr(e)
