@@ -367,15 +367,8 @@ fn build_archive(
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
     if let Some(triple) = triple {
-        // The glibc target builds with the host's C compiler. Distro compilers default to stack
-        // protection, which on aarch64 reads `__stack_chk_guard` from glibc's `libc_nonshared.a`; programs
-        // link only `libc` and `libm`, so `ring`'s C sources are built without it.
-        if triple.ends_with("linux-gnu") {
-            let flags = format!("CFLAGS_{}", triple.replace('-', "_"));
-            if std::env::var_os(&flags).is_none() {
-                command.env(flags, "-fno-stack-protector");
-            }
-        } else {
+        // The glibc target builds with the host's C compiler.
+        if !triple.ends_with("linux-gnu") {
             let cc = format!("CC_{}", triple.replace('-', "_"));
             if std::env::var_os(&cc).is_none() {
                 command.env(cc, c_compiler(root, triple, arch));

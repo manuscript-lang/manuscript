@@ -18,8 +18,7 @@ fn compile_shim() -> PathBuf {
     // CI sets CC where the default `cc` is not the host architecture (Windows on arm64).
     let cc = std::env::var("CC").unwrap_or_else(|_| "cc".into());
     let status = Command::new(&cc)
-        // glibc programs link only libc and libm, so no `libc_nonshared.a` supplies aarch64's `__stack_chk_guard`.
-        .args(["-c", "-O1", "-fno-stack-protector", "-I"])
+        .args(["-c", "-O1", "-I"])
         .arg(format!("{manifest}/../ms-rt-abi/include"))
         .arg(format!("{manifest}/tests/extern_link/greet.c"))
         .arg("-o")
