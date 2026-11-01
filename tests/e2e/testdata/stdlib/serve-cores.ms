@@ -7,9 +7,9 @@ import (
     connect,
     listen
 ) from "@std/net/net.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
 import sleep from "@std/os/time.ms"
-import expect_true from "@std/test/test.ms"
+import expect_equal, expect_error, expect_true from "@std/test/test.ms"
 
 fn core() Unit:
     let tag = "hello"
@@ -72,6 +72,26 @@ test "serve_cores closes the connection it could not hand to a worker":
 
     var client = try connect(address, 2.seconds)
     try expect_true(serving.result().get(ok(unit)).is_error())
+
+    let chunk = client.read(none, 2.seconds)
+    try expect_true(chunk.is_ok())
+    try expect_true(chunk.get(none).is_none())
+
+fn never_reads() Unit:
+    sleep(30.seconds)
+
+fn serve_idle(listener: Listener) Unit!NetworkError:
+    return serve_cores(listener, never_reads, 1)
+
+test "serve_cores closes connections still queued for a cancelled worker":
+    let listener = try listen("127.0.0.1:0")
+    let address = listener.address()
+    var group = TaskGroup[Unit!NetworkError]()
+    let serving = group.spawn(fn ch: serve_idle(listener))
+    var client = try connect(address, 2.seconds)
+    sleep(200.milliseconds)
+    try group.close()
+    serving.result() | try expect_error | try expect_equal(TaskError.Closed)
 
     let chunk = client.read(none, 2.seconds)
     try expect_true(chunk.is_ok())

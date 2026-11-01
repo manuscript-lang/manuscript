@@ -636,6 +636,7 @@ msstd_net_listener_accept(l: *const ObjCell<ListenerH>, has_timeout: u8, timeout
 msstd_net_listener_accept_raw(l: *const ObjCell<ListenerH>, has_timeout: u8, timeout: i64, out: *mut i64, err: *mut StrVal) -> u8
 msstd_net_listener_address(l: *const ObjCell<ListenerH>, out: *mut StrVal)
 msstd_net_listener_close(l: *const ObjCell<ListenerH>)
+msstd_net_listener_raw_owner(l: *const ObjCell<ListenerH>) -> i64
 msstd_net_network() -> *mut ObjCell<NetH>
 msstd_net_network_bind_datagram(net: *const ObjCell<NetH>, address: *const StrVal, out: *mut *mut ObjCell<DgramH>, err: *mut StrVal) -> u8
 msstd_net_network_close(net: *const ObjCell<NetH>)
@@ -658,7 +659,7 @@ msstd_net_network_web_socket(net: *const ObjCell<NetH>, address: *const StrVal, 
 msstd_net_network_with_resolver(net: *const ObjCell<NetH>, address: *const StrVal, out: *mut *mut ObjCell<NetH>, err: *mut StrVal) -> u8
 msstd_net_parse_cidr(text: *const StrVal, out: *mut *mut ObjCell<Cidr>, err: *mut StrVal) -> u8
 msstd_net_parse_ip(text: *const StrVal, out: *mut *mut ObjCell<IpH>, err: *mut StrVal) -> u8
-msstd_net_release_raw(connection: i64)
+msstd_net_release_unadopted(owner: i64)
 msstd_path_basename(windows: u8, path: *const StrVal, out: *mut StrVal)
 msstd_path_basename_without(windows: u8, path: *const StrVal, suffix: *const StrVal, out: *mut StrVal)
 msstd_path_delimiter(windows: u8, out: *mut StrVal)

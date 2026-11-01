@@ -135,7 +135,9 @@ export extern fn msstd_net_listener_accept_raw(
     timeout: Duration?
 ) Int!NetworkError
 
-export extern fn msstd_net_release_raw(connection: Int) Unit
+export extern fn msstd_net_listener_raw_owner(handle: NativeListener) Int
+
+export extern fn msstd_net_release_unadopted(owner: Int) Unit
 
 export extern fn msstd_net_listener_address(handle: NativeListener) String
 

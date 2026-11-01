@@ -348,9 +348,14 @@ native! {
         Ok(())
     }
 
-    /// `release_raw(connection)`: closes a handle from `Listener.accept_raw` that nobody adopted.
-    fn msstd_net_release_raw(connection: i64) -> () {
-        drop(crate::conn::take_raw_handle(connection));
+    /// `Listener.raw_owner()`: the identity under which this listener's raw handles are tracked.
+    fn msstd_net_listener_raw_owner(l: ObjRef<ListenerH>) -> i64 {
+        l.owner_key() as i64
+    }
+
+    /// `release_unadopted(owner)`: closes the raw handles of `owner` that no server adopted.
+    fn msstd_net_release_unadopted(owner: i64) -> () {
+        crate::conn::release_unadopted(owner as usize);
     }
 
     /// `Listener.address()`.
