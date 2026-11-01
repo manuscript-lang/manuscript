@@ -86,23 +86,35 @@ fn now_ms() Int:
     let now = now()
     return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
 
-# The record envelope owns these keys, so fields cannot replace them.
-fn reserved(key: String) Bool:
-    return key == "level" or key == "msg" or key == "time"
-
-# The members `fields` contributes to a record: an object's own members, any other value under `data`.
-fn members_of(text: String!JsonError) Map[String, JsonValue]!LogError:
+# Encodes `fields` as JSON text. Anything `stringify` rejects is `InvalidData`.
+fn encode_fields[F: Data](fields: F) String!LogError:
+    let text = stringify(fields)
     if text.is_error(): return error(LogError.InvalidData)
 
-    let parsed = parse(text.get())
-    if parsed.is_error(): return error(LogError.InvalidData)
+    return ok(text.get())
 
-    let value = parsed.get()
-    if let members = value.as_map(): return ok(members)
+# The context of a child: the parent's object members with the child's added, or the child's text
+# alone when either side is not an object. This runs once per child, never per record.
+fn merge_context(parent: String?, child: String) String!LogError:
+    let base = parent.get("")
+    if base == "": return ok(child)
 
-    var wrapped = Map[String, JsonValue]()
-    wrapped.add("data", value)
-    return ok(wrapped)
+    let left = parse(base)
+    let right = parse(child)
+    if left.is_error() or right.is_error(): return error(LogError.InvalidData)
+
+    let members = left.get().as_map()
+    let added = right.get().as_map()
+    if members.is_none() or added.is_none(): return ok(child)
+
+    var merged = members.get(Map[String, JsonValue]()).clone()
+    for entry in added.get(Map[String, JsonValue]()).entries():
+        merged.add(entry.key, entry.value.clone())
+
+    let text = stringify(JsonValue.ObjectValue(merged))
+    if text.is_error(): return error(LogError.InvalidData)
+
+    return ok(text.get())
 
 fn encode_error(cause: JsonError) LogError:
     if cause == JsonError.LimitExceeded: return LogError.LimitExceeded
@@ -186,44 +198,33 @@ export type Logger:
     timestamp: Bool
     # Internal state: the largest record in bytes including the newline; none is unlimited.
     max_bytes: Int?
-    # Internal state: fields added to every record, in insertion order.
-    bound: Map[String, JsonValue]
+    # Internal state: JSON text of the fields bound by `child`, written as `context`; none if unbound.
+    context: String?
     # Internal state: the transport this logger and its children write to.
     transport: Shared[Transport]
 
 impl Logger:
-    # Internal: builds and sends one record at a level number.
-    fn emit(level: Int, message: String, fields: Map[String, JsonValue]?) Unit!LogError:
-        var record = Map[String, JsonValue]()
-        record.add("level", JsonValue.NumberValue("{level}"))
-        record.add("msg", JsonValue.StringValue(message))
-        if self.timestamp: record.add("time", JsonValue.NumberValue("{now_ms()}"))
-        for entry in self.bound.entries():
-            if not reserved(entry.key): record.add(entry.key, entry.value.clone())
-        if let extra = fields:
-            for entry in extra.entries():
-                if not reserved(entry.key): record.add(entry.key, entry.value.clone())
+    # Internal: writes one record at a level number. `data` is JSON text attached as is.
+    fn emit(level: Int, message: String, data: String?) Unit!LogError:
+        let msg = stringify(JsonValue.StringValue(message))
+        if msg.is_error(): return error(encode_error(msg.err()))
 
-        var budget: Int? = none
-
+        var line = "\{\"level\":{level},\"msg\":{msg.get()}"
+        if self.timestamp: line = "{line},\"time\":{now_ms()}"
+        if let context = self.context: line = "{line},\"context\":{context}"
+        if let text = data: line = "{line},\"data\":{text}"
+        line = "{line}\}\n"
         if let max = self.max_bytes:
-            if max == 0: return error(LogError.LimitExceeded)
-
-            budget = max - 1
-
-        let text = stringify(JsonValue.ObjectValue(record), budget)
-        if text.is_error(): return error(encode_error(text.err()))
-
-        return self.transport.get().write("{text.get()}\n")
+            if line.to_bytes().length() > max: return error(LogError.LimitExceeded)
+        return self.transport.get().write(line)
 
     # Writes a record at the selected level. `fields` is any `Data` value `stringify` accepts.
     #
-    # A record, map, or `JsonValue` object contributes its members at the top level of the record.
-    # Any other value, such as a number, string, or list, is written under the key `data`. No
-    # fields, or `none`, write the message alone. A value that cannot be encoded, such as a cyclic
-    # one, returns `InvalidData`; encoding happens only when the level is enabled. The reserved
-    # keys `level`, `msg`, and `time` are ignored. `Silent` is a threshold, not a record level, and
-    # returns `InvalidInput`.
+    # The value is written as is under the record's `data` key, so a record, map, list, or number
+    # keeps its shape. No fields, or `none`, write the message alone. A value that cannot be encoded,
+    # such as a cyclic one, returns `InvalidData`; encoding happens only when the level is enabled.
+    # The fields of `child` loggers are written under `context`. `Silent` is a threshold, not a
+    # record level, and returns `InvalidInput`.
     fn log[F: Data = Unit](
         level: LogLevel,
         message: String,
@@ -233,8 +234,8 @@ impl Logger:
         if not self.enabled(level): return ok(unit)
 
         if let value = fields:
-            let members = try members_of(stringify(value))
-            return self.emit(level_value(level), message, members)
+            let text = try encode_fields(value)
+            return self.emit(level_value(level), message, text)
 
         return self.emit(level_value(level), message, none)
 
@@ -242,11 +243,11 @@ impl Logger:
     fn trace[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
         return self.log(LogLevel.Trace, message, fields)
 
-    # Logs at Debug when enabled. Development diagnostics, including the logger's bound fields. Fields are encoded as in `log`.
+    # Logs at Debug when enabled. Development diagnostics, including the logger's `context`. Fields are encoded as in `log`.
     fn debug[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
         return self.log(LogLevel.Debug, message, fields)
 
-    # Logs at Info when enabled. Ordinary operational records; reserved level, msg, and time fields remain controlled by the logger. Fields are encoded as in `log`.
+    # Logs at Info when enabled. Ordinary operational records. Fields are encoded as in `log`.
     fn info[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
         return self.log(LogLevel.Info, message, fields)
 
@@ -262,16 +263,15 @@ impl Logger:
     fn fatal[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
         return self.log(LogLevel.Fatal, message, fields)
 
-    # Returns a logger that adds the members of `fields` to each record, with the encoding rules of
-    # `log`. A value that cannot be encoded returns `InvalidData`.
+    # Returns a logger that writes `fields` under `context` in each record. A child of a child merges
+    # object members, the newer value winning; any other combination keeps the newer value. A value
+    # that cannot be encoded returns `InvalidData`.
     fn child[F: Data](fields: F) Logger!LogError:
-        let members = try members_of(stringify(fields))
-        var bound = self.bound.clone()
-        for entry in members.entries():
-            bound.add(entry.key, entry.value.clone())
+        let text = try encode_fields(fields)
+        let context = try merge_context(self.context, text)
         return ok(
             Logger(
-                self.threshold, self.timestamp, self.max_bytes, bound, self.transport
+                self.threshold, self.timestamp, self.max_bytes, context, self.transport
             )
         )
 
@@ -310,12 +310,7 @@ export fn create(
     var threshold = 30
     if let chosen = level:
         threshold = level_value(chosen)
-    return ok(
-        Logger(
-            threshold, timestamp.get(true), max_bytes, Map[String, JsonValue](),
-            share(transport)
-        )
-    )
+    return ok(Logger(threshold, timestamp.get(true), max_bytes, none, share(transport)))
 
 # Writes log records to an existing byte stream.
 export fn stream_transport(output: WriteStream) Transport:

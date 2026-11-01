@@ -42,7 +42,7 @@ test "logger writes typed escaped records and protects metadata":
     let fields = Payload(9007199254740993, ok: true, Items([none, 1]), 0, "fake", 0)
     try logger.info("say \"hi\"\nnext", fields)
 
-    let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
+    let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"data\":\{\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\},\"level\":0,\"msg\":\"fake\",\"time\":0\}\}\n"
     try expect_equal((try written(path)), expected)
     try logger.flush()
     logger.close()
@@ -114,7 +114,7 @@ test "child bindings snapshot values and merge without mutating inputs":
     try child.info("child", Service("worker"))
     try logger.fatal("parent")
 
-    let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
+    let expected = "\{\"level\":30,\"msg\":\"child\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"service\":\"worker\"\}\}\n\{\"level\":60,\"msg\":\"parent\",\"context\":\{\"service\":\"api\"\}\}\n"
     try expect_equal((try written(path)), expected)
 
 test "limits and unencodable values reject before writing":
@@ -241,7 +241,7 @@ test "source transports receive complete records and close through their contrac
     logger.close()
     try expect_true(read_file("{path}.closed").is_ok())
 
-test "unencodable fields are rejected and non-objects go under data":
+test "unencodable fields are rejected and fields keep their shape under data":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
@@ -254,7 +254,7 @@ test "unencodable fields are rejected and non-objects go under data":
     try logger.log(LogLevel.Info, "m", Service("a"))
     try logger.info("m", [1])
 
-    let expected = "\{\"level\":30,\"msg\":\"m\",\"service\":\"a\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
+    let expected = "\{\"level\":30,\"msg\":\"m\",\"data\":\{\"service\":\"a\"\}\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
     try expect_equal((try written(path)), expected)
 
 # A stream that suspends in the middle of a write, so only the transport keeps records whole.
@@ -310,22 +310,11 @@ test "concurrent tasks never interleave a record":
                 true
             )
 
-# One recorded case: the logger settings, bound fields as JSON object text, the record, and the
-# outcome (`err <case>`, `ok none` when filtered, or `ok <text>` with the time field zeroed).
-type Recorded:
-    level: Int?
-    timestamp: Bool?
-    max_bytes: Int?
-    children: List[String]
-    record_level: Int
-    message: String
-    fields: String?
-    want: String
-
-type Collect:
+# A transport that keeps every record in memory.
+type Memory:
     out: Shared[List[String]]
 
-impl Transport for Collect:
+impl Transport for Memory:
     fn write(data: String) Unit!LogError:
         var guard = lock(self.out)
         guard.value.append(data.clone())
@@ -340,206 +329,57 @@ impl Transport for Collect:
     fn close() Unit:
         return unit
 
-# The level an index from the recorded cases names: Trace is 0 and Silent is 6.
-fn level_named(index: Int) LogLevel?:
-    if index == 0: return LogLevel.Trace
-    if index == 1: return LogLevel.Debug
-    if index == 2: return LogLevel.Info
-    if index == 3: return LogLevel.Warn
-    if index == 4: return LogLevel.Error
-    if index == 5: return LogLevel.Fatal
-    if index == 6: return LogLevel.Silent
-
-    return none
-
-fn outcome(cause: LogError) String:
-    if cause == LogError.InvalidInput: return "err InvalidInput"
-    if cause == LogError.InvalidData: return "err InvalidData"
-    if cause == LogError.LimitExceeded: return "err LimitExceeded"
-
-    return "err Other"
-
-# Replaces the digits after `"time":` with 0, since the recorded clock was fixed at 0.
-fn zero_time(text: String) String:
-    let parts = text.split("\"time\":")
-    if parts.length() < 2: return text
-
-    var digits = 0
-
-    for ch in parts[1].chars():
-        if ch >= "0" and ch <= "9": digits += 1
-        else: break
-
-    return "{parts[0]}\"time\":0{parts[1].slice(digits, parts[1].length()).get("")}"
-
-fn replay(c: Recorded) String:
-    var level: LogLevel? = none
-
-    if let index = c.level:
-        level = level_named(index)
-        if level.is_none(): return "err InvalidInput"
-
-    let out = share(List[String]())
-    let made = create(Collect(out), level, c.timestamp, c.max_bytes)
-    if made.is_error(): return outcome(made.err())
-
-    var logger = made.get()
-
-    for text in c.children:
-        let child = logger.child(parse(text).get(JsonValue.Null))
-        if child.is_error(): return outcome(child.err())
-
-        logger = child.get()
-
-    let record_level = level_named(c.record_level)
-    if record_level.is_none(): return "err InvalidInput"
-
-    var result: Unit!LogError = ok(unit)
-
-    if let text = c.fields:
-        result = logger.log(
-            record_level.get(LogLevel.Info), c.message, parse(text).get(JsonValue.Null)
-        )
-    else:
-        result = logger.log(record_level.get(LogLevel.Info), c.message)
-
-    if result.is_error(): return outcome(result.err())
-
+fn recorded(out: Shared[List[String]]) String:
     var guard = lock(out)
-    if guard.value.length() == 0: return "ok none"
+    return guard.value.join("")
 
-    return "ok {zero_time(guard.value.join(""))}"
+test "messages are escaped and fields keep their shape under data":
+    let out = share(List[String]())
+    let logger = try create(Memory(out), timestamp: false)
+    try logger.info("a<b>&\"\n\t\u{1}é")
+    try logger.info("m", Items([none, 1]))
+    try logger.info("m", "text")
+    try logger.info("m", JsonValue.Null)
+    try logger.info("m", JsonValue.ObjectValue(Map[String, JsonValue]()))
 
-test "records recorded from the first implementation keep their exact encoding":
-    let cases = [
-        Recorded(none, none, none, [], 0, "", none, "ok none"),
-        Recorded(
-            none, none, none, [], 2, "hello", none,
-            "ok \{\"level\":30,\"msg\":\"hello\",\"time\":0\}\n"
-        ),
-        Recorded(
-            none, none, none, [], 4, "a<b>&\"\n\t\u{1}\u{e9}", none,
-            "ok \{\"level\":50,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\",\"time\":0\}\n"
-        ),
-        Recorded(none, none, none, [], 6, "", none, "err InvalidInput"),
-        Recorded(none, none, none, [], 0, "hello", "\{\}", "ok none"),
-        Recorded(
-            none, none, none, [], 2, "a<b>&\"\n\t\u{1}\u{e9}", "\{\}",
-            "ok \{\"level\":30,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\",\"time\":0\}\n"
-        ),
-        Recorded(
-            none, none, none, [], 4, "", "\{\}",
-            "ok \{\"level\":50,\"msg\":\"\",\"time\":0\}\n"
-        ),
-        Recorded(none, none, none, [], 6, "hello", "\{\}", "err InvalidInput"),
-        Recorded(
-            none, none, none, ["\{\"a\":1,\"b\":2\}"], 0, "hello", none, "ok none"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1,\"b\":2\}"], 2, "a<b>&\"\n\t\u{1}\u{e9}",
-            none,
-            "ok \{\"level\":30,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\",\"time\":0,\"a\":1,\"b\":2\}\n"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1,\"b\":2\}"], 4, "", none,
-            "ok \{\"level\":50,\"msg\":\"\",\"time\":0,\"a\":1,\"b\":2\}\n"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1,\"b\":2\}"], 6, "hello", none,
-            "err InvalidInput"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1,\"b\":2\}"], 0, "a<b>&\"\n\t\u{1}\u{e9}",
-            "\{\}", "ok none"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1,\"b\":2\}"], 2, "", "\{\}",
-            "ok \{\"level\":30,\"msg\":\"\",\"time\":0,\"a\":1,\"b\":2\}\n"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1,\"b\":2\}"], 4, "hello", "\{\}",
-            "ok \{\"level\":50,\"msg\":\"hello\",\"time\":0,\"a\":1,\"b\":2\}\n"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1,\"b\":2\}"], 6, "a<b>&\"\n\t\u{1}\u{e9}",
-            "\{\}", "err InvalidInput"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 0,
-            "a<b>&\"\n\t\u{1}\u{e9}", none, "ok none"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 2, "", none,
-            "ok \{\"level\":30,\"msg\":\"\",\"time\":0,\"a\":9,\"c\":[true]\}\n"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 4, "hello",
-            none,
-            "ok \{\"level\":50,\"msg\":\"hello\",\"time\":0,\"a\":9,\"c\":[true]\}\n"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 6,
-            "a<b>&\"\n\t\u{1}\u{e9}", none, "err InvalidInput"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 0, "",
-            "\{\}", "ok none"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 2, "hello",
-            "\{\}",
-            "ok \{\"level\":30,\"msg\":\"hello\",\"time\":0,\"a\":9,\"c\":[true]\}\n"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 4,
-            "a<b>&\"\n\t\u{1}\u{e9}", "\{\}",
-            "ok \{\"level\":50,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\",\"time\":0,\"a\":9,\"c\":[true]\}\n"
-        ),
-        Recorded(
-            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 6, "",
-            "\{\}", "err InvalidInput"
-        ),
-        Recorded(
-            0, false, none, [], 0, "a<b>&\"\n\t\u{1}\u{e9}", none,
-            "ok \{\"level\":10,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\"\}\n"
-        ),
-        Recorded(
-            0, false, none, [], 2, "", none, "ok \{\"level\":30,\"msg\":\"\"\}\n"
-        ),
-        Recorded(
-            0, false, none, [], 4, "hello", none,
-            "ok \{\"level\":50,\"msg\":\"hello\"\}\n"
-        ),
-        Recorded(
-            0, false, none, [], 6, "a<b>&\"\n\t\u{1}\u{e9}", none, "err InvalidInput"
-        ),
-        Recorded(
-            0, false, none, [], 0, "", "\{\}", "ok \{\"level\":10,\"msg\":\"\"\}\n"
-        ),
-        Recorded(
-            0, false, none, [], 2, "hello", "\{\}",
-            "ok \{\"level\":30,\"msg\":\"hello\"\}\n"
-        ),
-        Recorded(
-            0, false, none, [], 4, "a<b>&\"\n\t\u{1}\u{e9}", "\{\}",
-            "ok \{\"level\":50,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\"\}\n"
-        ),
-        Recorded(0, false, none, [], 6, "", "\{\}", "err InvalidInput"),
-        Recorded(
-            0, false, none, ["\{\"a\":1,\"b\":2\}"], 0, "", none,
-            "ok \{\"level\":10,\"msg\":\"\",\"a\":1,\"b\":2\}\n"
-        ),
-        Recorded(
-            0, false, none, ["\{\"a\":1,\"b\":2\}"], 2, "hello", none,
-            "ok \{\"level\":30,\"msg\":\"hello\",\"a\":1,\"b\":2\}\n"
-        ),
-        Recorded(
-            0, false, none, ["\{\"a\":1,\"b\":2\}"], 4, "a<b>&\"\n\t\u{1}\u{e9}", none,
-            "ok \{\"level\":50,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\",\"a\":1,\"b\":2\}\n"
-        ),
-        Recorded(
-            0, false, none, ["\{\"a\":1,\"b\":2\}"], 6, "", none, "err InvalidInput"
-        )
-    ]
-    for c in cases:
-        try expect_equal(replay(c.clone()), c.want)
+    let expected = "\{\"level\":30,\"msg\":\"a<b>&\\\"\\n\\t\\u0001é\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\{\"items\":[null,1]\}\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\"text\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":null\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\{\}\}\n"
+    try expect_equal(recorded(out), expected)
+
+test "child context merges per child and the newer value wins":
+    let out = share(List[String]())
+    let root = try create(Memory(out), timestamp: false)
+    let api = try root.child(Service("api"))
+    let both = try api.child(Request(7))
+    let renamed = try both.child(Service("worker"))
+    let replaced = try both.child(3)
+    try root.info("root")
+    try api.info("api")
+    try both.info("both", Request(9))
+    try renamed.info("renamed")
+    try replaced.info("replaced")
+
+    let expected = "\{\"level\":30,\"msg\":\"root\"\}\n\{\"level\":30,\"msg\":\"api\",\"context\":\{\"service\":\"api\"\}\}\n\{\"level\":30,\"msg\":\"both\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"request\":9\}\}\n\{\"level\":30,\"msg\":\"renamed\",\"context\":\{\"service\":\"worker\",\"request\":7\}\}\n\{\"level\":30,\"msg\":\"replaced\",\"context\":3\}\n"
+    try expect_equal(recorded(out), expected)
+
+test "the time field is a millisecond count and the size limit counts the newline":
+    let out = share(List[String]())
+    let stamped = try create(Memory(out))
+    try stamped.info("t")
+
+    let line = recorded(out)
+    try expect_true(line.starts_with("\{\"level\":30,\"msg\":\"t\",\"time\":1"))
+
+    let quiet = share(List[String]())
+    let plain = "\{\"level\":30,\"msg\":\"ab\"\}\n"
+    let exact = try create(
+        Memory(quiet), timestamp: false, max_bytes: plain.to_bytes().length()
+    )
+    try exact.info("ab")
+    try expect_equal(recorded(quiet), plain)
+
+    let tight = try create(
+        Memory(quiet), timestamp: false, max_bytes: plain.to_bytes().length() - 1
+    )
+    let limited: Unit!LogError = error(LogError.LimitExceeded)
+    try expect_equal(tight.info("ab"), limited)
+    try expect_equal(recorded(quiet), plain)
