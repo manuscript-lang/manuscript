@@ -184,6 +184,11 @@ pub struct Cx {
     pub consumes: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<bool>>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
     pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
+    /// Callables whose result is a reference into their arguments, by module file and node.
+    pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Lending calls whose result the caller owns because an argument is a temporary: the
+    /// result is copied out before the temporary is dropped.
+    pub owned_lends: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Which types are resources, for the closers of records and collections that hold them.
     pub classes: ms_check::ownership::Classifier,
 }
@@ -243,6 +248,8 @@ impl Cx {
             borrowed_captures: program.borrowed_captures.clone(),
             consumes: program.consumes.clone(),
             getters: program.getter_borrows.clone(),
+            lenders: program.lenders.clone(),
+            owned_lends: program.owned_lends.clone(),
             classes: ms_check::ownership::Classifier::new(program),
         }
     }

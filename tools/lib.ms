@@ -42,7 +42,7 @@ export fn env(name: String, fallback: String) String:
     let all = environment().get(Map[String, String]())
     if let value = all.get(name): return value.clone()
 
-    return fallback
+    return fallback.clone()
 
 # A process exit status limited to what `main` may return.
 export fn status(code: Int) Int:
