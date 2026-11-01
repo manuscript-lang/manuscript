@@ -268,6 +268,14 @@ export type ListEntry[T]:
     # The element found at `index`.
     value: T
 
+# The result of searching a sorted list. `index` is usable as an insertion position even when `found` is false.
+# Example: `[1, 3, 3].binary_search(3)` returns `index: 1, found: true`; searching for 2 returns `index: 1, found: false`.
+export type SearchResult:
+    # The first index whose element is not less than the target, or the list's length when every element is less.
+    index: Int
+    # True when the element at `index` compares equal to the target.
+    found: Bool
+
 # Creates a list containing `value` repeated `count` times.
 export fn filled[T](value: T, count: Int, max_items: Int?) List[T]!CollectionError:
     return msrt_list_filled(value, count, max_items)
@@ -602,6 +610,7 @@ impl ListJoin[T] for List[T]:
 
 interface ListOrder[T: Comparable]:
     var fn sort() Unit
+    fn binary_search(value: T) SearchResult
 
 interface ListOrderCopy[T: Comparable & Clonable]:
     fn sorted() List[T]
@@ -620,6 +629,25 @@ impl ListOrder[T] for List[T]:
     # Example: `var xs = [3, 1, 2]` then `xs.sort()` leaves `[1, 2, 3]`.
     var fn sort() Unit:
         self.sort(fn a, b: a.compare(b))
+
+    # Searches in O(log n) comparisons without copying elements or changing the list.
+    # Requires ascending natural order, as produced by `sorted()`: comparisons must form a total order, with Float NaNs last.
+    # Sortedness is not checked; an incorrectly ordered list has an unspecified result.
+    # Returns the first compare-equal element, or its insertion position with `found: false`; an empty list returns index 0.
+    # Example: `[1, 3, 3, 5].binary_search(3).index` is `1`; searching for 4 gives index 3 with `found: false`.
+    fn binary_search(value: T) SearchResult:
+        var low = 0
+        var high = self.length()
+
+        while low < high:
+            let middle = low + (high - low) / 2
+
+            if self[middle].compare(value) < 0:
+                low = middle + 1
+            else:
+                high = middle
+
+        return SearchResult(low, low < self.length() and self[low].compare(value) == 0)
 
 interface ListExtremes[T: Comparable & Clonable]:
     fn min() T?

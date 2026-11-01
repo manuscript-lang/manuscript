@@ -458,7 +458,7 @@ fn check() Int:
 parse	1	1	0	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakimport MapBuilder from "@std/collections/collections.ms"
 type MapBuilder:
     value: Int
-resolution	1	8	7	module does not export MapBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'fn old[T: MissingBound](value: T) T:
+resolution	1	8	7	module does not export MapBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'fn old[T: MissingBound](value: T) T:
     return value
 resolution	1	11	10	unknown type MissingBound; declare it with 'type MissingBound:' / 'interface MissingBound:', declare it as a type parameter, or import itinterface Read:
     fn get() Int
@@ -1414,7 +1414,7 @@ fn f() Int:
 resolution	2	19	30	unknown or ambiguous member len on String; did you mean 'length' or 'byte_length' or 'scalar_length'?fn f() Int:
     let n = "abc".foo()
     return 0
-resolution	2	19	30	unknown or ambiguous member foo on String; available: byte_length, chars, clamp, compare, concat, contains, drop, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, max, min, normalize, pad_end, pad_start, parse_float, parse_int, repeat, replace, replace_first, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, take, to_bytes, trim, trim_end, trim_start, upperfn f() String:
+resolution	2	19	30	unknown or ambiguous member foo on String; available: byte_length, chars, clamp, compare, concat, contains, cut, cut_last, cut_prefix, cut_suffix, drop, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, max, min, normalize, pad_end, pad_start, parse_float, parse_int, repeat, replace, replace_first, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, take, to_bytes, trim, ...fn f() String:
     return [1.5].join(separator: ",")
 fn double(n: Int) Int:
     return n * 2
@@ -1989,9 +1989,9 @@ import Bytes from "@std/bytes.ms"
 fn bytes() Bytes: Bytes([1])
 fn build() List[Int]: ListBuilder[Int]().freeze()
 fn text_error(message: String) TextError: TextError(message)
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
-resolution	1	21	20	module does not export MapBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
-resolution	1	33	32	module does not export SetBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	21	20	module does not export MapBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	33	32	module does not export SetBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	2	8	115	unknown standard module @std/errors.ms
 resolution	2	23	130	unknown standard module @std/errors.ms
 resolution	2	34	141	unknown standard module @std/errors.ms
@@ -2321,7 +2321,7 @@ fn probe() Int:
     let values = [fn() Int: 1]
     return values.distinct().length()resolution	3	19	65	unknown or ambiguous member distinct on List[fn() Int]; distinct requires fn() Int to be Equal; fn() Int does not satisfy Equal; use a type that implements itfn wrong() List[Int]:
     let copy = [1].METHOD
-    return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...export interface Read[T]:
+    return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, ...export interface Read[T]:
     fn get() T
 export type Box[T]:
     value: T
@@ -4597,14 +4597,14 @@ let A = 1
 let B = 2
 fn f() Int:
     return A + B
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'import ListBuilder from "@std/collections/collections.ms"
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'import ListBuilder from "@std/collections/collections.ms"
 
 let A = 1
 let B = 2
 
 fn f() Int:
     return A + B
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'let A = (
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'let A = (
     parse	2	5	14	unterminated delimiter '(' opened at line 1:9; add the matching ')' before the end of the fileexport fn main() Int: ...
 type	1	8	7	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)    let a = [1, 2]
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it    let m = Map[String, Int]()
@@ -4643,7 +4643,7 @@ fn answer() Int:
     written = 3
     return 0
     return 1
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'import parse from "@std/data/json.ms"
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'import parse from "@std/data/json.ms"
 fn answer(parse: Int) Int:
     return parse
 import parse from "@std/data/json.ms"
@@ -4907,7 +4907,7 @@ import CsvOptions from "@std/data/csv.ms"
 fn example() Unit:
     SetBuilder[String]()
     CsvOptions(delimiter: ",", line_ending: "\n")
-resolution	1	8	7	module does not export SetBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	8	7	module does not export SetBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	4	5	122	unknown binding SetBuilder; declare it with 'let SetBuilder = ...' before use, define 'fn SetBuilder(...) T:', or import it from a modulefn absent[T]() T?: none
 fn transform[T, U](callback: fn(T) U) fn(T) U: callback
 fn answer() Unit:
@@ -5002,7 +5002,7 @@ fn later() Int:
 import ListBuilder from "@std/collections/collections.ms"
 fn answer() Int:
     return 42
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'fn answer(value: Int?) Int:
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'fn answer(value: Int?) Int:
     match value:
         _value:
             return 1
@@ -5076,7 +5076,7 @@ fn length(values: List[Int]) Int:
     return values.length()
 fn os_name() String:
     return system().info().os
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	2	8	65	unknown standard module @std/system.ms
 resolution	6	12	187	unknown binding system; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"fn label(value: Int) String:
     return "{value}"
@@ -5137,7 +5137,7 @@ resolution	2	41	89	unknown type MissingValue; use the prelude MissingValue decla
 fn count() Int: List[Int]().length()
 resolution	1	8	7	redundant prelude import List; remove List from this import and use its prelude declaration directlyimport ListBuilder, List from "@std/collections/collections.ms"
 fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	1	21	20	redundant prelude import List; remove List from this import and use its prelude declaration directly
 resolution	2	17	80	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a moduleimport (
     List, # keep
@@ -5145,7 +5145,7 @@ resolution	2	17	80	unknown binding ListBuilder; declare it with 'let ListBuilder
 ) from "@std/collections/collections.ms"
 fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
 resolution	2	5	13	redundant prelude import List; remove List from this import and use its prelude declaration directly
-resolution	3	5	30	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	3	5	30	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	5	17	100	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a modulefn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 fn bad() Unit:
    unit
@@ -6342,15 +6342,15 @@ test "unimported":
     let values = [1, 2]
     let part = values.METHOD(-7)
     return part.length()
-resolution	3	23	68	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...export fn main() Int:
+resolution	3	23	68	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, ...export fn main() Int:
     let copy = [1, 2].METHOD
     let part = copy(count: -7)
     return part.length()
-resolution	2	23	44	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...export fn main() Int:
+resolution	2	23	44	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, ...export fn main() Int:
     let empty: List[Int] = []
     let part = empty.METHOD(-7)
     return part.length()
-resolution	3	22	73	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...import panic from "@std/faults.ms"
+resolution	3	22	73	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, ...import panic from "@std/faults.ms"
 
 fn run() Int:
     let boom = fn(value: Int) Int: panic(message: "closure failed")
