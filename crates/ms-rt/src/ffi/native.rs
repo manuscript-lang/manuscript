@@ -246,6 +246,11 @@ pub fn start_nanos() -> i64 {
     msrt_start_nanos()
 }
 
+/// The host's monotonic clock in nanoseconds, on the same origin as `start_nanos`.
+pub fn monotonic_nanos() -> i64 {
+    crate::sys::monotonic_ns()
+}
+
 /// A string result held as bytes, for host text that is checked (or trusted) to be UTF-8 by the
 /// native rather than by the type.
 pub struct Text(pub Vec<u8>);

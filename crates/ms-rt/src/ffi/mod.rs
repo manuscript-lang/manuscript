@@ -17,7 +17,7 @@ pub use native::{
     FromAbi, Global, Handed, Handler, IdArray, IntList, IntMap, IntoAbi, Mut, ObjBox, ObjCell,
     ObjMut, ObjRef, ObjShare, ObjSlot, Object, OptInt, Out, Own, PairFilter, ReadSource, RecList,
     Ref, Status, StatusCode, Str, StrArray, StrMap, StringList, StringTable, Text, TextList, argv,
-    start_nanos,
+    monotonic_nanos, start_nanos,
 };
 
 use ms_rt_abi::KIND_LIST;

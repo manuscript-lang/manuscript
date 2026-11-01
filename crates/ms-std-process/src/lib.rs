@@ -42,7 +42,7 @@ use alloc::vec::Vec;
 use command::Subprocess;
 use ms_rt::ffi::{
     Bytes, IntList, ObjBox, ObjMut, ObjRef, ObjShare, Object, StatusCode, Str, StrMap, StringList,
-    Text, TextList, abi_handle, abi_record, argv, native, start_nanos,
+    Text, TextList, abi_handle, abi_record, argv, monotonic_nanos, native, start_nanos,
 };
 use ms_rt_abi::{STATUS_INVALID_INPUT, StrVal};
 use ms_std_fs::err::{Fail, Res};
@@ -52,11 +52,12 @@ use ms_std_io::stream::Stream;
 /// Nanoseconds since the runtime started (or since the first call when it did not record a start).
 fn uptime_ns() -> i64 {
     static FIRST: std::sync::OnceLock<i64> = std::sync::OnceLock::new();
+    let now = monotonic_nanos();
     let origin = match start_nanos() {
-        0 => *FIRST.get_or_init(command::now_ns),
+        0 => *FIRST.get_or_init(|| now),
         start => start,
     };
-    command::now_ns() - origin
+    now - origin
 }
 
 fn bytes_of<'a>(items: &'a [&'a str]) -> Vec<&'a [u8]> {
