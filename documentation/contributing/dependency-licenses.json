@@ -141,6 +141,11 @@
       "license": "MIT OR Apache-2.0"
     },
     {
+      "name": "crabmole",
+      "version": "0.1.8",
+      "license": "MIT OR Apache-2.0 OR BSD-3-Clause"
+    },
+    {
       "name": "cranelift-assembler-x64",
       "version": "0.136.3",
       "license": "Apache-2.0 WITH LLVM-exception"
@@ -894,6 +899,11 @@
       "name": "unicode-normalization",
       "version": "0.1.26",
       "license": "(MIT OR Apache-2.0) AND Unicode-3.0"
+    },
+    {
+      "name": "unicode-width",
+      "version": "0.2.3",
+      "license": "MIT OR Apache-2.0"
     },
     {
       "name": "universal-hash",

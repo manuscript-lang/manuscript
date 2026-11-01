@@ -41,7 +41,7 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export range; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'",
+        "message": "module does not export range; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'",
         "position": {
           "file": "testredundantpreludeimportdiagnosticsandfixes-7.ms",
           "line": 7,
@@ -59,7 +59,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testredundantpreludeimportdiagnosticsandfixes-7.ms:5:5: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 5 |     List  # collection\n   |     ^^^^\n<DIR>/testredundantpreludeimportdiagnosticsandfixes-7.ms:7:5: resolution: module does not export range; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 7 |     range\n   |     ^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testredundantpreludeimportdiagnosticsandfixes-7.ms:5:5: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 5 |     List  # collection\n   |     ^^^^\n<DIR>/testredundantpreludeimportdiagnosticsandfixes-7.ms:7:5: resolution: module does not export range; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 7 |     range\n   |     ^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

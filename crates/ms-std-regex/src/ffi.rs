@@ -51,6 +51,27 @@ native! {
         1
     }
 
+    fn msstd_regex_find_all_spans(
+        re: ObjRef<Regex>, text: &str, has_max: bool, max: i64,
+    ) -> Result<IntList, Fail> {
+        re.find_all_spans(text, has_max.then_some(max)).map(IntList)
+    }
+
+    fn msstd_regex_capture_spans(
+        re: ObjRef<Regex>, text: &str, has_max: bool, max: i64,
+    ) -> Result<IntList, Fail> {
+        re.capture_spans(text, has_max.then_some(max)).map(IntList)
+    }
+
+    fn msstd_regex_capture_all_spans(
+        re: ObjRef<Regex>, text: &str,
+        has_matches: bool, max_matches: i64, has_captures: bool, max_captures: i64,
+    ) -> Result<IntList, Fail> {
+        re.capture_all_spans(
+            text, has_matches.then_some(max_matches), has_captures.then_some(max_captures),
+        ).map(IntList)
+    }
+
     fn msstd_regex_split(
         re: ObjRef<Regex>,
         text: &str,

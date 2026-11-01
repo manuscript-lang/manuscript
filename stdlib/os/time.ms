@@ -30,13 +30,13 @@ import (
     msstd_time_wall_clock
 ) from "@std/internal/time.ms"
 
-# Errors returned by timestamp parsing, arithmetic, or range conversion.
+# Errors returned by time parsing, arithmetic, or range conversion.
 export type TimeError:
     # Reserved for invalid time arguments; the current native time operations do not return it.
     case InvalidInput
     # Reserved for time operations on a closed resource; the current native time operations do not return it.
     case Closed
-    # The text is not an RFC 3339 timestamp with a four-digit year, full date and time, and an explicit `Z` or `+hh:mm` offset.
+    # The text is not a duration span or an RFC 3339 timestamp with a four-digit year, full date and time, and an explicit `Z` or `+hh:mm` offset.
     case InvalidData
     # A nanosecond component is outside 0 through 999999999, or the result falls outside years 1 through 9999 or cannot be represented as a Duration.
     case OutOfRange
@@ -353,6 +353,133 @@ export fn minutes(n: Int) Duration:
 # Constructs a duration of `n` hours; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
 export fn hours(n: Int) Duration:
     return nanoseconds(n * 3600000000000)
+
+# Parses a span such as `1h30m`, `-250ms`, or `1.5µs`, including every Duration.to_string() result.
+# Accepts one optional leading `+` or `-`, then decimal components with units `ns`, `us`, `µs`, `μs`, `ms`, `s`, `m`, or `h`.
+# Components may repeat or appear in any order; `.5s` and `1.s` are valid. Bare `0` is also valid, including `+0` and `-0`.
+# Fractions may have any number of ASCII digits; each component truncates toward zero to whole nanoseconds, without floating-point rounding. Negative zero becomes zero.
+# Whitespace, exponents, missing units, and other syntax return InvalidData, even after an overflowing prefix.
+# A syntactically valid result outside -9223372036854775808 through 9223372036854775807 nanoseconds returns OutOfRange.
+export fn parse_duration(text: String) Duration!TimeError:
+    let data = text.to_bytes()
+    let size = data.length()
+    if size == 0: return error(TimeError.InvalidData)
+
+    var pos = 0
+    let negative = data.get(0).to_int() == 45
+    if negative or data.get(0).to_int() == 43: pos += 1
+    if pos == size: return error(TimeError.InvalidData)
+    if size - pos == 1 and data.get(pos).to_int() == 48:
+        return ok(nanoseconds(0))
+
+    # Accumulate negatively: the minimum Duration has no positive counterpart.
+    let limit = if negative: -9223372036854775807 - 1 else: -9223372036854775807
+    var total = 0
+    var overflow = false
+
+    while pos < size:
+        let start = pos
+        var whole = 0
+
+        while pos < size:
+            let digit = data.get(pos).to_int() - 48
+            if digit < 0 or digit > 9: break
+
+            if not overflow:
+                if (
+                    whole < -922337203685477580
+                    or (whole == -922337203685477580 and digit > 8)
+                ):
+                    overflow = true
+                else:
+                    whole = whole * 10 - digit
+
+            pos += 1
+
+        let has_whole = pos > start
+        var fraction_start = pos
+
+        if pos < size and data.get(pos).to_int() == 46:
+            pos += 1
+            fraction_start = pos
+
+            while pos < size:
+                let digit = data.get(pos).to_int() - 48
+                if digit < 0 or digit > 9: break
+
+                pos += 1
+
+        let fraction_end = pos
+        if not has_whole and fraction_start == fraction_end:
+            return error(TimeError.InvalidData)
+        if pos == size: return error(TimeError.InvalidData)
+
+        var scale = 0
+        let suffix = data.get(pos).to_int()
+        pos += 1
+
+        if suffix == 104:
+            scale = 3600000000000
+        else if suffix == 115:
+            scale = 1000000000
+        else if suffix == 109:
+            scale = 60000000000
+
+            if pos < size and data.get(pos).to_int() == 115:
+                scale = 1000000
+                pos += 1
+        else if suffix == 110 or suffix == 117:
+            if pos == size or data.get(pos).to_int() != 115:
+                return error(TimeError.InvalidData)
+
+            scale = if suffix == 110: 1 else: 1000
+            pos += 1
+        else if suffix == 194 or suffix == 206:
+            let second = if suffix == 194: 181 else: 188
+            if (
+                size - pos < 2
+                or data.get(pos).to_int() != second
+                or data.get(pos + 1).to_int() != 115
+            ):
+                return error(TimeError.InvalidData)
+
+            scale = 1000
+            pos += 2
+        else:
+            return error(TimeError.InvalidData)
+
+        # Continue syntax validation after overflow, but skip further arithmetic.
+        if overflow: continue
+
+        if whole < limit / scale:
+            overflow = true
+            continue
+
+        let integral = whole * scale
+
+        if total < limit - integral:
+            overflow = true
+            continue
+
+        total += integral
+
+        # Reverse decimal evaluation gives floor(fraction * scale) exactly for
+        # arbitrarily many digits. Each intermediate is less than 10 * scale.
+        var fraction = 0
+        var cursor = fraction_end
+
+        while cursor > fraction_start:
+            cursor -= 1
+            fraction = ((data.get(cursor).to_int() - 48) * scale + fraction) / 10
+
+        if total < limit + fraction:
+            overflow = true
+        else:
+            total -= fraction
+
+    if overflow: return error(TimeError.OutOfRange)
+
+    return ok(nanoseconds(if negative: total else: -total))
 
 # Parses an RFC 3339 timestamp with an explicit time zone.
 export fn parse_timestamp(text: String) Timestamp!TimeError:

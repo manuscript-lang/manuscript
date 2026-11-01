@@ -2,5 +2,5 @@
 channel = "1.99.1"
 profile = "minimal"
 components = ["rustfmt", "clippy", "rust-analyzer"]
-# Linux programs link statically against musl with the bundled lld (crates/ms-clif/build.rs).
+# `ms build --static` links static musl with the bundled lld (crates/ms-clif/build.rs); other Linux programs link glibc.
 targets = ["x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl"]

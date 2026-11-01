@@ -30,6 +30,23 @@ import (
     msstd_math_log1p,
     msstd_math_is_integer,
     msstd_math_is_safe_integer,
+    msstd_math_reverse_bits,
+    msstd_math_reverse_bytes,
+    msstd_math_exp2,
+    msstd_math_round_to_even,
+    msstd_math_copy_sign,
+    msstd_math_sign_bit,
+    msstd_math_next_after,
+    msstd_math_fma,
+    msstd_math_add_with_carry,
+    msstd_math_subtract_with_borrow,
+    msstd_math_multiply_wide,
+    msstd_math_divide_wide,
+    msstd_math_remainder_wide,
+    msstd_math_frexp,
+    msstd_math_ldexp,
+    msstd_math_modf,
+    msstd_math_ieee_remainder,
     msrt_bits_bit_and,
     msrt_bits_bit_or,
     msrt_bits_bit_xor,
@@ -50,6 +67,11 @@ import (
     msstd_bigint_add,
     msstd_bigint_subtract,
     msstd_bigint_multiply,
+    msstd_bigint_gcd,
+    msstd_bigint_lcm,
+    msstd_bigint_sqrt,
+    msstd_bigint_pow_mod,
+    msstd_bigint_inverse_mod,
     msstd_bigint_divide,
     msstd_bigint_remainder,
     msstd_bigint_quotient,
@@ -106,6 +128,66 @@ export let e: Float = 2.718281828459045
 # Returns e raised to `value`.
 export fn exp(value: Float) Float:
     return msstd_math_exp(value)
+
+# Returns 2 raised to `value`; infinities and NaN follow IEEE floating-point rules.
+export fn exp2(value: Float) Float:
+    return msstd_math_exp2(value)
+
+# Rounds to the nearest integer, choosing the even integer at a tie; preserves signed zero, infinities, and NaN.
+export fn round_to_even(value: Float) Float:
+    return msstd_math_round_to_even(value)
+
+# Returns `value`'s magnitude with `sign`'s sign bit, including signed zero and NaN.
+export fn copy_sign(value: Float, sign: Float) Float:
+    return msstd_math_copy_sign(value, sign)
+
+# Reports the sign bit, including for negative zero and negative NaN.
+export fn sign_bit(value: Float) Bool:
+    return msstd_math_sign_bit(value)
+
+# Returns the next representable Float from `value` toward `toward`, crossing subnormals, zero, and infinity exactly.
+# Equal operands return `toward`, including its zero sign; either NaN operand gives NaN.
+export fn next_after(value: Float, toward: Float) Float:
+    return msstd_math_next_after(value, toward)
+
+# Computes `left * right + addend` with one rounding, avoiding the intermediate product's rounding and overflow.
+export fn fma(left: Float, right: Float, addend: Float) Float:
+    return msstd_math_fma(left, right, addend)
+
+# A binary decomposition from `frexp`; `frexp(8.0)` has fraction 0.5 and exponent 4.
+export type BinaryFloatParts:
+    # The signed fraction; its magnitude is at least 0.5 and less than 1 for finite nonzero inputs.
+    fraction: Float
+    # The power of two; zero for zero, infinity, or NaN inputs.
+    exponent: Int
+
+# The integer and fractional parts from `modf`; `modf(-2.75)` has integer -2.0 and fraction -0.75.
+export type FloatParts:
+    # The input truncated toward zero, retaining its sign, including zero and infinity.
+    integer: Float
+    # The remainder after truncation, retaining the input's sign, including zero; signed zero for infinity.
+    fraction: Float
+
+# Decomposes `value` exactly as fraction * 2^exponent; use `ldexp` to reconstruct it.
+# Zero, infinity and NaN give the unchanged fraction and exponent 0.
+export fn frexp(value: Float) BinaryFloatParts:
+    return msstd_math_frexp(value)
+
+# Multiplies `fraction` by 2^exponent with normal IEEE rounding, overflow and subnormal underflow.
+# Accepts every Int exponent and preserves signed zero, infinity and NaN.
+export fn ldexp(fraction: Float, exponent: Int) Float:
+    return msstd_math_ldexp(fraction, exponent)
+
+# Splits `value` into an integer truncated toward zero and its fractional remainder, both with the input's sign.
+# Infinity gives itself and signed zero; NaN gives NaN for both parts.
+export fn modf(value: Float) FloatParts:
+    return msstd_math_modf(value)
+
+# Returns `left - n * right`, where n is the nearest integer to left/right, choosing an even n at a tie.
+# The result's magnitude is at most abs(right)/2; a zero result keeps left's sign.
+# A zero right, infinite left, or NaN input gives NaN; an infinite right returns finite left unchanged.
+export fn ieee_remainder(left: Float, right: Float) Float:
+    return msstd_math_ieee_remainder(left, right)
 
 # Rounds downward to the nearest whole number.
 export fn floor(value: Float) Float:
@@ -245,11 +327,11 @@ export let sqrt_half: Float = 0.7071067811865476
 
 # Errors returned for invalid numeric requests, malformed text, or out-of-range values.
 export type NumberError:
-    # A radix or digit-count argument is outside its documented range.
+    # A radix or digit-count argument is outside its documented range, or divide_wide/remainder_wide has a zero divisor.
     case InvalidInput
     # The text does not match the numeric syntax, such as an empty string, stray characters, or digits invalid for the radix.
     case InvalidData
-    # The text is well formed but the value does not fit, such as an integer beyond the platform's Int range or a float beyond the finite range.
+    # A well-formed value does not fit, such as a parsed number beyond its range or a divide_wide quotient beyond UInt64.
     case OutOfRange
 
 # Parses a decimal floating-point number using Manuscript's numeric syntax.
@@ -316,6 +398,72 @@ export fn leading_zeros(value: Int) Int:
 export fn trailing_zeros(value: Int) Int:
     return msrt_bits_trailing_zeros(value)
 
+# Reverses all 64 bits of the two's-complement pattern; reversing twice returns `value`.
+export fn reverse_bits(value: Int) Int:
+    return msstd_math_reverse_bits(value)
+
+# Reverses the eight bytes of the 64-bit pattern, keeping bit order within each byte; independent of host byte order.
+export fn reverse_bytes(value: Int) Int:
+    return msstd_math_reverse_bytes(value)
+
+# The wrapped sum and output carry from `add_with_carry`; `add_with_carry(1, 2).sum` is 3.
+export type WordSum:
+    # The low 64 bits of left + right + input carry.
+    sum: UInt64
+    # True when the unsigned mathematical sum exceeds UInt64's range.
+    carry: Bool
+
+# The wrapped difference and output borrow from `subtract_with_borrow`; `subtract_with_borrow(5, 2).difference` is 3.
+export type WordDifference:
+    # The low 64 bits of left - right - input borrow.
+    difference: UInt64
+    # True when the unsigned mathematical difference is negative.
+    borrow: Bool
+
+# An exact unsigned 128-bit product from `multiply_wide`; `multiply_wide(2, 3)` has high 0 and low 6.
+export type WideProduct:
+    # The upper 64 bits of the product.
+    high: UInt64
+    # The lower 64 bits of the product.
+    low: UInt64
+
+# A quotient and remainder from `divide_wide`; `divide_wide(0, 7, 3)` gives quotient 2 and remainder 1.
+export type WordDivision:
+    # The unsigned quotient, guaranteed to fit in 64 bits.
+    quotient: UInt64
+    # The unsigned remainder, smaller than the divisor.
+    remainder: UInt64
+
+# Adds two unsigned 64-bit words and an optional input carry; returns the wrapped sum and output carry.
+export fn add_with_carry(left: UInt64, right: UInt64, carry: Bool = false) WordSum:
+    return msstd_math_add_with_carry(left, right, carry)
+
+# Subtracts right and an optional input borrow from left; returns the wrapped difference and output borrow.
+export fn subtract_with_borrow(
+    left: UInt64,
+    right: UInt64,
+    borrow: Bool = false
+) WordDifference:
+    return msstd_math_subtract_with_borrow(left, right, borrow)
+
+# Multiplies two unsigned 64-bit words exactly, returning the upper and lower 64-bit words.
+export fn multiply_wide(left: UInt64, right: UInt64) WideProduct:
+    return msstd_math_multiply_wide(left, right)
+
+# Divides the unsigned 128-bit value high * 2^64 + low by divisor, returning a 64-bit quotient and remainder.
+# A zero divisor returns InvalidInput; otherwise high >= divisor returns OutOfRange because the quotient cannot fit.
+export fn divide_wide(
+    high: UInt64,
+    low: UInt64,
+    divisor: UInt64
+) WordDivision!NumberError:
+    return msstd_math_divide_wide(high, low, divisor)
+
+# Returns the remainder of the unsigned 128-bit value high * 2^64 + low divided by divisor.
+# A zero divisor returns InvalidInput; any nonzero divisor is valid, even when the quotient would not fit in 64 bits.
+export fn remainder_wide(high: UInt64, low: UInt64, divisor: UInt64) UInt64!NumberError:
+    return msstd_math_remainder_wide(high, low, divisor)
+
 # Adds with two's-complement wraparound instead of faulting on overflow.
 export fn wrapping_add(left: Int, right: Int) Int:
     return msrt_bits_wrapping_add(left, right)
@@ -330,7 +478,7 @@ export fn wrapping_multiply(left: Int, right: Int) Int:
 
 # Errors returned while parsing or converting arbitrary-precision integers.
 export type BigIntError:
-    # The radix is outside 2 through 36, `max_digits` is negative, or a division or remainder has a zero divisor.
+    # A radix is outside 2 through 36, a digit limit, shift count, exponent, or square-root operand is negative, a divisor is zero, or a modular modulus is not positive.
     case InvalidInput
     # The text is not an optionally signed integer made only of digits valid in the radix.
     case InvalidData
@@ -360,6 +508,32 @@ impl BigInt:
     # Returns the exact product; it cannot overflow, though very large operands take proportionally longer.
     fn multiply(other: BigInt) BigInt:
         return msstd_bigint_multiply(self, other)
+
+    # Returns the non-negative greatest common divisor; gcd(0, 0) is zero.
+    # Example: `from_int(-12).gcd(from_int(18))` is `from_int(6)`.
+    fn gcd(other: BigInt) BigInt:
+        return msstd_bigint_gcd(self, other)
+
+    # Returns the non-negative least common multiple, or zero when either operand is zero.
+    fn lcm(other: BigInt) BigInt:
+        return msstd_bigint_lcm(self, other)
+
+    # Returns the floor of the exact integer square root; a negative receiver returns InvalidInput.
+    fn sqrt() BigInt!BigIntError:
+        return msstd_bigint_sqrt(self)
+
+    # Returns `self` raised to a non-negative BigInt exponent modulo a positive modulus, in 0 through modulus - 1.
+    # A negative exponent or non-positive modulus returns InvalidInput. A zero exponent gives 1 modulo modulus, including 0^0.
+    # Reduces during exponentiation instead of constructing the full power. Variable-time; unsuitable for secret exponents.
+    fn pow_mod(exponent: BigInt, modulus: BigInt) BigInt!BigIntError:
+        return msstd_bigint_pow_mod(self, exponent, modulus)
+
+    # Returns the multiplicative inverse modulo a positive modulus, in 0 through modulus - 1; a non-positive modulus returns InvalidInput.
+    # No inverse gives ok(none); modulus 1 gives zero. Variable-time; unsuitable for secret operands.
+    fn inverse_mod(modulus: BigInt) BigInt?!BigIntError:
+        if modulus.sign() <= 0: return error(BigIntError.InvalidInput)
+
+        return ok(msstd_bigint_inverse_mod(self, modulus))
 
     # Returns the quotient truncated toward zero, so -7 divided by 2 is -3.
     # A zero divisor returns InvalidInput.

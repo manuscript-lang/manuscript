@@ -1,5 +1,6 @@
-//! Linking with the pinned `lld` (downloaded once into the cache), so no C toolchain is needed. Linux produces a static
-//! executable over musl's startup files and libc; macOS links against generated SDK stubs; Windows
+//! Linking with the pinned `lld` (downloaded once into the cache), so no C toolchain is needed. Linux produces a
+//! dynamic executable over stubs of glibc 2.28 (it runs on any later glibc), or with `--static` a static one over musl's startup files and libc;
+//! macOS links against generated SDK stubs; Windows
 //! links an executable over the mingw-w64 CRT and import libraries, so it needs neither the MSVC
 //! SDK nor a C compiler.
 
@@ -7,7 +8,7 @@ use crate::Error;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use super::bundled::{FILES, LINKER_ID};
 
@@ -130,11 +131,18 @@ fn lld_path() -> Result<PathBuf, Error> {
 }
 
 /// Links `object` and `inputs` (the runtime built for this platform) into the executable `out`.
-pub fn link(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<(), Error> {
+pub fn link(
+    object: &Path,
+    inputs: &[&Path],
+    out: &Path,
+    strip: bool,
+    musl: bool,
+) -> Result<(), Error> {
     let dir = extract()?;
-    let mut command = Command::new(lld_path()?);
+    let lld = lld_path()?;
+    let mut command = Command::new(&lld);
     #[cfg(target_os = "linux")]
-    linux_arguments(&mut command, &dir, object, inputs, out, strip);
+    linux_arguments(&mut command, &dir, &lld, object, inputs, out, strip, musl)?;
     #[cfg(target_os = "windows")]
     windows_arguments(&mut command, &dir, object, inputs, out, strip);
     #[cfg(target_os = "macos")]
@@ -164,37 +172,75 @@ pub fn link(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<
         ),
         None => "A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error".to_string(),
     };
+    #[cfg(target_os = "linux")]
+    let advice = if musl {
+        advice
+    } else {
+        format!(
+            "{advice}. Programs link against glibc 2.28, so an object built against a newer glibc may need symbols it lacks; pass --static to link musl instead"
+        )
+    };
     Err(Error(format!(
         "linking failed ({}); the linker output follows. {advice}:\n{detail}",
         o.status
     )))
 }
 
+/// Whether Linux programs link static musl (`--static`) instead of glibc. Set once by the
+/// command line before any build; the default is glibc.
+static STATIC_MUSL: AtomicBool = AtomicBool::new(false);
+
+/// Selects static musl (`true`) or glibc (`false`, the default) for Linux links.
+pub fn set_static(on: bool) {
+    STATIC_MUSL.store(on, Ordering::Relaxed);
+}
+
+/// Whether Linux links static musl; the runtime archive must be the musl build to match.
+pub fn is_static() -> bool {
+    cfg!(target_os = "linux") && STATIC_MUSL.load(Ordering::Relaxed)
+}
+
 /// Drops runtime and standard-library code the program never reaches: the runtime archive is one
 /// object per Rust codegen unit with a section per function, so unused pieces cost nothing.
 #[cfg(target_os = "linux")]
+#[allow(clippy::too_many_arguments)]
 fn linux_arguments(
     command: &mut Command,
     dir: &Path,
+    lld: &Path,
     object: &Path,
     inputs: &[&Path],
     out: &Path,
     strip: bool,
-) {
+    musl: bool,
+) -> Result<(), Error> {
     command
-        .args([
-            "-flavor",
-            "gnu",
-            "-static",
-            "--gc-sections",
-            "--eh-frame-hdr",
-        ])
+        .args(["-flavor", "gnu", "--gc-sections", "--eh-frame-hdr"])
         .arg("-o")
         .arg(out);
     if strip {
         command.arg("--strip-all");
     }
+    if !musl {
+        // The runtime archive defines `_start`, which hands `main` to glibc's `__libc_start_main`.
+        // Every symbol binds at load (`-z now`), so a program never fails at a later call.
+        let stubs = glibc_stubs::stubs(dir, lld)?;
+        command
+            .args(["--dynamic-linker", glibc_stubs::loader()])
+            .args(["-z", "now", "-z", "relro"])
+            .arg(object)
+            .arg("--start-group")
+            .args(inputs)
+            .arg(dir.join("libunwind.a"))
+            .arg("--end-group")
+            .arg("--as-needed");
+        for library in glibc_stubs::libraries() {
+            command.arg(stubs.join(library));
+        }
+        return Ok(());
+    }
     command
+        .arg("-static")
         .arg(dir.join("crt1.o"))
         .arg(dir.join("crti.o"))
         .arg(object)
@@ -204,6 +250,7 @@ fn linux_arguments(
         .arg(dir.join("libc.a"))
         .arg("--end-group")
         .arg(dir.join("crtn.o"));
+    Ok(())
 }
 
 /// Links a console executable over mingw-w64's startup object and CRT, dropping unreachable sections
@@ -369,5 +416,7 @@ fn cache_root() -> PathBuf {
         .unwrap_or_else(std::env::temp_dir)
 }
 
+#[cfg(target_os = "linux")]
+mod glibc_stubs;
 #[cfg(target_os = "macos")]
 mod macos_stubs;

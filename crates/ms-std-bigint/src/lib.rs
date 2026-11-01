@@ -16,7 +16,8 @@ use ms_rt::ffi::{ObjRef, Object, Out, Status, abi_handle, native};
 use ms_rt::glue::{fault_fmt, poll_cancel};
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 use num_bigint::{BigInt, Sign};
-use num_traits::{Signed, ToPrimitive, Zero};
+use num_integer::Integer;
+use num_traits::{One, Signed, ToPrimitive, Zero};
 
 /// The value behind a `BigInt` runtime object.
 pub struct Big(BigInt);
@@ -132,6 +133,54 @@ native! {
 
     fn msstd_bigint_multiply(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
         make(n(&a) * n(&other))
+    }
+
+    fn msstd_bigint_gcd(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
+        poll_cancel();
+        make(n(&a).gcd(n(&other)))
+    }
+
+    fn msstd_bigint_lcm(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
+        poll_cancel();
+        make(n(&a).lcm(n(&other)))
+    }
+
+    fn msstd_bigint_sqrt(a: ObjRef<Big>) -> Result<Object<Big>, Code> {
+        if n(&a).is_negative() {
+            return Err(Code(STATUS_INVALID_INPUT));
+        }
+        poll_cancel();
+        Ok(make(n(&a).sqrt()))
+    }
+
+    fn msstd_bigint_pow_mod(
+        a: ObjRef<Big>,
+        exponent: ObjRef<Big>,
+        modulus: ObjRef<Big>,
+    ) -> Result<Object<Big>, Code> {
+        if n(&exponent).is_negative() || !n(&modulus).is_positive() {
+            return Err(Code(STATUS_INVALID_INPUT));
+        }
+        poll_cancel();
+        Ok(make(n(&a).modpow(n(&exponent), n(&modulus))))
+    }
+
+    fn msstd_bigint_inverse_mod(a: ObjRef<Big>, modulus: ObjRef<Big>, out: Out<Object<Big>>) -> bool {
+        if !n(&modulus).is_positive() {
+            return false;
+        }
+        poll_cancel();
+        // The only residue modulo one is zero, including for negative receivers.
+        if n(&modulus).is_one() {
+            out.write(make(BigInt::zero()));
+            return true;
+        }
+        if let Some(inverse) = n(&a).modinv(n(&modulus)) {
+            out.write(make(inverse));
+            true
+        } else {
+            false
+        }
     }
 
     fn msstd_bigint_bit_and(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {

@@ -9,7 +9,14 @@ macro_rules! bundled {
     };
 }
 #[cfg(target_os = "linux")]
-bundled!("crt1.o", "crti.o", "crtn.o", "libc.a", "libunwind.a");
+bundled!(
+    "crt1.o",
+    "crti.o",
+    "crtn.o",
+    "libc.a",
+    "libunwind.a",
+    "glibc.symbols"
+);
 #[cfg(target_os = "windows")]
 bundled!(
     "crt2.o",

@@ -48,7 +48,7 @@ Arguments are borrowed: a native reads them and does not keep the pointer after 
 
 ## Linking the native code
 
-`ms build`, `ms run`, and `ms test` take `--link <file>` (repeatable) for an object (`.o`) or static library (`.a`) that defines the symbols. The standard runtime and libc are always linked.
+`ms build`, `ms run`, and `ms test` take `--link <file>` (repeatable) for an object (`.o`) or static library (`.a`) that defines the symbols. The standard runtime and libc are always linked: on Linux that is the system glibc, or static musl with `--static`; an `extern fn` library built for one does not mix with the other.
 
 ```text
 cc -c -I crates/ms-rt-abi/include greet.c -o greet.o

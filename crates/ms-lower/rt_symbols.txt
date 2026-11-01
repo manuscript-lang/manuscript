@@ -347,20 +347,28 @@ msstd_bigint_equal(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> u8
 msstd_bigint_from_int(value: i64) -> *mut ObjCell<Big>
 msstd_bigint_from_seconds_nanos(seconds: i64, nanoseconds: i64) -> *mut ObjCell<Big>
 msstd_bigint_from_u64(value: i64) -> *mut ObjCell<Big>
+msstd_bigint_gcd(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> *mut ObjCell<Big>
+msstd_bigint_inverse_mod(a: *const ObjCell<Big>, modulus: *const ObjCell<Big>, out: *mut *mut ObjCell<Big>) -> u8
+msstd_bigint_lcm(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> *mut ObjCell<Big>
 msstd_bigint_modulo(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> *mut ObjCell<Big>
 msstd_bigint_multiply(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> *mut ObjCell<Big>
 msstd_bigint_negate(a: *const ObjCell<Big>) -> *mut ObjCell<Big>
 msstd_bigint_parse(text: *const StrVal, radix: i64, has_max: u8, max: i64, out: *mut *mut ObjCell<Big>) -> u8
 msstd_bigint_pow(a: *const ObjCell<Big>, exponent: i64, out: *mut *mut ObjCell<Big>) -> u8
+msstd_bigint_pow_mod(a: *const ObjCell<Big>, exponent: *const ObjCell<Big>, modulus: *const ObjCell<Big>, out: *mut *mut ObjCell<Big>) -> u8
 msstd_bigint_quotient(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> *mut ObjCell<Big>
 msstd_bigint_remainder(a: *const ObjCell<Big>, other: *const ObjCell<Big>, out: *mut *mut ObjCell<Big>) -> u8
 msstd_bigint_shift_left(a: *const ObjCell<Big>, count: i64, out: *mut *mut ObjCell<Big>) -> u8
 msstd_bigint_shift_right(a: *const ObjCell<Big>, count: i64, out: *mut *mut ObjCell<Big>) -> u8
 msstd_bigint_sign(a: *const ObjCell<Big>) -> i64
+msstd_bigint_sqrt(a: *const ObjCell<Big>, out: *mut *mut ObjCell<Big>) -> u8
 msstd_bigint_subtract(a: *const ObjCell<Big>, other: *const ObjCell<Big>) -> *mut ObjCell<Big>
 msstd_bigint_to_float(a: *const ObjCell<Big>) -> f64
 msstd_bigint_to_int(a: *const ObjCell<Big>, out: *mut i64) -> u8
 msstd_bigint_to_string_radix(a: *const ObjCell<Big>, radix: i64, out: *mut StrVal)
+msstd_checksum_adler32_update(initial: i64, data: *const VecVal) -> i64
+msstd_checksum_crc32(data: *const VecVal) -> i64
+msstd_checksum_crc32_update(initial: i64, data: *const VecVal) -> i64
 msstd_compress_compress(data: *const VecVal, format: *const StrVal, level: i64, has_max: u8, max: i64, out: *mut VecVal) -> u8
 msstd_compress_decoder_feed(d: *const ObjCell<DecoderObj>, data: *const VecVal)
 msstd_compress_decoder_finish_input(d: *const ObjCell<DecoderObj>)
@@ -417,8 +425,14 @@ msstd_decimal_to_fixed(value: *const DecRec, digits: i64, has_mode: u8, mode: i6
 msstd_decimal_to_float(a: *const DecRec) -> f64
 msstd_decimal_to_string(a: *const DecRec, out: *mut StrVal)
 msstd_decimal_truncate_to_int(a: *const DecRec, out: *mut i64) -> u8
+msstd_encoding_ascii85_decode(text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
+msstd_encoding_ascii85_encode(data: *const VecVal, out: *mut StrVal)
+msstd_encoding_base32_decode(text: *const StrVal, hex_alphabet: u8, padded: u8, has_max: u8, max: i64, out: *mut VecVal) -> u8
+msstd_encoding_base32_encode(data: *const VecVal, hex_alphabet: u8, padded: u8, out: *mut StrVal)
 msstd_encoding_base64_decode(text: *const StrVal, url_safe: u8, has_max: u8, max: i64, out: *mut VecVal) -> u8
+msstd_encoding_base64_decode_unpadded(text: *const StrVal, url_safe: u8, has_max: u8, max: i64, out: *mut VecVal) -> u8
 msstd_encoding_base64_encode(data: *const VecVal, url_safe: u8, out: *mut StrVal)
+msstd_encoding_base64_encode_unpadded(data: *const VecVal, url_safe: u8, out: *mut StrVal)
 msstd_fs_access(path: *const StrVal, mode: i64) -> u8
 msstd_fs_append_file(path: *const StrVal, data: *const VecVal) -> u8
 msstd_fs_canonicalize(path: *const StrVal, out: *mut StrVal) -> u8
@@ -582,6 +596,7 @@ msstd_json_w_undo(w: *mut ObjCell<Writer>)
 msstd_json_writer_new(has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64) -> *mut ObjCell<Writer>
 msstd_math_acos(v: f64) -> f64
 msstd_math_acosh(v: f64) -> f64
+msstd_math_add_with_carry(left: u64, right: u64, carry: u8, out: *mut WordSumOut)
 msstd_math_asin(v: f64) -> f64
 msstd_math_asinh(v: f64) -> f64
 msstd_math_atan(v: f64) -> f64
@@ -589,25 +604,41 @@ msstd_math_atan2(y: f64, x: f64) -> f64
 msstd_math_atanh(v: f64) -> f64
 msstd_math_cbrt(v: f64) -> f64
 msstd_math_ceil(v: f64) -> f64
+msstd_math_copy_sign(value: f64, sign: f64) -> f64
 msstd_math_cos(v: f64) -> f64
 msstd_math_cosh(v: f64) -> f64
+msstd_math_divide_wide(high: u64, low: u64, divisor: u64, out: *mut WordDivisionOut) -> u8
 msstd_math_exp(v: f64) -> f64
+msstd_math_exp2(v: f64) -> f64
 msstd_math_expm1(v: f64) -> f64
 msstd_math_floor(v: f64) -> f64
+msstd_math_fma(left: f64, right: f64, addend: f64) -> f64
+msstd_math_frexp(value: f64, out: *mut BinaryFloatPartsOut)
 msstd_math_hypot(left: f64, right: f64) -> f64
+msstd_math_ieee_remainder(left: f64, right: f64) -> f64
 msstd_math_is_integer(v: f64) -> u8
 msstd_math_is_safe_integer(v: f64) -> u8
+msstd_math_ldexp(fraction: f64, exponent: i64) -> f64
 msstd_math_log(v: f64) -> f64
 msstd_math_log10(v: f64) -> f64
 msstd_math_log1p(v: f64) -> f64
 msstd_math_log2(v: f64) -> f64
+msstd_math_modf(value: f64, out: *mut FloatPartsOut)
+msstd_math_multiply_wide(left: u64, right: u64, out: *mut WideProductOut)
+msstd_math_next_after(value: f64, toward: f64) -> f64
 msstd_math_pow(base: f64, exponent: f64) -> f64
 msstd_math_remainder(left: f64, right: f64) -> f64
+msstd_math_remainder_wide(high: u64, low: u64, divisor: u64, out: *mut u64) -> u8
+msstd_math_reverse_bits(value: i64) -> i64
+msstd_math_reverse_bytes(value: i64) -> i64
 msstd_math_round(v: f64) -> f64
+msstd_math_round_to_even(v: f64) -> f64
 msstd_math_sign(v: f64) -> f64
+msstd_math_sign_bit(value: f64) -> u8
 msstd_math_sin(v: f64) -> f64
 msstd_math_sinh(v: f64) -> f64
 msstd_math_sqrt(v: f64) -> f64
+msstd_math_subtract_with_borrow(left: u64, right: u64, borrow: u8, out: *mut WordDifferenceOut)
 msstd_math_tan(v: f64) -> f64
 msstd_math_tanh(v: f64) -> f64
 msstd_math_truncate(v: f64) -> f64
@@ -745,10 +776,13 @@ msstd_random_draw_text(d: *const Draw, out: *mut StrVal)
 msstd_random_draw_want(d: *const Draw) -> i64
 msstd_random_failure_message(out: *mut StrVal)
 msstd_random_os_bytes(count: i64, out: *mut VecVal) -> u8
+msstd_regex_capture_all_spans(re: *const ObjCell<Regex>, text: *const StrVal, has_matches: u8, max_matches: i64, has_captures: u8, max_captures: i64, out: *mut VecVal) -> u8
+msstd_regex_capture_spans(re: *const ObjCell<Regex>, text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
 msstd_regex_captures(re: *const ObjCell<Regex>, text: *const StrVal, out: *mut VecVal)
 msstd_regex_captures_all(re: *const ObjCell<Regex>, text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
 msstd_regex_compile(pattern: *const StrVal, out: *mut *mut ObjCell<Regex>) -> u8
 msstd_regex_find_all(re: *const ObjCell<Regex>, text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
+msstd_regex_find_all_spans(re: *const ObjCell<Regex>, text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
 msstd_regex_find_span(re: *const ObjCell<Regex>, text: *const StrVal, out: *mut VecVal) -> u8
 msstd_regex_matches(re: *const ObjCell<Regex>, text: *const StrVal) -> u8
 msstd_regex_named_captures(re: *const ObjCell<Regex>, text: *const StrVal, out: *mut MapVal)
@@ -803,6 +837,7 @@ msstd_system_user_info_status() -> u8
 msstd_system_user_info_uid() -> i64
 msstd_system_user_info_username(out: *mut StrVal)
 msstd_system_working_directory(out: *mut StrVal)
+msstd_table_format(rows: *const VecVal, alignments: *const VecVal, padding: i64, has_max_rows: u8, max_rows: i64, has_max_cells: u8, max_cells: i64, has_max_bytes: u8, max_bytes: i64, out: *mut StrVal) -> u8
 msstd_terminal_capabilities_colors() -> i64
 msstd_terminal_capabilities_error_is_terminal() -> u8
 msstd_terminal_capabilities_input_is_terminal() -> u8
@@ -868,6 +903,15 @@ msstd_time_wall_clock_now(out: *mut Timestamp)
 msstd_tls_error_message(status: u8, out: *mut StrVal)
 msstd_tls_parse_certificates(pem: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
 msstd_tls_verify_certificates(chain: *const StrVal, roots: *const StrVal, server_name: *const StrVal, now: *const Timestamp) -> u8
+msstd_unicode_fields(text: *const StrVal, out: *mut VecVal)
+msstd_unicode_is_alphabetic(value: i64) -> u8
+msstd_unicode_is_alphanumeric(value: i64) -> u8
+msstd_unicode_is_ascii(value: i64) -> u8
+msstd_unicode_is_control(value: i64) -> u8
+msstd_unicode_is_lowercase(value: i64) -> u8
+msstd_unicode_is_numeric(value: i64) -> u8
+msstd_unicode_is_uppercase(value: i64) -> u8
+msstd_unicode_is_whitespace(value: i64) -> u8
 msstd_url_decode_component(text: *const StrVal, out: *mut StrVal) -> u8
 msstd_url_encode_component(text: *const StrVal, out: *mut StrVal)
 msstd_url_format(value: *const UrlRec, out: *mut StrVal) -> u8
@@ -875,6 +919,9 @@ msstd_url_format_query(entries: *const RecList<QueryEntryRec>, out: *mut StrVal)
 msstd_url_parse(text: *const StrVal, out: *mut UrlRec) -> u8
 msstd_url_parse_query(text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
 msstd_url_resolve(base: *const UrlRec, reference: *const StrVal, out: *mut UrlRec) -> u8
+msstd_utf8_decode_first(data: *const VecVal, at: i64) -> i64
+msstd_utf8_decode_last(data: *const VecVal, end: i64) -> i64
+msstd_utf8_is_valid(data: *const VecVal) -> u8
 msstd_websocket_close(s: *const ObjCell<SocketH>)
 msstd_websocket_error_message(status: u8, has_failed: u8, failed: *const StrVal, out: *mut StrVal)
 msstd_websocket_ping(s: *const ObjCell<SocketH>, data: *const StrVal, err: *mut StrVal) -> u8
