@@ -1,4 +1,4 @@
-//! Linker driver. Every platform runs the `lld` bundled in `ms` (Linux over the system glibc, or musl with `--static`, macOS over generated
+//! Linker driver. Every platform runs the `lld` bundled in `ms` (Linux over glibc 2.28 stubs, or musl with `--static`, macOS over generated
 //! SDK stubs, Windows over the mingw-w64 CRT), so no C toolchain or SDK is involved.
 
 use crate::Error;
@@ -22,7 +22,7 @@ pub fn link_with(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Re
     link_libc(object, inputs, out, strip, is_static())
 }
 
-/// Like [`link_with`], choosing the Linux libc: static musl when `musl`, else the system glibc. The
+/// Like [`link_with`], choosing the Linux libc: static musl when `musl`, else glibc 2.28 stubs. The
 /// runtime in `inputs` must be the build for that libc.
 pub fn link_libc(
     object: &Path,

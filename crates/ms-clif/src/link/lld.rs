@@ -1,5 +1,5 @@
 //! Linking with the pinned `lld` (downloaded once into the cache), so no C toolchain is needed. Linux produces a
-//! dynamic executable over the system glibc, or with `--static` a static one over musl's startup files and libc;
+//! dynamic executable over stubs of glibc 2.28 (it runs on any later glibc), or with `--static` a static one over musl's startup files and libc;
 //! macOS links against generated SDK stubs; Windows
 //! links an executable over the mingw-w64 CRT and import libraries, so it needs neither the MSVC
 //! SDK nor a C compiler.
@@ -139,9 +139,10 @@ pub fn link(
     musl: bool,
 ) -> Result<(), Error> {
     let dir = extract()?;
-    let mut command = Command::new(lld_path()?);
+    let lld = lld_path()?;
+    let mut command = Command::new(&lld);
     #[cfg(target_os = "linux")]
-    linux_arguments(&mut command, &dir, object, inputs, out, strip, musl)?;
+    linux_arguments(&mut command, &dir, &lld, object, inputs, out, strip, musl)?;
     #[cfg(target_os = "windows")]
     windows_arguments(&mut command, &dir, object, inputs, out, strip);
     #[cfg(target_os = "macos")]
@@ -171,17 +172,25 @@ pub fn link(
         ),
         None => "A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error".to_string(),
     };
+    #[cfg(target_os = "linux")]
+    let advice = if musl {
+        advice
+    } else {
+        format!(
+            "{advice}. Programs link against glibc 2.28, so an object built against a newer glibc may need symbols it lacks; pass --static to link musl instead"
+        )
+    };
     Err(Error(format!(
         "linking failed ({}); the linker output follows. {advice}:\n{detail}",
         o.status
     )))
 }
 
-/// Whether Linux programs link static musl (`--static`) instead of the system glibc. Set once by the
+/// Whether Linux programs link static musl (`--static`) instead of glibc. Set once by the
 /// command line before any build; the default is glibc.
 static STATIC_MUSL: AtomicBool = AtomicBool::new(false);
 
-/// Selects static musl (`true`) or the system glibc (`false`, the default) for Linux links.
+/// Selects static musl (`true`) or glibc (`false`, the default) for Linux links.
 pub fn set_static(on: bool) {
     STATIC_MUSL.store(on, Ordering::Relaxed);
 }
@@ -191,62 +200,14 @@ pub fn is_static() -> bool {
     cfg!(target_os = "linux") && STATIC_MUSL.load(Ordering::Relaxed)
 }
 
-/// The shared libraries glibc programs link: only `libc` and `libm` (glibc 2.34 merged pthread, dl and
-/// rt into `libc`). Unwinding comes from the bundled static `libunwind.a`, not `libgcc_s`.
-#[cfg(target_os = "linux")]
-const GLIBC_LIBS: [&str; 2] = ["libc.so.6", "libm.so.6"];
-
-/// Where glibc keeps its runtime libraries and loader (multiarch and lib64 layouts).
-#[cfg(target_os = "linux")]
-fn glibc_dirs() -> Vec<PathBuf> {
-    let arch = if cfg!(target_arch = "aarch64") {
-        "aarch64"
-    } else {
-        "x86_64"
-    };
-    let mut dirs: Vec<PathBuf> = std::env::var_os("MS_LIBC_DIR")
-        .filter(|v| !v.is_empty())
-        .map(|v| std::env::split_paths(&v).collect())
-        .unwrap_or_default();
-    for base in ["/lib", "/usr/lib"] {
-        dirs.push(format!("{base}/{arch}-linux-gnu").into());
-    }
-    for dir in ["/lib64", "/usr/lib64", "/lib", "/usr/lib"] {
-        dirs.push(dir.into());
-    }
-    dirs
-}
-
-/// Finds the glibc libraries and loader on this machine, so the program runs where it was built.
-#[cfg(target_os = "linux")]
-fn glibc_files() -> Result<(Vec<PathBuf>, &'static str), Error> {
-    let dirs = glibc_dirs();
-    let find = |name: &str| dirs.iter().map(|d| d.join(name)).find(|p| p.is_file());
-    let mut libs = Vec::new();
-    for name in GLIBC_LIBS {
-        match find(name) {
-            Some(path) => libs.push(path),
-            None => {
-                return Err(Error(format!(
-                    "cannot find {name} to link against glibc; install glibc 2.34 or newer, set MS_LIBC_DIR to the directory holding it, or pass --static to link a static musl executable"
-                )));
-            }
-        }
-    }
-    let loader = if cfg!(target_arch = "aarch64") {
-        "/lib/ld-linux-aarch64.so.1"
-    } else {
-        "/lib64/ld-linux-x86-64.so.2"
-    };
-    Ok((libs, loader))
-}
-
 /// Drops runtime and standard-library code the program never reaches: the runtime archive is one
 /// object per Rust codegen unit with a section per function, so unused pieces cost nothing.
 #[cfg(target_os = "linux")]
+#[allow(clippy::too_many_arguments)]
 fn linux_arguments(
     command: &mut Command,
     dir: &Path,
+    lld: &Path,
     object: &Path,
     inputs: &[&Path],
     out: &Path,
@@ -262,15 +223,20 @@ fn linux_arguments(
     }
     if !musl {
         // The runtime archive defines `_start`, which hands `main` to glibc's `__libc_start_main`.
-        let (libs, loader) = glibc_files()?;
+        // Every symbol binds at load (`-z now`), so a program never fails at a later call.
+        let stubs = glibc_stubs::stubs(dir, lld)?;
         command
-            .args(["--dynamic-linker", loader])
+            .args(["--dynamic-linker", glibc_stubs::loader()])
+            .args(["-z", "now", "-z", "relro"])
             .arg(object)
             .arg("--start-group")
             .args(inputs)
             .arg(dir.join("libunwind.a"))
             .arg("--end-group")
-            .args(libs);
+            .arg("--as-needed");
+        for library in glibc_stubs::libraries() {
+            command.arg(stubs.join(library));
+        }
         return Ok(());
     }
     command
@@ -450,5 +416,7 @@ fn cache_root() -> PathBuf {
         .unwrap_or_else(std::env::temp_dir)
 }
 
+#[cfg(target_os = "linux")]
+mod glibc_stubs;
 #[cfg(target_os = "macos")]
 mod macos_stubs;
