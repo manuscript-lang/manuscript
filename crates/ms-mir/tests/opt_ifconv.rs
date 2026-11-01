@@ -119,3 +119,36 @@ fn ifconv_preserves_fixture_observations() {
     }
     assert!(count >= 40);
 }
+
+#[test]
+fn triangles_and_shared_joins_finish_converting_for_both_outcomes() {
+    for source in [
+        include_str!("fixtures-opt/ifconv_triangles.mir"),
+        include_str!("fixtures-opt/ifconv_shared_join.mir"),
+    ] {
+        for condition in [false, true] {
+            let mut m = ms_mir::parse::parse_module(source).unwrap();
+            for inst in m.funcs[0].blocks.iter_mut().flat_map(|b| &mut b.insts) {
+                if inst.op == Op::BConst {
+                    inst.imm = Imm::Bool(condition);
+                }
+            }
+            verify_module(&m).unwrap();
+            let expected = Interp::new(&m).run_entry().unwrap();
+            assert!(ifconv::run(&mut m));
+            verify_module(&m).unwrap();
+            assert_eq!(Interp::new(&m).run_entry().unwrap(), expected);
+            let blocks = &m.funcs[0].blocks;
+            assert_eq!(
+                blocks
+                    .iter()
+                    .flat_map(|b| &b.insts)
+                    .filter(|i| i.op == Op::Select)
+                    .count(),
+                2
+            );
+            assert!(!blocks.iter().any(|b| matches!(b.term, Term::CondBr { .. })));
+            assert!(!ifconv::run(&mut m));
+        }
+    }
+}
