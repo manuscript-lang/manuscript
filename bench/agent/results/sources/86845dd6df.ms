@@ -142,11 +142,8 @@ export fn main() Int:
         let hi = hunk_hi[h]
         let la = pre_a[hi + 1] - pre_a[lo]
         let lb = pre_b[hi + 1] - pre_b[lo]
-
         let sa = if la > 0: pre_a[lo] + 1 else: pre_a[lo]
-
         let sb = if lb > 0: pre_b[lo] + 1 else: pre_b[lo]
-
         out.append("@@ -{span(sa, la)} +{span(sb, lb)} @@")
 
         for q in lo..hi + 1:

@@ -22,7 +22,6 @@ export fn main() Int:
                 if shape == "duplicate": i % 7 else: random % 100003
             )
         )
-
         values.append(value)
 
     var checksum = 0

@@ -47,9 +47,7 @@ test "zero samples stay visible without ratios":
             lines = lines.concat(trial(v, if v == zero: 0 else: 100))
 
         let found = row(try expect_ok(summarize(lines, 1)), "list_append")
-
         let at = if zero == "ms": 0 else: if zero == "go": 1 else: 2
-
         try expect_equal(found[at], "0.0")
         try expect_equal(found[3], if zero == "ms" or zero == "go": "-" else: "1.00")
         try expect_equal(found[4], if zero == "ms" or zero == "rs": "-" else: "1.00")

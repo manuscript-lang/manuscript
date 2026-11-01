@@ -73,5 +73,4 @@ export fn main() Int:
             differ += 1
 
     stdout().write("{same} identical, {differ} different, {skipped} skipped\n").get()
-
     return if differ == 0: 0 else: 1

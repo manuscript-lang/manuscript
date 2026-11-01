@@ -27,7 +27,6 @@ fn run(work: String, n: Int) Result[String, Error]:
     for i in 0..n:
         for v in rotate(["ms", "go", "rs"], i):
             let exe = if v == "rs": "{work}/rs" else: "{work}/{v}/bench"
-
             for line in (try sample(exe, [])).split("\n"):
                 if line != "": raw.append("{v} {line}")
             raw.append("{v} # end")

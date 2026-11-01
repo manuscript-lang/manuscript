@@ -37,7 +37,6 @@ fn deps(var rng: SeededRandom, files: Int, p: Int, f: Int) List[Dep]:
         if i == 0: break
 
         let low = if chance(var rng): (if i - 60 > 0: i - 60 else: 0) else: 0
-
         let j = low + rng.int(0, i - low)
         let d = Dep(j / files, j % files)
         if not found.any(fn e: e.pkg == d.pkg and e.file == d.file): found.append(d)
@@ -50,9 +49,7 @@ fn call_of(prefix: String, d: List[Dep], k: Int, own: Int, qualified: Bool) Stri
     if d.length() == 0: return "0"
 
     let dep = d[k % d.length()]
-
     let pk = if qualified and dep.pkg != own: "p{dep.pkg}." else: ""
-
     return "{pk}{prefix}_{dep.pkg}_{dep.file}_0(acc % 1000)"
 
 fn ms_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
@@ -159,7 +156,6 @@ fn generate(out: String, packages: Int, files: Int, fns: Int) Unit:
 
             for dep in d:
                 let path = if dep.pkg == p: "./f{dep.file}.ms" else: "../pkg{dep.pkg}/f{dep.file}.ms"
-
                 m.append("import w_{dep.pkg}_{dep.file}_0 from \"{path}\"\n")
 
             m.append(

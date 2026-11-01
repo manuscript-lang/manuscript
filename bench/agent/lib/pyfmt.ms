@@ -40,9 +40,7 @@ export fn fmt_g(x: Float, digits: Int) String:
 
     if exp < -4 or exp >= digits:
         let mantissa = strip_zeros(x.to_exponential(digits - 1).split("e")[0])
-
         let sign = if exp < 0: "-" else: "+"
-
         let mag = "{if exp < 0: 0 - exp else: exp}".pad_start(2, "0")
         return "{mantissa}e{sign}{mag}"
 

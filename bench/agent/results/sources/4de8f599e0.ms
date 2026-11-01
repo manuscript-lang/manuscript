@@ -11,7 +11,6 @@ fn validate(grid: List[List[String]]) String:
             if not is_cell(grid[r][c]): return "error: bad character at {r + 1},{c + 1}"
 
     let width = (if grid.is_empty(): 0 else: grid[0].length())
-
     for row in grid:
         if row.length() != width: return "error: ragged grid"
 
@@ -39,7 +38,6 @@ fn solve(text: String) String:
     if error != "": return error
 
     let width = (if grid.is_empty(): 0 else: grid[0].length())
-
     let total = grid.length() * width
     var passable: List[Bool] = []
     var start = 0

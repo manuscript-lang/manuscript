@@ -56,7 +56,6 @@ fn failure_cases() List[Failure]:
                     if size == 65536: 1000 else: 500
                 )
             )
-
             out.append(Failure(size, rounds, shape.clone()))
 
     for shape in ["valid", "typed-valid"]:
@@ -249,11 +248,9 @@ export fn main() Int:
 
     let before = absolute(args[1].clone())
     let after = absolute(args[2].clone())
-
     let result = if args[0] == "decode": decode(before, after, args[3].clone(), pairs) else: json_failure(
         before, after, args[3].clone(), pairs
     )
-
     if result.is_error(): return fail(result.err().message())
 
     return 0

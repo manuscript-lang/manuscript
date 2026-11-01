@@ -10,9 +10,7 @@ fn add(
     opts: String = ""
 ) Unit:
     let head = if opts.is_empty(): "" else: opts + " "
-
     let tail = if inputs.ends_with("\n"): "" else: "\n"
-
     cs.push(name, head + prog + "\n" + inputs + tail)
 
 export fn gen_c55() Unit:
