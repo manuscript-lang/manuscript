@@ -15,6 +15,8 @@ impl ReadStream for BytesSource:
         return unit
 
     var fn read(max_bytes: Int? = none) Bytes?!IoError:
+        if self.chunk <= 0: return error(IoError.InvalidInput)
+
         let remaining = self.data.length() - self.offset
         if remaining <= 0: return ok(none)
 

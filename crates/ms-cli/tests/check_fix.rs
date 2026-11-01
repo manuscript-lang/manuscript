@@ -266,3 +266,37 @@ fn unknown_standard_module_suggests_the_extended_name() {
     assert!(text.contains("did you mean '@std/test/test.ms'?"), "{text}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn lint_fix_removes_unused_imports() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-lint-imports-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("lib.ms"),
+        include_str!("check_fix/unused_imports_lib.ms"),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("a.ms"),
+        include_str!("check_fix/unused_imports.ms"),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("b.ms"),
+        include_str!("check_fix/unused_imports_list.ms"),
+    )
+    .unwrap();
+
+    let (status, text) = ms(&["lint", "a.ms", "b.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let flat = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert!(
+        flat.starts_with("import used from \"./lib.ms\"\n\n"),
+        "{flat}"
+    );
+    assert!(!flat.contains("stdout"), "{flat}");
+    let list = std::fs::read_to_string(dir.join("b.ms")).unwrap();
+    assert!(list.starts_with("import (\n    used,\n) from"), "{list}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
