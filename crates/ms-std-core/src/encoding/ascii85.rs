@@ -39,7 +39,7 @@ pub fn ascii85_decode(text: &str, max_bytes: Option<i64>) -> Result<Vec<u8>, Fai
             if digits != 0 {
                 return Err(Fail::InvalidData);
             }
-            grow(&mut out, 4, limit)?;
+            grow(&out, 4, limit)?;
             out.extend_from_slice(&[0; 4]);
             continue;
         }
@@ -50,7 +50,7 @@ pub fn ascii85_decode(text: &str, max_bytes: Option<i64>) -> Result<Vec<u8>, Fai
         digits += 1;
         if digits == 5 {
             let v = u32::try_from(word).map_err(|_| Fail::InvalidData)?;
-            grow(&mut out, 4, limit)?;
+            grow(&out, 4, limit)?;
             out.extend_from_slice(&v.to_be_bytes());
             word = 0;
             digits = 0;
@@ -65,13 +65,13 @@ pub fn ascii85_decode(text: &str, max_bytes: Option<i64>) -> Result<Vec<u8>, Fai
             word = word * 85 + 84;
         }
         let v = u32::try_from(word).map_err(|_| Fail::InvalidData)?;
-        grow(&mut out, digits - 1, limit)?;
+        grow(&out, digits - 1, limit)?;
         out.extend_from_slice(&v.to_be_bytes()[..digits - 1]);
     }
     Ok(out)
 }
 
-fn grow(out: &mut Vec<u8>, count: usize, limit: usize) -> Result<(), Fail> {
+fn grow(out: &[u8], count: usize, limit: usize) -> Result<(), Fail> {
     match out.len().checked_add(count) {
         Some(next) if next <= limit => Ok(()),
         _ => Err(Fail::LimitExceeded),
