@@ -77,10 +77,15 @@ struct FailedTypeArgs {
 }
 
 /// The position of byte `index` of a text token's source.
-fn text_pos(token: Token, full: &str, index: usize) -> Pos {
+fn text_pos(
+    token: Token,
+    full: &str,
+    index: usize,
+    boundaries: &crate::lexer::ScanBoundaries,
+) -> Pos {
     let before = &full[..index];
     let offset = (token.pos.offset as usize + index) as u32;
-    match before.rfind('\n') {
+    let position = match before.rfind('\n') {
         None => Pos {
             line: token.pos.line,
             column: (token.pos.column as usize + index) as u32,
@@ -91,7 +96,8 @@ fn text_pos(token: Token, full: &str, index: usize) -> Pos {
             column: (index - last) as u32,
             offset,
         },
-    }
+    };
+    boundaries.restore_text_offset(token.pos, position)
 }
 
 /// Splits the text between multi-line delimiters into its content (without
@@ -2785,11 +2791,17 @@ impl<'a> Parser<'a> {
         let full = self.text(token);
         let suffix = format!(
             " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
-            text_pos(token, full, at - 1).column
+            text_pos(token, full, at - 1, self.boundaries).column
         );
         let origin = self.source_origin + token.lo as usize + at;
-        let shift =
-            |p: Pos| -> Pos { text_pos(token, full, at + (p.offset as usize).min(source.len())) };
+        let shift = |p: Pos| -> Pos {
+            text_pos(
+                token,
+                full,
+                at + (p.offset as usize).min(source.len()),
+                self.boundaries,
+            )
+        };
         let mut tokens =
             match crate::lexer::lex_interpolation(self.file, source, origin, self.boundaries) {
                 Ok(tokens) => tokens,
@@ -3191,7 +3203,7 @@ impl<'a> Parser<'a> {
         let full = self.text(token);
         let suffix = format!(
             " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
-            text_pos(token, full, at - 1).column
+            text_pos(token, full, at - 1, self.boundaries).column
         );
         let wrapped = format!("({source})");
         let shift = |p: Pos| -> Pos {
@@ -3199,6 +3211,7 @@ impl<'a> Parser<'a> {
                 token,
                 full,
                 at - 1 + (p.offset as usize).min(source.len() + 1),
+                self.boundaries,
             )
         };
         let mut lexed = match lex(self.file, &wrapped) {
