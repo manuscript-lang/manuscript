@@ -9,7 +9,7 @@ export fn env(name: String, fallback: String) String:
     let all = environment().get(Map[String, String]())
     if let value = all.get(name): return value.clone()
 
-    return fallback
+    return fallback.clone()
 
 # The text of the file at `path`; empty when it cannot be read.
 export fn read_text(path: String) String:
