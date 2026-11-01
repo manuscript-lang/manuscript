@@ -86,7 +86,7 @@ test "levels filter methods and function values":
     try expect_equal((try written(path)), "")
     try logger.warn("warn")
 
-    let error_log = fn(message: String) Unit!LogError: logger.error(message)
+    let error_log = logger.error[Unit]
     try error_log("error")
     try logger.fatal("fatal")
     logger.set_level(LogLevel.Trace)

@@ -602,6 +602,18 @@ impl FnLower<'_> {
             ) {
                 return Err(Error::new("cannot bind method receiver type"));
             }
+            // The method's own type parameters come from the value's checked type.
+            let own_vars = ct::variable_set(&declared.variables);
+            if declared
+                .variables
+                .iter()
+                .any(|v| !subst.contains_key(&v.name))
+            {
+                let want = self.ety(e);
+                if !ct::unify(&declared.ty, &want, &own_vars, &mut subst) {
+                    return Err(Error::new("cannot infer the method value's type arguments"));
+                }
+            }
             let vars = self.cx.var_positions(&c);
             if vars.iter().any(|v| *v != 0) {
                 return Err(Error::new("method value with changed parameters"));
