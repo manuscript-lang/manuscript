@@ -144,6 +144,13 @@ fn build_fails_when_its_metadata_cannot_be_written() {
         assert!(stderr.contains("cannot write build metadata"), "{stderr}");
         assert!(stderr.contains(".ms-build.json"), "{stderr}");
         assert!(metadata.is_dir());
+        assert!(std::fs::read_dir(&dir).unwrap().all(|entry| {
+            !entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".ms-metadata-")
+        }));
         if structured {
             let document = ms_json::parse(&stdout).unwrap();
             assert_eq!(document.get("completed").unwrap().as_bool(), Some(false));
@@ -164,6 +171,71 @@ fn build_fails_when_its_metadata_cannot_be_written() {
         } else {
             assert!(stdout.is_empty(), "{stdout}");
         }
+    }
+}
+
+fn metadata_link_preserves_source(
+    cached: bool,
+    kind: &str,
+    link: impl Fn(&Path, &Path) -> std::io::Result<()>,
+) {
+    struct Counted(std::cell::Cell<usize>);
+    impl Lower for Counted {
+        fn lower(&self, program: &ms_check::Program, entry: &str) -> Result<Module, String> {
+            self.0.set(self.0.get() + 1);
+            Fixed(EXIT_SEVEN).lower(program, entry)
+        }
+    }
+    let dir = scratch(&format!("metadata-{kind}-{cached}"));
+    let source = write(&dir, "main.ms", MAIN);
+    let output = dir.join("program");
+    let metadata = dir.join("program.ms-build.json");
+    let backend = Engine::new(Counted(std::cell::Cell::new(0)));
+    let build = || {
+        ms(
+            &backend,
+            &["build", &source, "-o", output.to_str().unwrap(), "--json"],
+        )
+    };
+    if cached {
+        let (status, stdout, stderr) = build();
+        assert_eq!(status, 0, "{stdout}{stderr}");
+        std::fs::remove_file(&metadata).unwrap();
+    }
+    link(Path::new(&source), &metadata).unwrap();
+    let (status, stdout, stderr) = build();
+    assert_eq!(status, 0, "{stdout}{stderr}");
+    assert_eq!(std::fs::read_to_string(&source).unwrap(), MAIN);
+    assert_eq!(backend.lowering.0.get(), 1, "warm build must use its cache");
+    let document = ms_json::parse(&std::fs::read_to_string(&metadata).unwrap()).unwrap();
+    assert_eq!(document.get("format").unwrap().as_i64(), Some(1));
+    assert_eq!(Command::new(&output).status().unwrap().code(), Some(7));
+    assert_eq!(
+        ms_json::parse(&stdout)
+            .unwrap()
+            .get("completed")
+            .unwrap()
+            .as_bool(),
+        Some(true)
+    );
+}
+
+#[test]
+fn build_metadata_replaces_hard_links_without_changing_their_targets() {
+    for cached in [false, true] {
+        metadata_link_preserves_source(cached, "hard-link", |from, to| {
+            std::fs::hard_link(from, to)
+        });
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn build_metadata_replaces_symlinks_without_changing_their_targets() {
+    for cached in [false, true] {
+        metadata_link_preserves_source(cached, "symlink", |from, to| {
+            std::os::unix::fs::symlink(from, to)
+        });
     }
 }
 
