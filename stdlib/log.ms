@@ -91,8 +91,7 @@ fn reserved(key: String) Bool:
     return key == "level" or key == "msg" or key == "time"
 
 # The members `fields` contributes to a record: an object's own members, any other value under `data`.
-fn members_of[F: Data](fields: F) Map[String, JsonValue]!LogError:
-    let text = stringify(fields)
+fn members_of(text: String!JsonError) Map[String, JsonValue]!LogError:
     if text.is_error(): return error(LogError.InvalidData)
 
     let parsed = parse(text.get())
@@ -234,7 +233,7 @@ impl Logger:
         if not self.enabled(level): return ok(unit)
 
         if let value = fields:
-            let members = try members_of(value)
+            let members = try members_of(stringify(value))
             return self.emit(level_value(level), message, members)
 
         return self.emit(level_value(level), message, none)
@@ -266,7 +265,7 @@ impl Logger:
     # Returns a logger that adds the members of `fields` to each record, with the encoding rules of
     # `log`. A value that cannot be encoded returns `InvalidData`.
     fn child[F: Data](fields: F) Logger!LogError:
-        let members = try members_of(fields)
+        let members = try members_of(stringify(fields))
         var bound = self.bound.clone()
         for entry in members.entries():
             bound.add(entry.key, entry.value.clone())
