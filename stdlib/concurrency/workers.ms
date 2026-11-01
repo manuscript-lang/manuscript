@@ -1,7 +1,7 @@
 # Worker threads: code that runs on another OS thread, with its own memory, and talks to its starter
 # over a two-way channel.
 #
-# A worker is started from a named top-level `def` that takes no arguments and returns `Unit`; it
+# A worker is started from a named top-level `fn` that takes no arguments and returns `Unit`; it
 # gets its end of the channel from `worker_channel`. Nothing is shared between the two sides:
 # every value sent through the channel is encoded as JSON and decoded on the other side, so the
 # message types are the ones `@std/data/json.ms` can read and write.
@@ -206,13 +206,13 @@ export type WorkerGroup[In: Data = Unit, Out: Data = Unit]:
     workers: Shared[List[Worker[In, Out]]] = share([])
 
 impl WorkerGroup[In, Out]:
-    # Starts `entry`, a named top-level `def`, on a new thread and returns its handle. The handle's
+    # Starts `entry`, a named top-level `fn`, on a new thread and returns its handle. The handle's
     # `channel` is this side of the worker's two-way channel; the worker takes the other from
     # `worker_channel`.
     fn spawn(entry: fn() Unit) Worker[In, Out]!WorkerError:
         return self.start(entry)
 
-    # Starts `count` workers on `entry`, a named top-level `def`, and returns their handles in start
+    # Starts `count` workers on `entry`, a named top-level `fn`, and returns their handles in start
     # order. If one cannot start, the ones already started stay in the group and the error is returned.
     fn spawn_many(entry: fn() Unit, count: Int) List[Worker[In, Out]]!WorkerError:
         var started: List[Worker[In, Out]] = []
