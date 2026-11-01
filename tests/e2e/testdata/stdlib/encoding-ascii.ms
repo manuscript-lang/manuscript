@@ -32,3 +32,18 @@ test "ASCII decoding rejects valid non-ASCII UTF-8":
     let expected: String!EncodingError = error(EncodingError.InvalidData)
     for text in ["é", "🙂", "\u{80}", "Aé", "éA", "a\u{301}"]:
         try expect_equal(ascii_decode(text.to_bytes()), expected)
+
+test "ASCII decoding preserves large offset views and rejects high byte tails":
+    let expected = try "Az09 \n\u{0}\u{7f}".repeat(4096)
+    let padded = ("é" + expected + "é").to_bytes()
+    let data = try padded.slice(2, 2 + expected.byte_length())
+    let decode: fn(Bytes) String!EncodingError = ascii_decode
+    try expect_equal(try decode(data), expected)
+    try expect_equal(try decode(data), data.decode_utf8().get())
+    try expect_equal(data.length(), expected.byte_length())
+
+    let invalid: String!EncodingError = error(EncodingError.InvalidData)
+    let high = Bytes([128])
+    try expect_equal(decode(high.concat(data)), invalid)
+    try expect_equal(decode(data.concat(high)), invalid)
+    try expect_equal(decode(data.concat("é".to_bytes())), invalid)
