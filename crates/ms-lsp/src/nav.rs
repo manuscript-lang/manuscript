@@ -10,6 +10,7 @@ use ms_check::types::{Name, SymRef};
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
+use std::collections::HashMap;
 use std::rc::Rc;
 
 /// The occurrence covering a position, if the document is checked.
@@ -41,6 +42,7 @@ struct Finder<'a> {
     source: &'a str,
     cursor: Result<usize, Position>,
     best: Option<Hit>,
+    hidden: HashMap<NodeId, bool>,
 }
 
 impl Finder<'_> {
@@ -49,7 +51,7 @@ impl Finder<'_> {
         let Some(info) = self.module.facts().info(e.id).cloned() else {
             return;
         };
-        if hidden_structure(self.module, e, &info) {
+        if hidden_structure(self.module, e, &info, &mut self.hidden) {
             return;
         }
         let offset = e.pos.offset as usize;
@@ -114,6 +116,7 @@ pub fn at(analysis: &Analysis, d: &Document, p: Position, index: &[Occurrence]) 
         source: &d.text,
         cursor: text::offset(&d.text, p).map_err(|_| p),
         best: None,
+        hidden: HashMap::new(),
     };
     for decl in &module.decls {
         visit::walk_decl(&mut finder, decl.decl());

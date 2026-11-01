@@ -46,20 +46,50 @@ impl OccInfo {
 
 /// Recovery facts can retain types for a rejected opaque representation access.
 /// Editors must not advertise those fields, cases or constructor parameters.
-pub(crate) fn hidden_structure(module: &ModRef, e: &Expr, info: &Info) -> bool {
-    let hidden = |ty: &Ty| ty.opaque_module().is_some_and(|file| file != module.file);
-    if info.constructor.as_ref().is_some_and(hidden) {
-        return true;
-    }
-    let ExprKind::Member { left, .. } = &e.kind else {
-        return false;
+pub(crate) fn hidden_structure(
+    module: &ModRef,
+    e: &Expr,
+    info: &Info,
+    cache: &mut HashMap<NodeId, bool>,
+) -> bool {
+    let hidden_type = |ty: &Ty| ty.opaque_module().is_some_and(|file| file != module.file);
+    let facts = module.facts();
+    let (mut expression, mut current) = (e, info);
+    let mut path = Vec::new();
+    let hidden = loop {
+        if let Some(hidden) = cache.get(&expression.id) {
+            break *hidden;
+        }
+        if current.constructor.as_ref().is_some_and(hidden_type) {
+            path.push(expression.id);
+            break true;
+        }
+        let next = match &expression.kind {
+            ExprKind::Member { left, .. }
+            | ExprKind::Apply { left, .. }
+            | ExprKind::Index { left, .. } => left,
+            ExprKind::Call { callee, .. } => callee,
+            ExprKind::Probe(target)
+            | ExprKind::Unary {
+                operand: target, ..
+            } => target,
+            _ => break false,
+        };
+        path.push(expression.id);
+        let Some(next_info) = facts.info(next.id) else {
+            break false;
+        };
+        if matches!(expression.kind, ExprKind::Member { .. })
+            && current.method.is_none()
+            && next_info.ty.as_ref().is_some_and(hidden_type)
+        {
+            break true;
+        }
+        (expression, current) = (next, next_info);
     };
-    info.method.is_none()
-        && module
-            .facts()
-            .info(left.id)
-            .and_then(|i| i.ty.as_ref())
-            .is_some_and(hidden)
+    // Each receiver path is inspected once during a module traversal.
+    cache.extend(path.into_iter().map(|id| (id, hidden)));
+    hidden
 }
 
 /// One occurrence of an identity in source.
@@ -484,6 +514,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
         let mut walker = UseWalker {
             b: &mut b,
             module: m,
+            hidden: HashMap::new(),
         };
         for d in &m.decls {
             visit::walk_decl(&mut walker, d.decl());
@@ -680,6 +711,7 @@ impl Visitor for BindingWalker<'_> {
 struct UseWalker<'a> {
     b: &'a mut Builder,
     module: &'a ModRef,
+    hidden: HashMap<NodeId, bool>,
 }
 
 fn peel_apply(mut e: &Expr) -> &Expr {
@@ -701,7 +733,7 @@ impl UseWalker<'_> {
 
     fn expression(&mut self, e: &Expr) {
         let Some(info) = self.info_of(e) else { return };
-        if hidden_structure(self.module, e, &info) {
+        if hidden_structure(self.module, e, &info, &mut self.hidden) {
             return;
         }
         let occ = OccInfo::of(&info);

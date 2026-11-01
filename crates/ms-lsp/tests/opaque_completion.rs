@@ -235,6 +235,9 @@ fn opaque_representation_hover_and_navigation_stay_private() {
         for (expression, selected) in [
             ("Vault[Int](secret: 7)", "secret"),
             ("hidden.secret", "secret"),
+            ("hidden.secret.abs()", "abs"),
+            ("(hidden.secret).abs()", "abs"),
+            ("Vault[Int](secret: 7).secret.abs()", "abs"),
             ("Choice.Payload(7)", "Payload"),
         ] {
             let source = fixture
@@ -350,5 +353,59 @@ fn opaque_public_methods_remain_discoverable() {
         )
         .unwrap();
         assert!(!help.is_null());
+    }
+}
+
+#[test]
+fn opaque_rejected_receiver_chains_offer_no_members_or_calls() {
+    let workspace = Workspace::new("opaque-chains");
+    std::fs::write(
+        workspace.path("vault.ms"),
+        include_str!("opaque_completion/vault.ms"),
+    )
+    .unwrap();
+    let fixture = include_str!("opaque_completion/outside.ms");
+    for newline in ["\n", "\r\n"] {
+        for (receiver, hidden) in [
+            ("hidden.secret", true),
+            ("(hidden.secret)", true),
+            ("Vault[Int](secret: 7).secret", true),
+            ("hidden.size()", false),
+            ("public.value", false),
+        ] {
+            let prefix = format!("{receiver}.ab");
+            let source = fixture
+                .replace("inspect(hidden)", &prefix)
+                .replace('\n', newline);
+            let offset = source.find(&prefix).unwrap() + prefix.len();
+            let document = Document::new(workspace.uri("outside.ms"), source);
+            for snippets in [false, true] {
+                let items = completion_at(
+                    &document,
+                    &Documents::new(),
+                    text::position(&document.text, offset),
+                    snippets,
+                )
+                .unwrap();
+                let found = items
+                    .into_iter()
+                    .map(|item| item.json())
+                    .any(|item| item.get("label").and_then(|j| j.as_str()) == Some("abs"));
+                assert_eq!(found, !hidden, "{receiver}");
+            }
+            let call = format!("{receiver}.abs()");
+            let source = fixture
+                .replace("inspect(hidden)", &call)
+                .replace('\n', newline);
+            let offset = source.find(&call).unwrap() + call.len() - 1;
+            let document = Document::new(workspace.uri("outside.ms"), source);
+            let help = signature_help(
+                &document,
+                &Documents::new(),
+                text::position(&document.text, offset),
+            )
+            .unwrap();
+            assert_eq!(help.is_null(), hidden, "{receiver}: {help:?}");
+        }
     }
 }

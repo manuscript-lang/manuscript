@@ -5,7 +5,7 @@ use crate::editor::{
     CursorContext, EditorAnalysis, call_arguments, context_at, interpolation_start, query_call,
     query_editor, type_expression,
 };
-use crate::index::DeclFiles;
+use crate::index::{DeclFiles, hidden_structure};
 use crate::json::{Json, obj};
 use crate::nav;
 use crate::text::{self, EditorKind, Position, Range};
@@ -275,6 +275,13 @@ impl Completer<'_> {
             return;
         };
         let file = module.file;
+        if module
+            .facts()
+            .info(left.id)
+            .is_some_and(|info| hidden_structure(&module, left, info, &mut HashMap::new()))
+        {
+            return;
+        }
         let Some(ty) = module.facts().info(left.id).and_then(|i| i.ty.clone()) else {
             return;
         };

@@ -597,6 +597,7 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
         module: &'a ModRef,
         found: Option<(Expr, Ty)>,
         scope: &'a ScopeState,
+        hidden: std::collections::HashMap<NodeId, bool>,
     }
     impl Visitor for Calls<'_> {
         fn expr(&mut self, e: &Expr) {
@@ -616,7 +617,7 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
             let facts = self.module.facts();
             if facts
                 .info(e.id)
-                .is_some_and(|info| hidden_structure(self.module, e, info))
+                .is_some_and(|info| hidden_structure(self.module, e, info, &mut self.hidden))
             {
                 return;
             }
@@ -663,6 +664,7 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
         module: &module,
         found: None,
         scope: &a.scope,
+        hidden: std::collections::HashMap::new(),
     };
     for d in &module.decls {
         visit::walk_decl(&mut calls, d.decl());
