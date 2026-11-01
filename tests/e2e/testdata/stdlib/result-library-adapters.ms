@@ -1,12 +1,11 @@
 import Bytes, VarintError from "@std/bytes.ms"
 import Duration, TimeError, parse_duration from "@std/os/time.ms"
-import StringCut from "@std/string.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 type InputFailure:
     case Binary(cause: VarintError)
     case Time(cause: TimeError)
-    case MissingSeparator
+    case MissingPrefix
     case MissingKey(value: Int)
 
 fn read_number(data: Bytes) UInt64!InputFailure:
@@ -16,8 +15,8 @@ fn read_number(data: Bytes) UInt64!InputFailure:
 fn read_duration(text: String) Duration!InputFailure:
     return parse_duration(text).map_error(fn cause: InputFailure.Time(cause))
 
-fn read_pair(text: String) StringCut!InputFailure:
-    return text.cut("=").ok_or(InputFailure.MissingSeparator)
+fn read_prefixed(text: String) String!InputFailure:
+    return text.cut_prefix("name=").ok_or(InputFailure.MissingPrefix)
 
 fn sorted_index(values: List[Int], target: Int) Int!InputFailure:
     let position = values.binary_search(target)
@@ -42,11 +41,10 @@ test "library results compose with failure values without a reporting implementa
     )
 
 test "absence adapters and sorted lookup retain an explicit failure type":
-    let pair = try expect_ok(read_pair("name=value"))
-    try expect_equal(pair.before, "name")
-    try expect_equal(pair.after, "value")
+    let value = try expect_ok(read_prefixed("name=value"))
+    try expect_equal(value, "value")
     try expect_equal(
-        (try expect_error(read_pair("missing"))), InputFailure.MissingSeparator
+        (try expect_error(read_prefixed("missing"))), InputFailure.MissingPrefix
     )
     try expect_equal((try expect_ok(sorted_index([1, 3, 3], 3))), 1)
     try expect_equal(

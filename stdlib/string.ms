@@ -1,36 +1,10 @@
 import msrt_string_from_scalars, msstd_regex_compile from "@std/internal/string.ms"
 
-# The two sides of a matched separator, excluding the separator itself.
-# Example: `"name=value".cut("=")` returns `StringCut(before: "name", after: "value")`.
-export type StringCut:
-    # Text before the matched separator; may be empty.
-    before: String
-    # Text after the matched separator; may be empty.
-    after: String
-
-interface StringCuts:
-    fn cut(separator: String) StringCut?
-    fn cut_last(separator: String) StringCut?
+interface StringAffixCuts:
     fn cut_prefix(prefix: String) String?
     fn cut_suffix(suffix: String) String?
 
-impl StringCuts for String:
-    # Cuts at the first exact separator, or returns none when absent; no normalization is applied.
-    # An empty separator matches at the start, returning before "" and after the whole string.
-    fn cut(separator: String) StringCut?:
-        if let index = self.index_of(separator):
-            return StringCut(self.take(index), self.drop(index + separator.length()))
-
-        return none
-
-    # Cuts at the last exact separator, including overlapping matches, or returns none when absent.
-    # An empty separator matches at the end, returning before the whole string and after "".
-    fn cut_last(separator: String) StringCut?:
-        if let index = self.last_index_of(separator):
-            return StringCut(self.take(index), self.drop(index + separator.length()))
-
-        return none
-
+impl StringAffixCuts for String:
     # Removes one exact prefix, or returns none when absent; an empty prefix succeeds unchanged.
     fn cut_prefix(prefix: String) String?:
         if self.starts_with(prefix):

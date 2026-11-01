@@ -88,7 +88,7 @@ fn sorted_search_exposes_its_actual_result_and_comparable_bound_once() {
 }
 
 #[test]
-fn string_cuts_expose_each_actual_receiver_signature_once() {
+fn string_affix_cuts_expose_each_actual_receiver_signature_once() {
     let string = standard_library()
         .iter()
         .find(|module| module.path == "prelude")
@@ -98,8 +98,6 @@ fn string_cuts_expose_each_actual_receiver_signature_once() {
         .find(|declaration| declaration.name == "String")
         .unwrap();
     for (name, signature) in [
-        ("cut", "fn cut(separator: String) StringCut?:"),
-        ("cut_last", "fn cut_last(separator: String) StringCut?:"),
         ("cut_prefix", "fn cut_prefix(prefix: String) String?:"),
         ("cut_suffix", "fn cut_suffix(suffix: String) String?:"),
     ] {
@@ -123,7 +121,10 @@ fn string_cuts_expose_each_actual_receiver_signature_once() {
             1
         );
     }
-    assert!(page("string.StringCut").unwrap().contains("before: String"));
+    for removed in ["cut", "cut_last"] {
+        assert!(string.members.iter().all(|member| member.name != removed));
+    }
+    assert!(page("string.StringCut").is_err());
 }
 
 #[test]
