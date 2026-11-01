@@ -149,3 +149,20 @@ fn entry_diagnostics_name_the_required_signature() {
     );
     assert!(fine.success());
 }
+
+#[test]
+fn file_entries_share_a_library_under_the_enclosing_manifest() {
+    let dir = scratch("enclosing");
+    write(&dir, "ms.toml", include_str!("fixtures/enclosing/ms.toml"));
+    write(&dir, "lib.ms", include_str!("fixtures/enclosing/lib.ms"));
+    let entry = write(
+        &dir,
+        "suite/driver.ms",
+        include_str!("fixtures/enclosing/suite/driver.ms"),
+    );
+    let graph = load_file(&entry, LoadOptions::default());
+    assert!(graph.diagnostics.is_empty(), "{:?}", graph.diagnostics);
+    assert_eq!(graph.entry, "suite/driver.ms");
+    let checked = check_graph(graph, CheckRequest { entry: true });
+    assert!(checked.success(), "{:?}", checked.diagnostics);
+}
