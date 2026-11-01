@@ -191,19 +191,10 @@ pub fn is_static() -> bool {
     cfg!(target_os = "linux") && STATIC_MUSL.load(Ordering::Relaxed)
 }
 
-/// The shared libraries glibc programs link, in order, with the first directory holding each. The
-/// runtime needs `libc` and `libm` and unwinds through `libgcc_s`; older glibc keeps pthread, dl, rt and
-/// util apart, so they join when present and `--as-needed` drops them when unused.
+/// The shared libraries glibc programs link: only `libc` and `libm` (glibc 2.34 merged pthread, dl and
+/// rt into `libc`). Unwinding comes from the bundled static `libunwind.a`, not `libgcc_s`.
 #[cfg(target_os = "linux")]
-const GLIBC_LIBS: [&str; 7] = [
-    "libgcc_s.so.1",
-    "libc.so.6",
-    "libm.so.6",
-    "libpthread.so.0",
-    "libdl.so.2",
-    "librt.so.1",
-    "libutil.so.1",
-];
+const GLIBC_LIBS: [&str; 2] = ["libc.so.6", "libm.so.6"];
 
 /// Where glibc keeps its runtime libraries and loader (multiarch and lib64 layouts).
 #[cfg(target_os = "linux")]
@@ -235,12 +226,11 @@ fn glibc_files() -> Result<(Vec<PathBuf>, &'static str), Error> {
     for name in GLIBC_LIBS {
         match find(name) {
             Some(path) => libs.push(path),
-            None if matches!(name, "libgcc_s.so.1" | "libc.so.6" | "libm.so.6") => {
+            None => {
                 return Err(Error(format!(
-                    "cannot find {name} to link against glibc; install glibc 2.34 or newer (and libgcc_s), set MS_LIBC_DIR to the directory holding it, or pass --static to link a static musl executable"
+                    "cannot find {name} to link against glibc; install glibc 2.34 or newer, set MS_LIBC_DIR to the directory holding it, or pass --static to link a static musl executable"
                 )));
             }
-            None => {}
         }
     }
     let loader = if cfg!(target_arch = "aarch64") {
@@ -278,8 +268,8 @@ fn linux_arguments(
             .arg(object)
             .arg("--start-group")
             .args(inputs)
+            .arg(dir.join("libunwind.a"))
             .arg("--end-group")
-            .arg("--as-needed")
             .args(libs);
         return Ok(());
     }
