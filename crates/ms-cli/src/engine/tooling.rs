@@ -198,7 +198,7 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
         }
     }
     if request.fix {
-        let (applied, edited) = apply_fixes(fixes, io);
+        let (applied, edited, waited) = apply_fixes(fixes, io);
         if applied > 0 {
             let _ = writeln!(
                 io.stderr,
@@ -206,8 +206,9 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
                 plural(applied, "fix", "fixes"),
                 plural(edited, "file", "files")
             );
+            // A fix that overlapped an applied one is found again on the rerun.
             let rerun = AnalysisRequest {
-                fix: false,
+                fix: waited,
                 ..request.clone()
             };
             return analysis_once(&rerun, io);
@@ -299,13 +300,16 @@ fn source_fixes(checked: &Checked) -> Vec<(String, ms_driver::DiagnosticFix)> {
 
 /// Applies the fixes in place, last edit first so offsets stay valid. A fix
 /// that is repeated or overlaps an earlier one waits for the next run.
-/// Returns the fixes applied and the files changed.
-fn apply_fixes(fixes: Vec<(String, ms_driver::DiagnosticFix)>, io: &mut Io) -> (usize, usize) {
+/// Returns the fixes applied, the files changed, and whether any fix waited.
+fn apply_fixes(
+    fixes: Vec<(String, ms_driver::DiagnosticFix)>,
+    io: &mut Io,
+) -> (usize, usize, bool) {
     let mut by_file: BTreeMap<String, Vec<ms_driver::DiagnosticFix>> = BTreeMap::new();
     for (path, fix) in fixes {
         by_file.entry(path).or_default().push(fix);
     }
-    let (mut applied, mut edited) = (0, 0);
+    let (mut applied, mut edited, mut waited) = (0, 0, false);
     for (path, mut file_fixes) in by_file {
         file_fixes.sort_by_key(|f| (f.pos.offset, f.end.offset));
         file_fixes.dedup();
@@ -323,6 +327,8 @@ fn apply_fixes(fixes: Vec<(String, ms_driver::DiagnosticFix)>, io: &mut Io) -> (
             if valid && (chosen.is_empty() || start >= last_end) {
                 last_end = end;
                 chosen.push(fix);
+            } else if valid {
+                waited = true;
             }
         }
         if chosen.is_empty() {
@@ -341,7 +347,7 @@ fn apply_fixes(fixes: Vec<(String, ms_driver::DiagnosticFix)>, io: &mut Io) -> (
         applied += chosen.len();
         edited += 1;
     }
-    (applied, edited)
+    (applied, edited, waited)
 }
 
 /// The check summary for one input that passed.
