@@ -44,7 +44,7 @@ test "seeded hash is deterministic per seed and differs between seeds":
     let right = MapHash(seed: 2)
     try expect_equal(
         left.hash("key".to_bytes()).to_string_radix(10),
-        left.hash_string("key").to_string()
+        left.hash_string("key").to_string_radix(10)
     )
     try expect_true(left.hash_string("key") != right.hash_string("key"))
     try expect_true(left.hash_string("key") != left.hash_string("kez"))
