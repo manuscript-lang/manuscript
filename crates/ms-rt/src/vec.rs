@@ -1203,6 +1203,9 @@ pub unsafe extern "C" fn msrt_list_sort_ints(v: *mut VecVal, desc: i64) {
     // SAFETY: caller contract: `v` holds `len` words.
     unsafe {
         let v = &mut *v;
+        if v.len < 2 {
+            return;
+        }
         let s = core::slice::from_raw_parts_mut(v.ptr as *mut i64, v.len);
         if desc != 0 {
             s.sort_unstable_by(|a, b| b.cmp(a));
@@ -2382,6 +2385,45 @@ mod tests {
             drop_list(&mut v, d);
             drop_list(&mut dv, d);
         }
+    }
+
+    #[test]
+    fn int_sort_accepts_empty_and_singleton_lists() {
+        let _g = testutil::lock();
+        let before = alloc::live_blocks();
+        for desc in [0, 1] {
+            let mut v = EMPTY;
+            // SAFETY: the canonical empty list is a valid list of Int.
+            unsafe { msrt_list_sort_ints(&mut v, desc) };
+            assert_eq!(v.len, 0);
+            assert!(v.ptr.is_null());
+            // SAFETY: all slots and backing storage belong to this live Int list.
+            unsafe {
+                reserve(&mut v, &msrt_desc_int, 4);
+                let ptr = v.ptr;
+                let cap = v.cap;
+                msrt_list_sort_ints(&mut v, desc);
+                assert_eq!((v.ptr, v.len, v.cap), (ptr, 0, cap));
+                push_int(&mut v, i64::MIN);
+                msrt_list_sort_ints(&mut v, desc);
+                assert_eq!(ints(&v), [i64::MIN]);
+                assert_eq!((v.ptr, v.cap), (ptr, cap));
+                drop_list(&mut v, &msrt_desc_int);
+            }
+        }
+        assert_eq!(alloc::live_blocks(), before);
+    }
+
+    #[test]
+    fn splice_accepts_unallocated_empty_lists() {
+        let _g = testutil::lock();
+        let mut v = EMPTY;
+        let mut replacement = EMPTY;
+        // SAFETY: both canonical empty lists are live lists of Int.
+        unsafe { msrt_list_splice(&mut v, &msrt_desc_int, 0, 0, &mut replacement) };
+        assert_eq!((v.len, replacement.len), (0, 0));
+        assert!(v.ptr.is_null());
+        assert!(replacement.ptr.is_null());
     }
 
     #[test]
