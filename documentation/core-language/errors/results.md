@@ -117,4 +117,6 @@ fn decode(text: String) Result[Bytes, Error]:
 
 An `Error` implementer can be passed, assigned, or returned where `Error` is expected, and `Result[T, SpecificError]` can be returned as `Result[T, Error]` with payloads preserved. See [error compatibility](propagation.md#error-compatibility).
 
+Add context with `wrap(context, cause)` from `@std/core.ms`: `error(wrap("read config", cause))` reports `read config: <cause message>` and keeps the original error in `cause`, so a `match` on it still recovers the concrete type. `join(errors)` combines several errors into one `JoinedError` (none when the list is empty), for work whose failures are all reported.
+
 Use [Optional](../types/optionals.md) for absence and [faults](faults.md) for broken invariants.

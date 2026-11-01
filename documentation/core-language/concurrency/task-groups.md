@@ -58,6 +58,16 @@ test "a task that passes its timeout is cancelled":
 
 `cancelled()` from `@std/concurrency/tasks.ms` returns `true` once the running task was cancelled, by a closed group, a passed timeout or a program stop. It only reports: it does not wait or unwind, so a loop that never waits can poll it and return early. It stays `true` inside scope-end cleanups.
 
+## Timers, tickers, once and counters
+
+Tasks run on one thread and switch only when they wait, so most Go sync tools reduce to small idioms:
+
+- Wait for tasks (`WaitGroup`): `group.wait()` or `group.results()`.
+- Delay or timeout (`time.After`, `context.WithTimeout`): `sleep(duration)`, the `timeout` of `spawn`, or `deadline_after(duration)` from `@std/os/time.ms`, whose `remaining()`, `expired()` and `wait()` serve a request's whole time budget.
+- Repeat on a schedule (`time.Ticker`): `for tick in ticker(1.seconds):` from `@std/os/time.ms`; `break` stops it. Ticks do not drift with the loop body, and ticks a slow body missed are dropped.
+- Run once (`sync.Once`): `once()` from `@std/concurrency/sync.ms`; `gate.run(action)` runs the action for the first caller while others wait. Clone the `Once` for each task.
+- Counters (`sync/atomic`): a plain `Int` in one task needs nothing; across tasks use `Shared[Int]` with `var guard = lock(box)`. No atomics are needed because tasks never run in parallel, and workers share nothing.
+
 ## What a task may use
 
 A spawned function outlives the statement that started it, so it owns what it captures: a captured value moves into the task when this is its last use, and is copied into the task when the caller uses it again. A function value or a resource cannot be copied, so those must be the last use. A task cannot change a captured `var`. Return a result instead, and combine results in the caller.
