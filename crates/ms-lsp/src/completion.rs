@@ -235,6 +235,12 @@ impl Completer<'_> {
         }
     }
 
+    /// An opaque type's cases are visible only in its declaring file.
+    fn cases_visible(&self, ty: &Ty) -> bool {
+        let file = self.a.result.module(&self.a.document).map(|m| m.file);
+        ty.opaque_module().is_none_or(|m| Some(m) == file)
+    }
+
     fn member_items(&mut self) {
         let Some(expr) = self.a.expression.clone() else {
             return;
@@ -243,6 +249,9 @@ impl Completer<'_> {
             return;
         };
         if let Some(ty) = type_expression(left, &self.a.scope) {
+            if !self.cases_visible(&ty) {
+                return;
+            }
             for case in cases(&ty) {
                 let signature = ms_check::types::function(case.fields.clone(), ty.clone());
                 let insert = if case.fields.is_empty() {
@@ -433,6 +442,25 @@ impl Completer<'_> {
             if s.is_constant() {
                 kind = 21;
                 insert = name.as_str().to_string();
+            }
+            if s.kind == SymKind::Type && !c.type_context && self.cases_visible(&ty) {
+                // An alternative's cases are in scope next to the type.
+                for case in cases(&ty) {
+                    let signature = ms_check::types::function(case.fields.clone(), ty.clone());
+                    let insert = if case.fields.is_empty() {
+                        case.name.as_str().to_string()
+                    } else {
+                        callable_text(case.name.as_str(), Some(&signature), &[], self.snippets)
+                    };
+                    self.add(
+                        case.name.as_str(),
+                        20,
+                        Some(&signature),
+                        2,
+                        &insert,
+                        Json::Null,
+                    );
+                }
             }
             let documentation = self.doc(s.decl.as_ref(), s.module);
             self.add(

@@ -558,7 +558,7 @@
 {"id":557,"jsonrpc":"2.0","result":null}
 #large
 {"id":559,"jsonrpc":"2.0","result":null}
-{"id":560,"jsonrpc":"2.0","result":[]}
+{"id":560,"jsonrpc":"2.0","result":[{"detail":"fn(Int) Shape","filterText":"Circle","insertTextFormat":1,"kind":20,"label":"Circle","sortText":"02_Circle","textEdit":{"newText":"Circle","range":{"end":{"character":14,"line":41},"start":{"character":8,"line":41}}}}]}
 {"id":561,"jsonrpc":"2.0","result":null}
 {"id":562,"jsonrpc":"2.0","result":[]}
 {"id":563,"jsonrpc":"2.0","result":null}
@@ -578,7 +578,7 @@
 {"id":577,"jsonrpc":"2.0","result":null}
 #large
 {"id":579,"jsonrpc":"2.0","result":null}
-{"id":580,"jsonrpc":"2.0","result":[]}
+{"id":580,"jsonrpc":"2.0","result":[{"detail":"fn(Int) Shape","filterText":"Square","insertTextFormat":1,"kind":20,"label":"Square","sortText":"02_Square","textEdit":{"newText":"Square","range":{"end":{"character":14,"line":43},"start":{"character":8,"line":43}}}}]}
 {"id":581,"jsonrpc":"2.0","result":null}
 {"id":582,"jsonrpc":"2.0","result":[]}
 {"id":583,"jsonrpc":"2.0","result":null}
