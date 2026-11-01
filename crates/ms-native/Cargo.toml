@@ -31,6 +31,10 @@ ms-std-terminal = { path = "../ms-std-terminal" }
 ms-std-time = { path = "../ms-std-time" }
 ms-std-url = { path = "../ms-std-url" }
 
+[features]
+# The glibc process entry (`_start`); only the archive `ms` links enables it, since a test binary has crt1's.
+entry = []
+
 [dev-dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
 

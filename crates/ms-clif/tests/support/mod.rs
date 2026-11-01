@@ -38,8 +38,10 @@ pub fn cc() -> Command {
         command.arg("-D_WIN32_WINNT=0x0A00");
     }
     if cfg!(target_os = "linux") {
-        // The bundled linker links musl, which has no fortified `*_chk` entry points.
+        // Fixtures link musl, which has no fortified `*_chk` entry points.
         command.arg("-D_FORTIFY_SOURCE=0");
+        // Fixtures linked with glibc get no `libc_nonshared.a`, where aarch64 keeps `__stack_chk_guard`.
+        command.arg("-fno-stack-protector");
     }
     command
 }
@@ -57,7 +59,8 @@ pub fn link_fixture(object: &Path, runtime: &Path, out: &Path) -> Result<(), ms_
     let builtins = BUILTINS.get_or_init(builtins);
     let mut inputs = vec![runtime];
     inputs.extend(builtins.as_deref());
-    ms_clif::link::link_all(object, &inputs, out)
+    // The C fixture runtimes define no process entry, so they link static musl, whose startup file does.
+    ms_clif::link::link_libc(object, &inputs, out, false, cfg!(target_os = "linux"))
 }
 
 fn builtins() -> Option<PathBuf> {

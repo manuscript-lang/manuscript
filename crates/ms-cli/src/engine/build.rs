@@ -249,6 +249,11 @@ impl BuildCache {
         let build_type = request.build_type.as_str();
         let mut parts = vec![build_type, filename.as_str(), output, crate::VERSION];
         parts.extend(request.link.iter().map(String::as_str));
+        parts.push(if ms_build::static_libc() {
+            "musl"
+        } else {
+            "libc"
+        });
         let key = ms_build::cache::key(&parts, &inputs)?;
         Some(BuildCache {
             mode,
