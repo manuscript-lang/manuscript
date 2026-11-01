@@ -417,8 +417,14 @@ msstd_decimal_to_fixed(value: *const DecRec, digits: i64, has_mode: u8, mode: i6
 msstd_decimal_to_float(a: *const DecRec) -> f64
 msstd_decimal_to_string(a: *const DecRec, out: *mut StrVal)
 msstd_decimal_truncate_to_int(a: *const DecRec, out: *mut i64) -> u8
+msstd_encoding_ascii85_decode(text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
+msstd_encoding_ascii85_encode(data: *const VecVal, out: *mut StrVal)
+msstd_encoding_base32_decode(text: *const StrVal, hex_alphabet: u8, padded: u8, has_max: u8, max: i64, out: *mut VecVal) -> u8
+msstd_encoding_base32_encode(data: *const VecVal, hex_alphabet: u8, padded: u8, out: *mut StrVal)
 msstd_encoding_base64_decode(text: *const StrVal, url_safe: u8, has_max: u8, max: i64, out: *mut VecVal) -> u8
+msstd_encoding_base64_decode_unpadded(text: *const StrVal, url_safe: u8, has_max: u8, max: i64, out: *mut VecVal) -> u8
 msstd_encoding_base64_encode(data: *const VecVal, url_safe: u8, out: *mut StrVal)
+msstd_encoding_base64_encode_unpadded(data: *const VecVal, url_safe: u8, out: *mut StrVal)
 msstd_fs_access(path: *const StrVal, mode: i64) -> u8
 msstd_fs_append_file(path: *const StrVal, data: *const VecVal) -> u8
 msstd_fs_canonicalize(path: *const StrVal, out: *mut StrVal) -> u8
