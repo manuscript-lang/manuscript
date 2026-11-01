@@ -58,7 +58,7 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
                         .copied()
                         .unwrap_or(false)
                 } else {
-                    matches!(lex(file, &source[last..offset]), Err(d) if d.message.starts_with("unterminated delimiter"))
+                    matches!(lex(file, &source[last..offset]), Err(d) if d.message.starts_with("unterminated delimiter") || d.message.starts_with("unterminated multi-line text"))
                 };
                 if unterminated {
                     let mut start = last;
@@ -309,6 +309,13 @@ fn recover_statements(
         let opened = opened_line(&issue.message);
         if opened > 0 && attempt == 0 {
             line = opened;
+        }
+        // A misindented line of multi-line text drops the whole statement.
+        if issue.message.starts_with("text line is indented less") && attempt == 0 {
+            while line > 1 && line <= lines.len() && !lines[line - 1].trim_end().ends_with("\"\"\"")
+            {
+                line -= 1;
+            }
         }
         // The header line (line 1) failing means the signature is unusable.
         if line < 2 || line > lines.len() {
