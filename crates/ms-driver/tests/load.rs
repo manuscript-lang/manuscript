@@ -149,3 +149,28 @@ fn entry_diagnostics_name_the_required_signature() {
     );
     assert!(fine.success());
 }
+
+#[test]
+fn file_entries_share_a_library_under_the_enclosing_manifest() {
+    let dir = scratch("enclosing");
+    write(
+        &dir,
+        "ms.toml",
+        "[project]\nname = \"bench\"\nsource = \".\"\n\n[aliases]\n\"@lib\" = \"lib.ms\"\n",
+    );
+    write(
+        &dir,
+        "lib.ms",
+        "export fn one() Int:\n    return 1\n\nexport fn two() Int:\n    return 2\n",
+    );
+    let entry = write(
+        &dir,
+        "suite/driver.ms",
+        "import one from \"../lib.ms\"\nimport two from \"@lib\"\n\nexport fn main() Int:\n    return one() + two()\n",
+    );
+    let graph = load_file(&entry, LoadOptions::default());
+    assert!(graph.diagnostics.is_empty(), "{:?}", graph.diagnostics);
+    assert_eq!(graph.entry, "suite/driver.ms");
+    let checked = check_graph(graph, CheckRequest { entry: true });
+    assert!(checked.success(), "{:?}", checked.diagnostics);
+}
