@@ -16,8 +16,7 @@ pub mod ffi;
 
 use alloc::format;
 use alloc::string::{String, ToString};
-use num_bigint::{BigInt, Sign};
-use num_integer::Integer;
+use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{Signed, ToPrimitive, Zero};
 
 /// Significant digits of the format.
@@ -68,6 +67,11 @@ impl Mode {
     }
 }
 
+/// Quotient and remainder of `a / b`.
+fn div_rem(a: &BigUint, b: &BigUint) -> (BigUint, BigUint) {
+    (a / b, a % b)
+}
+
 fn pow10(n: i64) -> BigInt {
     BigInt::from(10u32).pow(u32::try_from(n).unwrap_or(u32::MAX))
 }
@@ -87,7 +91,7 @@ fn normalize(mut coef: BigInt, mut exp: i64) -> (BigInt, i64) {
     }
     let ten = BigInt::from(10u32);
     loop {
-        let (q, r) = coef.div_rem(&ten);
+        let (q, r) = (&coef / &ten, &coef % &ten);
         if !r.is_zero() {
             return (coef, exp);
         }
@@ -216,9 +220,9 @@ impl Dec {
         } else {
             let negative = coef.is_negative();
             let denominator = pow10(drop).into_parts().1;
-            let (mut c, rem) = coef.magnitude().div_rem(&denominator);
+            let (mut c, rem) = div_rem(coef.magnitude(), &denominator);
             let twice = &rem << 1usize;
-            if twice > denominator || (twice == denominator && c.is_odd()) {
+            if twice > denominator || (twice == denominator && c.bit(0)) {
                 c += 1u32;
             }
             (BigInt::from_biguint(sign_of(negative), c), q)
@@ -276,7 +280,7 @@ impl Dec {
         let (a, b) = (a.magnitude(), b.magnitude());
         let shift =
             (DIGITS + 2 + digit_count(&b.clone().into()) - digit_count(&a.clone().into())).max(0);
-        let (mut q, r) = (a * pow10(shift).magnitude()).div_rem(b);
+        let (mut q, r) = div_rem(&(a * pow10(shift).magnitude()), b);
         let mut exp = self.exp - other.exp - shift;
         if !r.is_zero() {
             // A sticky digit: the quotient has at least 35 digits, so it only breaks ties.
@@ -387,12 +391,12 @@ impl Dec {
         }
         let denominator = pow10(-shift).into_parts().1;
         let negative = coef.is_negative();
-        let (mut c, rem) = coef.magnitude().div_rem(&denominator);
+        let (mut c, rem) = div_rem(coef.magnitude(), &denominator);
         if !rem.is_zero() {
             let twice = &rem << 1usize;
             let cmp = twice.cmp(&denominator);
             let increment = match mode {
-                Mode::HalfEven => cmp.is_gt() || (cmp.is_eq() && c.is_odd()),
+                Mode::HalfEven => cmp.is_gt() || (cmp.is_eq() && c.bit(0)),
                 Mode::HalfAwayFromZero => cmp.is_ge(),
                 Mode::TowardZero => false,
                 Mode::Floor => negative,
