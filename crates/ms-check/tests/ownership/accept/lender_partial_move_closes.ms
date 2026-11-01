@@ -11,4 +11,4 @@ fn keep(xs: List[Int]) List[Int]:
     return xs
 
 fn closing(h: Handle) List[Int]:
-    return keep(h.items)  # error: only a whole variable can move
+    return keep(h.items)

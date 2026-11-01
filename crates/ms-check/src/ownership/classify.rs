@@ -116,7 +116,13 @@ impl Classifier {
             return Class::Move;
         }
         visiting.push(key);
-        let mut class = Class::Copy;
+        // A record is a container of its fields and has one owner whatever they are; an
+        // alternative of primitives is a primitive.
+        let mut class = if t.kind == Kind::Record {
+            Class::Move
+        } else {
+            Class::Copy
+        };
         for f in fields(t) {
             class = class.max(self.class_in(&f.ty, visiting));
         }

@@ -3,7 +3,9 @@
 
 use super::classify::{Class, Classifier, declares_close};
 use super::live::Liveness;
-use super::modes::{CallModes, ParamMode, Summaries, Summary, call_modes, receiver_mode};
+use super::modes::{
+    CallModes, Lend, ParamMode, Summaries, Summary, call_lend, call_modes, receiver_mode,
+};
 use super::places::{Place, Step};
 use super::*;
 use ms_syntax::ast::*;
@@ -105,6 +107,14 @@ struct Borrow {
     why: String,
 }
 
+/// What a returned expression is a part of.
+struct LendSource {
+    receiver: bool,
+    params: Vec<Name>,
+    /// The field chain from one source, when the expression is a plain chain of fields.
+    path: Option<(Option<Name>, Vec<Name>)>,
+}
+
 /// A place expression resolved to its root.
 #[derive(Clone)]
 struct PlaceInfo {
@@ -140,8 +150,14 @@ pub fn analyze(cx: &Context) -> Outcome {
         chain_places: HashMap::new(),
         keep_scrutinee: false,
         closed: HashSet::new(),
+        lend_receiver: false,
+        lend_params: Vec::new(),
+        lend_path: None,
+        owned_return: None,
+        lent_return: None,
     };
     w.run();
+    w.mixed_returns();
     w.unclosed_resources();
     w.consumed_param_resources();
     w.moved_payloads();
@@ -166,7 +182,14 @@ pub fn analyze(cx: &Context) -> Outcome {
                 }
             })
             .collect(),
+        result: Lend {
+            lends: w.lent_return.is_some() && w.owned_return.is_none(),
+            receiver: w.lend_receiver,
+            params: w.lend_params.clone(),
+            path: w.lend_path.clone().flatten(),
+        },
     };
+    w.facts.lends = summary.result.lends;
     w.facts.parameters = summary.params.iter().map(|(_, m)| *m).collect();
     w.facts.receiver = cx.c.self_binding.as_ref().map(|_| summary.receiver);
     Outcome {
@@ -213,6 +236,14 @@ struct Walker<'a> {
     keep_scrutinee: bool,
     /// Bindings that had `close()` called on them.
     closed: HashSet<usize>,
+    /// Sources of the returned references so far: the receiver, parameters by label, and the
+    /// one field chain every path returns (`Some(None)` once two paths differ).
+    lend_receiver: bool,
+    lend_params: Vec<Name>,
+    lend_path: Option<Option<(Option<Name>, Vec<Name>)>>,
+    /// The first `return` of an owned value and of a reference, for the mixed-path error.
+    owned_return: Option<Pos>,
+    lent_return: Option<Pos>,
 }
 
 /// A fix that inserts `text` at `pos`.
@@ -432,8 +463,32 @@ impl Walker<'_> {
     /// Evaluates a value handed back to the caller.
     fn returned(&mut self, e: &Expr) {
         if !self.captured.is_empty() {
+            // A lambda never lends: an escaping closure owns its captures.
             self.expr(e, Demand::Consume);
             return;
+        }
+        if self.class_of(e) != Class::Copy
+            && self.returns_as_declared(e)
+            && !self.implements_contract()
+        {
+            if let Some(src) = self.lend_source(e) {
+                // A part of an argument comes back as a reference into it: nothing moves.
+                self.lent_return.get_or_insert(e.pos);
+                self.lend_receiver |= src.receiver;
+                for p in src.params {
+                    if !self.lend_params.contains(&p) {
+                        self.lend_params.push(p);
+                    }
+                }
+                self.lend_path = Some(match (self.lend_path.take(), src.path) {
+                    (None, path) => path,
+                    (Some(Some(a)), Some(b)) if a == b => Some(a),
+                    _ => None,
+                });
+                self.expr(e, Demand::Read);
+                return;
+            }
+            self.owned_return.get_or_insert(e.pos);
         }
         // Each branch of a conditional or match expression is a returned value of its own.
         if let ExprKind::Match { scrutinee, arms } = &e.kind
@@ -462,6 +517,222 @@ impl Walker<'_> {
             }
             _ => None,
         }
+    }
+
+    /// Whether this callable implements an interface method. A call through the interface
+    /// cannot know which implementation runs, so every implementation owns its result.
+    fn implements_contract(&self) -> bool {
+        let c = self.cx.c;
+        c.func.index.is_some()
+            && matches!(&c.func.decl.0.decl.kind, DeclKind::Impl(i) if i.contract.is_some())
+    }
+
+    /// Whether a returned expression has the declared result type itself: a value converted on
+    /// the way out (`Door` returned as `Door?`, a record as an interface) is a new value.
+    fn returns_as_declared(&self, e: &Expr) -> bool {
+        let c = self.cx.c;
+        let result = match (c.func.method(), c.func.func()) {
+            (Some(m), _) => m.func.result.id,
+            (None, Some(f)) => f.result.id,
+            (None, None) => return false,
+        };
+        let Some(declared) = self.cx.m.type_ref(result) else {
+            return false;
+        };
+        same(&self.cx.m.ty(e), &declared)
+    }
+
+    /// Reports a function that returns a reference on one path and an owned value on another:
+    /// the caller could not tell whether to hold or drop the result.
+    fn mixed_returns(&mut self) {
+        let (Some(owned), Some(lent)) = (self.owned_return, self.lent_return) else {
+            return;
+        };
+        self.error(
+            owned,
+            format!(
+                "this function returns a reference into its arguments at {}:{} but a new value here; return `.clone()` of the part there, or build a new value on every path",
+                lent.line, lent.column
+            ),
+        );
+    }
+
+    /// The arguments a lending call returns a reference into: the receiver and the parameters
+    /// `lend` names, as written.
+    fn lend_operands<'e>(&self, e: &'e Expr, lend: &Lend) -> Vec<&'e Expr> {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return Vec::new();
+        };
+        let mut out = Vec::new();
+        if lend.receiver
+            && let (ExprKind::Member { left, .. }, Resolution::Method(_)) =
+                (&callee.kind, self.cx.m.resolution(e))
+        {
+            out.push(&**left);
+        }
+        let slots = self.cx.m.info(e).arguments.clone().unwrap_or_default();
+        for (i, a) in args.iter().enumerate() {
+            if slots.get(i).is_some_and(|s| lend.params.contains(&s.name)) {
+                out.push(&a.value);
+            }
+        }
+        // A copied argument is never lent from, whatever an optimistic summary says.
+        out.retain(|a| self.class_of(a) != Class::Copy);
+        out
+    }
+
+    /// The label of the parameter written at argument `i` of call `e`.
+    fn argument_label(&self, e: &Expr, i: usize) -> Option<Name> {
+        self.cx.m.info(e).arguments.as_ref()?.get(i).map(|s| s.name)
+    }
+
+    /// The parameters and receiver a returned expression is a part of, when it is one: a place
+    /// rooted in a parameter or the receiver, or a lending call whose sources all are. `None`
+    /// for an owned value, including a part of a local, a temporary or a default argument.
+    fn lend_source(&self, e: &Expr) -> Option<LendSource> {
+        if self.is_place(e) {
+            let root = match &e.kind {
+                ExprKind::Name(_) => e,
+                _ => self.root_name(e)?,
+            };
+            let Resolution::Local(b) = self.cx.m.resolution(root) else {
+                return None;
+            };
+            let m = self.meta.get(&b.uid)?;
+            if self.consumed.contains(&b.uid) {
+                return None;
+            }
+            let path = self.field_path(e);
+            if matches!(m.perm, Perm::Borrowed | Perm::MutBorrowed) {
+                // A reference held by a local: a part of whatever it borrows, if those are all
+                // parameters or the receiver.
+                let mut out = LendSource {
+                    receiver: false,
+                    params: Vec::new(),
+                    path: None,
+                };
+                let places = self.pure_places(e)?;
+                for place in places {
+                    let origin = self.meta.get(&place.root)?;
+                    match (origin.role, origin.parameter) {
+                        (Role::SelfValue, _) => out.receiver = true,
+                        (Role::Parameter, Some(i)) => {
+                            let label = self.parameter_label(i)?;
+                            if !out.params.contains(&label) {
+                                out.params.push(label);
+                            }
+                        }
+                        _ => return None,
+                    }
+                }
+                return Some(out);
+            }
+            return match (m.role, m.parameter) {
+                (Role::SelfValue, _) => Some(LendSource {
+                    receiver: true,
+                    params: Vec::new(),
+                    path: path.map(|f| (None, f)),
+                }),
+                (Role::Parameter, Some(i)) => {
+                    let label = self.parameter_label(i)?;
+                    Some(LendSource {
+                        receiver: false,
+                        params: vec![label],
+                        path: path.map(|f| (Some(label), f)),
+                    })
+                }
+                _ => None,
+            };
+        }
+        if let ExprKind::Call { .. } = &e.kind {
+            let lend = call_lend(self.cx.m, e, self.cx.summaries);
+            if !lend.lends {
+                return None;
+            }
+            let operands = self.lend_operands(e, &lend);
+            if operands.is_empty() {
+                return None;
+            }
+            let mut out = LendSource {
+                receiver: false,
+                params: Vec::new(),
+                path: None,
+            };
+            let mut paths: Vec<Option<(Option<Name>, Vec<Name>)>> = Vec::new();
+            for (k, operand) in operands.iter().enumerate() {
+                let src = self.lend_source(operand)?;
+                out.receiver |= src.receiver;
+                for p in src.params {
+                    if !out.params.contains(&p) {
+                        out.params.push(p);
+                    }
+                }
+                // The callee's one field chain, continued from this operand's own chain.
+                let through = match (&lend.path, k, &src.path) {
+                    (Some((None, fields)), 0, Some((root, mine))) if lend.receiver => {
+                        Some((*root, [mine.clone(), fields.clone()].concat()))
+                    }
+                    (Some((Some(label), fields)), _, Some((root, mine)))
+                        if self.lend_operand_label(e, operand) == Some(*label) =>
+                    {
+                        Some((*root, [mine.clone(), fields.clone()].concat()))
+                    }
+                    _ => None,
+                };
+                paths.push(through);
+            }
+            out.path = if operands.len() == 1 {
+                paths.pop().flatten()
+            } else {
+                None
+            };
+            return Some(out);
+        }
+        None
+    }
+
+    /// The label of the parameter `operand` is written for in call `e`.
+    fn lend_operand_label(&self, e: &Expr, operand: &Expr) -> Option<Name> {
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return None;
+        };
+        let i = args.iter().position(|a| a.value.id == operand.id)?;
+        self.argument_label(e, i)
+    }
+
+    /// The label of parameter `i` of this callable.
+    fn parameter_label(&self, i: usize) -> Option<Name> {
+        let c = self.cx.c;
+        let params: &[ms_syntax::ast::Param] = match (c.func.method(), c.func.func()) {
+            (Some(m), _) => &m.func.params,
+            (None, Some(f)) => &f.params,
+            (None, None) => &[],
+        };
+        params.get(i).map(|p| p.name)
+    }
+
+    /// Whether `e` is a native read that lowering lends in place (`crates/ms-lower/src/lend.rs`):
+    /// `m.get(key)` on a `Map`, `xs.first()` or `xs.last()` on a `List`, with the receiver written.
+    fn native_lend_receiver<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return None;
+        };
+        let ExprKind::Member { left, name } = &callee.kind else {
+            return None;
+        };
+        let Resolution::Method(method) = self.cx.m.resolution(e) else {
+            return None;
+        };
+        if method.native.as_str().is_empty() {
+            return None;
+        }
+        let recv = self.cx.m.ty(left);
+        let lends = match (name.as_str(), args.len()) {
+            ("get", 1) => recv.is_std("Map"),
+            ("first" | "last", 0) => recv.is_std("List"),
+            _ => false,
+        };
+        lends.then_some(&**left)
     }
 
     fn receiver_consumed(&self) -> bool {
@@ -1044,6 +1315,10 @@ impl Walker<'_> {
             && let Some(origins) = self.projection_origins(value)
         {
             // Reading part of a value that stays where it is.
+            if mutable && let ExprKind::Call { .. } = &value.kind {
+                self.bind_getter(s, &b, role, value);
+                return;
+            }
             if mutable {
                 if let Some((info, _)) = self.place(value) {
                     // The origin must itself be changeable and free of other borrows.
@@ -1086,26 +1361,45 @@ impl Walker<'_> {
             self.method_value_binding(value, recv, &b, role, mutable);
             return;
         }
-        // A borrowing binding passes its borrow on to a `let`.
+        // A name bound to another name of the same type is a reference to it: shared for `let`,
+        // exclusive for `var` when the source can change (a `var` binding or borrow), as for a
+        // part of it. A `var` of an immutable source takes the value over instead (below). Only
+        // a primitive copies, and a binding of another type converts.
         if class != Class::Copy
-            && !mutable
             && let ExprKind::Name(_) = &value.kind
             && let Resolution::Local(src) = self.cx.m.resolution(value)
-            && self
-                .meta
-                .get(&src.uid)
-                .is_some_and(|m| matches!(m.perm, Perm::Borrowed | Perm::MutBorrowed))
+            && let Some(src_meta) = self.meta.get(&src.uid)
+            && same(&src.ty, &b.ty)
+            && (!mutable || matches!(src_meta.perm, Perm::Mutable | Perm::MutBorrowed))
+            // At the source's last use the value moves instead, as before: the reference would
+            // be indistinguishable, and `let tmp = a; a = b` keeps working.
+            && (!self.is_last(value.id, &src)
+                || matches!(src_meta.perm, Perm::Borrowed | Perm::MutBorrowed))
         {
             let origins = self.resolve(&Place::local(src.uid));
-            self.expr(value, Demand::Read);
-            self.declare_borrow(
-                &b,
-                role,
-                origins,
-                pattern.pos,
-                "binding of a borrowed value",
-            );
-            return;
+            if mutable {
+                if let Some((info, _)) = self.place(value) {
+                    let before = self.diags.len();
+                    self.mutate(pattern.pos, &info, "borrow mutably");
+                    if self.diags.len() == before {
+                        let parent = self.borrow_parent(&info.root);
+                        self.declare_mut_borrow(&b, role, origins, pattern.pos, parent);
+                    } else {
+                        self.declare(&b, role, Perm::Mutable, None, false);
+                    }
+                    return;
+                }
+            } else {
+                self.expr(value, Demand::Read);
+                self.declare_borrow(
+                    &b,
+                    role,
+                    origins,
+                    pattern.pos,
+                    "binding of a borrowed value",
+                );
+                return;
+            }
         }
         self.expr(value, Demand::Consume);
         self.declare(
@@ -1122,6 +1416,61 @@ impl Walker<'_> {
         if self.may_close(&b.ty) && !self.derived_from_resource(value) {
             let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, pattern.pos, closable));
+        }
+    }
+
+    /// `var x = f(b)` where `f` returns one chain of fields of one argument: an exclusive borrow of
+    /// that place, which lowering names instead of calling `f` (`getter_borrows`). Any other
+    /// reference result cannot be bound with `var`.
+    fn bind_getter(&mut self, s: &Stmt, b: &BindingRef, role: Role, value: &Expr) {
+        let pos = s.pos;
+        let text = self.expr_text(value);
+        let lend = call_lend(self.cx.m, value, self.cx.summaries);
+        let operands = self.lend_operands(value, &lend);
+        let target = match (&lend.path, operands.as_slice()) {
+            (Some((None, fields)), [recv]) if lend.receiver => Some((*recv, fields.clone())),
+            (Some((Some(label), fields)), [arg])
+                if self.lend_operand_label(value, arg) == Some(*label) =>
+            {
+                Some((*arg, fields.clone()))
+            }
+            _ => None,
+        };
+        let Some((operand, fields)) = target.filter(|(o, _)| self.is_place(o)) else {
+            self.expr(value, Demand::Read);
+            self.error(
+                pos,
+                format!(
+                    "`var {}` cannot borrow `{text}` mutably: the result is a reference into more than one place; bind it with `let` to read it, or borrow the field it returns directly",
+                    b.name
+                ),
+            );
+            self.declare(b, role, Perm::Mutable, None, false);
+            return;
+        };
+        let Some((mut info, _)) = self.place(operand) else {
+            self.expr(value, Demand::Read);
+            self.declare(b, role, Perm::Mutable, None, false);
+            return;
+        };
+        info.resolved = info
+            .resolved
+            .iter()
+            .map(|p| {
+                fields
+                    .iter()
+                    .fold(p.clone(), |p, f| p.then(Step::Field(*f)))
+            })
+            .collect();
+        info.text = text;
+        let before = self.diags.len();
+        self.mutate(pos, &info, "borrow mutably");
+        if self.diags.len() == before {
+            let parent = self.borrow_parent(&info.root);
+            self.facts.getter_borrows.insert(value.id, fields);
+            self.declare_mut_borrow(b, role, info.resolved, pos, parent);
+        } else {
+            self.declare(b, role, Perm::Mutable, None, false);
         }
     }
 
@@ -1628,13 +1977,46 @@ impl Walker<'_> {
             // Resolve without evaluating index expressions twice.
             return self.pure_places(e);
         }
-        None
+        self.pure_origins(e)
     }
 
-    /// Places an accessor call reads in place, without evaluating it.
+    /// The places a call result is a reference into, without evaluating it: the places of the
+    /// arguments a lending callee returns a part of, or the container of a native read that is
+    /// lent in place. `None` when the result owns, including when a source is a temporary.
     fn pure_origins(&self, e: &Expr) -> Option<Vec<Place>> {
-        let _ = e;
-        None
+        let ExprKind::Call { .. } = &e.kind else {
+            return None;
+        };
+        if self.class_of(e) == Class::Copy {
+            return None;
+        }
+        let operands = match self.native_lend_receiver(e) {
+            Some(recv) => vec![recv],
+            None => {
+                let lend = call_lend(self.cx.m, e, self.cx.summaries);
+                if !lend.lends {
+                    return None;
+                }
+                self.lend_operands(e, &lend)
+            }
+        };
+        if operands.is_empty() {
+            return None;
+        }
+        let mut out = Vec::new();
+        for operand in operands {
+            let places = if self.is_place(operand) {
+                self.pure_places(operand)?
+            } else {
+                self.pure_origins(operand)?
+            };
+            for p in places {
+                if !out.contains(&p) {
+                    out.push(p);
+                }
+            }
+        }
+        Some(out)
     }
 
     /// The resolved places of a place chain without evaluating it.
@@ -2299,7 +2681,35 @@ impl Walker<'_> {
         if self.diags.len() == reported {
             self.check_overlap(e.pos, &name, &operands);
         }
-        // Results.
+        // Results. A lending callee returns a reference into its arguments: holding it is a
+        // borrow of them, storing or returning it needs a copy, and when a source is a
+        // temporary the caller owns the result (lowering copies it out before the temporary
+        // is dropped).
+        let lend = call_lend(cx.m, e, cx.summaries);
+        if lend.lends && self.class_of(e) != Class::Copy {
+            match self.pure_origins(e) {
+                Some(origins) if d == Demand::Consume => {
+                    let mut roots: Vec<String> = origins
+                        .iter()
+                        .map(|p| self.name_of(p.root).as_str().to_string())
+                        .collect();
+                    roots.sort();
+                    roots.dedup();
+                    self.error_fix_opt(
+                        e.pos,
+                        format!(
+                            "`{name}` returns a reference into `{}`, which this position would keep; store `.{COPY}()` of it, or use it in place",
+                            roots.join("`, `")
+                        ),
+                        copy_after(e),
+                    );
+                }
+                Some(_) => {}
+                None => {
+                    self.facts.owned_lends.insert(e.id);
+                }
+            }
+        }
         if modes.returns_receiver && d != Demand::Discard {
             let recv = receiver_expr.map(|r| self.expr_text(r)).unwrap_or_default();
             self.error(

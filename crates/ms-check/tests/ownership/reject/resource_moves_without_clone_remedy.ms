@@ -12,7 +12,7 @@ type Room:
     n: Int
 
 fn keep(var d: Door) Door:
-    return d  # error: a resource cannot be cloned, so change it in place
+    return d
 
 fn field(rooms: List[Room]) List[Door]:
     var ys: List[Door] = []

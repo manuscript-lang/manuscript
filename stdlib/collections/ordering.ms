@@ -193,14 +193,14 @@ impl Ordered for String:
     # Returns the lesser of this value and `other`, or this value when they compare equal.
     # Example: `(3).min(2)` is `2`.
     fn min(other: String) String:
-        return lesser(self, other)
+        return lesser(self, other).clone()
 
     # Returns the greater of this value and `other`, or this value when they compare equal.
     # Example: `(3).max(2)` is `3`.
     fn max(other: String) String:
-        return greater(self, other)
+        return greater(self, other).clone()
 
     # Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
     # Example: `(15).clamp(0, 10)` is `10`.
     fn clamp(low: String, high: String) String:
-        return clamped(self, low, high)
+        return clamped(self, low, high).clone()

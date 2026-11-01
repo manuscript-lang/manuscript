@@ -166,6 +166,15 @@ pub struct CallableOwnership {
     pub parameters: Vec<ParamMode>,
     /// The receiver's mode, for a method.
     pub receiver: Option<ParamMode>,
+    /// The result is a reference into the receiver or a parameter on every path: lowering
+    /// returns it without copying, and the caller holds it without dropping.
+    pub lends: bool,
+    /// Calls of lending callables whose sources are temporaries: the caller owns the result,
+    /// copied out before the temporaries are dropped.
+    pub owned_lends: HashSet<NodeId>,
+    /// Calls bound with `var` as an exclusive borrow of the field chain the callee returns, by
+    /// call node: lowering names that place instead of calling.
+    pub getter_borrows: HashMap<NodeId, Vec<Name>>,
 }
 
 impl CallableOwnership {
@@ -201,6 +210,14 @@ pub struct Ownership {
     /// For each callable with a `Consume` parameter or receiver, which parameters (declaration
     /// order, the receiver first for a method) the body moves, stores or returns.
     pub consumes: HashMap<Key, Vec<bool>>,
+    /// Callables whose result is a reference into their arguments.
+    pub lenders: HashSet<Key>,
+    /// Lending calls whose result the caller owns (a source was a temporary), by module file and
+    /// call node.
+    pub owned_lends: HashSet<(Name, NodeId)>,
+    /// `var` bindings of a lending call, by module file and call node: the field chain of the
+    /// argument the binding borrows exclusively.
+    pub getter_borrows: HashMap<(Name, NodeId), Vec<Name>>,
 }
 
 impl Ownership {
@@ -285,7 +302,20 @@ impl Hir<'_> {
         let mut resource_moves = HashMap::new();
         let mut borrowed_captures = HashSet::new();
         let mut consumes = HashMap::new();
+        let mut lenders = HashSet::new();
+        let mut owned_lends = HashSet::new();
+        let mut getter_borrows = HashMap::new();
         for (c, out) in callables.iter().zip(outcomes) {
+            if out.facts.lends {
+                lenders.insert((c.module.file, c.id()));
+            }
+            owned_lends.extend(out.facts.owned_lends.iter().map(|n| (c.module.file, *n)));
+            getter_borrows.extend(
+                out.facts
+                    .getter_borrows
+                    .iter()
+                    .map(|(n, f)| ((c.module.file, *n), f.clone())),
+            );
             for (node, lambda) in &out.facts.lambdas {
                 for (uid, mode) in &lambda.captures {
                     if !lambda.escaping && *mode == CaptureMode::Borrow {
@@ -337,6 +367,9 @@ impl Hir<'_> {
             moved_payloads,
             borrowed_captures,
             consumes,
+            lenders,
+            owned_lends,
+            getter_borrows,
         }
     }
 }

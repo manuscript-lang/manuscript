@@ -6,5 +6,5 @@ fn keep(xs: List[Int]) List[Int]:
     return xs
 
 fn twice(b: Big) Int:
-    let a = keep(b.items)  # error: moved here but used again
+    let a = keep(b.items)
     return a.length() + b.items.length()

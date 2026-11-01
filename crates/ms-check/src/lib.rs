@@ -83,6 +83,9 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         program.moved_payloads = Rc::new(own.moved_payloads);
         program.borrowed_captures = Rc::new(own.borrowed_captures);
         program.consumes = Rc::new(own.consumes);
+        program.lenders = Rc::new(own.lenders);
+        program.owned_lends = Rc::new(own.owned_lends);
+        program.getter_borrows = Rc::new(own.getter_borrows);
         program.diagnostics.extend(own.diagnostics);
     }
     if program.diagnostics.is_empty() {
