@@ -52,30 +52,32 @@ pub(crate) fn hidden_structure(
     info: &Info,
     cache: &mut HashMap<NodeId, bool>,
 ) -> bool {
+    fn receiver(e: &Expr) -> Option<&Expr> {
+        match &e.kind {
+            ExprKind::Member { left, .. }
+            | ExprKind::Apply { left, .. }
+            | ExprKind::Index { left, .. } => Some(left),
+            ExprKind::Call { callee, .. } => Some(callee),
+            ExprKind::Probe(target)
+            | ExprKind::Unary {
+                operand: target, ..
+            } => Some(target),
+            _ => None,
+        }
+    }
     let hidden_type = |ty: &Ty| ty.opaque_module().is_some_and(|file| file != module.file);
     let facts = module.facts();
     let (mut expression, mut current) = (e, info);
-    let mut path = Vec::new();
     let hidden = loop {
         if let Some(hidden) = cache.get(&expression.id) {
             break *hidden;
         }
         if current.constructor.as_ref().is_some_and(hidden_type) {
-            path.push(expression.id);
             break true;
         }
-        let next = match &expression.kind {
-            ExprKind::Member { left, .. }
-            | ExprKind::Apply { left, .. }
-            | ExprKind::Index { left, .. } => left,
-            ExprKind::Call { callee, .. } => callee,
-            ExprKind::Probe(target)
-            | ExprKind::Unary {
-                operand: target, ..
-            } => target,
-            _ => break false,
+        let Some(next) = receiver(expression) else {
+            break false;
         };
-        path.push(expression.id);
         let Some(next_info) = facts.info(next.id) else {
             break false;
         };
@@ -87,8 +89,17 @@ pub(crate) fn hidden_structure(
         }
         (expression, current) = (next, next_info);
     };
-    // Each receiver path is inspected once during a module traversal.
-    cache.extend(path.into_iter().map(|id| (id, hidden)));
+    // Cache the inspected prefix with a second walk, without allocating a path
+    // vector for every short member access. Later queries reuse the suffix.
+    let stop = expression.id;
+    let mut expression = e;
+    while expression.id != stop {
+        cache.insert(expression.id, hidden);
+        let Some(next) = receiver(expression) else {
+            break;
+        };
+        expression = next;
+    }
     hidden
 }
 
