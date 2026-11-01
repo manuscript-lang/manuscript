@@ -400,12 +400,46 @@ struct Edge {
     args: Vec<String>,
 }
 
+/// The values of `f` used anywhere but as the condition of a `brif` or `select`.
+fn wide_values(f: &Function) -> HashSet<Value> {
+    let mut wide = HashSet::new();
+    for block in f.layout.blocks() {
+        for inst in f.layout.block_insts(block) {
+            let data = &f.dfg.insts[inst];
+            let cond = match data {
+                InstructionData::Brif { arg, .. } => Some(*arg),
+                InstructionData::Ternary {
+                    opcode: Opcode::Select,
+                    args,
+                    ..
+                } => Some(args[0]),
+                _ => None,
+            };
+            let mut skipped = false;
+            for v in f.dfg.inst_values(inst) {
+                if !skipped && Some(v) == cond {
+                    skipped = true;
+                } else {
+                    wide.insert(v);
+                }
+            }
+        }
+    }
+    wide
+}
+
 struct Tr<'a> {
     f: &'a Function,
     syms: &'a dyn Symbols,
     out: String,
     /// Operand text of each Cranelift value.
     ops: HashMap<Value, String>,
+    /// The `i1` behind a compare or overflow flag, which `ops` holds widened to `i8`. A branch on
+    /// the widened form (`zext`, then `icmp ne 0`) made LLVM's InstCombine quadratic in the length
+    /// of a compare-and-branch chain (8000 arms: 12s against 1.5s).
+    flags: HashMap<Value, String>,
+    /// Values with a use other than a branch or select condition: only these need the `i8` form.
+    wide: HashSet<Value>,
     tmp: usize,
     /// Incoming edges per Cranelift block.
     incoming: HashMap<Block, Vec<Edge>>,
@@ -495,6 +529,16 @@ impl<'a> Tr<'a> {
         d
     }
 
+    /// Records result `idx` of `inst` as the `i1` `flag` widened to `i8`.
+    fn set_flag(&mut self, inst: Inst, idx: usize, flag: String) {
+        let r = self.f.dfg.inst_results(inst)[idx];
+        if self.wide.contains(&r) {
+            let widened = self.def(format!("zext i1 {flag} to i8"));
+            self.set(inst, idx, widened);
+        }
+        self.flags.insert(r, flag);
+    }
+
     fn set(&mut self, inst: Inst, idx: usize, text: String) {
         let r = self.f.dfg.inst_results(inst)[idx];
         self.ops.insert(r, text);
@@ -515,6 +559,9 @@ impl<'a> Tr<'a> {
     }
 
     fn cond_i1(&mut self, v: Value) -> String {
+        if let Some(flag) = self.flags.get(&v) {
+            return flag.clone();
+        }
         let o = self.op(v);
         if o == "0" {
             return "false".into();
@@ -619,8 +666,7 @@ impl<'a> Tr<'a> {
                 let (a, b) = (self.op(args[0]), self.op(args[1]));
                 let t = llty(self.ty(args[0]));
                 let c = self.def(format!("icmp {} {t} {a}, {b}", icc(cond)));
-                let z = self.def(format!("zext i1 {c} to i8"));
-                self.set(inst, 0, z);
+                self.set_flag(inst, 0, c);
             }
             InstructionData::FloatCompare { args, cond, .. } => {
                 let (a, b) = (self.op(args[0]), self.op(args[1]));
@@ -629,8 +675,7 @@ impl<'a> Tr<'a> {
                     fcc(cond),
                     llty(self.ty(args[0]))
                 ));
-                let z = self.def(format!("zext i1 {c} to i8"));
-                self.set(inst, 0, z);
+                self.set_flag(inst, 0, c);
             }
             InstructionData::Unary { arg, .. } => self.unary(inst, opc, arg),
             InstructionData::Ternary { args, .. } => {
@@ -1000,9 +1045,8 @@ impl<'a> Tr<'a> {
                 ));
                 let v = self.def(format!("extractvalue {st} {r}, 0"));
                 let o = self.def(format!("extractvalue {st} {r}, 1"));
-                let z = self.def(format!("zext i1 {o} to i8"));
                 self.set(inst, 0, v);
-                self.set(inst, 1, z);
+                self.set_flag(inst, 1, o);
                 return;
             }
             Opcode::UsubOverflow | Opcode::UaddOverflow | Opcode::UmulOverflow => {
@@ -1017,9 +1061,8 @@ impl<'a> Tr<'a> {
                 ));
                 let v = self.def(format!("extractvalue {st} {r}, 0"));
                 let o = self.def(format!("extractvalue {st} {r}, 1"));
-                let z = self.def(format!("zext i1 {o} to i8"));
                 self.set(inst, 0, v);
-                self.set(inst, 1, z);
+                self.set_flag(inst, 1, o);
                 return;
             }
             other => panic!("unsupported binary op {other}"),
@@ -1135,6 +1178,8 @@ impl LlvmModule {
             syms,
             out: String::new(),
             ops: HashMap::new(),
+            flags: HashMap::new(),
+            wide: wide_values(f),
             tmp: 0,
             incoming: HashMap::new(),
             tramps: Vec::new(),
@@ -1698,6 +1743,60 @@ mod tests {
             page_size_align_log2: 12,
         });
         f
+    }
+
+    /// `fn(a, b) -> i8 { if a == b { return 1 } else { return keep ? (a == b) : 0 } }`, the
+    /// compare feeding a `brif` and, when `keep`, also returned as data.
+    fn compare_branch(keep: bool) -> Function {
+        let mut sig = Signature::new(CallConv::SystemV);
+        sig.params = vec![AbiParam::new(types::I64); 2];
+        sig.returns.push(AbiParam::new(types::I8));
+        let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+        let mut cx = FunctionBuilderContext::new();
+        let mut b = FunctionBuilder::new(&mut f, &mut cx);
+        let (entry, yes, no) = (b.create_block(), b.create_block(), b.create_block());
+        b.append_block_params_for_function_params(entry);
+        b.switch_to_block(entry);
+        let args = b.block_params(entry).to_vec();
+        let same = b.ins().icmp(IntCC::Equal, args[0], args[1]);
+        b.ins().brif(same, yes, &[], no, &[]);
+        b.switch_to_block(yes);
+        let one = b.ins().iconst(types::I8, 1);
+        b.ins().return_(&[one]);
+        b.switch_to_block(no);
+        let out = if keep {
+            same
+        } else {
+            b.ins().iconst(types::I8, 0)
+        };
+        b.ins().return_(&[out]);
+        b.seal_all_blocks();
+        b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
+            default_call_conv: CallConv::SystemV,
+            pointer_width: target_lexicon::PointerWidth::U64,
+            page_size_align_log2: 12,
+        });
+        f
+    }
+
+    fn compare_branch_text(keep: bool) -> String {
+        let mut m = LlvmModule::new(vec![Some("cmp.ms".into())], ".".into());
+        let f = compare_branch(keep);
+        m.add_function("cmp", "cmp", (0, 1), &f, &TestSymbols, true);
+        m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false)
+    }
+
+    #[test]
+    fn a_branch_condition_stays_an_i1_and_widens_only_for_data_uses() {
+        // Widening to `i8` and testing against zero again made InstCombine quadratic on a long
+        // compare-and-branch chain, and an unused `zext` kept SimplifyCFG from forming a switch.
+        let branch_only = compare_branch_text(false);
+        assert!(!branch_only.contains("zext i1"), "{branch_only}");
+        assert!(!branch_only.contains("icmp ne i8"), "{branch_only}");
+        assert!(branch_only.contains("br i1 %t"), "{branch_only}");
+        let also_data = compare_branch_text(true);
+        assert!(also_data.contains("zext i1"), "{also_data}");
+        assert!(also_data.contains("br i1 %t"), "{also_data}");
     }
 
     #[test]
