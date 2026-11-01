@@ -1475,9 +1475,9 @@ mod tests {
     }
 
     unsafe extern "C" fn merge_copy_strings(src: *const u8, dst: *mut u8) {
-        // SAFETY: both slots hold three strings; the destination is uninitialised.
+        // SAFETY: both slots hold five strings; the destination is uninitialised.
         unsafe {
-            for i in 0..3 {
+            for i in 0..5 {
                 (dst as *mut StrVal)
                     .add(i)
                     .write(string::cloned(&*(src as *const StrVal).add(i)));
@@ -1486,9 +1486,9 @@ mod tests {
     }
 
     unsafe extern "C" fn merge_drop_strings(src: *mut u8) {
-        // SAFETY: the slot owns three live strings.
+        // SAFETY: the slot owns five live strings.
         unsafe {
-            for i in 0..3 {
+            for i in 0..5 {
                 string::release(&*(src as *const StrVal).add(i));
             }
         }
@@ -1503,9 +1503,10 @@ mod tests {
             kind: KIND_CUSTOM,
             copy: Some(merge_copy_strings),
             drop: Some(merge_drop_strings),
-            ..merge_plain_desc(core::mem::size_of::<[StrVal; 3]>() as u32)
+            ..merge_plain_desc(core::mem::size_of::<[StrVal; 5]>() as u32)
         };
-        // SAFETY: maps own wide integer-array keys and three-string values.
+        assert!(kd.size > 64 && vd.size > 64);
+        // SAFETY: maps own wide integer-array keys and five-string values.
         unsafe {
             let mut source = empty();
             let mut target = empty();
@@ -1517,7 +1518,7 @@ mod tests {
                     let mut key = [k; 10];
                     let text = format!("long independently owned value for key {k}");
                     let mut values =
-                        core::array::from_fn::<_, 3, _>(|_| from_bytes(text.as_bytes()));
+                        core::array::from_fn::<_, 5, _>(|_| from_bytes(text.as_bytes()));
                     insert(
                         m,
                         &kd,
@@ -1544,7 +1545,7 @@ mod tests {
                 let key = [2i64; 10];
                 let a = msrt_map_get_ptr(&source, &kd, &vd, key.as_ptr().cast()) as *const StrVal;
                 let b = msrt_map_get_ptr(&target, &kd, &vd, key.as_ptr().cast()) as *const StrVal;
-                for i in 0..3 {
+                for i in 0..5 {
                     assert_eq!(string::bytes(a.add(i)), string::bytes(b.add(i)));
                     assert_ne!(
                         string::bytes(a.add(i)).as_ptr(),
@@ -1557,7 +1558,7 @@ mod tests {
                 let key = [k; 10];
                 let p = msrt_map_get_ptr(&target, &kd, &vd, key.as_ptr().cast()) as *const StrVal;
                 let text = format!("long independently owned value for key {k}");
-                for i in 0..3 {
+                for i in 0..5 {
                     assert_eq!(string::bytes(p.add(i)), text.as_bytes());
                 }
             }

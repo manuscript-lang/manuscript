@@ -16,12 +16,14 @@ type WideValue:
     first: String
     second: String
     third: String
+    fourth: String
+    fifth: String
 
 fn key(i: Int) WideKey: WideKey(i, i, i, i, i, i, i, i, i, i)
 
 fn value(i: Int) WideValue:
     let text = "a long independently owned runtime value " + i.to_string()
-    return WideValue(text.clone(), text.clone(), text)
+    return WideValue(text.clone(), text.clone(), text.clone(), text.clone(), text)
 
 fn merged_wide() Map[WideKey, WideValue]:
     var source = Map[WideKey, WideValue]()
@@ -49,6 +51,8 @@ test "wide Map merge preserves order and owns values after the source drops":
         try expect_equal(found.first, text)
         try expect_equal(found.second, text)
         try expect_equal(found.third, text)
+        try expect_equal(found.fourth, text)
+        try expect_equal(found.fifth, text)
 
 test "primitive Map merge preserves overwrite and empty-source behavior":
     var target: Map[Int, Int] = {2: 99, -1: -1}
