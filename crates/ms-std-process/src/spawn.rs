@@ -191,6 +191,10 @@ pub fn start(
             shared,
         )),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(Fail::status(STATUS_UNAVAILABLE)),
+        // Windows reports a missing working directory as "directory name is invalid".
+        Err(_) if cwd.is_some_and(|d| !std::path::Path::new(&os_string(d)).is_dir()) => {
+            Err(Fail::status(STATUS_UNAVAILABLE))
+        }
         Err(e) => Err(failed(e.raw_os_error().unwrap_or(0))),
     }
 }
