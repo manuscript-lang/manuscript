@@ -108,7 +108,6 @@ impl Checker {
         if nested {
             self.scope = Scope::new(Some(old.clone()));
         }
-        let locks = self.held_locks.len();
         let mut fall = true;
         let mut breaks = false;
         for s in body {
@@ -119,7 +118,6 @@ impl Checker {
             }
         }
         self.scope = old;
-        self.held_locks.truncate(locks);
         (fall, breaks)
     }
 
@@ -207,10 +205,6 @@ impl Checker {
             info = self.check_expression(value, info, Some(&bound));
         }
         self.pattern(pattern, &bound, mutable, Some(value));
-        if let PatternKind::Name(name) = &pattern.kind {
-            self.begin_lock(s, *name, value, &bound);
-        }
-        self.release_guard(value);
         // The scope closes a resource nothing takes; ownership decides which bindings that is.
         if matches!(pattern.kind, PatternKind::Name(_))
             && !is_invalid_id(&bound)
@@ -366,39 +360,7 @@ impl Checker {
         (false, false)
     }
 
-    /// `guard.close()` releases the lock the guard holds, also as `try guard.close()`,
-    /// `guard.close().get(none)` or the value of a `let`.
-    pub(crate) fn release_guard(&mut self, value: &Expr) {
-        let mut e = value;
-        loop {
-            match &e.kind {
-                ExprKind::Unary {
-                    op: UnaryOp::Try,
-                    operand,
-                } => e = operand,
-                ExprKind::Call { callee, .. } => {
-                    let ExprKind::Member { left, name } = &callee.kind else {
-                        return;
-                    };
-                    if name.as_str() == "close" {
-                        let ExprKind::Name(guard) = &left.kind else {
-                            return;
-                        };
-                        if let Some(at) = self.held_locks.iter().rposition(|(_, _, g)| g == guard) {
-                            self.held_locks.remove(at);
-                        }
-                        return;
-                    }
-                    // `.get(none)` and the like wrap the close.
-                    e = left;
-                }
-                _ => return,
-            }
-        }
-    }
-
     fn check_call_statement(&mut self, pos: Pos, value: &Expr) -> (bool, bool) {
-        self.release_guard(value);
         let i = if matches!(value.kind, ExprKind::Match { .. }) {
             // A match used as a statement discards its result, so its arms need
             // not agree on a value.
@@ -467,7 +429,7 @@ impl Checker {
         else_body: &[Stmt],
     ) -> (bool, bool) {
         let i = self.expression(cond, None);
-        let t = i.t();
+        let t = self.payload_of(cond, i.t());
         let mut payload = invalid();
         if (t.is_std("Optional") && t.args.len() == 1) || (t.is_std("Result") && t.args.len() == 2)
         {
@@ -513,7 +475,7 @@ impl Checker {
 
     fn check_for(&mut self, s: &Stmt, name: Name, iter: &Expr, body: &[Stmt]) -> (bool, bool) {
         let i = self.expression(iter, None);
-        let t = i.t();
+        let t = self.payload_of(iter, i.t());
         let mut element = invalid();
         if t.is_std("List") || t.is_std("Set") {
             if !t.args.is_empty() {
@@ -915,8 +877,9 @@ impl Checker {
         arms: &'a [Arm],
         body: &mut dyn FnMut(&mut Checker, &'a Arm) -> (bool, bool),
     ) -> (bool, bool) {
-        let info = self.expression(value, None);
-        let t = info.t();
+        let mut info = self.expression(value, None);
+        let t = self.payload_of(value, info.t());
+        info.ty = Some(t.clone());
         if arms.first().is_some_and(|a| a.chain) && t.id != "<invalid>" && !t.is_std("Optional") {
             self.type_error(
                 value.pos,

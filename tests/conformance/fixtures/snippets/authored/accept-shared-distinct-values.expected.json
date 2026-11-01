@@ -8,7 +8,7 @@
     "diagnostics": [],
     "text": {
       "exit_code": 0,
-      "stdout": "Checked accept-sequential-and-distinct-locks.ms\n",
+      "stdout": "Checked accept-shared-distinct-values.ms\n",
       "stderr": ""
     }
   }

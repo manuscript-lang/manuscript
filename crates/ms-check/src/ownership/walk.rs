@@ -816,7 +816,10 @@ impl Walker<'_> {
                     root_node: e.id,
                     projection: false,
                     through_ref: None,
-                    through_shared: self.cx.m.info(e).through_shared.is_some(),
+                    // Lending a handle with `var` lends its value: a closure that does so keeps
+                    // its copy of the handle like a read.
+                    through_shared: self.cx.m.info(e).through_shared.is_some()
+                        || self.cx.classes.proxy(&b.ty),
                     text: b.name.as_str().to_string(),
                 };
                 Some((info, p))
@@ -1998,6 +2001,11 @@ impl Walker<'_> {
             return;
         };
         let class = self.class_of(e);
+        // A part read through a `Proxy` handle is a copy: the shared value keeps it.
+        if d == Demand::Consume && class != Class::Resource && self.through_handle(e) {
+            self.read_place(e.pos, &info);
+            return;
+        }
         if d == Demand::Consume && class != Class::Copy && self.partial_move(e, &info, class) {
             return;
         }

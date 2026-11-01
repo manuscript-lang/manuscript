@@ -2,7 +2,7 @@ import expect_equal, expect_false from "@std/test/test.ms"
 import Item, Box, Holder, Choice from "./domain.ms"
 import Read, invoke, relay, as_view from "./contracts.ms"
 import Closeable from "@std/core.ms"
-import share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 
 impl Read[Int] for Item:
     fn get() Int:
@@ -54,8 +54,7 @@ import Resource from "./domain.ms"
 
 impl Closeable for Resource:
     var fn close() Unit!:
-        var guard = self.events.lock()
-        guard.value.append(value: 20)
+        self.events.append(value: 20)
         return ok(unit)
 
 fn leave(resource: Resource) Unit:
@@ -66,9 +65,9 @@ export fn second_resource(resource: Resource) Closeable:
     return resource
 
 test "second local cleanup":
-    let events = share(List[Int]())
+    let events = Shared(List[Int]())
     leave(Resource(events))
-    events.get().get(index: 0) | try expect_equal(20)
+    events.get(index: 0) | try expect_equal(20)
 
 import mixed from "./first.ms"
 

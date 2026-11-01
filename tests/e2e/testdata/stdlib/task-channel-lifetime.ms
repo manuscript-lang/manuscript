@@ -124,7 +124,7 @@ test "a long lived group does not retain discarded collected channels":
 
     let after = memory_usage() | try expect_ok
     try expect_true(after.heap_used <= before.heap_used + 1024)
-    group.tasks.get().length() | try expect_equal(0)
+    group.tasks.length() | try expect_equal(0)
 
 test "channels spawned after group close are closed immediately":
     var group = TaskGroup[Unit!ChannelError, Unit, Int]()

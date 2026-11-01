@@ -249,6 +249,7 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
             return ok(none)
 
         let end = PipeEnd(self.link.clone(), self.inbox)
+
         while true:
             let next = try end.next_frame()
             if next.is_none():
@@ -452,4 +453,5 @@ impl Closeable for ProcessGroup[T, In, Out]:
         for index in 0..self.processes.length():
             let open = self.processes[index].clone()
             stop_child(open.link, open.inbox, open.native)
+
         return ok(unit)

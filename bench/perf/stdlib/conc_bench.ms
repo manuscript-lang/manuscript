@@ -1,7 +1,7 @@
 import keep, measure from "@std/test/bench.ms"
 import Channel from "@std/io/channels.ms"
 import TaskGroup, Task from "@std/concurrency/tasks.ms"
-import share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 
 fn produce(ch: Channel[Int, Unit]) Int:
     var c = ch
@@ -20,6 +20,9 @@ fn echo(ch: Channel[Int, Int]) Int:
         let _ = c.send(r.get(0))
 
     return 0
+
+fn bump(var total: Int) Unit:
+    total += 1
 
 bench "tasks.spawn_results_1000":
     fn work() Result[Unit, Error]:
@@ -59,16 +62,25 @@ bench "tasks.spawn_then_result_5000":
 
     try measure(5000, work)
 
-bench "lock.uncontended":
+bench "shared.update":
     fn work() Result[Unit, Error]:
-        let box = share(0)
-
+        var box = Shared(0)
         for i in 0..200000:
-            var g = box.lock()
-            g.value += 1
+            box += 1
 
-        var g = box.lock()
-        return keep(g.value)
+        let total: Int = box
+        return keep(total)
+
+    try measure(200000, work)
+
+bench "shared.call":
+    fn work() Result[Unit, Error]:
+        var box = Shared(0)
+        for i in 0..200000:
+            bump(var box)
+
+        let total: Int = box
+        return keep(total)
 
     try measure(200000, work)
 

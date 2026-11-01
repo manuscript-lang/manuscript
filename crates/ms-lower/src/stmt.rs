@@ -1268,7 +1268,15 @@ impl<'a> FnLower<'a> {
                 self.keys_view_for = None;
                 self.map_walk_for = None;
                 let walk = self.map_walk.take();
-                let it = it?;
+                let mut it = it?;
+                // Another holder can change a value read through a `Shared` handle while the
+                // loop runs, so the loop walks its own copy.
+                if self.through_shared(iter) && !it.own {
+                    it = Val {
+                        v: self.owned(it),
+                        own: true,
+                    };
+                }
                 if self.dead {
                     self.scopes.pop();
                     return Ok(());
@@ -1291,7 +1299,6 @@ impl<'a> FnLower<'a> {
                 }) {
                     return self.map_walk_loop(&loop_var, it, walk, body);
                 }
-                let mut it = it;
                 let mut ity = self.ty_of(it.v);
                 if matches!(self.b.m.types.kind(ity), TyKind::Obj(n, _) if n == "SplitIter") {
                     return self.split_loop(&loop_var, it, body);

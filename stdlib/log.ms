@@ -140,7 +140,6 @@ impl Transport for FileTransport:
     fn close() Unit:
         if not self.inner.gate.is_shut():
             self.inner.close()
-
             self.file.close().get(none)
 
 # A structured logger: level filtering, bound fields, and a pluggable `Transport`. The `_with` methods

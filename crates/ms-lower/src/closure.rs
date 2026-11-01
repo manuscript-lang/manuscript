@@ -1533,7 +1533,8 @@ fn lambda_mutated(fl: &FnLower<'_>, lam: &Lambda) -> std::collections::HashSet<u
     with_alias_origins(fl, &lam.body, changed)
 }
 
-/// The captured locals the lambda `lam` changes: they are shared by reference.
+/// The captured locals the lambda `lam` changes: they are shared by reference. A `Proxy`
+/// handle is captured as a copy, since what changes through it is the one shared value.
 fn lambda_changes(
     fl: &FnLower<'_>,
     lam: &Lambda,
@@ -1542,6 +1543,7 @@ fn lambda_changes(
     let mutated = lambda_mutated(fl, lam);
     captures
         .iter()
+        .filter(|b| !fl.cx.classes.proxy(&b.ty))
         .map(|b| b.uid)
         .filter(|uid| mutated.contains(uid))
         .collect()

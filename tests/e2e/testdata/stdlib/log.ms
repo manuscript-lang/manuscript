@@ -10,7 +10,7 @@ import (
     file_transport
 ) from "@std/log.ms"
 import IoError, WriteStream from "@std/io/io.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 import JsonValue from "@std/data/json.ms"
@@ -269,14 +269,9 @@ impl WriteStream for SlowStream:
 
     var fn write(data: String) Unit!IoError:
         let half = data.length() / 2
-        var first = self.parts.lock()
-        first.value.append(data.slice(0, half).get(""))
-        first.close().get(none)
+        self.parts.append(data.slice(0, half).get(""))
         sleep(nanoseconds(1000000))
-
-        var second = self.parts.lock()
-        second.value.append(data.slice(half, data.length()).get(""))
-        second.close().get(none)
+        self.parts.append(data.slice(half, data.length()).get(""))
         return ok(unit)
 
     var fn write_bytes(data: Bytes) Unit!IoError:
@@ -288,7 +283,7 @@ fn chatter(logger: Logger, name: String) Unit!:
     return ok(unit)
 
 test "concurrent tasks never interleave a record":
-    let parts = share(List[String]())
+    let parts = Shared(List[String]())
     let logger = (create(stream_transport(SlowStream(parts)), timestamp: false)).get()
     let group = TaskGroup[Unit!, Unit, Unit]()
     let first = logger.clone()
@@ -298,8 +293,7 @@ test "concurrent tasks never interleave a record":
     a.result() | try expect_ok | try expect_ok
     b.result() | try expect_ok | try expect_ok
 
-    var guard = parts.lock()
-    let text = guard.value.join("")
+    let text = parts.join("")
     try expect_equal(text.split("\n").length(), 7)
     for line in text.split("\n"):
         if line != "":

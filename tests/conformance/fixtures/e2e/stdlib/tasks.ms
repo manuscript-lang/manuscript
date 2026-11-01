@@ -1,6 +1,6 @@
 # conform: tags=closures,scope-cleanup,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import share, Shared from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
@@ -15,30 +15,29 @@ fn slow(milliseconds: Int, label: String) String:
     pause(milliseconds)
     return label
 
-fn record(log: Shared[List[String]], entry: String) Unit:
-    var lines = log.lock()
-    lines.value.append(entry)
+fn record(var log: List[String], entry: String) Unit:
+    log.append(entry)
 
 fn slow_square(n: Int) Int:
     pause(1)
     return n * n
 
-fn leave_early(log: Shared[List[String]]) Int:
+fn leave_early(var log: Shared[List[String]]) Int:
     let group = TaskGroup[Unit]()
-    let held = log
+    var held = log
 
     group.spawn(
         fn ch:
             pause(200)
-            record(held, "finished")
+            record(var held, "finished")
     )
 
     return 7
 
 fn wait_for(box: Shared[List[Int]]) Int:
-    while box.get().length() == 0:
+    while box.length() == 0:
         pause(1)
-    return box.get().get(0)
+    return box.get(0)
 
 test "results come back in the order the tasks started":
     let group = TaskGroup[Int]()
@@ -60,21 +59,21 @@ test "a task handle returns its own result":
     first.result() | try expect_ok | try expect_equal(9)
 
 test "tasks switch while one waits":
-    let log: Shared[List[String]] = share([])
+    var log: Shared[List[String]] = Shared([])
     var group = TaskGroup[Unit]()
-    let first = log
-    let second = log
+    var first = log
+    var second = log
 
     group.spawn(
         fn ch:
             pause(30)
-            record(first, "late")
+            record(var first, "late")
     )
 
-    group.spawn(fn ch: record(second, "early"))
+    group.spawn(fn ch: record(var second, "early"))
     group.wait() | try expect_ok
     try group.close()
-    try expect_equal(log.get().clone(), ["early", "late"])
+    try expect_equal(log.clone(), ["early", "late"])
 
 test "a task owns the values its closure captures":
     let greeting = "hello from a task, long enough for the heap"
@@ -85,19 +84,19 @@ test "a task owns the values its closure captures":
     )
 
 test "leaving the block cancels tasks that are still running":
-    let log: Shared[List[String]] = share([])
+    var log: Shared[List[String]] = Shared([])
     var group = TaskGroup[Unit]()
-    let held = log
+    var held = log
 
     group.spawn(
         fn ch:
             pause(200)
-            record(held, "finished")
+            record(var held, "finished")
     )
 
     try group.close()
     pause(300)
-    try expect_equal(log.get().length(), 0)
+    try expect_equal(log.length(), 0)
 
 test "an empty group has no results":
     let group = TaskGroup[Int]()
@@ -175,10 +174,10 @@ test "many tasks run and keep their order":
     try expect_equal(results.get(299), 299 * 299)
 
 test "an early exit from the block cancels the tasks":
-    let log: Shared[List[String]] = share([])
-    try expect_equal(leave_early(log), 7)
+    var log: Shared[List[String]] = Shared([])
+    try expect_equal(leave_early(var log), 7)
     pause(300)
-    try expect_equal(log.get().length(), 0)
+    try expect_equal(log.length(), 0)
 
 test "groups nest and close independently":
     let outer = TaskGroup[Int]()
@@ -190,18 +189,16 @@ test "groups nest and close independently":
     kept.result() | try expect_ok | try expect_equal(25)
 
 test "a task can wait for another task's value":
-    let box: Shared[List[Int]] = share([])
+    var box: Shared[List[Int]] = Shared([])
     let group = TaskGroup[Int]()
-    let producer = box
+    var producer = box
     let consumer = box
 
     group.spawn(
         fn ch:
             pause(10)
 
-            var items = producer.lock()
-            items.value.append(42)
-            items.close().get(none)
+            producer.append(42)
             return 0
     )
 
@@ -209,12 +206,12 @@ test "a task can wait for another task's value":
     reader.result() | try expect_ok | try expect_equal(42)
 
 test "a task cancelled before it first ran never starts":
-    let log: Shared[List[String]] = share([])
+    var log: Shared[List[String]] = Shared([])
     var group = TaskGroup[Unit]()
-    let held = log
-    group.spawn(fn ch: record(held, "ran"))
+    var held = log
+    group.spawn(fn ch: record(var held, "ran"))
     try group.close()
-    try expect_equal(log.get().length(), 0)
+    try expect_equal(log.length(), 0)
 
 test "closing a group twice leaves a later group alone":
     var first = TaskGroup[Int]()

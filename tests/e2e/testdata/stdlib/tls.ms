@@ -7,7 +7,7 @@ import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/
 import Bytes from "@std/bytes.ms"
 import connect, connect_tls, connect_tls_config, http_client, listen, listen_tls, serve from "@std/net/net.ms"
 import timestamp from "@std/os/time.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import Listener, Connection from "@std/net/net.ms"
 import certificate, private_key from "./support/certificates.ms"
@@ -142,7 +142,7 @@ fn answer_ping(var connection: Connection) Int:
     return 1
 
 fn serve_one_tls(listener: Shared[Listener]) Int:
-    match listener.get().accept(3.seconds):
+    match listener.accept(3.seconds):
         ok(accepted):
             var connection = accepted
             return answer_ping(var connection)
@@ -158,14 +158,14 @@ test "raw TLS listeners and clients handshake and report negotiated details":
         server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
         private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: false
     )
-    let listener: Shared[Listener] = share(
+    var listener: Shared[Listener] = Shared(
         try listen_tls("127.0.0.1:0", server_tls, 3.seconds)
     )
     var group = TaskGroup[Int]()
     let handle = listener
     group.spawn(fn ch: serve_one_tls(handle))
 
-    var client = try connect_tls_config(listener.get().address(), client_tls, 3.seconds)
+    var client = try connect_tls_config(listener.address(), client_tls, 3.seconds)
     try client.write("ping", 3.seconds)
     try expect_equal((try client.read(4, 3.seconds)).get(), "pong".to_bytes())
 
@@ -185,14 +185,14 @@ test "raw TLS listeners and clients handshake and report negotiated details":
     let served = try group.results()
     try expect_equal(served[0], 1)
     try group.close()
-    try listener.get().close()
+    try listener.close()
 
 test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
     let server_tls = TlsOptions(
         server_name: "", roots_pem: "", certificate_pem: certificate(),
         private_key_pem: private_key(), alpn: [], require_client_certificate: false
     )
-    let listener: Shared[Listener] = share(
+    var listener: Shared[Listener] = Shared(
         try listen_tls("127.0.0.1:0", server_tls, 3.seconds)
     )
     var group = TaskGroup[Int]()
@@ -200,18 +200,18 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
     group.spawn(fn ch: serve_one_tls(handle))
 
     let _failure = try expect_error(
-        connect_tls(listener.get().address(), "stdlib.test", 3.seconds)
+        connect_tls(listener.address(), "stdlib.test", 3.seconds)
     )
     let _served = try group.results()
     try group.close()
-    try listener.get().close()
+    try listener.close()
 
     let plain = try listen("127.0.0.1:0")
     let client = try connect(plain.address(), 2.seconds)
     try expect_false(client.tls_info().is_ok())
 
 fn count_until_eof(listener: Shared[Listener]) Int:
-    let accepted = listener.get().accept(5.seconds)
+    let accepted = listener.accept(5.seconds)
     if accepted.is_error(): return -1
 
     var connection = accepted.get()
@@ -239,14 +239,14 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
         server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
         private_key_pem: "", alpn: [], require_client_certificate: false
     )
-    let listener: Shared[Listener] = share(
+    var listener: Shared[Listener] = Shared(
         try listen_tls("127.0.0.1:0", server_tls, 5.seconds)
     )
     var group = TaskGroup[Int]()
     let handle = listener
     group.spawn(fn ch: count_until_eof(handle))
 
-    var client = try connect_tls_config(listener.get().address(), client_tls, 5.seconds)
+    var client = try connect_tls_config(listener.address(), client_tls, 5.seconds)
     try client.write("y".repeat(20000000).get(), 20.seconds)
 
     # No read first: the server's post-handshake bytes must not reset the connection.
@@ -255,4 +255,4 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
     let counted = try group.results()
     try expect_equal(counted[0], 20000000)
     try group.close()
-    try listener.get().close()
+    try listener.close()

@@ -4,7 +4,7 @@ import ControlError, cpu_usage, groups, memory_usage, process_info, replace, res
 import FileSystemError, FileEvent, FileWatcher, join, create_directory, stat_filesystem, temporary, watch, watch_native, write_file from "@std/os/fs.ms"
 import milliseconds, sleep from "@std/os/time.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 
 fn expect_process_error[T](outcome: T!ControlError, expected: ControlError) Unit!:
     match outcome:
@@ -127,7 +127,7 @@ test "native watcher max_entries counts the paths under the root":
     try w.close()
 
 fn wait_next(w: Shared[FileWatcher]) Int:
-    let r = w.get().next()
+    let r = w.next()
     if r.is_ok():
         return 1
 
@@ -135,21 +135,21 @@ fn wait_next(w: Shared[FileWatcher]) Int:
 
 test "close wakes a pending native next with Closed":
     let t = temporary("ms-r2-") | try expect_ok
-    let w: Shared[FileWatcher] = share(
+    var w: Shared[FileWatcher] = Shared(
         try watch_native(path: t.path(), recursive: false, overflow: "error")
     )
     let group = TaskGroup[Int]()
     let a = w
     group.spawn(fn ch: wait_next(a))
     sleep(100.milliseconds)
-    try w.get().close()
+    try w.close()
 
     let got = try group.results()
     try expect_equal(got[0], 2)
 
 test "a group timeout cancels a task waiting on a watcher":
     let t = temporary("ms-r2-") | try expect_ok
-    let w: Shared[FileWatcher] = share(
+    var w: Shared[FileWatcher] = Shared(
         try watch(path: t.path(), recursive: false, interval: milliseconds(20))
     )
     var group = TaskGroup[Int](timeout: 300.milliseconds)
@@ -159,7 +159,7 @@ test "a group timeout cancels a task waiting on a watcher":
     try expect_equal(c.result().get(-1), 7)
     try expect_true(h.result().is_error())
     try group.close()
-    try w.get().close()
+    try w.close()
 
 test "recursive native watch sees a file in a new subdirectory":
     let t = temporary("ms-r2-") | try expect_ok

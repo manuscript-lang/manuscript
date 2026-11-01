@@ -1,5 +1,5 @@
 import Closeable from "@std/core.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import expect_equal from "@std/test/test.ms"
 
 type Door:
@@ -8,8 +8,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        var seen = self.log.lock()
-        seen.value.append(self.id)
+        self.log.append(self.id)
         return ok(unit)
 
 fn open(id: Int, log: Shared[List[Int]]) Door?:
@@ -38,18 +37,18 @@ fn hand_on(log: Shared[List[Int]]) Door?:
         none: return none
 
 test "a payload moved out of the arm is not closed by the match":
-    let log: Shared[List[Int]] = share([])
+    let log: Shared[List[Int]] = Shared([])
     let kept = hand_on(log)
-    log.get().clone() | try expect_equal([])
+    log.clone() | try expect_equal([])
     if kept.is_some():
-        log.get().clone() | try expect_equal([])
+        log.clone() | try expect_equal([])
 
 test "return from an arm closes the temporary scrutinee once":
-    let log: Shared[List[Int]] = share([])
+    let log: Shared[List[Int]] = Shared([])
     early(log) | try expect_equal(10)
-    log.get().clone() | try expect_equal([1])
+    log.clone() | try expect_equal([1])
 
 test "falling out of the match closes it once":
-    let log: Shared[List[Int]] = share([])
+    let log: Shared[List[Int]] = Shared([])
     late(log) | try expect_equal(2)
-    log.get().clone() | try expect_equal([2])
+    log.clone() | try expect_equal([2])

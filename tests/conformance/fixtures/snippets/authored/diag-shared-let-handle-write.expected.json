@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3060",
+        "phase": "type",
+        "message": "cannot change `stats.hits`: `stats` is declared with let, which is immutable including its contents; declare it `var stats` to change it",
+        "position": {
+          "file": "diag-shared-let-handle-write.ms",
+          "line": 10,
+          "column": 11,
+          "offset": 231
+        },
+        "fix": {
+          "position": {
+            "file": "diag-shared-let-handle-write.ms",
+            "line": 9,
+            "column": 5,
+            "offset": 186
+          },
+          "end": {
+            "file": "diag-shared-let-handle-write.ms",
+            "line": 9,
+            "column": 8,
+            "offset": 189
+          },
+          "replacement": "var"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-shared-let-handle-write.ms:10:11: type: cannot change `stats.hits`: `stats` is declared with let, which is immutable including its contents; declare it `var stats` to change it\n    |\n 10 |     stats.hits = 1\n    |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -17,7 +17,7 @@ import (
     Listener,
     Connection
 ) from "@std/net/net.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import sleep from "@std/os/time.ms"
 
@@ -98,7 +98,7 @@ fn expect_ip_error(input: String) Unit!:
     return ok(unit)
 
 fn accept_one(l: Shared[Listener]) Int:
-    let r = l.get().accept(2.seconds)
+    let r = l.accept(2.seconds)
 
     if r.is_ok():
         r.get().close().get(none)
@@ -107,7 +107,7 @@ fn accept_one(l: Shared[Listener]) Int:
     return 0
 
 test "two tasks accept on one listener":
-    let shared: Shared[Listener] = share(try listen("127.0.0.1:0"))
+    var shared: Shared[Listener] = Shared(try listen("127.0.0.1:0"))
     var group = TaskGroup[Int]()
     let a = shared
     let b = shared
@@ -115,18 +115,18 @@ test "two tasks accept on one listener":
     group.spawn(fn ch: accept_one(b))
     sleep(50.milliseconds)
 
-    var c1 = try connect(shared.get().address(), 2.seconds)
-    var c2 = try connect(shared.get().address(), 2.seconds)
+    var c1 = try connect(shared.address(), 2.seconds)
+    var c2 = try connect(shared.address(), 2.seconds)
     let got = try group.results()
     try expect_equal(got.length(), 2)
     try expect_equal(got[0] + got[1], 2)
     try c1.close()
     try c2.close()
     try group.close()
-    try shared.get().close()
+    try shared.close()
 
 fn read_some(c: Shared[Connection]) Int:
-    let r = c.get().read(1, 2.seconds)
+    let r = c.read(1, 2.seconds)
     if r.is_ok() and r.get().is_some():
         return 1
 
@@ -136,7 +136,7 @@ test "two tasks read one connection":
     let listener = try listen("127.0.0.1:0")
     var client = try connect(listener.address(), 2.seconds)
     let server = try listener.accept(2.seconds)
-    let shared: Shared[Connection] = share(server)
+    var shared: Shared[Connection] = Shared(server)
     var group = TaskGroup[Int]()
     let a = shared
     let b = shared
@@ -149,11 +149,11 @@ test "two tasks read one connection":
     try expect_equal(got[0] + got[1], 2)
     try group.close()
     try client.close()
-    try shared.get().close()
+    try shared.close()
 
 # Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
 fn answer_mx(socket: Shared[DatagramSocket]) Int!NetworkError:
-    let query = try socket.get().receive(512, 2.seconds)
+    let query = try socket.receive(512, 2.seconds)
     let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
     let header = Bytes(
         [query.data.get(0), query.data.get(1), 129, 128, 0, 1, 0, 1, 0, 0, 0, 0]
@@ -165,7 +165,7 @@ fn answer_mx(socket: Shared[DatagramSocket]) Int!NetworkError:
             116, 0
         ]
     )
-    try socket.get().send_bytes(
+    try socket.send_bytes(
         header.concat(question).concat(record).concat(name), query.sender, 2.seconds
     )
     return ok(1)
@@ -176,8 +176,8 @@ test "resolve returns typed DNS records from the configured resolver":
     try expect_equal(one[0].value, "127.0.0.1")
     try expect_equal(one[0].kind.text(), "A")
 
-    let server: Shared[DatagramSocket] = share(try bind_datagram("127.0.0.1:0"))
-    let derived = try with_resolver(server.get().address())
+    let server: Shared[DatagramSocket] = Shared(try bind_datagram("127.0.0.1:0"))
+    let derived = try with_resolver(server.address())
     let group = TaskGroup[Int]()
     let socket = server
     group.spawn(fn ch: answer_mx(socket).get(0))

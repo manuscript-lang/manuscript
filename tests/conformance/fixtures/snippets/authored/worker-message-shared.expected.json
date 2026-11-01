@@ -14,7 +14,7 @@
           "file": "worker-message-shared.ms",
           "line": 10,
           "column": 14,
-          "offset": 270
+          "offset": 263
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "worker-message-shared.ms",
           "line": 14,
           "column": 17,
-          "offset": 363
+          "offset": 356
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "worker-message-shared.ms",
           "line": 15,
           "column": 19,
-          "offset": 405
+          "offset": 398
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "worker-message-shared.ms",
           "line": 17,
           "column": 11,
-          "offset": 486
+          "offset": 480
         }
       }
     ],

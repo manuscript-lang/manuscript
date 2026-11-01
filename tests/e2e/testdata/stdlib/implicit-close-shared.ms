@@ -1,7 +1,7 @@
 import expect_equal, expect_ok from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
 import append_file, read_file, temporary from "@std/os/fs.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 
 # Close appends the id to a log file, so the log is the order in which the closes ran.
 type Tracked:
@@ -20,20 +20,18 @@ fn closed(log: String) String:
     return ""
 
 fn last_holder(log: String) Int:
-    let first = share(Tracked(log, 1))
+    let first = Shared(Tracked(log, 1))
     let second = first
-    return second.get().id
+    return second.id
 
 fn other_holder_lives(log: String) Shared[Tracked]:
-    let first = share(Tracked(log, 1))
+    let first = Shared(Tracked(log, 1))
     let second = first
     return second
 
-fn locked_then_dropped(log: String) Int:
-    let box = share(Tracked(log, 1))
-    var guard = box.lock()
-    guard.value.id += 0
-    guard.close().get(none)
+fn changed_then_dropped(log: String) Int:
+    var box = Shared(Tracked(log, 1))
+    box.id += 0
     return 0
 
 test "the last holder closes the payload":
@@ -47,10 +45,10 @@ test "a holder handed to the caller keeps the payload open":
     let log = "{temporary.path()}/log"
     let kept = other_holder_lives(log.clone())
     try expect_equal(closed(log.clone()), "")
-    try expect_equal(kept.get().id, 1)
+    try expect_equal(kept.id, 1)
 
-test "a payload locked and released is closed once":
+test "a payload changed through its handle is closed once":
     let temporary = temporary("manuscript-shared-") | try expect_ok
     let log = "{temporary.path()}/log"
-    try expect_equal(locked_then_dropped(log.clone()), 0)
+    try expect_equal(changed_then_dropped(log.clone()), 0)
     try expect_equal(closed(log), "1,")

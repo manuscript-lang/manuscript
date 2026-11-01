@@ -297,7 +297,10 @@ impl<'a> FnLower<'a> {
         if let Some(held) = t.args.first() {
             self.register_shared_close(held, handle)?;
         }
-        let payload = self.owned(x);
+        let mut payload = self.owned(x);
+        if a.wrap_optional.is_some() {
+            payload = self.b.opt_some(payload);
+        }
         let v = self.shared_new(payload, handle);
         Ok(Val { v, own: true })
     }

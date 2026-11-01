@@ -212,8 +212,6 @@ pub struct Checker {
     pub(crate) function: usize,
     pub(crate) serial: usize,
     pub(crate) loops: usize,
-    /// `(function, place)` of each `lock` guard that is still held.
-    pub(crate) held_locks: Vec<(usize, String, Name)>,
     pub(crate) test_function: usize,
     pub(crate) rejected_names: HashSet<Name>,
     pub(crate) unknown_type: bool,
@@ -260,7 +258,6 @@ impl Checker {
             function: 0,
             serial: 0,
             loops: 0,
-            held_locks: Vec::new(),
             test_function: 0,
             rejected_names: HashSet::new(),
             unknown_type: false,
@@ -674,10 +671,7 @@ impl Checker {
         for item in &module.imports {
             let path = item.path.as_ref();
             let found: Option<SymRef> = if path.starts_with("@std/") {
-                let pn = match stdlib::import_source(path, item.name) {
-                    Some(m) => m.file,
-                    None => n(path),
-                };
+                let pn = n(path);
                 if stdlib::standard_source_module(pn).is_some() {
                     let f = self
                         .p
@@ -700,12 +694,7 @@ impl Checker {
                 })
             };
             let hidden = stdlib::is_internal(path) && !module.file.starts_with("@std/");
-            // The source half of a mixed standard module sees its native half's private declarations.
-            let own_half = module.file.strip_suffix("+source") == Some(path);
-            let usable = found
-                .as_ref()
-                .filter(|f| (f.export || own_half) && !hidden)
-                .cloned();
+            let usable = found.as_ref().filter(|f| f.export && !hidden).cloned();
             let Some(found) = usable else {
                 let end = Pos::new(
                     item.name_pos.offset + item.name.len() as u32,

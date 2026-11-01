@@ -328,6 +328,19 @@ impl Checker {
         Some(payload)
     }
 
+    /// A `Proxy` handle where only a value fits (iterated, matched, tested by `if let`) stands
+    /// for its payload, recorded on `e`. Returns the type to check against.
+    pub(crate) fn payload_of(&mut self, e: &Expr, t: Ty) -> Ty {
+        let Some(payload) = self.proxy_payload(&t) else {
+            return t;
+        };
+        let mut info = self.info_of(e).unwrap_or_default();
+        info.through_shared = Some(t);
+        info.ty = Some(payload.clone());
+        self.set_info(e, info);
+        payload
+    }
+
     /// Infers an expression's facts without committing them.
     pub(crate) fn infer(&mut self, e: &Expr, expected: Option<&Ty>) -> Info {
         self.capture_scope(e);
@@ -1109,7 +1122,7 @@ impl Checker {
             (self.expression(left, literal_hint(left, &bt)), b)
         } else {
             let a = self.expression(left, None);
-            let at = a.t();
+            let at = self.payload_of(left, a.t());
             // `opt == 3` compares as `opt == Int?`; the plain side wraps without `some`.
             let wraps = matches!(op, BinaryOp::Eq | BinaryOp::Ne)
                 && at.is_std("Optional")
@@ -1121,7 +1134,8 @@ impl Checker {
             };
             (a, self.expression(right, hint))
         };
-        let (at, bt) = (a.t(), b.t());
+        // An operand read through a `Proxy` handle is its payload.
+        let (at, bt) = (self.payload_of(left, a.t()), self.payload_of(right, b.t()));
         let logical = matches!(op, BinaryOp::And | BinaryOp::Or);
         i.no_return = a.no_return || (!logical && b.no_return);
         if logical {

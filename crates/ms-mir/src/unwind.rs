@@ -997,6 +997,11 @@ fn slot_safe_params(m: &Module) -> Vec<Vec<bool>> {
     safe
 }
 
+/// Whether values of `ty` are plain numbers or flags, which hold no pointer.
+fn scalar(m: &Module, ty: Ty) -> bool {
+    m.types.is_int(ty) || matches!(ty, Ty::UNIT | Ty::BOOL | Ty::FLOAT | Ty::FLOAT32)
+}
+
 fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> bool {
     let Some(p) = f
         .blocks
@@ -1026,7 +1031,9 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
                 .iter()
                 .any(|a| taken.contains(&a.0) || derived.contains(&a.0));
             let view = inst.op == Op::Load && inst.args.first() == Some(&p);
+            // A number or flag read out of the value is a copy, not a borrow of it.
             if (from_held || view)
+                && !scalar(m, f.ty(r))
                 && !taken.contains(&r.0)
                 && m.result_mode(f, inst) != Some(Mode::Own)
                 && derived.insert(r.0)
@@ -1074,6 +1081,14 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
                     }
                 } else if taken.contains(&a.0) || derived.contains(&a.0) {
                     let putback = inst.op == Op::Put && i == 1 && inst.args[0] == p;
+                    // Writing a number or flag into memory the value owns changes it in place;
+                    // the slot still holds the same value.
+                    let in_place = i == 0
+                        && match inst.op {
+                            Op::Store | Op::Put => scalar(m, f.ty(inst.args[1])),
+                            Op::Take => inst.res.is_some_and(|r| scalar(m, f.ty(r))),
+                            _ => false,
+                        };
                     // A method call hands its receiver to every implementation of the method,
                     // which may take the payload out of its slot.
                     let method = match (inst.op, inst.imm) {
@@ -1099,7 +1114,7 @@ fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> boo
                                 | Op::ListFill
                                 | Op::CallInd
                         );
-                    if !putback && !borrowed {
+                    if !putback && !in_place && !borrowed {
                         return false;
                     }
                 }

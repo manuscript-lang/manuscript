@@ -1,5 +1,5 @@
 import Closeable from "@std/core.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import expect_equal from "@std/test/test.ms"
 
 type Door:
@@ -8,8 +8,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        var seen = self.log.lock()
-        seen.value.append(self.id)
+        self.log.append(self.id)
         return ok(unit)
 
 fn first_even(log: Shared[List[Int]]) Int:
@@ -31,11 +30,11 @@ fn until_two(log: Shared[List[Int]]) Int:
     return n
 
 test "return out of an owned loop closes every element once":
-    let log: Shared[List[Int]] = share([])
+    let log: Shared[List[Int]] = Shared([])
     first_even(log) | try expect_equal(2)
-    log.get().clone() | try expect_equal([1, 2, 3])
+    log.clone() | try expect_equal([1, 2, 3])
 
 test "break closes the elements it never reached":
-    let log: Shared[List[Int]] = share([])
+    let log: Shared[List[Int]] = Shared([])
     until_two(log) | try expect_equal(3)
-    log.get().clone() | try expect_equal([1, 2, 3])
+    log.clone() | try expect_equal([1, 2, 3])

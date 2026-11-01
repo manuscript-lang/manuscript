@@ -45,13 +45,15 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 ## Sharing a value
 
-`Shared[T]` from `@std/concurrency/shared.ms` gives several owners one reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow.
+`Shared[T]` from `@std/concurrency/shared.ms` gives several owners one reference-counted value. `Shared(value)` moves the value in; copying the handle adds a holder, and the value is dropped, and closed when it is a resource, with the last holder. The handle is used like the value: its fields, `[i]`, methods and operators reach the value, and where the value's type is expected (`let n: Int = hits`, a `for`, a `match`, an `if let`) the handle gives a copy of the value, since another holder can change it afterwards.
 
-To change the value, lock it into a `var` binding: `var guard = box.lock()`. The guard holds the payload as `guard.value` and puts it back when the binding goes out of scope, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. `ms check` rejects the visible case, a `lock` of the same written place (`box`, `self.lines`) while the guard of an earlier `lock` of it is still open (before its scope ends or its `close()`) in the same function; a second handle to the box, or a call that locks it, is caught only by the runtime. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `Shared` has no other public operations; the primitives `lock` is built on are private to its module. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
+A `var` handle changes the value and a `let` handle only reads it, under the usual rules: `hits += 1`, `stats.record(name)` and `f(var stats)` need a `var` handle. Assigning a value replaces the shared value (`names = ["a"]`); assigning another handle points the binding at that box (`names = other`). The methods of a type change the `Shared` values in its fields without being `var fn`, since the box, not the record, holds that state. A closure that changes a value through a captured handle may outlive its scope, and a `var` handle can be passed on with `var` from such a closure.
+
+Every call on the value runs one at a time. A call that receives the value as a `var` argument, or a method that changes it, holds the box until it returns: another task's access waits its turn, and an access from the same task (a callback, or a second handle) faults with a message naming the cause. A cancelled or faulting call releases the box and keeps the changes it made so far. Keep changes that must not interleave with another task in one function or method. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import share, Shared from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import expect_equal from "@std/test/test.ms"
 
 type Counter:
@@ -61,14 +63,16 @@ impl Counter:
     var fn bump() Unit:
         self.values.append(1)
 
-fn bump(shared: Shared[Counter]) Unit:
-    var guard = shared.lock()
-    guard.value.bump()
+fn bump_twice(var counter: Counter) Unit:
+    counter.bump()
+    counter.bump()
 
-test "change a shared value through its guard":
-    let shared = share(Counter([]))
-    bump(shared)
-    shared.get().values.length() | try expect_equal(1)
+test "change a shared value through a var handle":
+    var shared = Shared(Counter([]))
+    let view = shared
+    shared.bump()
+    bump_twice(var shared)
+    view.values.length() | try expect_equal(3)
 ```
 
 ## References inside other values

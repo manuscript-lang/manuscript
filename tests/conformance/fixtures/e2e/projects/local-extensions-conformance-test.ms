@@ -6,7 +6,7 @@ import first_view, first_method, first_generic, first_resource from "./first.ms"
 import second_view, second_method, second_generic, second_resource from "./second.ms"
 import Item, Resource from "./domain.ms"
 import Read, read_view from "./contracts.ms"
-import share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 
 test "views and functions retain local implementations across modules":
     let item = Item(2)
@@ -25,7 +25,7 @@ test "views and functions retain local implementations across modules":
     let second_fn = second_generic()
     (first_fn(item) != 12 or second_fn(item) != 22) | try expect_false
 
-    let events = share(List[Int]())
+    let events = Shared(List[Int]())
     let resource = Resource(events)
     var _first_close = first_resource(Resource(events))
     let _active = true
@@ -35,5 +35,5 @@ test "views and functions retain local implementations across modules":
     let _second_active = true
     _second_close.close()
 
-    let values = events.get()
+    let values = events.clone()
     (values.get(index: 0) != 10 or values.get(index: 1) != 20) | try expect_false

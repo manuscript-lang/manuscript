@@ -1,5 +1,5 @@
 import Closeable from "@std/core.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import expect_equal from "@std/test/test.ms"
 
 type Door:
@@ -8,8 +8,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        var seen = self.log.lock()
-        seen.value.append(self.id)
+        self.log.append(self.id)
         return ok(unit)
 
 fn present(log: Shared[List[Int]]) Int:
@@ -29,16 +28,16 @@ fn named(log: Shared[List[Int]]) Int:
     return door.id + spare.id
 
 test "an unused temporary default closes at once":
-    let log: Shared[List[Int]] = share([])
+    let log: Shared[List[Int]] = Shared([])
     expect_equal(present(log), 1) | try
-    log.get().clone() | try expect_equal([2, 1])
+    log.clone() | try expect_equal([2, 1])
 
 test "a used default closes with its binding":
-    let log: Shared[List[Int]] = share([])
+    let log: Shared[List[Int]] = Shared([])
     expect_equal(absent(log), 3) | try
-    log.get().clone() | try expect_equal([3])
+    log.clone() | try expect_equal([3])
 
 test "a named default the caller keeps is not closed early":
-    let log: Shared[List[Int]] = share([])
+    let log: Shared[List[Int]] = Shared([])
     expect_equal(named(log), 9) | try
-    log.get().clone() | try expect_equal([4, 5])
+    log.clone() | try expect_equal([4, 5])

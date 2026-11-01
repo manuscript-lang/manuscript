@@ -2,25 +2,24 @@
 # conform: phase=run
 # conform: timeout=20
 import stdout from "@std/io/io.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 
-# Closing a guard hands the payload back without copying it, so locking costs the same for a large
-# payload, and a group of many tasks (whose registry is a locked list) stays linear.
-# Copying the payload on every lock made this program take minutes.
+# A write through the handle changes the payload in place, so it costs the same for a large
+# payload, and a group of many tasks (whose registry is a shared list) stays linear.
+# Copying the payload on every change made this program take minutes.
 
 export fn main() Int:
     var big = List[Int]()
     for i in 0..200000:
         big.append(i)
 
-    let box: Shared[List[Int]] = share(big)
+    var box: Shared[List[Int]] = Shared(big)
 
     for round in 0..3000:
-        var guard = box.lock()
-        guard.value[0] = round
+        box[0] = round
 
-    stdout().write("first {box.get()[0]} length {box.get().length()}\n").get()
+    stdout().write("first {box[0]} length {box.length()}\n").get()
 
     var group = TaskGroup[Int]()
     for i in 0..20000:

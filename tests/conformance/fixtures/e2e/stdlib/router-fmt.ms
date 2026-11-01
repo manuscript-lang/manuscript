@@ -19,7 +19,7 @@ import (
 import read_all from "@std/io/io.ms"
 import http_client, serve from "@std/net/net.ms"
 import create, LogError, Transport from "@std/log.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import Bytes from "@std/bytes.ms"
 import access_log, request_id, RouteParams, Router, RouterError from "@std/net/router.ms"
 import body_stream from "@std/net/sse.ms"
@@ -262,27 +262,24 @@ type Sink:
     lines: Shared[List[String]]
 
 impl Transport for Sink:
-    var fn write(data: String) Unit!LogError:
-        var guard = self.lines.lock()
-        guard.value.append(data.clone())
-        guard.close().get(none)
+    fn write(data: String) Unit!LogError:
+        self.lines.append(data.clone())
         return ok(unit)
 
-    var fn write_bytes(data: Bytes) Unit!LogError:
+    fn write_bytes(data: Bytes) Unit!LogError:
         return self.write(data.decode_utf8().get(""))
 
-    var fn flush() Unit!LogError:
+    fn flush() Unit!LogError:
         return ok(unit)
 
-    var fn close() Unit:
+    fn close() Unit:
         return unit
 
 fn logged(lines: Shared[List[String]]) String:
-    var guard = lines.lock()
-    return guard.value.join("")
+    return lines.join("")
 
 test "access_log writes one record per request":
-    let lines = share(List[String]())
+    let lines = Shared(List[String]())
     let logger = (create(Sink(lines: lines), timestamp: false)).get()
     var r = Router()
     r.use(access_log(logger))

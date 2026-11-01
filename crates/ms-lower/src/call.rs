@@ -611,8 +611,10 @@ impl<'a> FnLower<'a> {
             return self.source_method_call(e, view, m, recv_expr);
         }
         // A native or interface method that changes a value in a `Shared` box, which may wait
-        // (a stream write), holds the box for the call.
+        // (a stream write), holds the box for the call. A collection change never waits, so it
+        // needs no hold, and an argument that waits (`slot.append(run())`) does not hold the box.
         if self.shared_root(recv_expr).is_some()
+            && !ms_check::effects::collection_mutation(m)
             && crate::mutation::method_changes_receiver(m, &self.cx.mutated)
         {
             let holds = self.shared_hold(&[Some(recv_expr.clone())])?;

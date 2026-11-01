@@ -40,12 +40,12 @@ A holder closes its parts: a record, an alternative, an `Optional`, a `List` or 
 
 A binding is closed unless something takes the resource from it. Returning it, passing it to a consuming parameter, storing it, or capturing it in a closure that outlives the scope moves it to a new owner, which closes it instead. A resource acquired in a loop closes at the end of that iteration.
 
-To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. A lock guard is a common case: `guard.close()` ends the critical section early; handle its `Result` with `try` or `let _ =`.
+To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. A file is a common case: `file.close()` ends its use early; handle its `Result` with `try` or `let _ =`.
 
 ```manuscript
-var guard = counter.lock()
-guard.value += 1
-let _ = guard.close()
+var file = try open(path)
+try file.write("done")
+let _ = file.close()
 slow_work()
 ```
 

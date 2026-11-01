@@ -162,8 +162,9 @@ crate::isolate_static! {
 }
 
 crate::isolate_static! {
-    /// The holder of each `Shared` box held for a call, by box identity.
-    static HOLDERS: Option<HashMap<usize, Hold>> = None;
+    /// The `Shared` boxes held for calls, by box identity, in the order the holds began. Calls
+    /// nest, so a release usually ends the last entry.
+    static HOLDERS: Vec<(usize, Hold)> = Vec::new();
 }
 
 /// A call's hold of a `Shared` box.
@@ -177,9 +178,13 @@ struct Hold {
     depth: usize,
 }
 
-fn holders() -> &'static mut HashMap<usize, Hold> {
+fn holders() -> &'static mut Vec<(usize, Hold)> {
     // SAFETY: only the scheduler thread of an isolate reaches its holders.
-    unsafe { (*HOLDERS.ptr()).get_or_insert_with(HashMap::new) }
+    unsafe { &mut *HOLDERS.ptr() }
+}
+
+fn hold_of(key: usize) -> Option<usize> {
+    holders().iter().rposition(|(k, _)| *k == key)
 }
 
 /// Marks the box `key` in use by the running task for a call, through its flag `taken`, until
@@ -196,7 +201,7 @@ pub unsafe extern "C-unwind" fn msrt_shared_hold(key: i64, taken: *mut u8) {
         taken: taken as usize,
         depth: crate::fault::guard_depth(),
     };
-    holders().insert(key as usize, hold);
+    holders().push((key as usize, hold));
 }
 
 /// Ends the running task's hold of the box `key` when its call returns, and wakes the oldest task
@@ -209,11 +214,15 @@ pub extern "C-unwind" fn msrt_shared_release(key: i64) {
 /// Ends the holds of the running task's calls that a cancellation or fault leaving guard depth
 /// `depth` abandons.
 pub(crate) fn end_abandoned_holds(depth: usize) {
+    if holders().is_empty() {
+        return;
+    }
     let me = task::current_handle();
     let abandoned: Vec<usize> = holders()
         .iter()
         .filter(|(_, h)| h.task == me && h.depth >= depth)
         .map(|(key, _)| *key)
+        .rev()
         .collect();
     for key in abandoned {
         end_hold(key);
@@ -222,11 +231,14 @@ pub(crate) fn end_abandoned_holds(depth: usize) {
 
 /// Clears the hold of the box whose identity is `key` and wakes the oldest task waiting for it.
 fn end_hold(key: usize) {
-    if let Some(hold) = holders().remove(&key) {
+    if let Some(at) = hold_of(key) {
+        let (_, hold) = holders().remove(at);
         // SAFETY: the box outlives its hold (`msrt_shared_hold`).
         unsafe { *(hold.taken as *mut u8) = 0 };
     }
-    msrt_waitq_wake(key as i64);
+    if !queues().is_empty() {
+        msrt_waitq_wake(key as i64);
+    }
 }
 
 /// Called when the box `key` is in use. Another task's hold: waits until it is released (the
@@ -235,34 +247,22 @@ fn end_hold(key: usize) {
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_shared_wait(key: i64) {
     let me = task::current_handle();
-    match holders().get(&(key as usize)) {
+    match hold_of(key as usize).map(|at| holders()[at].1) {
         Some(hold) if hold.task != me => {}
         _ => crate::fault::fault(
             b"a Shared value was used again inside a call on it from the same task; finish the call first, or change the value inside that call",
         ),
     }
-    struct Ticket {
-        key: i64,
-        token: i64,
-        parked: bool,
-    }
-    impl Drop for Ticket {
-        // A task cancelled while it waits leaves the queue, or passes on a wake already chosen for it.
-        fn drop(&mut self) {
-            if self.parked && msrt_waitq_remove(self.key, self.token) == 0 {
-                msrt_waitq_wake(self.key);
-            }
-        }
-    }
     let token = msrt_channel_token();
     msrt_waitq_push(key, token);
-    let mut ticket = Ticket {
-        key,
-        token,
-        parked: true,
+    // A task cancelled while it waits leaves the queue, or passes on a wake already chosen for it.
+    // Cancellation leaves by a jump, so this is a cleanup entry rather than a destructor.
+    let mut leave = || {
+        if msrt_waitq_remove(key, token) == 0 {
+            msrt_waitq_wake(key);
+        }
     };
-    msrt_channel_park(token);
-    ticket.parked = false;
+    crate::fault::with_cleanup(&mut leave, || msrt_channel_park(token));
 }
 
 fn queues() -> &'static mut HashMap<usize, VecDeque<i64>> {
@@ -275,7 +275,7 @@ pub(crate) fn reset_wait_queues() {
     // SAFETY: as in `queues`.
     unsafe { *WAIT_QUEUES.ptr() = None };
     // SAFETY: as in `holders`.
-    unsafe { *HOLDERS.ptr() = None };
+    unsafe { (*HOLDERS.ptr()).clear() };
 }
 
 /// The address as an integer: the identity of a box for the wait queues below.

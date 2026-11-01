@@ -63,6 +63,15 @@ impl Visitor for Assigned<'_> {
         let Some(target) = self.module.facts().assigned.get(&e.id).cloned() else {
             return;
         };
+        // A value assigned into a `Proxy` handle reaches every holder of it.
+        if self
+            .module
+            .facts()
+            .info(e.id)
+            .is_some_and(|i| i.into_shared)
+        {
+            *self.reads.entry(target.uid).or_default() += 1;
+        }
         let mut discount = Discount {
             module: self.module,
             target: target.uid,

@@ -1,6 +1,6 @@
 # conform: tags=records,interfaces,mutation,stdlib-shared,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import share, Shared from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import expect_equal, expect_fault from "@std/test/test.ms"
 
 type Config:
@@ -22,10 +22,10 @@ type Holder:
     speaker: Shared[Speaker]
 
 fn make(name: String) Holder:
-    let config = share(
+    let config = Shared(
         Config(name.clone(), ["a-tag-long-enough-for-the-heap", "second"])
     )
-    let speaker = share[Speaker](Dog(name))
+    let speaker: Shared[Speaker] = Shared(Dog(name))
     return Holder(config, speaker)
 
 fn child(holder: Holder) Holder:
@@ -35,15 +35,13 @@ test "copies of a shared value read the same payload":
     let first = make("a-name-long-enough-for-the-heap")
     let second = child(first)
     let third = child(second)
-    try expect_equal(third.config.get().name, "a-name-long-enough-for-the-heap")
-    try expect_equal(first.config.get().tags[0], "a-tag-long-enough-for-the-heap")
-    try expect_equal(
-        third.speaker.get().say(), "a-name-long-enough-for-the-heap says woof"
-    )
+    try expect_equal(third.config.name, "a-name-long-enough-for-the-heap")
+    try expect_equal(first.config.tags[0], "a-tag-long-enough-for-the-heap")
+    try expect_equal(third.speaker.say(), "a-name-long-enough-for-the-heap says woof")
 
 test "the payload outlives the original holder":
     let kept = child(make("x-name-long-enough-for-the-heap-too"))
-    try expect_equal(kept.config.get().tags.length(), 2)
+    try expect_equal(kept.config.tags.length(), 2)
 
 type Counter:
     values: List[Int]
@@ -52,45 +50,51 @@ impl Counter:
     var fn bump() Unit:
         self.values.append(1)
 
-fn bump(shared: Shared[Counter]) Unit:
-    var guard = shared.lock()
-    guard.value.bump()
+    var fn bump_then(after: fn() Unit) Unit:
+        self.values.append(1)
+        after()
 
-test "lock changes the payload every holder sees":
-    let first = share(Counter([]))
-    let second = first
-    bump(first)
-    bump(second)
-    try expect_equal(first.get().values.length(), 2)
+fn bump(var shared: Shared[Counter]) Unit:
+    shared.bump()
 
-test "a read while the payload is locked faults":
-    let shared = share(Counter([]))
-    var held = shared.lock()
+test "a var handle changes the payload every holder sees":
+    var first = Shared(Counter([]))
+    var second = first
+    bump(var first)
+    bump(var second)
+    try expect_equal(first.values.length(), 2)
+
+test "a read inside a call on the same payload faults":
+    var shared = Shared(Counter([]))
+    let view = shared
     let message = try expect_fault(
         fn() Unit:
-            let _length = shared.get().values.length()
+            shared.bump_then(
+                fn() Unit:
+                    let _length = view.values.length()
+            )
     )
-    try expect_equal(message, "shared value is in use")
-    held.value.bump()
-    try held.close()
-    try expect_equal(shared.get().values.length(), 1)
+    try expect_equal(
+        message,
+        "a Shared value was used again inside a call on it from the same task; finish the call first, or change the value inside that call"
+    )
 
-fn append_seven(shared: Shared[List[Int]]) Unit:
-    var items = shared.lock()
-    items.value.append(7)
+    # The fault ran in a forked child, so this task still holds the value untouched and free.
+    try expect_equal(view.values.length(), 0)
 
-fn drop_while_locked() Unit:
-    let shared: Shared[List[Int]] = share([])
-    append_seven(shared)
+fn append_seven(var items: List[Int]) Unit:
+    items.append(7)
 
-    let guard = shared.lock()
-    if guard.value.length() != 1:
+fn drop_after_call() Unit:
+    var shared: Shared[List[Int]] = Shared([])
+    append_seven(var shared)
+    if shared.length() != 1:
         return
 
-    let _held = [guard]
+    let _held = [shared]
 
-test "a box dropped while its payload is locked does not free the payload twice":
-    drop_while_locked()
+test "a box dropped after a call does not free the payload twice":
+    drop_after_call()
 
     var first = [1, 2, 3, 4]
     let second = [5, 6, 7, 8]
@@ -99,24 +103,22 @@ test "a box dropped while its payload is locked does not free the payload twice"
     try expect_equal(first, [0, 2, 3, 4, 9])
     try expect_equal(second, [5, 6, 7, 8])
 
-test "an optional payload keeps its value through lock":
+test "an optional payload keeps its value when replaced":
     let five: Int? = 5
-    let shared: Shared[Int?] = share(five)
-    try expect_equal(shared.get(), 5)
+    var shared: Shared[Int?] = Shared(five)
+    let read: Int? = shared
+    try expect_equal(read, 5)
+    shared = read
 
-    var held = shared.lock()
-    held.value = held.value
-    try held.close()
-    try expect_equal(shared.get(), 5)
+    let again: Int? = shared
+    try expect_equal(again, 5)
 
 type Pair:
     flag: Bool
     value: Int?
 
-test "a record payload with an optional field after a flag survives lock":
-    let shared = share(Pair(flag: 1 == 1, value: 5))
-    var pair = shared.lock()
-    pair.value = Pair(flag: 1 == 2, value: pair.value.value)
-    try pair.close()
-    try expect_equal(shared.get().value, 5)
-    try expect_equal(shared.get().flag, 1 == 2)
+test "a record payload with an optional field after a flag survives replacement":
+    var shared = Shared(Pair(flag: 1 == 1, value: 5))
+    shared = Pair(flag: 1 == 2, value: shared.value)
+    try expect_equal(shared.value, 5)
+    try expect_equal(shared.flag, 1 == 2)

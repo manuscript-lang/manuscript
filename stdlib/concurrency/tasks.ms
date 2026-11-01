@@ -199,7 +199,6 @@ impl TaskTransport[In, Out]:
 impl Transport[In, Out] for TaskTransport[In, Out]:
     fn send(value: In) Unit!ChannelError:
         try self.wait_for_room()
-
         self.outgoing.back.append(value)
         self.outgoing.wake()
         return ok(unit)
@@ -242,7 +241,6 @@ fn run[T, In: Clonable, Out: Clonable](
 ) T:
     let end = TaskTransport[Out, In](outgoing: up, incoming: down)
     msrt_scope_started()
-
     return entry(
         Channel[Out, In](
             transport: TaskTransport[Out, In](outgoing: up, incoming: down)
@@ -281,6 +279,7 @@ impl Entry[T, In, Out]:
 fn take_result[T](var values: List[T]) T:
     if let value = values.pop():
         return value
+
     panic("Task: the result was already taken")
 
 # A started task that returns a `T`, with the group's end of its channel.
@@ -301,6 +300,7 @@ impl Task[T, In, Out]:
     fn result() T!TaskError:
         let ended = outcome(msrt_scope_join(self.scope, self.handle, 0))
         self.registry.remove(self.handle)
+
         let _joined = try ended
         return ok(take_result(var self.values))
 
@@ -388,12 +388,13 @@ impl Closeable for TaskGroup[T, In, Out]:
     var fn close() Unit!:
         msrt_scope_close(self.scope)
         msrt_channel_group_close(self.channels)
-
         close_channels(var self.tasks)
         return ok(unit)
 
 # Closes the group's end of every task channel in `tasks`.
-fn close_channels[T, In: Clonable, Out: Clonable](var tasks: Map[Int, Entry[T, In, Out]]) Unit:
+fn close_channels[T, In: Clonable, Out: Clonable](
+    var tasks: Map[Int, Entry[T, In, Out]]
+) Unit:
     for handle in tasks.keys():
         if var entry = tasks[handle]?:
             entry.channel.close()

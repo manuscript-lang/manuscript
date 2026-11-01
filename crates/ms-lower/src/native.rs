@@ -423,7 +423,6 @@ impl<'a> FnLower<'a> {
             "math/min"
                 | "math/max"
                 | "time/duration"
-                | "shared/share"
                 | "core/category"
                 | "math/bit_and"
                 | "math/bit_or"

@@ -1,5 +1,5 @@
 import Closeable from "@std/core.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
@@ -10,8 +10,7 @@ type Counter:
 
 impl Closeable for Counter:
     var fn close() Unit!:
-        var seen = self.log.lock()
-        seen.value.append(self.value)
+        self.log.append(self.value)
         return ok(unit)
 
 fn count_then_wait(log: Shared[List[Int]]) Int:
@@ -22,18 +21,18 @@ fn count_then_wait(log: Shared[List[Int]]) Int:
     return 0
 
 test "a var binding closes the value it ended with":
-    let log: Shared[List[Int]] = share([])
+    let log: Shared[List[Int]] = Shared([])
     var counter = Counter(value: 0, log: log)
     counter.value = 5
     try counter.close()
-    log.get().clone() | try expect_equal([5])
+    log.clone() | try expect_equal([5])
 
 test "a cancelled var binding closes the value it had reached":
-    let log: Shared[List[Int]] = share([])
+    let log: Shared[List[Int]] = Shared([])
     let mine = log
     var group = TaskGroup[Int](timeout: nanoseconds(20000000))
     group.spawn(fn ch: count_then_wait(mine))
 
     let _ignored = group.wait()
     try group.close()
-    log.get().clone() | try expect_equal([7])
+    log.clone() | try expect_equal([7])

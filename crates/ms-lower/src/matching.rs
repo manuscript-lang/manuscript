@@ -33,8 +33,11 @@ pub(crate) fn is_literal(path: &Expr) -> bool {
 impl FnLower<'_> {
     /// A variable that always holds the value of `e`, for use across blocks.
     /// The flag says the variable owns a hidden copy that must be dropped afterwards.
+    /// A value read through a `Shared` handle is held as a copy: another holder can change it.
     pub fn hold(&mut self, e: &Expr) -> Result<Option<(ms_mir::builder::Var, bool)>, Error> {
-        if let (ExprKind::Name(_), Resolution::Local(b)) = (&e.kind, self.hir.resolution(e))
+        let shared = self.through_shared(e);
+        if !shared
+            && let (ExprKind::Name(_), Resolution::Local(b)) = (&e.kind, self.hir.resolution(e))
             && !self.aliases.contains_key(&b.uid)
             && self.locals.get(&b.uid).is_none_or(|l| l.slot.is_none())
         {
@@ -45,7 +48,7 @@ impl FnLower<'_> {
             return Ok(None);
         }
         let t = self.ty_of(x.v);
-        if !x.own && self.ownership_checked() {
+        if !x.own && !shared && self.ownership_checked() {
             // A borrowed part: the checker keeps its origin unchanged while payloads borrow it,
             // so it is read in place and a lending function can hand back those payloads.
             let var = self.b.declare_var(t, Mode::Borrow);

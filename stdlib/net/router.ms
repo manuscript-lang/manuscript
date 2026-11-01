@@ -524,7 +524,6 @@ impl HttpExchange for TestExchange:
         if headers.contains("Content-Length"): return error(HttpError.InvalidInput)
         if headers.contains("Transfer-Encoding"): return error(HttpError.InvalidInput)
         if headers.contains("Connection"): return error(HttpError.InvalidInput)
-
         if self.state.closed: return error(HttpError.Closed)
         if self.state.sent: return error(HttpError.InvalidInput)
 
@@ -535,7 +534,6 @@ impl HttpExchange for TestExchange:
 
     fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!HttpError:
         try self.send_headers(status, headers)
-
         self.state.complete = true
         if self.request.method.text() == "HEAD" or not has_body(status): return ok(unit)
 

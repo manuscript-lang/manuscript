@@ -745,11 +745,6 @@ impl FnLower<'_> {
         ty: &ct::Ty,
         own: Option<CloseKind>,
     ) -> Result<Option<CloseKind>, Error> {
-        // A lock guard hands its payload back to the box when it closes, and the last holder of
-        // the box closes it then; closing the guard's copy as a part would close it early.
-        if ty.is_source_type("@std/concurrency/shared.ms", "SharedGuard") {
-            return Ok(own);
-        }
         let mt = self.mty(ty)?;
         let shape = match self.b.m.types.kind(mt).clone() {
             TyKind::Rec(r) => {
