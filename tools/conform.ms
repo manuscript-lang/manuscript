@@ -10,11 +10,12 @@ export fn main() Int:
     var code = run_program("cargo", ["xtask", "runtime"])
     if code != 0: return code
 
+    # Only the runner is built here: this tool runs on `target/debug/ms`, and Windows cannot replace an
+    # executable that is running (`make conform` and CI build `ms-cli` before they start the tool).
     code = run_program(
         "cargo",
         [
-            "build", "--locked", "-q", "-p", "ms-cli", "-p", "ms-conform",
-            "--target-dir", "target"
+            "build", "--locked", "-q", "-p", "ms-conform", "--target-dir", "target"
         ]
     )
     if code != 0: return code

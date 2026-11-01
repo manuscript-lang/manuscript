@@ -220,11 +220,8 @@ export fn main() Int:
     var code = run_program("cargo", ["xtask", "runtime"])
     if code != 0: return code
 
-    code = run_program(
-        "cargo", ["build", "--locked", "-q", "-p", "ms-cli", "--target-dir", "target"]
-    )
-    if code != 0: return code
-
+    # `ms-cli` is not rebuilt here: this tool runs on `target/debug/ms`, and Windows cannot replace an
+    # executable that is running (`make e2e` and CI build it before they start the tool).
     let ctx = Context(
         "{root}/target/debug/ms{exe()}", build_type.clone(), read_expected(expect_files)
     )
