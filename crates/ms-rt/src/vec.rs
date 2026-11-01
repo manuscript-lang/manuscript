@@ -1204,12 +1204,13 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
             bytes
         };
         let buf = alloc::alloc(storage);
-        // Slots of a few words move as typed copies instead of `memcpy` calls of a run-time size.
+        // Fixed-size opaque copies preserve uninitialized padding and pointer provenance.
+        // Interpreting arbitrary slots as initialized integers would be undefined behavior.
         macro_rules! words {
             ($n:literal) => {
                 merge_sort_word(
-                    v.ptr as *mut [u64; $n],
-                    buf as *mut [u64; $n],
+                    v.ptr as *mut core::mem::MaybeUninit<[u64; $n]>,
+                    buf as *mut core::mem::MaybeUninit<[u64; $n]>,
                     v.len,
                     cmp,
                     env,
@@ -2433,6 +2434,41 @@ mod tests {
             assert!(got.windows(2).all(|w| w[0] <= w[1]));
             drop_list(&mut v, d);
             drop_list(&mut dv, d);
+        }
+    }
+
+    #[test]
+    fn sort_moves_slots_with_uninitialized_padding() {
+        #[repr(C)]
+        struct Padded {
+            tag: u8,
+            key: i64,
+        }
+        unsafe extern "C-unwind" fn by_key(_: *mut u8, a: *const u8, b: *const u8) -> i64 {
+            // SAFETY: the callback receives initialized Padded fields; padding stays unread.
+            unsafe { (*a.cast::<Padded>()).key.cmp(&(*b.cast::<Padded>()).key) as i64 }
+        }
+        let _g = testutil::lock();
+        let d = plain_desc(core::mem::size_of::<Padded>() as u32, KIND_POD);
+        for n in [3, 13, 40] {
+            let mut v = EMPTY;
+            // SAFETY: only the fields are initialized; opaque slot moves must preserve padding
+            // without interpreting it as an initialized integer, as checked under Miri.
+            unsafe {
+                for key in (0..n).rev() {
+                    let mut value = core::mem::MaybeUninit::<Padded>::uninit();
+                    let p = value.as_mut_ptr();
+                    (&raw mut (*p).tag).write(7);
+                    (&raw mut (*p).key).write(key);
+                    msrt_list_push(&mut v, &d, p.cast());
+                }
+                msrt_list_sort_in_place(&mut v, &d, by_key, core::ptr::null_mut());
+                for i in 0..n as usize {
+                    let p = v.ptr.cast::<Padded>().add(i);
+                    assert_eq!(((*p).tag, (*p).key), (7, i as i64));
+                }
+                drop_list(&mut v, &d);
+            }
         }
     }
 
