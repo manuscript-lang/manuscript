@@ -218,11 +218,7 @@ fn one_unclosed_delimiter_is_reported_once() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("a.ms");
-    std::fs::write(
-        &file,
-        "fn a(x: Int Int:\n    return x\n\nfn b() Int:\n    return 1\n\nexport fn main() Int:\n    return b()\n",
-    )
-    .unwrap();
+    std::fs::write(&file, include_str!("cli_errors/unclosed.ms")).unwrap();
     let (code, stderr) = ms(&["check", file.to_str().unwrap()]);
     assert_eq!(code, 1, "{stderr}");
     assert_eq!(
