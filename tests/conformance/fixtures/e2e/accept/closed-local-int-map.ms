@@ -1,13 +1,7 @@
 # conform: tags=closures,control-flow,faults,lists,maps,modules,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/closed-local-int-map.ms
-import (
-    expect_contains,
-    expect_equal,
-    expect_false,
-    expect_fault,
-    expect_true
-) from "@std/test/test.ms"
+import expect_contains, expect_equal, expect_false, expect_fault, expect_true from "@std/test/test.ms"
 
 fn effect(var visits: List[Int], value: Int) Int:
     visits.append(value)

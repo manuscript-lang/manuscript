@@ -4,14 +4,7 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 import parse, stringify, CsvOptions, CsvError from "@std/data/csv.ms"
 import base64_encode, base64_decode, EncodingError from "@std/data/encoding.ms"
-import (
-    Commands,
-    Subprocess,
-    CommandOutput,
-    CommandError,
-    run,
-    Stdio
-) from "@std/os/process.ms"
+import Commands, Subprocess, CommandOutput, CommandError, run, Stdio from "@std/os/process.ms"
 import Bytes from "@std/bytes.ms"
 
 fn forward[T](item: T) T: item
@@ -169,14 +162,7 @@ test "Commands defaults cross concrete bound view and generic boundaries":
     try expect_equal(output, input)
 
     let forwarded = forward(view.run)
-    try expect_equal(
-        (
-            try forwarded(
-                "fake", [], input, none, none, none, Map[String, String]()
-            )
-        ).stdout.get(0),
-        42
-    )
+    try expect_equal((try forwarded("fake", [], input, none, none, none, Map[String, String]())).stdout.get(0), 42)
 
     let invalid: CommandOutput!CommandError = error(CommandError.InvalidInput)
     let native = run

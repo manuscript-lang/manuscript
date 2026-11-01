@@ -2,14 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/http-upload.ms
 import expect_equal from "@std/test/test.ms"
-import (
-    headers,
-    HttpClientOptions,
-    HttpMethod,
-    HttpRequest,
-    HttpResponse,
-    buffered
-) from "@std/net/http.ms"
+import headers, HttpClientOptions, HttpMethod, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
 import IoError, ReadStream, read_all from "@std/io/io.ms"
 import body_stream from "@std/net/sse.ms"
 import http_client, serve from "@std/net/net.ms"

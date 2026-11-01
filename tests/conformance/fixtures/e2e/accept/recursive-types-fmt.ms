@@ -172,5 +172,7 @@ test "finite nested generic composition constructs and extracts values":
     box.value.value | try expect_equal(6)
 
     let inner_text: String? = "nested"
-    let pair: Pair[Int?, String??] = Pair(first: 7, second: inner_text)
+    let pair: Pair[Int?, String??] = Pair(
+        first: 7, second: inner_text
+    )
     (pair.first.get() != 7 or pair.second.get().get() != "nested") | try expect_false

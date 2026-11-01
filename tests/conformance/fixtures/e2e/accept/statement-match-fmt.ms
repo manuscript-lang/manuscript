@@ -65,7 +65,9 @@ test "statement match controls the nearest loop":
     try expect_equal(first_positive(values), 5)
     try expect_equal(first_positive([none, -1]), -1)
 
-    let rows: List[List[Int?]] = [[1, none, 100], [2, 3]]
+    let rows: List[List[Int?]] = [
+        [1, none, 100], [2, 3]
+    ]
     try expect_equal(nested(rows), 2006)
 
 test "statement match arms assign enclosing locals":

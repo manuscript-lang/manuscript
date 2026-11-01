@@ -5,15 +5,7 @@ import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
 import memory_usage, process_info from "@std/os/process.ms"
 import arguments from "@std/os/process.ms"
 import random_bytes from "@std/os/random.ms"
-import (
-    append_file,
-    open,
-    read_file,
-    remove,
-    stat,
-    watch_native,
-    write_file
-) from "@std/os/fs.ms"
+import append_file, open, read_file, remove, stat, watch_native, write_file from "@std/os/fs.ms"
 import system_info from "@std/os/process.ms"
 import now from "@std/os/time.ms"
 import uuid_v4 from "@std/os/random.ms"
@@ -31,7 +23,9 @@ fn common_result[T, E: Error](result: T!E) T!:
 
 fn exercise(path: String) Unit!:
     let _written = try common_result(
-        result: write_file(path: path, data: "hello", replace: false)
+        result: write_file(
+            path: path, data: "hello", replace: false
+        )
     )
     try expect_false(
         not (
@@ -41,7 +35,9 @@ fn exercise(path: String) Unit!:
         )
     )
 
-    let info = try common_result(result: stat(path: path, follow_links: true))
+    let info = try common_result(
+        result: stat(path: path, follow_links: true)
+    )
     info.size | try expect_equal(5)
     (not info.directory) | try expect_true
 
@@ -51,7 +47,9 @@ fn exercise(path: String) Unit!:
     let identifier = try common_result(result: uuid_v4())
     identifier.byte_length() | try expect_equal(36)
 
-    let random = try common_result(result: secure_int(min: -2, max_exclusive: 3))
+    let random = try common_result(
+        result: secure_int(min: -2, max_exclusive: 3)
+    )
     (random >= -2 and random < 3) | try expect_true
 
     let now = now()
@@ -60,7 +58,9 @@ fn exercise(path: String) Unit!:
     )
     (system_info().cpu_count > 0) | try expect_true
 
-    var file = try common_result(result: open(path: path, flags: "r+", mode: 384))
+    var file = try common_result(
+        result: open(path: path, flags: "r+", mode: 384)
+    )
     let _updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
     try expect_false(
         not (
@@ -81,7 +81,9 @@ fn exercise(path: String) Unit!:
             overflow: "error"
         )
     )
-    let _appended = try common_result(result: append_file(path: path, data: "!"))
+    let _appended = try common_result(
+        result: append_file(path: path, data: "!")
+    )
     let events = try common_result(result: watcher.next())
     (events.length() > 0) | try expect_true
     try watcher.close()
@@ -106,7 +108,9 @@ fn exercise(path: String) Unit!:
     let memory = try common_result(result: memory_usage())
     (memory.heap_system > 0) | try expect_true
 
-    let _removed = try common_result(result: remove(path: path, recursive: false))
+    let _removed = try common_result(
+        result: remove(path: path, recursive: false)
+    )
     return ok(unit)
 
 export fn main() Int:

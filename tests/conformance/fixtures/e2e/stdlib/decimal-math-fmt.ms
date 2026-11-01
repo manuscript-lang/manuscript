@@ -3,21 +3,7 @@
 # conform: origin=tests/e2e/testdata/stdlib/decimal-math.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 import Decimal from "@std/math/decimal.ms"
-import (
-    ceil,
-    floor,
-    round,
-    truncate,
-    sqrt,
-    hypot,
-    pow,
-    log2,
-    min,
-    max,
-    sin,
-    cos,
-    pi
-) from "@std/math/math.ms"
+import ceil, floor, round, truncate, sqrt, hypot, pow, log2, min, max, sin, cos, pi from "@std/math/math.ms"
 
 test "decimal arithmetic is exact and conversion truncates":
     try expect_equal(0.1d + 0.2d, 0.3d)

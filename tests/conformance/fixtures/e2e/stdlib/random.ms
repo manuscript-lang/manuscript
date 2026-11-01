@@ -2,29 +2,18 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/random.ms
 import expect_equal from "@std/test/test.ms"
-import (
-    RandomError,
-    secure_int,
-    uuid_v4,
-    float,
-    shuffle,
-    choice,
-    random_bytes
-) from "@std/os/random.ms"
+import RandomError, secure_int, uuid_v4, float, shuffle, choice, random_bytes from "@std/os/random.ms"
 
 test "random bytes returns the requested count and rejects out-of-range counts":
     try expect_equal((try random_bytes(16)).length(), 16)
     try expect_equal((try random_bytes(0)).length(), 0)
-
     let invalid: Int!RandomError = error(RandomError.InvalidInput)
     try expect_equal(random_bytes(-1).map(fn bytes: bytes.length()), invalid)
 
 test "secure_int stays in range and rejects an empty range":
     let invalid: Int!RandomError = error(RandomError.InvalidInput)
     try expect_equal(secure_int(3, 3), invalid)
-    try expect_equal(
-        (try secure_int(-2, 3)) >= -2 and (try secure_int(-2, 3)) < 3, true
-    )
+    try expect_equal((try secure_int(-2, 3)) >= -2 and (try secure_int(-2, 3)) < 3, true)
     try expect_equal((try secure_int(-3, -2)), -3)
     try expect_equal((try secure_int(-10, -5)) < -5, true)
 

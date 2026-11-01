@@ -26,7 +26,12 @@ test "prelude cases and optional methods need no imports":
     try expect_false(not inferred.is_some() or not absent.is_none())
     try expect_false(inferred.get() != 3 or qualified.get() != 5)
     try expect_false(
-        (absent.get(9) != 9 or absent.or_else(fn() Int?: return 11).get() != 11)
+        (
+            absent.get(9) != 9
+            or absent.or_else(
+                fn() Int?: return 11
+            ).get() != 11
+        )
     )
 
     let value = try success()

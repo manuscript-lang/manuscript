@@ -340,8 +340,12 @@ test "growth limits and invalid inputs return values":
     "x".pad_start(target_length: -1, padding: " ") | try expect_equal("x")
     "x".pad_end(target_length: 4, padding: "") | try expect_equal("x")
 
-    let list_limit: List[Int]!CollectionError = error(CollectionError.LimitExceeded)
-    let list_invalid: List[Int]!CollectionError = error(CollectionError.InvalidInput)
+    let list_limit: List[Int]!CollectionError = error(
+        CollectionError.LimitExceeded
+    )
+    let list_invalid: List[Int]!CollectionError = error(
+        CollectionError.InvalidInput
+    )
     range_by(start: 0, end: 4, step: 1, max_items: 3) | try expect_equal(list_limit)
     range_by(start: 0, end: 4, step: 0, max_items: 3) | try expect_equal(list_invalid)
     filled(value: 1, count: 2, max_items: 1) | try expect_equal(list_limit)

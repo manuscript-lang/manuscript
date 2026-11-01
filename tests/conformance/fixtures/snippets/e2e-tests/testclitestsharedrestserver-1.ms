@@ -2,14 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/test_fixture_test.go:140 TestCLITestSharedRESTServer
 import TestHooks, expect_equal, expect_ok from "@std/test/test.ms"
-import (
-    HttpServer,
-    HttpRequest,
-    HttpResponse,
-    HttpMethod,
-    headers,
-    buffered
-) from "@std/net/http.ms"
+import HttpServer, HttpRequest, HttpResponse, HttpMethod, headers, buffered from "@std/net/http.ms"
 import request, serve from "@std/net/net.ms"
 
 type ApiFixture:
@@ -20,7 +13,9 @@ fn handle(request: HttpRequest) HttpResponse:
 
 fn make_fixture() ApiFixture:
     return ApiFixture(
-        server: serve(address: "127.0.0.1:0", handler: buffered(handle)).get()
+        server: serve(
+            address: "127.0.0.1:0", handler: buffered(handle)
+        ).get()
     )
 
 impl TestHooks for ApiFixture:

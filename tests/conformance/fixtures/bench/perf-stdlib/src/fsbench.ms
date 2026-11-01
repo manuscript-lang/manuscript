@@ -75,6 +75,7 @@ fn log_many(logger: Logger) Unit:
     )
 
 export fn bench_fs() Unit:
+
     if var dir = temporary("ms-bench-"):
         run(fs, dir.path())
         log_run("{dir.path()}/log.txt")

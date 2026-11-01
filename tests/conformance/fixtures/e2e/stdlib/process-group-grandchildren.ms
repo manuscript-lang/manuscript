@@ -35,7 +35,9 @@ export fn main() Int:
     group.close().get(none)
     sleep(nanoseconds(3500000000))
     stdout().write(
-        "grandchild survived: " + read_file(marker()).is_ok().to_string() + "\n"
+        "grandchild survived: " + read_file(
+            marker()
+        ).is_ok().to_string() + "\n"
     ).get()
 
     let _ = remove(marker())

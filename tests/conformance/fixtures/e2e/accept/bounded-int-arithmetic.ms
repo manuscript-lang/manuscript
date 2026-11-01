@@ -84,6 +84,7 @@ fn expression_overflow() Int:
     var i = 0
 
     while i < 1:
+
         let value = match present(1):
             n:
                 sum = 9223372036854775807

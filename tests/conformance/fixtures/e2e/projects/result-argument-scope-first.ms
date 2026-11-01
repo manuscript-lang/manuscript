@@ -9,4 +9,6 @@ impl Error for Cause[T]:
 
 export fn first() Int!: erase(Result[Int, Cause[Int]].error(make()))
 
-export fn first_generic() Int!: forward(Result[Int, Cause[Int]].error(make()))
+export fn first_generic() Int!: forward(
+    Result[Int, Cause[Int]].error(make())
+)

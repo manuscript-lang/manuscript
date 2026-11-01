@@ -16,7 +16,6 @@ fn handled() Unit!:
     let r = g.close()
     if let _ok = r:
         return error(TextError("close should have failed"))
-
     return ok(unit)
 
 fn branchy(explicit: Bool) Unit!:
@@ -31,14 +30,12 @@ fn relocked(second_fails: Bool) Unit!:
     g = Gate(0)
     if second_fails:
         return ok(unit)
-
     let _ = g.close()
     return ok(unit)
 
 fn ok_of(r: Unit!) Bool:
     if let _ok = r:
         return true
-
     return false
 
 test "an explicit close consumes the binding":

@@ -2,14 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/time-methods.ms
 import expect_equal, expect_false from "@std/test/test.ms"
-import (
-    nanoseconds,
-    timestamp,
-    parse_timestamp,
-    TimeError,
-    monotonic,
-    now
-) from "@std/os/time.ms"
+import nanoseconds, timestamp, parse_timestamp, TimeError, monotonic, now from "@std/os/time.ms"
 
 test "duration arithmetic and conversion":
     let interval = nanoseconds(1500000000)

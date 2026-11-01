@@ -25,7 +25,10 @@ fn bump(var counter: Counter) Int:
 fn map_result[T, E: Error, U](value: T!E, transform: fn(T) U) U!E:
     return value.map(transform)
 
-fn chain_result[T, E: Error, U](value: T!E, transform: fn(T) U!E) U!E:
+fn chain_result[T, E: Error, U](
+    value: T!E,
+    transform: fn(T) U!E
+) U!E:
     return value.and_then(transform)
 
 fn map_optional[T, U](value: T?, transform: fn(T) U) U?:

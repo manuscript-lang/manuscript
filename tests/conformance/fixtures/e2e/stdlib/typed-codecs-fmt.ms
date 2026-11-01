@@ -3,20 +3,8 @@
 # conform: origin=tests/e2e/testdata/stdlib/typed-codecs.ms
 import expect_equal from "@std/test/test.ms"
 import HashAlgorithm, sha256, sha384, sha512, CryptoError from "@std/crypto.ms"
-import (
-    CompressionFormat,
-    compress,
-    decompress,
-    CompressionError
-) from "@std/io/archive.ms"
-import (
-    ArchiveFormat,
-    pack,
-    unpack,
-    ArchiveEntry,
-    ArchiveLimits,
-    ArchiveError
-) from "@std/io/archive.ms"
+import CompressionFormat, compress, decompress, CompressionError from "@std/io/archive.ms"
+import ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError from "@std/io/archive.ms"
 import Bytes from "@std/bytes.ms"
 
 fn digest(algorithm: HashAlgorithm, data: Bytes) Bytes:
@@ -69,14 +57,20 @@ test "typed compression preserves bytes limits errors and optional arguments":
             try expect_equal((try format.decompress(encoded, none)), data)
             try expect_equal((try format.decompress(encoded, data.length())), data)
 
-            let limited: Bytes!CompressionError = error(CompressionError.LimitExceeded)
+            let limited: Bytes!CompressionError = error(
+                CompressionError.LimitExceeded
+            )
             try expect_equal(format.decompress(encoded, data.length() - 1), limited)
 
-        let invalid: Bytes!CompressionError = error(CompressionError.InvalidInput)
+        let invalid: Bytes!CompressionError = error(
+            CompressionError.InvalidInput
+        )
         try expect_equal(format.compress(data, -1), invalid)
         try expect_equal(format.compress(data, 6, -1), invalid)
 
-        let zero: Bytes!CompressionError = error(CompressionError.LimitExceeded)
+        let zero: Bytes!CompressionError = error(
+            CompressionError.LimitExceeded
+        )
         try expect_equal(format.compress(data, 6, 0), zero)
 
     let stored = CompressionFormat.Gzip.compress
@@ -102,7 +96,9 @@ test "typed archives retain entry limits validation and existing string calls":
         try expect_equal((try format.unpack(encoded, none)), entries)
         try expect_equal((try unpack(encoded, name)), entries)
 
-        let limited: List[ArchiveEntry]!ArchiveError = error(ArchiveError.LimitExceeded)
+        let limited: List[ArchiveEntry]!ArchiveError = error(
+            ArchiveError.LimitExceeded
+        )
         try expect_equal(format.unpack(encoded, ArchiveLimits(0)), limited)
 
         let invalid: Bytes!ArchiveError = error(ArchiveError.InvalidInput)

@@ -63,7 +63,6 @@ test "optional elements keep none distinct from absent":
     var d = Deque[Int?]()
     d.push_back(none)
     try expect_equal(d.length(), 1)
-
     let present_none: Int? = none
     try expect_equal(d.pop_front(), present_none)
     try expect_equal(d.pop_front(), none)

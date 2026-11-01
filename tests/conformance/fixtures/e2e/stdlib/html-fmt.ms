@@ -2,14 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/html.ms
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
-import (
-    escape,
-    parse,
-    HtmlNode,
-    HtmlAttribute,
-    HtmlLimits,
-    HtmlError
-) from "@std/data/html.ms"
+import escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError from "@std/data/html.ms"
 
 fn children(node: HtmlNode) List[HtmlNode]:
     match node:

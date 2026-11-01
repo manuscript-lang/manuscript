@@ -5,19 +5,8 @@ import expect_equal, expect_false, expect_ok from "@std/test/test.ms"
 import http_result from "./support/http.ms"
 import headers, HttpMethod, buffered from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
-import (
-    parse_certificates,
-    verify_certificates,
-    CertificateInfo,
-    TlsError,
-    TlsOptions
-) from "@std/net/net.ms"
-import (
-    HttpExchange,
-    HttpError,
-    HttpServerOptions,
-    HttpClientOptions
-) from "@std/net/http.ms"
+import parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions from "@std/net/net.ms"
+import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/net/http.ms"
 import http_client, serve from "@std/net/net.ms"
 import timestamp from "@std/os/time.ms"
 import certificate, private_key from "./support/certificates.ms"
@@ -87,7 +76,9 @@ test "HTTPS trusts only the explicitly supplied local test root":
     let server_options = HttpServerOptions(
         timeout: 3.seconds, grace: 0.seconds, tls: server_tls
     )
-    let server = serve(address: "127.0.0.1:0", handler: hello, options: server_options) | try expect_ok
+    let server = serve(
+        address: "127.0.0.1:0", handler: hello, options: server_options
+    ) | try expect_ok
     let client_tls = TlsOptions(
         server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
         private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: false

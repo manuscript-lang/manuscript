@@ -82,7 +82,9 @@ fn check_paths(base: String) Unit!:
     return ok(unit)
 
 test "buffered routes validate original input and decode once":
-    let server = serve(address: "127.0.0.1:0", handler: buffered(route)) | try expect_ok
+    let server = serve(
+        address: "127.0.0.1:0", handler: buffered(route)
+    ) | try expect_ok
     (try check_paths("http://{server.address()}"))
 
 test "streaming routes validate original input and decode once":

@@ -50,13 +50,21 @@ impl SetMutation for SetAdapter:
         return self.items.values()
 
 interface RegexReplacement:
-    fn replace_all(text: String, replacement: String, max_bytes: Int?) String!RegexError
+    fn replace_all(
+        text: String,
+        replacement: String,
+        max_bytes: Int?
+    ) String!RegexError
 
 type RegexAdapter:
     pattern: Regex
 
 impl RegexReplacement for RegexAdapter:
-    fn replace_all(text: String, replacement: String, max_bytes: Int?) String!RegexError:
+    fn replace_all(
+        text: String,
+        replacement: String,
+        max_bytes: Int?
+    ) String!RegexError:
         return self.pattern.replace_all(text, replacement, max_bytes)
 
 fn add_generic[T: Hashable](var items: Set[T], value: T) Unit:
