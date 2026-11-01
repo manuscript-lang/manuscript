@@ -146,9 +146,7 @@ fn work(items: List[Job], harness: String, o: Options, tag: String) Int:
         let rec = run_one(
             item.challenge, item.language, h, o.model, o.timeout, o.keep, o.out, tag
         )
-
         let verdict = if rec.pass: "PASS" else: "FAIL"
-
         (
             stdout()
             .write(
@@ -205,9 +203,7 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
                 todo.append(Job(ch.clone(), lang.clone()))
 
     let jobs = if oracle: 1 else: if o.jobs < 1: 1 else: o.jobs
-
     let tag = if oracle: "oracle" else: o.tag.clone()
-
     var bad = 0
     var group = TaskGroup[Int]()
 

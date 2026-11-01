@@ -34,9 +34,7 @@ test "a chain is none at the first absent link":
 test "an optional field flattens instead of nesting":
     let full: Outer? = Outer(inner: Inner(count: 4, tag: "x"), name: "n")
     let untagged: Outer? = Outer(inner: Inner(count: 4, tag: none), name: "n")
-
     let tag = full?.inner?.tag.clone()
-
     let x: String? = "x"
     try expect_equal(tag, x)
     try expect_equal(untagged?.inner?.tag, none)

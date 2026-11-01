@@ -887,7 +887,6 @@ impl Repo:
             return "tag '{name}' already exists"
 
         let ref_text = if args.length() == 2: args[1].clone() else: "HEAD"
-
         if (args.length() == 1 or args[1] == "HEAD") and self.current() == "":
             return "no commits yet"
 

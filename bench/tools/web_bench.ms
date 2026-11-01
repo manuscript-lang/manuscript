@@ -141,7 +141,6 @@ fn measure_server(
         sleep(milliseconds(200))
 
         let during = if seconds > 1: seconds - 1 else: 1
-
         say("{name} health-during-io {load(p, port, ["32", "{during}", "/health"])}")
         mixed.wait().get(0)
         say("{name} io-during-health {tail(read_text("{p.w}/mixed"))}")
@@ -177,7 +176,6 @@ fn measure_server(
             )[3].parse_int().get(0)
 
         let per = if reqs > 0: total.to_float() / reqs.to_float() else: 0.0
-
         say(
             "{name} syscalls_per_request {fixed(per, 2)} (requests under strace {reqs})"
         )
@@ -347,18 +345,14 @@ export fn main() Int:
     )
 
     let fallback = if args[0] == "run": "5" else: "3"
-
     let given = if args.length() == 2: args[1].clone() else: fallback
-
     let seconds = given.parse_int().get(0)
     if seconds <= 0: return usage("seconds must be a positive integer")
 
     let here = absolute("bench/perf/web")
-
     let result = if args[0] == "run": run_all(here, seconds) else: fetch_all(
         here, seconds
     )
-
     if result.is_error(): return fail(result.err().message())
 
     return 0

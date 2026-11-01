@@ -88,7 +88,6 @@ fn sets(kind: String, size: Int, shift: Int, repeats: Int) Int:
                 ) else: left.symmetric_difference(right)
             )
         )
-
         checksum += result.length()
         for x in result:
             checksum += x

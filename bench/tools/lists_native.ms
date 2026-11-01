@@ -78,11 +78,9 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 
         for i in 0..runs:
             let start = now_ns()
-
             let measured = if cpu == "": try peak_run(binary.clone(), []) else: try peak_run(
                 "taskset", ["-c", cpu.clone(), binary.clone()]
             )
-
             let elapsed = (now_ns() - start).to_float() / 1000000000.0
             seconds.append(elapsed)
             peaks.append(measured.kib.to_float())

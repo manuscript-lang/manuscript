@@ -131,9 +131,7 @@ impl Duration:
 
         # Work on magnitudes of the truncated parts so the minimum Duration, which has no positive counterpart, formats too.
         let step = if total < 0: -1 else: 1
-
         let sign = if total < 0: "-" else: ""
-
         let whole = total / 1000000000 * step
         let sub = total % 1000000000 * step
         if whole == 0 and sub < 1000:
@@ -145,11 +143,8 @@ impl Duration:
 
         let hours = whole / 3600
         let minutes = whole % 3600 / 60
-
         let clock = if hours == 0: "" else: "{hours}h"
-
         let minute_part = if hours == 0 and minutes == 0: "" else: "{minutes}m"
-
         let seconds_part = duration_decimal(whole % 60, sub, 9)
         return "{sign}{clock}{minute_part}{seconds_part}s"
 

@@ -258,9 +258,7 @@ fn num_from_text(s: String) Val:
         return err_val("#VALUE!")
 
     let ip = if int_part != "": int_part else: "0"
-
     let fp = if frac != "": frac else: "0"
-
     let parsed = (sign + ip + "." + fp + expo).parse_float()
     if parsed.is_none():
         return err_val("#VALUE!")
@@ -596,16 +594,12 @@ fn parse_range(text: String) Rect:
 # Canonical text of a moved reference, or #REF! when it leaves the grid.
 fn moved_ref(r: CellRef, dc: Int, dr: Int) String:
     let col = if r.col_abs: r.col else: r.col + dc
-
     let row = if r.row_abs: r.row else: r.row + dr
-
     if col < 0 or col > 25 or row < 1 or row > 999:
         return "#REF!"
 
     let cabs = if r.col_abs: "$" else: ""
-
     let rabs = if r.row_abs: "$" else: ""
-
     return cabs + letter_of(col) + rabs + "{row}"
 
 fn shift_token(text: String, dc: Int, dr: Int) String:
@@ -737,7 +731,6 @@ fn lex(src: String) Lexed:
                 return Lexed(ok: false, toks: toks)
         else if ch == "$" or is_alpha(ch) or ch == "_":
             let e = ref_end(cs, i)
-
             let e2 = if e >= 0 and e + 1 < n and cs[e] == ":": ref_end(cs, e + 1) else: -1
 
             if e >= 0 and e2 >= 0:
@@ -1174,7 +1167,6 @@ impl Sheet:
                     rest = rest.slice(o.length(), rest.length()).get()
 
             let nv = num_from_text(rest)
-
             operand = if nv.kind == "num": nv else: text_val(rest)
 
         var count = 0

@@ -59,7 +59,6 @@ fn edit_script(a: List[String], b: List[String]) List[Step]:
 
 fn range_text(before: Int, len: Int) String:
     let start = if len > 0: before + 1 else: before
-
     if len == 1: return "{start}"
 
     return "{start},{len}"
@@ -69,9 +68,7 @@ fn write_hunk(
     first: Int, last: Int, context: Int
 ) Unit:
     let s = if first > context: first - context else: 0
-
     let e = if last + context < steps.length(): last + context else: steps.length() - 1
-
     var la = 0
     var lb = 0
 

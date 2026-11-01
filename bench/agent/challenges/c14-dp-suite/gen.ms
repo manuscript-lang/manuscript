@@ -37,9 +37,7 @@ fn edit(a: String, b: String) Int:
 
         for j in 1..ys.length() + 1:
             let sub = prev[j - 1] + (if x != ys[j - 1]: 1 else: 0)
-
             let best = if prev[j] + 1 < cur[j - 1] + 1: prev[j] + 1 else: cur[j - 1] + 1
-
             cur.append(if sub < best: sub else: best)
 
         prev = cur
@@ -71,7 +69,6 @@ fn coins(amount: Int, cs: List[Int]) String:
     for a in 1..amount + 1:
         for c in cs:
             if c <= a and best[a - c] + 1 < best[a]: best[a] = best[a - c] + 1
-
     return if best[amount] >= inf: "impossible" else: "{best[amount]}"
 
 fn solve_line(line: String) String:

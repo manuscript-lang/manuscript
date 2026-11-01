@@ -105,7 +105,6 @@ bench "regex.replace_template.unused_large":
 
 fn named_bench(count: Int) Result[Unit, Error]:
     let pattern = if count == 1: "(?P<a>a)" else: "(?P<a>a)(?P<b>b)(?P<c>c)(?P<d>d)(?P<e>e)(?P<f>f)(?P<g>g)(?P<h>h)"
-
     let re = try compile(pattern)
     let names = ["a", "b", "c", "d", "e", "f", "g", "h"]
     var expected = Map[String, String]()

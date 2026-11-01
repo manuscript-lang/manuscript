@@ -20,7 +20,6 @@ fn ranges() List[Range]:
 # Days since 1970-01-01 of a proleptic Gregorian date.
 fn days_from_civil(year: Int, month: Int, day: Int) Int:
     let y = if month <= 2: year - 1 else: year
-
     let era = (if y >= 0: y else: y - 399) / 400
     let yoe = y - era * 400
     let doy = (153 * (if month > 2: month - 3 else: month + 9) + 2) / 5 + day - 1
@@ -36,9 +35,7 @@ fn civil_from_days(days: Int) List[Int]:
     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
     let mp = (5 * doy + 2) / 153
     let day = doy - (153 * mp + 2) / 5 + 1
-
     let month = if mp < 10: mp + 3 else: mp - 9
-
     let year = yoe + era * 400 + (if month <= 2: 1 else: 0)
     return [year, month, day]
 

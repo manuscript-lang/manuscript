@@ -74,9 +74,7 @@ fn table(runs: List[Run], title: String, key: fn(Run) String) String:
 
 export fn main() Int:
     let args = arguments()
-
     let path = if args.is_empty(): "{root()}/results/runs.jsonl" else: args[0].clone()
-
     var runs = List[Run]()
     for line in nonblank_lines(read_text(path)):
         runs.append(parse[Run](line).get())

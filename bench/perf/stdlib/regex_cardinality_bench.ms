@@ -4,12 +4,9 @@ import expect_equal from "@std/test/test.ms"
 
 fn rows_bench(count: Int, grouped: Bool) Result[Unit, Error]:
     let pattern = if grouped: "(word)([0-9]+)" else: "word[0-9]+"
-
     let re = try compile(pattern)
     let text = try "word123 ".repeat(count)
-
     let expected = if grouped: ["word123", "word", "123"] else: ["word123"]
-
     let width = if grouped: 14 else: 7
 
     fn work() Result[Unit, Error]:
@@ -84,11 +81,8 @@ bench "regex.cardinality.whole.over_limit":
 
 fn first_bench(grouped: Bool, found: Bool) Result[Unit, Error]:
     let re = try compile(if grouped: "(word)([0-9]+)" else: "word[0-9]+")
-
     let text = if found: "word123" else: "none"
-
     let hit = if grouped: ["word123", "word", "123"] else: ["word123"]
-
     let expected = if found: hit else: []
 
     fn work() Result[Unit, Error]:
@@ -121,9 +115,7 @@ bench "regex.cardinality.first.whole.long":
 
 fn names_bench(named: Bool, long_miss: Bool) Result[Unit, Error]:
     let re = try compile(if named: "word(?P<id>[0-9]+)" else: "word[0-9]+")
-
     let text = if long_miss: (try "z".repeat(65536)) else: "word123"
-
     var expected = Map[String, String]()
     if named and not long_miss:
         expected.add("id", "123")
@@ -146,9 +138,7 @@ bench "regex.cardinality.named.named.hit":
 
 fn anonymous_names_bench(long_miss: Bool) Result[Unit, Error]:
     let re = try compile("(word)([0-9]+)")
-
     let text = if long_miss: (try "z".repeat(65536)) else: "word123"
-
     let expected = Map[String, String]()
 
     fn work() Result[Unit, Error]:
@@ -167,9 +157,7 @@ bench "regex.cardinality.named.anonymous.long_miss":
 fn late_names_bench(found: Bool) Result[Unit, Error]:
     let prefix = try "(a?)".repeat(128)
     let re = try compile(prefix + "(?P<last>x)")
-
     let text = if found: "x" else: "z"
-
     var expected = Map[String, String]()
     if found:
         expected.add("last", "x")
