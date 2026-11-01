@@ -1118,19 +1118,11 @@ impl<'a> Layout<'a> {
     /// group (such as a list before a map callback) to expand as well.
     fn following_width(&self, rest: &[Node], clause: bool) -> usize {
         let mut tail: Vec<Node> = Vec::new();
-        let mut minimum = 0usize;
         for next in rest {
             if matches!(next.tok.kind, Tok::Newline | Tok::Comment)
                 || (clause && next.tok.kind == Tok::Colon)
             {
                 break;
-            }
-            minimum +=
-                usize::from(!layout_token(next.tok.kind) && !self.text(&next.tok).is_empty());
-            // Callers only ask whether this suffix forces a line past WIDTH.
-            // Every visible nonempty token contributes at least one character.
-            if minimum > WIDTH {
-                return WIDTH + 1;
             }
             let mut next = *next;
             if let Some(ng) = next.group
