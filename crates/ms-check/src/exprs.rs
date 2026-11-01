@@ -705,7 +705,9 @@ impl Checker {
         } else {
             Some(m.native)
         };
-        if !m.native.as_str().is_empty() && m.native != "contract" && !m.variables.is_empty() {
+        let native = !m.native.as_str().is_empty() && m.native != "contract";
+        let source_generic = arity.is_none() && !native && !m.variables.is_empty();
+        if (native && !m.variables.is_empty()) || source_generic {
             self.type_error(
                 e.pos,
                 "a generic method value requires explicit specialization; write the type arguments or call it with arguments",
