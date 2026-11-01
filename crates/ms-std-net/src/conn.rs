@@ -724,9 +724,7 @@ fn into_raw_handle(sock: Socket, owner: usize) -> i64 {
 /// The socket behind a handle `accept_raw` returned, or `None` for a number that is not an
 /// outstanding handle (invented, or already adopted).
 pub fn take_raw_handle(raw: i64) -> Option<Socket> {
-    if outstanding().remove(&raw).is_none() {
-        return None;
-    }
+    outstanding().remove(&raw)?;
     #[cfg(unix)]
     {
         use std::os::fd::FromRawFd;
