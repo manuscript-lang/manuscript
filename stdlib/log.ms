@@ -151,8 +151,8 @@ impl Transport for FileTransport:
             var file = lock(self.file)
             file.value.close().get(none)
 
-# A structured logger: level filtering, bound fields, and a pluggable `Transport`. The `_with` methods
-# take fields of any `Data` type and encode them with `stringify`. Child loggers share the transport;
+# A structured logger: level filtering, bound fields, and a pluggable `Transport`. The level methods
+# take optional fields of any `Data` type and encode them with `stringify`. Child loggers share the transport;
 # closing any of them closes it for all.
 export type Logger:
     # Internal state: level threshold, bound fields and the record encoder.
@@ -181,47 +181,56 @@ impl Logger:
 
         return self.transport.get().write(text)
 
-    # Writes a record whose fields come from `fields`, which can be any value `stringify` accepts.
+    # Writes a record at the selected level. `fields` is any `Data` value `stringify` accepts.
     #
     # A record, map, or `JsonValue` object contributes its members at the top level of the record.
-    # Any other value, such as a number, string, list, or `none`, is written under the key `data`.
-    # A value that cannot be encoded, such as a cyclic one, returns `InvalidData`; encoding happens
-    # only when the level is enabled. The reserved keys `level`, `msg`, and `time` are ignored.
-    fn log_with[F: Data](level: LogLevel, message: String, fields: F) Unit!LogError:
+    # Any other value, such as a number, string, or list, is written under the key `data`. No
+    # fields, or `none`, write the message alone. A value that cannot be encoded, such as a cyclic
+    # one, returns `InvalidData`; encoding happens only when the level is enabled. The reserved
+    # keys `level`, `msg`, and `time` are ignored. `Silent` is a threshold, not a record level, and
+    # returns `InvalidInput`.
+    fn log[F: Data = Unit](
+        level: LogLevel,
+        message: String,
+        fields: F? = none
+    ) Unit!LogError:
         if level == LogLevel.Silent: return error(LogError.InvalidInput)
         if not self.enabled(level): return ok(unit)
 
-        let text = stringify(fields)
-        if text.is_error(): return error(LogError.InvalidData)
+        if let value = fields:
+            let text = stringify(value)
+            if text.is_error(): return error(LogError.InvalidData)
 
-        return self.emit_json(level_index(level), message, object_text(text.get()))
+            return self.emit_json(level_index(level), message, object_text(text.get()))
 
-    # Like `trace`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    fn trace_with[F: Data](message: String, fields: F) Unit!LogError:
-        return self.log_with(LogLevel.Trace, message, fields)
+        return self.emit(level_index(level), message)
 
-    # Like `debug`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    fn debug_with[F: Data](message: String, fields: F) Unit!LogError:
-        return self.log_with(LogLevel.Debug, message, fields)
+    # Logs at Trace when enabled. Most detailed records; a filtered call returns ok without encoding or transport access. Fields are encoded as in `log`.
+    fn trace[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+        return self.log(LogLevel.Trace, message, fields)
 
-    # Like `info`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    fn info_with[F: Data](message: String, fields: F) Unit!LogError:
-        return self.log_with(LogLevel.Info, message, fields)
+    # Logs at Debug when enabled. Development diagnostics, including the logger's bound fields. Fields are encoded as in `log`.
+    fn debug[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+        return self.log(LogLevel.Debug, message, fields)
 
-    # Like `warn`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    fn warn_with[F: Data](message: String, fields: F) Unit!LogError:
-        return self.log_with(LogLevel.Warn, message, fields)
+    # Logs at Info when enabled. Ordinary operational records; reserved level, msg, and time fields remain controlled by the logger. Fields are encoded as in `log`.
+    fn info[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+        return self.log(LogLevel.Info, message, fields)
 
-    # Like `error`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    fn error_with[F: Data](message: String, fields: F) Unit!LogError:
-        return self.log_with(LogLevel.Error, message, fields)
+    # Logs at Warn when enabled. Warning records, returning encoding, size-budget, or transport errors unchanged. Fields are encoded as in `log`.
+    fn warn[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+        return self.log(LogLevel.Warn, message, fields)
 
-    # Like `fatal`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    fn fatal_with[F: Data](message: String, fields: F) Unit!LogError:
-        return self.log_with(LogLevel.Fatal, message, fields)
+    # Logs at Error when enabled. Failure records: an expected diagnostic rather than a fault. Fields are encoded as in `log`.
+    fn error[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+        return self.log(LogLevel.Error, message, fields)
+
+    # Logs at Fatal when enabled. Critical records; the caller remains responsible for process termination. Fields are encoded as in `log`.
+    fn fatal[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+        return self.log(LogLevel.Fatal, message, fields)
 
     # Returns a logger that adds the members of `fields` to each record, with the encoding rules of
-    # `log_with`. A value that cannot be encoded returns `InvalidData`.
+    # `log`. A value that cannot be encoded returns `InvalidData`.
     fn child[F: Data](fields: F) Logger!LogError:
         let text = stringify(fields)
         if text.is_error(): return error(LogError.InvalidData)
@@ -230,34 +239,6 @@ impl Logger:
         return ok(Logger(child, self.transport))
 
 impl Logger:
-    # Writes a record at the selected level with no fields.
-    fn log(level: LogLevel, message: String) Unit!LogError:
-        return self.emit(level_index(level), message)
-
-    # Logs at Trace when enabled; a filtered call returns ok without encoding or transport access.
-    fn trace(message: String) Unit!LogError:
-        return self.emit(0, message)
-
-    # Logs at Debug when enabled, including the logger's bound fields.
-    fn debug(message: String) Unit!LogError:
-        return self.emit(1, message)
-
-    # Logs at Info when enabled; reserved level, msg, and time fields remain controlled by the logger.
-    fn info(message: String) Unit!LogError:
-        return self.emit(2, message)
-
-    # Logs at Warn when enabled, returning encoding, size-budget, or transport errors unchanged.
-    fn warn(message: String) Unit!LogError:
-        return self.emit(3, message)
-
-    # Logs at Error when enabled; it records an expected diagnostic rather than raising a fault.
-    fn error(message: String) Unit!LogError:
-        return self.emit(4, message)
-
-    # Logs at Fatal when enabled; the caller remains responsible for process termination.
-    fn fatal(message: String) Unit!LogError:
-        return self.emit(5, message)
-
     # Tests the current filtering threshold; Silent is never enabled as a record level.
     fn enabled(level: LogLevel) Bool:
         return self.state.enabled(level_index(level))
