@@ -10,9 +10,9 @@
         "message": "a suite must begin exactly four spaces after its header; the header is at 16 spaces, so indent this line to 20",
         "position": {
           "file": "conversions-queries-fmt.ms",
-          "line": 377,
+          "line": 371,
           "column": 25,
-          "offset": 11022
+          "offset": 10881
         }
       }
     ],

@@ -7,26 +7,20 @@ import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
 type Counter:
     calls: Int
 
-impl Error for Counter:
-    fn message() String: "counter"
-
 type Pending:
     values: List[Int]
-
-impl Error for Pending:
-    fn message() String: "pending"
 
 fn counted(var counter: Counter) Counter:
     counter.calls = counter.calls + 1
     return counter
 
-fn require_value[T, E: Error](value: T?, cause: E) T!E:
+fn require_value[T, E](value: T?, cause: E) T!E:
     return value.ok_or(cause)
 
-fn require_lazy[T, E: Error](value: T?, create: fn() E) T!E:
+fn require_lazy[T, E](value: T?, create: fn() E) T!E:
     return value.ok_or_else[E](create)
 
-fn success_only[T, E: Error](value: T!E) T?:
+fn success_only[T, E](value: T!E) T?:
     if let item = value:
         return item
 
