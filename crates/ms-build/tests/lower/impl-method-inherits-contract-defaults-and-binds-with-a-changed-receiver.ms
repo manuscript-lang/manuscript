@@ -28,7 +28,7 @@ impl Runner for Capture:
         timeout: Duration?
     ) Result[CommandOutput, CommandError]:
         self.calls += 1
-        return ok(CommandOutput(0, input, "".to_bytes()))
+        return ok(CommandOutput(0, input, "".to_bytes(), 0))
 
     fn spawn(program: String, arguments: List[String]) Result[Subprocess, CommandError]:
         return error(CommandError.Unavailable)

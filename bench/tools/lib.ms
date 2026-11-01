@@ -1,9 +1,9 @@
 # Shared helpers for the benchmark drivers under bench/. Run a driver from the repository root with
 # `ms run bench/tools/<name>.ms [-- arguments]`.
-import Stdio, os_type, change_directory, environment, monotonic_time, set_environment, working_directory, run, spawn, system_info from "@std/os/process.ms"
+import Stdio, os_type, environment, monotonic_time, set_environment, working_directory, run, spawn, system_info from "@std/os/process.ms"
 import read_file, write_file, create_directory, is_absolute, join, remove, access from "@std/os/fs.ms"
 import stderr, stdin, stdout, read_all from "@std/io/io.ms"
-import JsonValue, parse, stringify from "@std/data/json.ms"
+import JsonValue, stringify from "@std/data/json.ms"
 import hex_encode from "@std/data/encoding.ms"
 import sha256 from "@std/crypto.ms"
 
@@ -41,13 +41,20 @@ export type Ran:
     code: Int
     stdout: String
     stderr: String
+    # The child's peak resident set in bytes, 0 when it did not start or the host cannot say.
+    max_resident_bytes: Int = 0
 
-# Runs `program` without a shell and captures both streams as text.
-export fn capture(program: String, arguments: List[String], input: String = "") Ran:
-    if let out = run(program, arguments, input: input.to_bytes()):
+# Runs `program` without a shell, optionally in directory `cwd`, and captures both streams as text.
+export fn capture(
+    program: String,
+    arguments: List[String],
+    input: String = "",
+    cwd: String? = none
+) Ran:
+    if let out = run(program, arguments, input: input.to_bytes(), cwd: cwd):
         return Ran(
             true, out.exit_code, out.stdout.decode_utf8().get(""),
-            out.stderr.decode_utf8().get("")
+            out.stderr.decode_utf8().get(""), out.max_resident_bytes
         )
 
     return Ran(false, 125, "", "cannot start {program}\n")
@@ -149,14 +156,9 @@ export fn absolute(path: String) String:
 
     return join([working_directory().get("."), path])
 
-# Workaround for #2165 (delete when run/spawn take a working directory). Runs `program` in directory `dir`, restoring the working directory afterwards; the working directory is process-wide.
+# Runs `program` in directory `dir`; the caller's working directory is untouched, so tasks may run children in different directories.
 export fn run_in(dir: String, program: String, arguments: List[String]) Ran:
-    let here = working_directory().get(".")
-    change_directory(dir).get()
-
-    let ran = capture(program, arguments)
-    change_directory(here).get()
-    return ran
+    return capture(program, arguments, cwd: dir)
 
 # Fails with the program's stderr unless `ran` exited zero.
 export fn must(what: String, ran: Ran) Result[String, Invalid]:
@@ -326,59 +328,36 @@ export fn dump(value: JsonValue) String:
 
 # Runs `program` in `dir` with the parent's streams and returns its exit status (125 when it cannot start).
 export fn run_inherit(dir: String, program: String, arguments: List[String]) Int:
-    let here = working_directory().get(".")
-    change_directory(dir).get()
-
     var code = 125
 
     if let child = spawn(
         program, arguments, stdin: Stdio.Null, stdout: Stdio.Inherit,
-        stderr: Stdio.Inherit
+        stderr: Stdio.Inherit, cwd: dir
     ):
         code = child.wait().get(125)
         if code < 0 or code > 125: code = 125
     else:
         note("cannot start {program}")
 
-    change_directory(here).get()
     return code
 
-# Workaround for #2165 (delete when a finished child reports its peak RSS). Compiles bench/perf/representative/rss.c into `dir`. A parent cannot read the peak resident set of a finished child through
-# @std/process (ResourceUsage describes only the calling process), so Unix drivers measure it with this small helper.
-export fn build_rss(dir: String) Result[String, Invalid]:
-    let out = "{dir}/rss"
-    let _ = try must(
-        "cc rss.c",
-        capture(
-            env("CC", "cc"),
-            ["-O2", "bench/perf/representative/rss.c", "-o", out.clone()]
-        )
-    )
-    return ok(out)
-
-# Runs `program arguments` under the rss helper and returns the child's peak resident set in KiB. The child's output is captured in `ran`.
+# The result of `peak_run`: the child's peak resident set in KiB and its captured output.
 export type RssRun:
     kib: Int
     ran: Ran
 
-export fn rss_run(
-    rss: String,
-    record: String,
+# Runs `program arguments` and returns the child's peak resident set in KiB. The child's output is captured in `ran`.
+export fn peak_run(
     program: String,
     arguments: List[String],
     input: String = ""
 ) Result[RssRun, Invalid]:
-    let ran = capture(rss, [record.clone(), program.clone()].concat(arguments), input)
+    let ran = capture(program, arguments, input)
     if not ran.ok or ran.code != 0: return invalid(
         "{program} failed ({ran.code}): {ran.stderr}"
     )
+    if ran.max_resident_bytes <= 0: return invalid(
+        "the host reported no peak resident set"
+    )
 
-    let doc = parse[JsonValue](read_text(record))
-    if doc.is_error(): return invalid("rss helper wrote no record")
-
-    let kib = doc.get(JsonValue.Null).get_in(["maxrss_kib"]).get(
-        JsonValue.Null
-    ).as_int().get(-1)
-    if kib < 0: return invalid("rss helper wrote no record")
-
-    return ok(RssRun(kib, ran))
+    return ok(RssRun(ran.max_resident_bytes / 1024, ran))

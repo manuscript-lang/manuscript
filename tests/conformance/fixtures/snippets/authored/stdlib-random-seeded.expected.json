@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "stdlib-random-seeded.ms::equal seeds give equal sequences and match SplitMix64",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "stdlib-random-seeded.ms::int stays in range and is reproducible",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "stdlib-random-seeded.ms::float is below one and reproducible",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "stdlib-random-seeded.ms::shuffle keeps the items and choice picks one",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "stdlib-random-seeded.ms::an empty range faults",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN stdlib-random-seeded.ms::equal seeds give equal sequences and match SplitMix64\nPASS stdlib-random-seeded.ms::equal seeds give equal sequences and match SplitMix64\nRUN stdlib-random-seeded.ms::int stays in range and is reproducible\nPASS stdlib-random-seeded.ms::int stays in range and is reproducible\nRUN stdlib-random-seeded.ms::float is below one and reproducible\nPASS stdlib-random-seeded.ms::float is below one and reproducible\nRUN stdlib-random-seeded.ms::shuffle keeps the items and choice picks one\nPASS stdlib-random-seeded.ms::shuffle keeps the items and choice picks one\nRUN stdlib-random-seeded.ms::an empty range faults\nPASS stdlib-random-seeded.ms::an empty range faults\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

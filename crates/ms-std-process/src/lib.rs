@@ -120,6 +120,7 @@ abi_record! {
         pub exit_code: i64,
         pub stdout: Bytes,
         pub stderr: Bytes,
+        pub max_resident_bytes: i64,
     }
 }
 
@@ -143,6 +144,27 @@ pub(crate) fn parent_end(fd: &mut command::Fd, name: &[u8]) -> Stream {
     let mut closed = Stream::new(fd.0, false, name);
     let _ = closed.close();
     closed
+}
+
+/// The working directory and extra variables of a command, checked for NUL bytes and for names
+/// that cannot be variables (empty, or holding `=`).
+fn valid_environment<'a>(
+    cwd: Option<&'a [u8]>,
+    names: &[&'a str],
+    values: &[&'a str],
+) -> Res<Vec<(&'a str, &'a [u8])>> {
+    let bad_name = |n: &&str| n.is_empty() || n.contains(['=', '\0']);
+    if cwd.is_some_and(|c| c.is_empty() || c.contains(&0))
+        || names.iter().any(bad_name)
+        || values.iter().any(|v| v.contains('\0'))
+    {
+        return Err(Fail::status(STATUS_INVALID_INPUT));
+    }
+    Ok(names
+        .iter()
+        .copied()
+        .zip(values.iter().map(|v| v.as_bytes()))
+        .collect())
 }
 
 fn valid_command(program: &[u8], args: &[&[u8]]) -> Res<Vec<Vec<u8>>> {
@@ -359,18 +381,25 @@ native! {
         max: i64,
         has_timeout: bool,
         timeout_ns: i64,
+        has_cwd: bool,
+        cwd: &str,
+        env_names: Vec<&str>,
+        env_values: Vec<&str>,
     ) -> Result<CommandOut, StatusCode> {
         let program = program.as_bytes();
+        let cwd = has_cwd.then_some(cwd.as_bytes());
         let ran = ms_std_fs::ops::limit(has_max, max)
             .and_then(|limit| Ok((limit, timeout(has_timeout, timeout_ns)?)))
             .and_then(|(limit, t)| {
                 let args = valid_command(program, &bytes_of(&arguments))?;
-                command::run(program, &args, input, limit, t)
+                let env = valid_environment(cwd, &env_names, &env_values)?;
+                command::run(program, &args, input, limit, t, cwd, &env)
             });
         fs_status(ran).map(|o| CommandOut {
             exit_code: o.code,
             stdout: Bytes::new(&o.stdout),
             stderr: Bytes::new(&o.stderr),
+            max_resident_bytes: o.max_resident,
         })
     }
 
@@ -381,10 +410,17 @@ native! {
         stdin: i64,
         stdout: i64,
         stderr: i64,
+        has_cwd: bool,
+        cwd: &str,
+        env_names: Vec<&str>,
+        env_values: Vec<&str>,
     ) -> Result<Object<Child>, StatusCode> {
         let program = program.as_bytes();
-        let spawned = valid_command(program, &bytes_of(&arguments))
-            .and_then(|args| command::spawn(program, &args, [stdin, stdout, stderr]));
+        let cwd = has_cwd.then_some(cwd.as_bytes());
+        let spawned = valid_command(program, &bytes_of(&arguments)).and_then(|args| {
+            let env = valid_environment(cwd, &env_names, &env_values)?;
+            command::spawn(program, &args, [stdin, stdout, stderr], cwd, &env)
+        });
         let mut p = fs_status(spawned)?;
         let streams = [
             ObjBox::new(parent_end(&mut p.stdin, b"|1")),
@@ -411,6 +447,11 @@ native! {
     ) -> Result<i64, StatusCode> {
         let mut h = h;
         fs_status(timeout(has_timeout, timeout_ns).and_then(|t| h.proc.wait(t)))
+    }
+
+    /// The peak resident set size of the exited child in bytes; 0 while it runs or when unknown.
+    fn msstd_process_subprocess_max_resident(h: ObjRef<Child>) -> i64 {
+        h.proc.child.max_resident
     }
 
     fn msstd_process_subprocess_terminate(h: ObjMut<Child>) -> () {

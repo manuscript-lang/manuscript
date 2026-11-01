@@ -32,6 +32,8 @@ export extern fn msstd_process_subprocess_wait(
     timeout: Duration?
 ) Int!CommandError
 
+export extern fn msstd_process_subprocess_max_resident(handle: NativeSubprocess) Int
+
 export extern fn msstd_process_subprocess_terminate(handle: NativeSubprocess) Unit
 
 export extern fn msstd_process_subprocess_kill(handle: NativeSubprocess) Unit

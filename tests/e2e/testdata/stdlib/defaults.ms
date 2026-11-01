@@ -15,16 +15,20 @@ impl Commands for Capture:
         arguments: List[String],
         input: Bytes,
         max_output_bytes: Int?,
-        timeout: Duration?
+        timeout: Duration?,
+        cwd: String?,
+        env: Map[String, String]
     ) CommandOutput!CommandError:
-        return ok(CommandOutput(0, input, "".to_bytes()))
+        return ok(CommandOutput(0, input, "".to_bytes(), 0))
 
     fn spawn(
         program: String,
         arguments: List[String],
         stdin: Stdio,
         stdout: Stdio,
-        stderr: Stdio
+        stderr: Stdio,
+        cwd: String?,
+        env: Map[String, String]
     ) Subprocess!CommandError:
         return error(CommandError.Unavailable)
 
@@ -42,16 +46,20 @@ impl Commands for Override:
         arguments: List[String],
         input: Bytes = self.input,
         max_output_bytes: Int?,
-        timeout: Duration?
+        timeout: Duration?,
+        cwd: String?,
+        env: Map[String, String]
     ) CommandOutput!CommandError:
-        return ok(CommandOutput(0, input, "".to_bytes()))
+        return ok(CommandOutput(0, input, "".to_bytes(), 0))
 
     fn spawn(
         program: String,
         arguments: List[String],
         stdin: Stdio,
         stdout: Stdio,
-        stderr: Stdio
+        stderr: Stdio,
+        cwd: String?,
+        env: Map[String, String]
     ) Subprocess!CommandError:
         return error(CommandError.Unavailable)
 
@@ -151,7 +159,14 @@ test "Commands defaults cross concrete bound view and generic boundaries":
     try expect_equal(output, input)
 
     let forwarded = forward(view.run)
-    try expect_equal((try forwarded("fake", [], input, none, none)).stdout.get(0), 42)
+    try expect_equal(
+        (
+            try forwarded(
+                "fake", [], input, none, none, none, Map[String, String]()
+            )
+        ).stdout.get(0),
+        42
+    )
 
     let invalid: CommandOutput!CommandError = error(CommandError.InvalidInput)
     let native = run

@@ -18,6 +18,8 @@ use std::process::{Command, Stdio};
 pub struct Child {
     inner: std::process::Child,
     pub code: Option<i64>,
+    /// Peak resident set size of the child in bytes once it is reaped; 0 when the host cannot say.
+    pub max_resident: i64,
     #[cfg(windows)]
     job: isize,
     /// A descriptor that becomes readable when the child exits, or -1: a pidfd on Linux (none
@@ -98,6 +100,7 @@ pub fn start(
     [stdin, stdout, stderr]: [StdStream; 3],
     ipc: Option<&ChildEnd>,
     env: &[(&str, &[u8])],
+    cwd: Option<&[u8]>,
 ) -> Res<Child> {
     let failed = |e: i32| {
         let mut m = b"fork/exec ".to_vec();
@@ -116,6 +119,9 @@ pub fn start(
     cmd.stderr(stderr.stdio().map_err(failed)?);
     for (name, value) in env {
         cmd.env(name, os_string(value));
+    }
+    if let Some(dir) = cwd {
+        cmd.current_dir(os_string(dir));
     }
     if let Some(end) = ipc {
         cmd.env(crate::ipc::ENV, os_string(&end.env_value()));
@@ -185,6 +191,10 @@ pub fn start(
             shared,
         )),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(Fail::status(STATUS_UNAVAILABLE)),
+        // Windows reports a missing working directory as "directory name is invalid".
+        Err(_) if cwd.is_some_and(|d| !std::path::Path::new(&os_string(d)).is_dir()) => {
+            Err(Fail::status(STATUS_UNAVAILABLE))
+        }
         Err(e) => Err(failed(e.raw_os_error().unwrap_or(0))),
     }
 }
@@ -254,15 +264,9 @@ fn exit_descriptor(pid: libc::pid_t) -> i32 {
     }
 }
 
+#[cfg(windows)]
 fn exit_code(status: std::process::ExitStatus) -> i64 {
-    #[cfg(windows)]
-    {
-        status.code().map_or(-1, |c| c as u32 as i64)
-    }
-    #[cfg(not(windows))]
-    {
-        status.code().map_or(-1, i64::from)
-    }
+    status.code().map_or(-1, |c| c as u32 as i64)
 }
 
 impl Child {
@@ -284,6 +288,7 @@ impl Child {
             Child {
                 inner,
                 code: None,
+                max_resident: 0,
                 job: job as isize,
             }
         }
@@ -293,6 +298,7 @@ impl Child {
             Child {
                 inner,
                 code: None,
+                max_resident: 0,
                 exit,
                 shared,
             }
@@ -338,20 +344,91 @@ impl Child {
         if self.code.is_some() {
             return true;
         }
-        match self.inner.try_wait() {
-            Ok(Some(status)) => self.code = Some(exit_code(status)),
+        self.reap(false)
+    }
+
+    pub fn wait(&mut self) -> i64 {
+        if self.code.is_none() {
+            self.reap(true);
+        }
+        self.code.unwrap_or(-1)
+    }
+
+    /// Collects the child's exit status and resource usage (`wait4`), blocking when `block`.
+    /// False while it still runs.
+    #[cfg(unix)]
+    fn reap(&mut self, block: bool) -> bool {
+        let pid = self.inner.id() as libc::pid_t;
+        loop {
+            let mut status = 0;
+            // SAFETY: plain system call with valid out pointers.
+            let mut usage: libc::rusage = unsafe { core::mem::zeroed() };
+            let flags = if block { 0 } else { libc::WNOHANG };
+            // SAFETY: as above; `pid` is this unreaped child.
+            let r = unsafe { libc::wait4(pid, &mut status, flags, &mut usage) };
+            if r == 0 {
+                return false;
+            }
+            if r < 0 {
+                if std::io::Error::last_os_error().raw_os_error() == Some(libc::EINTR) {
+                    continue;
+                }
+                // Nothing left to wait for.
+                self.code = Some(-1);
+                return true;
+            }
+            self.code = Some(if libc::WIFEXITED(status) {
+                i64::from(libc::WEXITSTATUS(status))
+            } else {
+                -1
+            });
+            // `ru_maxrss` is in bytes on Apple platforms and kilobytes elsewhere.
+            let unit = if cfg!(any(target_os = "macos", target_os = "ios")) {
+                1
+            } else {
+                1024
+            };
+            self.max_resident = usage.ru_maxrss.saturating_mul(unit);
+            return true;
+        }
+    }
+
+    #[cfg(windows)]
+    fn reap(&mut self, block: bool) -> bool {
+        let status = if block {
+            self.inner.wait().map(Some)
+        } else {
+            self.inner.try_wait()
+        };
+        match status {
+            Ok(Some(status)) => {
+                self.code = Some(exit_code(status));
+                self.max_resident = self.peak_working_set();
+            }
             Ok(None) => return false,
-            // Nothing left to wait for.
             Err(_) => self.code = Some(-1),
         }
         true
     }
 
-    pub fn wait(&mut self) -> i64 {
-        if self.code.is_none() {
-            self.code = Some(self.inner.wait().map_or(-1, exit_code));
+    /// The peak working set of the exited child, whose handle `inner` still holds open.
+    #[cfg(windows)]
+    fn peak_working_set(&self) -> i64 {
+        use std::os::windows::io::AsRawHandle;
+        use windows_sys::Win32::System::ProcessStatus::{
+            GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS,
+        };
+        // SAFETY: a correctly sized counters struct and an open process handle.
+        unsafe {
+            let mut counters: PROCESS_MEMORY_COUNTERS = core::mem::zeroed();
+            counters.cb = core::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32;
+            if GetProcessMemoryInfo(self.inner.as_raw_handle() as _, &mut counters, counters.cb)
+                == 0
+            {
+                return 0;
+            }
+            counters.PeakWorkingSetSize as i64
         }
-        self.code.unwrap_or(-1)
     }
 
     /// Signals the child's process group (SIGTERM unless `force`, falling back to SIGKILL).

@@ -4,7 +4,7 @@ import Duration from "@std/os/time.ms"
 import IpFamily from "@std/net/net.ms"
 import ReadStream from "@std/io/io.ms"
 import WriteStream from "@std/io/io.ms"
-import msrt_args, msstd_system_endianness, msstd_system_end_of_line, msstd_system_dev_null, msstd_system_os_type, msstd_system_constants, msstd_process_commands, msstd_process_control, msstd_process_system, msstd_process_subprocess_stdin, msstd_process_subprocess_stream, msstd_process_subprocess_wait, msstd_process_subprocess_terminate, msstd_process_subprocess_kill, msstd_process_subprocess_close from "@std/internal/process.ms"
+import msrt_args, msstd_system_endianness, msstd_system_end_of_line, msstd_system_dev_null, msstd_system_os_type, msstd_system_constants, msstd_process_commands, msstd_process_control, msstd_process_system, msstd_process_subprocess_stdin, msstd_process_subprocess_stream, msstd_process_subprocess_wait, msstd_process_subprocess_max_resident, msstd_process_subprocess_terminate, msstd_process_subprocess_kill, msstd_process_subprocess_close from "@std/internal/process.ms"
 
 # Errors returned when a process cannot start, times out, or exceeds an output bound.
 export type CommandError:
@@ -30,6 +30,8 @@ export type CommandOutput:
     stdout: Bytes
     # Everything the child wrote to standard error, as raw bytes that may not be valid UTF-8.
     stderr: Bytes
+    # The child's peak resident set size in bytes, or 0 when the host cannot report it.
+    max_resident_bytes: Int
 
 # Where a child's standard input, output, or error goes, chosen per stream.
 # `spawn("make", [], stdout: Stdio.Inherit, stderr: Stdio.Inherit)` lets the child's output reach the parent's terminal while stdin stays piped.
@@ -45,20 +47,26 @@ export type Stdio:
 export interface Commands:
     # Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
     # Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
+    # `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
     fn run(
         program: String,
         arguments: List[String],
         input: Bytes = "".to_bytes(),
         max_output_bytes: Int?,
-        timeout: Duration?
+        timeout: Duration?,
+        cwd: String?,
+        env: Map[String, String] = Map[String, String]()
     ) CommandOutput!CommandError
     # Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
+    # `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
     fn spawn(
         program: String,
         arguments: List[String],
         stdin: Stdio = Stdio.Pipe,
         stdout: Stdio = Stdio.Pipe,
-        stderr: Stdio = Stdio.Pipe
+        stderr: Stdio = Stdio.Pipe,
+        cwd: String?,
+        env: Map[String, String] = Map[String, String]()
     ) Subprocess!CommandError
 
 # The runtime handle behind a `Subprocess`.
@@ -93,6 +101,10 @@ impl Subprocess:
     # Waits for the child to exit and returns its exit status. Returns Timeout if `timeout` elapses first, leaving the child running.
     fn wait(timeout: Duration?) Int!CommandError:
         return msstd_process_subprocess_wait(self.native, timeout)
+
+    # The child's peak resident set size in bytes, known once `wait` has returned its exit status; 0 before that or when the host cannot report it.
+    fn max_resident_bytes() Int:
+        return msstd_process_subprocess_max_resident(self.native)
 
     # Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it kills the direct process. Does not wait.
     fn terminate() Unit:
@@ -493,24 +505,32 @@ fn host_system() System:
 
 # Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
 # Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
+# `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
 export fn run(
     program: String,
     arguments: List[String],
     input: Bytes = "".to_bytes(),
     max_output_bytes: Int?,
-    timeout: Duration?
+    timeout: Duration?,
+    cwd: String?,
+    env: Map[String, String] = Map[String, String]()
 ) CommandOutput!CommandError:
-    return host_commands().run(program, arguments, input, max_output_bytes, timeout)
+    return host_commands().run(
+        program, arguments, input, max_output_bytes, timeout, cwd, env
+    )
 
 # Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
+# `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
 export fn spawn(
     program: String,
     arguments: List[String],
     stdin: Stdio = Stdio.Pipe,
     stdout: Stdio = Stdio.Pipe,
-    stderr: Stdio = Stdio.Pipe
+    stderr: Stdio = Stdio.Pipe,
+    cwd: String?,
+    env: Map[String, String] = Map[String, String]()
 ) Subprocess!CommandError:
-    return host_commands().spawn(program, arguments, stdin, stdout, stderr)
+    return host_commands().spawn(program, arguments, stdin, stdout, stderr, cwd, env)
 
 # Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
 # This is not Unix time or a Clock Instant; prefer monotonic().difference(start) for timing.
