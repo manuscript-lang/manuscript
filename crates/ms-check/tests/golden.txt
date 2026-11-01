@@ -11,7 +11,7 @@ fn use(path: String) Int:
         error(NotFound): return 1
         ok(_): return 0
 resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
-resolution	3	11	75	unknown binding filesystem; declare it with 'let filesystem = ...' before use, define 'fn filesystem(...) T:', or import it from a moduleimport TextError from "@std/errors.ms"
+resolution	3	11	75	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"import TextError from "@std/errors.ms"
 fn fail() Result[Int, TextError]:
     return error(TextError("boom"))
 fn use() Unit:
@@ -29,7 +29,7 @@ fn use() Unit:
     )
 resolution	1	8	7	module does not export network; did you mean 'Network'?
 resolution	3	8	89	unknown standard module @std/faults.ms
-resolution	6	19	183	unknown binding network; declare it with 'let network = ...' before use, define 'fn network(...) T:', or import it from a module
+resolution	6	19	183	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 type	6	71	235	cannot infer callback parameter request; provide a type or a known function context
 resolution	8	16	310	unknown binding panic; add: import panic from "@std/core.ms"# Doubles a number.
 export fn double(value: Int) Int:
@@ -577,7 +577,7 @@ fn explicit() Unit:
     fs.create_directory("", true)
     fs.remove("", false)
 resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
-resolution	3	14	72	unknown binding filesystem; declare it with 'let filesystem = ...' before use, define 'fn filesystem(...) T:', or import it from a module
+resolution	3	14	72	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 type	6	46	194	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingimport panic from "@std/faults.ms"
 type Override:
     received: Bool
@@ -5090,7 +5090,7 @@ fn os_name() String:
     return system().info().os
 resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	2	8	65	unknown standard module @std/system.ms
-resolution	6	12	187	unknown binding system; declare it with 'let system = ...' before use, define 'fn system(...) T:', or import it from a modulefn label(value: Int) String:
+resolution	6	12	187	unknown binding system; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"fn label(value: Int) String:
     return "{value}"
 test "methods":
     let labels = [1].map(transform: label)
@@ -5430,7 +5430,7 @@ fn classify(path: String) String:
         error(NotFound): return "missing"
         ok(_): return "exists"
 resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
-resolution	3	11	83	unknown binding filesystem; declare it with 'let filesystem = ...' before use, define 'fn filesystem(...) T:', or import it from a moduletype Point:
+resolution	3	11	83	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"type Point:
     x: Int
     y: Int
 
@@ -5578,7 +5578,7 @@ test "source":
 resolution	1	8	7	unknown standard module @std/faults.ms
 resolution	2	8	42	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	5	29	149	unknown binding panic; add: import panic from "@std/core.ms"
-resolution	6	19	186	unknown binding filesystem; declare it with 'let filesystem = ...' before use, define 'fn filesystem(...) T:', or import it from a module
+resolution	6	19	186	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 resolution	7	39	286	unknown binding panic; add: import panic from "@std/core.ms"
 resolution	9	16	339	unknown binding panic; add: import panic from "@std/core.ms"import parse, CsvOptions from "@std/data/csv.ms"
 import base64_encode, base64_decode from "@std/data/encoding.ms"
@@ -6023,7 +6023,7 @@ export fn now() Instant:
 export fn close_output() Unit:
     stdout().close()
 resolution	2	8	42	module does not export clock; @std/os/time.ms exports: Calendar, Duration, Instant, TimeError, Timestamp, from_calendar, hours, local_zone, microseconds, milliseconds, minutes, monotonic, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/time.ms"'
-resolution	6	12	146	unknown binding clock; declare it with 'let clock = ...' before use, define 'fn clock(...) T:', or import it from a modulefn private_value() Int:
+resolution	6	12	146	unknown binding clock; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"fn private_value() Int:
     return 7
 export fn defaulted(value: Int = private_value()) Int:
     return value
@@ -6217,7 +6217,7 @@ export fn main() Int:
     if fs.remove(path: "child", recursive: true).is_error(): return 7
     return 0
 resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
-resolution	4	14	92	unknown binding filesystem; declare it with 'let filesystem = ...' before use, define 'fn filesystem(...) T:', or import it from a moduletype Counter:
+resolution	4	14	92	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"type Counter:
     value: Int
 
 impl Counter:
@@ -6505,7 +6505,7 @@ export fn main() Int:
             return 2
 
 resolution	1	8	7	module does not export files; did you mean 'File'?
-resolution	8	18	188	unknown binding files; declare it with 'let files = ...' before use, define 'fn files(...) T:', or import it from a moduletest %q:
+resolution	8	18	188	unknown binding files; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"test %q:
     let minimum = nanoseconds(-9223372036854775808)
     let maximum = nanoseconds(9223372036854775807)
     let divide = minimum.divide
@@ -6618,7 +6618,7 @@ test "fixture next to the manifest":
         error(_):
             return fail("fixture not found")
 resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
-resolution	5	11	137	unknown binding filesystem; declare it with 'let filesystem = ...' before use, define 'fn filesystem(...) T:', or import it from a moduleimport TestHooks, expect_equal, fail, skip from "@std/test/test.ms"
+resolution	5	11	137	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"import TestHooks, expect_equal, fail, skip from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 import panic from "@std/faults.ms"
 fn println(message: String) Unit:
@@ -6677,13 +6677,13 @@ test "second request uses same server":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
 resolution	3	8	164	module does not export network; did you mean 'Network'?
-resolution	9	31	425	unknown binding network; declare it with 'let network = ...' before use, define 'fn network(...) T:', or import it from a module
+resolution	9	31	425	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 type	14	24	618	cannot infer type argument T for expect_ok; write expect_ok[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 type	14	24	618	cannot infer type argument E for expect_ok; write expect_ok[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter
-resolution	14	34	628	unknown binding network; declare it with 'let network = ...' before use, define 'fn network(...) T:', or import it from a module
+resolution	14	34	628	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 type	17	24	861	cannot infer type argument T for expect_ok; write expect_ok[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 type	17	24	861	cannot infer type argument E for expect_ok; write expect_ok[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter
-resolution	17	34	871	unknown binding network; declare it with 'let network = ...' before use, define 'fn network(...) T:', or import it from a module
+resolution	17	34	871	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 type	12	9	553	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeexport fn helper() Unit:
     return
 test "interruptible":

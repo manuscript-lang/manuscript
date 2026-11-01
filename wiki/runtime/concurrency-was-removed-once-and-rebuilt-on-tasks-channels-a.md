@@ -6,5 +6,5 @@ Decision: the first concurrency features (Scheduler, Synchronized, BlockingQueue
 
 
 Apply when: a task proposes concurrent work, locks, task handles, or revives the removed APIs.
-Evidence: [tasks](../../stdlib/tasks.ms), [workers](../../stdlib/workers.ms), [taskgroup proposal](../../proposals/taskgroup.md), [worker-threads proposal](../../proposals/worker-threads.md), [runtime conventions](../../documentation/contributing/runtime-conventions.md).
+Evidence: [tasks](../../stdlib/concurrency/tasks.ms), [workers](../../stdlib/concurrency/workers.ms), [taskgroup proposal](../../proposals/taskgroup.md), [worker-threads proposal](../../proposals/worker-threads.md), [runtime conventions](../../documentation/contributing/runtime-conventions.md).
 Verify: `BlockingQueue` is absent from `queue.ms`; new concurrency work follows the proposals above.

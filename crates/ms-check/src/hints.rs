@@ -497,6 +497,12 @@ impl Checker {
                     "{message}; there is no free {name}: start tasks with a TaskGroup from \"@std/concurrency/tasks.ms\" bound to a local, e.g. group.spawn(fn ch: work(), timeout: some(nanoseconds(...)))"
                 );
             }
+            "filesystem" | "network" | "commands" | "control" | "system" | "clock"
+            | "wall_clock" | "entropy" | "terminal" | "files" => {
+                return format!(
+                    "{message}; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/os/time.ms\""
+                );
+            }
             "print" | "println" | "printf" | "puts" | "echo" => {
                 return format!(
                     "{message}; there is no built-in print: import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")"

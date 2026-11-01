@@ -6,5 +6,5 @@ Verified: listing and fail-fast complete a plan with unrun entries; repeat creat
 
 
 Apply when: changing test options, event reporting, or testing helpers.
-Evidence: [test runner lowering](../../crates/ms-lower/src/runner.rs), [testing lowering](../../crates/ms-lower/src/testing.rs), [helper contracts](../../stdlib/test.ms), [testing fixture](../../tests/e2e/testdata/stdlib/testing.ms).
+Evidence: [test runner lowering](../../crates/ms-lower/src/runner.rs), [testing lowering](../../crates/ms-lower/src/testing.rs), [helper contracts](../../stdlib/test/test.ms), [testing fixture](../../tests/e2e/testdata/stdlib/testing.ms).
 Verify: list executes no bodies, fail-fast retains later not_run entries, repeated names retain indices, and fault assertions propagate cancellation and skip.

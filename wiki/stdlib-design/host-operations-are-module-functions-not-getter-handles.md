@@ -2,8 +2,15 @@
 
 # Host operations are module functions, not getter handles
 
-Decision (Chinmay, 2026-10-31): ambient host operations are functions of their module (`read_file(path)`, not `filesystem().read_file(path)`), as in Node, Python and Go. Types stay only for configured or stateful values (a restricted `Network`, `HttpClient`). `fs` is done; `time`, `random`, `process`, `io` and `net` follow, then constants as values and package directories. `Commands`/`Entropy` injection is dropped on purpose: use plain `run`/`secure_int`. A stdlib `FileSystem` interface is private; tests that need interface defaults define their own.
+Decision (Chinmay, 2026-10-31): ambient host operations are functions of their module (`read_file(path)`, not `filesystem().read_file(path)`), as in Node, Python and Go. Types stay only for configured or stateful values (a restricted `Network`, `HttpClient`). `fs`, `time`, `random`, `process`, `io` and `net` are converted; the host-handle interfaces are private (`Network` stays exported because `restrict` and `with_resolver` return one). `Commands` stays an exported interface only as the shape of `run`/`spawn`. `stdin()`, `stdout()` and `stderr()` remain getters of the shared stream.
 
-Apply when: adding a host-backed operation, or touching a remaining getter (`clock()`, `network()`, `commands()`).
-Evidence: [proposal](../../proposals/stdlib-host-types.md), [fs.ms](../../stdlib/fs.ms).
-Verify: `ms search_symbol filesystem` finds no exported getter; `ms test tests/e2e/testdata/stdlib/fs-defaults.ms`.
+Follow-on rules from the same change:
+- Constants are values only when they are literals: `math.pi`, `max_int` are `export let`; `os_type()`, `end_of_line()` stay functions because a constant cannot call a native.
+- `ordering.ms` has one `Ordered` interface using `Self`; interfaces cannot have default method bodies or generic methods, so each scalar still has a small `impl`.
+- A private helper whose first parameter is a local type becomes a method on it (`csv`, `sse`, `jsonstream`). Methods cannot take other `var` parameters, and converting `toml` and `yaml` panics with "cyclic standard source dependency", so those two keep free functions.
+- Extern fns live in `stdlib/internal/<module>.ms` (not importable by programs, hidden from docs). An extern whose signature names a type of its host module stays in the host module, because the two modules would import each other.
+- Modules sit in packages (`net/`, `io/`, `os/`, `data/`, `collections/`, `concurrency/`, `math/`, `test/`); `@std/net/http.ms`. Native identifiers use the module stem without the package (`ms-check` `module_stem`), so `ms search_symbol http` still works.
+
+Apply when: adding a host-backed operation, a constant, or a module.
+Evidence: [proposal](../../proposals/stdlib-host-types.md), [fs.ms](../../stdlib/os/fs.ms), [internal natives](../../stdlib/internal/math.ms).
+Verify: `ms search_symbol filesystem` finds no exported getter; `ms check` on `filesystem()` prints the removed-getter hint; `ms test tests/e2e/testdata/stdlib/fs-defaults.ms`.

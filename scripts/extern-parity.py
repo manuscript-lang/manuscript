@@ -52,7 +52,7 @@ def derive(params,ret):
         if ok in('String','Bytes'): return ps+['*mut %s'%('StrVal' if ok=='String' else 'VecVal')],'u8'
     return None
 stat=collections.Counter();det=collections.defaultdict(list)
-for f in sorted(glob.glob('stdlib/*.ms')):
+for f in sorted(glob.glob('stdlib/**/*.ms', recursive=True)):
     mod=os.path.basename(f)[:-3]
     lines=open(f).read().split('\n')
     for i,l in enumerate(lines):

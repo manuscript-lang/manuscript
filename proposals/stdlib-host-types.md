@@ -4,11 +4,13 @@
 
 - Problem: `filesystem()`, `network()`, `clock()`, `system()`, `control()`, `commands()`, `entropy()`, `terminal()`, `files()` are getters that return a host-handle interface; every call starts with a getter, then a method.
 - Change: ambient host operations become functions of their module, as in Node (`fs.readFile`), Python (`os.listdir`, `time.time`) and Go (`os.ReadFile`, `time.Now`). Types remain only for configured or stateful values (a restricted `Network`, `HttpClient`, `Subprocess`). Getters and host-handle interfaces are deleted.
-- Decision: approved.
+- Decision: approved and implemented.
 
 ## Status
 
-Approved, 2026-10-31, checked at `be04a207`; skeptic review applied. Chinmay: "having one filesystem(), network() functions feels very weird ... same for rest of the stdlib as well", then "should these be free functions instead? see how the stdlib for node/python/go is setup". Interface-typed default parameters check (`ms check`, scratch project). Approved by Chinmay 2026-10-31: plain free functions, no injectable `Commands`/`Entropy` interfaces, constants become values.
+Implemented, 2026-11-01 (stages 1 to 6 in one PR at the owner's request); skeptic review applied. Deviations: host-dependent constants (`os_type`, `end_of_line`) stay functions because constants must be literals; `toml` and `yaml` keep free helper functions (inherent-method conversion hits a checker cycle panic); externs move to `stdlib/internal/` unless their signature needs a type of the host module. See [the wiki page](../wiki/stdlib-design/host-operations-are-module-functions-not-getter-handles.md).
+
+Approved, 2026-10-31, checked at `be04a207`. Chinmay: "having one filesystem(), network() functions feels very weird ... same for rest of the stdlib as well", then "should these be free functions instead? see how the stdlib for node/python/go is setup". Interface-typed default parameters check (`ms check`, scratch project). Approved by Chinmay 2026-10-31: plain free functions, no injectable `Commands`/`Entropy` interfaces, constants become values.
 
 ## Problem
 
