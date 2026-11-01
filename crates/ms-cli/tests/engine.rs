@@ -647,7 +647,9 @@ fn native_http_handlers_sleep_without_blocking_other_requests() {
     child.kill().unwrap();
     child.wait().unwrap();
     assert!(quick.starts_with("HTTP/1.1 200"), "{quick}");
-    assert!(quick_took < Duration::from_millis(300), "{quick_took:?}");
+    // A blocked scheduler serves the quick request only after all four 500 ms commands (about
+    // 1.9 s); the bound leaves headroom for slow process spawn on loaded Windows runners.
+    assert!(quick_took < Duration::from_millis(450), "{quick_took:?}");
     assert!(total < Duration::from_millis(1500), "{total:?}");
 }
 
@@ -704,7 +706,9 @@ fn native_http_handlers_run_commands_without_blocking_other_requests() {
     child.kill().unwrap();
     child.wait().unwrap();
     assert!(quick.starts_with("HTTP/1.1 200"), "{quick}");
-    assert!(quick_took < Duration::from_millis(300), "{quick_took:?}");
+    // A blocked scheduler serves the quick request only after all four 500 ms commands (about
+    // 1.9 s); the bound leaves headroom for slow process spawn on loaded Windows runners.
+    assert!(quick_took < Duration::from_millis(450), "{quick_took:?}");
     assert!(total < Duration::from_millis(1500), "{total:?}");
 }
 
