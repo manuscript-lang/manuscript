@@ -60,3 +60,16 @@ fn type_defaults_keep_self_forward_and_other_method_parameters_out_of_scope() {
         );
     }
 }
+
+#[test]
+fn type_defaults_validate_nested_applications_without_explicit_bounds() {
+    let got = diagnostics(include_str!(
+        "../tests/type_argument_defaults/nested_bounds.ms"
+    ));
+    assert_eq!(got.len(), 4, "{got:?}");
+    assert!(
+        got.iter()
+            .all(|d| d.message.contains("does not satisfy Hashable;")),
+        "{got:?}"
+    );
+}

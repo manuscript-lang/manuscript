@@ -1402,7 +1402,7 @@ impl Loader<'_> {
 
     /// Checks native default expressions and folds their constants.
     fn check_defaults(&mut self) -> Result<(), String> {
-        self.c.check_type_default_bounds();
+        self.c.check_type_defaults();
         // Check native default expressions with the ordinary expression checker.
         // Lowering prepares concrete slots before native dispatch; the runtime does
         // not own a second default-expression schema.

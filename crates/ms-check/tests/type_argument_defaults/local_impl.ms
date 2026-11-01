@@ -26,3 +26,8 @@ impl Relation[Value] for Value:
 
 fn related[T: Relation[T] = Value](value: T) Int:
     return value.relation(value)
+
+interface KeyReader[A: Hashable]:
+    fn read[B = Map[A, Int]](value: B) Int
+
+fn keys[T = Map[String, Value]](value: T) T: return value
