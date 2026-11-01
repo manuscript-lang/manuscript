@@ -982,7 +982,6 @@ dependencies = [
  "ms-lower",
  "ms-mir",
  "ms-rt",
- "sha2",
 ]
 
 [[package]]

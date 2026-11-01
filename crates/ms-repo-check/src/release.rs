@@ -7,9 +7,12 @@ pub fn extension_version() -> Vec<String> {
     ) else {
         return vec!["cannot read .msversion or extensions/vscode/package.json".into()];
     };
-    let version = manifest
-        .split_once("\"version\"")
-        .and_then(|(_, rest)| rest.split('"').nth(1))
+    let parsed = ms_json::parse(&manifest);
+    let version = parsed
+        .as_ref()
+        .ok()
+        .and_then(|json| json.get("version"))
+        .and_then(ms_json::Json::as_str)
         .unwrap_or("");
     if version == release.trim() {
         return Vec::new();

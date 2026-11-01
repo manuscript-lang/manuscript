@@ -10,10 +10,9 @@
 //! not noticed until some listed file changes; `MS_CACHE=off` or deleting `.ms-cache` covers it.
 
 use std::fmt::Write as _;
+use std::hash::{DefaultHasher, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
-
-use sha2::{Digest, Sha256};
 
 /// Environment variables that change generated code or the link.
 const ENV: &[&str] = &[
@@ -70,7 +69,6 @@ pub fn stamp(path: &Path) -> Option<Stamp> {
 /// directory and the stamps of `inputs` (the `ms` executable, the runtime, `--link` files).
 /// `None` when an input cannot be stamped.
 pub fn key(parts: &[&str], inputs: &[&Path]) -> Option<String> {
-    let mut hasher = Sha256::new();
     let mut text = String::from("ms-build-cache-v2\n");
     for part in parts {
         let _ = writeln!(text, "{part}");
@@ -84,12 +82,11 @@ pub fn key(parts: &[&str], inputs: &[&Path]) -> Option<String> {
         let s = stamp(input)?;
         let _ = writeln!(text, "{} {} {}", input.display(), s.mtime, s.size);
     }
-    hasher.update(text.as_bytes());
-    let mut hex = String::with_capacity(64);
-    for byte in hasher.finalize() {
-        let _ = write!(hex, "{byte:02x}");
-    }
-    Some(hex)
+    // `DefaultHasher::new` has fixed keys, and the `ms` executable's stamp is part of the text,
+    // so a different toolchain never reads another's entries. This is a cache name, not a security digest.
+    let mut hasher = DefaultHasher::new();
+    hasher.write(text.as_bytes());
+    Some(format!("{:016x}", hasher.finish()))
 }
 
 /// A stored build whose sources are unchanged.
