@@ -30,14 +30,14 @@ release, cancellation) and never the other way around.
   closes the resource. `Network.close()` and `close()` on a resource are explicit and
   idempotent; dropping a handle does not run the Go-visible close order.
 - **Interfaces.** `Network`, `Connection`, `Listener`, `DatagramSocket` are interfaces
-  in `.ms`: the compiler builds the vtable whose methods call the `msrt_net_*` symbols
+  in `.ms`: the compiler builds the vtable whose methods call the `msstd_net_*` symbols
   below with the handle as data pointer.
 - **Blocking.** Calls block the ms thread. While waiting they poll the cancel flag
   (the isolate's cancel flag, 50 ms granularity) and call `msrt_cancelled()` when it is set,
   and they run queued HTTP server handlers on the same thread (see HTTP). Nothing else in
   this crate calls `msrt_*` from a helper thread.
-- **Names.** `msrt_net_<type>_<method>` (`msrt_net_connection_read`); free functions are
-  `msrt_net_<name>`.
+- **Names.** `msstd_net_<type>_<method>` (`msstd_net_connection_read`); free functions are
+  `msstd_net_<name>`.
 
 ## Status tables
 
@@ -49,8 +49,8 @@ release, cancellation) and never the other way around.
 | `WebSocketError` | InvalidInput, InvalidData, LimitExceeded, PermissionDenied, Closed, Timeout, Failed |
 | `TlsError` | InvalidInput, InvalidData, LimitExceeded, AuthenticationFailed |
 
-`Error.message()` is `msrt_net_error_message(status, failed_or_null)` for `NetworkError`
-(and `msrt_http_`, `msrt_websocket_`, `msrt_tls_` forms for the other types). Messages
+`Error.message()` is `msstd_net_error_message(status, failed_or_null)` for `NetworkError`
+(and `msstd_http_`, `msstd_websocket_`, `msstd_tls_` forms for the other types). Messages
 carry no input values except `Failed` text, which is verbatim.
 
 ## net
@@ -59,37 +59,37 @@ carry no input values except `Failed` text, which is verbatim.
 `IpFamily`: `IPv4`=0, `IPv6`=1.
 
 ```text
-msrt_net_parse_ip(text, out: *mut *mut Obj, err) -> u8
-msrt_net_parse_cidr(text, out, err) -> u8
-msrt_net_contains_ip(cidr, ip, out: *mut u8) -> u8
-msrt_net_ip_address_text(ip, out: *mut StrVal)          msrt_net_ip_address_family(ip) -> u8
-msrt_net_cidr_text(cidr, out: *mut StrVal)              msrt_net_ip_family_text(u8) / msrt_net_dns_kind_text(u8, out: *mut StrVal)
-msrt_net_error_message(status, has_failed, failed: *const StrVal, out: *mut StrVal)
-msrt_net_network() -> *mut Obj                       the host's root network (+1)
-msrt_net_network_close(net)
-msrt_net_network_connect(net, address, has_timeout, timeout, out, err) -> u8
-msrt_net_network_connect_unix(net, path, has_timeout, timeout, out, err) -> u8
-msrt_net_network_listen(net, address, out, err) -> u8
-msrt_net_network_listen_unix(net, path, out, err) -> u8
-msrt_net_network_bind_datagram(net, address, out, err) -> u8
-msrt_net_network_restrict(net, hosts: *const VecVal, cidrs: *const VecVal, allow_listen: u8, out, err) -> u8
-msrt_net_network_with_resolver(net, address, out, err) -> u8
-msrt_net_network_lookup(net, name, has_max, max, has_timeout, timeout, out: *mut VecVal /* List[String] */, err) -> u8
-msrt_net_network_resolve(net, name, kind: u8, has_max, max, has_timeout, timeout,
+msstd_net_parse_ip(text, out: *mut *mut Obj, err) -> u8
+msstd_net_parse_cidr(text, out, err) -> u8
+msstd_net_contains_ip(cidr, ip, out: *mut u8) -> u8
+msstd_net_ip_address_text(ip, out: *mut StrVal)          msstd_net_ip_address_family(ip) -> u8
+msstd_net_cidr_text(cidr, out: *mut StrVal)              msstd_net_ip_family_text(u8) / msstd_net_dns_kind_text(u8, out: *mut StrVal)
+msstd_net_error_message(status, has_failed, failed: *const StrVal, out: *mut StrVal)
+msstd_net_network() -> *mut Obj                       the host's root network (+1)
+msstd_net_network_close(net)
+msstd_net_network_connect(net, address, has_timeout, timeout, out, err) -> u8
+msstd_net_network_connect_unix(net, path, has_timeout, timeout, out, err) -> u8
+msstd_net_network_listen(net, address, out, err) -> u8
+msstd_net_network_listen_unix(net, path, out, err) -> u8
+msstd_net_network_bind_datagram(net, address, out, err) -> u8
+msstd_net_network_restrict(net, hosts: *const VecVal, cidrs: *const VecVal, allow_listen: u8, out, err) -> u8
+msstd_net_network_with_resolver(net, address, out, err) -> u8
+msstd_net_network_lookup(net, name, has_max, max, has_timeout, timeout, out: *mut VecVal /* List[String] */, err) -> u8
+msstd_net_network_resolve(net, name, kind: u8, has_max, max, has_timeout, timeout,
                          records: *mut *mut DnsRecordWire, count: *mut usize, err) -> u8
-msrt_net_connection_{close, local_address, peer_address, shutdown_write(err) -> u8}
-msrt_net_connection_read(c, has_max, max, has_timeout, timeout, out: *mut VecVal, err) -> u8   # STATUS_NONE (16) at end of stream
-msrt_net_connection_write(c, data: String, has_timeout, timeout, err) -> u8
-msrt_net_connection_write_bytes(c, data: *const VecVal, has_timeout, timeout, err) -> u8
-msrt_net_listener_{accept(l, has_timeout, timeout, out, err) -> u8, address, close}
-msrt_net_datagram_{address, close}  # receiver `sock`
-msrt_net_datagram_receive(sock, has_max, max, has_timeout, timeout, out: *mut DatagramWire { data: VecVal, sender: StrVal }, err) -> u8
-msrt_net_datagram_send(sock, data: String, address, has_timeout, timeout, err) -> u8
-msrt_net_datagram_send_bytes(sock, data: *const VecVal, address, has_timeout, timeout, err) -> u8
+msstd_net_connection_{close, local_address, peer_address, shutdown_write(err) -> u8}
+msstd_net_connection_read(c, has_max, max, has_timeout, timeout, out: *mut VecVal, err) -> u8   # STATUS_NONE (16) at end of stream
+msstd_net_connection_write(c, data: String, has_timeout, timeout, err) -> u8
+msstd_net_connection_write_bytes(c, data: *const VecVal, has_timeout, timeout, err) -> u8
+msstd_net_listener_{accept(l, has_timeout, timeout, out, err) -> u8, address, close}
+msstd_net_datagram_{address, close}  # receiver `sock`
+msstd_net_datagram_receive(sock, has_max, max, has_timeout, timeout, out: *mut DatagramWire { data: VecVal, sender: StrVal }, err) -> u8
+msstd_net_datagram_send(sock, data: String, address, has_timeout, timeout, err) -> u8
+msstd_net_datagram_send_bytes(sock, data: *const VecVal, address, has_timeout, timeout, err) -> u8
 ```
 
 `DnsRecordWire { kind: u8, value: StrVal, priority: i64, weight: i64, port: i64 }`
-(40 bytes): `msrt_net_network_resolve` allocates `count` of them with `msrt_alloc`; the
+(40 bytes): `msstd_net_network_resolve` allocates `count` of them with `msrt_alloc`; the
 compiler moves each string into a `DnsRecord` and frees the array with `msrt_free`.
 
 Behavior notes (same as Go unless stated):
@@ -110,13 +110,13 @@ Behavior notes (same as Go unless stated):
 ## tls
 
 ```text
-msrt_net_network_connect_tls(net, address, server_name, has_timeout, timeout, out, err) -> u8
-msrt_net_network_connect_tls_config(net, address, opts: *const TlsOptionsWire, has_timeout, timeout, out, err) -> u8
-msrt_net_network_listen_tls(net, address, opts: *const TlsOptionsWire, has_handshake_timeout, handshake_timeout, out, err) -> u8
-msrt_net_connection_tls_info(c, out: *mut TlsInfoWire) -> u8          // TlsError status
-msrt_tls_parse_certificates(pem, has_max, max, certs: *mut *mut CertificateInfoWire, count: *mut usize) -> u8
-msrt_tls_verify_certificates(chain_pem, roots_pem, server_name, now_seconds: i64, now_nanos: i32) -> u8
-msrt_tls_error_message(status) -> String
+msstd_net_network_connect_tls(net, address, server_name, has_timeout, timeout, out, err) -> u8
+msstd_net_network_connect_tls_config(net, address, opts: *const TlsOptionsWire, has_timeout, timeout, out, err) -> u8
+msstd_net_network_listen_tls(net, address, opts: *const TlsOptionsWire, has_handshake_timeout, handshake_timeout, out, err) -> u8
+msstd_net_connection_tls_info(c, out: *mut TlsInfoWire) -> u8          // TlsError status
+msstd_tls_parse_certificates(pem, has_max, max, certs: *mut *mut CertificateInfoWire, count: *mut usize) -> u8
+msstd_tls_verify_certificates(chain_pem, roots_pem, server_name, now_seconds: i64, now_nanos: i32) -> u8
+msstd_tls_error_message(status) -> String
 ```
 
 `TlsOptionsWire { server_name, roots_pem, certificate_pem, private_key_pem: *const StrVal,
@@ -154,13 +154,13 @@ closure (compiler generated, borrowed for the call) wrapping the `ReadStream`; i
 follows the `Connection.read` convention: `read(env, has_max, max, out, present, err) -> status`.
 
 ```text
-msrt_net_network_http_client(net, opts, out, err) -> u8
-msrt_http_client_request[_bytes|_stream](c, method, address, headers, body, has_max, max, has_timeout, timeout, out, err) -> u8
-msrt_net_network_request[_bytes](net, method, address, headers, body, has_max, max, has_timeout, timeout, out: *mut ClientResponseWire, err) -> u8
-msrt_http_body_{read,metadata,close}
-msrt_net_network_serve(net, address, env, opts, out, err) -> u8
-msrt_http_server_{address,close,wait}
-msrt_http_exchange_{headers,method,path,protocol,query,read,send_headers,send,write,write_bytes,close,upgrade}
+msstd_net_network_http_client(net, opts, out, err) -> u8
+msstd_http_client_request[_bytes|_stream](c, method, address, headers, body, has_max, max, has_timeout, timeout, out, err) -> u8
+msstd_net_network_request[_bytes](net, method, address, headers, body, has_max, max, has_timeout, timeout, out: *mut ClientResponseWire, err) -> u8
+msstd_http_body_{read,metadata,close}
+msstd_net_network_serve(net, address, env, opts, out, err) -> u8
+msstd_http_server_{address,close,wait}
+msstd_http_exchange_{headers,method,path,protocol,query,read,send_headers,send,write,write_bytes,close,upgrade}
 ```
 
 Handlers are compiler generated closures that run on the ms thread, each request in its
@@ -177,10 +177,10 @@ gzip, idle pool, error texts); see `src/http/client.rs` tests for recorded cases
 ## websocket
 
 ```text
-msrt_net_network_web_socket(net, address, headers, subprotocols, opts: *const WebSocketOptionsWire, out, err) -> u8
-msrt_http_exchange_upgrade(x, origins, subprotocols, has_max, max, out, err) -> u8
-msrt_websocket_{send,send_bytes,ping,ping_bytes,close,subprotocol}
-msrt_websocket_receive(s, data: *mut VecVal, text: *mut u8, present: *mut u8, err) -> u8
+msstd_net_network_web_socket(net, address, headers, subprotocols, opts: *const WebSocketOptionsWire, out, err) -> u8
+msstd_http_exchange_upgrade(x, origins, subprotocols, has_max, max, out, err) -> u8
+msstd_websocket_{send,send_bytes,ping,ping_bytes,close,subprotocol}
+msstd_websocket_receive(s, data: *mut VecVal, text: *mut u8, present: *mut u8, err) -> u8
 ```
 
 A server socket lives until its handler returns, at which point it is closed with

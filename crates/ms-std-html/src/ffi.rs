@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/data/html.ms` (`msrt_html_*`).
+//! C ABI shims for `@std/data/html.ms` (`msstd_html_*`).
 //!
 //! `HtmlNode` is a sum type with recursive lists, so a parse returns a refcounted tree handle
 //! ([`TreeObj`]) and the generated lowering walks it with `u32` node ids: `kind`, `text`, `tag`,
@@ -17,16 +17,16 @@ pub const KIND_COMMENT: u8 = 3;
 pub const KIND_DOCTYPE: u8 = 4;
 
 native! {
-    fn msrt_html_escape(text: &str) -> String {
+    fn msstd_html_escape(text: &str) -> String {
         crate::escape(text)
     }
 
-    fn msrt_html_unescape(text: &str) -> String {
+    fn msstd_html_unescape(text: &str) -> String {
         crate::unescape(text)
     }
 
     /// Writes the tree handle and the root node id through `out` and `root` when it succeeds.
-    fn msrt_html_parse(
+    fn msstd_html_parse(
         text: &str,
         has_limits: bool,
         has_max_bytes: bool,
@@ -54,7 +54,7 @@ native! {
         Ok(())
     }
 
-    fn msrt_html_kind(t: ObjRef<Tree>, id: u32) -> u8 {
+    fn msstd_html_kind(t: ObjRef<Tree>, id: u32) -> u8 {
         match t.nodes[id as usize].ty {
             NodeType::Document | NodeType::ScopeMarker => KIND_DOCUMENT,
             NodeType::Element => KIND_ELEMENT,
@@ -64,15 +64,15 @@ native! {
         }
     }
 
-    fn msrt_html_data(t: ObjRef<Tree>, id: u32) -> String {
+    fn msstd_html_data(t: ObjRef<Tree>, id: u32) -> String {
         t.nodes[id as usize].data.clone()
     }
 
-    fn msrt_html_namespace(t: ObjRef<Tree>, id: u32) -> String {
+    fn msstd_html_namespace(t: ObjRef<Tree>, id: u32) -> String {
         t.nodes[id as usize].namespace.clone()
     }
 
-    fn msrt_html_doctype_id(t: ObjRef<Tree>, id: u32, which: u8) -> String {
+    fn msstd_html_doctype_id(t: ObjRef<Tree>, id: u32, which: u8) -> String {
         let key = if which == 0 { "public" } else { "system" };
         let mut value = "";
         for a in &t.nodes[id as usize].attr {
@@ -83,7 +83,7 @@ native! {
         String::from(value)
     }
 
-    fn msrt_html_child_count(t: ObjRef<Tree>, id: u32) -> i64 {
+    fn msstd_html_child_count(t: ObjRef<Tree>, id: u32) -> i64 {
         let mut n = 0;
         let mut c = t.nodes[id as usize].first;
         while let Some(k) = c {
@@ -93,7 +93,7 @@ native! {
         n
     }
 
-    fn msrt_html_child(t: ObjRef<Tree>, id: u32, i: i64) -> u32 {
+    fn msstd_html_child(t: ObjRef<Tree>, id: u32, i: i64) -> u32 {
         let mut c = t.nodes[id as usize].first;
         for _ in 0..i {
             c = c.and_then(|k| t.nodes[k].next);
@@ -101,19 +101,19 @@ native! {
         c.unwrap_or(0) as u32
     }
 
-    fn msrt_html_first_child(t: ObjRef<Tree>, id: u32) -> u32 {
+    fn msstd_html_first_child(t: ObjRef<Tree>, id: u32) -> u32 {
         t.nodes[id as usize].first.map_or(u32::MAX, |k| k as u32)
     }
 
-    fn msrt_html_next_sibling(t: ObjRef<Tree>, id: u32) -> u32 {
+    fn msstd_html_next_sibling(t: ObjRef<Tree>, id: u32) -> u32 {
         t.nodes[id as usize].next.map_or(u32::MAX, |k| k as u32)
     }
 
-    fn msrt_html_attr_count(t: ObjRef<Tree>, id: u32) -> i64 {
+    fn msstd_html_attr_count(t: ObjRef<Tree>, id: u32) -> i64 {
         t.nodes[id as usize].attr.len() as i64
     }
 
-    fn msrt_html_attr(t: ObjRef<Tree>, id: u32, i: i64, which: u8) -> String {
+    fn msstd_html_attr(t: ObjRef<Tree>, id: u32, i: i64, which: u8) -> String {
         let a = &t.nodes[id as usize].attr[i as usize];
         String::from(match which {
             0 => &a.key,
@@ -140,18 +140,18 @@ mod tests {
         // SAFETY: all pointers are live; results are released below.
         unsafe {
             assert_eq!(
-                msrt_html_parse(&text, 0, 0, 0, 0, 0, 0, 0, t.as_mut_ptr(), &mut root),
+                msstd_html_parse(&text, 0, 0, 0, 0, 0, 0, 0, t.as_mut_ptr(), &mut root),
                 STATUS_OK
             );
             let t = t.assume_init();
-            assert_eq!(msrt_html_kind(t, root), KIND_DOCUMENT);
-            let html = msrt_html_first_child(t, root);
-            assert_eq!(take_string(|o| msrt_html_data(t, html, o)), "html");
-            let body = msrt_html_child(t, html, 1);
-            let p = msrt_html_first_child(t, body);
-            assert_eq!(msrt_html_attr_count(t, p), 1);
-            let tx = msrt_html_first_child(t, p);
-            assert_eq!(take_string(|o| msrt_html_data(t, tx, o)), "x&y");
+            assert_eq!(msstd_html_kind(t, root), KIND_DOCUMENT);
+            let html = msstd_html_first_child(t, root);
+            assert_eq!(take_string(|o| msstd_html_data(t, html, o)), "html");
+            let body = msstd_html_child(t, html, 1);
+            let p = msstd_html_first_child(t, body);
+            assert_eq!(msstd_html_attr_count(t, p), 1);
+            let tx = msstd_html_first_child(t, p);
+            assert_eq!(take_string(|o| msstd_html_data(t, tx, o)), "x&y");
             ms_rt::obj::msrt_release(t.cast());
             ms_rt::ffi::str_release(&text);
         }

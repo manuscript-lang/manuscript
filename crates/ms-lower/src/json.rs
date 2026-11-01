@@ -1,5 +1,5 @@
 //! `@std/data/json.ms` `parse` and `stringify` for any type: one decoder and one encoder per type,
-//! built in MIR over the runtime's document arena (`msrt_json_*`, see `ms-std-json`).
+//! built in MIR over the runtime's document arena (`msstd_json_*`, see `ms-std-json`).
 //!
 //! A decoder takes the document handle, a node id and the strict flag (unknown object members
 //! fail) and returns an `Optional`: `none` is `InvalidData`. An encoder takes the builder handle
@@ -159,20 +159,20 @@ impl FnLower<'_> {
     }
 
     fn jkind(&mut self, doc: Value, id: Value) -> Result<Value, Error> {
-        self.jcall_masked("msrt_json_kind", &[doc, id], 0xff)
+        self.jcall_masked("msstd_json_kind", &[doc, id], 0xff)
     }
 
     fn jitem(&mut self, doc: Value, id: Value, i: Value) -> Result<Value, Error> {
-        self.jcall_masked("msrt_json_item", &[doc, id, i], 0xffff_ffff)
+        self.jcall_masked("msstd_json_item", &[doc, id, i], 0xffff_ffff)
     }
 
     fn jlen(&mut self, doc: Value, id: Value) -> Result<Value, Error> {
-        self.call_runtime("msrt_json_len", &[doc, id], MTy::INT)
+        self.call_runtime("msstd_json_len", &[doc, id], MTy::INT)
     }
 
     /// An owned string.
     fn jtext(&mut self, doc: Value, id: Value) -> Result<Value, Error> {
-        self.call_runtime("msrt_json_text", &[doc, id], MTy::STR)
+        self.call_runtime("msstd_json_text", &[doc, id], MTy::STR)
     }
 
     pub(crate) fn jslot(&mut self, t: MTy) -> Value {
@@ -305,7 +305,7 @@ impl FnLower<'_> {
                 self.jexpect_kind(doc, id, KIND_NUMBER)?;
                 let text = self.jtext(doc, id)?;
                 let slot = self.jslot(MTy::INT);
-                let st = self.status_code("msrt_json_dec_int", &[text, slot])?;
+                let st = self.status_code("msstd_json_dec_int", &[text, slot])?;
                 self.drop_value(text);
                 let zero = self.b.iconst(0);
                 let ok = self.b.icmp(Cc::Eq, st, zero);
@@ -320,7 +320,7 @@ impl FnLower<'_> {
                 let text = self.jtext(doc, id)?;
                 let slot = self.jslot(MTy::INT);
                 let (lo, hi) = (self.b.iconst(lo), self.b.iconst(hi));
-                let st = self.status_code("msrt_json_dec_int_in", &[text, lo, hi, slot])?;
+                let st = self.status_code("msstd_json_dec_int_in", &[text, lo, hi, slot])?;
                 self.drop_value(text);
                 let zero = self.b.iconst(0);
                 let ok = self.b.icmp(Cc::Eq, st, zero);
@@ -334,7 +334,7 @@ impl FnLower<'_> {
                 self.jexpect_kind(doc, id, KIND_NUMBER)?;
                 let text = self.jtext(doc, id)?;
                 let slot = self.jslot(MTy::UINT64);
-                let st = self.status_code("msrt_json_dec_uint", &[text, slot])?;
+                let st = self.status_code("msstd_json_dec_uint", &[text, slot])?;
                 self.drop_value(text);
                 let zero = self.b.iconst(0);
                 let ok = self.b.icmp(Cc::Eq, st, zero);
@@ -347,7 +347,7 @@ impl FnLower<'_> {
                 self.jexpect_kind(doc, id, KIND_NUMBER)?;
                 let text = self.jtext(doc, id)?;
                 let slot = self.jslot(MTy::FLOAT);
-                let st = self.status_code("msrt_json_dec_float32", &[text, slot])?;
+                let st = self.status_code("msstd_json_dec_float32", &[text, slot])?;
                 self.drop_value(text);
                 let zero = self.b.iconst(0);
                 let ok = self.b.icmp(Cc::Eq, st, zero);
@@ -361,7 +361,7 @@ impl FnLower<'_> {
                 self.jexpect_kind(doc, id, KIND_NUMBER)?;
                 let text = self.jtext(doc, id)?;
                 let slot = self.jslot(MTy::FLOAT);
-                let st = self.status_code("msrt_json_dec_float", &[text, slot])?;
+                let st = self.status_code("msstd_json_dec_float", &[text, slot])?;
                 self.drop_value(text);
                 let zero = self.b.iconst(0);
                 let ok = self.b.icmp(Cc::Eq, st, zero);
@@ -372,7 +372,7 @@ impl FnLower<'_> {
             }
             "Bool" => {
                 self.jexpect_kind(doc, id, KIND_BOOL)?;
-                let raw = self.jcall_masked("msrt_json_bool", &[doc, id], 0xff)?;
+                let raw = self.jcall_masked("msstd_json_bool", &[doc, id], 0xff)?;
                 let zero = self.b.iconst(0);
                 let v = self.b.icmp(Cc::Ne, raw, zero);
                 self.jfinish(v);
@@ -407,17 +407,17 @@ impl FnLower<'_> {
         }
         // Standard value types read from their JSON text.
         let parsed = if t.is_time("Duration") {
-            Some((KIND_NUMBER, "msrt_json_dec_int", false))
+            Some((KIND_NUMBER, "msstd_json_dec_int", false))
         } else if t.is_time("Timestamp") {
             Some((KIND_STRING, "msstd_time_parse_timestamp", false))
         } else if t.is_std("Bytes") {
-            Some((KIND_STRING, "msrt_encoding_base64_decode", true))
+            Some((KIND_STRING, "msstd_encoding_base64_decode", true))
         } else if t.is_source_type("@std/net/net.ms", "Url") {
-            Some((KIND_STRING, "msrt_url_parse", false))
+            Some((KIND_STRING, "msstd_url_parse", false))
         } else if t.is_source_type("@std/net/net.ms", "IpAddress") {
-            Some((KIND_STRING, "msrt_json_dec_ip", false))
+            Some((KIND_STRING, "msstd_json_dec_ip", false))
         } else if t.is_source_type("@std/net/net.ms", "Cidr") {
-            Some((KIND_STRING, "msrt_json_dec_cidr", false))
+            Some((KIND_STRING, "msstd_json_dec_cidr", false))
         } else if t.is_std("Decimal") {
             Some((KIND_NUMBER, "msstd_decimal_parse", false))
         } else if t.is_std("BigInt") {
@@ -554,7 +554,7 @@ impl FnLower<'_> {
         // The parser rejects repeated names, so only a key read from them can collide.
         let names_are_keys = key.id.as_str() == "String";
         self.counted_loop(zero, n, &mut |s, iv| {
-            let name = s.call_runtime("msrt_json_key", &[doc, id, iv], MTy::STR)?;
+            let name = s.call_runtime("msstd_json_key", &[doc, id, iv], MTy::STR)?;
             let k = s.jdecode_key(key, key_mt, name, acc)?;
             let item = s.jitem(doc, id, iv)?;
             let r = s.jdecode_call(value, doc, item, strict)?;
@@ -616,7 +616,7 @@ impl FnLower<'_> {
         }
         if key.id.as_str() == "Int" || key.is_time("Duration") {
             let slot = self.jslot(MTy::INT);
-            let st = self.status_code("msrt_json_dec_int", &[name, slot])?;
+            let st = self.status_code("msstd_json_dec_int", &[name, slot])?;
             self.drop_value(name);
             let z = self.b.iconst(0);
             let ok = self.b.icmp(Cc::Eq, st, z);
@@ -700,7 +700,7 @@ impl FnLower<'_> {
         self.b.switch_to(check);
         let names: Vec<String> = fields.iter().map(|f| f.name.clone()).collect();
         let list = self.jnames(&names);
-        let unknown = self.jcall_masked("msrt_json_has_unknown", &[doc, id, list], 0xff)?;
+        let unknown = self.jcall_masked("msstd_json_has_unknown", &[doc, id, list], 0xff)?;
         self.drop_value(list);
         let zero = self.b.iconst(0);
         let none_unknown = self.b.icmp(Cc::Eq, unknown, zero);
@@ -713,7 +713,7 @@ impl FnLower<'_> {
             let ft = self.jmty(&f.ty)?;
             let var = self.jvar(ft);
             let key = self.b.str_lit(&f.name);
-            let idx = self.call_runtime("msrt_json_find", &[doc, id, key], MTy::INT)?;
+            let idx = self.call_runtime("msstd_json_find", &[doc, id, key], MTy::INT)?;
             let z = self.b.iconst(0);
             let found = self.b.icmp(Cc::Ge, idx, z);
             let (present, absent, join) =
@@ -806,7 +806,7 @@ impl FnLower<'_> {
         let names: Vec<String> = cases.iter().map(|c| c.name.to_string()).collect();
         let list = self.jnames(&names);
         let slot = self.jslot(MTy::INT);
-        let idx = self.call_runtime("msrt_json_variant", &[doc, id, list, slot], MTy::INT)?;
+        let idx = self.call_runtime("msstd_json_variant", &[doc, id, list, slot], MTy::INT)?;
         self.drop_value(list);
         let payload = self.take_slot(slot, MTy::INT);
         let zero = self.b.iconst(0);
@@ -885,7 +885,7 @@ impl FnLower<'_> {
                 }
                 KIND_BOOL => {
                     let c = case_index("BoolValue").ok_or_else(missing)?;
-                    let raw = self.jcall_masked("msrt_json_bool", &[doc, id], 0xff)?;
+                    let raw = self.jcall_masked("msstd_json_bool", &[doc, id], 0xff)?;
                     let z = self.b.iconst(0);
                     let b = self.b.icmp(Cc::Ne, raw, z);
                     self.b.alt_new(a, c as u32, &[b])
@@ -949,7 +949,7 @@ impl FnLower<'_> {
     /// The result of an encoder whose value has no JSON form; nothing was written. The omission
     /// is noted for strict `stringify`.
     fn jno_form(&mut self, w: Value) -> Result<Value, Error> {
-        self.jw("msrt_json_w_no_form", &[w])?;
+        self.jw("msstd_json_w_no_form", &[w])?;
         Ok(self.b.iconst(-1))
     }
 
@@ -961,33 +961,33 @@ impl FnLower<'_> {
         }
         match t.id.as_str() {
             "Int" => {
-                self.jw("msrt_json_w_int", &[w, value])?;
+                self.jw("msstd_json_w_int", &[w, value])?;
                 return Ok(self.jwritten());
             }
             "Float" => {
-                self.jw("msrt_json_w_float", &[w, value])?;
+                self.jw("msstd_json_w_float", &[w, value])?;
                 return Ok(self.jwritten());
             }
             "Int8" | "Int16" | "Int32" | "UInt8" | "UInt16" | "UInt32" => {
                 let wide = self.b.conv(value, MTy::INT);
-                self.jw("msrt_json_w_int", &[w, wide])?;
+                self.jw("msstd_json_w_int", &[w, wide])?;
                 return Ok(self.jwritten());
             }
             "UInt64" => {
-                self.jw("msrt_json_w_uint", &[w, value])?;
+                self.jw("msstd_json_w_uint", &[w, value])?;
                 return Ok(self.jwritten());
             }
             "Float32" => {
                 let wide = self.b.conv(value, MTy::FLOAT);
-                self.jw("msrt_json_w_float32", &[w, wide])?;
+                self.jw("msstd_json_w_float32", &[w, wide])?;
                 return Ok(self.jwritten());
             }
             "Bool" => {
-                self.jw("msrt_json_w_bool", &[w, value])?;
+                self.jw("msstd_json_w_bool", &[w, value])?;
                 return Ok(self.jwritten());
             }
             "String" => {
-                self.jw("msrt_json_w_string", &[w, value])?;
+                self.jw("msstd_json_w_string", &[w, value])?;
                 return Ok(self.jwritten());
             }
             "Unit" | "Never" => return self.jno_form(w),
@@ -1006,7 +1006,7 @@ impl FnLower<'_> {
             self.b.def_var(out, written);
             self.b.br(join, &[]);
             self.b.switch_to(no);
-            self.jw("msrt_json_w_null", &[w])?;
+            self.jw("msstd_json_w_null", &[w])?;
             let written = self.jwritten();
             self.b.def_var(out, written);
             self.b.br(join, &[]);
@@ -1025,7 +1025,7 @@ impl FnLower<'_> {
         }
         if t.is_time("Duration") {
             let nanos = self.duration_nanos(value)?;
-            self.jw("msrt_json_w_int", &[w, nanos])?;
+            self.jw("msstd_json_w_int", &[w, nanos])?;
             return Ok(self.jwritten());
         }
         if let Some(c) = self.json_encode_impl(t) {
@@ -1043,9 +1043,9 @@ impl FnLower<'_> {
                 own: false,
             })?;
             let sym = if t.is_std("Decimal") {
-                "msrt_json_w_number"
+                "msstd_json_w_number"
             } else {
-                "msrt_json_w_string"
+                "msstd_json_w_string"
             };
             self.jw(sym, &[w, text.v])?;
             if text.own {
@@ -1057,8 +1057,8 @@ impl FnLower<'_> {
         if mt == MTy::BYTES && t.is_std("Bytes") {
             let no_url = self.b.bconst(false);
             let text =
-                self.call_runtime("msrt_encoding_base64_encode", &[value, no_url], MTy::STR)?;
-            self.jw("msrt_json_w_string", &[w, text])?;
+                self.call_runtime("msstd_encoding_base64_encode", &[value, no_url], MTy::STR)?;
+            self.jw("msstd_json_w_string", &[w, text])?;
             self.drop_value(text);
             return Ok(self.jwritten());
         }
@@ -1067,7 +1067,7 @@ impl FnLower<'_> {
             let radix = self.b.iconst(10);
             let text =
                 self.call_runtime("msstd_bigint_to_string_radix", &[value, radix], MTy::STR)?;
-            self.jw("msrt_json_w_number", &[w, text])?;
+            self.jw("msstd_json_w_number", &[w, text])?;
             self.drop_value(text);
             return Ok(self.jwritten());
         }
@@ -1077,12 +1077,12 @@ impl FnLower<'_> {
         }
         // An address or network is its text.
         for (name, sym) in [
-            ("IpAddress", "msrt_net_ip_address_text"),
-            ("Cidr", "msrt_net_cidr_text"),
+            ("IpAddress", "msstd_net_ip_address_text"),
+            ("Cidr", "msstd_net_cidr_text"),
         ] {
             if t.is_source_type("@std/net/net.ms", name) {
                 let text = self.call_runtime(sym, &[value], MTy::STR)?;
-                self.jw("msrt_json_w_string", &[w, text])?;
+                self.jw("msstd_json_w_string", &[w, text])?;
                 self.drop_value(text);
                 return Ok(self.jwritten());
             }
@@ -1093,12 +1093,12 @@ impl FnLower<'_> {
                 let TyKind::Rec(r) = self.b.m.types.kind(mt).clone() else {
                     return Err(Error::new("a record type lowers to a record"));
                 };
-                self.jw("msrt_json_w_begin_object", &[w])?;
+                self.jw("msstd_json_w_begin_object", &[w])?;
                 for (i, f) in fields.iter().enumerate() {
                     let fv = self.b.rec_get(r, i as u32, value);
                     self.jencode_member(w, &f.name, &f.ty, fv)?;
                 }
-                self.jw("msrt_json_w_end_object", &[w])?;
+                self.jw("msstd_json_w_end_object", &[w])?;
                 Ok(self.jwritten())
             }
             ct::Kind::Alternative => self.jencode_alternative(t, mt, w, value),
@@ -1121,7 +1121,7 @@ impl FnLower<'_> {
         self.b.br_if(has_form, after, &[], undo, &[]);
         self.b.seal_block(undo);
         self.b.switch_to(undo);
-        self.jw("msrt_json_w_undo", &[w])?;
+        self.jw("msstd_json_w_undo", &[w])?;
         fallback(self)?;
         self.b.br(after, &[]);
         self.b.seal_block(after);
@@ -1150,7 +1150,7 @@ impl FnLower<'_> {
             (ty.clone(), value)
         };
         let key = self.b.str_lit(&json_quote(name));
-        self.jw("msrt_json_w_key_quoted", &[w, key])?;
+        self.jw("msstd_json_w_key_quoted", &[w, key])?;
         let written = self.jencode_nested(&inner_ty, w, inner)?;
         self.jslot_or(w, written, &mut |_| Ok(()))?;
         self.b.br(after, &[]);
@@ -1178,7 +1178,7 @@ impl FnLower<'_> {
             .b
             .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
             .expect("slot");
-        let code = self.status_code("msrt_url_format", &[value, slot])?;
+        let code = self.status_code("msstd_url_format", &[value, slot])?;
         let zero = self.b.iconst(0);
         let good = self.b.icmp(Cc::Eq, code, zero);
         let out = self.b.declare_var(MTy::INT, Mode::Borrow);
@@ -1191,7 +1191,7 @@ impl FnLower<'_> {
             .b
             .emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
             .expect("take");
-        self.jw("msrt_json_w_string", &[w, text])?;
+        self.jw("msstd_json_w_string", &[w, text])?;
         self.drop_value(text);
         let written = self.jwritten();
         self.b.def_var(out, written);
@@ -1207,27 +1207,27 @@ impl FnLower<'_> {
 
     /// Writes one array item; an element without a JSON form is `null`.
     fn jencode_item(&mut self, elem: &ct::Ty, w: Value, item: Value) -> Result<(), Error> {
-        self.jw("msrt_json_w_item", &[w])?;
+        self.jw("msstd_json_w_item", &[w])?;
         let written = self.jencode_nested(elem, w, item)?;
         self.jslot_or(w, written, &mut |s| {
-            s.jw("msrt_json_w_item", &[w])?;
-            s.jw("msrt_json_w_null", &[w])
+            s.jw("msstd_json_w_item", &[w])?;
+            s.jw("msstd_json_w_null", &[w])
         })
     }
 
     /// A set is an array of its elements in insertion order.
     fn jencode_set(&mut self, elem: &ct::Ty, w: Value, value: Value) -> Result<Value, Error> {
-        self.jw("msrt_json_w_begin_array", &[w])?;
+        self.jw("msstd_json_w_begin_array", &[w])?;
         let elem = elem.clone();
         self.each_entry(value, &mut |s, key, _| s.jencode_item(&elem, w, key))?;
-        self.jw("msrt_json_w_end_array", &[w])?;
+        self.jw("msstd_json_w_end_array", &[w])?;
         Ok(self.jwritten())
     }
 
     /// Writes the member name of the map key `k` of type `key`.
     fn jencode_map_key(&mut self, key: &ct::Ty, w: Value, k: Value) -> Result<(), Error> {
         if key.id.as_str() == "String" {
-            return self.jw("msrt_json_w_key", &[w, k]);
+            return self.jw("msstd_json_w_key", &[w, k]);
         }
         if !jplain_alt(key) {
             // A duration key is its count of nanoseconds.
@@ -1237,7 +1237,7 @@ impl FnLower<'_> {
                 k
             };
             let name = self.format_value(Val { v: k, own: false })?;
-            self.jw("msrt_json_w_key", &[w, name.v])?;
+            self.jw("msstd_json_w_key", &[w, name.v])?;
             if name.own {
                 self.drop_value(name.v);
             }
@@ -1266,7 +1266,7 @@ impl FnLower<'_> {
             self.b.seal_block(blocks[i]);
             self.b.switch_to(blocks[i]);
             let name = self.b.str_lit(&json_quote(c.name.as_str()));
-            self.jw("msrt_json_w_key_quoted", &[w, name])?;
+            self.jw("msstd_json_w_key_quoted", &[w, name])?;
             self.b.br(join, &[]);
         }
         self.b.seal_block(join);
@@ -1291,7 +1291,7 @@ impl FnLower<'_> {
         if !keyable {
             return self.jno_form(w);
         }
-        self.jw("msrt_json_w_begin_object", &[w])?;
+        self.jw("msstd_json_w_begin_object", &[w])?;
         let (key, value_ty) = (key.clone(), value_ty.clone());
         self.each_entry(value, &mut |s, k, v| {
             let v = v.ok_or_else(|| Error::new("a map entry has a value"))?;
@@ -1299,19 +1299,19 @@ impl FnLower<'_> {
             let written = s.jencode_nested(&value_ty, w, v)?;
             s.jslot_or(w, written, &mut |_| Ok(()))
         })?;
-        self.jw("msrt_json_w_end_object", &[w])?;
+        self.jw("msstd_json_w_end_object", &[w])?;
         Ok(self.jwritten())
     }
 
     fn jencode_list(&mut self, elem: &ct::Ty, w: Value, value: Value) -> Result<Value, Error> {
-        self.jw("msrt_json_w_begin_array", &[w])?;
+        self.jw("msstd_json_w_begin_array", &[w])?;
         let n = self.b.list_len(value);
         let zero = self.b.iconst(0);
         self.counted_loop(zero, n, &mut |s, iv| {
             let item = s.b.list_get(value, iv);
             s.jencode_item(elem, w, item)
         })?;
-        self.jw("msrt_json_w_end_array", &[w])?;
+        self.jw("msstd_json_w_end_array", &[w])?;
         Ok(self.jwritten())
     }
 
@@ -1344,18 +1344,18 @@ impl FnLower<'_> {
             self.b.switch_to(blocks[i]);
             if c.fields.is_empty() {
                 let name = self.b.str_lit(c.name.as_str());
-                self.jw("msrt_json_w_string", &[w, name])?;
+                self.jw("msstd_json_w_string", &[w, name])?;
             } else {
-                self.jw("msrt_json_w_begin_object", &[w])?;
+                self.jw("msstd_json_w_begin_object", &[w])?;
                 let key = self.b.str_lit(&json_quote(c.name.as_str()));
-                self.jw("msrt_json_w_key_quoted", &[w, key])?;
-                self.jw("msrt_json_w_begin_object", &[w])?;
+                self.jw("msstd_json_w_key_quoted", &[w, key])?;
+                self.jw("msstd_json_w_begin_object", &[w])?;
                 for (j, f) in c.fields.iter().enumerate() {
                     let fv = self.b.alt_get(a, i as u32, j as u32, value);
                     self.jencode_member(w, f.name.as_str(), &f.ty, fv)?;
                 }
-                self.jw("msrt_json_w_end_object", &[w])?;
-                self.jw("msrt_json_w_end_object", &[w])?;
+                self.jw("msstd_json_w_end_object", &[w])?;
+                self.jw("msstd_json_w_end_object", &[w])?;
             }
             self.b.br(join, &[]);
         }
@@ -1382,7 +1382,7 @@ impl FnLower<'_> {
         // The runtime reads the value from memory; the copy is bitwise and never dropped.
         let slot = self.jslot(mt);
         self.b.emit(Op::Store, &[slot, value], Imm::None, None);
-        self.jw("msrt_json_w_tree", &[w, desc, view, slot])?;
+        self.jw("msstd_json_w_tree", &[w, desc, view, slot])?;
         Ok(self.jwritten())
     }
 
@@ -1432,9 +1432,9 @@ impl FnLower<'_> {
             (doc_slot, root_slot)
         };
         let sym = if tree {
-            "msrt_json_parse_tree"
+            "msstd_json_parse_tree"
         } else {
-            "msrt_json_parse"
+            "msstd_json_parse"
         };
         let code = self.status_code(sym, &vals)?;
         let zero = self.b.iconst(0);
@@ -1592,17 +1592,17 @@ impl FnLower<'_> {
         let mut calls = Vec::new();
         for c in &cases {
             let (sym, on_walk, payload_ty) = match c.name.as_str() {
-                "Null" => ("msrt_json_w_null", false, None),
-                "BoolValue" => ("msrt_json_w_bool", false, Some(MTy::BOOL)),
-                "NumberValue" => ("msrt_json_w_number", false, Some(MTy::STR)),
-                "StringValue" => ("msrt_json_w_string", false, Some(MTy::STR)),
+                "Null" => ("msstd_json_w_null", false, None),
+                "BoolValue" => ("msstd_json_w_bool", false, Some(MTy::BOOL)),
+                "NumberValue" => ("msstd_json_w_number", false, Some(MTy::STR)),
+                "StringValue" => ("msstd_json_w_string", false, Some(MTy::STR)),
                 "ArrayValue" => (
-                    "msrt_json_tree_array",
+                    "msstd_json_tree_array",
                     true,
                     Some(self.jmty(&c.fields[0].ty)?),
                 ),
                 "ObjectValue" => (
-                    "msrt_json_tree_object",
+                    "msstd_json_tree_object",
                     true,
                     Some(self.jmty(&c.fields[0].ty)?),
                 ),
@@ -1755,7 +1755,7 @@ impl FnLower<'_> {
         let (hm, vm) = flat(self, "max_bytes")?;
         let (hi, vi) = flat(self, "indent")?;
         let writer_ty = self.jwriter_ty();
-        let writer = self.call_runtime("msrt_json_writer_new", &[hm, vm, hi, vi], writer_ty)?;
+        let writer = self.call_runtime("msstd_json_writer_new", &[hm, vm, hi, vi], writer_ty)?;
         let wvar = self.jvar(writer_ty);
         self.b.def_var(wvar, writer);
         let enc = {
@@ -1769,7 +1769,7 @@ impl FnLower<'_> {
         let has_form = match args.iter().find(|a| a.name.as_str() == "strict") {
             Some(a) => {
                 let strict = self.borrow(a.val);
-                let lost = self.call_runtime("msrt_json_w_lost", &[writer], MTy::BOOL)?;
+                let lost = self.call_runtime("msstd_json_w_lost", &[writer], MTy::BOOL)?;
                 let bad = self.b.binop(Op::And, strict, lost);
                 let f = self.b.bconst(false);
                 let intact = self.b.icmp(Cc::Eq, bad, f);
@@ -1790,10 +1790,10 @@ impl FnLower<'_> {
             rty,
             &mut |s| {
                 let slot = s.jslot(MTy::STR);
-                let code = s.status_code("msrt_json_w_finish", &[writer, slot])?;
+                let code = s.status_code("msstd_json_w_finish", &[writer, slot])?;
                 Ok(Some(
                     s.status_result(
-                        "msrt_json_w_finish",
+                        "msstd_json_w_finish",
                         code,
                         Some((slot, MTy::STR)),
                         None,

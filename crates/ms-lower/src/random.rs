@@ -1,7 +1,7 @@
 //! `@std/os/random.ms` operations over an `Entropy`: `secure_int`, `uuid_v4`, `float`, `shuffle`
 //! and `choice`.
 //!
-//! The runtime owns the algorithms as a `Draw` (`ms-std-random`). The loop asks it how many bytes
+//! The runtime owns the algorithms as a `Draw` (`ms-std-core`). The loop asks it how many bytes
 //! to fetch, calls the source's own `bytes` (a runtime handle or a user-defined implementation),
 //! and feeds the answer back until the draw is complete. A failing source is the result.
 

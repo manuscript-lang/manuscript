@@ -101,8 +101,8 @@ pub(crate) struct NArg {
 /// The native identity of `@std/data/json.ms`'s typed calls, which its source module declares as externs.
 pub(crate) fn json_native(native: &str) -> &str {
     match native {
-        "extern:msrt_json_parse" => "json/parse",
-        "extern:msrt_json_stringify" => "json/stringify",
+        "extern:msstd_json_parse" => "json/parse",
+        "extern:msstd_json_stringify" => "json/stringify",
         other => other,
     }
 }
@@ -463,7 +463,7 @@ impl<'a> FnLower<'a> {
                 _ => 5,
             };
             let alg = self.b.iconst(alg);
-            let sym = "msrt_crypto_digest";
+            let sym = "msstd_crypto_digest";
             let sig = crate::rtcall::rt_sig(sym)
                 .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
             return self.finish_rt_call(sym, &sig, true, vec![alg, data], MTy::BYTES);
@@ -474,7 +474,7 @@ impl<'a> FnLower<'a> {
             for a in args {
                 vals.push(self.borrow(a.val));
             }
-            let sym = "msrt_crypto_derive_key";
+            let sym = "msstd_crypto_derive_key";
             let sig = crate::rtcall::rt_sig(sym)
                 .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
             return self.finish_rt_call(sym, &sig, true, vals, result);
@@ -3615,12 +3615,12 @@ fn build_clock_method(
 /// The runtime symbol of a `HashAlgorithm` operation, by native identity.
 fn hash_algorithm_symbol(native: &str) -> Option<&'static str> {
     match native {
-        "crypto/hash_algorithm_digest" => Some("msrt_crypto_digest"),
-        "crypto/hash_algorithm_hmac" => Some("msrt_crypto_hmac"),
-        "derive_key" | "crypto/hash_algorithm_derive_key" => Some("msrt_crypto_derive_key"),
-        "hkdf" | "crypto/hash_algorithm_hkdf" => Some("msrt_crypto_hkdf"),
-        "crypto/hash_algorithm_hasher" => Some("msrt_crypto_hasher_new"),
-        "crypto/hash_algorithm_hmac_hasher" => Some("msrt_crypto_hmac_hasher_new"),
+        "crypto/hash_algorithm_digest" => Some("msstd_crypto_digest"),
+        "crypto/hash_algorithm_hmac" => Some("msstd_crypto_hmac"),
+        "derive_key" | "crypto/hash_algorithm_derive_key" => Some("msstd_crypto_derive_key"),
+        "hkdf" | "crypto/hash_algorithm_hkdf" => Some("msstd_crypto_hkdf"),
+        "crypto/hash_algorithm_hasher" => Some("msstd_crypto_hasher_new"),
+        "crypto/hash_algorithm_hmac_hasher" => Some("msstd_crypto_hmac_hasher_new"),
         _ => None,
     }
 }

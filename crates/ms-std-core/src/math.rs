@@ -3,10 +3,6 @@
 //!
 //! The generic `max` and `min` are not natives: they are lowered by the
 //! compiler through the element comparison.
-// Links the msrt_* runtime symbols into this crate's test binaries.
-#[cfg(test)]
-use ms_rt as _;
-
 use ms_rt::ffi::native;
 
 macro_rules! unary {
