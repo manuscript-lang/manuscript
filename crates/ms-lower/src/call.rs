@@ -874,8 +874,11 @@ impl<'a> FnLower<'a> {
         &self,
         callee: &Callable,
     ) -> Option<(Option<ms_check::syntax::FuncRef>, ct::Ty)> {
+        // Node ids repeat across modules, so the module must match too.
         let im = self.cx.methods.iter().find(|m| {
-            !m.id.as_str().is_empty() && m.decl.as_ref().is_some_and(|d| d.id() == callee.func.id())
+            !m.id.as_str().is_empty()
+                && m.module == callee.module.file
+                && m.decl.as_ref().is_some_and(|d| d.id() == callee.func.id())
         })?;
         let def = im.contract.as_ref()?.def.as_ref()?;
         let ops = def.operations.borrow();
