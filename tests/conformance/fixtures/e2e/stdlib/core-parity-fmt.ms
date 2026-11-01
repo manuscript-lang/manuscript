@@ -9,23 +9,17 @@ import JsonLimits from "@std/data/json.ms"
 type Counter:
     calls: Int
 
-impl Error for Counter:
-    fn message() String: "counter"
-
 type Pending:
     values: List[Int]
-
-impl Error for Pending:
-    fn message() String: "pending"
 
 fn bump(var counter: Counter) Int:
     counter.calls += 1
     return 9
 
-fn map_result[T, E: Error, U](value: T!E, transform: fn(T) U) U!E:
+fn map_result[T, E, U](value: T!E, transform: fn(T) U) U!E:
     return value.map(transform)
 
-fn chain_result[T, E: Error, U](
+fn chain_result[T, E, U](
     value: T!E,
     transform: fn(T) U!E
 ) U!E:

@@ -3,92 +3,13 @@
   "phase": "check",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"",
-        "position": {
-          "file": "core-language-errors-results-1.ms",
-          "line": 14,
-          "column": 20,
-          "offset": 470
-        },
-        "fix": {
-          "position": {
-            "file": "core-language-errors-results-1.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "end": {
-            "file": "core-language-errors-results-1.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "replacement": "import Decimal from \"@std/math/decimal.ms\"\n"
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"",
-        "position": {
-          "file": "core-language-errors-results-1.ms",
-          "line": 14,
-          "column": 38,
-          "offset": 488
-        },
-        "fix": {
-          "position": {
-            "file": "core-language-errors-results-1.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "end": {
-            "file": "core-language-errors-results-1.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "replacement": "import Decimal from \"@std/math/decimal.ms\"\n"
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"",
-        "position": {
-          "file": "core-language-errors-results-1.ms",
-          "line": 14,
-          "column": 54,
-          "offset": 504
-        },
-        "fix": {
-          "position": {
-            "file": "core-language-errors-results-1.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "end": {
-            "file": "core-language-errors-results-1.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "replacement": "import Decimal from \"@std/math/decimal.ms\"\n"
-        }
-      }
-    ],
+    "diagnostics": [],
     "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/core-language-errors-results-1.ms:14:20: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n    |\n 14 | fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    |                    ^\n<DIR>/core-language-errors-results-1.ms:14:38: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n    |\n 14 | fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    |                                      ^\n<DIR>/core-language-errors-results-1.ms:14:54: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n    |\n 14 | fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    |                                                      ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "exit_code": 0,
+      "stdout": "Checked core-language-errors-results-1.ms\n",
+      "stderr": ""
     }
   }
 }

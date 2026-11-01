@@ -5,13 +5,13 @@ weight = 1
 
 # Expected failures with Result
 
-Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected error `E`. `E` must implement `Error`, so `Result[Int, String]` is rejected; wrap text as `TextError("message")` or declare a domain error with `impl Error`. `Result`, `ok`, and `error` are in the prelude.
+Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected error `E`. `E` may be any value type; domain errors usually use named records or alternatives. No interface implementation is required. `Result`, `ok`, and `error` are in the prelude.
 
 Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can test it with `is_error()`, read the success path with `if let`, or pass the error back with `try`. Validate runtime input with ordinary conditions before doing the work.
 
 ## Shorthand: `T!` and `T!E`
 
-`T!` is `Result[T, Error]` and `T!E` (with no space before `E`) is `Result[T, E]`, mirroring `T?` for optionals. Both spellings mean the same type; `Result[T, E]` stays valid.
+`T!` is `Result[T, Error]` and `T!E` (with no space before `E`) is `Result[T, E]`, mirroring `T?` for optionals. Bare `T!` selects the common reporting interface; a failure without an `Error` implementation uses `T!E`. `Result[T, E]` stays valid.
 
 ```manuscript
 fn parse_port(text: String) Int!:
@@ -24,15 +24,11 @@ Suffixes apply left to right: `Int?!` is `Result[Int?, Error]` and `Int!?` is `O
 ## Returning a domain error
 
 ```manuscript
+import Decimal from "@std/math/decimal.ms"
+
 type DiscountError:
     case InvalidPrice
     case InvalidPercent
-
-impl Error for DiscountError:
-    fn message() String:
-        match self:
-            InvalidPrice: return "invalid price"
-            InvalidPercent: return "invalid percent"
 
 fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
     if price < 0d:
@@ -67,7 +63,7 @@ This caller discards the cause. To use it, call `err()` after `is_error()`, or [
 | `err() E` | Return the error payload; fault on success |
 | `get_or_else(create: fn(E) T) T` | Return the successful payload, or call `create` once with the original error on failure |
 | `or_else(create: fn(E) Result[T, E]) Result[T, E]` | Keep a success, or call `create` once with the original error and return its Result |
-| `map_error[F: Error](transform: fn(E) F) Result[T, F]` | Transform an error once; preserve a success unchanged |
+| `map_error[F](transform: fn(E) F) Result[T, F]` | Transform an error once; preserve a success unchanged |
 | `map[U](transform: fn(T) U) Result[U, E]` | Transform success once; preserve an error unchanged |
 | `and_then[U](transform: fn(T) Result[U, E]) Result[U, E]` | On success, return the callback's Result; preserve an existing error |
 
@@ -106,7 +102,7 @@ The initializer still runs and the outcome is dropped unread. Several `let _` ma
 
 ## A common error boundary
 
-Usually keep the concrete domain error type. To accept several error types, use the prelude `Error` interface (`message() String`). Standard errors implement it; custom errors declare `impl Error`.
+Usually keep the concrete domain error type. To accept several error types and report their messages, opt into the prelude `Error` interface (`message() String`). Standard errors implement it; custom errors need `impl Error` only when used at this boundary. `TextError("message")` supplies a text-only implementation.
 
 ```manuscript
 import Bytes from "@std/bytes.ms"

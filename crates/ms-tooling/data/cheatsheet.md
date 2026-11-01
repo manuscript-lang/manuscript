@@ -45,7 +45,7 @@ export fn main() Int:
 - Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)` or `T(1)`; alternatives `case A`, `case B(x: Int)`. Methods in `impl T:` (`var fn` mutates `self`), never in `type`; `interface I:` with `impl I for T:`, and a `T` passes where `I` is expected.
 - `T?` (Optional): plain values convert (no `some`); `none` is absent; unwrap with `if let x = v:` or `.get(d)`; `a?.b`.
 - `match v:` only on your own types: `Case(x):`, `_:`, exhaustive. Never match `Result`/`Optional` or nest `match`.
-- Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` implements `Error`, which has `.message()`. `try r` gives the `ok` value or returns the error from the current function. `if let x = r:` runs only on success and ignores the error.
+- Errors: `T!E` (`Result[T, E]`) is `ok(v)` / `error(e)`; E needs no interface. Bare `T!` selects `Error`, whose implementations have `.message()`. `try r` gives the value or returns a compatible error; `if let x = r:` handles success.
 - Faults (`panic`, failed `get()`) abort the program, not a `Result`.
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`.
 - Ownership: every `String`, list, map, record and alternative has one owner: a variable, field or element. `Int`, `Float`, `Bool` copy freely (no `.clone()`). `let` is immutable including contents: `let xs = [1]; xs.append(2)` fails, write `var xs`.

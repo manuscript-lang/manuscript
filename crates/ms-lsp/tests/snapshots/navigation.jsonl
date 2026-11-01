@@ -1530,12 +1530,12 @@
 {"id":1529,"jsonrpc":"2.0","result":[]}
 {"id":1530,"jsonrpc":"2.0","result":null}
 {"id":1531,"jsonrpc":"2.0","result":[]}
-{"id":1532,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nError: Error\n```\n\nExpected failures share this explicitly implemented diagnostic contract.\nA contract for expected failures that can provide a human-readable message."},"range":{"end":{"character":39,"line":63},"start":{"character":34,"line":63}}}}
+{"id":1532,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nError: Error\n```\n\nAn optional diagnostic contract for expected failures at a common reporting boundary.\nA contract for expected failures that can provide a human-readable message."},"range":{"end":{"character":39,"line":63},"start":{"character":34,"line":63}}}}
 {"id":1533,"jsonrpc":"2.0","result":[{"range":{"end":{"character":22,"line":2},"start":{"character":17,"line":2}},"uri":"manuscript-stdlib:///core.ms"}]}
 #large
 {"id":1535,"jsonrpc":"2.0","result":[{"range":{"end":{"character":22,"line":2},"start":{"character":17,"line":2}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":1536,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":39,"line":63},"start":{"character":34,"line":63}}}]}
-{"id":1537,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nError: Error\n```\n\nExpected failures share this explicitly implemented diagnostic contract.\nA contract for expected failures that can provide a human-readable message."},"range":{"end":{"character":39,"line":63},"start":{"character":34,"line":63}}}}
+{"id":1537,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nError: Error\n```\n\nAn optional diagnostic contract for expected failures at a common reporting boundary.\nA contract for expected failures that can provide a human-readable message."},"range":{"end":{"character":39,"line":63},"start":{"character":34,"line":63}}}}
 {"id":1538,"jsonrpc":"2.0","result":[{"range":{"end":{"character":22,"line":2},"start":{"character":17,"line":2}},"uri":"manuscript-stdlib:///core.ms"}]}
 #large
 {"id":1540,"jsonrpc":"2.0","result":[{"range":{"end":{"character":22,"line":2},"start":{"character":17,"line":2}},"uri":"manuscript-stdlib:///core.ms"}]}
