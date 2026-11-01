@@ -1051,3 +1051,40 @@ fn cached_file_build_skips_manifest_directories_without_disabling_cache() {
         );
     }
 }
+
+#[cfg(unix)]
+#[test]
+fn cached_file_build_notices_entry_symlink_retargeting() {
+    let dir = scratch("cache-entry-symlink");
+    let first = write(&dir, "first.ms", MAIN);
+    let second = write(
+        &dir,
+        "second.ms",
+        include_str!("engine/cache-entry-target.ms"),
+    );
+    let entry = dir.join("main.ms");
+    std::os::unix::fs::symlink(&first, &entry).unwrap();
+    let output = dir.join("program");
+    let backend = Engine::new(Native);
+    let build = || {
+        let (status, stdout, stderr) = ms(
+            &backend,
+            &[
+                "build",
+                entry.to_str().unwrap(),
+                "-o",
+                output.to_str().unwrap(),
+                "--build-type",
+                "Debug",
+            ],
+        );
+        assert_eq!(status, 0, "{stdout}{stderr}");
+        Command::new(&output).status().unwrap().code()
+    };
+    assert_eq!(build(), Some(0));
+    assert_eq!(build(), Some(0));
+    std::fs::remove_file(&entry).unwrap();
+    std::os::unix::fs::symlink(&second, &entry).unwrap();
+    assert_eq!(build(), Some(8));
+    assert_eq!(build(), Some(8));
+}

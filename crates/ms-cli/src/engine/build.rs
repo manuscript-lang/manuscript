@@ -242,6 +242,9 @@ impl BuildCache {
             .join(".ms-cache")
             .join("build");
         let mut inputs = vec![std::env::current_exe().ok()?];
+        // The lexical entry name can keep pointing at a different file after a symlink changes.
+        // Its selected identity must be part of the key, not only the old graph's source stamps.
+        inputs.push(std::fs::canonicalize(&filename).ok()?);
         // A newly created nearer manifest can change resolution without changing any recorded
         // source. Include the current selection in the key, resolving directory symlinks as the
         // loader does, so even a previously absent manifest invalidates a cached program.
