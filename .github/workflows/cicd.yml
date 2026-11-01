@@ -1,17 +1,15 @@
 name: CI/CD
 
 on:
-  # Every push to main runs the full platform matrix. The hourly run exists to refresh the sccache
-  # caches: push runs queue behind each other and are often replaced before they finish, and only a
-  # finished run on main saves a cache.
+  # Every push to main runs the full platform matrix. Only manual runs on main save the sccache
+  # caches, because push runs are often replaced before they finish. cache-maintenance.yml starts a
+  # manual run every hour.
   push:
     branches: [main]
   pull_request:
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
-  schedule:
-    - cron: '7 * * * *'
 
 permissions:
   contents: read
@@ -24,8 +22,8 @@ env:
   CARGO_INCREMENTAL: '0'
 
 concurrency:
-  # Scheduled and manual runs never cancel or replace each other or a push run.
-  group: ci-${{ github.event.pull_request.number || (github.event_name == 'push' && github.ref) || (github.event_name == 'schedule' && 'scheduled') || github.run_id }}
+  # Manual runs never cancel or replace each other or a push run.
+  group: ci-${{ github.event.pull_request.number || (github.event_name == 'push' && github.ref) || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -218,34 +216,34 @@ jobs:
           cargo test --locked -p ms-build --lib -- --nocapture
       - name: Conformance corpus (LLVM)
         if: matrix.part == 'b' && matrix.corpus
-        run: sh scripts/conform.sh
+        run: target/debug/ms run tools/conform.ms
       - name: End-to-end fixtures (LLVM)
         if: matrix.part == 'b' && matrix.corpus
-        run: sh scripts/e2e.sh
+        run: target/debug/ms run tools/e2e.ms
       - name: Conformance corpus (Cranelift)
         if: matrix.part == 'a' && matrix.cranelift
         env:
           MS_BACKEND: cranelift
-        run: sh scripts/conform.sh
+        run: target/debug/ms run tools/conform.ms
       - name: End-to-end fixtures (Cranelift)
         if: matrix.part == 'a' && matrix.cranelift
         env:
           MS_BACKEND: cranelift
-        run: sh scripts/e2e.sh
+        run: target/debug/ms run tools/e2e.ms
       - name: Cancelled tasks release what they own
         if: matrix.part == matrix.misc_part && matrix.corpus
         run: |
-          sh scripts/leak-check.sh tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release.ms \
+          MS=target/debug/ms target/debug/ms run tools/leak-check.ms -- tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release-shapes.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release-vars.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-channel-wait-memory.ms
       - name: Ownership counts and cleanup order hold
         if: matrix.part == matrix.misc_part && matrix.corpus
-        run: sh scripts/count-check.sh
+        run: MS=target/debug/ms target/debug/ms run tools/count-check.ms
       - name: Package and run the distribution on a hello project
         if: matrix.part == matrix.misc_part
         run: |
-          sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"
+          target/debug/ms run tools/package.ms -- "${{ matrix.os }}" "${{ matrix.arch }}"
           name="manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}"
           mkdir -p "extracted distribution"
           if [ '${{ matrix.os }}' = windows ]; then

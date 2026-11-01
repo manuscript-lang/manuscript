@@ -1,2 +1,2 @@
-# Fixture tests that pass on Linux and macOS and fail on Windows; scripts/e2e.sh adds this file on Windows hosts.
+# Fixture tests that pass on Linux and macOS and fail on Windows; tools/e2e.ms adds this file on Windows hosts.
 # Format as expect-fail.txt. Each test must still fail here, so a Windows fix shows up as an unexpected pass.

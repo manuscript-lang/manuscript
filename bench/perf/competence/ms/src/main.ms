@@ -238,7 +238,7 @@ fn optionals(n: Int) Int:
     var i = 0
 
     while i < n:
-        var o: Optional[Int] = none
+        var o: Int? = none
         if i % 5 != 0:
             o = i
 

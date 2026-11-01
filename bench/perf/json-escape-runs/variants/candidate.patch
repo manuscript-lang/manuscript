@@ -1,0 +1,17 @@
+diff --git a/crates/ms-std-json/src/lib.rs b/crates/ms-std-json/src/lib.rs
+index 5211bb85a..ba30c977d 100644
+--- a/crates/ms-std-json/src/lib.rs
++++ b/crates/ms-std-json/src/lib.rs
+@@ -1418,2 +1418,10 @@ impl Writer {
+-            self.escape(b[i], ESCAPES[usize::from(b[i])]);
+-            at = i + 1;
++            at = i;
++            // Adjacent escapes need no repeated search for the next plain run.
++            while at < b.len() {
++                let code = ESCAPES[usize::from(b[at])];
++                if code == 0 {
++                    break;
++                }
++                self.escape(b[at], code);
++                at += 1;
++            }

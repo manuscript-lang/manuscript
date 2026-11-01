@@ -1,13 +1,13 @@
 import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
-import FileSystem, list, read_file, stat, temporary, write_file_bytes from "@std/os/fs.ms"
+import list, read_file, stat, temporary, write_file_bytes from "@std/os/fs.ms"
 import create, file_transport from "@std/log.ms"
 
 fn block() Bytes:
     return "0123456789abcdef".repeat(4096).get("").to_bytes()
 
 # Writes the 200 files that the read, stat, and list cases use.
-fn populate(fs: FileSystem, root: String) Unit:
+fn populate(root: String) Unit:
     let data = block()
     for i in 0..200:
         let _written = write_file_bytes("{root}/f{i}.bin", data, replace: true)
@@ -31,7 +31,7 @@ bench "fs.write_file_64k":
 bench "fs.read_file_64k":
     if var dir = temporary("ms-bench-"):
         let root = dir.path()
-        populate(fs, root)
+        populate(root)
 
         fn work() Result[Unit, Error]:
             var n = 0
@@ -46,7 +46,7 @@ bench "fs.read_file_64k":
 bench "fs.stat":
     if var dir = temporary("ms-bench-"):
         let root = dir.path()
-        populate(fs, root)
+        populate(root)
 
         fn work() Result[Unit, Error]:
             var n = 0
@@ -61,7 +61,7 @@ bench "fs.stat":
 bench "fs.list_200":
     if var dir = temporary("ms-bench-"):
         let root = dir.path()
-        populate(fs, root)
+        populate(root)
 
         fn work() Result[Unit, Error]:
             if let entries = list(root):

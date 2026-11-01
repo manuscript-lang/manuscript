@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 # Rust format, clippy, tests and the conformance corpus run in cicd.yml. This workflow holds the
-# checks that need the pinned linters and the editor toolchain.
+# checks that need the editor toolchain.
 jobs:
   # The job is named `test` so its check is the stable required "Language checks / test".
   test:
@@ -35,20 +35,8 @@ jobs:
             target
           key: cargo-language-static-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: cargo-language-static-
-      - uses: actions/cache/restore@v6
-        id: tools
-        with:
-          path: .tools/
-          key: devtools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/devtools.env', 'scripts/devtools.sha256') }}
-      - name: Install pinned linters
-        run: make setup
-      - uses: actions/cache/save@v6
-        if: github.ref == 'refs/heads/main' && steps.tools.outputs.cache-hit != 'true'
-        with:
-          path: .tools/
-          key: ${{ steps.tools.outputs.cache-primary-key }}
-      - name: Workflow and shell lint, repo rules, licenses
-        run: make lint repo-check licenses-check
+      - name: Repo rules and licenses
+        run: make repo-check licenses-check
       - name: Save cargo cache
         if: github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6

@@ -1,7 +1,7 @@
 # conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
 # Cancelling a task must drop every owned value its frames hold, whatever shape holds it.
-# CI runs this program against the counting runtime (scripts/leak-check.sh): any live block fails.
+# CI runs this program against the counting runtime (tools/leak-check.ms): any live block fails.
 import stdout from "@std/io/io.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import nanoseconds, sleep from "@std/os/time.ms"

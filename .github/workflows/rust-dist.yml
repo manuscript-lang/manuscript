@@ -51,8 +51,13 @@ jobs:
         with:
           os: ${{ matrix.os }}
           arch: ${{ matrix.arch }}
+      # The packaging tool is a Manuscript program, so a debug ms runs it; it then builds the shipped binary.
+      - name: Build ms to run the packaging tool
+        run: |
+          cargo xtask runtime
+          cargo build --locked -p ms-cli
       - name: Build and package
-        run: sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"
+        run: target/debug/ms run tools/package.ms -- "${{ matrix.os }}" "${{ matrix.arch }}"
       - name: sccache statistics
         if: always()
         run: sccache --show-stats

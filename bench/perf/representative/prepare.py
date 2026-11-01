@@ -5,6 +5,8 @@ import json
 import pathlib
 import random
 import shutil
+import subprocess
+import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 parser = argparse.ArgumentParser()
@@ -25,13 +27,19 @@ def save(name, source, data, expected):
                       for p in ("main.ms", "stdin", "expected")}
 
 
+def go_oracle(root, data):
+    """Expected output from the challenge's Go reference solution (independent of Manuscript)."""
+    with tempfile.TemporaryDirectory(prefix="msbench-oracle-") as tmp:
+        shutil.copy(root / "solutions/go/main.go.ref", pathlib.Path(tmp) / "main.go")
+        (pathlib.Path(tmp) / "go.mod").write_text("module oracle\n\ngo 1.21\n")
+        subprocess.run(["go", "build", "-o", "oracle", "."], cwd=tmp, check=True)
+        run = subprocess.run([str(pathlib.Path(tmp) / "oracle")], input=data, capture_output=True, text=True, check=True)
+        return run.stdout
+
+
 def reference(challenge, data):
     root = ROOT / "bench/agent/challenges" / challenge
-    # Everything before the random generator is the oracle and its imports/constants.
-    # Avoid running the generator's file-writing tail.
-    scope = {}
-    exec((root / "gen.py").read_text().split("rnd = random.Random(")[0], scope)
-    save(challenge, (root / "solutions/ms/main.ms.ref").read_text(), data, scope["solve"](data))
+    save(challenge, (root / "solutions/ms/main.ms.ref").read_text(), data, go_oracle(root, data))
     shutil.copy(root / "hidden/cases.json", out / challenge / "cases.json")
     shutil.copy(root / "solutions/rust/main.rs.ref", out / challenge / "main.rs")
 

@@ -59,6 +59,15 @@ pub fn parameters(parameters: &[Param], source: Option<&Source>) -> String {
 /// A written type.
 pub fn type_text(t: &TypeRef) -> String {
     match &t.kind {
+        TypeKind::Named { name, args } if name.as_str() == "Optional" && args.len() == 1 => {
+            let payload = &args[0];
+            let text = type_text(payload);
+            if matches!(payload.kind, TypeKind::Fn { .. }) {
+                format!("({text})?")
+            } else {
+                format!("{text}?")
+            }
+        }
         TypeKind::Fn { params, result } => {
             let types: Vec<String> = params
                 .iter()

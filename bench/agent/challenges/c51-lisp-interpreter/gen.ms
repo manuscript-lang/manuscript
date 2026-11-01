@@ -1,0 +1,247 @@
+# Generator for c51-lisp-interpreter. The expected outputs come from the Go oracle in oracle/*.ref (built with the
+# local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c51
+import Cases, build_oracle, write_cases from "../../lib/gen.ms"
+
+export fn gen_c51() Unit:
+    var cs = Cases(build_oracle("c51-lisp-interpreter"))
+    cs.push(
+        "arith",
+        "(display (+ 1 2 3)) (newline)\n(display (- 10)) (newline)\n(display (- 10 3 2)) (newline)\n(display (* 2 3 4)) (newline)\n(display (+)) (newline)\n(display (*)) (newline)\n(display (quotient 17 5)) (display \" \") (display (quotient -17 5)) (display \" \") (display (quotient 17 -5)) (newline)\n(display (remainder -17 5)) (display \" \") (display (modulo -17 5)) (display \" \") (display (modulo 17 -5)) (display \" \") (display (remainder 17 -5)) (newline)\n(display (list (abs -5) (min 3 1 2) (max 3 1 2) (abs 7)))\n(newline)\n(display (list (= 1 1 1) (< 1 2 3) (< 1 3 2) (>= 3 3 2) (<= 1 1 2) (> 3 2 2)))\n"
+    )
+    cs.push(
+        "define-lambda",
+        "(define x 10)\n(define (square n) (* n n))\n(define cube (lambda (n) (* n n n)))\n(display (square x)) (newline)\n(display (cube 3)) (newline)\n(display square) (newline)\n(display cube) (newline)\n(display (lambda (a) a)) (newline)\n(display car) (newline)\n(define (add . xs) (apply + xs))\n(display (add 1 2 3 4)) (newline)\n(define (f a . rest) (list a rest))\n(display (f 1)) (display (f 1 2 3)) (newline)\n(display ((lambda args args) 1 2 3)) (newline)\n(display ((lambda (x) (* x 2)) 21)) (newline)\n"
+    )
+    cs.push(
+        "closures",
+        "(define (make-counter)\n  (let ((n 0))\n    (lambda () (set! n (+ n 1)) n)))\n(define c1 (make-counter))\n(define c2 (make-counter))\n(c1) (c1)\n(display (c1)) (display \" \") (display (c2)) (newline)\n(define (adder n) (lambda (x) (+ x n)))\n(define add5 (adder 5))\n(display (add5 10)) (newline)\n(define (compose f g) (lambda (x) (f (g x))))\n(display ((compose add5 (adder 1)) 0)) (newline)\n(define (make-acc total)\n  (lambda (amt) (set! total (+ total amt)) total))\n(define acc (make-acc 100))\n(acc 10)\n(display (acc 10)) (newline)\n"
+    )
+    cs.push(
+        "lists",
+        "(display (cons 1 2)) (newline)\n(display (cons 1 (cons 2 '()))) (newline)\n(display (list 1 2 3)) (newline)\n(display '(1 (2 3) . 4)) (newline)\n(display (car '(a b c))) (display (cdr '(a b c))) (display (cadr '(a b c))) (display (cddr '(a b c))) (display (caddr '(a b c))) (newline)\n(display (length '(1 2 3))) (display (length '())) (newline)\n(display (append '(1 2) '(3) '() '(4 5))) (newline)\n(display (append)) (display (append '(1) 2)) (newline)\n(display (reverse '(1 2 3))) (newline)\n(display (list-ref '(a b c) 2)) (display (list-tail '(a b c d) 2)) (display (list-tail '(a) 1)) (newline)\n(display (list (null? '()) (null? '(1)) (pair? '(1)) (pair? '()) (list? '(1 2)) (list? (cons 1 2)))) (newline)\n(display (range 3 7)) (display (range 5 5)) (newline)\n(define p (cons 1 2))\n(set-car! p 10) (set-cdr! p '(20))\n(display p) (newline)\n(display (member 2 '(1 2 3))) (display (member 9 '(1 2 3))) (newline)\n(display (assoc \"b\" '((\"a\" . 1) (\"b\" . 2)))) (display (assoc 'z '((a . 1)))) (newline)\n"
+    )
+    cs.push(
+        "higher-order",
+        "(display (map (lambda (x) (* x x)) '(1 2 3 4))) (newline)\n(display (map + '(1 2 3) '(10 20 30 40))) (newline)\n(display (filter odd? '(1 2 3 4 5))) (newline)\n(display (fold + 0 '(1 2 3 4))) (newline)\n(display (fold (lambda (acc x) (cons x acc)) '() '(1 2 3))) (newline)\n(display (foldr cons '() '(1 2 3))) (newline)\n(display (foldr (lambda (x acc) (- x acc)) 0 '(10 4 1))) (newline)\n(for-each (lambda (x y) (display (+ x y)) (display \",\")) '(1 2) '(10 20)) (newline)\n(display (apply max '(3 9 2))) (display (apply + 1 2 '(3 4))) (newline)\n(display (sort '(3 1 2 5 4) <)) (display (sort '(\"pear\" \"apple\" \"fig\") string<?)) (newline)\n(display (sort '((1 . b) (0 . a) (1 . a) (0 . b)) (lambda (x y) (< (car x) (car y))))) (newline)\n(display (map (lambda (p) (car p)) '((a . 1) (b . 2)))) (newline)\n"
+    )
+    cs.push(
+        "tail-calls",
+        "(define (loop i acc) (if (= i 0) acc (loop (- i 1) (+ acc i))))\n(display (loop 200000 0)) (newline)\n(define (even2? n) (if (= n 0) #t (odd2? (- n 1))))\n(define (odd2? n) (if (= n 0) #f (even2? (- n 1))))\n(display (even2? 100001)) (newline)\n(define (count n) (cond ((= n 0) 'done) (else (count (- n 1)))))\n(display (count 100000)) (newline)\n(define (w n) (when (> n 0) (w (- n 1))))\n(w 100000) (display \"ok\") (newline)\n(define (a n) (and #t (or #f (if (= n 0) 'fin (a (- n 1))))))\n(display (a 100000)) (newline)\n(define (b n) (begin 1 (let ((m n)) (let* ((k m)) (if (= k 0) 'b (b (- k 1)))))))\n(display (b 100000)) (newline)\n(display (let lp ((i 0) (s 0)) (if (> i 100000) s (lp (+ i 1) (+ s i))))) (newline)\n"
+    )
+    cs.push(
+        "deep-recursion",
+        "(define (sum n) (if (= n 0) 0 (+ n (sum (- n 1)))))\n(display (sum 3000)) (newline)\n(define (build n) (if (= n 0) '() (cons n (build (- n 1)))))\n(display (length (build 5000))) (newline)\n(define (inf n) (+ 1 (inf n)))\n(display \"before\") (newline)\n(inf 1)\n(display \"never\")\n"
+    )
+    cs.push(
+        "recursion-limit-caught",
+        "(define (inf n) (+ 1 (inf n)))\n(display (try (inf 1) (lambda (m) m))) (newline)\n(display (try (inf 1) (lambda (m) (string-append \"caught: \" m)))) (newline)\n(define (ok n) (if (= n 0) 0 (+ 1 (ok (- n 1)))))\n(display (ok 9000)) (newline)\n"
+    )
+    cs.push(
+        "let-forms",
+        "(display (let ((a 1) (b 2)) (+ a b))) (newline)\n(define a 100)\n(display (let ((a 1) (b a)) (list a b))) (newline)\n(display (let* ((a 1) (b (+ a 1)) (c (* b 2))) (list a b c))) (newline)\n(display (letrec ((ev? (lambda (n) (if (= n 0) #t (od? (- n 1))))) (od? (lambda (n) (if (= n 0) #f (ev? (- n 1)))))) (ev? 10))) (newline)\n(display (let loop ((i 0) (acc '())) (if (= i 5) (reverse acc) (loop (+ i 1) (cons (* i i) acc))))) (newline)\n(define (f)\n  (define x 1)\n  (define (g) (+ x 1))\n  (g))\n(display (f)) (newline)\n(display (let () 5)) (newline)\n"
+    )
+    cs.push(
+        "conditionals",
+        "(display (if #t 'yes 'no)) (display (if #f 'yes 'no)) (display (if 0 'zero-true 'zero-false)) (display (if '() 'nil-true 'nil-false)) (newline)\n(display (if #f 1)) (newline)\n(display (cond ((= 1 2) 'a) ((= 1 1) 'b) (else 'c))) (newline)\n(display (cond (#f 1))) (newline)\n(display (cond ((assoc 'b '((a . 1) (b . 2))) => 1) (else 'x))) (newline)\n"
+    )
+    cs.push(
+        "cond-test-only",
+        "(display (cond (5) (else 6))) (display (cond (#f) (7))) (newline)\n(display (list (and) (or) (and 1 2 3) (and 1 #f 3) (or #f #f) (or #f 4 5) (and 1 (or #f 2)))) (newline)\n(display (list (when #t 1 2 3) (when #f 1) (unless #f 4) (unless #t 4))) (newline)\n(define x 0)\n(or #t (set! x 1))\n(and #f (set! x 2))\n(display x) (newline)\n(display (not 0)) (display (not #f)) (display (not '())) (newline)\n"
+    )
+    cs.push(
+        "equality",
+        "(display (list (eq? 'a 'a) (eq? 1 1) (eq? '() '()) (eq? \"a\" \"a\") (eq? '(1) '(1)) (eq? #t #t) (eq? 1 #t))) (newline)\n(display (list (equal? '(1 (2 \"x\")) '(1 (2 \"x\"))) (equal? \"a\" \"a\") (equal? 1 \"1\") (equal? '(1 2) '(1 2 3)) (equal? 'a 'a) (equal? (cons 1 2) (cons 1 2)) (equal? car car))) (newline)\n"
+    )
+    cs.push(
+        "strings",
+        "(display (string-length \"hello\")) (newline)\n(display (string-append \"a\" \"b\" \"c\")) (display (string-append)) (newline)\n(display (substring \"hello world\" 6 11)) (display \"|\") (display (substring \"abc\" 1 1)) (newline)\n(display (string-ref \"abc\" 1)) (newline)\n(display (list (string=? \"a\" \"a\") (string=? \"a\" \"b\") (string<? \"apple\" \"banana\") (string<? \"b\" \"a\") (string<? \"a\" \"ab\"))) (newline)\n(display (string-upcase \"Hello\")) (display (string-downcase \"HeLLo\")) (newline)\n(display (list (string->number \"42\") (string->number \"-7\") (string->number \"x1\") (string->number \"\") (string->number \"-\") (string->number \"99999999999999999999\"))) (newline)\n(display (number->string -15)) (newline)\n(display (list (string->symbol \"foo\") (symbol->string (quote bar)))) (newline)\n(write (string->list \"abc\")) (newline)\n(display (list->string (list \"x\" \"y\" \"z\"))) (newline)\n(write (string-join (list \"a\" \"b\" \"c\") \", \")) (newline)\n(write (string-split \"a,b,,c\" \",\")) (write (string-split \"\" \",\")) (write (string-split \"abc\" \",\")) (newline)\n(display (list (string-contains? \"hello\" \"ell\") (string-contains? \"hello\" \"xyz\") (string-contains? \"hello\" \"\"))) (newline)\n"
+    )
+    cs.push(
+        "write-display",
+        "(write \"he said \\\"hi\\\"\\n\\ttab\\\\\") (newline)\n(display \"he said \\\"hi\\\"\") (newline)\n(write (list \"a\" 1 (quote b) #t \"c d\")) (newline)\n(display (list \"a\" 1 (quote b) #t \"c d\")) (newline)\n(write (quote (1 . (2 . (3 . 4))))) (newline)\n(write (quote ((a . b) (c) ()))) (newline)\n(display (if #f #f)) (newline)\n(display (void)) (newline)\n(write (list (void) car)) (newline)\n(display '(quote x)) (newline)\n(display \"no newline at end\")\n"
+    )
+    cs.push(
+        "quote-forms",
+        "(display 'abc) (display '(a . b)) (display ''x) (display '(1 'y)) (display '#t) (display '5) (display '\"s\") (newline)\n(display (quote (+ 1 2))) (display (eval-free)) \n"
+    )
+    cs.push(
+        "comments-whitespace",
+        "; leading comment\n(display 1) ; trailing\n(newline)\n   (display\n   2\n   )\n\n\t(newline) ;; done\n;final comment without newline"
+    )
+    cs.push(
+        "symbols",
+        "(define a-b? 1) (define +x 2) (define 1+ 3) (define - -) (define <=> 4)\n(display (list a-b? +x 1+ <=> (- 5 2))) (newline)\n(display (quote (-5 - -x 5- +5 +))) (newline)\n(define Foo 1) (define foo 2) (display (list Foo foo)) (newline)\n"
+    )
+    cs.push(
+        "error-user",
+        "(display \"start\") (newline)\n(error \"something bad:\" 42 \"str\" (quote sym) (list 1 \"a\"))\n(display \"unreachable\")\n"
+    )
+    cs.push("error-user-nonl", "(display \"partial\")\n(error \"boom\")\n")
+    cs.push("error-only-msg", "(error \"plain\")")
+    cs.push(
+        "try-basic",
+        "(define (safe-div a b) (try (quotient a b) (lambda (m) (string-append \"oops(\" m \")\"))))\n(display (safe-div 10 2)) (newline)\n(display (safe-div 1 0)) (newline)\n(display (try (car 5) (lambda (m) m))) (newline)\n(display (try (undefined-var) (lambda (m) m))) (newline)\n(display (try (error \"custom\" 1 2) (lambda (m) (list m (string-length m))))) (newline)\n(display (try 42 (lambda (m) m))) (newline)\n(display (try (try (error \"inner\") (lambda (m) (error \"outer from\" m))) (lambda (m) m))) (newline)\n(display (try (\"notproc\" 1) (lambda (m) m))) (newline)\n(display (try ((lambda (x) x)) (lambda (m) m))) (newline)\n(display (try (+ 1 \"a\") (lambda (m) m))) (newline)\n(display (try (+ 9223372036854775807 1) (lambda (m) m))) (newline)\n(display (try (list-ref (list 1 2) 5) (lambda (m) m))) (newline)\n"
+    )
+    cs.push(
+        "try-side-effects",
+        "(define log (quote ()))\n(define (note x) (set! log (cons x log)))\n(try (begin (note 1) (error \"x\") (note 2)) (lambda (m) (note 3)))\n(display (reverse log)) (newline)\n(display (try (map (lambda (x) (if (= x 2) (error \"bad elem\" x) x)) (list 1 2 3)) (lambda (m) m))) (newline)\n"
+    )
+    cs.push("err-unbound", "(display 1)\n(display foo)\n")
+    cs.push("err-set-unbound", "(set! nope 1)\n")
+    cs.push("err-not-proc", "(display \"x\")\n(5 1 2)\n")
+    cs.push("err-not-proc-str", "(\"abc\")\n")
+    cs.push("err-arity-lambda", "(define (f a b) a)\n(f 1)\n")
+    cs.push("err-arity-lambda-many", "(define (f a b) a)\n(f 1 2 3)\n")
+    cs.push("err-arity-rest", "(define (g a b . r) a)\n(g 1)\n")
+    cs.push("err-arity-anon", "((lambda (x) x))\n")
+    cs.push("err-arity-builtin", "(cons 1)\n")
+    cs.push("err-arity-builtin-range", "(string-append)\n(substring \"a\")\n")
+    cs.push("err-arity-builtin-min", "(-)\n")
+    cs.push("err-arity-named-let", "(let loop ((i 0)) (loop))\n")
+    cs.push("err-type-plus", "(+ 1 \"a\")\n")
+    cs.push("err-type-car", "(car 5)\n")
+    cs.push("err-type-car-list", "(car '())\n")
+    cs.push("err-type-length", "(length (cons 1 2))\n")
+    cs.push("err-type-cmp", "(< 1 'a)\n")
+    cs.push("err-type-strlen", "(string-length 'abc)\n")
+    cs.push("err-type-map", "(map 5 '(1 2))\n")
+    cs.push("err-type-map-list", "(map car 7)\n")
+    cs.push("err-type-apply", "(apply + 1 2)\n")
+    cs.push("err-div0", "(display (quotient 1 0))\n")
+    cs.push("err-mod0", "(modulo 5 0)\n")
+    cs.push("err-overflow", "(display (* 4611686018427387904 2))\n")
+    cs.push(
+        "overflow-edges",
+        "(display 9223372036854775807) (newline)\n(display -9223372036854775808) (newline)\n(display (+ 9223372036854775806 1)) (newline)\n(display (- -9223372036854775807 1)) (newline)\n(display (- -9223372036854775808))\n"
+    )
+    cs.push("err-overflow-neg", "(abs -9223372036854775808)\n")
+    cs.push("err-index", "(list-ref '(1 2 3) 3)\n")
+    cs.push("err-index-neg", "(list-ref '(1 2 3) -1)\n")
+    cs.push("err-substring", "(substring \"abc\" 2 5)\n")
+    cs.push("err-string-ref", "(string-ref \"abc\" 3)\n")
+    cs.push("err-string-split", "(string-split \"a b\" \"  \")\n")
+    cs.push("err-list-tail", "(list-tail '(1 2) 3)\n")
+    cs.push("err-error-nonstring", "(error 'oops 1)\n")
+    cs.push("err-bad-int-literal", "(display 1)\n(display 9223372036854775808)\n")
+    cs.push("err-reader-paren", "(display 1)\n)\n(display 2)\n")
+    cs.push("err-reader-eof", "(display 1)\n(display (+ 1 2)\n")
+    cs.push("err-reader-string", "(display 1)\n(display \"abc)\n")
+    cs.push("err-reader-escape", "(display \"a\\qb\")\n")
+    cs.push("err-reader-quote-eof", "(display 1)\n'")
+    cs.push("err-reader-hash", "(display #x)\n")
+    cs.push("err-reader-dot", "(display (quote (. 1)))\n")
+    cs.push("err-reader-dot2", "(display (quote (1 . 2 3)))\n")
+    cs.push("err-reader-dot-top", ".\n")
+    cs.push("err-form-if", "(if)\n")
+    cs.push("err-form-if2", "(if 1 2 3 4)\n")
+    cs.push("err-form-define", "(define)\n")
+    cs.push("err-form-define2", "(define 5 1)\n")
+    cs.push("err-form-define3", "(define x 1 2)\n")
+    cs.push("err-form-lambda", "(lambda (1) 2)\n")
+    cs.push("err-form-lambda-body", "(lambda (x))\n")
+    cs.push("err-form-lambda-dup", "(lambda (x x) 1)\n")
+    cs.push("err-form-let", "(let ((x)) x)\n")
+    cs.push("err-form-let-body", "(let ((x 1)))\n")
+    cs.push("err-form-cond", "(cond (else))\n")
+    cs.push("err-form-cond-else", "(cond (else 1) (#t 2))\n")
+    cs.push("err-form-cond-clause", "(cond 5)\n")
+    cs.push("err-form-set", "(set! 5 1)\n")
+    cs.push("err-form-quote", "(quote 1 2)\n")
+    cs.push("err-form-when", "(when #t)\n")
+    cs.push("err-form-try", "(try 1)\n")
+    cs.push("err-empty-app", "()\n")
+    cs.push("err-bad-app", "(car . 1)\n")
+    cs.push(
+        "err-lazy-form", "(define (f) (if))\n(display \"defined\") (newline)\n(f)\n"
+    )
+    cs.push(
+        "err-after-output", "(display 1) (newline) (display 2)\n(car 1)\n(display 3)\n"
+    )
+    cs.push(
+        "unspecified-chain",
+        "(define x (if #f #f))\n(display x) (newline)\n(display (list (for-each display '()) (set-car! (list 1) 2)))\n"
+    )
+    cs.push(
+        "shadow-builtin",
+        "(define (list . xs) (quote mine))\n(display (list 1 2))\n(define car cdr)\n(display (car '(1 2)))\n(newline)\n(define if 5)\n(display (if #t 'special 'no))\n(display if)\n"
+    )
+    cs.push(
+        "internal-define-scope", "(define (f)\n  (define y 2)\n  y)\n(f)\n(display y)\n"
+    )
+    cs.push(
+        "set-closure-shared",
+        "(define (mk)\n  (define n 0)\n  (cons (lambda () (set! n (+ n 1)) n) (lambda () n)))\n(define p (mk))\n((car p)) ((car p))\n(display ((cdr p))) (newline)\n(define x 1)\n(define (setx!) (set! x (+ x 1)))\n(setx!) (setx!)\n(display x) (newline)\n"
+    )
+    cs.push(
+        "eval-order",
+        "(define (show x) (display x) x)\n(+ (show 1) (show 2) (show 3))\n(newline)\n(list (show 'a) (show 'b))\n(newline)\n((begin (display \"f\") +) (begin (display \"1\") 1) (begin (display \"2\") 2))\n(newline)\n(let ((a (show 1)) (b (show 2))) (newline))\n"
+    )
+    cs.push(
+        "string-escapes-read",
+        "(write \"tab\\there\") (newline)\n(display (string-length \"a\\nb\")) (newline)\n(write (string-append \"q\\\"\" \"\\\\\")) (newline)\n"
+    )
+    cs.push(
+        "symbols-as-data",
+        "(define env '((x . 1) (y . 2)))\n(define (lookup k) (let ((p (assoc k env))) (if p (cdr p) 'missing)))\n(display (list (lookup 'x) (lookup 'y) (lookup 'z))) (newline)\n(display (map symbol? (list 'a \"a\" 1))) (newline)\n(display (list (number? 5) (number? \"5\") (string? \"s\") (boolean? #f) (boolean? 0) (procedure? car) (procedure? (lambda () 1)) (procedure? 'car))) (newline)\n(display (list (zero? 0) (zero? 1) (even? 4) (even? -3) (odd? -3) (odd? 4)))\n"
+    )
+    cs.push(
+        "prog-fib-memo",
+        "(define memo '())\n(define (fib n)\n  (if (< n 2) n\n      (let ((hit (assoc n memo)))\n        (if hit (cdr hit)\n            (let ((v (+ (fib (- n 1)) (fib (- n 2)))))\n              (set! memo (cons (cons n v) memo))\n              v)))))\n(display (fib 80)) (newline)\n(display (fib 90)) (newline)\n(display (fib 92)) (newline)\n(display (fib 93)) (newline)\n"
+    )
+    cs.push(
+        "prog-primes",
+        "(define (divisible? n d) (= (remainder n d) 0))\n(define (prime? n)\n  (and (> n 1)\n       (let loop ((d 2))\n         (cond ((> (* d d) n) #t)\n               ((divisible? n d) #f)\n               (else (loop (+ d 1)))))))\n(display (filter prime? (range 1 100))) (newline)\n(display (length (filter prime? (range 1 3000)))) (newline)\n"
+    )
+    cs.push(
+        "prog-quicksort",
+        "(define (qs l)\n  (if (null? l) '()\n      (let ((p (car l)) (rest (cdr l)))\n        (append (qs (filter (lambda (x) (< x p)) rest))\n                (list p)\n                (qs (filter (lambda (x) (>= x p)) rest))))))\n(display (qs '(5 3 8 1 9 2 7 3 5 0 -4 12))) (newline)\n(define (lcg s) (modulo (+ (* s 1103515245) 12345) 2147483648))\n(define (gen n s) (if (= n 0) '() (cons (modulo s 1000) (gen (- n 1) (lcg s)))))\n(define xs (gen 300 42))\n(display (equal? (qs xs) (sort xs <))) (newline)\n(display (list-tail (qs xs) 295)) (newline)\n"
+    )
+    cs.push(
+        "prog-queens",
+        "(define (safe? q qs)\n  (let loop ((qs qs) (d 1))\n    (cond ((null? qs) #t)\n          ((or (= (car qs) q) (= (abs (- (car qs) q)) d)) #f)\n          (else (loop (cdr qs) (+ d 1))))))\n(define (place k n)\n  (if (= k 0) '(())\n      (apply append\n        (map (lambda (qs)\n               (apply append (map (lambda (q) (if (safe? q qs) (list (cons q qs)) '())) (range 0 n))))\n             (place (- k 1) n)))))\n(display (length (place 6 6))) (newline)\n(display (car (place 6 6))) (newline)\n(display (length (place 7 7))) (newline)\n"
+    )
+    cs.push(
+        "prog-meta-eval",
+        "(define (lookup-var name env)\n  (let ((p (assoc name env)))\n    (if p (cdr p) (error \"meta: unbound\" name))))\n(define (meval e env)\n  (cond ((number? e) e)\n        ((symbol? e) (lookup-var e env))\n        ((eq? (car e) 'add) (+ (meval (cadr e) env) (meval (caddr e) env)))\n        ((eq? (car e) 'mul) (* (meval (cadr e) env) (meval (caddr e) env)))\n        ((eq? (car e) 'let1)\n         (meval (caddr e) (cons (cons (car (cadr e)) (meval (cadr (cadr e)) env)) env)))\n        (else (error \"meta: bad expr\" e))))\n(display (meval '(add 1 (mul 2 3)) '())) (newline)\n(display (meval '(let1 (x 5) (mul x (add x 1))) '())) (newline)\n(display (try (meval '(add y 1) '()) (lambda (m) m))) (newline)\n(meval '(sub 1 2) '())\n"
+    )
+    cs.push(
+        "prog-strings-words",
+        "(define text \"the quick brown fox jumps over the lazy dog the end\")\n(define words (string-split text \" \"))\n(define (count-word w ws) (length (filter (lambda (x) (string=? x w)) ws)))\n(define (uniq ws) (fold (lambda (acc w) (if (member w acc) acc (append acc (list w)))) '() ws))\n(for-each (lambda (w) (display w) (display \"=\") (display (count-word w words)) (display \" \")) (uniq words))\n(newline)\n(define (caps w) (string-append (string-upcase (substring w 0 1)) (substring w 1 (string-length w))))\n(display (string-join (map caps words) \" \")) (newline)\n(define (rev-str s) (list->string (reverse (string->list s))))\n(display (map rev-str (list \"abc\" \"hello\" \"\"))) (newline)\n(define (palin? s) (string=? s (rev-str s)))\n(display (filter palin? (list \"racecar\" \"abc\" \"noon\" \"a\"))) (newline)\n"
+    )
+    cs.push(
+        "prog-bank-closures",
+        "(define (make-account balance)\n  (define (withdraw amt)\n    (if (> amt balance) (error \"insufficient funds:\" balance amt)\n        (begin (set! balance (- balance amt)) balance)))\n  (define (deposit amt) (set! balance (+ balance amt)) balance)\n  (lambda (msg . args)\n    (cond ((eq? msg 'withdraw) (apply withdraw args))\n          ((eq? msg 'deposit) (apply deposit args))\n          ((eq? msg 'balance) balance)\n          (else (error \"unknown message\" msg)))))\n(define acc (make-account 100))\n(display (acc 'deposit 50)) (newline)\n(display (acc 'withdraw 30)) (newline)\n(display (try (acc 'withdraw 500) (lambda (m) m))) (newline)\n(display (acc 'balance)) (newline)\n(acc 'transfer 1)\n"
+    )
+    cs.push(
+        "prog-ycomb-hanoi",
+        "(define (hanoi n from to via)\n  (if (= n 0) 0\n      (+ (hanoi (- n 1) from via to) 1 (hanoi (- n 1) via to from))))\n(display (hanoi 12 'a 'c 'b)) (newline)\n(define Y (lambda (f) ((lambda (x) (f (lambda (v) ((x x) v)))) (lambda (x) (f (lambda (v) ((x x) v)))))))\n(define fact (Y (lambda (self) (lambda (n) (if (= n 0) 1 (* n (self (- n 1))))))))\n(display (fact 20)) (newline)\n(display (fact 21)) (newline)\n"
+    )
+    cs.push(
+        "prog-assoc-update",
+        "(define (update al k f default)\n  (cond ((null? al) (list (cons k (f default))))\n        ((equal? (caar-ish al) k) (cons (cons k (f (cdr (car al)))) (cdr al)))\n        (else (cons (car al) (update (cdr al) k f default)))))\n(define (caar-ish l) (car (car l)))\n(define counts (fold (lambda (al w) (update al w (lambda (n) (+ n 1)) 0)) '() '(a b a c b a)))\n(display counts) (newline)\n(display (sort counts (lambda (x y) (> (cdr x) (cdr y))))) (newline)\n"
+    )
+    cs.push(
+        "prog-collatz",
+        "(define (collatz n steps) (cond ((= n 1) steps) ((even? n) (collatz (quotient n 2) (+ steps 1))) (else (collatz (+ (* 3 n) 1) (+ steps 1)))))\n(define (best n best-n best-s)\n  (if (> n 3000) (list best-n best-s)\n      (let ((s (collatz n 0))) (if (> s best-s) (best (+ n 1) n s) (best (+ n 1) best-n best-s)))))\n(display (best 1 1 0)) (newline)\n"
+    )
+    cs.push(
+        "big-list",
+        "(define (build i acc) (if (= i 0) acc (build (- i 1) (cons i acc))))\n(define l (build 50000 '()))\n(display (length l)) (newline)\n(display (fold + 0 l)) (newline)\n(display (length (map (lambda (x) (* x 2)) l))) (newline)\n(display (car (reverse l))) (newline)\n(display (list-ref l 49999)) (newline)\n(display (length (filter even? l))) (newline)\n"
+    )
+
+    let examples = [
+        cs.make(
+            "basic",
+            "(define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))\n(display (fact 10)) (newline)\n(display (map fact (list 1 2 3 4 5)))\n(newline)\n"
+        ),
+        cs.make("closure-counter", cs.list[2].stdin.clone()),
+        cs.make(
+            "error-report",
+            "(display \"start\")\n(newline)\n(display (try (quotient 1 0) (lambda (m) m)))\n(newline)\n(display (+ 1 (car 5)))\n(display \"never\")\n"
+        ),
+        cs.make(
+            "tail-loop",
+            "(define (loop i acc) (if (= i 0) acc (loop (- i 1) (+ acc i))))\n(display (loop 100000 0))\n(newline)\n"
+        )
+    ]
+    write_cases("c51-lisp-interpreter", examples, examples.concat(cs.list))

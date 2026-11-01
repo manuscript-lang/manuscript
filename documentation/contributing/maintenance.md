@@ -18,7 +18,6 @@ These changes modify tracked inputs; `make verify` only checks them.
 | Cargo dependencies | Edit `Cargo.toml` and refresh `Cargo.lock`; then `make licenses` |
 | Extension dependencies | Edit `extensions/vscode/package.json`, run `npm install --package-lock-only --ignore-scripts`, then `npm ci` and `npm run package -- --allow-missing-repository` |
 | License inventory | `make licenses` records each locked Cargo crate's name, version, and declared SPDX license (from `cargo metadata --locked`) plus SHA-256 hashes of bundled notices; `make licenses-check` detects drift. It is not a legal assessment |
-| Linters | Update `scripts/devtools.env` and the checksums in `scripts/devtools.sha256`, then `make setup`; tools stay in `.tools/` |
 
 Dependabot groups weekly updates (Cargo, npm, GitHub Actions) into PRs with normal verification and no auto-merge; run `make verify-full` before merging.
 

@@ -26,7 +26,7 @@ MS_RT_LIB=/absolute/runtime-before.a target/release/ms build \
 MS_RT_LIB=/absolute/runtime-after.a target/release/ms build \
   bench/perf/codecs/json-failure/ms.toml --build-type Release \
   --link /tmp/json-cpu.o -o /tmp/json-after
-python3 bench/perf/codecs/json-failure/compare.py \
+ms run bench/tools/codecs_compare.ms -- json-failure \
   /tmp/json-before /tmp/json-after /tmp/json-comparison --pairs 9
 ```
 

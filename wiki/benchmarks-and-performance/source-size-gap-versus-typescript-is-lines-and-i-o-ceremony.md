@@ -2,8 +2,8 @@
 
 # Source-size gap versus TypeScript is lines and I/O ceremony, not syntax noise
 
-Verified (2026-10-22, o200k_base): `bench/agent/tokens.py` puts the hand-written reference solutions at ms 12.2k, rust 10.1k, go 10.1k, ts 8.3k tokens, so Manuscript is not below Rust (1.21x) or TypeScript (1.48x); the old ms references predate `xs[i]`, `+=`, and inline suites, so they overstate it. Agent-written ms was 1.30x TypeScript.
+Verified (2026-10-22, o200k_base): `bench/agent/tokens.ms` puts the hand-written reference solutions at ms 12.2k, rust 10.1k, go 10.1k, ts 8.3k tokens, so Manuscript is not below Rust (1.21x) or TypeScript (1.48x); the old ms references predate `xs[i]`, `+=`, and inline suites, so they overstate it. Agent-written ms was 1.30x TypeScript.
 
-Apply when: judging a syntax or stdlib change by its token effect; measure with `tokens.py` and a rerun, not intuition.
-Evidence: [tokens.py](../../bench/agent/tokens.py), [cheat sheet](../crates/ms-tooling/src/guide/data/cheatsheet.md), [streams.read_lines](../../stdlib/io/streams.ms).
-Verify: `python3 bench/agent/tokens.py` prints the per-language totals; rerun the small challenges and compare `llm_tokens` of passing ms and ts runs.
+Apply when: judging a syntax or stdlib change by its token effect; measure with `tokens.ms` and a rerun, not intuition.
+Evidence: [tokens.ms](../../bench/agent/tokens.ms), [cheat sheet](../crates/ms-tooling/src/guide/data/cheatsheet.md), [streams.read_lines](../../stdlib/streams.ms).
+Verify: `ms run bench/agent/tokens.ms` prints the per-language totals; rerun the small challenges and compare `llm_tokens` of passing ms and ts runs.

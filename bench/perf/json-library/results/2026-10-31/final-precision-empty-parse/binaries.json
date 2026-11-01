@@ -1,0 +1,14 @@
+{
+  "baseline-a": {
+    "path": "/workspace/json-perf/.artifacts/json-library/precision-before",
+    "sha256": "1e9aff4b43d124362184f88966097b7c214ca6d475fc90575fbc2f2c8d78e3ed"
+  },
+  "baseline-b": {
+    "path": "/workspace/json-perf/.artifacts/json-library/precision-before",
+    "sha256": "1e9aff4b43d124362184f88966097b7c214ca6d475fc90575fbc2f2c8d78e3ed"
+  },
+  "candidate": {
+    "path": "/workspace/json-perf/.artifacts/json-library/precision-after",
+    "sha256": "519584d9194280815925c6b4488d70f98d165e5ca832369a4df2d794b9747e49"
+  }
+}

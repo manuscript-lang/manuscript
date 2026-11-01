@@ -1,0 +1,73 @@
+diff --git a/crates/ms-std-json/src/lib.rs b/crates/ms-std-json/src/lib.rs
+index 8c5044d47..8b49edbc4 100644
+--- a/crates/ms-std-json/src/lib.rs
++++ b/crates/ms-std-json/src/lib.rs
+@@ -1466,62 +1465,0 @@ pub fn float_text(v: f64) -> Option<String> {
+-const POW10: [f64; 23] = [
+-    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16,
+-    1e17, 1e18, 1e19, 1e20, 1e21, 1e22,
+-];
+-
+-/// The shortest digits of `abs` (1e-6 <= abs < 1e15) when it is a decimal of at most 15
+-/// significant digits, written to `buf` with the decimal exponent of the first digit. Two
+-/// different 15-digit decimals never round to one double, so a decimal that divides back to `abs`
+-/// is the only candidate and, once trailing zeros are dropped, the shortest one: the same digits
+-/// the shortest-round-trip formatter finds.
+-fn short_digits(abs: f64, buf: &mut [u8; 24]) -> Option<(usize, i32)> {
+-    if !(1e-6..1e15).contains(&abs) {
+-        return None;
+-    }
+-    // floor(log10(abs)) from the binary exponent: right or one too low or high, which the
+-    // 15-digit range below catches and the second try fixes.
+-    let e2 = ((abs.to_bits() >> 52) & 0x7ff) as i32 - 1023;
+-    let mut exp = (e2 * 1233) >> 12;
+-    let (mut scale, mut n, mut pow);
+-    let mut tries = 0;
+-    loop {
+-        scale = 14 - exp; // 10^scale puts 15 digits before the point
+-        pow = *POW10.get(usize::try_from(scale).ok()?)?;
+-        n = (abs * pow + 0.5) as u64; // rounds to nearest; the check below catches a bad tie
+-        tries += 1;
+-        if n >= 1_000_000_000_000_000 && tries < 3 {
+-            exp += 1;
+-        } else if n < 100_000_000_000_000 && tries < 3 {
+-            exp -= 1;
+-        } else {
+-            break;
+-        }
+-    }
+-    if !(100_000_000_000_000..1_000_000_000_000_000).contains(&n) || n as f64 / pow != abs {
+-        return None;
+-    }
+-    // Drop trailing zeros, then write what is left from the end.
+-    let mut len = 15;
+-    for (step, zeros) in [(100_000_000, 8), (10_000, 4), (100, 2), (10, 1)] {
+-        if n % step == 0 {
+-            n /= step;
+-            len -= zeros;
+-        }
+-    }
+-    // Two digits per step, as in `Writer::int`.
+-    let mut at = len;
+-    while n >= 100 {
+-        let pair = (n % 100) as usize * 2;
+-        n /= 100;
+-        at -= 2;
+-        buf[at] = PAIRS[pair];
+-        buf[at + 1] = PAIRS[pair + 1];
+-    }
+-    if at == 2 {
+-        buf[0] = PAIRS[n as usize * 2];
+-        buf[1] = PAIRS[n as usize * 2 + 1];
+-    } else {
+-        buf[0] = b'0' + n as u8;
+-    }
+-    Some((len, 14 - scale))
+-}
+-
+@@ -1690,4 +1628 @@ fn float_append(out: &mut Vec<u8>, v: f64) -> Option<()> {
+-    let (n, exp) = match short_digits(abs, &mut buf) {
+-        Some(found) => found,
+-        None => sci_digits(abs, &mut buf)?,
+-    };
++    let (n, exp) = sci_digits(abs, &mut buf)?;

@@ -1,0 +1,69 @@
+name: Cache maintenance
+
+# Two jobs. `warm` starts a manual CI/CD run on main every hour, because only a finished manual run
+# saves the sccache caches (push runs are replaced before they finish, and a `schedule` trigger on
+# cicd.yml never fired, see #2158). `prune` keeps one cache per name.
+#
+# Keeps one cache per name. A lockfile change writes a new cargo cache and nothing removes the old
+# one, so copies pile up until GitHub evicts at the 10 GB limit and takes live entries with it.
+# Only main saves caches; entries from pull request refs and from the earlier rust-cache and lld
+# keys are dead and go too.
+
+on:
+  # Right after a main run saved its caches, so the superseded entries go before the limit is reached.
+  workflow_run:
+    workflows: [CI/CD]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+concurrency:
+  group: prune-caches
+  cancel-in-progress: false
+
+jobs:
+  warm:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Start a manual CI/CD run on main unless one is pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          pending=$(gh run list --workflow cicd.yml --event workflow_dispatch --branch main --json status \
+            --jq '[.[] | select(.status != "completed")] | length')
+          if [ "$pending" -gt 0 ]; then
+            echo "A manual run is already pending"
+          else
+            gh workflow run cicd.yml --ref main
+          fi
+
+  prune:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Delete stale caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh cache list --limit 1000 --json id,key,ref,createdAt > caches.json
+          # Newest first within each name (the key without its trailing lockfile hash and run id); keep the first.
+          jq -r '
+            def name: sub("-[0-9a-f]{16,}(-[0-9]+)?$"; "");
+            def dead: .ref != "refs/heads/main" or (.key | test("^(v0-rust-|lld-|cargo-rust-)"));
+            . as $all
+            | [$all[] | select(dead)] as $dead
+            | [$all[] | select(dead | not)] | sort_by(.createdAt) | reverse
+            | group_by(.key | name) | map(.[1:][]) as $stale
+            | ($dead + $stale)[].id' caches.json > stale.txt
+          echo "Deleting $(wc -l < stale.txt) of $(jq length caches.json) caches"
+          while read -r id; do gh cache delete "$id"; done < stale.txt
+          gh cache list --json key,ref,sizeInBytes --jq '.[] | [.key, .ref, .sizeInBytes] | @tsv'

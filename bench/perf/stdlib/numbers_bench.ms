@@ -24,7 +24,7 @@ bench "bigint.factorial_1000":
 bench "bigint.multiply_100_digits":
     fn work() Result[Unit, Error]:
         let base = from_int(7).pow(118).get(from_int(0))
-        var acc = base
+        var acc = from_int(0)
         for i in 0..20000:
             acc = base * base
         return keep(acc.to_string_radix(10).length())
