@@ -611,6 +611,7 @@ impl Checker {
                 self.implementation(d);
             }
         }
+        self.check_type_default_bounds();
         self.check_test_fixture(module);
         self.check_defaults(module);
         self.check_bodies(module);
@@ -670,6 +671,7 @@ impl Checker {
                 }
             }
         }
+        self.check_type_default_bounds();
         for module in group {
             self.enter_module(module);
             self.check_test_fixture(module);
@@ -867,8 +869,20 @@ impl Checker {
 
     /// Resolves default type arguments.
     pub(crate) fn type_defaults(&mut self, params: &[TypeParam], vars: &[Ty]) {
+        if !params.iter().any(|param| param.default.is_some()) {
+            return;
+        }
         let mut defaulted = false;
         let old = self.scope.clone();
+        // Receiver parameters and Self stay visible; this parameter list's own
+        // variables become visible only after their defaults have been resolved.
+        let enclosing = Scope::new(old.parent.clone());
+        let own: HashSet<Name> = vars.iter().map(|v| v.id).collect();
+        for (name, ty) in old.types.borrow().iter() {
+            if !own.contains(&ty.id) {
+                enclosing.types.borrow_mut().insert(*name, ty.clone());
+            }
+        }
         for (index, p) in params.iter().enumerate() {
             let Some(default) = &p.default else {
                 if defaulted {
@@ -883,31 +897,42 @@ impl Checker {
                 continue;
             };
             defaulted = true;
-            self.scope = self.variable_scope(&vars[..index]);
+            self.scope = Scope::new(Some(enclosing.clone()));
+            for var in &vars[..index] {
+                self.scope.types.borrow_mut().insert(var.name, var.clone());
+            }
             let resolved = self.resolve(Some(default));
             if invalid_ty(&resolved) {
                 continue;
             }
             for bound in vars[index].bounds() {
-                if self.standard_declarations {
-                    self.deferred_default_bounds.push(DeferredBound {
-                        resolved: resolved.clone(),
-                        bound: bound.clone(),
-                        pos: default.pos,
-                        module: self.m(),
-                    });
-                } else if !self.satisfies(&resolved, &bound) {
-                    let msg = self.unsatisfied_message(
-                        &resolved,
-                        &bound,
-                        "choose a default that already implements it",
-                    );
-                    self.type_error(default.pos, msg);
-                }
+                self.deferred_default_bounds.push(DeferredBound {
+                    resolved: resolved.clone(),
+                    bound: sub(&bound, &Subst::from([(vars[index].id, resolved.clone())])),
+                    pos: default.pos,
+                    module: self.m(),
+                });
             }
             *vars[index].default.borrow_mut() = Some(resolved);
         }
         self.scope = old;
+    }
+
+    /// Fields and implementations must be complete before defaults are tested.
+    pub(crate) fn check_type_default_bounds(&mut self) {
+        let old_module = self.module.clone();
+        for check in std::mem::take(&mut self.deferred_default_bounds) {
+            self.module = Some(check.module);
+            if !self.satisfies(&check.resolved, &check.bound) {
+                let message = self.unsatisfied_message(
+                    &check.resolved,
+                    &check.bound,
+                    "choose a default that already implements it",
+                );
+                self.type_error(check.pos, message);
+            }
+        }
+        self.module = old_module;
     }
 
     fn resolve_signatures(&mut self, module: &ModRef) {
