@@ -112,8 +112,8 @@ In the EBNF, braces repeat, brackets are optional, and quoted brackets are sourc
 
 ```ebnf
 Module        = { Import | Declaration } ;
-Import        = "import", ( Name | "{", ImportNames, "}" ), "from", PlainStringLiteral, NEWLINE ;
-ImportNames   = Name, { ",", Name }, [ "," ] ;
+Import        = "import", ( ImportNames | "(", ImportNames, [ "," ], ")" ), "from", PlainStringLiteral, NEWLINE ;
+ImportNames   = Name, { ",", Name } ;
 Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration
               | ConstantDeclaration | ExternDeclaration)
               | Implementation | TestDeclaration | BenchDeclaration ;
