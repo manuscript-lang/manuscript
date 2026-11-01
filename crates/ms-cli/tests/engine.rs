@@ -1053,9 +1053,8 @@ fn cached_file_build_skips_manifest_directories_without_disabling_cache() {
 }
 
 #[cfg(unix)]
-#[test]
-fn cached_file_build_notices_entry_symlink_retargeting() {
-    let dir = scratch("cache-entry-symlink");
+fn entry_symlink_build(project: bool) {
+    let dir = scratch(&format!("cache-entry-symlink-{project}"));
     let first = write(&dir, "first.ms", MAIN);
     let second = write(
         &dir,
@@ -1064,6 +1063,16 @@ fn cached_file_build_notices_entry_symlink_retargeting() {
     );
     let entry = dir.join("main.ms");
     std::os::unix::fs::symlink(&first, &entry).unwrap();
+    let input = if project {
+        write(
+            &dir,
+            "ms.toml",
+            "[project]\nname = \"p\"\nsource = \".\"\nentry = \"main.ms\"\n",
+        );
+        dir.join("ms.toml")
+    } else {
+        entry.clone()
+    };
     let output = dir.join("program");
     let backend = Engine::new(Native);
     let build = || {
@@ -1071,7 +1080,7 @@ fn cached_file_build_notices_entry_symlink_retargeting() {
             &backend,
             &[
                 "build",
-                entry.to_str().unwrap(),
+                input.to_str().unwrap(),
                 "-o",
                 output.to_str().unwrap(),
                 "--build-type",
@@ -1087,4 +1096,16 @@ fn cached_file_build_notices_entry_symlink_retargeting() {
     std::os::unix::fs::symlink(&second, &entry).unwrap();
     assert_eq!(build(), Some(8));
     assert_eq!(build(), Some(8));
+}
+
+#[cfg(unix)]
+#[test]
+fn cached_file_build_notices_entry_symlink_retargeting() {
+    entry_symlink_build(false);
+}
+
+#[cfg(unix)]
+#[test]
+fn cached_project_build_notices_entry_symlink_retargeting() {
+    entry_symlink_build(true);
 }

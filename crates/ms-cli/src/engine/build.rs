@@ -90,7 +90,7 @@ pub(super) fn build<L: Lower>(
         )
     };
 
-    // An unchanged build is restored without loading or checking anything.
+    // An unchanged build is restored without loading or checking the source graph.
     let cache = BuildCache::open(backend, request, &output);
     if path_error.is_none()
         && let Some(cache) = &cache
@@ -245,6 +245,10 @@ impl BuildCache {
         // The lexical entry name can keep pointing at a different file after a symlink changes.
         // Its selected identity must be part of the key, not only the old graph's source stamps.
         inputs.push(std::fs::canonicalize(&filename).ok()?);
+        if pathops::base(&filename) == "ms.toml" {
+            let project = ms_driver::project::read_project(&filename).ok()?;
+            inputs.push(std::path::PathBuf::from(project.entry));
+        }
         // A newly created nearer manifest can change resolution without changing any recorded
         // source. Include the current selection in the key, resolving directory symlinks as the
         // loader does, so even a previously absent manifest invalidates a cached program.
