@@ -2,7 +2,7 @@
 //! The entropy is a deterministic LCG stream (see `testEntropy` in `scripts/rs-oracle/random.go`).
 // Links the msrt_* runtime symbols.
 use ms_rt as _;
-use ms_std_random::*;
+use ms_std_core::random::*;
 
 struct Entropy {
     state: u64,

@@ -474,7 +474,10 @@ mod tests {
                 msstd_net_parse_cidr(s("192.0.2.3/24"), &mut cidr, &mut err),
                 0
             );
-            assert_eq!(take_string(|o| msstd_net_cidr_text(cidr, o)), "192.0.2.0/24");
+            assert_eq!(
+                take_string(|o| msstd_net_cidr_text(cidr, o)),
+                "192.0.2.0/24"
+            );
             let mut yes = 0;
             assert_eq!(msstd_net_contains_ip(cidr, ip, &mut yes), 0);
             assert_eq!(yes, 1);

@@ -6,7 +6,7 @@ use ms_rt::ffi::{Fail, native};
 
 native! {
     fn msstd_encoding_base64_encode(data: &[u8], url_safe: bool) -> String {
-        crate::base64_encode(data, url_safe)
+        super::base64_encode(data, url_safe)
     }
 
     fn msstd_encoding_base64_decode(
@@ -15,7 +15,7 @@ native! {
         has_max: bool,
         max: i64,
     ) -> Result<Vec<u8>, Fail> {
-        crate::base64_decode(text, url_safe, has_max.then_some(max))
+        super::base64_decode(text, url_safe, has_max.then_some(max))
     }
 }
 

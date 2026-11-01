@@ -32,7 +32,7 @@ pub fn accept_key(challenge: &str) -> String {
     let mut ctx = digest::Context::new(&digest::SHA1_FOR_LEGACY_USE_ONLY);
     ctx.update(challenge.as_bytes());
     ctx.update(GUID.as_bytes());
-    ms_std_encoding::base64_encode(ctx.finish().as_ref(), false)
+    ms_std_core::encoding::base64_encode(ctx.finish().as_ref(), false)
 }
 
 /// A fresh `Sec-WebSocket-Key`: 16 random bytes in base64.
@@ -44,12 +44,12 @@ pub fn generate_key() -> String {
             .map_or(0, |d| d.as_nanos());
         bytes.copy_from_slice(&nanos.to_le_bytes());
     }
-    ms_std_encoding::base64_encode(&bytes, false)
+    ms_std_core::encoding::base64_encode(&bytes, false)
 }
 
 /// Whether `s` is the base64 text of exactly 16 bytes.
 pub fn valid_challenge_key(s: &str) -> bool {
-    !s.is_empty() && ms_std_encoding::base64_decode_lenient(s).is_some_and(|b| b.len() == 16)
+    !s.is_empty() && ms_std_core::encoding::base64_decode_lenient(s).is_some_and(|b| b.len() == 16)
 }
 
 fn values<'a>(fields: &'a Fields, name: &'a str) -> impl Iterator<Item = &'a [u8]> {

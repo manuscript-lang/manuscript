@@ -55,7 +55,13 @@ const METHODS: &[MethodRow] = &[
         &[],
     ),
     ("net", "Network", "close", "msstd_net_network_close", &[]),
-    ("net", "Network", "connect", "msstd_net_network_connect", &[]),
+    (
+        "net",
+        "Network",
+        "connect",
+        "msstd_net_network_connect",
+        &[],
+    ),
     (
         "net",
         "Network",
@@ -107,7 +113,13 @@ const METHODS: &[MethodRow] = &[
         &[],
     ),
     ("net", "Network", "lookup", "msstd_net_network_lookup", &[]),
-    ("net", "Network", "resolve", "msstd_net_network_resolve", &[]),
+    (
+        "net",
+        "Network",
+        "resolve",
+        "msstd_net_network_resolve",
+        &[],
+    ),
     (
         "net",
         "Network",
@@ -122,7 +134,13 @@ const METHODS: &[MethodRow] = &[
         "msstd_net_network_web_socket",
         &[],
     ),
-    ("net", "Network", "request", "msstd_net_network_request", &[]),
+    (
+        "net",
+        "Network",
+        "request",
+        "msstd_net_network_request",
+        &[],
+    ),
     (
         "net",
         "Network",

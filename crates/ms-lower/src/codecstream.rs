@@ -150,7 +150,11 @@ impl FnLower<'_> {
             let level =
                 find("level").ok_or_else(|| Error::new("compress_stream without a level"))?;
             let level = self.borrow(level.val);
-            self.call_runtime("msstd_compress_encoder_new", &[name, level, slot], MTy::BOOL)?
+            self.call_runtime(
+                "msstd_compress_encoder_new",
+                &[name, level, slot],
+                MTy::BOOL,
+            )?
         };
         // The runtime answers zero for a codec it built; a rejected level leaves none behind.
         let zero = self.b.iconst(0);
@@ -304,7 +308,8 @@ impl FnLower<'_> {
             let e = self.status_failure(ret, code, "msstd_compress_decoder_poll")?;
             self.b.ret(Some(e));
         } else {
-            let has_out = self.call_runtime("msstd_compress_encoder_has_output", &[h], MTy::BOOL)?;
+            let has_out =
+                self.call_runtime("msstd_compress_encoder_has_output", &[h], MTy::BOOL)?;
             let (take, rest) = (self.b.new_block(), self.b.new_block());
             self.b.br_if(has_out, take, &[], rest, &[]);
             self.b.seal_block(take);
@@ -350,7 +355,11 @@ impl FnLower<'_> {
         self.enter(feed);
         let data = self.b.opt_get(chunk);
         let side = if job.decode { "decoder" } else { "encoder" };
-        self.call_runtime(&format!("msstd_compress_{side}_feed"), &[h, data], MTy::UNIT)?;
+        self.call_runtime(
+            &format!("msstd_compress_{side}_feed"),
+            &[h, data],
+            MTy::UNIT,
+        )?;
         self.drop_value(r);
         self.b.br(header, &[]);
         self.enter(end);

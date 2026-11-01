@@ -18,16 +18,14 @@ ms-std-bigint = { path = "../ms-std-bigint" }
 ms-std-compress = { path = "../ms-std-compress" }
 ms-std-crypto = { path = "../ms-std-crypto" }
 ms-std-decimal = { path = "../ms-std-decimal" }
-ms-std-encoding = { path = "../ms-std-encoding" }
+ms-std-core = { path = "../ms-std-core" }
 ms-std-fs = { path = "../ms-std-fs" }
 ms-std-html = { path = "../ms-std-html" }
 ms-std-io = { path = "../ms-std-io" }
 ms-std-json = { path = "../ms-std-json" }
-ms-std-math = { path = "../ms-std-math" }
 ms-std-net = { path = "../ms-std-net" }
 ms-std-path = { path = "../ms-std-path" }
 ms-std-process = { path = "../ms-std-process" }
-ms-std-random = { path = "../ms-std-random" }
 ms-std-regex = { path = "../ms-std-regex" }
 ms-std-system = { path = "../ms-std-system" }
 ms-std-terminal = { path = "../ms-std-terminal" }

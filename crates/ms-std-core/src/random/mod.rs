@@ -1,13 +1,6 @@
 //! `@std/os/random.ms` natives. The operating-system `Entropy` source is a plain function; the
 //! algorithms over any `Entropy` are a [`Draw`] the generated code feeds with the bytes it
 //! fetches through the interface.
-#![no_std]
-
-// Links the msrt_* runtime symbols into this crate's test binaries.
-#[cfg(test)]
-use ms_rt as _;
-
-extern crate alloc;
 
 pub mod ffi;
 

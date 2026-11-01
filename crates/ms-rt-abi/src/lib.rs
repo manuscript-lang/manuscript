@@ -636,7 +636,10 @@ mod tests {
             h.push('\n');
         };
         w("/* Generated from crates/ms-rt-abi/src/lib.rs by the `header_is_current` test; do not edit.".into());
-        w(" * Regenerate with: MS_UPDATE_HEADER=1 cargo test -p ms-rt-abi header_is_current".into());
+        w(
+            " * Regenerate with: MS_UPDATE_HEADER=1 cargo test -p ms-rt-abi header_is_current"
+                .into(),
+        );
         w(" *".into());
         w(" * The Manuscript ABI for `extern fn` natives (ms-rt/ABI.md, section 1).".into());
         w(" * Int is int64_t, Float is double, Bool is uint8_t (0 or 1). A String argument arrives as a".into());
@@ -685,10 +688,16 @@ mod tests {
         w("}".into());
         w("".into());
         w("static inline const uint8_t *ms_str_data(const ms_str *s) {".into());
-        w("    return ms_str_is_inline(s) ? (const uint8_t *)s : (const uint8_t *)s->ptr_word;".into());
+        w(
+            "    return ms_str_is_inline(s) ? (const uint8_t *)s : (const uint8_t *)s->ptr_word;"
+                .into(),
+        );
         w("}".into());
         w("".into());
-        w("/* Builds an owned string from `len` bytes at `ptr` into uninitialised `out`. */".into());
+        w(
+            "/* Builds an owned string from `len` bytes at `ptr` into uninitialised `out`. */"
+                .into(),
+        );
         w("void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);".into());
         w("".into());
         w("#endif".into());
