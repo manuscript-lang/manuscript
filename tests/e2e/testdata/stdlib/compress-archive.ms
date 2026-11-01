@@ -1,7 +1,14 @@
 import expect_equal from "@std/test/test.ms"
-import compress, decompress, CompressionError from "@std/io/archive.ms"
+import (
+    compress,
+    decompress,
+    CompressionError,
+    CompressionFormat
+) from "@std/io/archive.ms"
 import pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError from "@std/io/archive.ms"
 import Bytes from "@std/bytes.ms"
+import from_bytes from "@std/io/streams.ms"
+import read_line from "@std/io/io.ms"
 
 test "compression formats roundtrip and enforce expanded byte budgets":
     let input = "hello hello hello".to_bytes()
@@ -44,3 +51,19 @@ test "archives reject traversal paths":
     for path in ["../escape", "/absolute"]:
         let entries = [ArchiveEntry(path, "".to_bytes(), directory: false)]
         try expect_equal(pack(entries, "zip"), invalid)
+
+test "decompressed streams preserve lines across decoder output batches":
+    let data = "archive line input\n".repeat(3500).get("").to_bytes()
+
+    for format in [
+        CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
+    ]:
+        let packed = try format.compress(data)
+        var stream = format.decompress_stream(from_bytes(packed, 32768))
+
+        for i in 0..3500:
+            let line = try read_line(stream)
+            try expect_equal(line.get(""), "archive line input")
+
+        try expect_equal((try read_line(stream)).is_none(), true)
+        stream.close()
