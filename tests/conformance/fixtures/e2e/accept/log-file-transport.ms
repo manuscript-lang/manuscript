@@ -34,7 +34,7 @@ test "levels filter, fields nest under data, and bound fields merge":
     try logger.flush()
     logger.close()
 
-    let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"n\",\"data\":7\}\n\{\"level\":60,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n\{\"level\":40,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":10,\"msg\":\"trace\"\}\n"
+    let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"n\",\"data\":7\}\n\{\"level\":60,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n\{\"level\":40,\"msg\":\"child\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"service\":\"worker\"\}\}\n\{\"level\":10,\"msg\":\"trace\"\}\n"
     try expect_equal(try lines(path), expected)
 
 test "limits, invalid levels, and closed transports are errors":

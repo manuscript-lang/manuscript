@@ -7,3 +7,5 @@ Why: an interface with a generic operation cannot be a value type, so a generic-
 Verify: the "concurrent tasks never interleave a record" test in `tests/e2e/testdata/stdlib/log.ms` fails if `StreamTransport.write` stops locking.
 
 The record encoder is Manuscript too: `log.ms` builds the line from `JsonValue` and `stringify`, and a transport's shut flag lives in its locked state. There is no native logger crate; `proposals/logger-encoder-in-manuscript.md` records the equivalence evidence. `Logger` is a value, so `set_level` is `var fn` and a copy keeps its own threshold.
+
+Record layout: call fields go under `data` and `child` fields under `context`, both as `stringify` text written as is; nothing is reparsed per record.
