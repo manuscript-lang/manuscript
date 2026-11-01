@@ -40,7 +40,7 @@ test "logger writes typed escaped records and protects metadata":
     let file = try open(path: path, flags: "w", mode: 420)
     var logger = try create(stream_transport(file.writer()), timestamp: false)
     let fields = Payload(9007199254740993, ok: true, Items([none, 1]), 0, "fake", 0)
-    try logger.info_with("say \"hi\"\nnext", fields)
+    try logger.info("say \"hi\"\nnext", fields)
 
     let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
     try expect_equal((try written(path)), expected)
@@ -53,8 +53,8 @@ test "non-object values are written under data":
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
     let logger = try create(stream_transport(file.writer()), timestamp: false)
-    try logger.info_with("n", 7)
-    try logger.warn_with("l", ["a", "b"])
+    try logger.info("n", 7)
+    try logger.warn("l", ["a", "b"])
 
     let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
     try expect_equal((try written(path)), expected)
@@ -73,7 +73,7 @@ test "levels filter methods and function values":
     try expect_equal((try written(path)), "")
     try logger.warn("warn")
 
-    let error_log = logger.error
+    let error_log = fn(message: String) Unit!LogError: logger.error(message)
     try error_log("error")
     try logger.fatal("fatal")
     logger.set_level(LogLevel.Trace)
@@ -111,7 +111,7 @@ test "child bindings snapshot values and merge without mutating inputs":
     let child = try logger.child(Request(7))
     logger.set_level(LogLevel.Fatal)
     try expect_equal(child.level(), LogLevel.Info)
-    try child.info_with("child", Service("worker"))
+    try child.info("child", Service("worker"))
     try logger.fatal("parent")
 
     let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
@@ -152,7 +152,7 @@ test "limits and unencodable values reject before writing":
     let unlimited = try create(stream_transport(file.writer()), timestamp: false)
     let bad = JsonValue.NumberValue("NaN")
     let invalid_data: Unit!LogError = error(LogError.InvalidData)
-    try expect_equal(unlimited.info_with("bad", bad), invalid_data)
+    try expect_equal(unlimited.info("bad", bad), invalid_data)
     try expect_equal((try written(path)), before)
 
 test "transport closure and stream errors preserve identity":
@@ -248,11 +248,11 @@ test "unencodable fields are rejected and non-objects go under data":
     let logger = try create(stream_transport(file.writer()), timestamp: false)
     let invalid: Unit!LogError = error(LogError.InvalidData)
     let nan = JsonValue.NumberValue("NaN")
-    try expect_equal(logger.info_with("m", nan), invalid)
+    try expect_equal(logger.info("m", nan), invalid)
     try expect_false(logger.child(nan).is_ok())
     try expect_equal((try written(path)), "")
-    try logger.log_with(LogLevel.Info, "m", Service("a"))
-    try logger.info_with("m", [1])
+    try logger.log(LogLevel.Info, "m", Service("a"))
+    try logger.info("m", [1])
 
     let expected = "\{\"level\":30,\"msg\":\"m\",\"service\":\"a\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
     try expect_equal((try written(path)), expected)
@@ -285,7 +285,7 @@ impl WriteStream for SlowStream:
 
 fn chatter(logger: Logger, name: String) Unit!:
     for n in 0..3:
-        try logger.info_with("m", name)
+        try logger.info("m", name)
     return ok(unit)
 
 test "concurrent tasks never interleave a record":

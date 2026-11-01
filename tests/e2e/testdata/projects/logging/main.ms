@@ -29,7 +29,7 @@ fn exercise(mode: String, path: String) Unit!:
         let logger = try root.child(Service("api"))
 
         if mode == "invalid":
-            try logger.info_with("invalid", JsonValue.NumberValue("NaN"))
+            try logger.info("invalid", JsonValue.NumberValue("NaN"))
         else:
             try emit(logger)
             try logger.flush()
