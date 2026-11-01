@@ -430,26 +430,26 @@
 {"id":429,"jsonrpc":"2.0","result":[]}
 {"id":430,"jsonrpc":"2.0","result":null}
 {"id":431,"jsonrpc":"2.0","result":[]}
-{"id":432,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nPoint$methods: Point$methods\n```"},"range":{"end":{"character":1,"line":18},"start":{"character":0,"line":17}}}}
-{"id":433,"jsonrpc":"2.0","result":[{"range":{"end":{"character":0,"line":17},"start":{"character":0,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
-{"id":434,"jsonrpc":"2.0","result":[{"range":{"end":{"character":1,"line":18},"start":{"character":0,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
-{"id":435,"jsonrpc":"2.0","result":[{"range":{"end":{"character":0,"line":17},"start":{"character":0,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
-{"id":436,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":1,"line":18},"start":{"character":0,"line":17}}}]}
-{"id":437,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nPoint$methods: Point$methods\n```"},"range":{"end":{"character":1,"line":18},"start":{"character":0,"line":17}}}}
-{"id":438,"jsonrpc":"2.0","result":[{"range":{"end":{"character":0,"line":17},"start":{"character":0,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
-{"id":439,"jsonrpc":"2.0","result":[{"range":{"end":{"character":1,"line":18},"start":{"character":0,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
-{"id":440,"jsonrpc":"2.0","result":[{"range":{"end":{"character":0,"line":17},"start":{"character":0,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
-{"id":441,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":1,"line":18},"start":{"character":0,"line":17}}}]}
-{"id":442,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nPoint$methods: Point$methods\n```"},"range":{"end":{"character":1,"line":18},"start":{"character":0,"line":17}}}}
-{"id":443,"jsonrpc":"2.0","result":[{"range":{"end":{"character":0,"line":17},"start":{"character":0,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
-{"id":444,"jsonrpc":"2.0","result":[{"range":{"end":{"character":1,"line":18},"start":{"character":0,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
-{"id":445,"jsonrpc":"2.0","result":[{"range":{"end":{"character":0,"line":17},"start":{"character":0,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
-{"id":446,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":1,"line":18},"start":{"character":0,"line":17}}}]}
-{"id":447,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nPoint$methods: Point$methods\n```"},"range":{"end":{"character":1,"line":18},"start":{"character":0,"line":17}}}}
-{"id":448,"jsonrpc":"2.0","result":[{"range":{"end":{"character":0,"line":17},"start":{"character":0,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
-{"id":449,"jsonrpc":"2.0","result":[{"range":{"end":{"character":1,"line":18},"start":{"character":0,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
-{"id":450,"jsonrpc":"2.0","result":[{"range":{"end":{"character":0,"line":17},"start":{"character":0,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
-{"id":451,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":1,"line":18},"start":{"character":0,"line":17}}}]}
+{"id":432,"jsonrpc":"2.0","result":null}
+{"id":433,"jsonrpc":"2.0","result":null}
+{"id":434,"jsonrpc":"2.0","result":[]}
+{"id":435,"jsonrpc":"2.0","result":null}
+{"id":436,"jsonrpc":"2.0","result":[]}
+{"id":437,"jsonrpc":"2.0","result":null}
+{"id":438,"jsonrpc":"2.0","result":null}
+{"id":439,"jsonrpc":"2.0","result":[]}
+{"id":440,"jsonrpc":"2.0","result":null}
+{"id":441,"jsonrpc":"2.0","result":[]}
+{"id":442,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nPoint: Point\n```\n\nA point in the plane."},"range":{"end":{"character":10,"line":17},"start":{"character":5,"line":17}}}}
+{"id":443,"jsonrpc":"2.0","result":[{"range":{"end":{"character":10,"line":5},"start":{"character":5,"line":5}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
+{"id":444,"jsonrpc":"2.0","result":[{"range":{"end":{"character":10,"line":17},"start":{"character":5,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":21},"start":{"character":15,"line":21}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":48},"start":{"character":15,"line":48}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":18,"line":53},"start":{"character":13,"line":53}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
+{"id":445,"jsonrpc":"2.0","result":[{"range":{"end":{"character":10,"line":5},"start":{"character":5,"line":5}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
+{"id":446,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":10,"line":5},"start":{"character":5,"line":5}}},{"kind":2,"range":{"end":{"character":10,"line":17},"start":{"character":5,"line":17}}},{"kind":2,"range":{"end":{"character":20,"line":21},"start":{"character":15,"line":21}}},{"kind":2,"range":{"end":{"character":20,"line":48},"start":{"character":15,"line":48}}},{"kind":2,"range":{"end":{"character":18,"line":53},"start":{"character":13,"line":53}}}]}
+{"id":447,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nPoint: Point\n```\n\nA point in the plane."},"range":{"end":{"character":10,"line":17},"start":{"character":5,"line":17}}}}
+{"id":448,"jsonrpc":"2.0","result":[{"range":{"end":{"character":10,"line":5},"start":{"character":5,"line":5}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
+{"id":449,"jsonrpc":"2.0","result":[{"range":{"end":{"character":10,"line":17},"start":{"character":5,"line":17}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":21},"start":{"character":15,"line":21}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":48},"start":{"character":15,"line":48}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":18,"line":53},"start":{"character":13,"line":53}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
+{"id":450,"jsonrpc":"2.0","result":[{"range":{"end":{"character":10,"line":5},"start":{"character":5,"line":5}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
+{"id":451,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":10,"line":5},"start":{"character":5,"line":5}}},{"kind":2,"range":{"end":{"character":10,"line":17},"start":{"character":5,"line":17}}},{"kind":2,"range":{"end":{"character":20,"line":21},"start":{"character":15,"line":21}}},{"kind":2,"range":{"end":{"character":20,"line":48},"start":{"character":15,"line":48}}},{"kind":2,"range":{"end":{"character":18,"line":53},"start":{"character":13,"line":53}}}]}
 {"id":452,"jsonrpc":"2.0","result":null}
 {"id":453,"jsonrpc":"2.0","result":null}
 {"id":454,"jsonrpc":"2.0","result":[]}
@@ -740,16 +740,16 @@
 {"id":739,"jsonrpc":"2.0","result":[]}
 {"id":740,"jsonrpc":"2.0","result":null}
 {"id":741,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":15,"line":29},"start":{"character":11,"line":29}}}]}
-{"id":742,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nOptional: Int?\n```\n\nRepresents a value that may be absent: a `T` or `none`; a plain `T` converts where a `T?` is expected."},"range":{"end":{"character":2,"line":30},"start":{"character":18,"line":29}}}}
-{"id":743,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":82},"start":{"character":12,"line":82}},"uri":"manuscript-stdlib:///core.ms"}]}
-#large
-{"id":745,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":82},"start":{"character":12,"line":82}},"uri":"manuscript-stdlib:///core.ms"}]}
-{"id":746,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":2,"line":30},"start":{"character":18,"line":29}}}]}
-{"id":747,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nOptional: Int?\n```\n\nRepresents a value that may be absent: a `T` or `none`; a plain `T` converts where a `T?` is expected."},"range":{"end":{"character":2,"line":30},"start":{"character":18,"line":29}}}}
-{"id":748,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":82},"start":{"character":12,"line":82}},"uri":"manuscript-stdlib:///core.ms"}]}
-#large
-{"id":750,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":82},"start":{"character":12,"line":82}},"uri":"manuscript-stdlib:///core.ms"}]}
-{"id":751,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":2,"line":30},"start":{"character":18,"line":29}}}]}
+{"id":742,"jsonrpc":"2.0","result":null}
+{"id":743,"jsonrpc":"2.0","result":null}
+{"id":744,"jsonrpc":"2.0","result":[]}
+{"id":745,"jsonrpc":"2.0","result":null}
+{"id":746,"jsonrpc":"2.0","result":[]}
+{"id":747,"jsonrpc":"2.0","result":null}
+{"id":748,"jsonrpc":"2.0","result":null}
+{"id":749,"jsonrpc":"2.0","result":[]}
+{"id":750,"jsonrpc":"2.0","result":null}
+{"id":751,"jsonrpc":"2.0","result":[]}
 {"id":752,"jsonrpc":"2.0","result":null}
 {"id":753,"jsonrpc":"2.0","result":null}
 {"id":754,"jsonrpc":"2.0","result":[]}
@@ -1666,6 +1666,6 @@
 {"id":1665,"jsonrpc":"2.0","result":null}
 {"id":1666,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":6,"line":35},"start":{"character":3,"line":35}}},{"kind":2,"range":{"end":{"character":20,"line":60},"start":{"character":17,"line":60}}},{"kind":2,"range":{"end":{"character":24,"line":68},"start":{"character":21,"line":68}}}]}
 #large
-{"id":1668,"jsonrpc":"2.0","result":{"data":[0,0,6,0,0,0,7,8,6,0,0,9,4,1,0,0,5,14,3,0,1,0,6,0,0,0,7,6,5,0,0,7,4,1,0,0,5,15,3,0,1,0,6,0,0,0,7,12,5,0,0,13,4,1,0,0,5,19,3,0,3,0,4,0,0,0,5,5,6,0,1,4,1,7,0,0,3,3,1,0,1,4,1,7,0,0,3,3,1,0,0,6,1,2,0,2,0,4,0,0,0,5,5,6,0,1,4,4,0,0,0,5,6,9,0,0,7,6,1,0,0,8,3,1,0,1,4,4,0,0,0,5,6,9,0,0,7,4,1,0,0,6,3,1,0,1,4,4,0,0,0,5,5,9,0,2,0,9,0,0,0,10,5,6,0,1,4,2,0,0,0,3,5,5,0,0,8,6,1,0,2,0,4,0,0,0,5,5,6,0,1,4,2,0,0,0,3,4,5,0,0,7,3,1,0,1,8,6,0,0,0,7,4,0,0,0,5,1,7,0,0,4,4,0,0,0,5,1,7,0,0,4,4,0,0,0,5,1,7,0,0,4,4,0,0,0,5,1,7,0,2,0,4,0,0,0,5,5,6,0,0,6,3,0,0,0,4,5,6,0,1,4,2,0,0,0,3,5,5,0,0,8,6,1,0,1,8,6,0,0,0,7,7,3,0,2,0,4,0,0,0,5,7,6,0,1,4,1,7,0,0,3,3,1,0,2,0,4,0,0,0,5,8,6,0,0,9,3,1,0,0,5,3,0,0,0,4,7,6,0,1,4,3,0,0,0,4,2,0,0,0,3,4,5,0,0,7,3,6,0,1,8,2,0,0,0,3,4,0,0,0,5,1,7,0,0,5,1,2,0,0,3,6,0,0,0,7,4,9,0,2,8,4,0,0,0,5,1,7,0,0,5,1,2,0,1,8,6,0,0,0,7,4,0,0,0,5,1,7,0,2,0,2,0,0,0,3,3,5,0,0,4,1,8,0,0,3,3,1,0,0,5,1,8,0,0,3,3,1,0,0,5,3,1,0,1,4,3,0,0,0,4,5,1,0,0,8,1,8,0,0,4,1,8,0,1,4,6,0,0,0,7,5,1,0,2,0,2,0,0,0,3,4,5,0,0,5,5,8,0,0,7,5,6,0,0,7,3,1,0,1,4,5,0,0,0,6,5,8,0,1,8,6,9,0,0,7,1,1,0,1,12,6,0,0,0,7,1,1,0,0,4,1,1,0,0,4,1,2,0,1,8,6,9,0,0,7,1,1,0,1,12,6,0,0,0,7,1,1,0,0,4,1,1,0,2,12,6,0,0,0,7,1,2,0,2,0,2,0,0,0,3,8,5,0,0,9,1,8,0,0,3,5,6,0,0,7,6,1,0,1,4,3,0,0,0,4,1,1,0,0,4,1,8,0,0,2,4,5,0,1,4,6,0,0,0,7,22,3,0,2,0,6,0,0,0,7,2,0,0,0,3,4,5,0,0,7,3,1,0,1,4,3,0,0,0,4,2,1,0,0,5,5,6,0,0,6,1,7,0,0,3,1,2,0,0,3,1,7,0,0,3,1,2,0,1,4,3,0,0,0,4,6,1,0,0,10,1,2,0,0,3,1,2,0,0,3,1,2,0,1,4,3,0,0,0,4,1,1,0,0,2,2,0,0,0,3,6,1,0,1,8,3,0,0,0,8,3,5,0,0,4,5,3,0,1,4,3,0,0,0,4,4,1,0,0,5,2,0,0,0,3,7,6,0,0,8,1,7,0,0,3,1,2,0,1,8,3,0,0,0,8,3,5,0,0,4,8,3,0,2,4,3,0,0,0,4,6,1,0,0,9,3,5,0,0,4,1,2,0,0,3,1,2,0,1,4,6,0,0,0,7,6,1,0,2,0,2,0,0,0,3,3,5,0,0,4,4,8,0,0,6,6,1,0,0,8,6,6,0,0,7,4,1,0,0,6,5,6,0,1,4,3,0,0,0,4,6,5,0,0,9,5,5,0,0,6,10,3,0,1,4,6,0,0,0,7,6,5,0,0,9,5,5,0,2,0,4,0,0,0,5,10,3,0,1,4,3,0,0,0,4,12,5,0,0,13,3,5,0,0,4,1,2,0,0,3,1,2,0,0,4,1,2,0]}}
+{"id":1668,"jsonrpc":"2.0","result":{"data":[0,0,6,0,0,0,7,8,6,0,0,9,4,1,0,0,5,14,3,0,1,0,6,0,0,0,7,6,5,0,0,7,4,1,0,0,5,15,3,0,1,0,6,0,0,0,7,12,5,0,0,13,4,1,0,0,5,19,3,0,3,0,4,0,0,0,5,5,6,0,1,4,1,7,0,0,3,3,1,0,1,4,1,7,0,0,3,3,1,0,0,6,1,2,0,2,0,4,0,0,0,5,5,6,0,1,4,4,0,0,0,5,6,9,0,0,7,6,1,0,0,8,3,1,0,1,4,4,0,0,0,5,6,9,0,0,7,4,1,0,0,6,3,1,0,1,4,4,0,0,0,5,5,9,0,2,0,9,0,0,0,10,5,6,0,1,4,2,0,0,0,3,5,5,0,0,8,6,1,0,2,0,4,0,0,0,5,5,6,0,1,4,2,0,0,0,3,4,5,0,0,7,3,1,0,1,8,6,0,0,0,7,4,0,0,0,5,1,7,0,0,4,4,0,0,0,5,1,7,0,0,4,4,0,0,0,5,1,7,0,0,4,4,0,0,0,5,1,7,0,2,0,4,0,0,0,5,5,6,0,0,6,3,0,0,0,4,5,6,0,1,4,2,0,0,0,3,5,5,0,0,8,6,1,0,1,8,6,0,0,0,7,7,3,0,2,0,4,0,0,0,5,7,6,0,1,4,1,7,0,0,3,3,1,0,2,0,4,0,0,0,5,8,6,0,0,9,3,1,0,0,5,3,0,0,0,4,7,6,0,1,4,3,0,0,0,4,2,0,0,0,3,4,5,0,0,7,3,1,0,1,8,2,0,0,0,3,4,0,0,0,5,1,7,0,0,5,1,2,0,0,3,6,0,0,0,7,4,9,0,2,8,4,0,0,0,5,1,7,0,0,5,1,2,0,1,8,6,0,0,0,7,4,0,0,0,5,1,7,0,2,0,2,0,0,0,3,3,5,0,0,4,1,8,0,0,3,3,1,0,0,5,1,8,0,0,3,3,1,0,0,5,3,1,0,1,4,3,0,0,0,4,5,1,0,0,8,1,8,0,0,4,1,8,0,1,4,6,0,0,0,7,5,1,0,2,0,2,0,0,0,3,4,5,0,0,5,5,8,0,0,7,5,6,0,0,7,3,1,0,1,4,5,0,0,0,6,5,8,0,1,8,6,9,0,0,7,1,1,0,1,12,6,0,0,0,7,1,1,0,0,4,1,1,0,0,4,1,2,0,1,8,6,9,0,0,7,1,1,0,1,12,6,0,0,0,7,1,1,0,0,4,1,1,0,2,12,6,0,0,0,7,1,2,0,2,0,2,0,0,0,3,8,5,0,0,9,1,8,0,0,3,5,6,0,0,7,6,1,0,1,4,3,0,0,0,4,1,1,0,0,4,1,8,0,0,2,4,5,0,1,4,6,0,0,0,7,22,3,0,2,0,6,0,0,0,7,2,0,0,0,3,4,5,0,0,7,3,1,0,1,4,3,0,0,0,4,2,1,0,0,5,5,6,0,0,6,1,7,0,0,3,1,2,0,0,3,1,7,0,0,3,1,2,0,1,4,3,0,0,0,4,6,1,0,0,10,1,2,0,0,3,1,2,0,0,3,1,2,0,1,4,3,0,0,0,4,1,1,0,0,2,2,0,0,0,3,6,1,0,1,8,3,0,0,0,8,3,5,0,0,4,5,3,0,1,4,3,0,0,0,4,4,1,0,0,5,2,0,0,0,3,7,6,0,0,8,1,7,0,0,3,1,2,0,1,8,3,0,0,0,8,3,5,0,0,4,8,3,0,2,4,3,0,0,0,4,6,1,0,0,9,3,5,0,0,4,1,2,0,0,3,1,2,0,1,4,6,0,0,0,7,6,1,0,2,0,2,0,0,0,3,3,5,0,0,4,4,8,0,0,6,6,1,0,0,8,6,6,0,0,7,4,1,0,0,6,5,6,0,1,4,3,0,0,0,4,6,5,0,0,9,5,5,0,0,6,10,3,0,1,4,6,0,0,0,7,6,5,0,0,9,5,5,0,2,0,4,0,0,0,5,10,3,0,1,4,3,0,0,0,4,12,5,0,0,13,3,5,0,0,4,1,2,0,0,3,1,2,0,0,4,1,2,0]}}
 {"id":1669,"jsonrpc":"2.0","result":[{"endLine":7,"kind":"region","startLine":5},{"endLine":12,"kind":"region","startLine":9},{"endLine":15,"kind":"region","startLine":14},{"endLine":19,"kind":"region","startLine":17},{"endLine":19,"kind":"region","startLine":18},{"endLine":23,"kind":"region","startLine":21},{"endLine":23,"kind":"region","startLine":22},{"endLine":26,"kind":"region","startLine":25},{"endLine":33,"kind":"region","startLine":28},{"endLine":33,"kind":"region","startLine":29},{"endLine":37,"kind":"region","startLine":35},{"endLine":46,"kind":"region","startLine":39},{"endLine":46,"kind":"region","startLine":40},{"endLine":42,"kind":"region","startLine":41},{"endLine":44,"kind":"region","startLine":43},{"endLine":46,"kind":"region","startLine":45},{"endLine":50,"kind":"region","startLine":48},{"endLine":61,"kind":"region","startLine":52},{"endLine":56,"kind":"region","startLine":55},{"endLine":58,"kind":"region","startLine":57},{"endLine":65,"kind":"region","startLine":63},{"endLine":68,"kind":"region","startLine":67}]}
 {"id":1670,"jsonrpc":"2.0","result":null}

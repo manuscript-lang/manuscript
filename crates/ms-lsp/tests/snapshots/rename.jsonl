@@ -86,10 +86,10 @@
 {"id":85,"jsonrpc":"2.0","result":{"placeholder":"label","range":{"end":{"character":12,"line":15},"start":{"character":7,"line":15}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":86,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":87,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":88,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":89,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":90,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":91,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":88,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":89,"jsonrpc":"2.0"}
+{"id":90,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":10,"line":17},"start":{"character":5,"line":17}}}}
+{"id":91,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":10,"line":17},"start":{"character":5,"line":17}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":92,"jsonrpc":"2.0"}
 {"id":93,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":11,"line":18},"start":{"character":7,"line":18}}}}
 {"id":94,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":11,"line":18},"start":{"character":7,"line":18}}}}
@@ -148,8 +148,8 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":147,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":148,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":149,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":150,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":151,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":150,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":151,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":152,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":153,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":154,"jsonrpc":"2.0"}

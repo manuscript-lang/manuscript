@@ -7,6 +7,9 @@ type noneType:
 fn optional(input: noneType?) Int:
     return 0
 
+fn result(input: Container!) Int:
+    return 0
+
 fn payload(input: Int?) Int:
     match input:
         value: return value

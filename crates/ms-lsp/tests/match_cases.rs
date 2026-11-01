@@ -102,7 +102,7 @@ fn invalid_match_paths_do_not_acquire_a_case_identity() {
 }
 
 #[test]
-fn synthesized_optional_paths_do_not_become_written_case_occurrences() {
+fn synthesized_paths_and_type_suffixes_do_not_become_written_occurrences() {
     let ws = Workspace::new("case-navigation-controls");
     let source = include_str!("match_cases/controls.ms");
     let d = Document::new(ws.uri("controls.ms"), source);
@@ -112,7 +112,7 @@ fn synthesized_optional_paths_do_not_become_written_case_occurrences() {
     for entry in checked
         .index()
         .iter()
-        .filter(|entry| entry.file.as_str() == file && entry.key.starts_with("case:"))
+        .filter(|entry| entry.file.as_str() == file)
     {
         assert_eq!(
             source.get(entry.offset..entry.end),
@@ -125,7 +125,10 @@ fn synthesized_optional_paths_do_not_become_written_case_occurrences() {
                 .is_none_or(|byte| !text::identifier(*byte))
         );
     }
-    for name in ["value: return", "input?.value"] {
+    for (name, kind) in [
+        ("value: return", "binding:"),
+        ("input?.value", "parameter:"),
+    ] {
         let offset = source.find(name).unwrap();
         let entry = nav::occurrence_at(
             &checked,
@@ -134,6 +137,6 @@ fn synthesized_optional_paths_do_not_become_written_case_occurrences() {
             checked.index(),
         )
         .unwrap();
-        assert!(entry.key.starts_with("binding:"));
+        assert!(entry.key.starts_with(kind));
     }
 }

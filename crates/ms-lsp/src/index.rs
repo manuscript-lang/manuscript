@@ -76,6 +76,16 @@ fn source_key(root: &str, file: Name) -> String {
     }
 }
 
+/// Lowered suffixes and omitted arguments have checked facts but no name token.
+fn written_name(source: &str, offset: usize, name: &str) -> bool {
+    let end = offset + name.len();
+    source.get(offset..end) == Some(name)
+        && source
+            .as_bytes()
+            .get(end)
+            .is_none_or(|byte| !crate::text::identifier(*byte))
+}
+
 /// The key of a module symbol.
 pub fn symbol_key(root: &str, s: Option<&SymRef>) -> String {
     match s {
@@ -185,7 +195,10 @@ impl Builder {
         write: bool,
         info: OccInfo,
     ) {
-        if key.is_empty() || name.is_empty() {
+        if key.is_empty()
+            || name.is_empty()
+            || !written_name(&self.by_file[&file].source, offset, name)
+        {
             return;
         }
         if !self.seen.insert((file, offset, key.clone())) {
@@ -813,26 +826,13 @@ impl UseWalker<'_> {
                 ExprKind::Call { callee, .. } => callee,
                 _ => e,
             };
-            let offset = left.pos.offset as usize;
-            // Implicit Optional defaults also have constructor facts, but
-            // their synthetic `none` has no written token to navigate.
-            let end = offset + case.as_str().len();
-            if self.module.source.get(offset..end) == Some(case.as_str())
-                && self
-                    .module
-                    .source
-                    .as_bytes()
-                    .get(end)
-                    .is_none_or(|byte| !crate::text::identifier(*byte))
-            {
-                self.add(
-                    format!("case:{}:{}", symbol_key(&self.b.root, Some(&parent)), case),
-                    case.as_str(),
-                    offset,
-                    false,
-                    occ.clone(),
-                );
-            }
+            self.add(
+                format!("case:{}:{}", symbol_key(&self.b.root, Some(&parent)), case),
+                case.as_str(),
+                left.pos.offset as usize,
+                false,
+                occ.clone(),
+            );
             if let ExprKind::Member { left: receiver, .. } = &left.kind {
                 let root = peel_apply(receiver);
                 if let ExprKind::Name(root_name) = &root.kind {
