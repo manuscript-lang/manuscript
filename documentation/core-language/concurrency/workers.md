@@ -5,13 +5,13 @@ weight = 2
 
 # Worker threads
 
-A `WorkerGroup[In, Out]` starts workers: functions that run on their own OS threads, in parallel with the caller, and talk to it over a two-way [channel](task-groups.md#channels). Import it from `@std/workers.ms`. Use workers for CPU-bound work that tasks cannot spread across cores.
+A `WorkerGroup[In, Out]` starts workers: functions that run on their own OS threads, in parallel with the caller, and talk to it over a two-way [channel](task-groups.md#channels). Import it from `@std/concurrency/workers.ms`. Use workers for CPU-bound work that tasks cannot spread across cores.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import Channel, ChannelError from "@std/channels.ms"
-import expect_equal, expect_ok from "@std/test.ms"
-import WorkerGroup, worker_channel from "@std/workers.ms"
+import Channel, ChannelError from "@std/io/channels.ms"
+import expect_equal, expect_ok from "@std/test/test.ms"
+import WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 
 fn serve(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     while true:
@@ -41,7 +41,7 @@ test "a worker answers over its channel":
 - The worker takes its end of the channel with `worker_channel[Send, Receive]()`; the starter holds the other in `worker.channel`. A `WorkerGroup[In, Out]` sends `In` to its workers and receives `Out` from them.
 - When the starter and its workers all wait on each other (the starter in `receive` or `result()`, a worker in `receive`, with no timer, descriptor wait or blocking call pending anywhere), the program stops with a deadlock fault on the main isolate instead of hanging, as it does within one isolate.
 - Every worker has its own memory (2 GiB of address space, reserved lazily), scheduler and task tree. Tasks inside a worker run cooperatively, as in the main program.
-- Every message is encoded as JSON and decoded on the other side, so message types are the ones `@std/json.ms` reads and writes. Transport uses ordinary `stringify`, not its opt-in `strict: true` mode; a typed channel does not guarantee a lossless JSON representation for every type. Use plain serializable data and check send/receive errors. `send` waits while the other side has 16 unread messages.
+- Every message is encoded as JSON and decoded on the other side, so message types are the ones `@std/data/json.ms` reads and writes. Transport uses ordinary `stringify`, not its opt-in `strict: true` mode; a typed channel does not guarantee a lossless JSON representation for every type. Use plain serializable data and check send/receive errors. `send` waits while the other side has 16 unread messages.
 - `worker.wait()` closes the starter's end, waits for the worker to end, and returns `Result[Unit, WorkerError]`. A worker that is reading ends when its input closes. `worker.cancel()` stops one that is not.
 - Manuscript faults caught by the worker runtime are reported through `wait()` as `WorkerError.Faulted(report)`, with the fault's message and stack. Worker threads are not a process-crash isolation boundary. A cancelled worker gives `WorkerError.Cancelled`.
 - Leaving the scope of the group binding cancels workers that are still running, closes their channels and waits for them.

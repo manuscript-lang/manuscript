@@ -72,9 +72,9 @@ for i in range(200000):
         lines.append(f"group-{i % 300},{rng.randrange(10000)}.{rng.randrange(100):02d}")
 reference("c03-csv-group-sum", "\n".join(lines) + "\n")
 
-save("hello", 'import stdout from "@std/io.ms"\n\nexport fn main() Int:\n    if stdout().write("hello\\n").is_error():\n        return 1\n    return 0\n', "", "hello\n")
+save("hello", 'import stdout from "@std/io/io.ms"\n\nexport fn main() Int:\n    if stdout().write("hello\\n").is_error():\n        return 1\n    return 0\n', "", "hello\n")
 for n in [100, 200, 400, 1000, 2000, 4000]:
-    source = 'import stdin, stdout, read_line from "@std/io.ms"\n\n'
+    source = 'import stdin, stdout, read_line from "@std/io/io.ms"\n\n'
     for i in range(n):
         source += f"fn rule_{i}(x: Int) Int:\n    return (x % 997) * 3 + {i}\n\n"
     source += 'export fn main() Int:\n    var x = read_line(stdin()).get().get().parse_int().get()\n'

@@ -2,7 +2,7 @@ diff --git a/stdlib/toml.ms b/stdlib/toml.ms
 index b9856ce6b..00968e1f3 100644
 --- a/stdlib/toml.ms
 +++ b/stdlib/toml.ms
-@@ -3 +3 @@ import parse_int, parse_float from "@std/math.ms"
+@@ -3 +3 @@ import parse_int, parse_float from "@std/math/math.ms"
 -import from_scalars, StringBuilder, Regex, compile from "@std/string.ms"
 +import from_scalars, StringBuilder from "@std/string.ms"
 @@ -921,4 +920,0 @@ fn materialize(

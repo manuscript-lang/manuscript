@@ -1,5 +1,5 @@
 import Copy, Data, panic from "@std/core.ms"
-import NumberError from "@std/math.ms"
+import NumberError from "@std/math/math.ms"
 
 # How a Decimal rounds to a multiple of the requested power of ten.
 export type RoundingMode:

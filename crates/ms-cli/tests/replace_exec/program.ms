@@ -1,4 +1,4 @@
-import replace from "@std/process.ms"
+import replace from "@std/os/process.ms"
 
 export fn main() Int:
     let _outcome = replace(

@@ -1,9 +1,9 @@
-import Deque from "@std/deque.ms"
-import Queue, PriorityQueue from "@std/queue.ms"
-import stdout from "@std/io.ms"
-import arguments from "@std/process.ms"
-import monotonic from "@std/time.ms"
-import keep from "@std/bench.ms"
+import Deque from "@std/collections/deque.ms"
+import Queue, PriorityQueue from "@std/collections/queue.ms"
+import stdout from "@std/io/io.ms"
+import arguments from "@std/os/process.ms"
+import monotonic from "@std/os/time.ms"
+import keep from "@std/test/bench.ms"
 
 export fn main() Int:
     let args = arguments()

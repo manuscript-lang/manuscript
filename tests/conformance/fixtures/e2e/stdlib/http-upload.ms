@@ -1,11 +1,11 @@
 # conform: tags=control-flow,faults,interfaces,modules,records,stdlib-http,stdlib-io,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/http-upload.ms
-import expect_equal from "@std/test.ms"
-import headers, HttpClientOptions, HttpMethod, HttpRequest, HttpResponse, buffered from "@std/http.ms"
-import IoError, ReadStream, read_all from "@std/io.ms"
-import body_stream from "@std/sse.ms"
-import http_client, serve from "@std/net.ms"
+import expect_equal from "@std/test/test.ms"
+import headers, HttpClientOptions, HttpMethod, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
+import IoError, ReadStream, read_all from "@std/io/io.ms"
+import body_stream from "@std/net/sse.ms"
+import http_client, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 
 # Hands out its parts one chunk at a time, then reports the end of the stream.

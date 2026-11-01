@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,formatter,generics,interfaces,lists,match,modules,mutation,optional,parser,records,sets,stdlib-bytes,stdlib-regex,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/preferred-names.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 import compile, Regex, RegexError from "@std/string.ms"
 

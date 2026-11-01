@@ -1,5 +1,5 @@
 import Arg, CliError, Command, Flag, FlagKind, Matches, command from "@std/cli.ms"
-import expect_contains, expect_equal, expect_error, expect_ok, expect_some, fail from "@std/test.ms"
+import expect_contains, expect_equal, expect_error, expect_ok, expect_some, fail from "@std/test/test.ms"
 
 type ServeOptions:
     port: Int

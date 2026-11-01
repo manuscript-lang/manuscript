@@ -20,7 +20,7 @@ static ARG_SKIP: Process<i32> = Process::new(0);
 static MAIN_FN: Process<Option<extern "C-unwind" fn() -> i64>> = Process::new(None);
 static MAIN_RESULT: Process<i64> = Process::new(0);
 
-/// The environment variable that starts a child at a process entry (`@std/processes.ms`)
+/// The environment variable that starts a child at a process entry (`@std/os/processes.ms`)
 /// instead of `main`: see [`entry_value`].
 pub const ENTRY_ENV: &str = "MS_ENTRY";
 /// The child's entry, read from [`ENTRY_ENV`] at start: the code and drop words of the runner

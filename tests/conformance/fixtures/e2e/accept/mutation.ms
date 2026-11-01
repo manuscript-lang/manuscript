@@ -1,7 +1,7 @@
 # conform: tags=aliasing,alternatives,closures,control-flow,faults,generics,interfaces,lists,maps,match,modules,optional,records,sets,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/mutation.ms
-import expect_equal, expect_false, expect_not_equal, fail from "@std/test.ms"
+import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
 
 interface Counter:
     fn increment() Unit

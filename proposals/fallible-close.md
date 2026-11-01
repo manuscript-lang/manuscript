@@ -40,7 +40,7 @@ Implemented 2026-10-31 (one `Closeable`; supersedes the `Result[Unit, Never]` an
 - Example of an accepted program:
 
 ```manuscript
-import FileHandle, open from "@std/fs.ms"
+import FileHandle, open from "@std/os/fs.ms"
 
 fn save(path: String, text: String) Result[Unit, Error]:
     var file = try open(path)
@@ -56,7 +56,7 @@ fn save(path: String, text: String) Result[Unit, Error]:
 - TLS is a separate type with no `clone`; locks, guards and groups have none.
 
 ```manuscript
-import FileHandle from "@std/fs.ms"
+import FileHandle from "@std/os/fs.ms"
 
 fn twice(file: FileHandle) Result[List[FileHandle], Error]:
     let copy = try file.clone()

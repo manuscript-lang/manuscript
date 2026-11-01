@@ -7,7 +7,7 @@
 use std::fmt;
 use std::io;
 
-/// `NetworkError` of `@std/net.ms`.
+/// `NetworkError` of `@std/net/net.ms`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NetErr {
     InvalidInput,
@@ -20,7 +20,7 @@ pub enum NetErr {
     Failed(String),
 }
 
-/// `IoError` of `@std/io.ms`.
+/// `IoError` of `@std/io/io.ms`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum IoErr {
     Closed,
@@ -31,7 +31,7 @@ pub enum IoErr {
     Failed(String),
 }
 
-/// `HttpError` of `@std/http.ms`.
+/// `HttpError` of `@std/net/http.ms`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HttpErr {
     InvalidInput,
@@ -43,7 +43,7 @@ pub enum HttpErr {
     Failed(String),
 }
 
-/// `WebSocketError` of `@std/net.ms`.
+/// `WebSocketError` of `@std/net/net.ms`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WsErr {
     InvalidInput,
@@ -55,7 +55,7 @@ pub enum WsErr {
     Failed(String),
 }
 
-/// `TlsError` of `@std/net.ms`.
+/// `TlsError` of `@std/net/net.ms`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TlsErr {
     InvalidInput,

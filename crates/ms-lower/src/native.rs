@@ -135,7 +135,7 @@ fn hand_lowered(symbol: &str) -> Option<&'static str> {
         .map(|(_, n)| *n)
 }
 
-/// The native identity of `@std/json.ms`'s typed calls, which its source module declares as externs.
+/// The native identity of `@std/data/json.ms`'s typed calls, which its source module declares as externs.
 pub(crate) fn json_native(native: &str) -> &str {
     match native {
         "extern:msrt_json_parse" => "json/parse",

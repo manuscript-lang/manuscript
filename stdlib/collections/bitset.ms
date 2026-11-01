@@ -1,5 +1,5 @@
 import panic from "@std/core.ms"
-import bit_and, bit_or, bit_xor, bit_not, shift_left, count_ones, trailing_zeros from "@std/math.ms"
+import bit_and, bit_or, bit_xor, bit_not, shift_left, count_ones, trailing_zeros from "@std/math/math.ms"
 
 # A set of small non-negative integers stored one bit each: 8 bytes per 64 candidates, with O(1) add, remove and contains.
 # Indexes must be 0 through 1073741823 (a 128 MiB bitmap); other indexes fault, so the set never grows without bound by accident.

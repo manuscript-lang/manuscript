@@ -1,5 +1,5 @@
-import posix from "@std/fs.ms"
-import expect_equal from "@std/test.ms"
+import posix from "@std/os/fs.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "POSIX extensions preserve basename and dotfile rules":
     let paths = posix()

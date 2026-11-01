@@ -1,7 +1,7 @@
-import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import TextError from "@std/core.ms"
-import parse, stringify, TomlValue, TomlError, TomlLimits from "@std/toml.ms"
-import monotonic from "@std/time.ms"
+import parse, stringify, TomlValue, TomlError, TomlLimits from "@std/data/toml.ms"
+import monotonic from "@std/os/time.ms"
 
 fn entries(value: TomlValue) Map[String, TomlValue]!:
     match value:

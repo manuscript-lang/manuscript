@@ -1,7 +1,7 @@
 # conform: tags=strings,control-flow,tier-io
 # conform: phase=run
 # conform: origin=for over String.chars scans bytes: ASCII, multibyte, break, continue, return, nesting
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 fn show(s: String) Unit:
     var out = ""

@@ -1,4 +1,4 @@
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 

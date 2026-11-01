@@ -2,7 +2,7 @@
 
 ## Summary
 
-- `ms-lower` (checked HIR to MIR) hard-codes standard-library knowledge: `HAND_LOWERED` (19 symbol/identity pairs), `HANDLE_FUNCTIONS` (13), about 20 top-level identity arms in `native.rs`, 5 in `closure.rs`, plus type- and symbol-name couplings in `text.rs` (decimal, timestamp, Duration formatting), `json.rs` (`@std/net.ms` Url/IpAddress/Cidr, Duration), `close.rs` (`SharedGuard`) and `expr.rs` (Decimal literals, Duration record). Most of the ~389 `msrt_`/`msstd_` literals are generic runtime calls, not std knowledge.
+- `ms-lower` (checked HIR to MIR) hard-codes standard-library knowledge: `HAND_LOWERED` (19 symbol/identity pairs), `HANDLE_FUNCTIONS` (13), about 20 top-level identity arms in `native.rs`, 5 in `closure.rs`, plus type- and symbol-name couplings in `text.rs` (decimal, timestamp, Duration formatting), `json.rs` (`@std/net/net.ms` Url/IpAddress/Cidr, Duration), `close.rs` (`SharedGuard`) and `expr.rs` (Decimal literals, Duration record). Most of the ~389 `msrt_`/`msstd_` literals are generic runtime calls, not std knowledge.
 - Change: stage the removal. Stage 1 moves every std-specific lowering behind one table in one `stdlib/` directory with one dispatch point shared by direct calls and function values. Later stages replace table entries with `.ms` source over plain externs and delete the Rust.
 - No language, grammar, ABI or user-visible change.
 - Decision requested: none (internal). Stage 1 is built after review; later stages are go/no-go per entry.

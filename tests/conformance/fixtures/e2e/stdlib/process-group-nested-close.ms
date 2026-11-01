@@ -2,11 +2,11 @@
 # conform: phase=run
 # conform: timeout=30
 # A group closing its child stops the child's own children, three levels down, even when the middle one is busy.
-import Channel from "@std/channels.ms"
-import read_file, remove, temporary_root, write_file from "@std/fs.ms"
-import stdout from "@std/io.ms"
-import ProcessGroup from "@std/processes.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import Channel from "@std/io/channels.ms"
+import read_file, remove, temporary_root, write_file from "@std/os/fs.ms"
+import stdout from "@std/io/io.ms"
+import ProcessGroup from "@std/os/processes.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 fn marker() String:
     let root = temporary_root().get("/tmp")

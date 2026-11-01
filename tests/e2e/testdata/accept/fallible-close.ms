@@ -1,4 +1,4 @@
-import expect_equal, expect_error, expect_fault from "@std/test.ms"
+import expect_equal, expect_error, expect_fault from "@std/test/test.ms"
 import Closeable, TextError from "@std/core.ms"
 
 type Gate:

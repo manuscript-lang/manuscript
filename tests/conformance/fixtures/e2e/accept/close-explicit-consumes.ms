@@ -1,6 +1,6 @@
 # conform: tags=scope-cleanup,testing,try-result,records,tier-stdlib,stdlib-testing
 # conform: phase=test
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 import Closeable, TextError from "@std/core.ms"
 
 type Gate:

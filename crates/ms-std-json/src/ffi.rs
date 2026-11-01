@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/json.ms` (`msrt_json_*`).
+//! C ABI shims for `@std/data/json.ms` (`msrt_json_*`).
 //!
 //! `JsonValue` has no flat layout, so values cross the boundary as a refcounted document handle
 //! ([`DocObj`]) plus `u32` node ids. A parse yields a document the generated decoders read with the

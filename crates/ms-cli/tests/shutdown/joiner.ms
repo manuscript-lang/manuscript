@@ -1,6 +1,6 @@
-import stdout from "@std/io.ms"
-import nanoseconds, sleep from "@std/time.ms"
-import WorkerGroup, worker_channel from "@std/workers.ms"
+import stdout from "@std/io/io.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
+import WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 
 fn long() Unit:
     var _ch = worker_channel[Int, Int]()

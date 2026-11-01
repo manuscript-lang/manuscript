@@ -1,8 +1,8 @@
 # conform: tags=closures,control-flow,faults,interfaces,lists,modules,optional,records,stdlib-bytes,stdlib-collections,stdlib-random,stdlib-testing,strings,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/random.ms
-import expect_equal from "@std/test.ms"
-import RandomError, secure_int, uuid_v4, float, shuffle, choice, random_bytes from "@std/random.ms"
+import expect_equal from "@std/test/test.ms"
+import RandomError, secure_int, uuid_v4, float, shuffle, choice, random_bytes from "@std/os/random.ms"
 
 test "random bytes returns the requested count and rejects out-of-range counts":
     try expect_equal((try random_bytes(16)).length(), 16)

@@ -1,9 +1,9 @@
 # conform: tags=control-flow,formatter,interfaces,interpolation,modules,mutation,parser,records,stdlib-io,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/standard-contract-calls-reuse-operations-per-site.ms
-import expect_true from "@std/test.ms"
-import stdout from "@std/io.ms"
-import monotonic from "@std/time.ms"
+import expect_true from "@std/test/test.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
 
 type Boom:
     code: Int

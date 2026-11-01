@@ -1,7 +1,7 @@
-import buffered, headers, HttpRequest, HttpResponse from "@std/http.ms"
-import serve from "@std/net.ms"
-import stdout from "@std/io.ms"
-import run from "@std/process.ms"
+import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
+import serve from "@std/net/net.ms"
+import stdout from "@std/io/io.ms"
+import run from "@std/os/process.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":

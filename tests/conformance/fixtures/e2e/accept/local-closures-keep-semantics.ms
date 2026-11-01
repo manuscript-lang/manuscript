@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/local-closures-keep-semantics.ms
 import TextError from "@std/core.ms"
-import expect_true from "@std/test.ms"
+import expect_true from "@std/test/test.ms"
 
 fn bump(factor: Int) Int:
     var offset = 10

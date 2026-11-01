@@ -1,10 +1,10 @@
 # conform: tags=control-flow,formatter,modules,parser,stdlib-http,stdlib-io,stdlib-net,stdlib-process,tier-io,try-result
 # conform: phase=parse
 # conform: origin=documentation/learn/common-tasks.md:240
-import arguments from "@std/process.ms"
-import HttpError, HttpMethod, headers from "@std/http.ms"
-import request from "@std/net.ms"
-import stdout from "@std/io.ms"
+import arguments from "@std/os/process.ms"
+import HttpError, HttpMethod, headers from "@std/net/http.ms"
+import request from "@std/net/net.ms"
+import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
     let url = try arguments().first().ok_or(HttpError.InvalidInput)

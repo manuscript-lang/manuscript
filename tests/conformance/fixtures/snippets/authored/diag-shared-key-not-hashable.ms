@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,sets,interfaces,tier-core
 # conform: phase=check
 # conform: origin=ms-check/tests/messages.rs
-import Shared from "@std/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 
 type K:
     cell: Shared[Int]

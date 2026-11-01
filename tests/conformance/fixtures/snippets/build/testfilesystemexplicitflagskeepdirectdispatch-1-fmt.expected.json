@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import copy_file, copy_tree, create_directory, remove, write_file from \"@std/fs.ms\"\n\nfn explicit() Unit:\n    let _ = write_file(\"\", \"\", false)\n    let _ = copy_file(\"\", \"\", true)\n    let _ = copy_tree(\"\", \"\", false, max_entries: none, max_bytes: 3)\n    let _ = create_directory(\"\", true)\n    let _ = remove(\"\", false)\n"
+    "fmt": "import copy_file, copy_tree, create_directory, remove, write_file from \"@std/os/fs.ms\"\n\nfn explicit() Unit:\n    let _ = write_file(\"\", \"\", false)\n    let _ = copy_file(\"\", \"\", true)\n    let _ = copy_tree(\"\", \"\", false, max_entries: none, max_bytes: 3)\n    let _ = create_directory(\"\", true)\n    let _ = remove(\"\", false)\n"
   }
 }

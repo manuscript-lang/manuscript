@@ -1,12 +1,12 @@
 # conform: tags=closures,control-flow,faults,formatter,interpolation,lists,match,modules,mutation,parser,records,stdlib-fs,stdlib-io,stdlib-json,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=scripts/conformance.ms
-import expect_equal, expect_false, expect_some, expect_true, fail from "@std/test.ms"
-import stdout from "@std/io.ms"
-import arguments from "@std/process.ms"
-import glob from "@std/fs.ms"
-import run from "@std/process.ms"
-import parse from "@std/json.ms"
+import expect_equal, expect_false, expect_some, expect_true, fail from "@std/test/test.ms"
+import stdout from "@std/io/io.ms"
+import arguments from "@std/os/process.ms"
+import glob from "@std/os/fs.ms"
+import run from "@std/os/process.ms"
+import parse from "@std/data/json.ms"
 
 # Run from the repository root: ms run scripts/conformance.ms -- /absolute/path/to/ms all 0 1.
 # Each source file keeps its own compiler graph, process, host roots and test report.

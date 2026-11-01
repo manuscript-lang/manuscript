@@ -1,4 +1,4 @@
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "zip pairs by position and stops at the shorter list":
     let numbers = [1, 2, 3]

@@ -1,4 +1,4 @@
-//! C ABI shims for the Base64 half of `@std/encoding.ms`, which JSON lowering also calls. Symbols are `msrt_encoding_<function>`;
+//! C ABI shims for the Base64 half of `@std/data/encoding.ms`, which JSON lowering also calls. Symbols are `msrt_encoding_<function>`;
 //! fallible functions return a status byte and write the ok value through `out` only on success.
 use alloc::string::String;
 use alloc::vec::Vec;

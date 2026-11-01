@@ -21,13 +21,13 @@ function assertScopes(source, expected) {
 }
 
 test('Manuscript examples receive keyword, type, function, string, and number tokens', () => {
-  const source = 'import arguments from "@std/process.ms"\nexport fn main() Int:\n    return 0\n';
+  const source = 'import arguments from "@std/os/process.ms"\nexport fn main() Int:\n    return 0\n';
   const tokens = tokenize(source);
   const has = (text, kind) => tokens.some(token => token.text === text && token.kind === kind);
   assert.ok(has('import', 'k'));
   assert.ok(has('Int', 'nc'));
   assert.ok(has('main', 'nf'));
-  assert.ok(has('"@std/process.ms"', 's'));
+  assert.ok(has('"@std/os/process.ms"', 's'));
   assert.ok(has('0', 'mi'));
   assert.equal(tokens.map(token => token.text).join(''), source);
 });

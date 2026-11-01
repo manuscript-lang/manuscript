@@ -1,7 +1,7 @@
 # conform: tags=scope-cleanup,closures,tier-io
 # conform: phase=run
 # conform: origin=value-semantics-audit
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import Closeable, TextError from "@std/core.ms"
 
 # A resource handed to a list or read by a callback closes exactly once.

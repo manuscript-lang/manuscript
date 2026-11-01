@@ -2,7 +2,7 @@
 # conform: phase=run
 # conform: origin=unsigned integer types UInt64 inline checks
 
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     let top: UInt64 = 18446744073709551615

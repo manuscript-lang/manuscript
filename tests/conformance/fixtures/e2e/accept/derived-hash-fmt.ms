@@ -1,8 +1,8 @@
 # conform: tags=alternatives,control-flow,decimal,formatter,generics,modules,optional,parser,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/derived-hash.ms
-import expect_equal, expect_false, expect_not_equal from "@std/test.ms"
-import Decimal from "@std/decimal.ms"
+import expect_equal, expect_false, expect_not_equal from "@std/test/test.ms"
+import Decimal from "@std/math/decimal.ms"
 
 type P:
     x: Int

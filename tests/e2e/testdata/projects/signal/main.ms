@@ -1,5 +1,5 @@
-import stdout from "@std/io.ms"
-import WriteStream from "@std/io.ms"
+import stdout from "@std/io/io.ms"
+import WriteStream from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 type Resource:

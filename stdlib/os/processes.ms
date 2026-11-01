@@ -6,14 +6,14 @@
 # and the entry's return value comes back through `Process.result`. Each process is isolated: a
 # fault in the child ends only the child, and the parent sees its exit status.
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import Channel, ChannelError, Transport from "@std/channels.ms"
+import Channel, ChannelError, Transport from "@std/io/channels.ms"
 import Closeable, Data from "@std/core.ms"
-import ReadStream, WriteStream from "@std/io.ms"
-import parse, stringify from "@std/json.ms"
-import CommandError, Stdio from "@std/process.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
-import Duration from "@std/time.ms"
+import ReadStream, WriteStream from "@std/io/io.ms"
+import parse, stringify from "@std/data/json.ms"
+import CommandError, Stdio from "@std/os/process.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
+import Duration from "@std/os/time.ms"
 import msrt_obj_share from "@std/internal/processes.ms"
 
 # A running child, owned by its `Process`.

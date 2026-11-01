@@ -14,7 +14,7 @@
           "file": "testsafetyadvisoriesdonotbecomecheckerrors-4.ms",
           "line": 11,
           "column": 21,
-          "offset": 409
+          "offset": 417
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testsafetyadvisoriesdonotbecomecheckerrors-4.ms",
           "line": 15,
           "column": 67,
-          "offset": 568
+          "offset": 576
         }
       }
     ],

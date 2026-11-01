@@ -1,4 +1,4 @@
-import expect_equal, expect_false, fail from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test/test.ms"
 import (
     headers,
     HttpClientOptions,
@@ -6,9 +6,9 @@ import (
     HttpExchange,
     HttpMethod,
     HttpServerOptions
-) from "@std/http.ms"
-import borrow_body, reader, next_event from "@std/sse.ms"
-import network from "@std/net.ms"
+) from "@std/net/http.ms"
+import borrow_body, reader, next_event from "@std/net/sse.ms"
+import network from "@std/net/net.ms"
 
 # Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
 fn stream_events(exchange: HttpExchange) Result[Unit, HttpError]:

@@ -3,7 +3,7 @@
 # A `Channel[In, Out]` sends `In` values and receives `Out` values. Channels are made by a group's
 # `spawn`: the started work gets one end, a `Channel[Out, In]`, and the handle `spawn` returns holds
 # the other in its `channel` field. Values move through it; `.clone()` gives another handle on the same end.
-# `TaskGroup` (`@std/tasks.ms`) carries the channel types as `TaskGroup[T, In, Out]`, both `Unit`
+# `TaskGroup` (`@std/concurrency/tasks.ms`) carries the channel types as `TaskGroup[T, In, Out]`, both `Unit`
 # unless given.
 # Why a channel could not send or receive.
 export type ChannelError:

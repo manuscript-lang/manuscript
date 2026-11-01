@@ -1,6 +1,6 @@
-import open, temporary, write_file from "@std/fs.ms"
-import ReadStream, read_line from "@std/io.ms"
-import expect_equal from "@std/test.ms"
+import open, temporary, write_file from "@std/os/fs.ms"
+import ReadStream, read_line from "@std/io/io.ms"
+import expect_equal from "@std/test/test.ms"
 import MemoryStream from "./support/streams.ms"
 
 test "an unterminated carriage return remains line content":

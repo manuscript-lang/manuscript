@@ -84,7 +84,7 @@ pub fn lower_tests(program: &Program, options: &Options) -> Result<(Module, Vec<
 }
 
 /// Lowers the `bench` blocks of the entry module under a runner entry, like [`lower_tests`]; each
-/// block runs under the `@std/bench.ms` driver.
+/// block runs under the `@std/test/bench.ms` driver.
 pub fn lower_benches(program: &Program, options: &Options) -> Result<(Module, Vec<String>), Error> {
     func::lower_tests(program, options, true)
 }

@@ -1,11 +1,11 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-processes,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import Channel from "@std/channels.ms"
-import os_type, run, spawn from "@std/process.ms"
-import ProcessGroup from "@std/processes.ms"
-import TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_ok from "@std/test.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import Channel from "@std/io/channels.ms"
+import os_type, run, spawn from "@std/os/process.ms"
+import ProcessGroup from "@std/os/processes.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_ok from "@std/test/test.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 fn talker(ch: Channel[Int, Unit]) Int:
     var c = ch

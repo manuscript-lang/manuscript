@@ -1,4 +1,4 @@
-//! `@std/json.ms` natives a strict JSON parser that
+//! `@std/data/json.ms` natives a strict JSON parser that
 //! keeps number text verbatim and rejects duplicate keys, trailing values and unpaired surrogate
 //! escapes, and a serializer.
 //!

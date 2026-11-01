@@ -1,8 +1,8 @@
-import parse, stringify from "@std/toml.ms"
-import arguments from "@std/process.ms"
-import filesystem from "@std/fs.ms"
-import stdout from "@std/io.ms"
-import clock from "@std/time.ms"
+import parse, stringify from "@std/data/toml.ms"
+import arguments from "@std/os/process.ms"
+import filesystem from "@std/os/fs.ms"
+import stdout from "@std/io/io.ms"
+import clock from "@std/os/time.ms"
 
 export fn main() Int:
     let args = arguments()

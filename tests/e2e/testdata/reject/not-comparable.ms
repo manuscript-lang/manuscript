@@ -1,4 +1,4 @@
-import max from "@std/math.ms"
+import max from "@std/math/math.ms"
 
 type Point:
     x: Int

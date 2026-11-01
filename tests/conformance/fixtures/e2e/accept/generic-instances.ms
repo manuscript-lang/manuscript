@@ -1,7 +1,7 @@
 # conform: tags=control-flow,generics,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/generic-instances.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 type Point:
     x: Int

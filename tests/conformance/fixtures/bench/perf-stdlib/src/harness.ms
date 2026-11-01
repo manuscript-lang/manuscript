@@ -1,5 +1,5 @@
-import stdout from "@std/io.ms"
-import monotonic from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
 
 # Shared helpers for the standard-library micro-benchmarks.
 export type Point:

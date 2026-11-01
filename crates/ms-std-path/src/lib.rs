@@ -1,4 +1,4 @@
-//! `@std/fs.ms` natives. Every operation is a
+//! `@std/os/fs.ms` natives. Every operation is a
 //! method of [`Rules`], which selects POSIX or Windows conventions; the host-rule functions of the
 //! language pass the host's flag.
 #![no_std]
@@ -11,7 +11,7 @@ pub mod glob;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-/// The `PathParts` record of `@std/fs.ms`.
+/// The `PathParts` record of `@std/os/fs.ms`.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Parts {
     pub root: String,

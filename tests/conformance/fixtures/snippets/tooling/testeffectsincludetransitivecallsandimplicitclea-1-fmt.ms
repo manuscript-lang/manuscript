@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=pkg/tooling/effects_test.go:13 TestEffectsIncludeTransitiveCallsAndImplicitCleanup
 import Closeable from "@std/core.ms"
-import Queue from "@std/queue.ms"
+import Queue from "@std/collections/queue.ms"
 
 type Resource:
     state: Queue[Int]

@@ -1,4 +1,4 @@
-import expect_ok, expect_equal from "@std/test.ms"
+import expect_ok, expect_equal from "@std/test/test.ms"
 import (
     headers,
     reply,
@@ -9,12 +9,12 @@ import (
     HttpResponse,
     buffered,
     HttpServerOptions
-) from "@std/http.ms"
+) from "@std/net/http.ms"
 import TextError from "@std/core.ms"
-import Connection, connect, serve from "@std/net.ms"
+import Connection, connect, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
-import read_file, temporary, write_file_bytes from "@std/fs.ms"
-import sleep from "@std/time.ms"
+import read_file, temporary, write_file_bytes from "@std/os/fs.ms"
+import sleep from "@std/os/time.ms"
 
 fn ok_route(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())

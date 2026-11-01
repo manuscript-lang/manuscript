@@ -1,10 +1,10 @@
 # conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
-import Channel from "@std/channels.ms"
-import stdout from "@std/io.ms"
-import memory_usage from "@std/process.ms"
-import TaskError, TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_error, expect_ok from "@std/test.ms"
+import Channel from "@std/io/channels.ms"
+import stdout from "@std/io/io.ms"
+import memory_usage from "@std/os/process.ms"
+import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 # A task cancelled while parked in a channel receive must release the channel end it holds in a
 # stack slot while it waits. Debug builds keep that value in the slot, so the unwind pass has to

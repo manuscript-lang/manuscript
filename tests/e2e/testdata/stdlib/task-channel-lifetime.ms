@@ -1,8 +1,8 @@
-import Channel, ChannelError from "@std/channels.ms"
-import memory_usage from "@std/process.ms"
-import TaskError, TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_error, expect_ok, expect_true from "@std/test.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import Channel, ChannelError from "@std/io/channels.ms"
+import memory_usage from "@std/os/process.ms"
+import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 fn send_one(ch: Channel[Int, Unit]) Unit!ChannelError:
     try ch.send(7)

@@ -1,6 +1,6 @@
-import expect_equal, expect_false, expect_ok, expect_true from "@std/test.ms"
-import ReadStream, IoError, read_line from "@std/io.ms"
-import open, read_file, temporary, write_file from "@std/fs.ms"
+import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
+import ReadStream, IoError, read_line from "@std/io/io.ms"
+import open, read_file, temporary, write_file from "@std/os/fs.ms"
 import Closeable from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 

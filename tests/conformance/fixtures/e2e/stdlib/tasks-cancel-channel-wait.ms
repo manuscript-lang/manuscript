@@ -1,9 +1,9 @@
 # conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
-import Channel from "@std/channels.ms"
-import stdout from "@std/io.ms"
-import TaskGroup from "@std/tasks.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import Channel from "@std/io/channels.ms"
+import stdout from "@std/io/io.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 # A task cancelled while parked in a channel send or receive must not drop the channel end twice:
 # the receiver `var def` takes it out of the caller's slot, and the frames above own the same memory.

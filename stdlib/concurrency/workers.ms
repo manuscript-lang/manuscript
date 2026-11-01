@@ -4,7 +4,7 @@
 # A worker is started from a named top-level `def` that takes no arguments and returns `Unit`; it
 # gets its end of the channel from `worker_channel`. Nothing is shared between the two sides:
 # every value sent through the channel is encoded as JSON and decoded on the other side, so the
-# message types are the ones `@std/json.ms` can read and write.
+# message types are the ones `@std/data/json.ms` can read and write.
 #
 # ```manuscript
 # fn double_all() Unit:
@@ -15,11 +15,11 @@
 #         let _ = ch.send(received.get() * 2)
 # ```
 import Bytes from "@std/bytes.ms"
-import Channel, ChannelError, Transport from "@std/channels.ms"
+import Channel, ChannelError, Transport from "@std/io/channels.ms"
 import Closeable, Data from "@std/core.ms"
-import parse, stringify from "@std/json.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import parse, stringify from "@std/data/json.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
 import msrt_pipe_new, msrt_pipe_peer, msrt_pipe_send, msrt_pipe_send_bytes, msrt_pipe_close, msrt_worker_start, msrt_worker_end, msrt_worker_cancel, msrt_worker_wait from "@std/internal/workers.ms"
 
 extern fn msrt_pipe_receive(end: Int) String!PipeEnd

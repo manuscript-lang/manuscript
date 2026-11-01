@@ -1,4 +1,4 @@
-//! Natives for `@std/processes.ms`: start a child of this executable at a process entry, and
+//! Natives for `@std/os/processes.ms`: start a child of this executable at a process entry, and
 //! move bytes over its IPC pipe. Framing, encoding and the group live in Manuscript; these only
 //! start the child and read and write the pipe.
 use crate::command::{self, Subprocess};

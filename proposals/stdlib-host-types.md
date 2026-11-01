@@ -13,8 +13,8 @@ Approved, 2026-10-31, checked at `be04a207`; skeptic review applied. Chinmay: "h
 ## Problem
 
 ```
-import filesystem from "@std/fs.ms"
-import network from "@std/net.ms"
+import filesystem from "@std/os/fs.ms"
+import network from "@std/net/net.ms"
 let fs = filesystem()
 let text = try fs.read_file("a.txt")
 let client = try network().http_client(HttpClientOptions())
@@ -30,8 +30,8 @@ let client = try network().http_client(HttpClientOptions())
 Rule: an operation on the host is a function in its module; a value that carries configuration or state is a type.
 
 ```
-import read_file from "@std/fs.ms"
-import restrict, http_client from "@std/net.ms"
+import read_file from "@std/os/fs.ms"
+import restrict, http_client from "@std/net/net.ms"
 let text = try read_file("a.txt")
 let client = try http_client(HttpClientOptions())
 let narrow = try restrict(["example.com"], [], false)   # a Network value

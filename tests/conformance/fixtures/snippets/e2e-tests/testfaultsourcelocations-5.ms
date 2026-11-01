@@ -1,7 +1,7 @@
 # conform: tags=control-flow,modules,optional,stdlib-io,tier-core
 # conform: phase=run
 # conform: origin=tests/e2e/fault_locations_test.go:63 TestFaultSourceLocations
-import read_line, ReadStream, stdin from "@std/io.ms"
+import read_line, ReadStream, stdin from "@std/io/io.ms"
 
 fn limit() Int:
     return 1 / "".byte_length()

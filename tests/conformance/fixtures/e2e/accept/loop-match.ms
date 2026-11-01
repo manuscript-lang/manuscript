@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,match,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/loop-match.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 type State:
     case Ready

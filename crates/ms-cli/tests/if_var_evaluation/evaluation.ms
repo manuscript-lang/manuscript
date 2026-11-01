@@ -1,4 +1,4 @@
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 fn next(var count: Int) Int:
     let result = count

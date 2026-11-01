@@ -1,4 +1,4 @@
-//! `@std/random.ms` operations over an `Entropy`: `secure_int`, `uuid_v4`, `float`, `shuffle`
+//! `@std/os/random.ms` operations over an `Entropy`: `secure_int`, `uuid_v4`, `float`, `shuffle`
 //! and `choice`.
 //!
 //! The runtime owns the algorithms as a `Draw` (`ms-std-random`). The loop asks it how many bytes

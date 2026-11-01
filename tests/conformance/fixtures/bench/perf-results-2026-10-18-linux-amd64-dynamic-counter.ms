@@ -1,8 +1,8 @@
 # conform: tags=control-flow,diagnostics,interpolation,modules,mutation,stdlib-io,stdlib-time,tier-io
 # conform: phase=check
 # conform: origin=bench/perf/results/2026-10-18-linux-amd64/dynamic-counter.ms
-import Instant, monotonic from "@std/time.ms"
-import stdout from "@std/io.ms"
+import Instant, monotonic from "@std/os/time.ms"
+import stdout from "@std/io/io.ms"
 
 fn measure(start: Int) Int:
     let t = monotonic()

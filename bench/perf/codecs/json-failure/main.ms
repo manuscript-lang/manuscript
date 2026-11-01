@@ -1,8 +1,8 @@
-import parse, JsonError from "@std/json.ms"
+import parse, JsonError from "@std/data/json.ms"
 import StringBuilder from "@std/string.ms"
-import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
-import monotonic from "@std/time.ms"
+import arguments from "@std/os/process.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
 
 extern fn codec_bench_cpu_ns() Int
 

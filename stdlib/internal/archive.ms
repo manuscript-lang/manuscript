@@ -1,4 +1,4 @@
-import ReadStream from "@std/io.ms"
+import ReadStream from "@std/io/io.ms"
 
 export extern fn msstd_archive_compress_stream(
     format: String,

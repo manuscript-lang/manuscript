@@ -1,10 +1,10 @@
 # conform: tags=control-flow,formatter,interfaces,modules,optional,parser,records,stdlib-bytes,stdlib-io,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/runtime-4.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
-import File from "@std/io.ms"
-import IoError from "@std/io.ms"
+import File from "@std/io/io.ms"
+import IoError from "@std/io/io.ms"
 
 type ClosedFile:
     marker: Unit

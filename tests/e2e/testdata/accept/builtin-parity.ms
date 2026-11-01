@@ -1,7 +1,7 @@
-import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
-import from_int from "@std/math.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
+import from_int from "@std/math/math.ms"
 import compile from "@std/string.ms"
-import filled, range_by, map_from_entries from "@std/collections.ms"
+import filled, range_by, map_from_entries from "@std/collections/collections.ms"
 import Bytes from "@std/bytes.ms"
 import StringError from "@std/string.ms"
 

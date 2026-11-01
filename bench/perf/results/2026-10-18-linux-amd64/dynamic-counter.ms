@@ -1,5 +1,5 @@
-import Instant, monotonic from "@std/time.ms"
-import stdout from "@std/io.ms"
+import Instant, monotonic from "@std/os/time.ms"
+import stdout from "@std/io/io.ms"
 
 fn measure(start: Int) Int:
     let t = monotonic()

@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Duration; add: import Duration from \"@std/time.ms\"",
+        "message": "unknown type Duration; add: import Duration from \"@std/os/time.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 9,
@@ -29,13 +29,13 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Duration from \"@std/time.ms\"\n"
+          "replacement": "import Duration from \"@std/os/time.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Datagram; add: import Datagram from \"@std/net.ms\"",
+        "message": "unknown type Datagram; add: import Datagram from \"@std/net/net.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 10,
@@ -55,13 +55,13 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Datagram from \"@std/net.ms\"\n"
+          "replacement": "import Datagram from \"@std/net/net.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"",
+        "message": "unknown type NetworkError; add: import NetworkError from \"@std/net/net.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 10,
@@ -81,13 +81,13 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import NetworkError from \"@std/net.ms\"\n"
+          "replacement": "import NetworkError from \"@std/net/net.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Duration; add: import Duration from \"@std/time.ms\"",
+        "message": "unknown type Duration; add: import Duration from \"@std/os/time.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 14,
@@ -107,13 +107,13 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Duration from \"@std/time.ms\"\n"
+          "replacement": "import Duration from \"@std/os/time.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"",
+        "message": "unknown type NetworkError; add: import NetworkError from \"@std/net/net.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 15,
@@ -133,7 +133,7 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import NetworkError from \"@std/net.ms\"\n"
+          "replacement": "import NetworkError from \"@std/net/net.ms\"\n"
         }
       },
       {
@@ -165,7 +165,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Duration; add: import Duration from \"@std/time.ms\"",
+        "message": "unknown type Duration; add: import Duration from \"@std/os/time.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 19,
@@ -185,13 +185,13 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Duration from \"@std/time.ms\"\n"
+          "replacement": "import Duration from \"@std/os/time.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"",
+        "message": "unknown type NetworkError; add: import NetworkError from \"@std/net/net.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 20,
@@ -211,14 +211,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import NetworkError from \"@std/net.ms\"\n"
+          "replacement": "import NetworkError from \"@std/net/net.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:9:18: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 9 |         timeout: Duration?\n   |                  ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:10:7: resolution: unknown type Datagram; add: import Datagram from \"@std/net.ms\"\n    |\n 10 |     ) Datagram!NetworkError\n    |       ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:10:16: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"\n    |\n 10 |     ) Datagram!NetworkError\n    |                ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:14:18: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n    |\n 14 |         timeout: Duration?\n    |                  ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:15:12: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"\n    |\n 15 |     ) Unit!NetworkError\n    |            ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:17:15: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n    |\n 17 |         data: Bytes,\n    |               ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:19:18: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n    |\n 19 |         timeout: Duration?\n    |                  ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:20:12: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"\n    |\n 20 |     ) Unit!NetworkError\n    |            ^\n8 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:9:18: resolution: unknown type Duration; add: import Duration from \"@std/os/time.ms\"\n   |\n 9 |         timeout: Duration?\n   |                  ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:10:7: resolution: unknown type Datagram; add: import Datagram from \"@std/net/net.ms\"\n    |\n 10 |     ) Datagram!NetworkError\n    |       ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:10:16: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net/net.ms\"\n    |\n 10 |     ) Datagram!NetworkError\n    |                ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:14:18: resolution: unknown type Duration; add: import Duration from \"@std/os/time.ms\"\n    |\n 14 |         timeout: Duration?\n    |                  ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:15:12: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net/net.ms\"\n    |\n 15 |     ) Unit!NetworkError\n    |            ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:17:15: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n    |\n 17 |         data: Bytes,\n    |               ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:19:18: resolution: unknown type Duration; add: import Duration from \"@std/os/time.ms\"\n    |\n 19 |         timeout: Duration?\n    |                  ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:20:12: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net/net.ms\"\n    |\n 20 |     ) Unit!NetworkError\n    |            ^\n8 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

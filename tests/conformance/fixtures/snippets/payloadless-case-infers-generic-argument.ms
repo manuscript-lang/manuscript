@@ -1,7 +1,7 @@
 # conform: tags=generics,alternatives,tier-io
 # conform: phase=run
 # conform: origin=thread/type-checker-bug-bash
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 type Shape:
     case Circle(r: Int)

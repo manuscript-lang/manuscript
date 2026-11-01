@@ -814,7 +814,7 @@ impl Checker {
             self.method_visible(m)
                 && m.contract
                     .as_ref()
-                    .is_some_and(|c| c.is_source_type("@std/json.ms", "JsonEncode"))
+                    .is_some_and(|c| c.is_source_type("@std/data/json.ms", "JsonEncode"))
                 && {
                     let mut s = Subst::new();
                     unify(&m.receiver, t, &variable_set(&m.variables), &mut s)

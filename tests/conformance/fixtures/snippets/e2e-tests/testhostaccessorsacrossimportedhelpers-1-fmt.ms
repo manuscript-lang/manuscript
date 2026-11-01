@@ -1,9 +1,9 @@
 # conform: tags=formatter,modules,parser,stdlib-io,stdlib-time,tier-io
 # conform: phase=parse
 # conform: origin=tests/e2e/e2e_test.go:434 TestHostAccessorsAcrossImportedHelpers
-import stdout from "@std/io.ms"
-import monotonic from "@std/time.ms"
-import Instant from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
+import Instant from "@std/os/time.ms"
 
 export fn now() Instant:
     return monotonic()

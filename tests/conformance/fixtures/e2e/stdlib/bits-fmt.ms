@@ -1,7 +1,7 @@
 # conform: tags=formatter,modules,parser,stdlib-bits,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/bits.ms
-import expect_equal, expect_fault from "@std/test.ms"
+import expect_equal, expect_fault from "@std/test/test.ms"
 import (
     bit_and,
     bit_or,
@@ -18,8 +18,8 @@ import (
     wrapping_add,
     wrapping_subtract,
     wrapping_multiply
-) from "@std/math.ms"
-import max_int, min_int from "@std/math.ms"
+) from "@std/math/math.ms"
+import max_int, min_int from "@std/math/math.ms"
 
 fn shift_too_far() Unit:
     let _value = shift_left(1, 64)

@@ -1,6 +1,6 @@
 import panic from "@std/core.ms"
-import TaskError, TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_error from "@std/test.ms"
+import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_error from "@std/test/test.ms"
 
 fn report(reason: TaskError) String:
     match reason:

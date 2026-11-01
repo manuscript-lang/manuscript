@@ -1,4 +1,4 @@
-import keep, measure from "@std/bench.ms"
+import keep, measure from "@std/test/bench.ms"
 
 # `a.min(b)` and `a.clamp(low, high)` against the same comparison written with `if`; both should cost the same.
 bench "ordering.min_method":

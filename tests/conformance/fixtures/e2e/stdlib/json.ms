@@ -1,14 +1,14 @@
 # conform: tags=aliasing,alternatives,closures,control-flow,decimal,faults,generics,interfaces,interpolation,lists,maps,match,modules,mutation,numbers,optional,records,sets,stdlib-bigint,stdlib-bytes,stdlib-collections,stdlib-decimal,stdlib-errors,stdlib-json,stdlib-testing,stdlib-time,stdlib-url,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/json.ms
-import expect_equal, expect_false, expect_not_equal, fail from "@std/test.ms"
-import parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode from "@std/json.ms"
-import timestamp, nanoseconds, Timestamp, Duration, Instant, monotonic from "@std/time.ms"
-import Url from "@std/net.ms"
+import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
+import parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode from "@std/data/json.ms"
+import timestamp, nanoseconds, Timestamp, Duration, Instant, monotonic from "@std/os/time.ms"
+import Url from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
-import Decimal from "@std/decimal.ms"
+import Decimal from "@std/math/decimal.ms"
 import TextError from "@std/core.ms"
-import BigInt from "@std/math.ms"
+import BigInt from "@std/math/math.ms"
 
 test "JSON exact numbers Unicode and nested roundtrip":
     let text = "\{\"n\":9007199254740993,\"s\":\"é🙂\",\"a\":[null,true,false]\}"

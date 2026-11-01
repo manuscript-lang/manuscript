@@ -1,7 +1,7 @@
 # Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
 # expect-mir: "closure.new"
 
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 fn identity[T](value: T) T: value
 

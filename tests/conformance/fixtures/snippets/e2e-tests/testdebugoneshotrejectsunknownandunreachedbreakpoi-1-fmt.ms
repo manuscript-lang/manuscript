@@ -1,7 +1,7 @@
 # conform: tags=formatter,modules,parser,stdlib-io,tier-core
 # conform: phase=parse
 # conform: origin=tests/e2e/debug_script_test.go:125 TestDebugOneShotRejectsUnknownAndUnreachedBreakpoints
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 fn never() Int:
     return 1

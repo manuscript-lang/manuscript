@@ -59,8 +59,8 @@ The standard library is about 14,000 lines of Manuscript across 40+ modules (HTT
 [Get the compiler](documentation/learn/getting-started.md), save this as `config.ms`, run `ms test config.ms`:
 
 ```manuscript
-import parse from "@std/json.ms"
-import expect_equal from "@std/test.ms"
+import parse from "@std/data/json.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Config:
     port: Int?

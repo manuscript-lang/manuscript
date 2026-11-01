@@ -1,8 +1,8 @@
 import Closeable from "@std/core.ms"
-import stdout from "@std/io.ms"
-import listen, Listener, Connection from "@std/net.ms"
-import watch_signals from "@std/process.ms"
-import sleep from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import listen, Listener, Connection from "@std/net/net.ms"
+import watch_signals from "@std/os/process.ms"
+import sleep from "@std/os/time.ms"
 
 fn say(text: String) Unit:
     let _written = stdout().write(text)

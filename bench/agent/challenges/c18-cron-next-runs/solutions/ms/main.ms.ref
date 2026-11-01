@@ -1,4 +1,4 @@
-import stdin, stdout, read_line from "@std/io.ms"
+import stdin, stdout, read_line from "@std/io/io.ms"
 
 fn pad2(n: Int) String:
     if n < 10:

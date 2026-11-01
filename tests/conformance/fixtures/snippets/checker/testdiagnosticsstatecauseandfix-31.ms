@@ -1,7 +1,7 @@
 # conform: tags=closures,diagnostics,modules,stdlib-queues,tier-stdlib
 # conform: phase=check
 # conform: origin=pkg/checker/hints_test.go:50 TestDiagnosticsStateCauseAndFix
-import PriorityQueue from "@std/queue.ms"
+import PriorityQueue from "@std/collections/queue.ms"
 
 fn f() Int:
     var q = PriorityQueue(

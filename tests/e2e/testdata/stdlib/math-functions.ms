@@ -1,4 +1,4 @@
-import expect_equal, expect_false, expect_true from "@std/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import panic from "@std/core.ms"
 import (
     acos,
@@ -39,7 +39,7 @@ import (
     log10e,
     sqrt2,
     sqrt_half
-) from "@std/math.ms"
+) from "@std/math/math.ms"
 
 fn near(actual: Float, expected: Float) Bool:
     return (actual - expected).abs() < 0.000000001

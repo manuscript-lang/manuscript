@@ -5,12 +5,12 @@ weight = 1
 
 # Task groups
 
-A `TaskGroup[T]` starts tasks that each return a `T`, and owns them until its scope ends. Import it from `@std/tasks.ms`. Each task also gets a two-way [channel](#channels) to the group.
+A `TaskGroup[T]` starts tasks that each return a `T`, and owns them until its scope ends. Import it from `@std/concurrency/tasks.ms`. Each task also gets a two-way [channel](#channels) to the group.
 
 <!-- manuscript-example: test -->
 ```manuscript
-import TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_ok from "@std/test.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_ok from "@std/test/test.ms"
 
 fn square(n: Int) Int:
     return n * n
@@ -41,10 +41,10 @@ A task has no time limit unless you give one. `spawn(entry, timeout: nanoseconds
 
 <!-- manuscript-example: test -->
 ```manuscript
-import Channel from "@std/channels.ms"
-import TaskError, TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_error from "@std/test.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import Channel from "@std/io/channels.ms"
+import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_error from "@std/test/test.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 fn wait_a_minute(ch: Channel[Unit, Unit]) Int:
     sleep(nanoseconds(60000000000))
@@ -56,7 +56,7 @@ test "a task that passes its timeout is cancelled":
     task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
 
-`cancelled()` from `@std/tasks.ms` returns `true` once the running task was cancelled, by a closed group, a passed timeout or a program stop. It only reports: it does not wait or unwind, so a loop that never waits can poll it and return early. It stays `true` inside scope-end cleanups.
+`cancelled()` from `@std/concurrency/tasks.ms` returns `true` once the running task was cancelled, by a closed group, a passed timeout or a program stop. It only reports: it does not wait or unwind, so a loop that never waits can poll it and return early. It stays `true` inside scope-end cleanups.
 
 ## What a task may use
 
@@ -66,13 +66,13 @@ Values reach a task by being captured or sent on its channel, and come back as m
 
 ## Channels
 
-`TaskGroup[T, In, Out]` gives every task a channel that carries `In` values to the task and `Out` values back; both are `Unit` unless given. `Channel` comes from `@std/channels.ms`. The task's entry takes a `Channel[Out, In]`, and the `Task[T, In, Out]` that `spawn` returns holds the group's end, a `Channel[In, Out]`, in its `channel` field.
+`TaskGroup[T, In, Out]` gives every task a channel that carries `In` values to the task and `Out` values back; both are `Unit` unless given. `Channel` comes from `@std/io/channels.ms`. The task's entry takes a `Channel[Out, In]`, and the `Task[T, In, Out]` that `spawn` returns holds the group's end, a `Channel[In, Out]`, in its `channel` field.
 
 <!-- manuscript-example: test -->
 ```manuscript
-import Channel, ChannelError from "@std/channels.ms"
-import TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_ok from "@std/test.ms"
+import Channel, ChannelError from "@std/io/channels.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_ok from "@std/test/test.ms"
 
 fn square_all(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     var c = ch

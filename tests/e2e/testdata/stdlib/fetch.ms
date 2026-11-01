@@ -1,5 +1,5 @@
-import expect_equal from "@std/test.ms"
-import FetchBody, FetchOptions, FetcherOptions, fetch, fetcher, json_body from "@std/fetch.ms"
+import expect_equal from "@std/test/test.ms"
+import FetchBody, FetchOptions, FetcherOptions, fetch, fetcher, json_body from "@std/net/fetch.ms"
 import (
     HttpError,
     HttpHeaders,
@@ -8,9 +8,9 @@ import (
     HttpResponse,
     headers,
     buffered
-) from "@std/http.ms"
-import serve from "@std/net.ms"
-import milliseconds, sleep from "@std/time.ms"
+) from "@std/net/http.ms"
+import serve from "@std/net/net.ms"
+import milliseconds, sleep from "@std/os/time.ms"
 import BytesBuilder from "@std/bytes.ms"
 
 type Greeting:

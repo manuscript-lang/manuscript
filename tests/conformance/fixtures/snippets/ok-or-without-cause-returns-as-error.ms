@@ -1,7 +1,7 @@
 # conform: tags=optional,try-result,tier-io
 # conform: phase=run
 # conform: origin=thread/type-checker-bug-bash
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 fn a(s: String) Int!:
     return s.parse_int().ok_or()
 fn b(s: String) Result[Int, Error]:

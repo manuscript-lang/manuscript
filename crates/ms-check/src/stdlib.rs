@@ -110,10 +110,35 @@ const NATIVE_WITH_FIELDS: &[&str] = &["List"];
 /// The bundled source modules that extend native standard types (List operations, Bytes codecs, scalar ordering); their
 /// methods apply to every program.
 const EXTENSION_MODULES: [&str; 3] = [
-    "@std/collections.ms+source",
+    "@std/collections/collections.ms+source",
     "@std/bytes.ms+source",
-    "@std/ordering.ms",
+    "@std/collections/ordering.ms",
 ];
+
+/// The directories that group bundled modules into packages; a module's native identifiers use its file stem without them.
+const PACKAGES: [&str; 7] = [
+    "collections",
+    "concurrency",
+    "data",
+    "io",
+    "math",
+    "net",
+    "os",
+];
+
+/// A bundled module's path without `@std/`, its package directory, and `.ms`: `@std/net/http.ms` is `http`.
+pub fn module_stem(file: &str) -> &str {
+    let path = file.trim_start_matches("@std/").trim_end_matches(".ms");
+    match path {
+        "test/test" => return "test",
+        "test/bench" => return "bench",
+        _ => {}
+    }
+    match path.split_once('/') {
+        Some((package, rest)) if PACKAGES.contains(&package) => rest,
+        _ => path,
+    }
+}
 
 /// Loads the standard declarations on first use.
 pub fn ensure_standard() {
@@ -225,11 +250,7 @@ pub(crate) fn source_type_symbol(module: &ModRef, d: &DeclRef) -> SymRef {
         DeclKind::Interface(_) => Kind::Contract,
         _ => Kind::Record,
     };
-    let stem = module
-        .file
-        .as_str()
-        .trim_start_matches("@std/")
-        .trim_end_matches(".ms");
+    let stem = module_stem(module.file.as_str());
     let s = Rc::new(Sym {
         name,
         id: n(&format!("standard_{stem}_symbol_{name}")),
@@ -405,14 +426,7 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
         bundled: Some(module.file),
         ..CheckOptions::default()
     });
-    checker.id_scope = format!(
-        "standard_{}_",
-        module
-            .file
-            .as_str()
-            .trim_start_matches("@std/")
-            .trim_end_matches(".ms")
-    );
+    checker.id_scope = format!("standard_{}_", module_stem(module.file.as_str()));
     if group.len() > 1 {
         checker.group = group.clone();
     }
@@ -518,13 +532,13 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
             visit(&extension, &mut state, &mut ordered, &mut diagnostics);
         }
     }
-    // A `bench` block runs under the driver in `@std/bench.ms`, which its module need not import.
+    // A `bench` block runs under the driver in `@std/test/bench.ms`, which its module need not import.
     let benching = modules.iter().any(|m| {
         m.decls
             .iter()
             .any(|d| matches!(&d.decl().kind, DeclKind::Test(t) if t.bench))
     });
-    if benching && let Some(driver) = standard_source_module(n("@std/bench.ms")) {
+    if benching && let Some(driver) = standard_source_module(n("@std/test/bench.ms")) {
         visit(&driver, &mut state, &mut ordered, &mut diagnostics);
     }
     for m in &modules {
@@ -1045,15 +1059,7 @@ impl Loader<'_> {
             let mut native = name;
             if sym_kind == SymKind::Fn {
                 // Identities are module/name.
-                let ident = format!(
-                    "{}/{}",
-                    module
-                        .file
-                        .as_str()
-                        .trim_start_matches("@std/")
-                        .trim_end_matches(".ms"),
-                    name
-                );
+                let ident = format!("{}/{}", module_stem(module.file.as_str()), name);
                 native = n(&ident);
                 id = n(&format!("@std/{ident}"));
             }
@@ -1301,11 +1307,7 @@ impl Loader<'_> {
                         world(|w| w.symbols.get(&n(&contract_name)).map(|c| c.module));
                     let native = format!(
                         "{}/{}",
-                        contract_module
-                            .unwrap_or(module.file)
-                            .as_str()
-                            .trim_start_matches("@std/")
-                            .trim_end_matches(".ms"),
+                        module_stem(contract_module.unwrap_or(module.file).as_str()),
                         name
                     );
                     method.native = n(&native);

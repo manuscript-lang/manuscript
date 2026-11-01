@@ -1,8 +1,8 @@
 # Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
 # expect-mir: "drop"
 
-import headers, HttpHeaders, HttpMethod from "@std/http.ms"
-import request from "@std/net.ms"
+import headers, HttpHeaders, HttpMethod from "@std/net/http.ms"
+import request from "@std/net/net.ms"
 
 fn hs() Result[HttpHeaders, Error]: return ok(headers())
 

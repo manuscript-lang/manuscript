@@ -1,7 +1,7 @@
 # conform: tags=control-flow,interpolation,modules,stdlib-testing,stdlib-time,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/time.ms
-import expect_equal, expect_false, fail from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test/test.ms"
 import (
     timestamp,
     parse_timestamp,
@@ -12,7 +12,7 @@ import (
     monotonic,
     now,
     sleep
-) from "@std/time.ms"
+) from "@std/os/time.ms"
 
 test "timestamps preserve nanoseconds and shift across epoch":
     let epoch = try timestamp(0, 123)

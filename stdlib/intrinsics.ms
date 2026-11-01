@@ -1,7 +1,7 @@
 # Source locations for the fixed intrinsic receiver operations.
 import StringError from "@std/string.ms"
 import Bytes from "@std/bytes.ms"
-import Decimal from "@std/decimal.ms"
+import Decimal from "@std/math/decimal.ms"
 
 # Every value has this operation, including unconstrained type parameters.
 interface ValueOperations:

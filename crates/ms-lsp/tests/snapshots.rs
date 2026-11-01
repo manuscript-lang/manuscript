@@ -155,7 +155,7 @@ fn completion_in_unfinished_code() {
         ),
         (
             "std-member",
-            "import stdout from \"@std/io.ms\"\nfn main() Int:\n    let w = stdout().",
+            "import stdout from \"@std/io/io.ms\"\nfn main() Int:\n    let w = stdout().",
         ),
         ("list-member", "fn main() Int:\n    let w = [1]."),
         ("string-member", "fn main() Int:\n    let w = \"a\"."),
@@ -174,7 +174,7 @@ fn completion_in_unfinished_code() {
         ("import-path", "import stdout from \"@std/i"),
         (
             "import-from",
-            "import stdout from \"@std/io.ms\"\nimport  from \"@std/testing.ms\"",
+            "import stdout from \"@std/io/io.ms\"\nimport  from \"@std/testing.ms\"",
         ),
         ("import-local", "import x from \"./"),
         ("keyword", "fn main() Int:\n    ret"),

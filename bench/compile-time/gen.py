@@ -65,7 +65,7 @@ for p in range(P):
         open(f"{out}/go/p{p}/f{f}.go","w").write("".join(g))
 # mains
 last=[(p,f) for p in range(P) for f in range(F)]
-ms=["import stdout from \"@std/io.ms\"\n"]+[f'import all_{p}_{f} from "./pkg{p}/f{f}.ms"\n' for p,f in last]
+ms=["import stdout from \"@std/io/io.ms\"\n"]+[f'import all_{p}_{f} from "./pkg{p}/f{f}.ms"\n' for p,f in last]
 ms.append("\nexport fn main() Int:\n    var t = 0\n")
 for p,f in last: ms.append(f"    t += all_{p}_{f}(7)\n")
 ms.append('    stdout().write("{t}\\n").get()\n    return 0\n')

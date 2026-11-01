@@ -32,8 +32,8 @@
           "end": {
             "file": "testredundantpreludeimportdiagnosticsandfixes-11.ms",
             "line": 7,
-            "column": 29,
-            "offset": 258
+            "column": 41,
+            "offset": 270
           },
           "replacement": "\n    # keep me\n    "
         }

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,interpolation,modules,optional,parser,stdlib-http,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/sse-http.ms
-import expect_equal, expect_false, fail from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test/test.ms"
 import (
     headers,
     HttpClientOptions,
@@ -9,9 +9,9 @@ import (
     HttpExchange,
     HttpMethod,
     HttpServerOptions
-) from "@std/http.ms"
-import body_stream, reader, next_event from "@std/sse.ms"
-import http_client, serve from "@std/net.ms"
+) from "@std/net/http.ms"
+import body_stream, reader, next_event from "@std/net/sse.ms"
+import http_client, serve from "@std/net/net.ms"
 
 # Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
 fn stream_events(exchange: HttpExchange) Unit!HttpError:

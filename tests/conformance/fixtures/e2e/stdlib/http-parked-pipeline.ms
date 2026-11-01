@@ -3,11 +3,11 @@
 # conform: timeout=30
 # A request that arrives on a connection while its handler is parked is served as soon as
 # the handler's response is sent, not after a timeout.
-import headers, HttpRequest, HttpResponse, buffered from "@std/http.ms"
-import stdout from "@std/io.ms"
-import connect, serve from "@std/net.ms"
-import monotonic_time from "@std/process.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import headers, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
+import stdout from "@std/io/io.ms"
+import connect, serve from "@std/net/net.ms"
+import monotonic_time from "@std/os/process.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":

@@ -1,5 +1,5 @@
-import expect_equal, expect_error, expect_ok, fail from "@std/test.ms"
-import parse, YamlValue from "@std/yaml.ms"
+import expect_equal, expect_error, expect_ok, fail from "@std/test/test.ms"
+import parse, YamlValue from "@std/data/yaml.ms"
 
 fn invalid(source: String) Unit!:
     let cause = parse(source) | try expect_error

@@ -1,7 +1,7 @@
 # conform: tags=faults,stdlib-tasks,tier-io
 # conform: phase=run
-import TaskGroup from "@std/tasks.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 # The callee inlines `sleep` (from another file) before it faults: the trace must still name this
 # file for the closure frame, not the file of the first inlined callee.

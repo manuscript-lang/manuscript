@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import JsonError from \"@std/json.ms\"\nimport hex_decode from \"@std/encoding.ms\"\n\nfn general(cause: JsonError) Error:\n    return cause\n\nfn failed() Unit!JsonError:\n    return error(cause: JsonError.InvalidData)\n\nfn forwarded() Unit!:\n    return failed()\n\nfn propagated() Unit!:\n    let _bytes = try hex_decode(text: \"zz\")\n    return ok(value: unit)\n\nfn constructed() Unit!:\n    return error(cause: JsonError.InvalidData)\n"
+    "fmt": "import JsonError from \"@std/data/json.ms\"\nimport hex_decode from \"@std/data/encoding.ms\"\n\nfn general(cause: JsonError) Error:\n    return cause\n\nfn failed() Unit!JsonError:\n    return error(cause: JsonError.InvalidData)\n\nfn forwarded() Unit!:\n    return failed()\n\nfn propagated() Unit!:\n    let _bytes = try hex_decode(text: \"zz\")\n    return ok(value: unit)\n\nfn constructed() Unit!:\n    return error(cause: JsonError.InvalidData)\n"
   }
 }

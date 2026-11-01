@@ -1,7 +1,7 @@
-import Channel from "@std/channels.ms"
-import memory_usage from "@std/process.ms"
-import TaskError, TaskGroup from "@std/tasks.ms"
-import expect_equal, expect_error, expect_ok from "@std/test.ms"
+import Channel from "@std/io/channels.ms"
+import memory_usage from "@std/os/process.ms"
+import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 fn hold_receive(ch: Channel[Int, Int]) Unit:
     var end = ch

@@ -4,4 +4,4 @@
 import (
     range,  # factory
     List  # collection
-) from "@std/collections.ms"
+) from "@std/collections/collections.ms"

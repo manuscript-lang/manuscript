@@ -1,6 +1,6 @@
-import buffered, headers, HttpRequest, HttpResponse from "@std/http.ms"
-import serve from "@std/net.ms"
-import stdout from "@std/io.ms"
+import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
+import serve from "@std/net/net.ms"
+import stdout from "@std/io/io.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
     let xs: List[Int] = []

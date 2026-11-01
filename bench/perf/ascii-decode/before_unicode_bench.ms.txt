@@ -1,6 +1,6 @@
 import ascii_decode, EncodingError from "./before.ms"
-import keep, measure from "@std/bench.ms"
-import expect_equal from "@std/test.ms"
+import keep, measure from "@std/test/bench.ms"
+import expect_equal from "@std/test/test.ms"
 
 bench "ascii.unicode.accent.1":
     let data = (try "é".repeat(1)).to_bytes()

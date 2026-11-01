@@ -2,8 +2,8 @@
 # conform: phase=check
 # conform: origin=tests/e2e/e2e_test.go:444 TestHostAccessorsAcrossImportedHelpers
 import now, close_output from "./helper.ms"
-import stdout from "@std/io.ms"
-import monotonic from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
 
 export fn main() Int:
     let before = now()

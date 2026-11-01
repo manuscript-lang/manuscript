@@ -1,14 +1,14 @@
 # conform: tags=control-flow,diagnostics,faults,interpolation,lists,maps,match,modules,optional,stdlib-http,stdlib-net,stdlib-testing,stdlib-tls,stdlib-websocket,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/stdlib/http-websocket.ms
-import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import http_result from "./support/http.ms"
-import headers, HttpMethod, buffered from "@std/http.ms"
+import headers, HttpMethod, buffered from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
-import http_client, request, serve, web_socket from "@std/net.ms"
-import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/http.ms"
-import WebSocketOptions, WebSocketError from "@std/net.ms"
-import TlsOptions from "@std/net.ms"
+import http_client, request, serve, web_socket from "@std/net/net.ms"
+import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/net/http.ms"
+import WebSocketOptions, WebSocketError from "@std/net/net.ms"
+import TlsOptions from "@std/net/net.ms"
 
 fn tls_options() TlsOptions:
     return TlsOptions(

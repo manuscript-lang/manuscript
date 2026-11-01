@@ -37,7 +37,7 @@ fn render(module: &ApiModule, for_site: bool) -> String {
     } else if path == "@std/core.ms" {
         b += "`Error`, `MissingValue`, `Optional`, `Result`, `Equal`, `Comparable`, and `Hashable` are prelude declarations; explicit imports of them are rejected.\n\n";
         b += &format!("Import other names with `import Name from {path:?}`.\n\n");
-    } else if path == "@std/collections.ms" {
+    } else if path == "@std/collections/collections.ms" {
         b += "`List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry` are prelude declarations; explicit imports of them are rejected.\n\n";
         b += &format!("Import other names with `import Name from {path:?}`.\n\n");
     } else if path.starts_with("@std/") {

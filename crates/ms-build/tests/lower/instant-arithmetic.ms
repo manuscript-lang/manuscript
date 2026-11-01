@@ -3,7 +3,7 @@
 # expect-mir: "msstd_time_instant_difference"
 # expect-mir: "msstd_time_instant_unshift"
 
-import monotonic from "@std/time.ms"
+import monotonic from "@std/os/time.ms"
 
 export fn main() Int:
     let a = monotonic()

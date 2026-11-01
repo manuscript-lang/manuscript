@@ -1,7 +1,7 @@
-import expect_equal, expect_error, expect_ok from "@std/test.ms"
-import HttpError, headers, HttpRequest, HttpResponse, buffered, HttpServerOptions from "@std/http.ms"
+import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
+import HttpError, headers, HttpRequest, HttpResponse, buffered, HttpServerOptions from "@std/net/http.ms"
 import TextError from "@std/core.ms"
-import connect, serve from "@std/net.ms"
+import connect, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 
 fn ok_route(request: HttpRequest) HttpResponse:

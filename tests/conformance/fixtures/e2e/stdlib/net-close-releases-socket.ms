@@ -1,9 +1,9 @@
 # conform: tags=scope-cleanup,stdlib-net,tier-io
 # conform: phase=run
-import stdout from "@std/io.ms"
-import bind_datagram, connect, listen from "@std/net.ms"
-import TaskGroup from "@std/tasks.ms"
-import nanoseconds from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import bind_datagram, connect, listen from "@std/net/net.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import nanoseconds from "@std/os/time.ms"
 
 # `close` frees the socket, so its port can be bound again while the handle is still held and
 # after a cancelled `accept` or `read` ran its `with` cleanup.

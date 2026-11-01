@@ -1,18 +1,18 @@
 import Closeable, Data from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
-import ClientResponse from "@std/http.ms"
-import Duration from "@std/time.ms"
-import HttpClient from "@std/http.ms"
-import HttpClientOptions from "@std/http.ms"
-import HttpError from "@std/http.ms"
-import HttpExchange from "@std/http.ms"
-import HttpHeaders from "@std/http.ms"
-import HttpMethod from "@std/http.ms"
-import HttpServer from "@std/http.ms"
-import HttpServerOptions from "@std/http.ms"
-import IoError from "@std/io.ms"
-import Timestamp from "@std/time.ms"
-import WorkerGroup, worker_channel from "@std/workers.ms"
+import ClientResponse from "@std/net/http.ms"
+import Duration from "@std/os/time.ms"
+import HttpClient from "@std/net/http.ms"
+import HttpClientOptions from "@std/net/http.ms"
+import HttpError from "@std/net/http.ms"
+import HttpExchange from "@std/net/http.ms"
+import HttpHeaders from "@std/net/http.ms"
+import HttpMethod from "@std/net/http.ms"
+import HttpServer from "@std/net/http.ms"
+import HttpServerOptions from "@std/net/http.ms"
+import IoError from "@std/io/io.ms"
+import Timestamp from "@std/os/time.ms"
+import WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 import msrt_url_encode_component from "@std/internal/net.ms"
 
 extern fn msrt_net_ip_address_text(value: IpAddress) String
@@ -468,7 +468,7 @@ export interface Network:
         cidrs: List[String],
         allow_listen: Bool
     ) Network!NetworkError
-    # Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
+    # Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
     # A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
     # Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
     # A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end, `tasks.cancelled()` turns true, and its cleanups run. A client that half-closes its end after sending the request counts as disconnected.
@@ -925,7 +925,7 @@ export fn restrict(
 ) Network!NetworkError:
     return host_network().restrict(hosts, cidrs, allow_listen)
 
-# Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
+# Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
 # A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
 # Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
 # A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end, `tasks.cancelled()` turns true, and its cleanups run. A client that half-closes its end after sending the request counts as disconnected.

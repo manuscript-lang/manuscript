@@ -104,7 +104,7 @@ fn source_declarations_reach_documentation() {
                 );
             }
         }
-        if module.path == "@std/collections.ms" {
+        if module.path == "@std/collections/collections.ms" {
             assert!(
                 render_site_module(module).contains("## List {data-api-kind=\"Native type\"}"),
                 "native receiver signatures must not label List as a source interface"
@@ -122,7 +122,7 @@ fn mixed_prelude_module_import_guidance() {
             "`Error`, `MissingValue`, `Optional`, `Result`, `Equal`, `Comparable`, and `Hashable` are prelude declarations",
         ),
         (
-            "@std/collections.ms",
+            "@std/collections/collections.ms",
             "`List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry`",
         ),
     ] {

@@ -1,7 +1,7 @@
-import expect_equal, expect_false, expect_not_equal, expect_ok, fail from "@std/test.ms"
+import expect_equal, expect_false, expect_not_equal, expect_ok, fail from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
-import JsonError from "@std/json.ms"
-import read_file, temporary, write_file from "@std/fs.ms"
+import JsonError from "@std/data/json.ms"
+import read_file, temporary, write_file from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 type Key:

@@ -1,12 +1,12 @@
 # conform: tags=closures,control-flow,diagnostics,faults,generics,interfaces,match,modules,stdlib-cleanup,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/local_extensions/second.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 import Item, Box, Holder, Choice from "./domain.ms"
 import Read, invoke, relay, as_view from "./contracts.ms"
 import Closeable from "@std/core.ms"
-import share from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
 
 impl Read[Int] for Item:
     fn get() Int:

@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,formatter,generics,interfaces,match,modules,mutation,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/interface-view-callables.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 interface Read[T]:
     fn read() T

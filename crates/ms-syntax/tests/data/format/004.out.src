@@ -1,6 +1,6 @@
-import headers, HttpRequest, HttpResponse from "@std/http.ms"
-import network from "@std/net.ms"
-import stdout from "@std/io.ms"
+import headers, HttpRequest, HttpResponse from "@std/net/http.ms"
+import network from "@std/net/net.ms"
+import stdout from "@std/io/io.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "hello \{request.path\}".to_bytes())

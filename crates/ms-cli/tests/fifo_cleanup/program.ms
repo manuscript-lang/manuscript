@@ -1,7 +1,7 @@
-import list, read_file from "@std/fs.ms"
-import arguments from "@std/process.ms"
-import TaskGroup from "@std/tasks.ms"
-import stdout from "@std/io.ms"
+import list, read_file from "@std/os/fs.ms"
+import arguments from "@std/os/process.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import stdout from "@std/io/io.ms"
 
 fn read_pipe(path: String) Int:
     let _data = read_file(path)

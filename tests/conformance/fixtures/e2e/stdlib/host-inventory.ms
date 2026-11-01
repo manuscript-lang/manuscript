@@ -1,8 +1,8 @@
 # conform: tags=control-flow,stdlib-system,stdlib-testing,testing,tier-io,try-result
 # conform: phase=test
-import expect_equal, expect_false, expect_true from "@std/test.ms"
-import cpus, metrics, network_interfaces from "@std/process.ms"
-import IpFamily from "@std/net.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
+import cpus, metrics, network_interfaces from "@std/os/process.ms"
+import IpFamily from "@std/net/net.ms"
 
 test "network interfaces describe each address and include a loopback":
     let found = network_interfaces()

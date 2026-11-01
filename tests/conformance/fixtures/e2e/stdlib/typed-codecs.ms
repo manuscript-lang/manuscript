@@ -1,10 +1,10 @@
 # conform: tags=aliasing,closures,control-flow,generics,lists,match,modules,optional,stdlib-archive,stdlib-bytes,stdlib-compress,stdlib-crypto,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/typed-codecs.ms
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 import HashAlgorithm, sha256, sha384, sha512, CryptoError from "@std/crypto.ms"
-import CompressionFormat, compress, decompress, CompressionError from "@std/archive.ms"
-import ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError from "@std/archive.ms"
+import CompressionFormat, compress, decompress, CompressionError from "@std/io/archive.ms"
+import ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError from "@std/io/archive.ms"
 import Bytes from "@std/bytes.ms"
 
 fn digest(algorithm: HashAlgorithm, data: Bytes) Bytes:

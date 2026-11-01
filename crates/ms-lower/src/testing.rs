@@ -1,4 +1,4 @@
-//! `@std/test.ms` expectations, lowered inline.
+//! `@std/test/test.ms` expectations, lowered inline.
 
 use crate::Error;
 use crate::func::{FnLower, Val};
@@ -117,7 +117,7 @@ impl FnLower<'_> {
         )
     }
 
-    /// An expectation of `@std/test.ms`.
+    /// An expectation of `@std/test/test.ms`.
     pub fn testing_native(
         &mut self,
         e: &Expr,

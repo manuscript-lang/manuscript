@@ -10,7 +10,7 @@
 
 ## Status
 
-Proposal, revised 2026-10-30 after a skeptic review (verdict: revise; its corrections are folded in), checked against `f6755dfd`. Direction (Chinmay, 2026-10-30): "i see that's wrong ... we need to design it ground up" (about the `shared` listener); earlier: "does that mean server requests will fan out on all cores?" Direction (Chinmay, 2026-10-30): "let's do round robin"; "okay build the threads first" (processes later). Stage 1 and 2 built: `Listener.accept_raw`, `Network.serve_connections`, `HttpServer.adopt` (below), measured in `bench/perf/web/results.md` (2026-10-30). Stage 3 built: `serve_cores(listener, entry, cores)` and `serve_core(handler, options)` in `@std/net.ms`, on `WorkerGroup.spawn_many(entry, count)`. `spawn_many` needed one checker change: the worker start native borrows its entry (it copies the code pointer of a capture-free fn), so one entry can start several workers. A `cores` option on `serve` is a possible wrapper, not built.
+Proposal, revised 2026-10-30 after a skeptic review (verdict: revise; its corrections are folded in), checked against `f6755dfd`. Direction (Chinmay, 2026-10-30): "i see that's wrong ... we need to design it ground up" (about the `shared` listener); earlier: "does that mean server requests will fan out on all cores?" Direction (Chinmay, 2026-10-30): "let's do round robin"; "okay build the threads first" (processes later). Stage 1 and 2 built: `Listener.accept_raw`, `Network.serve_connections`, `HttpServer.adopt` (below), measured in `bench/perf/web/results.md` (2026-10-30). Stage 3 built: `serve_cores(listener, entry, cores)` and `serve_core(handler, options)` in `@std/net/net.ms`, on `WorkerGroup.spawn_many(entry, count)`. `spawn_many` needed one checker change: the worker start native borrows its entry (it copies the code pointer of a capture-free fn), so one entry can start several workers. A `cores` option on `serve` is a possible wrapper, not built.
 
 ## Problem
 
@@ -54,7 +54,7 @@ The acceptor's isolate also serves (worker 0 is itself); with `cores: 1` nothing
 ### API
 
 ```manuscript
-import HttpServer, HttpServerOptions, serve_cores from "@std/http.ms"
+import HttpServer, HttpServerOptions, serve_cores from "@std/net/http.ms"
 
 # Named top-level, capture-free: runs once in each serving isolate and returns that isolate's handler.
 fn init(config: AppConfig) fn(HttpExchange) Result[Unit, HttpError]:

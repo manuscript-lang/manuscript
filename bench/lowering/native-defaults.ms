@@ -1,9 +1,9 @@
-import base64_encode from "@std/encoding.ms"
-import CsvOptions from "@std/csv.ms"
+import base64_encode from "@std/data/encoding.ms"
+import CsvOptions from "@std/data/csv.ms"
 import Bytes from "@std/bytes.ms"
-import CommandOutput, CommandError, run from "@std/process.ms"
-import Duration from "@std/time.ms"
-import write_file_bytes, FileSystemError from "@std/fs.ms"
+import CommandOutput, CommandError, run from "@std/os/process.ms"
+import Duration from "@std/os/time.ms"
+import write_file_bytes, FileSystemError from "@std/os/fs.ms"
 
 fn direct_explicit(data: Bytes) String: base64_encode(data, false)
 

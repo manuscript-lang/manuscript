@@ -1,7 +1,7 @@
 # conform: tags=control-flow,interpolation,match,modules,optional,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/direct-calls-fill-omitted-defaults.ms
-import expect_true from "@std/test.ms"
+import expect_true from "@std/test/test.ms"
 
 fn scaled(base: Int, factor: Int = 2, label: String = "x") String: "{label}{base * factor}"
 

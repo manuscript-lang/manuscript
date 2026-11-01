@@ -1,12 +1,12 @@
 import Closeable, Data from "@std/core.ms"
 import Bytes, join from "@std/bytes.ms"
-import Duration from "@std/time.ms"
-import IoError from "@std/io.ms"
-import stringify from "@std/json.ms"
-import ReadStream from "@std/io.ms"
-import TlsOptions from "@std/net.ms"
-import WebSocket from "@std/net.ms"
-import WebSocketError from "@std/net.ms"
+import Duration from "@std/os/time.ms"
+import IoError from "@std/io/io.ms"
+import stringify from "@std/data/json.ms"
+import ReadStream from "@std/io/io.ms"
+import TlsOptions from "@std/net/net.ms"
+import WebSocket from "@std/net/net.ms"
+import WebSocketError from "@std/net/net.ms"
 
 extern fn msrt_http_headers_append(
     headers: HttpHeaders,

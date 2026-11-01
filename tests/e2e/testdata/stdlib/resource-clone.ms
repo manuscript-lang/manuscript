@@ -1,6 +1,6 @@
-import expect_equal, expect_ok, expect_true from "@std/test.ms"
-import open, read_file, temporary from "@std/fs.ms"
-import connect, listen from "@std/net.ms"
+import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
+import open, read_file, temporary from "@std/os/fs.ms"
+import connect, listen from "@std/net/net.ms"
 
 # `clone` copies a resource: each copy owns its own descriptor and closes on its own.
 

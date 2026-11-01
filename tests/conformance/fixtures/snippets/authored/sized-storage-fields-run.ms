@@ -1,7 +1,7 @@
 # conform: tags=numbers,types,tier-core
 # conform: phase=run
 # conform: origin=sized numeric types stage 3
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 type Pix:
     r: Int8

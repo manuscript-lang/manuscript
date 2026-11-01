@@ -1,6 +1,6 @@
 # conform: tags=strings,lists,maps,records,control-flow,stdlib-testing,testing,tier-core
 # conform: phase=test
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 # Churn that reuses freed memory, so a view of a value freed too early reads garbage.
 fn churn(n: Int) Int:

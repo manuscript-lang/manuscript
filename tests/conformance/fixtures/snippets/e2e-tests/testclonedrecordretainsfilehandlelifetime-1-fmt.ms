@@ -1,9 +1,9 @@
 # conform: tags=aliasing,control-flow,faults,formatter,match,modules,optional,parser,records,stdlib-io,strings,tier-core
 # conform: phase=parse
 # conform: origin=tests/e2e/mutation_test.go:49 TestClonedRecordRetainsFileHandleLifetime
-import open_read from "@std/io.ms"
-import File from "@std/io.ms"
-import IoError from "@std/io.ms"
+import open_read from "@std/io/io.ms"
+import File from "@std/io/io.ms"
+import IoError from "@std/io/io.ms"
 
 type Holder:
     file: File

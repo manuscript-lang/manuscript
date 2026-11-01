@@ -1,4 +1,4 @@
-import expect_equal, expect_false, expect_true from "@std/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
 type Visits:
     count: Int

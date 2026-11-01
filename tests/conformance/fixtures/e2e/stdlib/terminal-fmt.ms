@@ -1,8 +1,8 @@
 # conform: tags=control-flow,formatter,modules,parser,stdlib-terminal,stdlib-testing,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/terminal.ms
-import expect_equal, expect_false, fail from "@std/test.ms"
-import TerminalError, raw_mode, terminal_capabilities from "@std/io.ms"
+import expect_equal, expect_false, fail from "@std/test/test.ms"
+import TerminalError, raw_mode, terminal_capabilities from "@std/io/io.ms"
 
 test "redirected streams report no terminal and refuse raw mode":
     let capabilities = terminal_capabilities()

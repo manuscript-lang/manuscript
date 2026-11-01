@@ -1,1 +1,1 @@
-error parse 4:5:69 "suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declaration"
+error parse 4:5:74 "suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declaration"

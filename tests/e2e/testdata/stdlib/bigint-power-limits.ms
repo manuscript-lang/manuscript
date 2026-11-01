@@ -1,5 +1,5 @@
-import expect_equal from "@std/test.ms"
-import from_int, BigInt, BigIntError from "@std/math.ms"
+import expect_equal from "@std/test/test.ms"
+import from_int, BigInt, BigIntError from "@std/math/math.ms"
 
 test "big integer powers enforce the exact result bit limit":
     let limit = 16777216

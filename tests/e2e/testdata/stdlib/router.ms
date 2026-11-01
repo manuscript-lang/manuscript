@@ -1,4 +1,4 @@
-import expect_equal, expect_true from "@std/test.ms"
+import expect_equal, expect_true from "@std/test/test.ms"
 import (
     from_io,
     headers,
@@ -13,15 +13,15 @@ import (
     HttpResponse,
     HttpClientOptions,
     HttpServerOptions
-) from "@std/http.ms"
-import IoError, read_all from "@std/io.ms"
-import http_client, serve from "@std/net.ms"
+) from "@std/net/http.ms"
+import IoError, read_all from "@std/io/io.ms"
+import http_client, serve from "@std/net/net.ms"
 import create, LogError, Transport from "@std/log.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
 import Bytes from "@std/bytes.ms"
-import access_log, request_id, RouteParams, Router, RouterError, with_request_headers from "@std/router.ms"
-import body_stream from "@std/sse.ms"
+import access_log, request_id, RouteParams, Router, RouterError, with_request_headers from "@std/net/router.ms"
+import body_stream from "@std/net/sse.ms"
 
 fn get(path: String) HttpRequest:
     return request(HttpMethod.Get, path)

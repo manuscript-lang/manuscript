@@ -1,5 +1,5 @@
 import bench from "./harness.ms"
-import FileSystem, list, read_file, stat, temporary from "@std/fs.ms"
+import FileSystem, list, read_file, stat, temporary from "@std/os/fs.ms"
 import create, file_transport, Transport, Logger from "@std/log.ms"
 
 fn run(fs: FileSystem, root: String) Unit:

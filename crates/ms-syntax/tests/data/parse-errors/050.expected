@@ -1,1 +1,1 @@
-error parse 10:5:207 "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it"
+error parse 10:5:212 "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it"

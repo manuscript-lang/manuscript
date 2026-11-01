@@ -1,9 +1,9 @@
-import stdout from "@std/io.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
-import TaskGroup from "@std/tasks.ms"
-import expect_equal from "@std/test.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import expect_equal from "@std/test/test.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 fn hold(box: Shared[List[Int]]) Int:
     var guard = lock(box)

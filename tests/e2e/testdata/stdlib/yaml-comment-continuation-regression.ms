@@ -1,5 +1,5 @@
-import expect_equal, expect_error, expect_ok, fail from "@std/test.ms"
-import parse, YamlValue from "@std/yaml.ms"
+import expect_equal, expect_error, expect_ok, fail from "@std/test/test.ms"
+import parse, YamlValue from "@std/data/yaml.ms"
 
 fn rejects_continuation(text: String) Unit!Error:
     let cause = parse(text) | try expect_error

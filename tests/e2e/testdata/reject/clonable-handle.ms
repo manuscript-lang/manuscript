@@ -1,4 +1,4 @@
-import FileHandle from "@std/fs.ms"
+import FileHandle from "@std/os/fs.ms"
 
 fn twice[T: Clonable](value: T) List[T]:
     return [value.clone(), value]

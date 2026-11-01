@@ -1,5 +1,5 @@
 import Closeable from "@std/core.ms"
-import Shared from "@std/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import msrt_channel_token, msrt_channel_park, msrt_waitq_push, msrt_waitq_wake, msrt_waitq_remove from "@std/internal/sync.ms"
 
 # The locked payload of a `Shared`, held until the scope of the binding that opened it ends, or its `close()` is called. Change the

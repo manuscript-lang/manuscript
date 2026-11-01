@@ -1,6 +1,6 @@
-import keep, measure from "@std/bench.ms"
+import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
-import FileSystem, list, read_file, stat, temporary, write_file_bytes from "@std/fs.ms"
+import FileSystem, list, read_file, stat, temporary, write_file_bytes from "@std/os/fs.ms"
 import create, file_transport from "@std/log.ms"
 
 fn block() Bytes:

@@ -1,7 +1,7 @@
-import expect_ok from "@std/test.ms"
+import expect_ok from "@std/test/test.ms"
 import http_result from "./support/http.ms"
 import TextError from "@std/core.ms"
-import headers, HttpMethod, buffered from "@std/http.ms"
+import headers, HttpMethod, buffered from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import (
     HttpRequest,
@@ -11,9 +11,9 @@ import (
     HttpServerOptions,
     HttpClientOptions,
     HttpHeaders
-) from "@std/http.ms"
-import http_client, request, serve from "@std/net.ms"
-import TlsOptions from "@std/net.ms"
+) from "@std/net/http.ms"
+import http_client, request, serve from "@std/net/net.ms"
+import TlsOptions from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 
 fn route(request: HttpRequest) HttpResponse:

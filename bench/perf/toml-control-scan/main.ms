@@ -1,8 +1,8 @@
-import parse, stringify from "@std/toml.ms"
-import arguments from "@std/process.ms"
-import read_file from "@std/fs.ms"
-import stdout from "@std/io.ms"
-import monotonic from "@std/time.ms"
+import parse, stringify from "@std/data/toml.ms"
+import arguments from "@std/os/process.ms"
+import read_file from "@std/os/fs.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
 
 export fn main() Int:
     let args = arguments()

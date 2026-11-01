@@ -35,7 +35,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding fail; add: import fail from \"@std/test.ms\"",
+        "message": "unknown binding fail; add: import fail from \"@std/test/test.ms\"",
         "position": {
           "file": "testexpectedresultgenericinferencerejects-5.ms",
           "line": 5,
@@ -55,14 +55,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import fail from \"@std/test.ms\"\n"
+          "replacement": "import fail from \"@std/test/test.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testexpectedresultgenericinferencerejects-5.ms:5:39: resolution: unknown type TextError; add: import TextError from \"@std/core.ms\"\n   |\n 5 |     let value: fn(String) Result[Int, TextError] = fail\n   |                                       ^\n<DIR>/testexpectedresultgenericinferencerejects-5.ms:5:52: resolution: unknown binding fail; add: import fail from \"@std/test.ms\"\n   |\n 5 |     let value: fn(String) Result[Int, TextError] = fail\n   |                                                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testexpectedresultgenericinferencerejects-5.ms:5:39: resolution: unknown type TextError; add: import TextError from \"@std/core.ms\"\n   |\n 5 |     let value: fn(String) Result[Int, TextError] = fail\n   |                                       ^\n<DIR>/testexpectedresultgenericinferencerejects-5.ms:5:52: resolution: unknown binding fail; add: import fail from \"@std/test/test.ms\"\n   |\n 5 |     let value: fn(String) Result[Int, TextError] = fail\n   |                                                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

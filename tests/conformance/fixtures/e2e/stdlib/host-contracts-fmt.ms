@@ -1,13 +1,13 @@
 # conform: tags=control-flow,faults,formatter,interpolation,lists,modules,optional,parser,stdlib-archive,stdlib-bytes,stdlib-compress,stdlib-fs,stdlib-io,stdlib-process,stdlib-string,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/host-contracts.ms
-import expect_equal, expect_error, expect_false from "@std/test.ms"
-import FileSystemError, open, temporary, write_file from "@std/fs.ms"
-import IoError, open_read from "@std/io.ms"
-import monotonic_time, uptime from "@std/process.ms"
-import nanoseconds from "@std/time.ms"
-import compress, decompress, CompressionError from "@std/archive.ms"
-import pack, unpack, ArchiveEntry, ArchiveError from "@std/archive.ms"
+import expect_equal, expect_error, expect_false from "@std/test/test.ms"
+import FileSystemError, open, temporary, write_file from "@std/os/fs.ms"
+import IoError, open_read from "@std/io/io.ms"
+import monotonic_time, uptime from "@std/os/process.ms"
+import nanoseconds from "@std/os/time.ms"
+import compress, decompress, CompressionError from "@std/io/archive.ms"
+import pack, unpack, ArchiveEntry, ArchiveError from "@std/io/archive.ms"
 import StringError from "@std/string.ms"
 import Bytes from "@std/bytes.ms"
 

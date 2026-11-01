@@ -3,11 +3,11 @@
 # conform: timeout=30
 # A handler that is still waiting when the server's request timeout passes is cancelled and the
 # request is answered 504, with or without a grace period; the server keeps serving afterwards.
-import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/http.ms"
-import stdout from "@std/io.ms"
-import connect, serve from "@std/net.ms"
-import monotonic_time from "@std/process.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/net/http.ms"
+import stdout from "@std/io/io.ms"
+import connect, serve from "@std/net/net.ms"
+import monotonic_time from "@std/os/process.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":

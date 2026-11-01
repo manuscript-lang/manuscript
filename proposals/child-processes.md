@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: a program uses one core, and cannot run Manuscript code in another long-lived process that it talks to with typed messages.
-- Change: `ProcessGroup` in `@std/processes.ms` starts a child process (a re-exec of the same binary) at a named top-level `def`. The child is a long-lived peer: the parent and child exchange typed messages in both directions over one bidirectional channel. Messages are JSON over a dedicated IPC channel (not stdio).
+- Change: `ProcessGroup` in `@std/os/processes.ms` starts a child process (a re-exec of the same binary) at a named top-level `def`. The child is a long-lived peer: the parent and child exchange typed messages in both directions over one bidirectional channel. Messages are JSON over a dedicated IPC channel (not stdio).
 - A `Process[In, Out]` is the typed sibling of `Subprocess`: same lifecycle (`wait`, `terminate`, `kill`, `close`), same `Stdio` choice per stream, plus `send`, `receive` and `close_input`. The child's entry takes the other end of the same channel. There is no result type and no `T` on the group.
 - `fork` is JS `child_process.fork`, not POSIX `fork(2)`: spawn the same binary, select an entry, connect a channel. No parent state is copied.
 - Cost: an entry table, a start-path hook, an IPC-backed channel endpoint in the runtime, and a stdlib module. No new compiler codecs, no change to runtime globals (unlike `proposals/worker-threads.md`).
@@ -51,8 +51,8 @@
 ### Syntax and API
 
 ```manuscript
-import ProcessGroup from "@std/processes.ms"
-import Channel from "@std/tasks.ms"
+import ProcessGroup from "@std/os/processes.ms"
+import Channel from "@std/concurrency/tasks.ms"
 
 type HashConfig:
     algorithm: String
@@ -95,7 +95,7 @@ Illustrative: `digest` is a placeholder; `if let` is the documented unwrap (`doc
 
 - Start: the parent creates the IPC channel, then runs `info().executable` through `Commands.spawn`'s start path (`crates/ms-std-process/src/spawn.rs:61`) with env `MS_ENTRY=<index>` and `MS_IPC=<fd or pipe name>`; stdin, stdout and stderr follow the `Stdio` arguments.
 - Start hook: `msrt_start` (`crates/ms-rt/src/start.rs:263`) checks `MS_ENTRY` before `main`. If set, it clears both variables from the environment seen by user code, adopts the IPC endpoint, reads the argument frame, and runs the entry as the main task. User `print` and stdio are untouched.
-- Entry table: each `spawn` instantiation registers `(index, thunk)`. The thunk is generic Manuscript in `@std/processes.ms`: `parse[A]` the argument, bind the IPC-backed `Channel[Out, In]`, call the entry. Lowering instantiates generics per type argument list (`crates/ms-lower/src/lib.rs:4-5`), so the existing `stringify`/`parse` intrinsics (`ms-lower/src/native.rs:208`, `json.rs`) need no new codec code. The table is an index, not a hash: parent and child are one binary.
+- Entry table: each `spawn` instantiation registers `(index, thunk)`. The thunk is generic Manuscript in `@std/os/processes.ms`: `parse[A]` the argument, bind the IPC-backed `Channel[Out, In]`, call the entry. Lowering instantiates generics per type argument list (`crates/ms-lower/src/lib.rs:4-5`), so the existing `stringify`/`parse` intrinsics (`ms-lower/src/native.rs:208`, `json.rs`) need no new codec code. The table is an index, not a hash: parent and child are one binary.
 - IPC channel (JS style, as Node's `NODE_CHANNEL_FD`; no TCP port):
   - Unix (Linux and macOS): `socketpair(AF_UNIX, SOCK_STREAM)`; the parent keeps one end `CLOEXEC`, the other is `dup2`'d to a fixed descriptor in `pre_exec` (async-signal-safe, so sound in a multithreaded parent) and its number is `MS_IPC`. Both ends are nonblocking and wait in the existing poller (epoll, kqueue).
   - Windows: the parent creates a named pipe with a random name (`\\.\pipe\ms-ipc-<random>`, first-instance flag, DACL limited to the current user, one accepted connection) and puts the name in `MS_IPC`; the child opens it by name, so no handle inheritance or handle list is needed. The Windows poller waits on sockets only and counts other handles as ready at once (`poller.rs:210-215`), so pipe waits use the same slice polling `Subprocess` already uses: `PeekNamedPipe` in 2 ms slices (`crates/ms-std-process/src/plat/windows.rs:20`, `wait_io` at `:33`).
@@ -210,7 +210,7 @@ sequenceDiagram
 ## Staging and verification
 
 - Each stage is its own PR with auto-merge. Pull requests run Linux only; for any stage touching platform code, run the workflow by hand on the branch for macOS and Windows before merging.
-1. Measure with a throwaway spike branch (nothing merged to main; `@std/processes.ms` and `@std/tasks.ms` do not exist yet, so this uses Rust micro-benchmarks and a hand-written `Commands.spawn` program): re-exec latency, JSON throughput for `List[Int]` and `Bytes`, and ping-pong round-trip latency through a socketpair (Unix) and a named pipe (Windows, manual run), against the manual recipe. Go/no-go (proposed, Chinmay confirms): start latency under 50 ms and round trip under 1 ms on Unix; otherwise document the recipe and stop.
+1. Measure with a throwaway spike branch (nothing merged to main; `@std/os/processes.ms` and `@std/concurrency/tasks.ms` do not exist yet, so this uses Rust micro-benchmarks and a hand-written `Commands.spawn` program): re-exec latency, JSON throughput for `List[Int]` and `Bytes`, and ping-pong round-trip latency through a socketpair (Unix) and a named pipe (Windows, manual run), against the manual recipe. Go/no-go (proposed, Chinmay confirms): start latency under 50 ms and round trip under 1 ms on Unix; otherwise document the recipe and stop.
 2. Platform prerequisites: job object at creation with `KILL_ON_JOB_CLOSE`; `spawn::start` env, per-stream `Stdio`, extra descriptor; socketpair and named pipe plumbing with tests.
 3. `ProcessGroup.spawn` and `Process`: entry table and start hook, IPC-backed channel endpoints, frames, argument, stop and orphan paths, death as data, diagnostics, docs and cheat sheet, conformance. Needs bidirectional channels and TaskGroup stage 4 landed.
 4. Extensions as demand shows: `Stdio.Pipe`, more than one channel (channel ends in arguments, a channel id in the frame), environment and working-directory overrides.

@@ -145,16 +145,16 @@ fn removing_the_last_unused_import_drops_the_separator() {
     let body = "\nfn root(value: Float) Float:\n    return sqrt(value)\n";
     for (source, expected) in [
         (
-            "import sqrt, sin from \"@std/math.ms\"\n",
-            "import sqrt from \"@std/math.ms\"\n",
+            "import sqrt, sin from \"@std/math/math.ms\"\n",
+            "import sqrt from \"@std/math/math.ms\"\n",
         ),
         (
-            "import sqrt, sin from \"@std/math.ms\"\n",
-            "import sqrt from \"@std/math.ms\"\n",
+            "import sqrt, sin from \"@std/math/math.ms\"\n",
+            "import sqrt from \"@std/math/math.ms\"\n",
         ),
         (
-            "import sin, sqrt from \"@std/math.ms\"\n",
-            "import sqrt from \"@std/math.ms\"\n",
+            "import sin, sqrt from \"@std/math/math.ms\"\n",
+            "import sqrt from \"@std/math/math.ms\"\n",
         ),
     ] {
         let source = format!("{source}{body}");
@@ -384,8 +384,8 @@ fn unresolved_standard_name_offers_an_add_import_fix() {
             "import Bytes from \"@std/bytes.ms\"\nfn size(b: Bytes) Int:\n    return 0\n",
         ),
         (
-            "import sqrt from \"@std/math.ms\"\n\nfn size(b: Bytes) Int:\n    return 0\n",
-            "import sqrt from \"@std/math.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\nfn size(b: Bytes) Int:\n    return 0\n",
+            "import sqrt from \"@std/math/math.ms\"\n\nfn size(b: Bytes) Int:\n    return 0\n",
+            "import sqrt from \"@std/math/math.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\nfn size(b: Bytes) Int:\n    return 0\n",
         ),
     ] {
         let (_, found) = actions(source, "quickfix");

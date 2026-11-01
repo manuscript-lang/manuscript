@@ -1,7 +1,7 @@
 # Server-Sent Events decoder implemented in Manuscript.
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import IoError, ReadStream from "@std/io.ms"
-import ResponseBody from "@std/http.ms"
+import IoError, ReadStream from "@std/io/io.ms"
+import ResponseBody from "@std/net/http.ms"
 import Closeable from "@std/core.ms"
 
 # Errors returned for invalid input, malformed or oversized event streams, and failed reads.

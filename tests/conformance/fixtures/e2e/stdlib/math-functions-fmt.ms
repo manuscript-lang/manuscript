@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,interfaces,lists,match,modules,numbers,parser,records,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/math-functions.ms
-import expect_equal, expect_false, expect_true from "@std/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import (
     acos,
     asin,
@@ -41,7 +41,7 @@ import (
     log10e,
     sqrt2,
     sqrt_half
-) from "@std/math.ms"
+) from "@std/math/math.ms"
 
 fn near(actual: Float, expected: Float) Bool:
     return (actual - expected).abs() < 0.000000001

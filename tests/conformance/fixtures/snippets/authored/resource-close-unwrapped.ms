@@ -2,7 +2,7 @@
 # conform: phase=run
 # conform: origin=a resource unwrapped or passed through a call closes at scope end
 import Closeable, TextError from "@std/core.ms"
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 type Res:
     name: String

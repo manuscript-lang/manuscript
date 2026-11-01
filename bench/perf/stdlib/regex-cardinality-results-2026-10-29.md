@@ -36,7 +36,7 @@ archives and caches. Seven paired processes alternate before/after order. The in
 three timed samples per case; the predefined full recheck and focused comparisons
 take five. Each follows calibration. CPU 0 affinity is inherited
 by every producer. No local tests or builds run during timings. The in-program
-`@std/bench.ms` harness excludes compiler startup, program startup and input/regex
+`@std/test/bench.ms` harness excludes compiler startup, program startup and input/regex
 construction. The cached flag adds an allocation-free metadata scan during
 construction, stopping at the first name. Construction latency was not measured.
 

@@ -1,9 +1,9 @@
-import keep, measure from "@std/bench.ms"
+import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
-import pack, unpack, ArchiveEntry from "@std/archive.ms"
-import decoder, SseDecoder from "@std/sse.ms"
-import parse_timestamp from "@std/time.ms"
-import uuid_v4 from "@std/random.ms"
+import pack, unpack, ArchiveEntry from "@std/io/archive.ms"
+import decoder, SseDecoder from "@std/net/sse.ms"
+import parse_timestamp from "@std/os/time.ms"
+import uuid_v4 from "@std/os/random.ms"
 
 fn entries(count: Int) List[ArchiveEntry]:
     var out: List[ArchiveEntry] = []

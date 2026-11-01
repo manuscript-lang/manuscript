@@ -110,7 +110,7 @@ Usually keep the concrete domain error type. To accept several error types, use 
 
 ```manuscript
 import Bytes from "@std/bytes.ms"
-import hex_decode from "@std/encoding.ms"
+import hex_decode from "@std/data/encoding.ms"
 
 fn decode(text: String) Result[Bytes, Error]:
     let bytes = try hex_decode(text)

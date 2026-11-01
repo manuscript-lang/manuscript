@@ -1,7 +1,7 @@
 import expect_equal from "@std/testing.m\{s"
-import ListBuilder from "@std/collections.ms"
-import MapBuilder from "@std/collections.ms"
-import SetBuilder from "@std/collections.ms"
+import ListBuilder from "@std/collections/collections.ms"
+import MapBuilder from "@std/collections/collections.ms"
+import SetBuilder from "@std/collections/collections.ms"
 import BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 

@@ -1,7 +1,7 @@
 # conform: tags=numbers,types,tier-core
 # conform: phase=run
 # conform: origin=unsigned integer types stage 1
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 type Pixel:
     r: UInt8

@@ -1,4 +1,4 @@
-import parse, JsonValue, JsonError from "@std/json.ms"
+import parse, JsonValue, JsonError from "@std/data/json.ms"
 
 export fn main() Int:
     let n = 50000

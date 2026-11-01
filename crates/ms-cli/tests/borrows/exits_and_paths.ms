@@ -1,4 +1,4 @@
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 
 type Box:
     items: List[Int]

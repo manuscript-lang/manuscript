@@ -1,7 +1,7 @@
 # conform: tags=closures,faults,stdlib-tasks,tier-stdlib,scope-cleanup
 # conform: phase=run
-import stdout from "@std/io.ms"
-import TaskError, TaskGroup from "@std/tasks.ms"
+import stdout from "@std/io/io.ms"
+import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
 
 fn boom(xs: List[Int]) Int:
     return xs.get(5)

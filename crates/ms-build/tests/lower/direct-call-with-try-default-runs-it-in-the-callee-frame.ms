@@ -1,7 +1,7 @@
 # Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
 # expect-mir: "call.ind"
 
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import TextError from "@std/core.ms"
 
 fn fail() Result[Int, TextError]: return error(TextError("no"))

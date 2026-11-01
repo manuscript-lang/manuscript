@@ -1,6 +1,6 @@
-import TerminalEvent, EraseRegion, raw_mode from "@std/io.ms"
-import stdout from "@std/io.ms"
-import nanoseconds from "@std/time.ms"
+import TerminalEvent, EraseRegion, raw_mode from "@std/io/io.ms"
+import stdout from "@std/io/io.ms"
+import nanoseconds from "@std/os/time.ms"
 
 fn describe(e: TerminalEvent) String:
     match e:

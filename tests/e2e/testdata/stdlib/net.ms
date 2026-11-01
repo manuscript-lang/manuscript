@@ -1,4 +1,4 @@
-import expect_equal, expect_error, expect_false from "@std/test.ms"
+import expect_equal, expect_error, expect_false from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 import (
     bind_datagram,
@@ -16,10 +16,10 @@ import (
     IpFamily,
     Listener,
     Connection
-) from "@std/net.ms"
-import Shared, share from "@std/shared.ms"
-import TaskGroup from "@std/tasks.ms"
-import sleep from "@std/time.ms"
+) from "@std/net/net.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import sleep from "@std/os/time.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")

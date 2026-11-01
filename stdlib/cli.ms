@@ -8,7 +8,7 @@
 #
 # ```manuscript
 # import Arg, Command, Flag, FlagKind, command from "@std/cli.ms"
-# import arguments from "@std/process.ms"
+# import arguments from "@std/os/process.ms"
 #
 # type Greeting:
 #     name: String
@@ -28,8 +28,8 @@
 #     return Command(name: "tool", children: [greeting]).execute(arguments())
 # ```
 import Data from "@std/core.ms"
-import stderr, stdout from "@std/io.ms"
-import parse, stringify from "@std/json.ms"
+import stderr, stdout from "@std/io/io.ms"
+import parse, stringify from "@std/data/json.ms"
 
 # Errors returned while checking a command schema or parsing arguments.
 export type CliError:

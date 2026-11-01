@@ -1,8 +1,8 @@
 # conform: tags=closures,decimal,modules,optional,records,stdlib-decimal,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cl-15.ms
-import expect_equal, expect_not_equal from "@std/test.ms"
-import Decimal from "@std/decimal.ms"
+import expect_equal, expect_not_equal from "@std/test/test.ms"
+import Decimal from "@std/math/decimal.ms"
 
 type Callback:
     handler: fn(Int) Int

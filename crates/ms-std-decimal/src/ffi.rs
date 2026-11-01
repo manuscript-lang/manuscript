@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/decimal.ms`. A `Decimal` crosses as a pointer to [`Dec`] and results come
+//! C ABI shims for `@std/math/decimal.ms`. A `Decimal` crosses as a pointer to [`Dec`] and results come
 //! back through a trailing `out` pointer.
 
 use crate::{Dec, Mode, Overflow, RoundFail, overflow_message};

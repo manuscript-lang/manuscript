@@ -1,6 +1,6 @@
 import Closeable, Iterator from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
-import Duration from "@std/time.ms"
+import Duration from "@std/os/time.ms"
 import msstd_terminal_event_kind, msstd_terminal_event_text, msstd_terminal_event_ctrl, msstd_terminal_event_alt, msstd_terminal_event_shift, msstd_terminal_event_columns, msstd_terminal_event_rows from "@std/internal/io.ms"
 
 extern fn msstd_io_copy(

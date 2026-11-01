@@ -1,7 +1,7 @@
 # conform: tags=scope-cleanup,records,interfaces,tier-io
 # conform: phase=run
 # conform: origin=value-semantics-audit
-import stdout from "@std/io.ms"
+import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 # A temporary holding a resource that is only read closes it once, at the end of its statement.

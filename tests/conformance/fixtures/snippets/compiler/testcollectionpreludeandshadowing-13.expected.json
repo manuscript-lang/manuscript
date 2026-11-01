@@ -33,7 +33,7 @@
             "file": "testcollectionpreludeandshadowing-13.ms",
             "line": 5,
             "column": 1,
-            "offset": 225
+            "offset": 237
           },
           "replacement": ""
         }
@@ -46,14 +46,14 @@
           "file": "testcollectionpreludeandshadowing-13.ms",
           "line": 6,
           "column": 1,
-          "offset": 226
+          "offset": 238
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testcollectionpreludeandshadowing-13.ms:4:8: resolution: redundant prelude import Map; remove Map from this import and use its prelude declaration directly\n   |\n 4 | import Map from \"@std/collections.ms\"\n   |        ^^^\n<DIR>/testcollectionpreludeandshadowing-13.ms:6:1: resolution: declaration Map reuses a prelude name; rename it, because Map always refers to the standard declaration\n   |\n 6 | type Map[K, V]:\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testcollectionpreludeandshadowing-13.ms:4:8: resolution: redundant prelude import Map; remove Map from this import and use its prelude declaration directly\n   |\n 4 | import Map from \"@std/collections/collections.ms\"\n   |        ^^^\n<DIR>/testcollectionpreludeandshadowing-13.ms:6:1: resolution: declaration Map reuses a prelude name; rename it, because Map always refers to the standard declaration\n   |\n 6 | type Map[K, V]:\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

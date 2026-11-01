@@ -1,4 +1,4 @@
-import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import (
     buffered,
     headers,
@@ -10,8 +10,8 @@ import (
     HttpError,
     HttpClientOptions,
     HttpServerOptions
-) from "@std/http.ms"
-import http_client, request, serve from "@std/net.ms"
+) from "@std/net/http.ms"
+import http_client, request, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 
 fn repeated_headers() HttpHeaders!:

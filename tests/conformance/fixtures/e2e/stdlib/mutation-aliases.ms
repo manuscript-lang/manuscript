@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,interfaces,lists,maps,match,modules,mutation,optional,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/mutation-aliases.ms
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 test "Map remove direct and bound preserve order and no-op absence":
     var values = Map[Int, String]()

@@ -1,6 +1,6 @@
-import expect_equal, expect_false, expect_ok, expect_true from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
 import TextError from "@std/core.ms"
-import FileSystemError, copy_file, copy_tree, create_directory, list, read_file, remove, stat, temporary, write_file, write_file_bytes from "@std/fs.ms"
+import FileSystemError, copy_file, copy_tree, create_directory, list, read_file, remove, stat, temporary, write_file, write_file_bytes from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 fn generic_write(path: String, data: String) Unit!FileSystemError:

@@ -2,10 +2,10 @@
 # conform: phase=run
 # Cancelling a task must drop every owned value its frames hold, whatever shape holds it.
 # CI runs this program against the counting runtime (scripts/leak-check.sh): any live block fails.
-import stdout from "@std/io.ms"
-import TaskGroup from "@std/tasks.ms"
-import nanoseconds, sleep from "@std/time.ms"
-import Channel from "@std/channels.ms"
+import stdout from "@std/io/io.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import nanoseconds, sleep from "@std/os/time.ms"
+import Channel from "@std/io/channels.ms"
 
 type Box:
     name: String

@@ -1,9 +1,9 @@
 import Closeable from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
-import Duration from "@std/time.ms"
-import IpFamily from "@std/net.ms"
-import ReadStream from "@std/io.ms"
-import WriteStream from "@std/io.ms"
+import Duration from "@std/os/time.ms"
+import IpFamily from "@std/net/net.ms"
+import ReadStream from "@std/io/io.ms"
+import WriteStream from "@std/io/io.ms"
 import msrt_args, msstd_system_endianness, msstd_system_end_of_line, msstd_system_dev_null, msstd_system_os_type, msstd_system_constants from "@std/internal/process.ms"
 
 extern fn msstd_process_commands() Commands

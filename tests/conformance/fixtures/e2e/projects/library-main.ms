@@ -1,18 +1,18 @@
 # conform: tags=control-flow,diagnostics,faults,generics,match,modules,stdlib-fs,stdlib-path,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,strings,tier-io,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/library/main.ms
-import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
-import memory_usage, process_info from "@std/process.ms"
-import arguments from "@std/process.ms"
-import random_bytes from "@std/random.ms"
-import append_file, open, read_file, remove, stat, watch_native, write_file from "@std/fs.ms"
-import system_info from "@std/process.ms"
-import now from "@std/time.ms"
-import uuid_v4 from "@std/random.ms"
-import secure_int from "@std/random.ms"
-import parse_timestamp from "@std/time.ms"
-import posix from "@std/fs.ms"
-import win32 from "@std/fs.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
+import memory_usage, process_info from "@std/os/process.ms"
+import arguments from "@std/os/process.ms"
+import random_bytes from "@std/os/random.ms"
+import append_file, open, read_file, remove, stat, watch_native, write_file from "@std/os/fs.ms"
+import system_info from "@std/os/process.ms"
+import now from "@std/os/time.ms"
+import uuid_v4 from "@std/os/random.ms"
+import secure_int from "@std/os/random.ms"
+import parse_timestamp from "@std/os/time.ms"
+import posix from "@std/os/fs.ms"
+import win32 from "@std/os/fs.ms"
 
 fn common_result[T, E: Error](result: T!E) T!:
     match result:

@@ -1,7 +1,7 @@
-import ascii_decode, EncodingError from "@std/encoding.ms"
+import ascii_decode, EncodingError from "@std/data/encoding.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import from_scalars from "@std/string.ms"
-import expect_equal from "@std/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "ASCII decoding preserves every seven-bit byte including NUL":
     var raw = BytesBuilder()

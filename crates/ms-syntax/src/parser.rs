@@ -1751,8 +1751,8 @@ impl<'a> Parser<'a> {
                         "del" => return self.fail(t, "'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"),
                         "global" | "nonlocal" => return self.fail(t, format!("'{n}' is not a keyword; a fn sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly")),
                         "yield" => return self.fail(t, "'yield' is not a keyword; there are no generators, so build a list and return it"),
-                        "async" | "await" => return self.fail(t, format!("'{n}' is not a keyword; call the function directly, or start concurrent work with a TaskGroup from \"@std/tasks.ms\" bound to a local")),
-                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": let group = TaskGroup[T](), then group.spawn(fn ch: work())"),
+                        "async" | "await" => return self.fail(t, format!("'{n}' is not a keyword; call the function directly, or start concurrent work with a TaskGroup from \"@std/concurrency/tasks.ms\" bound to a local")),
+                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/concurrency/tasks.ms\": let group = TaskGroup[T](), then group.spawn(fn ch: work())"),
                         _ => {}
                     }
                 }
@@ -2096,7 +2096,7 @@ impl<'a> Parser<'a> {
                 let right = self.expression(RANGE_LEVEL + 1)?;
                 if self.kind() == Tok::DotDot {
                     let t = self.peek();
-                    return self.fail(t, "a range cannot chain; write one 'start..end', or use range_by for a step from \"@std/collections.ms\"");
+                    return self.fail(t, "a range cannot chain; write one 'start..end', or use range_by for a step from \"@std/collections/collections.ms\"");
                 }
                 e = self.range(e, right);
                 continue;
@@ -2436,7 +2436,7 @@ impl<'a> Parser<'a> {
                     }
                     (Tok::Gt, Tok::Lt) => "'<>' is not an operator; write '!=' for inequality",
                     (Tok::Star, Tok::Star) => {
-                        "there is no '**' power operator; multiply explicitly or call a function from @std/math.ms"
+                        "there is no '**' power operator; multiply explicitly or call a function from @std/math/math.ms"
                     }
                     (Tok::Comma | Tok::RParen, Tok::Colon) => {
                         "a label before ':' needs a value, e.g. count: 1"

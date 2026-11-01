@@ -1,10 +1,10 @@
-import expect_equal, expect_false, expect_ok, expect_true from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
 import TextError from "@std/core.ms"
-import ControlError, cpu_usage, groups, memory_usage, process_info, replace, resource_usage, set_groups, set_identity from "@std/process.ms"
-import FileSystemError, FileEvent, FileWatcher, join, create_directory, stat_filesystem, temporary, watch, watch_native, write_file from "@std/fs.ms"
-import milliseconds, sleep from "@std/time.ms"
-import TaskGroup from "@std/tasks.ms"
-import Shared, share from "@std/shared.ms"
+import ControlError, cpu_usage, groups, memory_usage, process_info, replace, resource_usage, set_groups, set_identity from "@std/os/process.ms"
+import FileSystemError, FileEvent, FileWatcher, join, create_directory, stat_filesystem, temporary, watch, watch_native, write_file from "@std/os/fs.ms"
+import milliseconds, sleep from "@std/os/time.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 
 fn expect_process_error[T](outcome: T!ControlError, expected: ControlError) Unit!:
     match outcome:

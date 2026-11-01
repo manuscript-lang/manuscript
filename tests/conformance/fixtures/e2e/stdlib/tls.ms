@@ -1,14 +1,14 @@
 # conform: tags=diagnostics,faults,interpolation,lists,maps,modules,stdlib-http,stdlib-net,stdlib-testing,stdlib-time,stdlib-tls,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/stdlib/tls.ms
-import expect_equal, expect_false, expect_ok from "@std/test.ms"
+import expect_equal, expect_false, expect_ok from "@std/test/test.ms"
 import http_result from "./support/http.ms"
-import headers, HttpMethod, buffered from "@std/http.ms"
+import headers, HttpMethod, buffered from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
-import parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions from "@std/net.ms"
-import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/http.ms"
-import http_client, serve from "@std/net.ms"
-import timestamp from "@std/time.ms"
+import parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions from "@std/net/net.ms"
+import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/net/http.ms"
+import http_client, serve from "@std/net/net.ms"
+import timestamp from "@std/os/time.ms"
 import certificate, private_key from "./support/certificates.ms"
 
 fn hello(exchange: HttpExchange) Unit!HttpError:

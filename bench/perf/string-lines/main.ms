@@ -1,5 +1,5 @@
-import stdout from "@std/io.ms"
-import monotonic from "@std/time.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
 
 fn sum_lines(text: String) Int:
     let lines = text.lines()

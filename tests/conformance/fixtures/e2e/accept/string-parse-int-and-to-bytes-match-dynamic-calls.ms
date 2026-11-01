@@ -1,7 +1,7 @@
 # conform: tags=match,modules,optional,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/string-parse-int-and-to-bytes-match-dynamic-calls.ms
-import expect_true from "@std/test.ms"
+import expect_true from "@std/test/test.ms"
 
 fn parsed(text: String) Int:
     match text.parse_int():

@@ -1,5 +1,5 @@
 import TextError from "@std/core.ms"
-import expect_equal, expect_false from "@std/test.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
 
 fn apply[T, U](value: T, transform: fn(T) U) U: transform(value)
 

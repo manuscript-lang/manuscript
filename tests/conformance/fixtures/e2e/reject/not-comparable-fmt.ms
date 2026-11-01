@@ -1,7 +1,7 @@
 # conform: tags=formatter,modules,parser,records,stdlib-math,tier-stdlib
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/reject/not-comparable.ms
-import max from "@std/math.ms"
+import max from "@std/math/math.ms"
 
 type Point:
     x: Int

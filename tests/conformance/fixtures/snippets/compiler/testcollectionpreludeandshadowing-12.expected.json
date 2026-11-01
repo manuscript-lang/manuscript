@@ -33,7 +33,7 @@
             "file": "testcollectionpreludeandshadowing-12.ms",
             "line": 5,
             "column": 1,
-            "offset": 213
+            "offset": 225
           },
           "replacement": ""
         }
@@ -46,26 +46,26 @@
           "file": "testcollectionpreludeandshadowing-12.ms",
           "line": 5,
           "column": 8,
-          "offset": 220
+          "offset": 232
         },
         "end": {
           "file": "testcollectionpreludeandshadowing-12.ms",
           "line": 5,
           "column": 12,
-          "offset": 224
+          "offset": 236
         },
         "fix": {
           "position": {
             "file": "testcollectionpreludeandshadowing-12.ms",
             "line": 5,
             "column": 1,
-            "offset": 213
+            "offset": 225
           },
           "end": {
             "file": "testcollectionpreludeandshadowing-12.ms",
             "line": 6,
             "column": 1,
-            "offset": 252
+            "offset": 276
           },
           "replacement": ""
         }
@@ -78,14 +78,14 @@
           "file": "testcollectionpreludeandshadowing-12.ms",
           "line": 5,
           "column": 8,
-          "offset": 220
+          "offset": 232
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testcollectionpreludeandshadowing-12.ms:4:8: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 4 | import List from \"@std/collections.ms\"\n   |        ^^^^\n<DIR>/testcollectionpreludeandshadowing-12.ms:5:8: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 5 | import List from \"@std/collections.ms\"\n   |        ^^^^\n<DIR>/testcollectionpreludeandshadowing-12.ms:5:8: resolution: duplicate or intrinsic name List; this name is already declared, imported, or built in, so rename one of them\n   |\n 5 | import List from \"@std/collections.ms\"\n   |        ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testcollectionpreludeandshadowing-12.ms:4:8: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 4 | import List from \"@std/collections/collections.ms\"\n   |        ^^^^\n<DIR>/testcollectionpreludeandshadowing-12.ms:5:8: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 5 | import List from \"@std/collections/collections.ms\"\n   |        ^^^^\n<DIR>/testcollectionpreludeandshadowing-12.ms:5:8: resolution: duplicate or intrinsic name List; this name is already declared, imported, or built in, so rename one of them\n   |\n 5 | import List from \"@std/collections/collections.ms\"\n   |        ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

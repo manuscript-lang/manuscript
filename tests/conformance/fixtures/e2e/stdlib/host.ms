@@ -1,11 +1,11 @@
 # conform: tags=control-flow,faults,modules,optional,stdlib-io,stdlib-process,stdlib-system,stdlib-testing,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/host.ms
-import expect_equal, expect_false, expect_not_equal from "@std/test.ms"
-import arguments from "@std/process.ms"
-import endianness, end_of_line, os_type, dev_null, system_info from "@std/process.ms"
-import CommandError, CommandOutput, Stdio, run, spawn, environment, process_info, set_environment from "@std/process.ms"
-import read_line from "@std/io.ms"
+import expect_equal, expect_false, expect_not_equal from "@std/test/test.ms"
+import arguments from "@std/os/process.ms"
+import endianness, end_of_line, os_type, dev_null, system_info from "@std/os/process.ms"
+import CommandError, CommandOutput, Stdio, run, spawn, environment, process_info, set_environment from "@std/os/process.ms"
+import read_line from "@std/io/io.ms"
 
 test "CLI test roots have empty arguments and host metadata agrees":
     try expect_false(not arguments().is_empty())

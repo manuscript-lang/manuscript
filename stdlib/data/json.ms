@@ -1,5 +1,5 @@
 import Data from "@std/core.ms"
-import parse_float from "@std/math.ms"
+import parse_float from "@std/math/math.ms"
 
 # The compiler lowers these two calls from the type argument; see `json_parse` and `json_stringify` in ms-lower.
 extern fn msrt_json_parse[T](

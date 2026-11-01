@@ -1,6 +1,6 @@
-import stdout from "@std/io.ms"
-import monotonic from "@std/time.ms"
-import parse from "@std/csv.ms"
+import stdout from "@std/io/io.ms"
+import monotonic from "@std/os/time.ms"
+import parse from "@std/data/csv.ms"
 
 # Parses 5000 rows 200 times and prints the best run in microseconds.
 # The "quoted" shape has quoted and escaped cells; "plain" has none.

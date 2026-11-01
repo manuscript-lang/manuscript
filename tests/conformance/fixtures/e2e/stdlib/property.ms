@@ -14,7 +14,7 @@ import (
     constant
 ) from "@std/test/property.ms"
 import panic from "@std/core.ms"
-import expect_equal, expect_true, expect_contains, expect_error from "@std/test.ms"
+import expect_equal, expect_true, expect_contains, expect_error from "@std/test/test.ms"
 
 test "a true property passes":
     try check(

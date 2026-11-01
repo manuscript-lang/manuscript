@@ -1,5 +1,5 @@
-import expect_equal, expect_false from "@std/test.ms"
-import JsonLimits from "@std/json.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
+import JsonLimits from "@std/data/json.ms"
 
 type Counter:
     calls: Int

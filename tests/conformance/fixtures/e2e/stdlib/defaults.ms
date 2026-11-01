@@ -1,10 +1,10 @@
 # conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,lists,match,modules,mutation,optional,records,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-process,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/defaults.ms
-import expect_equal, expect_false from "@std/test.ms"
-import parse, stringify, CsvOptions, CsvError from "@std/csv.ms"
-import base64_encode, base64_decode, EncodingError from "@std/encoding.ms"
-import Commands, Subprocess, CommandOutput, CommandError, run, Stdio from "@std/process.ms"
+import expect_equal, expect_false from "@std/test/test.ms"
+import parse, stringify, CsvOptions, CsvError from "@std/data/csv.ms"
+import base64_encode, base64_decode, EncodingError from "@std/data/encoding.ms"
+import Commands, Subprocess, CommandOutput, CommandError, run, Stdio from "@std/os/process.ms"
 import Bytes from "@std/bytes.ms"
 
 fn forward[T](item: T) T: item
@@ -31,7 +31,7 @@ impl Commands for Capture:
     ) Subprocess!CommandError:
         return error(CommandError.Unavailable)
 
-import Duration from "@std/time.ms"
+import Duration from "@std/os/time.ms"
 
 fn generic_run[T: Commands](service: T) Bytes!:
     return ok((try service.run("fake", [])).stdout)

@@ -10,14 +10,14 @@ import (
     HttpResponse,
     reply,
     text
-) from "@std/http.ms"
-import IoError from "@std/io.ms"
-import WebSocket, WebSocketError from "@std/net.ms"
+) from "@std/net/http.ms"
+import IoError from "@std/io/io.ms"
+import WebSocket, WebSocketError from "@std/net/net.ms"
 import Logger, LogLevel, record from "@std/log.ms"
-import uuid_v4 from "@std/random.ms"
-import monotonic from "@std/time.ms"
-import Shared, share from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import uuid_v4 from "@std/os/random.ms"
+import monotonic from "@std/os/time.ms"
+import Shared, share from "@std/concurrency/shared.ms"
+import lock from "@std/concurrency/sync.ms"
 
 # Errors returned while registering a route.
 export type RouterError:

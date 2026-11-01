@@ -1,5 +1,5 @@
-import expect_equal, expect_true from "@std/test.ms"
-import parse, TomlLimits from "@std/toml.ms"
+import expect_equal, expect_true from "@std/test/test.ms"
+import parse, TomlLimits from "@std/data/toml.ms"
 import from_scalars from "@std/string.ms"
 
 fn rejected(text: String, limits: TomlLimits? = none) String:

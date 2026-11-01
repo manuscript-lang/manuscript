@@ -1,4 +1,4 @@
-//! `@std/encoding.ms` natives: Base64 (hex, UTF-16, Latin-1 and ASCII are Manuscript).
+//! `@std/data/encoding.ms` natives: Base64 (hex, UTF-16, Latin-1 and ASCII are Manuscript).
 //!
 //! Limits are `Option<i64>`; `None` is unlimited.
 #![no_std]

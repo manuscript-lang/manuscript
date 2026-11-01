@@ -2,7 +2,7 @@
 
 # List structure ops: `entries()` already is `indexed`; piece lists come from one runtime call
 
-Decision: `List.entries()` (`ListEntry` with `index`, `value`) covers the "walk with an index" need, so no `indexed()` alias was added. `zip` returns `Pair[T, U]` and `partition` returns `Partition[T]`, both exported from `@std/collections.ms` but not prelude names, so user types called `Pair` keep working. `chunks`/`windows` share `msrt_list_pieces`; `zip` and `partition` lower to loops with no closure for `zip`. A non-positive size faults.
+Decision: `List.entries()` (`ListEntry` with `index`, `value`) covers the "walk with an index" need, so no `indexed()` alias was added. `zip` returns `Pair[T, U]` and `partition` returns `Partition[T]`, both exported from `@std/collections/collections.ms` but not prelude names, so user types called `Pair` keep working. `chunks`/`windows` share `msrt_list_pieces`; `zip` and `partition` lower to loops with no closure for `zip`. A non-positive size faults.
 
 
 Apply when: adding List methods that return records or nested lists.
