@@ -1,0 +1,18 @@
+module "ifconv_triangles"
+entry @main
+fn @main() -> int {
+b0:
+  %c: bool = bconst true
+  %zero: int = iconst 0
+  br_if %c, first(), join(%zero)
+first:
+  %one: int = iconst 1
+  br join(%one)
+join(%x: int):
+  br_if %c, done(%x), second()
+second:
+  %two: int = iconst 2
+  br done(%two)
+done(%r: int):
+  ret %r
+}
