@@ -2879,7 +2879,24 @@ impl Walker<'_> {
                 }
                 Some(_) => {}
                 None => {
-                    self.facts.owned_lends.insert(e.id);
+                    // The whole of one temporary operand comes back (`id(make())`): the caller
+                    // keeps that temporary as the result instead of copying it.
+                    let whole = match (&lend.path, self.lend_operands(e, &lend)) {
+                        (Some((source, fields)), Some(operands))
+                            if fields.is_empty()
+                                && operands.len() == 1
+                                && !self.is_place(operands[0])
+                                && !matches!(operands[0].kind, ExprKind::Name(_)) =>
+                        {
+                            Some(*source)
+                        }
+                        _ => None,
+                    };
+                    let how = match whole {
+                        Some(source) => OwnedLend::Whole(source),
+                        None => OwnedLend::Copy,
+                    };
+                    self.facts.owned_lends.insert(e.id, how);
                 }
             }
         }

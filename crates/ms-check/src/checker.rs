@@ -131,7 +131,7 @@ pub struct Program {
     /// Callables whose result is a reference into their arguments (`ownership::Ownership`).
     pub lenders: Rc<HashSet<(Name, NodeId)>>,
     /// Lending calls whose result the caller owns, by module file and call node.
-    pub owned_lends: Rc<HashSet<(Name, NodeId)>>,
+    pub owned_lends: Rc<HashMap<(Name, NodeId), crate::ownership::OwnedLend>>,
     /// Conditional and match expressions whose value is a reference, by module file and node.
     pub lent_matches: Rc<HashSet<(Name, NodeId)>>,
     /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
