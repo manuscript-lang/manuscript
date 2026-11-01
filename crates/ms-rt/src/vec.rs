@@ -1063,6 +1063,27 @@ pub unsafe extern "C-unwind" fn msrt_list_join_int(
 /// Comparator thunk: `env` is the closure, `a` and `b` point at element slots.
 pub type CmpFn = unsafe extern "C-unwind" fn(env: *mut u8, a: *const u8, b: *const u8) -> i64;
 
+fn sort_is_guarded() -> bool {
+    // SAFETY: the current task's header stays live for this call.
+    unsafe {
+        (*fault::msrt_isolate_hdr())
+            .guarded
+            .load(core::sync::atomic::Ordering::Relaxed)
+            != 0
+    }
+}
+
+/// A copied sort result is not published to its caller until sorting returns.
+unsafe fn finish_sorted(out: *mut VecVal, d: &TypeDesc, sort: impl FnOnce()) {
+    if sort_is_guarded() {
+        // SAFETY: `out` owns the initialized copy; an interrupted in-place sort restores it
+        // before this cleanup drops it. The caller acquires ownership only on normal return.
+        fault::with_cleanup(&mut || unsafe { drop_list(out, d) }, sort);
+    } else {
+        sort();
+    }
+}
+
 /// [`merge_sort`] for slots that are plain machine words (`Int`, `Float`, pointers): the same
 /// stable result, with typed moves instead of calls to `memcpy` and a bidirectional merge.
 unsafe fn merge_sort_word<T: Copy>(items: *mut T, buf: *mut T, n: usize, cmp: CmpFn, env: *mut u8) {
@@ -1171,10 +1192,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
         }
         let size = d.size as usize;
         let bytes = v.len * size.max(1);
-        let guarded = (*fault::msrt_isolate_hdr())
-            .guarded
-            .load(core::sync::atomic::Ordering::Relaxed)
-            != 0;
+        let guarded = sort_is_guarded();
         // A comparator can leave a guarded task through a fault or cancellation while a
         // merge holds moved slots in scratch. Keep an immutable byte snapshot for that exit;
         // it has no ownership of its own and must never run element copy/drop hooks.
@@ -1260,21 +1278,23 @@ pub unsafe extern "C-unwind" fn msrt_list_sorted_by_difference(
     // SAFETY: caller contract: `v` holds `len` words.
     unsafe {
         copy_list(v, &*d, out);
-        let o = &mut *out;
-        if o.len < 2 {
-            return;
-        }
-        let s = core::slice::from_raw_parts_mut(o.ptr as *mut i64, o.len);
-        let (lo, hi) = s
-            .iter()
-            .fold((i64::MAX, i64::MIN), |(lo, hi), &x| (lo.min(x), hi.max(x)));
-        if hi.checked_sub(lo).is_none() {
-            msrt_list_sort_in_place(out, d, cmp, env);
-        } else if desc != 0 {
-            s.sort_unstable_by(|a, b| b.cmp(a));
-        } else {
-            s.sort_unstable();
-        }
+        finish_sorted(out, &*d, || {
+            let o = &mut *out;
+            if o.len < 2 {
+                return;
+            }
+            let s = core::slice::from_raw_parts_mut(o.ptr as *mut i64, o.len);
+            let (lo, hi) = s
+                .iter()
+                .fold((i64::MAX, i64::MIN), |(lo, hi), &x| (lo.min(x), hi.max(x)));
+            if hi.checked_sub(lo).is_none() {
+                msrt_list_sort_in_place(out, d, cmp, env);
+            } else if desc != 0 {
+                s.sort_unstable_by(|a, b| b.cmp(a));
+            } else {
+                s.sort_unstable();
+            }
+        });
     }
 }
 
@@ -1289,7 +1309,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sorted(
     // SAFETY: caller contract.
     unsafe {
         copy_list(v, &*d, out);
-        msrt_list_sort_in_place(out, d, cmp, env);
+        finish_sorted(out, &*d, || msrt_list_sort_in_place(out, d, cmp, env));
     }
 }
 
