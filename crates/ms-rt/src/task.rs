@@ -1363,6 +1363,12 @@ pub(crate) fn limit_current(limit_ns: i64) {
     }
 }
 
+/// The handle of the running task.
+pub(crate) fn current_handle() -> u64 {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe { (*ensure_init()).handle }
+}
+
 /// The scope the running task was started in by `spawn_scoped`, or 0.
 pub(crate) fn current_scope() -> i64 {
     // SAFETY: single threaded scheduler; the running task's record is live.

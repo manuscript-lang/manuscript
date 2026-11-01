@@ -1,4 +1,4 @@
-import Closeable from "@std/core.ms"
+import Closeable, Proxy from "@std/core.ms"
 
 # A reference-counted value that several owners hold at once.
 #
@@ -7,6 +7,8 @@ import Closeable from "@std/core.ms"
 # binding: the guard holds the payload for its scope and returns it when the scope ends, however
 # it ends.
 export extern type Shared[T]
+
+impl Proxy for Shared[T]:
 
 # Moves `value` into a new `Shared` with one holder; copy the result to add holders.
 export fn share[T](value: T) Shared[T]: ...

@@ -114,6 +114,9 @@ struct PlaceInfo {
     projection: bool,
     /// The path passes through a `ref` field: a read-only view of another value.
     through_ref: Option<Name>,
+    /// The path passes through a `Shared` handle into its payload: a change goes to the one
+    /// shared value, not to the binding that holds the handle.
+    through_shared: bool,
     text: String,
 }
 
@@ -448,7 +451,7 @@ impl Walker<'_> {
     /// Whether `e` is a `Copy` handle such as `Shared[T]`: it is not the storage it lends from,
     /// and another copy of the handle can change that storage, so what it lends is a copy.
     fn copy_handle(&self, e: &Expr) -> bool {
-        self.class_of(e) == Class::Copy && self.cx.m.ty(e).is_std("Shared")
+        self.class_of(e) == Class::Copy && self.cx.classes.proxy(&self.cx.m.ty(e))
     }
 
     /// The fields from a variable to a place written as a plain chain of them.
@@ -802,6 +805,7 @@ impl Walker<'_> {
                     root_node: e.id,
                     projection: false,
                     through_ref: None,
+                    through_shared: self.cx.m.info(e).through_shared.is_some(),
                     text: b.name.as_str().to_string(),
                 };
                 Some((info, p))
@@ -811,6 +815,7 @@ impl Walker<'_> {
                 let p = p.then(Step::Field(*name));
                 info.resolved = self.resolve(&p);
                 info.projection = true;
+                info.through_shared |= self.cx.m.info(e).through_shared.is_some();
                 info.text = format!("{}.{}", info.text, name);
                 Some((info, p))
             }
@@ -1423,7 +1428,11 @@ impl Walker<'_> {
             }
         }
         self.check_change(pos, &info.resolved, what, &text, Some(root.uid));
-        self.mark_mutated(root.uid);
+        // A change through a `Shared` handle leaves the binding as it was: a closure that makes
+        // it captures the handle like a read.
+        if !info.through_shared {
+            self.mark_mutated(root.uid);
+        }
         self.record(info.root_node, &root, Access::Mutate);
     }
 
@@ -1526,6 +1535,7 @@ impl Walker<'_> {
             resolved: source.origins.clone(),
             projection: true,
             through_ref: None,
+            through_shared: false,
         };
         if !probe {
             self.error(
@@ -2586,6 +2596,7 @@ impl Walker<'_> {
                         resolved: resolved.clone(),
                         projection: false,
                         through_ref: None,
+                        through_shared: false,
                         text: b.name.as_str().to_string(),
                     };
                     self.mutate(e.pos, &info, "change");

@@ -74,6 +74,24 @@ pub(crate) fn place_root(hir: &ModuleHir, e: &Expr) -> Option<usize> {
     }
 }
 
+/// The local a change through the place `e` changes: none when the place reads through a `Shared`
+/// handle, whose change goes to the shared payload and leaves the local as it was.
+pub(crate) fn changed_root(hir: &ModuleHir, e: &Expr) -> Option<usize> {
+    let mut cur = e;
+    loop {
+        if hir.info(cur).through_shared.is_some() {
+            return None;
+        }
+        if let ExprKind::Member { left, .. } = &cur.kind {
+            cur = left;
+        } else if let Some((left, _)) = index_parts(hir, cur) {
+            cur = left;
+        } else {
+            return place_root(hir, cur);
+        }
+    }
+}
+
 /// Whether evaluating `e` can return early through `try`.
 pub(crate) fn has_try(e: &Expr) -> bool {
     struct Tries(bool);
@@ -242,7 +260,7 @@ impl Visitor for Mutations<'_> {
         if let StmtKind::Assign { target, value, .. } = &s.kind {
             let root = match target {
                 AssignTarget::Name(_) => self.hir.assigned(value).map(|b| b.uid),
-                AssignTarget::Member(t) => place_root(self.hir, t),
+                AssignTarget::Member(t) => changed_root(self.hir, t),
             };
             self.roots.extend(root);
         }
@@ -264,14 +282,14 @@ impl Visitor for Mutations<'_> {
                 if let ExprKind::Member { left, .. } = &c.kind
                     && ms_check::effects::collection_mutation(m)
                 {
-                    self.roots.extend(place_root(self.hir, left));
+                    self.roots.extend(changed_root(self.hir, left));
                 }
             }
             Resolution::Method(m) => {
                 let Some(decl) = &m.decl else { return };
                 let callee_key = (m.module, decl.id());
                 if let ExprKind::Member { left, .. } = &c.kind
-                    && let Some(root) = place_root(self.hir, left)
+                    && let Some(root) = changed_root(self.hir, left)
                 {
                     self.edges.push(Edge {
                         root,
@@ -293,7 +311,7 @@ impl Visitor for Mutations<'_> {
 impl Mutations<'_> {
     fn argument_edges(&mut self, view: &ms_check::hir::CallView<'_>, callee: FnKey) {
         for a in &view.arguments {
-            if let Some(root) = place_root(self.hir, a.expr) {
+            if let Some(root) = changed_root(self.hir, a.expr) {
                 self.edges.push(Edge {
                     root,
                     callee,

@@ -263,6 +263,10 @@ pub struct Info {
     pub optional_argument: Option<Ty>,
     /// Wraps this value once into this Optional where a binding, return, field or element expects it.
     pub wrap_some: Option<Ty>,
+    /// This `Shared[T]` handle (the type held here) stands for its payload, whose type is `ty`.
+    pub through_shared: Option<Ty>,
+    /// This assigned value replaces the payload of the target's `Shared` handle.
+    pub into_shared: bool,
     /// A compile-time Bool constant.
     pub folded: bool,
     /// Its value.

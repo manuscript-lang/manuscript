@@ -194,6 +194,12 @@ export interface Data: ...
 # records and alternatives are copied when every field is, and every other native moves.
 export interface Copy: ...
 
+# A handle that stands for the one value it holds, built with `Handle(value)`: the value's fields,
+# `[i]` and methods are reached through the handle, and where the value's type is expected the handle
+# gives the value. Copying the handle adds a holder of the same value. Only an extern type in the
+# standard library with one type parameter declares it, with `impl Proxy for T:`; `Shared` does.
+export interface Proxy: ...
+
 # A type with a stable hash consistent with its `Equal` implementation.
 export interface Hashable:
     # Returns a stable hash consistent with `equals` for the same value.

@@ -29,6 +29,11 @@ impl<'a> FnLower<'a> {
     /// The type of the value an expression computes: while it is lowered ahead of a conversion
     /// to an interface, its own type rather than the interface.
     fn value_ty(&self, e: &Expr) -> ct::Ty {
+        if self.handle_of == Some(e as *const Expr)
+            && let Some(handle) = self.hir.info(e).through_shared
+        {
+            return handle;
+        }
         match self.hir.info(e).error_source {
             Some(src) if self.converting == Some(e as *const Expr) => src,
             _ => self.hir.ty(e),
@@ -41,9 +46,22 @@ impl<'a> FnLower<'a> {
         if self.hir.info(e).error_source.is_some() {
             self.converting = Some(e as *const Expr);
         }
+        let through_shared = self.hir.info(e).through_shared.is_some();
+        let saved_handle = self.handle_of;
+        if through_shared {
+            self.handle_of = Some(e as *const Expr);
+        }
         let x = self.expr_value(e);
         self.converting = saved;
+        self.handle_of = saved_handle;
         let x = x?;
+        // A `Shared` handle that stands for its payload reads the payload in place.
+        let x = if through_shared && !self.dead {
+            let handle = self.borrow(x);
+            self.shared_op(e, handle, "get", &[])?
+        } else {
+            x
+        };
         let x = match self.hir.info(e).error_source {
             Some(src) if !self.dead => {
                 let want = self.emty(e)?;

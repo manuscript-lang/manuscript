@@ -377,6 +377,16 @@ impl<'a> FnLower<'a> {
                         Ok(new.take().expect("one update"))
                     });
                 }
+                if self.hir.info(value).into_shared {
+                    // `box = value`: the payload is replaced in its box.
+                    let l = self.local(&b)?;
+                    let handle = self.local_get(&l);
+                    let mut new = Some(self.owned(x));
+                    return self.shared_update_handle(handle, false, &mut |s, old| {
+                        s.drop_value(old);
+                        Ok(new.take().expect("one update"))
+                    });
+                }
                 let l = self.local(&b)?;
                 let new = self.owned(x);
                 let old = self.local_take(&l);
@@ -407,11 +417,20 @@ impl<'a> FnLower<'a> {
     fn assign_member(&mut self, target: &Expr, value: &Expr, x: Val) -> Result<(), Error> {
         let mut path: Vec<&Expr> = Vec::new();
         let mut cur = target;
-        while let ExprKind::Member { left, .. } = &cur.kind {
+        while !self.through_shared(cur)
+            && let ExprKind::Member { left, .. } = &cur.kind
+        {
             path.push(cur);
             cur = left;
         }
         path.reverse();
+        if self.through_shared(cur) {
+            // A field of the payload of a `Shared`: written in its box.
+            let mut new = Some(self.owned(x));
+            return self.shared_update(cur, &mut |s, old| {
+                s.set_path(old, true, &path, new.take().expect("one update"))
+            });
+        }
         if let Some((left, index)) = crate::mutation::index_parts(&self.hir, cur) {
             // A field of a list element (`xs[i].n = 1`): the list receives the updated element.
             let i = self.expr(index)?;
@@ -479,11 +498,17 @@ impl<'a> FnLower<'a> {
     ) -> Result<(), Error> {
         let mut path: Vec<&Expr> = Vec::new();
         let mut cur = target;
-        while let ExprKind::Member { left, .. } = &cur.kind {
+        while !self.through_shared(cur)
+            && let ExprKind::Member { left, .. } = &cur.kind
+        {
             path.push(cur);
             cur = left;
         }
         path.reverse();
+        if self.through_shared(cur) {
+            // The payload of a `Shared` changes in its box.
+            return self.shared_update(cur, &mut |s, old| s.update_path(old, &path, f));
+        }
         if let Some((left, index)) = crate::mutation::index_parts(&self.hir, cur) {
             // A list element changes in place: the list receives the updated element.
             let i = self.expr(index)?;

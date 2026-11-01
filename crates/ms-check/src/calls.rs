@@ -63,6 +63,23 @@ fn bind_arguments<'a>(args: &'a [Argument], params: &[Param], positional: bool) 
 }
 
 /// Constructors use the same binding rule as functions.
+impl Checker {
+    /// The constructor of `t`: its fields, or the one value a `Proxy` handle holds.
+    fn constructor_of(&self, t: &Ty) -> Ty {
+        match self.proxy_payload(t) {
+            Some(value) => function_with(
+                vec![Param {
+                    name: n("value"),
+                    ty: value,
+                }],
+                t.clone(),
+                None,
+            ),
+            None => constructor_signature(t),
+        }
+    }
+}
+
 fn constructor_arguments<'a>(args: &'a [Argument], params: &[Param]) -> Vec<Arg<'a>> {
     function_arguments(args, params)
 }
@@ -179,7 +196,7 @@ impl Checker {
                 return i;
             }
             self.opaque_denied(e.pos, &typ, "it cannot be constructed here");
-            let mut fields = constructor_signature(&typ).params.clone();
+            let mut fields = self.constructor_of(&typ).params.clone();
             if [
                 "BigInt",
                 "Regex",
@@ -202,7 +219,7 @@ impl Checker {
             let mut resolved = bind_arguments(args, &fields, !named_only);
             i.arguments = slots(&resolved);
             typ = self.instantiate(&typ, &fields, &resolved, expected, e.pos);
-            let signature = constructor_signature(&typ);
+            let signature = self.constructor_of(&typ);
             // Invalid type arity can recover to a different constructor signature.
             // Retain the original labels/positional errors and written slots, but
             // check those names against the recovered signature as before.

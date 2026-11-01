@@ -753,7 +753,7 @@ impl Checker {
     /// value alias one payload, so a key stored in a Map or Set could change its
     /// hash through another handle.
     fn shares_state(&self, t: &Ty, seen: &mut Vec<String>) -> bool {
-        if t.is_std("Shared") {
+        if self.proxy_payload(t).is_some() {
             return true;
         }
         let key = type_key(t);
@@ -799,6 +799,20 @@ impl Checker {
     }
 
     /// Whether an `impl Data for` the type exists.
+    /// The value a handle of `t` stands for: `t` declares `impl Proxy` (an extern type of the
+    /// standard library with one type parameter, such as `Shared[T]`).
+    pub(crate) fn proxy_payload(&self, t: &Ty) -> Option<Ty> {
+        if t.kind != Kind::Native || t.args.len() != 1 {
+            return None;
+        }
+        let declared = self.p.methods.iter().any(|m| {
+            m.decl.is_none()
+                && m.receiver.id == t.id
+                && m.contract.as_ref().is_some_and(|c| c.is_std("Proxy"))
+        });
+        declared.then(|| t.args[0].clone())
+    }
+
     fn declares_data(&self, t: &Ty) -> bool {
         self.p.methods.iter().any(|m| {
             self.method_visible(m)

@@ -223,6 +223,10 @@ impl<'a> FnLower<'a> {
     /// Whether a place permits writeback: an owned local or shared mutable storage.
     /// A read-only borrow (a parameter of a default frame) takes no update.
     fn place_is_owned(&mut self, place: &Expr) -> bool {
+        // A change through a `Shared` handle goes to its box, whoever holds the handle.
+        if self.shared_root(place).is_some() {
+            return true;
+        }
         let Some(uid) = crate::mutation::place_root(&self.hir, place) else {
             return false;
         };
@@ -361,13 +365,20 @@ impl<'a> FnLower<'a> {
             return Ok(self.dummy(MTy::UNIT));
         }
         let owned_mask = self.cx.owned_mask(c);
+        let vars = self.cx.var_positions(c);
+        // A call that reads through a `Shared` handle holds its box until it returns.
+        let holds = self.shared_hold(&args.places)?;
+        let in_memory = self.memory_places(&vars, &args.places)?;
+        let mut subst = subst.clone();
+        if in_memory.is_some() {
+            subst.insert(ct::n(crate::func::IN_MEMORY), ct::primitive("in memory"));
+        }
         let fid = if owned_mask.is_some() {
             let scope = self.evidence();
-            self.cx.function_owned(self.b.m, c, subst, scope)?
+            self.cx.function_owned(self.b.m, c, &subst, scope)?
         } else {
-            self.instance(c, subst)?
+            self.instance(c, &subst)?
         };
-        let vars = self.cx.var_positions(c);
         // A changed parameter is moved into a slot the callee takes from and puts back into.
         let mut slots_out: Vec<(usize, Value, MTy, bool)> = Vec::new();
         let mut vals: Vec<Value> = Vec::new();
@@ -384,6 +395,10 @@ impl<'a> FnLower<'a> {
                 }
                 continue;
             }
+            if let Some(ptr) = in_memory.as_ref().and_then(|ps| ps.get(&i)) {
+                vals.push(*ptr);
+                continue;
+            }
             let ty = self.ty_of(a.v);
             // A variable that lives in memory (a closure shares it) is passed by its own slot:
             // the callee changes it in place, so nothing is copied in or written back.
@@ -393,7 +408,7 @@ impl<'a> FnLower<'a> {
                     .get(i)
                     .cloned()
                     .flatten()
-                    .filter(|p| matches!(p.kind, ExprKind::Name(_)))
+                    .filter(|p| matches!(p.kind, ExprKind::Name(_)) && !self.through_shared(p))
                     .and_then(|p| match self.hir.resolution(&p) {
                         ms_check::hir::Resolution::Local(b)
                             if !self.aliases.contains_key(&b.uid) =>
@@ -409,7 +424,9 @@ impl<'a> FnLower<'a> {
             if vars.len() == 1
                 && !a.own
                 && let Some(place) = args.places.get(i).cloned().flatten()
-                && (!matches!(place.kind, ExprKind::Name(_)) || self.is_alias_name(&place))
+                && (!matches!(place.kind, ExprKind::Name(_))
+                    || self.is_alias_name(&place)
+                    || self.through_shared(&place))
                 && self.is_place(&place)
                 && self.place_is_owned(&place)
             {
@@ -480,7 +497,82 @@ impl<'a> FnLower<'a> {
                 _ => self.drop_value(new),
             }
         }
+        self.shared_release(holds)?;
         Ok(self.val(v, true))
+    }
+
+    /// The memory of each `var` argument, when the callee changes it there (`IN_MEMORY`): inside
+    /// an in-memory instance, or when an argument is in a `Shared` box. None when an argument has
+    /// no address, such as a list element.
+    fn memory_places(
+        &mut self,
+        vars: &[usize],
+        places: &[Option<Expr>],
+    ) -> Result<Option<std::collections::HashMap<usize, Value>>, Error> {
+        let wanted = self.in_memory()
+            || vars.iter().any(|&i| {
+                places
+                    .get(i)
+                    .and_then(|p| p.as_ref())
+                    .is_some_and(|p| self.shared_root(p).is_some())
+            });
+        if vars.is_empty() || !wanted {
+            return Ok(None);
+        }
+        let mut ptrs = std::collections::HashMap::new();
+        for &i in vars {
+            let Some(place) = places.get(i).and_then(|p| p.clone()) else {
+                return Ok(None);
+            };
+            let Some(ptr) = self.place_ptr(&place)? else {
+                return Ok(None);
+            };
+            ptrs.insert(i, ptr);
+        }
+        Ok(Some(ptrs))
+    }
+
+    /// The address of a place: a local in memory, the payload of a `Shared` box, or a record
+    /// field of either.
+    fn place_ptr(&mut self, place: &Expr) -> Result<Option<Value>, Error> {
+        if self.through_shared(place) {
+            return self.shared_payload_ptr(place).map(Some);
+        }
+        match &place.kind {
+            ExprKind::Name(_) => Ok(match self.hir.resolution(place) {
+                ms_check::hir::Resolution::Local(b) if !self.aliases.contains_key(&b.uid) => {
+                    self.locals.get(&b.uid).and_then(|l| l.slot)
+                }
+                _ => None,
+            }),
+            ExprKind::Member { left, name } => {
+                let ty = self.emty(left)?;
+                let TyKind::Rec(rec) = self.b.m.types.kind(ty).clone() else {
+                    return Ok(None);
+                };
+                let Some(at) = self.b.m.records[rec.index()]
+                    .fields
+                    .iter()
+                    .position(|f| f.0 == name.as_str())
+                else {
+                    return Ok(None);
+                };
+                let Some(base) = self.place_ptr(left)? else {
+                    return Ok(None);
+                };
+                Ok(Some(
+                    self.b
+                        .emit(
+                            Op::PtrField,
+                            &[base],
+                            ms_mir::ir::Imm::Field(rec, at as u32),
+                            Some(MTy::PTR),
+                        )
+                        .expect("field"),
+                ))
+            }
+            _ => Ok(None),
+        }
     }
 
     /// Whether `e` names an exclusive borrow of another place (`if var x = ...`, `c?.f()`).
@@ -893,6 +985,9 @@ impl<'a> FnLower<'a> {
             || ms_check::effects::is_text_builder(&t)
         {
             return self.construct_collection(view, mt);
+        }
+        if matches!(self.b.m.types.kind(mt), TyKind::Obj(n, _) if n == "Shared") {
+            return self.construct_shared(view, &t, mt);
         }
         // Parameter names and types of the constructor.
         let params: Vec<ct::Param> = match case {

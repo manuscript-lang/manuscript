@@ -24,6 +24,8 @@ pub struct Classifier {
     closeable: HashSet<Name>,
     /// Natives declaring `impl Copy`: plain words, so a copy is a bit copy.
     copyable: HashSet<Name>,
+    /// Natives declaring `impl Proxy`: a copy is another handle to the same value.
+    proxies: HashSet<Name>,
 }
 
 impl Classifier {
@@ -41,10 +43,22 @@ impl Classifier {
             .filter(|m| m.contract.as_ref().is_some_and(|c| c.is_std("Copy")))
             .map(|m| m.receiver.id)
             .collect();
+        let proxies = p
+            .methods
+            .iter()
+            .filter(|m| m.contract.as_ref().is_some_and(|c| c.is_std("Proxy")))
+            .map(|m| m.receiver.id)
+            .collect();
         Classifier {
             closeable,
             copyable,
+            proxies,
         }
+    }
+
+    /// Whether `t` is a `Proxy` handle: copies of it reach one shared value.
+    pub fn proxy(&self, t: &Ty) -> bool {
+        self.proxies.contains(&t.id)
     }
 
     /// Whether `t` has a `Closeable` implementation of its own, which runs on the whole value.
@@ -80,8 +94,9 @@ impl Classifier {
     fn native(&self, t: &Ty, visiting: &mut Vec<String>) -> Class {
         if self.closeable.contains(&t.id) {
             Class::Resource
-        } else if t.is_std("Shared") || self.copyable.contains(&t.id) {
-            // A declared `Copy` native is plain words. Copying `Shared` shares the box; the payload is closed once the last holder releases it.
+        } else if self.copyable.contains(&t.id) || self.proxies.contains(&t.id) {
+            // A declared `Copy` native is plain words. Copying a `Proxy` such as `Shared` shares
+            // its box; the payload is closed once the last holder releases it.
             Class::Copy
         } else if t.is_std("List") {
             // An owning collection of resources is itself a resource, closed with its elements.

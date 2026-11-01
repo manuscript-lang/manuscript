@@ -292,6 +292,22 @@ impl Checker {
                         fix,
                     );
                 }
+                if let Some(payload) = self.proxy_payload(&b.ty) {
+                    // `box = value` replaces the payload when the value is a payload, and points
+                    // the binding at another box when it is a handle.
+                    let inferred = self.infer(value, Some(&payload));
+                    let handle = inferred.t().id == b.ty.id;
+                    let mut i = self.check_expression(
+                        value,
+                        inferred,
+                        Some(if handle { &b.ty } else { &payload }),
+                    );
+                    if !handle {
+                        i.into_shared = true;
+                        self.set_info(value, i.clone());
+                    }
+                    return (!i.no_return, i.breaks);
+                }
                 let i = self.expression(value, Some(&b.ty));
                 (!i.no_return, i.breaks)
             }
@@ -1484,7 +1500,10 @@ impl Checker {
     /// `receiver[index]` over a List, Map or Bytes.
     pub(crate) fn index(&mut self, e: &Expr, left: &Expr, right: &Expr) -> Info {
         let receiver = self.expression(left, None);
-        let rt = receiver.t();
+        let mut rt = receiver.t();
+        if let Some(payload) = self.through_shared(left, &rt, n("index")) {
+            rt = payload;
+        }
         if rt.id == "<invalid>" && matches!(right.kind, ExprKind::Name(_)) {
             // An unresolved receiver was reported; its bracket argument is probably a type argument.
             return Info {

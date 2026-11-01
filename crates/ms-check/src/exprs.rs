@@ -220,7 +220,13 @@ impl Checker {
                 && exp.id != "<invalid>"
                 && !compatible(&Some(actual.clone()), exp)
             {
-                if self.interface_assignable(&actual, exp) {
+                if let Some(payload) = self.proxy_payload(&actual)
+                    && compatible(&Some(payload.clone()), exp)
+                {
+                    // A handle where its payload is expected stands for the payload.
+                    i.through_shared = Some(actual.clone());
+                    i.ty = Some(payload);
+                } else if self.interface_assignable(&actual, exp) {
                     i.error_source = Some(actual.clone());
                     i.scoped_error = exp.is_std("Error") && self.error_needs_scope(&actual);
                     i.ty = Some(exp.clone());
@@ -306,6 +312,20 @@ impl Checker {
         }
         self.set_info(e, i.clone());
         i
+    }
+
+    /// A member that a `Proxy` handle such as `Shared[T]` does not declare is `T`'s: the handle
+    /// stands for its payload, recorded on `left`. Returns the payload type.
+    pub(crate) fn through_shared(&mut self, left: &Expr, rt: &Ty, name: Name) -> Option<Ty> {
+        let payload = self.proxy_payload(rt)?;
+        if !self.methods(rt, name).is_empty() {
+            return None;
+        }
+        let mut info = self.info_of(left).unwrap_or_default();
+        info.through_shared = Some(rt.clone());
+        info.ty = Some(payload.clone());
+        self.set_info(left, info);
+        Some(payload)
     }
 
     /// Infers an expression's facts without committing them.
@@ -630,9 +650,12 @@ impl Checker {
             .map(|(_, count)| count);
         let receiver = self.expression(left, None);
         i.no_return = receiver.no_return;
-        let rt = receiver.t();
+        let mut rt = receiver.t();
         if rt.id == "<invalid>" {
             return i;
+        }
+        if let Some(payload) = self.through_shared(left, &rt, name) {
+            rt = payload;
         }
         if rt.kind == Kind::Record
             && name != "to_string"

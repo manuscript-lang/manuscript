@@ -161,6 +161,77 @@ crate::isolate_static! {
     static WAIT_QUEUES: Option<HashMap<usize, VecDeque<i64>>> = None;
 }
 
+crate::isolate_static! {
+    /// The task that holds each `Shared` box for a call, and the box's in-use flag, by box identity.
+    static HOLDERS: Option<HashMap<usize, (u64, usize)>> = None;
+}
+
+fn holders() -> &'static mut HashMap<usize, (u64, usize)> {
+    // SAFETY: only the scheduler thread of an isolate reaches its holders.
+    unsafe { (*HOLDERS.ptr()).get_or_insert_with(HashMap::new) }
+}
+
+/// Marks the box `key` in use by the running task for a call, through its flag `taken`. Returns
+/// the cleanup handle that ends the hold: run when the call returns, or on the cleanup path when
+/// the task is cancelled or faults inside the call.
+///
+/// # Safety
+/// `taken` is the in-use flag of the live box `key`, and the box outlives the hold.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_shared_hold(key: i64, taken: *mut u8) -> usize {
+    // SAFETY: the caller passes the flag of a live box.
+    unsafe { *taken = 1 };
+    holders().insert(key as usize, (task::current_handle(), taken as usize));
+    // SAFETY: `release` takes the key it is registered with.
+    unsafe { crate::fault::msrt_cleanup_push(release, key as usize as *mut u8) }
+}
+
+/// Ends the hold of the box whose identity is `key` and wakes the oldest task waiting for it.
+unsafe extern "C-unwind" fn release(key: *mut u8) {
+    let key = key as usize;
+    if let Some((_, taken)) = holders().remove(&key) {
+        // SAFETY: the box outlives its hold (`msrt_shared_hold`).
+        unsafe { *(taken as *mut u8) = 0 };
+    }
+    msrt_waitq_wake(key as i64);
+}
+
+/// Called when the box `key` is in use. Another task's hold: waits until it is released (the
+/// caller checks again). A hold of the running task, or an update without a hold (which only
+/// the running task can be in), would wait on itself: faults.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_shared_wait(key: i64) {
+    let me = task::current_handle();
+    match holders().get(&(key as usize)) {
+        Some(&(holder, _)) if holder != me => {}
+        _ => crate::fault::fault(
+            b"a Shared value was used again inside a call on it from the same task; finish the call first, or change the value inside that call",
+        ),
+    }
+    struct Ticket {
+        key: i64,
+        token: i64,
+        parked: bool,
+    }
+    impl Drop for Ticket {
+        // A task cancelled while it waits leaves the queue, or passes on a wake already chosen for it.
+        fn drop(&mut self) {
+            if self.parked && msrt_waitq_remove(self.key, self.token) == 0 {
+                msrt_waitq_wake(self.key);
+            }
+        }
+    }
+    let token = msrt_channel_token();
+    msrt_waitq_push(key, token);
+    let mut ticket = Ticket {
+        key,
+        token,
+        parked: true,
+    };
+    msrt_channel_park(token);
+    ticket.parked = false;
+}
+
 fn queues() -> &'static mut HashMap<usize, VecDeque<i64>> {
     // SAFETY: only the scheduler thread of an isolate reaches its queues.
     unsafe { (*WAIT_QUEUES.ptr()).get_or_insert_with(HashMap::new) }
@@ -170,6 +241,8 @@ fn queues() -> &'static mut HashMap<usize, VecDeque<i64>> {
 pub(crate) fn reset_wait_queues() {
     // SAFETY: as in `queues`.
     unsafe { *WAIT_QUEUES.ptr() = None };
+    // SAFETY: as in `holders`.
+    unsafe { *HOLDERS.ptr() = None };
 }
 
 /// The address as an integer: the identity of a box for the wait queues below.

@@ -108,6 +108,11 @@ pub(crate) struct FnLower<'a> {
     pub split_iter_for: Option<*const ms_syntax::ast::Expr>,
     /// The `for` iterable whose `String.chars` call becomes a byte scan (see `chars_loop`).
     pub chars_iter_for: Option<*const ms_syntax::ast::Expr>,
+    /// The expression whose `Shared` handle is being lowered before it stands for its payload.
+    pub handle_of: Option<*const ms_syntax::ast::Expr>,
+    /// The `Shared` handles a call in progress holds, by `shared_key`: their payload changes
+    /// without another check of the hold.
+    pub held: Vec<String>,
     /// The expression being lowered before its conversion to an interface: its own type, not the
     /// interface the checker recorded for it, is the type of its value.
     pub converting: Option<*const ms_syntax::ast::Expr>,
@@ -169,6 +174,10 @@ fn instance_key(c: &Callable, subst: &Subst) -> String {
 
 /// The substitution entry marking an instance that takes its consumed parameters owned.
 pub(crate) const OWNED: &str = "$own";
+
+/// The substitution entry marking an instance whose `var` parameters work in the caller's memory:
+/// every change is in place at once, so a call cancelled while it waits leaves the changes it made.
+pub(crate) const IN_MEMORY: &str = "$mem";
 
 impl Cx {
     /// The parameters a direct call hands over owned: those the body consumes (moves, stores or
@@ -465,6 +474,8 @@ impl<'a> FnLower<'a> {
             split_iter_for: None,
             chars_iter_for: None,
             converting: None,
+            handle_of: None,
+            held: Vec::new(),
             scalars_scan: false,
             aliases: HashMap::new(),
             scope_override: None,
@@ -722,6 +733,9 @@ impl<'a> FnLower<'a> {
         let Some(l) = self.locals.get(&uid).copied() else {
             return;
         };
+        if l.slot.is_some() {
+            return;
+        }
         let v = self.b.use_var(l.var);
         let ptr = self
             .b
@@ -735,6 +749,11 @@ impl<'a> FnLower<'a> {
                 ..l
             },
         );
+    }
+
+    /// Whether this instance's `var` parameters work in the caller's memory (`IN_MEMORY`).
+    pub(crate) fn in_memory(&self) -> bool {
+        self.subst.contains_key(&ct::n(IN_MEMORY))
     }
 
     /// The current value of a local, as a borrow.
@@ -904,6 +923,9 @@ impl<'a> FnLower<'a> {
         if !nested {
             for slot in self.var_slots.clone() {
                 let l = self.locals[&slot.uid];
+                if l.slot == Some(slot.ptr) {
+                    continue;
+                }
                 let x = self.local_take(&l);
                 self.move_into(slot.ptr, x);
             }
@@ -961,6 +983,21 @@ impl<'a> FnLower<'a> {
             ms_check::hir::Body::Expr(_) => Default::default(),
         };
         for (i, (b, v)) in bindings.iter().zip(params).enumerate() {
+            if vars.contains(&i) && self.in_memory() {
+                // The value stays in the caller's slot; the body changes it there.
+                let ty = self.mty(&b.ty)?;
+                let var = self.b.declare_var(ty, Mode::Borrow);
+                self.locals.insert(
+                    b.uid,
+                    Local {
+                        var,
+                        ty,
+                        slot: Some(v),
+                    },
+                );
+                self.var_slots.push(VarSlot { uid: b.uid, ptr: v });
+                continue;
+            }
             if vars.contains(&i) {
                 // The callee owns the value it takes from the slot and puts back on return.
                 let ty = self.mty(&b.ty)?;
