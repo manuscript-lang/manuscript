@@ -2389,8 +2389,6 @@ impl<'a> FnLower<'a> {
             index(self.b.m, "error").ok_or_else(|| Error::new("not a Result"))?,
         );
         let cause = args.first().copied();
-        let line = at.line;
-        let file = self.b.m.files[self.file as usize].clone();
         self.two_ways(
             some,
             out,
@@ -2418,20 +2416,30 @@ impl<'a> FnLower<'a> {
                         p
                     }
                 } else {
-                    // `MissingValue` names the source line of the call.
                     let et = s.b.m.alts[res.index()].cases[err].fields[0].1;
-                    let TyKind::Alt(missing) = s.b.m.types.kind(et).clone() else {
-                        return Err(Error::new("ok_or without a cause needs MissingValue"));
-                    };
-                    let base = file.rsplit('/').next().unwrap_or(&file);
-                    let at = s.b.str_lit(&format!("{base}:{line}"));
-                    let at = s.owned(Val { v: at, own: false });
-                    s.b.alt_new(missing, 0, &[at])
+                    let cause = s.missing_value_at(et, at)?;
+                    s.owned(cause)
                 };
                 s.finish(recv);
                 Ok(Some(s.b.alt_new(res, err as u32, &[failure])))
             },
         )
+    }
+
+    /// Constructs the existing MissingValue default in the invoking source module.
+    pub(crate) fn missing_value_at(&mut self, ty: MTy, at: ms_syntax::Pos) -> Result<Val, Error> {
+        let TyKind::Alt(missing) = self.b.m.types.kind(ty).clone() else {
+            return Err(Error::new("ok_or without a cause needs MissingValue"));
+        };
+        let file = &self.b.m.files[self.file as usize];
+        let base = file.rsplit('/').next().unwrap_or(file);
+        let site = self.b.str_lit(&format!("{base}:{}", at.line));
+        let site = self.owned(Val {
+            v: site,
+            own: false,
+        });
+        let v = self.b.alt_new(missing, 0, &[site]);
+        Ok(Val { v, own: true })
     }
 
     fn result_method(
