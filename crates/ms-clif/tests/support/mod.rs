@@ -40,6 +40,8 @@ pub fn cc() -> Command {
     if cfg!(target_os = "linux") {
         // Fixtures link musl, which has no fortified `*_chk` entry points.
         command.arg("-D_FORTIFY_SOURCE=0");
+        // Fixtures linked with glibc get no `libc_nonshared.a`, where aarch64 keeps `__stack_chk_guard`.
+        command.arg("-fno-stack-protector");
     }
     command
 }
