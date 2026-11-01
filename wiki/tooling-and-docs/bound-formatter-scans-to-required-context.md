@@ -9,11 +9,9 @@ comma-separated item. Ignore comments/layout, reset on an outer comma, and keep
 group children out of the parent's prefix. Preserve rendered line tracking as a
 separate fact; comments and group closing lines still affect it.
 
-Suffix width is used only to decide whether a group exceeds the fixed line
-width. Once a safe lower bound exceeds that width, further measurement cannot
-change the decision. Count only nonempty tokens the flat renderer emits and
-preserve newline/comment/clause/nonempty-group stops. Keep exact rendering for
-short tails; a byte count is not a safe Unicode character-width lower bound.
+Keep suffix-width measurement exact and preserve its newline, comment, clause,
+and nonempty-group stops. Any shortcut must pass ordinary-list controls as well
+as long-flow workloads before it is retained.
 
 Compare complete baseline output around the cutoff and stop boundaries, and
 measure tiny ordinary calls and lists as well as long flows. A fast long case
