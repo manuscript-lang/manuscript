@@ -1293,10 +1293,29 @@ impl FnLower<'_> {
     ) -> Result<Vec<crate::native::NArg>, Error> {
         let mut args: Vec<crate::native::NArg> = Vec::new();
         for (i, (p, v)) in params.iter().zip(vals).enumerate() {
-            let lifted = !p.ty.is_std("Optional")
-                && matches!(self.b.m.types.kind(self.ty_of(*v)), TyKind::Opt(_));
+            let default = func.and_then(|f| f.params.get(i)?.default.as_ref());
+            let omittable = default.is_some() || p.ty.is_std("Optional");
+            let passed = self.ty_of(*v);
+            let declared = if omittable && matches!(self.b.m.types.kind(passed), TyKind::Opt(_)) {
+                self.mty(&p.ty)?
+            } else {
+                passed
+            };
+            let lifted = passed != declared;
             let val = if lifted {
                 self.unlift_param(*v, &mut |s| {
+                    // Native default filling leaves `none` implicit; an adapter must
+                    // produce the declared Optional payload for that omitted argument.
+                    if p.ty.is_std("Optional")
+                        && default.is_none_or(
+                            |d| matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none"),
+                        )
+                    {
+                        return Ok(Val {
+                            v: s.none_owned(declared),
+                            own: true,
+                        });
+                    }
                     let mut tmp: Vec<crate::native::NArg> = params
                         .iter()
                         .enumerate()
@@ -1509,13 +1528,13 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
     }
     let bindings = fl.hir.lambda_parameters(&job.expr);
     for (i, (b, v)) in bindings.iter().zip(params.iter().skip(1)).enumerate() {
-        let lifted =
-            matches!(fl.b.m.types.kind(fl.ty_of(*v)), TyKind::Opt(_)) && !b.ty.is_std("Optional");
+        let default = lam.params.get(i).and_then(|p| p.default.as_ref());
+        // Only an extra ABI wrapper denotes omission; T itself may instantiate as Optional.
+        let lifted = default.is_some()
+            && matches!(fl.b.m.types.kind(fl.ty_of(*v)), TyKind::Opt(_))
+            && fl.ty_of(*v) != fl.mty(&b.ty)?;
         if lifted {
-            let d = lam.params.get(i).and_then(|p| p.default.as_ref());
-            let Some(d) = d else {
-                return Err(Error::new("optional parameter without a default"));
-            };
+            let d = default.expect("lifted parameter has a default");
             let x = fl.unlift_param(*v, &mut |s| s.expr(d))?;
             fl.bind_local(b, x);
         } else if mutated.contains(&b.uid) && fl.needs_drop(fl.ty_of(*v)) {
