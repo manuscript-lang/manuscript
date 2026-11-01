@@ -1130,6 +1130,18 @@ impl Network {
     }
 }
 
+/// Closes every handle released under `owner` (a `Listener::owner_key`) that no server adopted.
+pub fn release_unadopted(owner: usize) {
+    let mine: Vec<i64> = outstanding()
+        .iter()
+        .filter(|(_, held_by)| **held_by == owner)
+        .map(|(raw, _)| *raw)
+        .collect();
+    for raw in mine {
+        drop(take_raw_handle(raw));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1279,17 +1291,5 @@ mod tests {
             r.bind_datagram("192.0.2.1:0").err(),
             Some(NetErr::PermissionDenied)
         );
-    }
-}
-
-/// Closes every handle released under `owner` (a `Listener::owner_key`) that no server adopted.
-pub fn release_unadopted(owner: usize) {
-    let mine: Vec<i64> = outstanding()
-        .iter()
-        .filter(|(_, held_by)| **held_by == owner)
-        .map(|(raw, _)| *raw)
-        .collect();
-    for raw in mine {
-        drop(take_raw_handle(raw));
     }
 }
