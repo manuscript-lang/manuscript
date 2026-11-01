@@ -1018,6 +1018,17 @@ esac
 "#;
         std::fs::write(&path, text).unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        // A process another test thread forked while the file was open for writing still holds
+        // it until that child execs, and executing the file then fails with ETXTBSY (os error
+        // 26). Wait that out so the tests under this directory never see it.
+        for _ in 0..1000 {
+            match std::process::Command::new(&path).arg("9").status() {
+                Err(e) if e.raw_os_error() == Some(26) => {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                _ => break,
+            }
+        }
         path
     }
 

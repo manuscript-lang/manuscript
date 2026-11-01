@@ -249,6 +249,16 @@ impl Checker {
                     return i;
                 }
                 cs = case_of(alt, *name);
+                if cs.is_none() && case_names(alt).is_empty() {
+                    self.res_error(
+                        e.pos,
+                        format!(
+                            "{} has no cases or static members, so `{}.{name}(...)` does not exist; if {name} is a module function, import it and call {name}(...); if it is a method, call it on a value",
+                            alt.name, alt.name
+                        ),
+                    );
+                    return i;
+                }
                 if cs.is_none() {
                     self.res_error(
                         e.pos,

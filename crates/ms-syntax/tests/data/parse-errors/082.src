@@ -1,0 +1,4 @@
+fn main() Int:
+    let q: Int? = none
+    let a = q ?? 0
+    return a

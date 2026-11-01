@@ -535,6 +535,9 @@ impl<'a> Parser<'a> {
             Tok::If => {
                 "; there is no inline conditional expression 'a if c else b': write 'if c: a else: b', or use an if statement"
             }
+            Tok::Question => {
+                "; '?' is not a postfix unwrap, '??' or 'c ? a : b': unwrap an Optional with 'if let x = v:' or give it a default with 'v.get(default)', chain with 'a?.b', and write a conditional as 'if c: a else: b'"
+            }
             Tok::Comma => {
                 "; commas separate items only inside (), [] or {}: put each field, case, or statement on its own line"
             }
@@ -655,6 +658,14 @@ impl<'a> Parser<'a> {
                 while self.take(Tok::Amp) {
                     bounds.push(self.named_type()?);
                 }
+                if matches!(self.kind(), Tok::Plus | Tok::And) {
+                    let t = self.peek();
+                    return self.fail_fix(
+                        t,
+                        "combine bounds with '&', as in T: Comparable & Clonable",
+                        "&",
+                    );
+                }
             }
             if self.take(Tok::Assign) {
                 default = Some(self.typ()?);
@@ -688,6 +699,14 @@ impl<'a> Parser<'a> {
                 let mut ty = None;
                 let mut default = None;
                 if self.take(Tok::Colon) {
+                    if self.kind() == Tok::Var {
+                        let t = self.peek();
+                        let msg = format!(
+                            "'var' goes before the parameter name, not its type; write var {}: Type",
+                            self.text(name)
+                        );
+                        return self.fail(t, msg);
+                    }
                     ty = Some(self.typ()?);
                 } else if !inferred || self.kind() == Tok::Name {
                     self.need_name_colon(name)?;
@@ -1233,6 +1252,14 @@ impl<'a> Parser<'a> {
                         self.newlines();
                         if self.kind() == Tok::Dedent {
                             break;
+                        }
+                        if self.kind() == Tok::Export {
+                            let t = self.peek();
+                            return self.fail_fix(
+                                t,
+                                "a method is not exported by itself; it is visible wherever its type is, so remove 'export' and export the type",
+                                "",
+                            );
                         }
                         let mutating = self.take(Tok::Var);
                         self.need(Tok::Fn)?;

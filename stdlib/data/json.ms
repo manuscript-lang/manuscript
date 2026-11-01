@@ -23,8 +23,9 @@ export type JsonLimits:
 # A JSON value. Number text is retained to avoid losing precision during parsing.
 #
 # `get` and `at` read one level and `as_*` read a scalar or container, each returning `none` on a
-# mismatch. `get`, `at`, `as_string`, `as_list` and `as_map` lend the part of the document they
-# find, with no copy, so nested reads bind each level with `if let`:
+# mismatch. `get`, `at`, `as_string`, `as_list` and `as_map` return an owned copy of the part they
+# find, so the result stays valid when the document changes, and nested reads bind each level
+# with `if let`:
 #
 # ```manuscript
 # if let user = doc.get("user"):
@@ -32,7 +33,7 @@ export type JsonLimits:
 #         return name.as_string().get("")
 # ```
 #
-# `get_in` reads a chain of object members in one call: `doc.get_in(["user", "name"])`.
+# `get_in` reads a chain of object members in one call and lends the result: `doc.get_in(["user", "name"])`.
 export type JsonValue:
     # JSON null, represented without a payload value.
     case Null

@@ -1,0 +1,5 @@
+type A:
+    n: Int
+
+impl A:
+    export fn f() Int: self.n
