@@ -211,3 +211,24 @@ fn empty_source_targets_are_usage_errors_before_discovery() {
         assert!(!stderr.contains("file not found:"), "{args:?}: {stderr}");
     }
 }
+
+#[test]
+fn one_unclosed_delimiter_is_reported_once() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-unclosed-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("a.ms");
+    std::fs::write(
+        &file,
+        "fn a(x: Int Int:\n    return x\n\nfn b() Int:\n    return 1\n\nexport fn main() Int:\n    return b()\n",
+    )
+    .unwrap();
+    let (code, stderr) = ms(&["check", file.to_str().unwrap()]);
+    assert_eq!(code, 1, "{stderr}");
+    assert_eq!(
+        stderr.matches("unterminated delimiter").count(),
+        1,
+        "{stderr}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
