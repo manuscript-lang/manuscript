@@ -14,7 +14,7 @@ import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
-import JsonValue from "@std/data/json.ms"
+import JsonValue, parse from "@std/data/json.ms"
 import FileSystemError, append_file_bytes, open, read_file, temporary, write_file from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
@@ -63,7 +63,7 @@ test "levels filter methods and function values":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
-    let logger = try create(stream_transport(file.writer()), LogLevel.Warn, false)
+    var logger = try create(stream_transport(file.writer()), LogLevel.Warn, false)
     try expect_false(
         (logger.enabled(LogLevel.Info) or not logger.enabled(LogLevel.Warn))
     )
@@ -107,7 +107,7 @@ test "child bindings snapshot values and merge without mutating inputs":
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
     let root = try create(stream_transport(file.writer()), timestamp: false)
-    let logger = try root.child(Service("api"))
+    var logger = try root.child(Service("api"))
     let child = try logger.child(Request(7))
     logger.set_level(LogLevel.Fatal)
     try expect_equal(child.level(), LogLevel.Info)
@@ -309,3 +309,237 @@ test "concurrent tasks never interleave a record":
                 or line == "\{\"level\":30,\"msg\":\"m\",\"data\":\"b\"\}",
                 true
             )
+
+# One recorded case: the logger settings, bound fields as JSON object text, the record, and the
+# outcome (`err <case>`, `ok none` when filtered, or `ok <text>` with the time field zeroed).
+type Recorded:
+    level: Int?
+    timestamp: Bool?
+    max_bytes: Int?
+    children: List[String]
+    record_level: Int
+    message: String
+    fields: String?
+    want: String
+
+type Collect:
+    out: Shared[List[String]]
+
+impl Transport for Collect:
+    fn write(data: String) Unit!LogError:
+        var guard = lock(self.out)
+        guard.value.append(data.clone())
+        return ok(unit)
+
+    fn write_bytes(data: Bytes) Unit!LogError:
+        return self.write(data.decode_utf8().get(""))
+
+    fn flush() Unit!LogError:
+        return ok(unit)
+
+    fn close() Unit:
+        return unit
+
+# The level an index from the recorded cases names: Trace is 0 and Silent is 6.
+fn level_named(index: Int) LogLevel?:
+    if index == 0: return LogLevel.Trace
+    if index == 1: return LogLevel.Debug
+    if index == 2: return LogLevel.Info
+    if index == 3: return LogLevel.Warn
+    if index == 4: return LogLevel.Error
+    if index == 5: return LogLevel.Fatal
+    if index == 6: return LogLevel.Silent
+
+    return none
+
+fn outcome(cause: LogError) String:
+    if cause == LogError.InvalidInput: return "err InvalidInput"
+    if cause == LogError.InvalidData: return "err InvalidData"
+    if cause == LogError.LimitExceeded: return "err LimitExceeded"
+
+    return "err Other"
+
+# Replaces the digits after `"time":` with 0, since the recorded clock was fixed at 0.
+fn zero_time(text: String) String:
+    let parts = text.split("\"time\":")
+    if parts.length() < 2: return text
+
+    var digits = 0
+
+    for ch in parts[1].chars():
+        if ch >= "0" and ch <= "9": digits += 1
+        else: break
+
+    return "{parts[0]}\"time\":0{parts[1].slice(digits, parts[1].length()).get("")}"
+
+fn replay(c: Recorded) String:
+    var level: LogLevel? = none
+
+    if let index = c.level:
+        level = level_named(index)
+        if level.is_none(): return "err InvalidInput"
+
+    let out = share(List[String]())
+    let made = create(Collect(out), level, c.timestamp, c.max_bytes)
+    if made.is_error(): return outcome(made.err())
+
+    var logger = made.get()
+
+    for text in c.children:
+        let child = logger.child(parse(text).get(JsonValue.Null))
+        if child.is_error(): return outcome(child.err())
+
+        logger = child.get()
+
+    let record_level = level_named(c.record_level)
+    if record_level.is_none(): return "err InvalidInput"
+
+    var result: Unit!LogError = ok(unit)
+
+    if let text = c.fields:
+        result = logger.log(
+            record_level.get(LogLevel.Info), c.message, parse(text).get(JsonValue.Null)
+        )
+    else:
+        result = logger.log(record_level.get(LogLevel.Info), c.message)
+
+    if result.is_error(): return outcome(result.err())
+
+    var guard = lock(out)
+    if guard.value.length() == 0: return "ok none"
+
+    return "ok {zero_time(guard.value.join(""))}"
+
+test "records recorded from the first implementation keep their exact encoding":
+    let cases = [
+        Recorded(none, none, none, [], 0, "", none, "ok none"),
+        Recorded(
+            none, none, none, [], 2, "hello", none,
+            "ok \{\"level\":30,\"msg\":\"hello\",\"time\":0\}\n"
+        ),
+        Recorded(
+            none, none, none, [], 4, "a<b>&\"\n\t\u{1}\u{e9}", none,
+            "ok \{\"level\":50,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\",\"time\":0\}\n"
+        ),
+        Recorded(none, none, none, [], 6, "", none, "err InvalidInput"),
+        Recorded(none, none, none, [], 0, "hello", "\{\}", "ok none"),
+        Recorded(
+            none, none, none, [], 2, "a<b>&\"\n\t\u{1}\u{e9}", "\{\}",
+            "ok \{\"level\":30,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\",\"time\":0\}\n"
+        ),
+        Recorded(
+            none, none, none, [], 4, "", "\{\}",
+            "ok \{\"level\":50,\"msg\":\"\",\"time\":0\}\n"
+        ),
+        Recorded(none, none, none, [], 6, "hello", "\{\}", "err InvalidInput"),
+        Recorded(
+            none, none, none, ["\{\"a\":1,\"b\":2\}"], 0, "hello", none, "ok none"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1,\"b\":2\}"], 2, "a<b>&\"\n\t\u{1}\u{e9}",
+            none,
+            "ok \{\"level\":30,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\",\"time\":0,\"a\":1,\"b\":2\}\n"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1,\"b\":2\}"], 4, "", none,
+            "ok \{\"level\":50,\"msg\":\"\",\"time\":0,\"a\":1,\"b\":2\}\n"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1,\"b\":2\}"], 6, "hello", none,
+            "err InvalidInput"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1,\"b\":2\}"], 0, "a<b>&\"\n\t\u{1}\u{e9}",
+            "\{\}", "ok none"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1,\"b\":2\}"], 2, "", "\{\}",
+            "ok \{\"level\":30,\"msg\":\"\",\"time\":0,\"a\":1,\"b\":2\}\n"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1,\"b\":2\}"], 4, "hello", "\{\}",
+            "ok \{\"level\":50,\"msg\":\"hello\",\"time\":0,\"a\":1,\"b\":2\}\n"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1,\"b\":2\}"], 6, "a<b>&\"\n\t\u{1}\u{e9}",
+            "\{\}", "err InvalidInput"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 0,
+            "a<b>&\"\n\t\u{1}\u{e9}", none, "ok none"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 2, "", none,
+            "ok \{\"level\":30,\"msg\":\"\",\"time\":0,\"a\":9,\"c\":[true]\}\n"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 4, "hello",
+            none,
+            "ok \{\"level\":50,\"msg\":\"hello\",\"time\":0,\"a\":9,\"c\":[true]\}\n"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 6,
+            "a<b>&\"\n\t\u{1}\u{e9}", none, "err InvalidInput"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 0, "",
+            "\{\}", "ok none"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 2, "hello",
+            "\{\}",
+            "ok \{\"level\":30,\"msg\":\"hello\",\"time\":0,\"a\":9,\"c\":[true]\}\n"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 4,
+            "a<b>&\"\n\t\u{1}\u{e9}", "\{\}",
+            "ok \{\"level\":50,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\",\"time\":0,\"a\":9,\"c\":[true]\}\n"
+        ),
+        Recorded(
+            none, none, none, ["\{\"a\":1\}", "\{\"a\":9,\"c\":[true]\}"], 6, "",
+            "\{\}", "err InvalidInput"
+        ),
+        Recorded(
+            0, false, none, [], 0, "a<b>&\"\n\t\u{1}\u{e9}", none,
+            "ok \{\"level\":10,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\"\}\n"
+        ),
+        Recorded(
+            0, false, none, [], 2, "", none, "ok \{\"level\":30,\"msg\":\"\"\}\n"
+        ),
+        Recorded(
+            0, false, none, [], 4, "hello", none,
+            "ok \{\"level\":50,\"msg\":\"hello\"\}\n"
+        ),
+        Recorded(
+            0, false, none, [], 6, "a<b>&\"\n\t\u{1}\u{e9}", none, "err InvalidInput"
+        ),
+        Recorded(
+            0, false, none, [], 0, "", "\{\}", "ok \{\"level\":10,\"msg\":\"\"\}\n"
+        ),
+        Recorded(
+            0, false, none, [], 2, "hello", "\{\}",
+            "ok \{\"level\":30,\"msg\":\"hello\"\}\n"
+        ),
+        Recorded(
+            0, false, none, [], 4, "a<b>&\"\n\t\u{1}\u{e9}", "\{\}",
+            "ok \{\"level\":50,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\"\}\n"
+        ),
+        Recorded(0, false, none, [], 6, "", "\{\}", "err InvalidInput"),
+        Recorded(
+            0, false, none, ["\{\"a\":1,\"b\":2\}"], 0, "", none,
+            "ok \{\"level\":10,\"msg\":\"\",\"a\":1,\"b\":2\}\n"
+        ),
+        Recorded(
+            0, false, none, ["\{\"a\":1,\"b\":2\}"], 2, "hello", none,
+            "ok \{\"level\":30,\"msg\":\"hello\",\"a\":1,\"b\":2\}\n"
+        ),
+        Recorded(
+            0, false, none, ["\{\"a\":1,\"b\":2\}"], 4, "a<b>&\"\n\t\u{1}\u{e9}", none,
+            "ok \{\"level\":50,\"msg\":\"a<b>&\\\"\\n\\t\\u0001\u{e9}\",\"a\":1,\"b\":2\}\n"
+        ),
+        Recorded(
+            0, false, none, ["\{\"a\":1,\"b\":2\}"], 6, "", none, "err InvalidInput"
+        )
+    ]
+    for c in cases:
+        try expect_equal(replay(c.clone()), c.want)

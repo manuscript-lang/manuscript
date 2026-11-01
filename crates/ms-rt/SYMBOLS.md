@@ -521,17 +521,6 @@ msrt_json_dec_uint(text: *const StrVal, out: *mut i64) -> u8
 msrt_json_find(d: *const DocObj, id: u32, key: *const StrVal) -> i64
 msrt_json_has_unknown( d: *const DocObj, id: u32, names: *const VecVal, ) -> u8
 msrt_json_variant( d: *const DocObj, id: u32, names: *const VecVal, payload: *mut i64, ) -> i64
-msrt_logcore_new_state( has_level: u8, level: i64, has_timestamp: u8, timestamp: u8, has_max: u8, max: i64, out: *mut *mut LoggerObj, ) -> u8
-msrt_logcore_child( l: *const LoggerObj, fields: *const StrVal, out: *mut *mut LoggerObj, ) -> u8
-msrt_logcore_enabled(l: *const LoggerObj, level: i64) -> u8
-msrt_logcore_level(l: *const LoggerObj) -> i64
-msrt_logcore_set_level(l: *const LoggerObj, level: i64)
-msrt_logcore_line( l: *const LoggerObj, level: i64, message: *const StrVal, now_ms: i64, out: *mut StrVal, ) -> u8
-msrt_logcore_line_json( l: *const LoggerObj, level: i64, message: *const StrVal, fields: *const StrVal, now_ms: i64, out: *mut StrVal, ) -> u8
-msrt_logcore_new_gate() -> *mut GateObj
-msrt_logcore_shut(g: *const GateObj)
-msrt_logcore_is_shut(g: *const GateObj) -> u8
-msrt_logcore_object_text(text: *const StrVal, out: *mut StrVal)
 msstd_math_atan2(y: f64, x: f64) -> f64
 msstd_math_hypot(left: f64, right: f64) -> f64
 msstd_math_pow(base: f64, exponent: f64) -> f64

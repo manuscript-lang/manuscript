@@ -23,7 +23,6 @@ ms-std-fs = { path = "../ms-std-fs" }
 ms-std-html = { path = "../ms-std-html" }
 ms-std-io = { path = "../ms-std-io" }
 ms-std-json = { path = "../ms-std-json" }
-ms-std-log = { path = "../ms-std-log" }
 ms-std-math = { path = "../ms-std-math" }
 ms-std-net = { path = "../ms-std-net" }
 ms-std-path = { path = "../ms-std-path" }
