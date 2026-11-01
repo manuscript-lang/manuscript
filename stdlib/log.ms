@@ -213,7 +213,7 @@ impl Logger:
 
     # Returns a logger that adds the members of `fields` to each record, with the encoding rules of
     # `log_with`. A value that cannot be encoded returns `InvalidData`.
-    fn child[F: Data](fields: F) Logger!LogError:
+    var fn child[F: Data](fields: F) Logger!LogError:
         let text = stringify(fields)
         if text.is_error(): return error(LogError.InvalidData)
 

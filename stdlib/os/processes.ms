@@ -285,7 +285,7 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
 # entry did not) and the result, and closes the pipe.
 fn serve[T: Data, In: Data, Out: Data](entry: fn(var Channel[Out, In]) T) Unit:
     let link = msstd_process_ipc_child()
-    let inbox = Shared(Inbox())
+    var inbox = Shared(Inbox())
     var channel = Channel[Out, In](
         transport: ProcessTransport[Out, In](link: link.clone(), inbox: inbox)
     )
@@ -316,7 +316,7 @@ export type Open:
     inbox: Shared[Inbox]
 
 # Closes the channel, then stops and joins the child.
-fn stop_child(link: NativeLink, inbox: Shared[Inbox], native: NativeProcess) Unit:
+fn stop_child(link: NativeLink, var inbox: Shared[Inbox], native: NativeProcess) Unit:
     PipeEnd(link.clone(), inbox).shut(false)
     msstd_process_forked_close(native)
 
@@ -340,7 +340,7 @@ impl Process[T, In, Out]:
     # Waits for the entry to return and gives its result, or `Exited` with the status of a child
     # that ended first. Another task may receive from the channel meanwhile; one task reads the
     # pipe at a time and the other waits. Messages the child sent and the parent has not received are dropped.
-    fn result() T!ProcessError:
+    var fn result() T!ProcessError:
         return PipeEnd(self.link.clone(), self.inbox).result[T](self.native)
 
     # The child's standard input, when spawned with `stdin: Stdio.Pipe`; otherwise already closed,
@@ -374,7 +374,7 @@ impl Process[T, In, Out]:
 impl Closeable for Process[T, In, Out]:
     # Closes the channel, then stops and joins the child. Call `result` first to keep it. Safe to call again.
     var fn close() Unit!:
-        stop_child(self.link, self.inbox, self.native)
+        stop_child(self.link, var self.inbox, self.native)
 
         for index in 0..self.registry.length():
             if self.registry[index].id == self.id:
@@ -412,7 +412,7 @@ impl ProcessGroup[T, In, Out]:
             not_started
         )
         let link = msstd_process_forked_link(native)
-        let inbox = Shared(Inbox())
+        var inbox = Shared(Inbox())
         let id: Int = self.started
         self.started = id + 1
         self.processes.append(Open(id, native.clone(), link.clone(), inbox))
@@ -438,7 +438,7 @@ impl ProcessGroup[T, In, Out]:
         var values = List[T]()
 
         for index in 0..count:
-            let open = self.processes[index].clone()
+            var open = self.processes[index].clone()
             var end = PipeEnd(open.link.clone(), open.inbox)
             values.append(try end.result[T](open.native))
 
@@ -448,7 +448,7 @@ impl Closeable for ProcessGroup[T, In, Out]:
     # Closes every open process: its channel, then the child, which is stopped and joined. Safe to call again.
     var fn close() Unit!:
         for index in 0..self.processes.length():
-            let open = self.processes[index].clone()
-            stop_child(open.link, open.inbox, open.native)
+            var open = self.processes[index].clone()
+            stop_child(open.link, var open.inbox, open.native)
 
         return ok(unit)

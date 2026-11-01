@@ -28,19 +28,20 @@ fn make(name: String) Holder:
     let speaker: Shared[Speaker] = Shared(Dog(name))
     return Holder(config, speaker)
 
-fn child(holder: Holder) Holder:
+fn child(var holder: Holder) Holder:
     return Holder(holder.config, holder.speaker)
 
 test "copies of a shared value read the same payload":
-    let first = make("a-name-long-enough-for-the-heap")
-    let second = child(first)
-    let third = child(second)
+    var first = make("a-name-long-enough-for-the-heap")
+    var second = child(var first)
+    let third = child(var second)
     try expect_equal(third.config.name, "a-name-long-enough-for-the-heap")
     try expect_equal(first.config.tags[0], "a-tag-long-enough-for-the-heap")
     try expect_equal(third.speaker.say(), "a-name-long-enough-for-the-heap says woof")
 
 test "the payload outlives the original holder":
-    let kept = child(make("x-name-long-enough-for-the-heap-too"))
+    var made = make("x-name-long-enough-for-the-heap-too")
+    let kept = child(var made)
     try expect_equal(kept.config.tags.length(), 2)
 
 type Counter:

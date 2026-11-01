@@ -29,7 +29,7 @@ fn waits() Unit:
     let _got = ch.receive()
 
 # The task owns its copy of `t`, which shares the waited task's state.
-fn waiter(t: Task[Int]) Int:
+fn waiter(var t: Task[Int]) Int:
     var mine = t.clone()
     let r = mine.result()
     if r.is_ok():
@@ -108,8 +108,8 @@ test "a task waiting on a task of another group sees it time out":
     var seen = 0
     var a = TaskGroup[Int]()
     var b = TaskGroup[Int](timeout: nanoseconds(50000000))
-    let tb = b.spawn(fn var ch: slow())
-    var waiting = a.spawn(fn var ch: waiter(tb))
+    var tb = b.spawn(fn var ch: slow())
+    var waiting = a.spawn(fn var ch: waiter(var tb))
     seen = waiting.result().get(-1)
     try a.close()
     try expect_equal(seen, "task: timed out".length())
@@ -156,7 +156,7 @@ test "the worker limit refuses extra workers and frees slots when they end":
     var refused = 0
 
     for i in 0..300:
-        let w = group.spawn(waits)
+        var w = group.spawn(waits)
 
         if w.is_ok():
             started.append(w.get().clone())

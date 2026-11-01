@@ -131,6 +131,8 @@ pub struct Program {
     /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
     /// identity. Filled together with `borrows`.
     pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
+    /// Lambdas that outlive their maker, by module file and node. Filled together with `borrows`.
+    pub escaping_lambdas: Rc<HashSet<(Name, NodeId)>>,
     /// Parameters each callable consumes (moves, stores or returns), by module file and node, for
     /// lowering. Filled together with `borrows`; only callables with a consumed parameter appear.
     pub consumes: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,

@@ -21,14 +21,14 @@ fn stash(var doors: List[Door], door: Door) Unit:
     doors.append(door)
 
 test "a temporary passed to a var-parameter function that keeps it closes once, later":
-    let log: Shared[List[Int]] = Shared([])
+    var log: Shared[List[Int]] = Shared([])
     var slot = Slot(Door(1, log))
     put(var slot, Door(2, log))
     log.clone() | try expect_equal([1])
     expect_equal(slot.door.id, 2) | try
 
 test "a list a var-parameter function appends a temporary to closes it with the list":
-    let log: Shared[List[Int]] = Shared([])
+    var log: Shared[List[Int]] = Shared([])
     var doors = List[Door]()
     stash(var doors, Door(3, log))
     log.clone() | try expect_equal([])

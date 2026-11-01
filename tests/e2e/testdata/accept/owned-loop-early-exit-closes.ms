@@ -11,14 +11,14 @@ impl Closeable for Door:
         self.log.append(self.id)
         return ok(unit)
 
-fn first_even(log: Shared[List[Int]]) Int:
+fn first_even(var log: Shared[List[Int]]) Int:
     let doors = [Door(1, log), Door(2, log), Door(3, log)]
     for d in doors:
         if d.id % 2 == 0:
             return d.id
     return -1
 
-fn until_two(log: Shared[List[Int]]) Int:
+fn until_two(var log: Shared[List[Int]]) Int:
     let doors = [Door(1, log), Door(2, log), Door(3, log)]
     var n = 0
 
@@ -30,11 +30,11 @@ fn until_two(log: Shared[List[Int]]) Int:
     return n
 
 test "return out of an owned loop closes every element once":
-    let log: Shared[List[Int]] = Shared([])
-    first_even(log) | try expect_equal(2)
+    var log: Shared[List[Int]] = Shared([])
+    first_even(var log) | try expect_equal(2)
     log.clone() | try expect_equal([1, 2, 3])
 
 test "break closes the elements it never reached":
-    let log: Shared[List[Int]] = Shared([])
-    until_two(log) | try expect_equal(3)
+    var log: Shared[List[Int]] = Shared([])
+    until_two(var log) | try expect_equal(3)
     log.clone() | try expect_equal([1, 2, 3])

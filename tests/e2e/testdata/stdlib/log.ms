@@ -105,7 +105,7 @@ test "child bindings snapshot values and merge without mutating inputs":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
-    let root = try create(stream_transport(file.writer()), timestamp: false)
+    var root = try create(stream_transport(file.writer()), timestamp: false)
     var logger = try root.child(Service("api"))
     var child = try logger.child(Request(7))
     logger.set_level(LogLevel.Fatal)
@@ -277,20 +277,20 @@ impl WriteStream for SlowStream:
     var fn write_bytes(data: Bytes) Unit!IoError:
         return self.write(data.decode_utf8().get(""))
 
-fn chatter(logger: Logger, name: String) Unit!:
+fn chatter(var logger: Logger, name: String) Unit!:
     var log = logger.clone()
     for n in 0..3:
         try log.info_with("m", name)
     return ok(unit)
 
 test "concurrent tasks never interleave a record":
-    let parts = Shared(List[String]())
-    let logger = (create(stream_transport(SlowStream(parts)), timestamp: false)).get()
+    var parts = Shared(List[String]())
+    var logger = (create(stream_transport(SlowStream(parts)), timestamp: false)).get()
     var group = TaskGroup[Unit!, Unit, Unit]()
-    let first = logger.clone()
-    let second = logger.clone()
-    var a = group.spawn(fn var ch: chatter(first, "a"))
-    var b = group.spawn(fn var ch: chatter(second, "b"))
+    var first = logger.clone()
+    var second = logger.clone()
+    var a = group.spawn(fn var ch: chatter(var first, "a"))
+    var b = group.spawn(fn var ch: chatter(var second, "b"))
     a.result() | try expect_ok | try expect_ok
     b.result() | try expect_ok | try expect_ok
 

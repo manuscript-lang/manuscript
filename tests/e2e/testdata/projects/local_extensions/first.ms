@@ -65,7 +65,7 @@ export fn first_resource(resource: Resource) Closeable:
     return resource
 
 test "first local cleanup":
-    let events = Shared(List[Int]())
+    var events = Shared(List[Int]())
     leave(Resource(events))
     events.get(index: 0) | try expect_equal(10)
 

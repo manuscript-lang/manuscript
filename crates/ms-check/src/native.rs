@@ -25,9 +25,12 @@ impl Checker {
             return None;
         }
         let receiver = self.expression(left, None);
-        let rt = receiver.t();
+        let mut rt = receiver.t();
         if invalid_ty(&rt) {
             return Some(Info::of(invalid()));
+        }
+        if let Some(payload) = self.through_shared(left, &rt, *name) {
+            rt = payload;
         }
         if rt.kind == Kind::Record
             && *name != "to_string"

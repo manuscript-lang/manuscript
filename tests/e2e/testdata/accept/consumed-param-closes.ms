@@ -18,7 +18,7 @@ fn keep_if(d: Door, keep: Bool) Door?:
     return none
 
 test "a parameter the callee drops on some path is closed there":
-    let log: Shared[List[Int]] = Shared([])
+    var log: Shared[List[Int]] = Shared([])
     let kept = keep_if(Door(1, log), true)
     log.clone() | try expect_equal([])
 
@@ -28,7 +28,7 @@ test "a parameter the callee drops on some path is closed there":
         log.clone() | try expect_equal([2])
 
 test "a bound resource passed to such a callee closes once":
-    let log: Shared[List[Int]] = Shared([])
+    var log: Shared[List[Int]] = Shared([])
     let door = Door(3, log)
     let dropped = keep_if(door, false)
     log.clone() | try expect_equal([3])

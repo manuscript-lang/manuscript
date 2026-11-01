@@ -26,20 +26,20 @@ fn receive_value(ready: Channel[Unit, Unit], target: Channel[Int, Int]) Int:
     var started = ready
     started.send(unit).get()
 
-    var end = target.clone()
+    var end = target
     return end.receive().get().get(-1)
 
 fn send_value(ready: Channel[Unit, Unit], target: Channel[Int, Int]) Unit:
     var started = ready
     started.send(unit).get()
 
-    var end = target.clone()
+    var end = target
     end.send(42).get()
 
 fn cancel_receive(target: Channel[Int, Int]) Unit!:
     var group = TaskGroup[Int]()
-    let end = target.clone()
-    var task = group.spawn(fn var ready: receive_value(ready, end))
+    var end = target
+    var task = group.spawn(fn var ready: receive_value(ready, end.clone()))
     task.channel.receive() | try expect_ok | try expect_equal(unit)
 
     # The acknowledging task parks on the target before this receive resumes us.
@@ -50,8 +50,8 @@ fn cancel_receive(target: Channel[Int, Int]) Unit!:
 
 fn cancel_send(target: Channel[Int, Int]) Unit!:
     var group = TaskGroup[Unit]()
-    let end = target.clone()
-    var task = group.spawn(fn var ready: send_value(ready, end))
+    var end = target
+    var task = group.spawn(fn var ready: send_value(ready, end.clone()))
     task.channel.receive() | try expect_ok | try expect_equal(unit)
     try group.close()
     task.result() | try expect_error | try expect_equal(TaskError.Closed)
@@ -59,13 +59,13 @@ fn cancel_send(target: Channel[Int, Int]) Unit!:
     return ok(unit)
 
 fn wake_receiver(target: Channel[Int, Int]) Unit!:
-    var end = target.clone()
+    var end = target
     end.send(7) | try expect_ok
     end.receive() | try expect_ok | try expect_equal(7)
     return ok(unit)
 
 fn wake_sender(target: Channel[Int, Int]) Unit!:
-    var end = target.clone()
+    var end = target
     for value in 0..17:
         end.receive() | try expect_ok | try expect_equal(value)
     for value in 0..17:
@@ -75,9 +75,9 @@ fn wake_sender(target: Channel[Int, Int]) Unit!:
 # Both batches cancel identical tasks; waking only the control isolates waiter storage.
 test "cancelled receives retain no more storage than the woken control":
     var owner = TaskGroup[Unit, Int, Int]()
-    let task = owner.spawn(hold_receive)
+    var task = owner.spawn(hold_receive)
     var comparison = TaskGroup[Unit, Int, Int]()
-    let woken = comparison.spawn(echo_rounds)
+    var woken = comparison.spawn(echo_rounds)
 
     for index in 0..4:
         try cancel_receive(task.channel.clone())
@@ -142,14 +142,14 @@ fn echo_one(var ch: Channel[Int, Int]) Unit:
 test "cancelling one receiver preserves another receivers wake":
     var owner = TaskGroup[Unit, Int, Int]()
     var target = owner.spawn(echo_one)
-    let first_end = target.channel.clone()
+    var first_end = target.channel.clone()
     var cancelled = TaskGroup[Int]()
-    var removed = cancelled.spawn(fn var ready: receive_value(ready, first_end))
+    var removed = cancelled.spawn(fn var ready: receive_value(ready, first_end.clone()))
     removed.channel.receive() | try expect_ok | try expect_equal(unit)
 
     var survivor = TaskGroup[Int]()
-    let second_end = target.channel.clone()
-    var kept = survivor.spawn(fn var ready: receive_value(ready, second_end))
+    var second_end = target.channel.clone()
+    var kept = survivor.spawn(fn var ready: receive_value(ready, second_end.clone()))
     kept.channel.receive() | try expect_ok | try expect_equal(unit)
     try cancelled.close()
     target.channel.send(7) | try expect_ok

@@ -180,6 +180,8 @@ pub struct Cx {
         Rc<HashMap<usize, HashMap<ms_syntax::ast::NodeId, Vec<ms_check::types::Name>>>>,
     /// Captures a non-escaping lambda only reads: the closure points at them instead of copying.
     pub borrowed_captures: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId, usize)>>,
+    /// Lambdas that outlive their maker: they own copies of all they capture.
+    pub escaping_lambdas: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Parameters each callable consumes, by module file and node.
     pub consumes: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<bool>>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
@@ -241,6 +243,7 @@ impl Cx {
             moved_payloads: program.moved_payloads.clone(),
             resource_moves: program.resource_moves.clone(),
             borrowed_captures: program.borrowed_captures.clone(),
+            escaping_lambdas: program.escaping_lambdas.clone(),
             consumes: program.consumes.clone(),
             getters: program.getter_borrows.clone(),
             classes: ms_check::ownership::Classifier::new(program),

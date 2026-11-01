@@ -82,6 +82,7 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         program.resource_moves = Rc::new(own.resource_moves);
         program.moved_payloads = Rc::new(own.moved_payloads);
         program.borrowed_captures = Rc::new(own.borrowed_captures);
+        program.escaping_lambdas = Rc::new(own.escaping_lambdas);
         program.consumes = Rc::new(own.consumes);
         program.diagnostics.extend(own.diagnostics);
     }

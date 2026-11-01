@@ -61,6 +61,50 @@ impl Classifier {
         self.proxies.contains(&t.id)
     }
 
+    /// Whether copies of a `t` share state that one copy can change: a `Proxy` handle, an
+    /// interface with a `var fn` operation, or a value holding either. Copying such a value out
+    /// of a read-only place would make a writer of a read-only handle.
+    pub fn shares_state(&self, t: &Ty) -> bool {
+        self.shares_in(t, &mut Vec::new())
+    }
+
+    fn shares_in(&self, t: &Ty, visiting: &mut Vec<String>) -> bool {
+        if self.proxy(t) {
+            return true;
+        }
+        match t.kind {
+            Kind::Contract => t.def.as_ref().is_some_and(|d| {
+                d.operations.borrow().iter().any(|o| {
+                    o.decl
+                        .as_ref()
+                        .and_then(|f| f.method())
+                        .is_some_and(|m| m.mutating)
+                })
+            }),
+            Kind::Native => t.args.iter().any(|a| self.shares_in(a, visiting)),
+            Kind::Record | Kind::Alternative => {
+                let key = t.to_string();
+                if visiting.contains(&key) || visiting.len() > 64 {
+                    return false;
+                }
+                visiting.push(key);
+                let mut shares = t.args.iter().any(|a| self.shares_in(a, visiting))
+                    || fields(t).iter().any(|f| self.shares_in(&f.ty, visiting));
+                if !shares && let Some(def) = &t.def {
+                    let s = substitution(t);
+                    shares = def.cases.borrow().iter().any(|case| {
+                        case.fields
+                            .iter()
+                            .any(|f| self.shares_in(&sub(&f.ty, &s), visiting))
+                    });
+                }
+                visiting.pop();
+                shares
+            }
+            _ => false,
+        }
+    }
+
     /// Whether `t` has a `Closeable` implementation of its own, which runs on the whole value.
     pub fn closes_itself(&self, t: &Ty) -> bool {
         self.closeable.contains(&t.id)

@@ -143,8 +143,8 @@ test "a group without channel types gives each task a Unit channel":
 test "cloned ends share one channel":
     var group = TaskGroup[Int, Int, Unit]()
     var sink = group.spawn(total)
-    let first = sink.channel.clone()
-    let second = sink.channel.clone()
+    var first = sink.channel.clone()
+    var second = sink.channel.clone()
     var a = group.spawn(fn var ch: send_all(first.clone(), 0))
     var b = group.spawn(fn var ch: send_all(second.clone(), 100))
     a.result() | try expect_ok | try expect_equal(50)

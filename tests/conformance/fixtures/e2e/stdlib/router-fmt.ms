@@ -279,7 +279,7 @@ fn logged(lines: Shared[List[String]]) String:
     return lines.join("")
 
 test "access_log writes one record per request":
-    let lines = Shared(List[String]())
+    var lines = Shared(List[String]())
     let logger = (create(Sink(lines: lines), timestamp: false)).get()
     var r = Router()
     r.use(access_log(logger))

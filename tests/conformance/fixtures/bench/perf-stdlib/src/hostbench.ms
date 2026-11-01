@@ -65,13 +65,13 @@ fn bench_sse() Unit:
         "sse.feed",
         2000,
         fn() Int:
-            if let d = decoder():
-                return feed_all(d, stream)
+            if var d = decoder():
+                return feed_all(var d, stream)
 
             return 0
     )
 
-fn feed_all(d: SseDecoder, stream: Bytes) Int:
+fn feed_all(var d: SseDecoder, stream: Bytes) Int:
     if let events = d.feed(stream):
         return events.length()
 

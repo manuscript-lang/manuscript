@@ -716,11 +716,11 @@ type AccessEntry:
 export fn access_log(
     logger: Logger
 ) fn(var HttpExchange, fn(var HttpExchange) Unit!HttpError) Unit!HttpError:
-    return fn var exchange, next: with_access_log(logger, exchange, next)
+    var shared = Shared(logger)
+    return fn var exchange, next: with_access_log(var shared, exchange, next)
 
 fn with_access_log(
-    logger: Logger,
-    exchange: HttpExchange,
+    var logger: Shared[Logger], exchange: HttpExchange,
     next: fn(var HttpExchange) Unit!HttpError
 ) Unit!HttpError:
     let started = monotonic()
@@ -728,9 +728,10 @@ fn with_access_log(
     let path = exchange.path()
     let protocol = exchange.protocol()
     let request = exchange.headers()
-    let tapped = new_tap(exchange, headers(), request)
-    let state = tapped.state
-    var tap: HttpExchange = tapped
+    var state = Shared(TapState(status: 0, bytes: 0))
+    var tap: HttpExchange = Tap(
+        inner: exchange, extra: headers(), request: request, state: state
+    )
     let result = next(var tap)
     let sent: TapState = state
     let status = answered(sent.status, result.is_ok())
@@ -739,8 +740,7 @@ fn with_access_log(
         bytes: sent.bytes,
         duration_ms: monotonic().difference(started).to_milliseconds()
     )
-    var log = logger.clone()
-    let logged = log.info_with("request", entry)
+    let logged = logger.info_with("request", entry)
     return result
 
 fn answered(status: Int, succeeded: Bool) Int:

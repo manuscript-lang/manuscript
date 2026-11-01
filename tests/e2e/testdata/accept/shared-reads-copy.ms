@@ -8,7 +8,7 @@ type State:
     case Running(name: String)
 
 test "a loop over a shared value walks a copy":
-    let sh = Shared(["ada lovelace", "grace hopper", "barbara liskov"])
+    var sh = Shared(["ada lovelace", "grace hopper", "barbara liskov"])
     var other = sh
     var seen: List[String] = []
 
@@ -19,21 +19,21 @@ test "a loop over a shared value walks a copy":
     try expect_equal(seen, ["ada lovelace", "grace hopper", "barbara liskov"])
 
 test "a let of a shared value keeps a copy":
-    let sh = Shared(["ada lovelace", "grace hopper"])
+    var sh = Shared(["ada lovelace", "grace hopper"])
     var other = sh
     let names: List[String] = sh
     other = ["replaced"]
     try expect_equal(names[1], "grace hopper")
 
 test "a field read through a handle keeps a copy":
-    let sh = Shared(["ada lovelace", "grace hopper"])
+    var sh = Shared(["ada lovelace", "grace hopper"])
     var other = sh
     let first = sh[0]
     other[0] = "replaced"
     try expect_equal(first, "ada lovelace")
 
 test "a match payload of a shared value is a copy":
-    let sh = Shared(State.Running("ada lovelace"))
+    var sh = Shared(State.Running("ada lovelace"))
     var other = sh
 
     match sh:
@@ -43,7 +43,7 @@ test "a match payload of a shared value is a copy":
         Idle: try expect_equal(1, 0)
 
 test "if let on a shared optional keeps a copy":
-    let maybe: Shared[String?] = Shared("present and long enough for the heap")
+    var maybe: Shared[String?] = Shared("present and long enough for the heap")
     var other = maybe
 
     if let text = maybe:

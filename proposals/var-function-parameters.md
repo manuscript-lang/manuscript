@@ -8,7 +8,7 @@
 
 ## Status
 
-Built on branch `claude/project-thread-838z66` (not merged); follows [shared-read-and-lock](shared-read-and-lock.md) open question 1. Independent review, 2026-11-01: "do not build as written". Corrections applied below; the copy question (open question 1) is with Chinmay.
+Built on branch `claude/project-thread-838z66` (not merged); follows [shared-read-and-lock](shared-read-and-lock.md) open question 1. Independent review, 2026-11-01: "do not build as written". Corrections applied below. Open question 1 decided (Chinmay, 2026-11-01): reject the copy. Question 2 is built as recommended, with Chinmay's answer pending.
 
 ## Problem
 
@@ -49,11 +49,11 @@ let route: fn(var HttpExchange, RouteParams) Unit!HttpError = fn var exchange, p
 
 ## Alternatives
 
-- **Do nothing (rebind).** Keep `fn(T)` types and copy inside the body. No language change, but `let` is not read-only and markers cannot drive parallelism. Rejected for the stated goal, unless open question 1 is answered "keep the copy".
+- **Do nothing (rebind).** Keep `fn(T)` types and copy inside the body. No language change, but `let` is not read-only and markers cannot drive parallelism. Rejected for the stated goal.
 - **Field exception.** A type's methods change its `Shared` fields from `fn`. Rejected by Chinmay.
 - **Let `fn(T)` fit `fn(var T)`.** Fewer marks on read-only handlers, but needs adapter thunks and hides which handlers change the exchange. Later, if the churn shows it is worth it.
 
-## Open questions
+## Decisions
 
-1. Copying a read-only handle into a `var` (`var e = ex`, a record built from `self.field`, a temporary) still gives a writer. Recommend rejecting it, so `let` means read-only; it needs a rule for copies out of borrowed places and touches the remaining rebinds in tests. Asked of Chinmay.
-2. A task closure cannot change what it captures, so a task that waits on another `Task` copies it (`var mine = t.clone()`). Decide with question 1.
+1. Copying a handle on shared state (`var e = ex`, `ex.clone()`, a record built from `self.field`) out of a `let` or a plain parameter is an error, so `let` means read-only. The types are those `Classifier::shares_state` finds: a `Proxy`, an interface with a `var fn`, or a type holding one. A `let` that owns its value hands it on at its last use. Decided by Chinmay: "Reject the copy, build fn(var T)".
+2. A stored closure may pass a handle it captured from a `var` as `var`; the change reaches the shared state, and the closure still counts as reading its capture. Changing a capture taken from a `let` is an error. Built as recommended; Chinmay's answer is pending.

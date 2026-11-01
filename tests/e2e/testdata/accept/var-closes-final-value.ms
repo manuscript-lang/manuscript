@@ -13,7 +13,7 @@ impl Closeable for Counter:
         self.log.append(self.value)
         return ok(unit)
 
-fn count_then_wait(log: Shared[List[Int]]) Int:
+fn count_then_wait(var log: Shared[List[Int]]) Int:
     var counter = Counter(value: 0, log: log)
     counter.value = 7
     sleep(nanoseconds(5000000000))
@@ -21,17 +21,17 @@ fn count_then_wait(log: Shared[List[Int]]) Int:
     return 0
 
 test "a var binding closes the value it ended with":
-    let log: Shared[List[Int]] = Shared([])
+    var log: Shared[List[Int]] = Shared([])
     var counter = Counter(value: 0, log: log)
     counter.value = 5
     try counter.close()
     log.clone() | try expect_equal([5])
 
 test "a cancelled var binding closes the value it had reached":
-    let log: Shared[List[Int]] = Shared([])
-    let mine = log
+    var log: Shared[List[Int]] = Shared([])
+    var mine = log
     var group = TaskGroup[Int](timeout: nanoseconds(20000000))
-    group.spawn(fn var ch: count_then_wait(mine))
+    group.spawn(fn var ch: count_then_wait(var mine))
 
     let _ignored = group.wait()
     try group.close()

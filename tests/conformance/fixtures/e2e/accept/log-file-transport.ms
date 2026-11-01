@@ -25,7 +25,7 @@ test "levels filter, fields nest under data, and bound fields merge":
     try logger.error_with("n", 7)
     try logger.fatal_with("l", ["a", "b"])
 
-    let root = try logger.child(Service("api"))
+    var root = try logger.child(Service("api"))
     var child = try root.child(Request(7))
     try child.warn_with("child", Service("worker"))
     logger.set_level(LogLevel.Trace)

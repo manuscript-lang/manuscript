@@ -46,7 +46,7 @@ impl FnLower<'_> {
         let mut cap_vals = Vec::new();
         let mut saved = Vec::new();
         let mut closers = Vec::new();
-        let changed = lambda_changes(self, lam, &captures);
+        let changed = lambda_changes(self, e, lam, &captures);
         // Whether the closure's environment points into this frame.
         let mut scoped = false;
         for b in &captures {
@@ -1627,13 +1627,19 @@ fn lambda_mutated(fl: &FnLower<'_>, lam: &Lambda) -> std::collections::HashSet<u
     with_alias_origins(fl, &lam.body, changed)
 }
 
-/// The captured locals the lambda `lam` changes: they are shared by reference. A `Proxy`
-/// handle is captured as a copy, since what changes through it is the one shared value.
+/// The captured locals the lambda `lam` (the node `e`) changes: they are shared by reference. A
+/// `Proxy` handle is captured as a copy, since what changes through it is the one shared value,
+/// and so is everything a closure that outlives its maker captures: the checker lets it change
+/// only handles on shared state.
 fn lambda_changes(
     fl: &FnLower<'_>,
+    e: &Expr,
     lam: &Lambda,
     captures: &[ct::BindingRef],
 ) -> std::collections::HashSet<usize> {
+    if fl.cx.escaping_lambdas.contains(&(fl.hir.data.file, e.id)) {
+        return Default::default();
+    }
     let mutated = lambda_mutated(fl, lam);
     captures
         .iter()
@@ -1653,7 +1659,7 @@ pub(crate) fn slotted_in(fl: &FnLower<'_>, body: &[Stmt]) -> std::collections::H
         fn expr(&mut self, e: &Expr) {
             if let ExprKind::Lambda(lam) = &e.kind {
                 let captures = self.fl.hir.captures(e);
-                self.found.extend(lambda_changes(self.fl, lam, &captures));
+                self.found.extend(lambda_changes(self.fl, e, lam, &captures));
             }
         }
     }

@@ -28,7 +28,7 @@ test "views and functions retain local implementations across modules":
     let second_fn = second_generic()
     (first_fn(item) != 12 or second_fn(item) != 22) | try expect_false
 
-    let events = Shared(List[Int]())
+    var events = Shared(List[Int]())
     let resource = Resource(events)
 
     # Each `Closeable` closes through its own module's implementation when its scope ends.

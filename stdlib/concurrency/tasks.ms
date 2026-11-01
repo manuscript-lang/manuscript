@@ -236,8 +236,8 @@ impl Closeable for TaskTransport[In, Out]:
 # end closes when the task ends, however it ends.
 fn run[T, In: Clonable, Out: Clonable](
     entry: fn(var Channel[Out, In]) T,
-    up: Shared[Lane[Out]],
-    down: Shared[Lane[In]]
+    var up: Shared[Lane[Out]],
+    var down: Shared[Lane[In]]
 ) T:
     let end = TaskTransport[Out, In](outgoing: up, incoming: down)
     msrt_scope_started()
@@ -249,9 +249,7 @@ fn run[T, In: Clonable, Out: Clonable](
 
 # The group's end of a task channel.
 fn group_end[In: Clonable, Out: Clonable](
-    down: Shared[Lane[In]],
-    up: Shared[Lane[Out]],
-    lifetime: TaskChannelLease
+    var down: Shared[Lane[In]], var up: Shared[Lane[Out]], lifetime: TaskChannelLease
 ) Channel[In, Out]:
     return Channel[In, Out](
         transport: TaskTransport[In, Out](
@@ -335,13 +333,13 @@ impl TaskGroup[T, In, Out]:
     var fn spawn(entry: fn(var Channel[Out, In]) T, timeout: Duration?) Task[T, In, Out]:
         var down = Shared(Lane[In]())
         var up = Shared(Lane[Out]())
-        let values = Shared(List[T]())
-        let task_up = up
-        let task_down = down
+        var values = Shared(List[T]())
+        var task_up = up
+        var task_down = down
         var slot = values
         let handle = msrt_scope_spawn(
-            self.scope, fn: slot.append(run(entry, task_up, task_down)), nanos(timeout),
-            nanos(self.timeout)
+            self.scope, fn: slot.append(run(entry, var task_up, var task_down)),
+            nanos(timeout), nanos(self.timeout)
         )
 
         if handle < 0:
@@ -357,10 +355,11 @@ impl TaskGroup[T, In, Out]:
 
         # The group keeps a second handle on its end, so closing the group closes it.
         self.tasks[handle] = Entry(
-            handle, values, group_end(down, up, lifetime.clone())
+            handle, values, group_end(var down, var up, lifetime.clone())
         )
         return Task(
-            self.scope, handle, self.tasks, values, group_end(down, up, lifetime)
+            self.scope, handle, self.tasks, values,
+            group_end(var down, var up, lifetime)
         )
 
     # Waits for every uncollected task and returns their results in start order, or the first task's error.

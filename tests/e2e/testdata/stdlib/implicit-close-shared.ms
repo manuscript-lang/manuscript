@@ -20,13 +20,13 @@ fn closed(log: String) String:
     return ""
 
 fn last_holder(log: String) Int:
-    let first = Shared(Tracked(log, 1))
+    var first = Shared(Tracked(log, 1))
     let second = first
     return second.id
 
 fn other_holder_lives(log: String) Shared[Tracked]:
-    let first = Shared(Tracked(log, 1))
-    let second = first
+    var first = Shared(Tracked(log, 1))
+    var second = first
     return second
 
 fn changed_then_dropped(log: String) Int:

@@ -353,9 +353,9 @@ fn joined_ok(w: Worker[Int, Int]) Int:
 
 test "tasks joining clones of one worker all see its outcome":
     var workers = WorkerGroup[Int, Int]()
-    let worker = workers.spawn(naps).get(none)
-    let first_copy = worker.clone()
-    let second_copy = worker.clone()
+    var worker = workers.spawn(naps).get(none)
+    var first_copy = worker.clone()
+    var second_copy = worker.clone()
     var tasks = TaskGroup[Int]()
     var first = tasks.spawn(fn var c: joined_ok(first_copy.clone()))
     var second = tasks.spawn(fn var c: joined_ok(second_copy.clone()))

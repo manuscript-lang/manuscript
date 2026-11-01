@@ -176,7 +176,7 @@ test "resolve returns typed DNS records from the configured resolver":
     try expect_equal(one[0].value, "127.0.0.1")
     try expect_equal(one[0].kind.text(), "A")
 
-    let server: Shared[DatagramSocket] = Shared(try bind_datagram("127.0.0.1:0"))
+    var server: Shared[DatagramSocket] = Shared(try bind_datagram("127.0.0.1:0"))
     let derived = try with_resolver(server.address())
     var group = TaskGroup[Int]()
     let socket = server

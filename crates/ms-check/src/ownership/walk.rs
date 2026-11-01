@@ -143,6 +143,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         resources: Vec::new(),
         arm_payloads: Vec::new(),
         chain_places: HashMap::new(),
+        captured_perm: HashMap::new(),
         keep_scrutinee: false,
         closed: HashSet::new(),
     };
@@ -214,6 +215,8 @@ struct Walker<'a> {
     arm_payloads: Vec<usize>,
     /// The optional place each `?.` payload binding was read from.
     chain_places: HashMap<usize, PlaceInfo>,
+    /// What an escaping closure's captured bindings could do outside it.
+    captured_perm: HashMap<usize, Perm>,
     /// The scrutinee being walked stays borrowed, never consumed at its last use.
     keep_scrutinee: bool,
     /// Bindings that had `close()` called on them.
@@ -452,6 +455,49 @@ impl Walker<'_> {
 
     /// Whether `e` reads through a `Proxy` handle such as `Shared[T]`: another holder can change
     /// what it reads, so a binding of it is a copy, not a borrow of the binding's place.
+    /// Whether a copy of what `uid` holds may change shared state: `uid` itself may change it.
+    fn can_copy_shared(&self, uid: usize) -> bool {
+        let Some(m) = self.meta.get(&uid) else {
+            return true;
+        };
+        match m.perm {
+            Perm::Mutable | Perm::MutBorrowed => true,
+            Perm::Captured => matches!(
+                self.captured_perm.get(&uid),
+                Some(Perm::Mutable | Perm::MutBorrowed)
+            ),
+            Perm::Immutable | Perm::Borrowed => false,
+        }
+    }
+
+    /// A `let` that owns its value, used for the last time outside any closure, hands the value
+    /// on instead of copying it: no binding that only reads it is left.
+    fn hands_on(&self, node: NodeId, b: &BindingRef) -> bool {
+        self.meta
+            .get(&b.uid)
+            .is_some_and(|m| m.perm == Perm::Immutable && m.role == Role::Let)
+            && self.is_last(node, b)
+            && !self.captured.iter().any(|c| c.contains(&b.uid))
+    }
+
+    /// A copy of `text`, a `ty` read from `root`: when copies of `ty` share state, the copy could
+    /// change what `root` may only read, so `root` must be able to change it.
+    fn shared_copy(&mut self, pos: Pos, root: &BindingRef, text: &str, ty: &Ty) {
+        if self.can_copy_shared(root.uid) || !self.cx.classes.shares_state(ty) {
+            return;
+        }
+        let receiver = self.meta.get(&root.uid).is_some_and(|m| m.is_receiver);
+        let remedy = if receiver {
+            "declare the method `var fn`".to_string()
+        } else {
+            format!("declare `{}` with `var`", root.name)
+        };
+        self.error(
+            pos,
+            format!("cannot copy `{text}`: it is a handle on shared state, and a copy could change what `{}` may only read; {remedy}, or use it without copying", root.name),
+        );
+    }
+
     fn through_handle(&self, e: &Expr) -> bool {
         let mut cur = e;
         loop {
@@ -1359,8 +1405,25 @@ impl Walker<'_> {
             );
             return;
         }
+        // An escaping closure keeps a writer of shared state only when it captured one.
+        let captured_writer = perm == Perm::Captured && self.can_copy_shared(root.uid);
         match perm {
+            Perm::Captured
+                if (info.through_shared || self.cx.classes.shares_state(&root.ty))
+                    && !captured_writer =>
+            {
+                self.error(
+                    pos,
+                    format!("cannot {what} `{text}`: the closure captured `{0}` from a binding that only reads it; declare that binding with `var`", root.name),
+                );
+            }
             Perm::Mutable | Perm::Captured | Perm::MutBorrowed => {}
+            Perm::Borrowed if self.cx.classes.shares_state(&root.ty) => {
+                self.error(
+                    pos,
+                    format!("cannot {what} `{text}`: `{}` only borrows a handle on shared state, and a copy would share it too; change it through a `var` binding or a `var` parameter", root.name),
+                );
+            }
             Perm::Borrowed => {
                 let from = self
                     .meta
@@ -1430,7 +1493,11 @@ impl Walker<'_> {
         self.check_change(pos, &info.resolved, what, &text, Some(root.uid));
         // A change through a `Shared` handle leaves the binding as it was: a closure that makes
         // it captures the handle like a read.
-        if !info.through_shared {
+        // A handle on shared state that a closure captured from a `var` is a writer the closure
+        // owns, as any copy from a `var` is: the change reaches the state the handle shares.
+        // A capture that only reads is reported above.
+        let captured_handle = perm == Perm::Captured && self.cx.classes.shares_state(&root.ty);
+        if !info.through_shared && !captured_handle {
             self.mark_mutated(root.uid);
         }
         self.record(info.root_node, &root, Access::Mutate);
@@ -1819,6 +1886,9 @@ impl Walker<'_> {
         let place = Place::local(b.uid);
         let resolved = self.resolve(&place);
         if d != Demand::Consume || class == Class::Copy {
+            if d == Demand::Consume && !self.hands_on(e.id, b) {
+                self.shared_copy(e.pos, b, b.name.as_str(), &b.ty);
+            }
             self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
             let access = if d == Demand::Consume {
                 Access::Copy
@@ -1999,6 +2069,13 @@ impl Walker<'_> {
             return;
         };
         let class = self.class_of(e);
+        if d == Demand::Consume
+            && class != Class::Resource
+            && (class == Class::Copy || self.through_handle(e))
+        {
+            let ty = self.cx.m.ty(e);
+            self.shared_copy(e.pos, &info.root, &info.text, &ty);
+        }
         // A part read through a `Proxy` handle is a copy: the shared value keeps it.
         if d == Demand::Consume && class != Class::Resource && self.through_handle(e) {
             self.read_place(e.pos, &info);
@@ -2308,6 +2385,17 @@ impl Walker<'_> {
             }
             let held = self.held(r, mode);
             self.receiver(r, mode);
+            // A native that hands back a part of what it reads (`.clone()`, `.get(k)`) copies it.
+            if mode == ParamMode::Borrow
+                && let Resolution::Method(method) = cx.m.resolution(e)
+                && !method.native.as_str().is_empty()
+                && method.native != "contract"
+                && let Some((info, _)) = self.place(r)
+            {
+                let ty = cx.m.ty(e);
+                let text = self.expr_text(e);
+                self.shared_copy(e.pos, &info.root, &text, &ty);
+            }
             operands.push((Operand::Receiver(r), held));
         } else {
             self.callees.insert(callee.id);
@@ -2545,11 +2633,15 @@ impl Walker<'_> {
             .iter()
             .filter_map(|b| self.meta.get(&b.uid).map(|m| (b.uid, m.perm)))
             .collect();
+        let saved_captured = self.captured_perm.clone();
         if escaping {
             // The closure holds its own snapshot: read-only inside.
-            for (uid, _) in &saved_meta {
+            for (uid, perm) in &saved_meta {
                 if let Some(m) = self.meta.get_mut(uid) {
                     m.perm = Perm::Captured;
+                }
+                if *perm != Perm::Captured {
+                    self.captured_perm.insert(*uid, *perm);
                 }
             }
         }
@@ -2575,6 +2667,7 @@ impl Walker<'_> {
                 m.perm = perm;
             }
         }
+        self.captured_perm = saved_captured;
         if let Some(a) = saved_active {
             self.active = a;
         }

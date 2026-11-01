@@ -198,6 +198,9 @@ pub struct Ownership {
     /// Captures a non-escaping lambda only reads in place, by module file, lambda node and
     /// binding identity: the closure may point at the variable instead of copying it.
     pub borrowed_captures: HashSet<(Name, NodeId, usize)>,
+    /// Lambdas that outlive their maker, by module file and node: they own copies of what they
+    /// capture, and a change one makes reaches only state its copies share.
+    pub escaping_lambdas: HashSet<(Name, NodeId)>,
     /// For each callable with a `Consume` parameter or receiver, which parameters (declaration
     /// order, the receiver first for a method) the body moves, stores or returns.
     pub consumes: HashMap<Key, Vec<bool>>,
@@ -284,9 +287,13 @@ impl Hir<'_> {
         let mut moved_payloads = HashSet::new();
         let mut resource_moves = HashMap::new();
         let mut borrowed_captures = HashSet::new();
+        let mut escaping_lambdas = HashSet::new();
         let mut consumes = HashMap::new();
         for (c, out) in callables.iter().zip(outcomes) {
             for (node, lambda) in &out.facts.lambdas {
+                if lambda.escaping {
+                    escaping_lambdas.insert((c.module.file, *node));
+                }
                 for (uid, mode) in &lambda.captures {
                     if !lambda.escaping && *mode == CaptureMode::Borrow {
                         borrowed_captures.insert((c.module.file, *node, *uid));
@@ -336,6 +343,7 @@ impl Hir<'_> {
             resource_moves,
             moved_payloads,
             borrowed_captures,
+            escaping_lambdas,
             consumes,
         }
     }

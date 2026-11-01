@@ -75,7 +75,7 @@ bench "fs.list_200":
 bench "log.info":
     if var dir = temporary("ms-bench-"):
         if let transport = file_transport("{dir.path()}/log.txt"):
-            if let logger = create(transport, timestamp: false):
+            if var logger = create(transport, timestamp: false):
                 fn work() Result[Unit, Error]:
                     var n = 0
                     for i in 0..20000:

@@ -230,8 +230,8 @@ impl WorkerGroup[In, Out]:
             return error(WorkerError.NotStarted)
 
         let channel = Channel[In, Out](transport: WorkerTransport[In, Out](end: near))
-        let ended = Shared(List[Unit!WorkerError]())
-        let worker = Worker(handle, channel, near, ended)
+        var ended = Shared(List[Unit!WorkerError]())
+        var worker = Worker(handle, channel, near, ended)
         self.workers.append(worker.clone())
         return ok(worker)
 

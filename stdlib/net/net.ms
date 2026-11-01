@@ -776,7 +776,7 @@ export fn serve_cores(
         return error(NetworkError.InvalidInput)
 
     var group = WorkerGroup[Int, Int]()
-    let started = group.spawn_many(entry, cores)
+    var started = group.spawn_many(entry, cores)
     if started.is_error():
         return error(NetworkError.Failed("could not start a serving worker"))
 

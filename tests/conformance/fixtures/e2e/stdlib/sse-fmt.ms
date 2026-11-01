@@ -196,7 +196,7 @@ test "truncated streams fail and clean ends succeed":
     try expect_false(not is_case(done.feed("x".to_bytes()), SseError.InvalidInput))
 
 test "reader decodes a borrowed stream and leaves it open":
-    let source = stream(
+    var source = stream(
         [
             "data: he".to_bytes(), "llo\r".to_bytes(), "\n\r\ndata: 2\n\n".to_bytes()
         ],
