@@ -1170,7 +1170,22 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
             return;
         }
         let size = d.size as usize;
-        let buf = alloc::alloc(v.len * size.max(1));
+        let bytes = v.len * size.max(1);
+        let guarded = (*fault::msrt_isolate_hdr())
+            .guarded
+            .load(core::sync::atomic::Ordering::Relaxed)
+            != 0;
+        // A comparator can leave a guarded task through a fault or cancellation while a
+        // merge holds moved slots in scratch. Keep an immutable byte snapshot for that exit;
+        // it has no ownership of its own and must never run element copy/drop hooks.
+        let storage = if guarded {
+            bytes
+                .checked_mul(2)
+                .unwrap_or_else(|| fault::fault(b"list size overflow"))
+        } else {
+            bytes
+        };
+        let buf = alloc::alloc(storage);
         // Slots of a few words move as typed copies instead of `memcpy` calls of a run-time size.
         macro_rules! words {
             ($n:literal) => {
@@ -1183,7 +1198,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
                 )
             };
         }
-        match size {
+        let sort = || match size {
             8 => words!(1),
             16 => words!(2),
             24 => words!(3),
@@ -1191,6 +1206,20 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
             40 => words!(5),
             48 => words!(6),
             _ => merge_sort(v.ptr, buf, v.len, size, cmp, env),
+        };
+        if guarded {
+            let original = buf.add(bytes);
+            core::ptr::copy_nonoverlapping(v.ptr, original, v.len * size);
+            fault::with_cleanup(
+                &mut || {
+                    // Restore a valid owned list before the caller's drop cleanup runs.
+                    core::ptr::copy_nonoverlapping(original, v.ptr, v.len * size);
+                    alloc::free(buf);
+                },
+                sort,
+            );
+        } else {
+            sort();
         }
         alloc::free(buf);
     }
