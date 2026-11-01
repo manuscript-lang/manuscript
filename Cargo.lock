@@ -1160,6 +1160,7 @@ dependencies = [
  "ms-rt",
  "ms-rt-abi",
  "num-bigint 0.5.1",
+ "num-integer",
  "num-traits",
 ]
 
@@ -1171,6 +1172,7 @@ dependencies = [
  "crc32fast",
  "data-encoding",
  "getrandom 0.4.3",
+ "libm",
  "ms-rt",
  "ms-rt-abi",
  "simd-adler32",
