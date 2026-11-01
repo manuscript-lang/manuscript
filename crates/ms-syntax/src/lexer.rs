@@ -698,6 +698,11 @@ impl Scanner<'_> {
             self.emit_layout(Tok::Dedent);
         }
         if let Some((prefixes, _)) = prefixes {
+            // Lines consumed by a final multi-line text token are inside it.
+            let line = (self.line - self.base_line - 1) as usize;
+            while prefixes.len() < line {
+                prefixes.push(true);
+            }
             prefixes.push(!self.delimiters.is_empty());
         }
         if let Some(&open) = self.delimiters.last() {

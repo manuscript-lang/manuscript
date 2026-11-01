@@ -155,3 +155,13 @@ fn parts_of(dump: &str) -> &str {
     let start = dump.find("(part ").unwrap();
     &dump[start..start + dump[start..].find(") ]").unwrap()]
 }
+
+#[test]
+fn recovery_keeps_a_multi_line_import_path_in_one_chunk() {
+    let file: Arc<str> = Arc::from("m.ms");
+    let source = "import f from r\"\"\"\n./lib.ms\n\"\"\"\nexport fn main() Int:\n    return 0\n";
+    let (_, issues) = ms_syntax::parse_partial(&file, source);
+    let messages: Vec<&str> = issues.iter().map(|d| d.message.as_str()).collect();
+    assert_eq!(messages.len(), 1, "{messages:?}");
+    assert!(messages[0].contains("one-line text"), "{messages:?}");
+}
