@@ -30,10 +30,6 @@ fn string(b: S) -> Result<String, Fail> {
     String::from_utf8(b).map_err(|_| Fail::InvalidData)
 }
 
-fn valid_utf8(b: &[u8]) -> bool {
-    core::str::from_utf8(b).is_ok()
-}
-
 /// Go's `strings.ToLower` for text that may hold invalid UTF-8 (each bad byte becomes U+FFFD).
 fn go_lower(b: &[u8]) -> String {
     if b.is_ascii() {
@@ -121,12 +117,9 @@ pub fn decode_component(text: &str) -> Result<String, Fail> {
 
 // Called only after every percent escape's two ASCII hex digits were checked.
 fn component_unhex(byte: u8) -> u8 {
-    match byte {
-        b'0'..=b'9' => byte - b'0',
-        b'a'..=b'f' => byte - b'a' + 10,
-        b'A'..=b'F' => byte - b'A' + 10,
-        _ => unreachable!("validated component escape"),
-    }
+    char::from(byte)
+        .to_digit(16)
+        .expect("validated component escape") as u8
 }
 
 fn valid_query(query: &[u8]) -> bool {
@@ -169,7 +162,10 @@ fn components(u: &Url) -> Result<Components, Fail> {
         }
         Some(n)
     };
-    if !valid_utf8(&u.path) || !valid_utf8(&u.fragment) || !valid_query(&u.raw_query) {
+    if !core::str::from_utf8(&u.path).is_ok()
+        || !core::str::from_utf8(&u.fragment).is_ok()
+        || !valid_query(&u.raw_query)
+    {
         return Err(Fail::InvalidData);
     }
     // Only a bracketed IP literal may contain a colon; "host:80:80" is malformed.
@@ -226,7 +222,7 @@ fn go_url(v: &Components) -> Option<Url> {
         return None;
     }
     let decoded = parser::path_unescape(raw).ok()?;
-    if !valid_utf8(&decoded) {
+    if !core::str::from_utf8(&decoded).is_ok() {
         return None;
     }
     if !valid_query(v.query.as_bytes()) || host.iter().any(|b| b" <>\"".contains(b)) {
