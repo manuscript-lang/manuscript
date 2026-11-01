@@ -153,20 +153,12 @@ fn entry_diagnostics_name_the_required_signature() {
 #[test]
 fn file_entries_share_a_library_under_the_enclosing_manifest() {
     let dir = scratch("enclosing");
-    write(
-        &dir,
-        "ms.toml",
-        "[project]\nname = \"bench\"\nsource = \".\"\n\n[aliases]\n\"@lib\" = \"lib.ms\"\n",
-    );
-    write(
-        &dir,
-        "lib.ms",
-        "export fn one() Int:\n    return 1\n\nexport fn two() Int:\n    return 2\n",
-    );
+    write(&dir, "ms.toml", include_str!("fixtures/enclosing/ms.toml"));
+    write(&dir, "lib.ms", include_str!("fixtures/enclosing/lib.ms"));
     let entry = write(
         &dir,
         "suite/driver.ms",
-        "import one from \"../lib.ms\"\nimport two from \"@lib\"\n\nexport fn main() Int:\n    return one() + two()\n",
+        include_str!("fixtures/enclosing/suite/driver.ms"),
     );
     let graph = load_file(&entry, LoadOptions::default());
     assert!(graph.diagnostics.is_empty(), "{:?}", graph.diagnostics);
