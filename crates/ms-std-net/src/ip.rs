@@ -32,47 +32,9 @@ pub fn ip_text(ip: &IpAddr) -> String {
     }
 }
 
-/// RFC 5952 text with the IPv4-mapped spelling.
+/// RFC 5952 text with the IPv4-mapped spelling (std's `Display` prints exactly this).
 pub fn ipv6_text(ip: &Ipv6Addr) -> String {
-    let groups = ip.segments();
-    if let Some(v4) = ip.to_ipv4_mapped() {
-        return format!("::ffff:{v4}");
-    }
-    // Longest run of at least two zero groups; the first wins a tie.
-    let (mut best_at, mut best_len) = (usize::MAX, 0usize);
-    let mut i = 0;
-    while i < 8 {
-        if groups[i] != 0 {
-            i += 1;
-            continue;
-        }
-        let start = i;
-        while i < 8 && groups[i] == 0 {
-            i += 1;
-        }
-        if i - start > best_len {
-            best_at = start;
-            best_len = i - start;
-        }
-    }
-    if best_len < 2 {
-        best_at = usize::MAX;
-    }
-    let mut out = String::new();
-    let mut i = 0;
-    while i < 8 {
-        if i == best_at {
-            out.push_str("::");
-            i += best_len;
-            continue;
-        }
-        if !out.is_empty() && !out.ends_with(':') {
-            out.push(':');
-        }
-        out.push_str(&format!("{:x}", groups[i]));
-        i += 1;
-    }
-    out
+    ip.to_string()
 }
 
 /// A masked CIDR range.

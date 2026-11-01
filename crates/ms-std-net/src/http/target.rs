@@ -16,12 +16,7 @@ pub struct Target {
 pub struct BadTarget(pub &'static str);
 
 fn hex(b: u8) -> Option<u8> {
-    match b {
-        b'0'..=b'9' => Some(b - b'0'),
-        b'a'..=b'f' => Some(b - b'a' + 10),
-        b'A'..=b'F' => Some(b - b'A' + 10),
-        _ => None,
-    }
+    (b as char).to_digit(16).map(|d| d as u8)
 }
 
 /// Percent-decodes `raw`; `None` when an escape is malformed.
