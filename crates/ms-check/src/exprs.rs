@@ -216,8 +216,17 @@ impl Checker {
             i.no_return = true;
         }
         if let Some(exp) = expected {
+            // A part left invalid by an inference failure was reported already ("cannot infer
+            // callback parameter"); restating it would print `<invalid>` to the user.
+            let inference_reported = (invalid_type(&Some(actual.clone()))
+                || invalid_type(&Some(exp.clone())))
+                && self.p.diagnostics.iter().any(|d| {
+                    d.message.starts_with("cannot infer callback parameter")
+                        && d.pos.line == e.pos.line
+                });
             if actual.id != "<invalid>"
                 && exp.id != "<invalid>"
+                && !inference_reported
                 && !compatible(&Some(actual.clone()), exp)
             {
                 if self.interface_assignable(&actual, exp) {

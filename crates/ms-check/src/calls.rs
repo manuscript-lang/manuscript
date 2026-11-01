@@ -720,6 +720,7 @@ impl Checker {
                 ),
             );
         }
+        let mut missing: Vec<Name> = Vec::new();
         for (index, v) in vars.iter().enumerate() {
             let mut a = args.get(index).cloned().flatten();
             if a.is_none()
@@ -730,13 +731,14 @@ impl Checker {
             let a = match a {
                 Some(a) => a,
                 None => {
-                    if !self.label_mismatch {
-                        self.type_error(pos, missing_type_argument_hint(name, v.name, vars, &args));
-                    }
+                    missing.push(v.name);
                     invalid()
                 }
             };
             subst.insert(v.id, a);
+        }
+        if !missing.is_empty() && !self.label_mismatch {
+            self.type_error(pos, missing_type_argument_hint(name, &missing, vars, &args));
         }
         self.label_mismatch = false;
         for v in vars {

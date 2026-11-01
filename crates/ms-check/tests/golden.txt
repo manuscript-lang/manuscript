@@ -2881,8 +2881,7 @@ type	2	38	92	Error does not satisfy Equal; pass a type that already implements i
 fn first() Unit: domain(f())resolution	1	27	26	unknown type E2; declare it with 'type E2:' / 'interface E2:', declare it as a type parameter, or import it
 type	2	18	61	cannot infer type argument T for domain; write domain[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 resolution	2	25	68	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn same[T, E: Error](first: Result[T, E], second: Result[T, E]) Unit: return
-fn first() Unit: same(first: f(), second: other())type	2	18	94	cannot infer type argument T for same; write same[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
-type	2	18	94	cannot infer type argument E for same; write same[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter
+fn first() Unit: same(first: f(), second: other())type	2	18	94	cannot infer type arguments T, E for same; write same[T, E](...) with explicit types for T, E; call arguments and the expected result must determine every type parameter
 resolution	2	30	106	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module
 resolution	2	43	119	unknown binding other; declare it with 'let other = ...' before use, define 'fn other(...) T:', or import it from a modulefn values[T](r: List[Result[T, Error]]) Unit: return
 fn first() Unit: values([f()])type	2	18	70	cannot infer type argument T for values; write values[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
@@ -6666,11 +6665,9 @@ test "second request uses same server":
     try expect_equal(response.body, "shared".to_bytes())
 resolution	3	8	164	module does not export network; did you mean 'Network'?
 resolution	9	31	425	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
-type	14	24	618	cannot infer type argument T for expect_ok; write expect_ok[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
-type	14	24	618	cannot infer type argument E for expect_ok; write expect_ok[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter
+type	14	24	618	cannot infer type arguments T, E for expect_ok; write expect_ok[T, E](...) with explicit types for T, E; call arguments and the expected result must determine every type parameter
 resolution	14	34	628	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
-type	17	24	861	cannot infer type argument T for expect_ok; write expect_ok[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
-type	17	24	861	cannot infer type argument E for expect_ok; write expect_ok[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter
+type	17	24	861	cannot infer type arguments T, E for expect_ok; write expect_ok[T, E](...) with explicit types for T, E; call arguments and the expected result must determine every type parameter
 resolution	17	34	871	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 type	12	9	553	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeexport fn helper() Unit:
     return
