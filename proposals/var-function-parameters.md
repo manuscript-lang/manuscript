@@ -8,7 +8,7 @@
 
 ## Status
 
-Built on branch `claude/project-thread-838z66` (not merged); follows [shared-read-and-lock](shared-read-and-lock.md) open question 1. Independent review, 2026-11-01: "do not build as written". Corrections applied below. Open question 1 decided (Chinmay, 2026-11-01): reject the copy. Question 2 is built as recommended, with Chinmay's answer pending.
+Built on branch `claude/project-thread-838z66` (not merged); follows [shared-read-and-lock](shared-read-and-lock.md) open question 1. Independent review, 2026-11-01: "do not build as written". Corrections applied below. Open question 1 decided (Chinmay, 2026-11-01): reject the copy. Question 2 decided (Chinmay, 2026-11-01): as recommended.
 
 ## Problem
 
@@ -56,4 +56,4 @@ let route: fn(var HttpExchange, RouteParams) Unit!HttpError = fn var exchange, p
 ## Decisions
 
 1. Copying a handle on shared state (`var e = ex`, `ex.clone()`, a record built from `self.field`) out of a `let` or a plain parameter is an error, so `let` means read-only. The types are those `Classifier::shares_state` finds: a `Proxy`, an interface with a `var fn`, or a type holding one. A `let` that owns its value hands it on at its last use. Since one-owner references (#2199) records and interface values move instead of copying, so in practice the rule covers `Shared` handles and `.clone()`. Decided by Chinmay: "Reject the copy, build fn(var T)".
-2. A stored closure may pass a handle it captured from a `var` as `var`; the change reaches the shared state, and the closure still counts as reading its capture. Changing a capture taken from a `let` is an error. Built as recommended; Chinmay's answer is pending.
+2. A stored closure may pass a handle it captured from a `var` as `var`; the change reaches the shared state, and the closure still counts as reading its capture. Changing a capture taken from a `let` is an error. Decided by Chinmay: "go with your recommendations".

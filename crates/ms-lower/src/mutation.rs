@@ -463,11 +463,15 @@ pub(crate) fn mutated_locals(
 
 /// The parameters (receiver first) every source function changes: declared `var`, or changed
 /// by the body of a reference-shared type.
+/// The parameters (receiver first) that functions hand back changed, by declaration or by what
+/// their bodies do, and those whose memory the bodies change (a `var fn` that only stops native
+/// work, such as a watcher's `close`, changes none).
 pub(crate) fn infer_mutated(
     mods: &HashMap<Name, Rc<ModuleHir>>,
     callables: &HashMap<FnKey, Rc<Callable>>,
-) -> HashSet<ParamKey> {
+) -> (HashSet<ParamKey>, HashSet<ParamKey>) {
     let mut mutated = HashSet::new();
+    let mut changed = HashSet::new();
     // (function, position) -> the (callee, callee position) it passes the parameter to.
     let mut feeds: Vec<(ParamKey, ParamKey)> = Vec::new();
     for (key, c) in callables {
@@ -485,6 +489,11 @@ pub(crate) fn infer_mutated(
             };
             if declared {
                 mutated.insert((*key, i));
+                // A value passed by copy comes back whole, so it counts as changed; a value
+                // passed by reference is changed only where the body changes it (below).
+                if !by_reference(b.ty.kind) {
+                    changed.insert((*key, i));
+                }
             }
         }
         let Some(hir) = mods.get(&c.module.file) else {
@@ -497,6 +506,7 @@ pub(crate) fn infer_mutated(
             }
             if m.roots.contains(&b.uid) {
                 mutated.insert((*key, i));
+                changed.insert((*key, i));
             }
         }
         for e in &m.edges {
@@ -511,15 +521,18 @@ pub(crate) fn infer_mutated(
             }
         }
     }
-    loop {
-        let before = mutated.len();
-        for (from, to) in &feeds {
-            if mutated.contains(to) {
-                mutated.insert(*from);
+    for set in [&mut mutated, &mut changed] {
+        loop {
+            let before = set.len();
+            for (from, to) in &feeds {
+                if set.contains(to) {
+                    set.insert(*from);
+                }
+            }
+            if set.len() == before {
+                break;
             }
         }
-        if mutated.len() == before {
-            return mutated;
-        }
     }
+    (mutated, changed)
 }

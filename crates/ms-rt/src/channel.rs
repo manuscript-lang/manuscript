@@ -172,8 +172,10 @@ crate::isolate_static! {
 struct Hold {
     /// The task that holds the box.
     task: u64,
-    /// The box's in-use flag.
-    taken: usize,
+    /// The box's state word: `0` free, `n > 0` for `n` read holds, `-1` for a write.
+    state: usize,
+    /// A read hold, which shares the box with other reads; otherwise a write hold.
+    read: bool,
     /// The depth of guarded calls the task was in when it took the hold.
     depth: usize,
 }
@@ -183,32 +185,40 @@ fn holders() -> &'static mut Vec<(usize, Hold)> {
     unsafe { &mut *HOLDERS.ptr() }
 }
 
-fn hold_of(key: usize) -> Option<usize> {
-    holders().iter().rposition(|(k, _)| *k == key)
+/// The running task's latest hold of the box `key`.
+fn hold_of(key: usize, task: u64) -> Option<usize> {
+    holders()
+        .iter()
+        .rposition(|(k, h)| *k == key && h.task == task)
 }
 
-/// Marks the box `key` in use by the running task for a call, through its flag `taken`, until
-/// `msrt_shared_release`, or until the task is cancelled or faults inside the call.
+/// Holds the box `key` for a call of the running task, through its state word `state`, until
+/// `msrt_shared_release`, or until the task is cancelled or faults inside the call. A read hold
+/// (`read` 1) adds a reader; a write hold marks the box changing. The caller has waited its turn.
 ///
 /// # Safety
-/// `taken` is the in-use flag of the live box `key`, and the box outlives the hold.
+/// `state` is the state word of the live box `key`, and the box outlives the hold.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_shared_hold(key: i64, taken: *mut u8) {
-    // SAFETY: the caller passes the flag of a live box.
-    unsafe { *taken = 1 };
+pub unsafe extern "C-unwind" fn msrt_shared_hold(key: i64, state: *mut i64, read: i64) {
+    let read = read != 0;
+    // SAFETY: the caller passes the state word of a live box.
+    unsafe { *state = if read { *state + 1 } else { -1 } };
     let hold = Hold {
         task: task::current_handle(),
-        taken: taken as usize,
+        state: state as usize,
+        read,
         depth: crate::fault::guard_depth(),
     };
     holders().push((key as usize, hold));
 }
 
-/// Ends the running task's hold of the box `key` when its call returns, and wakes the oldest task
-/// waiting for the box.
+/// Ends the running task's latest hold of the box `key` when its call returns, and wakes the
+/// tasks waiting for the box once it is free.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_shared_release(key: i64) {
-    end_hold(key as usize);
+    if let Some(at) = hold_of(key as usize, task::current_handle()) {
+        end_hold(at);
+    }
 }
 
 /// Ends the holds of the running task's calls that a cancellation or fault leaving guard depth
@@ -218,49 +228,50 @@ pub(crate) fn end_abandoned_holds(depth: usize) {
         return;
     }
     let me = task::current_handle();
-    let abandoned: Vec<usize> = holders()
+    while let Some(at) = holders()
         .iter()
-        .filter(|(_, h)| h.task == me && h.depth >= depth)
-        .map(|(key, _)| *key)
-        .rev()
-        .collect();
-    for key in abandoned {
-        end_hold(key);
+        .rposition(|(_, h)| h.task == me && h.depth >= depth)
+    {
+        end_hold(at);
     }
 }
 
-/// Clears the hold of the box whose identity is `key` and wakes the oldest task waiting for it.
-fn end_hold(key: usize) {
-    if let Some(at) = hold_of(key) {
-        let (_, hold) = holders().remove(at);
-        // SAFETY: the box outlives its hold (`msrt_shared_hold`).
-        unsafe { *(hold.taken as *mut u8) = 0 };
-    }
-    if !queues().is_empty() {
-        msrt_waitq_wake(key as i64);
+/// Ends the hold at `at` in the holders, and wakes the tasks waiting for its box once it is free.
+fn end_hold(at: usize) {
+    let (key, hold) = holders().remove(at);
+    let state = hold.state as *mut i64;
+    // SAFETY: the box outlives its hold (`msrt_shared_hold`).
+    let free = unsafe {
+        *state = if hold.read { *state - 1 } else { 0 };
+        *state == 0
+    };
+    if free {
+        msrt_waitq_wake_all(key as i64);
     }
 }
 
-/// Called when the box `key` is in use. Another task's hold: waits until it is released (the
-/// caller checks again). A hold of the running task, or an update without a hold (which only
-/// the running task can be in), would wait on itself: faults.
+/// Called when the box `key` is busy for the access the running task wants. A hold of another
+/// task: waits until the box is free (the caller checks again). A hold of the running task, or
+/// an update without a hold (which only the running task can be in), would wait on itself:
+/// faults.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_shared_wait(key: i64) {
     let me = task::current_handle();
-    match hold_of(key as usize).map(|at| holders()[at].1) {
-        Some(hold) if hold.task != me => {}
-        _ => crate::fault::fault(
+    let mine = hold_of(key as usize, me).is_some();
+    let others = holders()
+        .iter()
+        .any(|(k, h)| *k == key as usize && h.task != me);
+    if mine || !others {
+        crate::fault::fault(
             b"a Shared value was used again inside a call on it from the same task; finish the call first, or change the value inside that call",
-        ),
+        );
     }
     let token = msrt_channel_token();
     msrt_waitq_push(key, token);
-    // A task cancelled while it waits leaves the queue, or passes on a wake already chosen for it.
+    // A task cancelled while it waits leaves the queue.
     // Cancellation leaves by a jump, so this is a cleanup entry rather than a destructor.
     let mut leave = || {
-        if msrt_waitq_remove(key, token) == 0 {
-            msrt_waitq_wake(key);
-        }
+        msrt_waitq_remove(key, token);
     };
     crate::fault::with_cleanup(&mut leave, || msrt_channel_park(token));
 }
@@ -308,6 +319,17 @@ pub extern "C-unwind" fn msrt_waitq_wake(key: i64) -> i64 {
             1
         }
         None => 0,
+    }
+}
+
+/// Posts every token queued on `key` and empties the queue, so each waiter checks again.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_waitq_wake_all(key: i64) {
+    let Some(waiting) = queues().remove(&(key as usize)) else {
+        return;
+    };
+    for token in waiting {
+        msrt_channel_post(token);
     }
 }
 

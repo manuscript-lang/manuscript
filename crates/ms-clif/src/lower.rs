@@ -542,7 +542,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                         let (_, at, _) = *self.fields_of(ty).last().expect("taken flag");
                         let off = self.g.lay.mem(ty).offsets.get(at).copied().unwrap_or(0);
                         let taken = self.b.ins().load(
-                            types::I8,
+                            types::I64,
                             flags(),
                             obj,
                             (SHARED_VALUE + off as i64) as i32,

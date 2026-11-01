@@ -113,6 +113,8 @@ pub(crate) struct FnLower<'a> {
     /// The `Shared` handles a call in progress holds, by `shared_key`: their payload changes
     /// without another check of the hold.
     pub held: Vec<String>,
+    /// The `Shared` handles the calls in progress hold for reading (keys as in `held`).
+    pub read_held: Vec<String>,
     /// The expression being lowered before its conversion to an interface: its own type, not the
     /// interface the checker recorded for it, is the type of its value.
     pub converting: Option<*const ms_syntax::ast::Expr>,
@@ -486,6 +488,7 @@ impl<'a> FnLower<'a> {
             converting: None,
             handle_of: None,
             held: Vec::new(),
+            read_held: Vec::new(),
             scalars_scan: false,
             aliases: HashMap::new(),
             scope_override: None,

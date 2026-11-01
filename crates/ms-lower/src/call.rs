@@ -42,16 +42,72 @@ impl<'a> FnLower<'a> {
         let Some(view) = self.hir.call(e) else {
             return Err(Error::new("call without resolution"));
         };
+        // A call that borrows a payload through a `Shared` holds it for reading from before its
+        // arguments are evaluated until it returns, so a change waits instead of moving the
+        // payload under a call that parks.
+        let reads = self.borrowed_reads(e, &view);
+        let read_holds = self.shared_read_hold(&reads)?;
+        let out = self.dispatch_call(e, &view);
+        self.shared_release(read_holds)?;
+        let out = out?;
+        if !self.dead && self.ety(e).id == "Never" {
+            self.b.unreachable();
+            self.terminated();
+        }
+        Ok(out)
+    }
+
+    /// The receiver and arguments of the call `e` that it borrows rather than changes (no `var`,
+    /// a receiver its method does not change) and that own memory a change could move.
+    fn borrowed_reads<'e>(&mut self, e: &'e Expr, view: &CallView<'_>) -> Vec<&'e Expr> {
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return Vec::new();
+        };
+        let mut reads = Vec::new();
+        if let Resolution::Method(m) = &view.target
+            && let Some(recv) = self.receiver_expr(e)
+            && !ms_check::effects::collection_mutation(m)
+            && !self.changes_receiver(m, recv)
+        {
+            reads.push(recv);
+        }
+        reads.extend(args.iter().filter(|a| !a.mutable).map(|a| &a.value));
+        let mut owning = Vec::new();
+        for r in reads {
+            if self.shared_root(r).is_some() && self.emty(r).is_ok_and(|t| self.needs_drop(t)) {
+                owning.push(r);
+            }
+        }
+        owning
+    }
+
+    /// Whether the method `m` changes its receiver `recv`. An interface method on a value of a
+    /// known type answers for its implementation, whose body shows whether it changes the value
+    /// (a `close` that only stops native work does not); through an interface value, a `var fn`
+    /// does.
+    fn changes_receiver(&mut self, m: &ct::MethodRef, recv: &Expr) -> bool {
+        if m.native.as_str() == "contract" {
+            let static_ty = self.ety(recv);
+            if let Some(im) = self.contract_impl(m, &static_ty)
+                && im.native.as_str().is_empty()
+            {
+                return crate::mutation::method_changes_receiver(&im, &self.cx.changed);
+            }
+        }
+        crate::mutation::method_changes_receiver(m, &self.cx.mutated)
+    }
+
+    fn dispatch_call(&mut self, e: &Expr, view: &CallView<'_>) -> Result<Val, Error> {
         let out = match &view.target {
             Resolution::Function(sym) if sym.native.as_str().is_empty() => {
                 let c = self.callable_of_decl(sym.module, sym.decl.as_ref().map(|d| d.id()))?;
                 let vars = sym.variables();
                 let subst = self.callee_subst(&vars, &view.type_args)?;
-                if let Some(v) = self.try_default_call(&view, &c, &subst, e)? {
+                if let Some(v) = self.try_default_call(view, &c, &subst, e)? {
                     v
                 } else {
                     let names = self.param_names(&c);
-                    let args = self.eval_args(&view, &names, &c, &subst, None, e.pos)?;
+                    let args = self.eval_args(view, &names, &c, &subst, None, e.pos)?;
                     self.call_callable(&c, &subst, args, e)?
                 }
             }
@@ -74,14 +130,12 @@ impl<'a> FnLower<'a> {
                     .as_ref()
                     .map(|t| t.params.clone())
                     .unwrap_or_default();
-                self.native_function(e, &view, sym.native.as_str(), &params, sym)?
+                self.native_function(e, view, sym.native.as_str(), &params, sym)?
             }
             // `x.get()(7)`: the callee is itself a call, so this one calls its function value.
-            Resolution::Method(_) if self.receiver_expr(e).is_none() => {
-                self.call_value(e, &view)?
-            }
+            Resolution::Method(_) if self.receiver_expr(e).is_none() => self.call_value(e, view)?,
             Resolution::Method(m) => {
-                let out = self.method_call(e, &view, m)?;
+                let out = self.method_call(e, view, m)?;
                 if m.name().is_some_and(|n| n.as_str() == "close")
                     && let Some(recv) = self.receiver_expr(e)
                 {
@@ -89,14 +143,10 @@ impl<'a> FnLower<'a> {
                 }
                 out
             }
-            Resolution::Constructor { ty, case } => self.construct(e, &view, ty, *case)?,
-            Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
+            Resolution::Constructor { ty, case } => self.construct(e, view, ty, *case)?,
+            Resolution::Local(_) | Resolution::Value => self.call_value(e, view)?,
             _ => return Err(Error::new("unsupported call target")),
         };
-        if !self.dead && self.ety(e).id == "Never" {
-            self.b.unreachable();
-            self.terminated();
-        }
         Ok(out)
     }
 
@@ -366,8 +416,13 @@ impl<'a> FnLower<'a> {
         }
         let owned_mask = self.cx.owned_mask(c);
         let vars = self.cx.var_positions(c);
-        // A call that reads through a `Shared` handle holds its box until it returns.
-        let holds = self.shared_hold(&args.places)?;
+        // A call that reads through a `Shared` handle holds its box until it returns: for a change
+        // when the callee's body changes that parameter, and otherwise for reading.
+        let key = (c.module.file, c.id());
+        let reads: Vec<bool> = (0..args.places.len())
+            .map(|i| !self.cx.changed.contains(&(key, i)))
+            .collect();
+        let holds = self.shared_hold_modes(&args.places, &reads)?;
         let in_memory = self.memory_places(&vars, &args.places)?;
         let mut subst = subst.clone();
         if in_memory.is_some() {
@@ -649,7 +704,7 @@ impl<'a> FnLower<'a> {
         // needs no hold, and an argument that waits (`slot.append(run())`) does not hold the box.
         if self.shared_root(recv_expr).is_some()
             && !ms_check::effects::collection_mutation(m)
-            && crate::mutation::method_changes_receiver(m, &self.cx.mutated)
+            && self.changes_receiver(m, recv_expr)
         {
             let holds = self.shared_hold(&[Some(recv_expr.clone())])?;
             let r = self.unheld_method_call(e, view, m, recv_expr);

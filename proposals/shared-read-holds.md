@@ -9,7 +9,7 @@
 
 ## Status
 
-Proposal, 2026-11-01, checked on `claude/project-thread-838z66` at `126ae56a`. Chinmay: "only few things need to cross thread boundary, everything else runs in a single thread, we wanna minimize locking". Skeptical review: build with changes. Those changes are applied here: every call path, lent results, holds matched by task, and no writer preference.
+Implemented on the branch (not merged), 2026-11-01; proposed against `claude/project-thread-838z66` at `126ae56a`. Chinmay: "only few things need to cross thread boundary, everything else runs in a single thread, we wanna minimize locking". Skeptical review: build with changes. Those changes are applied here: every call path, lent results, holds matched by task, and no writer preference.
 
 ## Problem
 
@@ -39,6 +39,7 @@ The box's in-use flag (field 1 of the `Shared#…` record, `sharedbuilder::handl
 - **One helper for every call.** `shared_hold(places, mode)` runs for source, interface (`contract_call`), native, and indirect (`closure.rs`) calls. Each argument and receiver that reads through a `Shared` (`shared_root`) takes a read hold. A `var` position, or a native that changes its receiver, takes a write hold.
 - **Hold, then read.** The holds are taken before the arguments are loaded, so an argument that parks (`f(reader.names, slow())`) cannot leave a stale borrow.
 - **Read hold.** It waits while the state is `-1`, then adds 1, and its release subtracts 1. **Write hold:** it waits until the state is `0`, then sets `-1`.
+- **Which calls write.** A position is held for a change only when the callee's body changes its memory (`Cx::changed`, the body-derived part of `infer_mutated`). A `var fn` that only stops native work, such as `FileWatcher.close`, takes a read hold. So closing a watcher from another task still wakes a pending `next()`; with a write hold it waited for that `next()` forever (`native-bindings` e2e).
 - **Field reads** (`view.hits`) wait while the state is `-1` and take no hold, since a load cannot park.
 - **Lent results.** The checker records a lending call whose source reads through a `Shared` in `owned_lends`, the same fact a temporary source uses (`walk.rs:3441`), so lowering copies the result out before the hold ends. This reuses an existing path and adds no new one.
 - **Same task.** A read inside the task's own read proceeds, so a callback may read the value it was given. A write inside its own read or write faults with the existing message. `msrt_shared_wait` checks all of the running task's holds on the key.
@@ -66,4 +67,4 @@ The box's in-use flag (field 1 of the `Shared#…` record, `sharedbuilder::handl
 
 ## Open questions
 
-- `stats.total(fn: w.hits = 7)`, a write to the value inside a read call on it, prints a stale `1 7` today. Under read holds it faults, as a `var` borrow does while a `let` borrow is live. Recommend: fault.
+- A change to the value inside a read call on it (`shared.count_after(fn: other.bump())`) faults, as a `var` borrow does while a `let` borrow is live. Recommend: fault. A payload with no heap memory (`Stats(hits: Int)`) takes no hold, so `stats.total(fn: w.hits = 7)` behaves as before.

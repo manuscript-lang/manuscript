@@ -55,6 +55,10 @@ impl Counter:
         self.values.append(1)
         after()
 
+    fn count_after(after: fn() Unit) Int:
+        after()
+        return self.values.length()
+
 fn bump(var shared: Shared[Counter]) Unit:
     shared.bump()
 
@@ -82,6 +86,26 @@ test "a read inside a call on the same payload faults":
 
     # The fault ran in a forked child, so this task still holds the value untouched and free.
     try expect_equal(view.values.length(), 0)
+
+test "a read inside a read call on the same payload sees the value":
+    var shared = Shared(Counter([4, 5]))
+    let view = shared
+    var seen = 0
+    let count = shared.count_after(fn() Unit: seen = view.values.length())
+    try expect_equal(count, 2)
+    try expect_equal(seen, 2)
+
+test "a change inside a read call on the same payload faults":
+    var shared = Shared(Counter([]))
+    var other = shared
+    let message = try expect_fault(
+        fn() Unit:
+            let _count = shared.count_after(fn() Unit: other.bump())
+    )
+    try expect_equal(
+        message,
+        "a Shared value was used again inside a call on it from the same task; finish the call first, or change the value inside that call"
+    )
 
 fn append_seven(var items: List[Int]) Unit:
     items.append(7)

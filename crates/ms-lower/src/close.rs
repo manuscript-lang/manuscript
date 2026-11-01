@@ -869,7 +869,10 @@ impl FnLower<'_> {
         let s = b
             .emit(Op::Load, &[p], Imm::Ty(state), Some(state))
             .expect("load");
-        let taken = b.rec_get(rec, 1, s);
+        // A box in use (its state word not `0`) has its payload out: there is nothing to close.
+        let word = b.rec_get(rec, 1, s);
+        let zero = b.iconst(0);
+        let taken = b.icmp(ms_mir::ir::Cc::Ne, word, zero);
         let (open, exit_blk) = (b.new_block(), b.new_block());
         b.br_if(taken, exit_blk, &[], open, &[]);
         b.seal_block(open);

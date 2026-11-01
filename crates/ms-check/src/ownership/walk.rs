@@ -3434,6 +3434,15 @@ impl Walker<'_> {
                         copy_after(e),
                     );
                 }
+                Some(_)
+                    if self
+                        .lend_operands(e, &lend)
+                        .is_some_and(|ops| ops.iter().any(|o| self.through_handle(o))) =>
+                {
+                    // A reference into a `Shared` payload ends with the call's read hold, so
+                    // the caller owns a copy (lowering takes it before the hold ends).
+                    self.facts.owned_lends.insert(e.id, OwnedLend::Copy);
+                }
                 Some(_) if self.lends_through_view(e, &lend) => {
                     // The callee lends from a view temporary of a held value: the caller owns
                     // the result (the view itself when it comes back whole) and holds the value.

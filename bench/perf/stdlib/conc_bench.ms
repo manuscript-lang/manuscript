@@ -24,6 +24,9 @@ fn echo(ch: Channel[Int, Int]) Int:
 fn bump(var total: Int) Unit:
     total += 1
 
+fn first_length(names: List[String]) Int:
+    return names[0].length()
+
 bench "tasks.spawn_results_1000":
     fn work() Result[Unit, Error]:
         var g = TaskGroup[Int]()
@@ -81,6 +84,16 @@ bench "shared.call":
 
         let total: Int = box
         return keep(total)
+
+    try measure(200000, work)
+
+bench "shared.read_call":
+    fn work() Result[Unit, Error]:
+        var box = Shared(["a-name-long-enough-for-the-heap"])
+        var n = 0
+        for i in 0..200000:
+            n += first_length(box)
+        return keep(n)
 
     try measure(200000, work)
 

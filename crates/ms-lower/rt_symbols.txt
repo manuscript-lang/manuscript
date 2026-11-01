@@ -213,7 +213,7 @@ msrt_set_is_subset_of(a: *const MapVal, b: *const MapVal, kd: *const TypeDesc) -
 msrt_set_is_superset_of(a: *const MapVal, b: *const MapVal, kd: *const TypeDesc) -> u8
 msrt_set_symmetric_difference(a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, out: *mut MapVal)
 msrt_set_union(a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, out: *mut MapVal)
-msrt_shared_hold(key: i64, taken: *mut u8)
+msrt_shared_hold(key: i64, state: *mut i64, read: i64)
 msrt_shared_release(key: i64)
 msrt_shared_wait(key: i64)
 msrt_shield_enter()
@@ -328,6 +328,7 @@ msrt_unwind_drops() -> u8
 msrt_waitq_push(key: i64, token: i64)
 msrt_waitq_remove(key: i64, token: i64) -> i64
 msrt_waitq_wake(key: i64) -> i64
+msrt_waitq_wake_all(key: i64)
 msrt_worker_arg_new(p: *const u8, len: usize) -> *mut u8
 msrt_worker_arg_take(block: *mut u8, out: *mut StrVal)
 msrt_worker_cancel(handle: u64)

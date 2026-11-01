@@ -163,6 +163,9 @@ pub struct Cx {
     pub scope_names: Vec<Name>,
     /// Parameters (receiver first) that functions hand back changed.
     pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
+    /// The subset of `mutated` whose memory the function bodies change: a `Shared` payload
+    /// passed there is held for a change, and otherwise for reading.
+    pub changed: std::collections::HashSet<crate::mutation::ParamKey>,
     /// The `make_fixture` factory and hooks type of each module with tests.
     pub fixtures: HashMap<Name, ms_check::TestFixture>,
     /// Bindings that borrow a place another binding owns, and how.
@@ -226,7 +229,7 @@ impl Cx {
             }
             mods.insert(m.data.file, Rc::new(m));
         }
-        let mutated = crate::mutation::infer_mutated(&mods, &callables);
+        let (mutated, changed) = crate::mutation::infer_mutated(&mods, &callables);
         let extended = program
             .methods
             .iter()
@@ -239,6 +242,7 @@ impl Cx {
             mods,
             callables,
             mutated,
+            changed,
             source_tys: HashMap::new(),
             glue_seen: Default::default(),
             tycache: HashMap::new(),

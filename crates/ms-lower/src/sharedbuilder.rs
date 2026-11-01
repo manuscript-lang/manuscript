@@ -2,7 +2,7 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
-use ms_mir::ir::{Imm, Module, Op, Value};
+use ms_mir::ir::{Cc, Imm, Module, Op, Value};
 use ms_mir::types::{RecId, Ty as MTy, TyKind};
 
 /// The handle type of a builder over the payload type `items`.
@@ -15,7 +15,8 @@ pub(crate) fn handle_ty(m: &mut Module, name: &str, items: MTy) -> MTy {
                 // The payload comes first: a field's address is read with the field's own layout,
                 // which matches its place in the record only when it starts the record.
                 ("items".to_string(), items),
-                ("sealed".to_string(), MTy::BOOL),
+                // `0` free, `n > 0` for `n` read holds, `-1` while a call or update changes it.
+                ("state".to_string(), MTy::INT),
             ];
             m.add_record(&rec_name, fields).1
         }
@@ -61,7 +62,7 @@ impl<'a> FnLower<'a> {
 
 impl<'a> FnLower<'a> {
     /// The payload of the handle `e` evaluated to, read in place. The read waits while another
-    /// task's call holds the box, and faults inside this task's own change of it, unless the
+    /// task's call changes the box, and faults inside this task's own change of it, unless the
     /// call in progress holds the box.
     pub(crate) fn shared_read(&mut self, e: &ms_syntax::ast::Expr, h: Val) -> Result<Val, Error> {
         self.at(e.pos);
@@ -72,12 +73,13 @@ impl<'a> FnLower<'a> {
             .b
             .emit(Op::SharedAddr, &[handle], Imm::None, Some(MTy::PTR))
             .expect("addr");
-        if !self.held.contains(&self.shared_key(e)) {
-            let taken = self
+        let key = self.shared_key(e);
+        if !self.held.contains(&key) && !self.read_held.contains(&key) {
+            let state = self
                 .b
                 .emit(Op::PtrField, &[addr], Imm::Field(rec, 1), Some(MTy::PTR))
                 .expect("field");
-            self.wait_turn(addr, taken)?;
+            self.wait_turn(addr, state, true)?;
         }
         let value = self
             .b
@@ -139,7 +141,7 @@ impl<'a> FnLower<'a> {
             .b
             .emit(Op::PtrField, &[addr], Imm::Field(rec, 0), Some(MTy::PTR))
             .expect("field");
-        let taken = self
+        let state = self
             .b
             .emit(Op::PtrField, &[addr], Imm::Field(rec, 1), Some(MTy::PTR))
             .expect("field");
@@ -149,16 +151,16 @@ impl<'a> FnLower<'a> {
             self.b.emit(Op::Put, &[value, updated], Imm::None, None);
             return Ok(());
         }
-        self.wait_turn(addr, taken)?;
-        let yes = self.b.bconst(true);
-        self.b.emit(Op::Store, &[taken, yes], Imm::None, None);
+        self.wait_turn(addr, state, false)?;
+        let changing = self.b.iconst(-1);
+        self.b.emit(Op::Store, &[state, changing], Imm::None, None);
         let old = self.take_slot(value, value_ty);
         let updated = f(self, old)?;
         self.b.emit(Op::Put, &[value, updated], Imm::None, None);
-        let no = self.b.bconst(false);
-        self.b.emit(Op::Store, &[taken, no], Imm::None, None);
+        let free = self.b.iconst(0);
+        self.b.emit(Op::Store, &[state, free], Imm::None, None);
         let id = self.call_runtime("msrt_addr_id", &[addr], MTy::INT)?;
-        self.call_runtime("msrt_waitq_wake", &[id], MTy::INT)?;
+        self.call_runtime("msrt_waitq_wake_all", &[id], MTy::UNIT)?;
         Ok(())
     }
 
@@ -179,16 +181,19 @@ impl<'a> FnLower<'a> {
             .expect("field"))
     }
 
-    /// Waits while the box at `addr` is in use: another task's call holds it until it returns.
-    /// Use by this task while it holds the box (a callback, or a second handle) faults.
-    fn wait_turn(&mut self, addr: Value, taken: Value) -> Result<(), Error> {
+    /// Waits while the box at `addr` is busy for the access: a read waits while a call or update
+    /// changes the box, a change waits until no call holds it. Waiting on this task's own hold (a
+    /// callback, or a second handle) faults.
+    fn wait_turn(&mut self, addr: Value, state: Value, read: bool) -> Result<(), Error> {
         let (check, busy, free) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         self.b.br(check, &[]);
         self.b.switch_to(check);
-        let flag = self
+        let word = self
             .b
-            .emit(Op::Load, &[taken], Imm::Ty(MTy::BOOL), Some(MTy::BOOL))
+            .emit(Op::Load, &[state], Imm::Ty(MTy::INT), Some(MTy::INT))
             .expect("load");
+        let zero = self.b.iconst(0);
+        let flag = self.b.icmp(if read { Cc::Lt } else { Cc::Ne }, word, zero);
         self.b.br_if(flag, busy, &[], free, &[]);
         self.b.seal_block(busy);
         self.b.seal_block(free);
@@ -230,20 +235,47 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    /// Holds, for the call about to run, the box of every handle the call's arguments read
+    /// Holds, for the call about to run, the box of every handle the call's `var` arguments read
     /// through: another task's access waits until `shared_release`, and a cancelled or faulted
     /// call releases it on the cleanup path.
     pub(crate) fn shared_hold(
         &mut self,
         places: &[Option<ms_syntax::ast::Expr>],
     ) -> Result<Vec<(String, Value)>, Error> {
+        self.shared_hold_modes(places, &[])
+    }
+
+    /// Holds the boxes the borrowed `places` read through for reading, before the call's
+    /// arguments are evaluated: reads share a box, and a change waits until they end, so a
+    /// payload a parked call borrows stays in place.
+    pub(crate) fn shared_read_hold(
+        &mut self,
+        places: &[&ms_syntax::ast::Expr],
+    ) -> Result<Vec<(String, Value)>, Error> {
+        let places: Vec<Option<ms_syntax::ast::Expr>> =
+            places.iter().map(|p| Some((*p).clone())).collect();
+        self.shared_hold_modes(&places, &vec![true; places.len()])
+    }
+
+    /// Holds the boxes `places` read through, each for reading when `reads` says so at its
+    /// position and otherwise for a change.
+    pub(crate) fn shared_hold_modes(
+        &mut self,
+        places: &[Option<ms_syntax::ast::Expr>],
+        reads: &[bool],
+    ) -> Result<Vec<(String, Value)>, Error> {
         let mut holds = Vec::new();
-        for place in places.iter().flatten() {
+        for (i, place) in places.iter().enumerate() {
+            let Some(place) = place else {
+                continue;
+            };
+            let read = reads.get(i).copied().unwrap_or(false);
             let Some(root) = self.shared_root(place) else {
                 continue;
             };
             let key = self.shared_key(root);
-            if self.held.contains(&key) || !self.is_place(root) {
+            let held = self.held.contains(&key) || (read && self.read_held.contains(&key));
+            if held || !self.is_place(root) {
                 continue;
             }
             let handle = self.shared_handle(root)?;
@@ -255,14 +287,19 @@ impl<'a> FnLower<'a> {
                 .b
                 .emit(Op::SharedAddr, &[handle], Imm::None, Some(MTy::PTR))
                 .expect("addr");
-            let taken = self
+            let state = self
                 .b
                 .emit(Op::PtrField, &[addr], Imm::Field(rec, 1), Some(MTy::PTR))
                 .expect("field");
-            self.wait_turn(addr, taken)?;
+            self.wait_turn(addr, state, read)?;
             let id = self.call_runtime("msrt_addr_id", &[addr], MTy::INT)?;
-            self.call_runtime("msrt_shared_hold", &[id, taken], MTy::UNIT)?;
-            self.held.push(key.clone());
+            let mode = self.b.iconst(i64::from(read));
+            self.call_runtime("msrt_shared_hold", &[id, state, mode], MTy::UNIT)?;
+            if read {
+                self.read_held.push(key.clone());
+            } else {
+                self.held.push(key.clone());
+            }
             holds.push((key, id));
         }
         Ok(holds)
@@ -271,7 +308,9 @@ impl<'a> FnLower<'a> {
     /// Ends the holds `shared_hold` took, last first, and wakes a task waiting for each box.
     pub(crate) fn shared_release(&mut self, holds: Vec<(String, Value)>) -> Result<(), Error> {
         for (key, id) in holds.into_iter().rev() {
+            // Each key is held once at a time, either for reading or for a change.
             self.held.retain(|k| *k != key);
+            self.read_held.retain(|k| *k != key);
             if !self.dead {
                 self.call_runtime("msrt_shared_release", &[id], MTy::UNIT)?;
             }
@@ -308,7 +347,7 @@ impl<'a> FnLower<'a> {
     /// A new box holding `payload`, not in use.
     pub(crate) fn shared_new(&mut self, payload: Value, handle: MTy) -> Value {
         let rec = self.builder_rec(handle).expect("shared handle");
-        let free = self.b.bconst(false);
+        let free = self.b.iconst(0);
         let state = self.b.rec_new(rec, &[payload, free]);
         self.b
             .emit(Op::SharedNew, &[state], Imm::None, Some(handle))

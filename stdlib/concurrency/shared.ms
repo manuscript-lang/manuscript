@@ -13,10 +13,13 @@ import Proxy from "@std/core.ms"
 # ```
 #
 # A `var` handle can change the value and a `let` handle only reads it; a type's own methods can
-# change the values kept in its `Shared` fields. Every call on the value runs one at a time: while a
-# call that waits is in progress, another task's access waits its turn, and an access from the same
-# task (a callback, or a second handle) faults. Keep changes that must not interleave in one method
-# of the value's type. A cancelled call keeps the changes it made so far.
+# change the values kept in its `Shared` fields. Calls that read the value run together, and a call
+# that changes it runs alone: while a call that waits is in progress, a change from another task
+# waits for every read to end, and a read waits for the change. A change from the same task inside a
+# call on the value (a callback, or a second handle) faults; a read inside a read is fine. Keep
+# changes that must not interleave in one method of the value's type. A cancelled call keeps the
+# changes it made so far. A reference a call returns into the value is copied out, so it stays valid
+# after the value changes.
 #
 # Copying a handle adds a holder; the last holder to go drops the value and closes it when it is a
 # resource. Assigning a value replaces the shared value (`names = ["a"]`); assigning a handle points
