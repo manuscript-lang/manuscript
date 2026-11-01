@@ -337,6 +337,11 @@ impl Scanner<'_> {
         while self.offset < n {
             if let Some((prefixes, stop_at)) = prefixes.as_mut() {
                 let open = !self.delimiters.is_empty();
+                // Lines inside a multi-line text were consumed by one token.
+                let line = (self.line - self.base_line - 1) as usize;
+                while prefixes.len() < line {
+                    prefixes.push(true);
+                }
                 prefixes.push(open);
                 if stop_at.get(prefixes.len() - 1) == Some(&true) && !open {
                     return Ok(());
@@ -477,6 +482,12 @@ impl Scanner<'_> {
                     return self.fail(
                         "tabs and lone carriage returns are not allowed in code; use spaces, and line endings of LF or CRLF",
                     );
+                }
+                if b == b'r' && self.src[self.offset + 1..].starts_with(b"\"\"\"") {
+                    let start = self.offset;
+                    self.scan_multiline(true)?;
+                    self.emit(Tok::String, start, self.offset, p);
+                    continue;
                 }
                 if letter(b) {
                     let start = self.offset;
@@ -873,6 +884,9 @@ impl Scanner<'_> {
 
     fn scan_string(&mut self) -> PResult<()> {
         let start = self.offset;
+        if self.src[start..].starts_with(b"\"\"\"") {
+            return self.scan_multiline(false);
+        }
         if let Some(end) = self
             .cached
             .and_then(|cache| cache.string_end(self.boundary_origin + start))
@@ -908,59 +922,7 @@ impl Scanner<'_> {
                 return self.fail_previous_byte(BIDI_TEXT);
             }
             if b == b'\\' {
-                let mut backslash = self.pos();
-                backslash.column -= 1;
-                backslash.offset -= 1;
-                if self.offset == n {
-                    return self.fail("unterminated text escape; a backslash needs a following character, e.g. \\n");
-                }
-                let c = self.advance();
-                if c == b'u' {
-                    if self.offset == n || self.advance() != b'{' {
-                        let message = "Unicode escapes use \\u{H}; write 1 to 6 hexadecimal digits in braces, e.g. \\u{1F600}";
-                        return if self.src[self.offset - 1].is_ascii() {
-                            self.fail(message)
-                        } else {
-                            self.fail_previous_byte(message)
-                        };
-                    }
-                    let start = self.offset;
-                    let mut value: u64 = 0;
-                    while self.offset < n && self.src[self.offset] != b'}' {
-                        let c = self.advance();
-                        let d = match c {
-                            b'0'..=b'9' => (c - b'0') as u64,
-                            b'a'..=b'f' => (c - b'a') as u64 + 10,
-                            b'A'..=b'F' => (c - b'A') as u64 + 10,
-                            _ => {
-                                let message = "invalid Unicode scalar escape; use only hexadecimal digits 0-9 and a-f inside \\u{...}";
-                                return if c.is_ascii() {
-                                    self.fail(message)
-                                } else {
-                                    self.fail_previous_byte(message)
-                                };
-                            }
-                        };
-                        value = value.saturating_mul(16).saturating_add(d);
-                    }
-                    let digits = self.offset - start;
-                    if self.offset == n
-                        || !(1..=6).contains(&digits)
-                        || value > 0x10ffff
-                        || (0xd800..=0xdfff).contains(&value)
-                    {
-                        return self.fail("invalid Unicode scalar escape; use 1 to 6 hexadecimal digits for a value up to 10FFFF that is not a surrogate (D800-DFFF)");
-                    }
-                    self.advance();
-                } else if !b"\"\\nrt{}".contains(&c) {
-                    let escape = if c.is_ascii_graphic() {
-                        format!(" \\{}", char::from(c))
-                    } else {
-                        let full = self.text[self.offset - 1..].chars().next().unwrap();
-                        format!(": a backslash followed by {}", quote_rune(full))
-                    };
-                    return self.fail_at(backslash, format!("unknown text escape{escape}; valid escapes are \\n \\t \\r \\\\ \\\" \\{{ \\}} and \\u{{H}}"));
-                }
+                self.scan_escape()?;
             } else if b == b'{' {
                 self.scan_interpolation()?;
             } else if b == b'}' {
@@ -968,6 +930,132 @@ impl Scanner<'_> {
             }
         }
         self.fail("unterminated text literal")
+    }
+
+    /// Scans `"""` text (and `r"""` raw text when `raw`): the opening quotes end
+    /// their line, the closing quotes start theirs, and every content line
+    /// carries the closing line's indentation.
+    fn scan_multiline(&mut self, raw: bool) -> PResult<()> {
+        let opened = self.pos();
+        if !self.interpolations.is_empty() {
+            return self.fail("multi-line text cannot appear inside an interpolation; bind it to a name first and interpolate the name");
+        }
+        let n = self.src.len();
+        for _ in 0..if raw { 4 } else { 3 } {
+            self.advance();
+        }
+        if self.offset == n || self.src[self.offset] != b'\n' {
+            return self.fail_at(opened, "multi-line text must start on the line after its opening '\"\"\"'; add a line break after the opening quotes");
+        }
+        let mut line_start = self.offset + 1;
+        let mut lines: Vec<(usize, Pos)> = Vec::new();
+        while self.offset < n {
+            let b = self.advance();
+            if b == b'\n' {
+                line_start = self.offset;
+                lines.push((line_start, self.pos()));
+                continue;
+            }
+            if b == b'"' && self.src[self.offset..].starts_with(b"\"\"") {
+                let quote = self.offset - 1;
+                let indent = &self.src[line_start..quote];
+                if !indent.iter().all(|&c| c == b' ' || c == b'\t') {
+                    return self.fail_previous_byte("multi-line text closes with '\"\"\"' alone on its own line; move the closing quotes to a new line (a '\"\"\"' inside the text is not allowed, so write \\\" for a quote in non-raw text)");
+                }
+                for &(at, pos) in &lines {
+                    let rest = &self.src[at..];
+                    let line = &rest[..rest.iter().position(|&c| c == b'\n').unwrap_or(rest.len())];
+                    let blank = line.iter().all(|&c| c == b' ' || c == b'\t');
+                    if at < quote && !blank && !line.starts_with(indent) {
+                        return self.fail_at(pos, "text line is indented less than the closing '\"\"\"'; indent it to the closing quotes' column, or move the closing quotes left");
+                    }
+                }
+                self.advance();
+                self.advance();
+                return Ok(());
+            }
+            if b < 32 && b != b'\t' {
+                return self.fail("literal control characters are not allowed in text; write an escape such as \\t, \\r, or \\u{H}");
+            }
+            if b == 0xE2 && self.bidi_control_at(self.offset - 1) {
+                return self.fail_previous_byte(BIDI_TEXT);
+            }
+            if raw {
+                continue;
+            }
+            if b == b'\\' {
+                self.scan_escape()?;
+            } else if b == b'{' {
+                self.scan_interpolation()?;
+            } else if b == b'}' {
+                return self.fail("an unmatched closing brace must be escaped; write \\} for a literal brace (and \\{ for the opening brace), or open an interpolation with {expression}");
+            }
+        }
+        self.fail_at(
+            opened,
+            "unterminated multi-line text; close it with '\"\"\"' alone on its own line",
+        )
+    }
+
+    /// Validates the escape after a consumed backslash.
+    fn scan_escape(&mut self) -> PResult<()> {
+        let n = self.src.len();
+        let mut backslash = self.pos();
+        backslash.column -= 1;
+        backslash.offset -= 1;
+        if self.offset == n {
+            return self.fail(
+                "unterminated text escape; a backslash needs a following character, e.g. \\n",
+            );
+        }
+        let c = self.advance();
+        if c == b'u' {
+            if self.offset == n || self.advance() != b'{' {
+                let message = "Unicode escapes use \\u{H}; write 1 to 6 hexadecimal digits in braces, e.g. \\u{1F600}";
+                return if self.src[self.offset - 1].is_ascii() {
+                    self.fail(message)
+                } else {
+                    self.fail_previous_byte(message)
+                };
+            }
+            let start = self.offset;
+            let mut value: u64 = 0;
+            while self.offset < n && self.src[self.offset] != b'}' {
+                let c = self.advance();
+                let d = match c {
+                    b'0'..=b'9' => (c - b'0') as u64,
+                    b'a'..=b'f' => (c - b'a') as u64 + 10,
+                    b'A'..=b'F' => (c - b'A') as u64 + 10,
+                    _ => {
+                        let message = "invalid Unicode scalar escape; use only hexadecimal digits 0-9 and a-f inside \\u{...}";
+                        return if c.is_ascii() {
+                            self.fail(message)
+                        } else {
+                            self.fail_previous_byte(message)
+                        };
+                    }
+                };
+                value = value.saturating_mul(16).saturating_add(d);
+            }
+            let digits = self.offset - start;
+            if self.offset == n
+                || !(1..=6).contains(&digits)
+                || value > 0x10ffff
+                || (0xd800..=0xdfff).contains(&value)
+            {
+                return self.fail("invalid Unicode scalar escape; use 1 to 6 hexadecimal digits for a value up to 10FFFF that is not a surrogate (D800-DFFF)");
+            }
+            self.advance();
+        } else if !b"\"\\nrt{}".contains(&c) {
+            let escape = if c.is_ascii_graphic() {
+                format!(" \\{}", char::from(c))
+            } else {
+                let full = self.text[self.offset - 1..].chars().next().unwrap();
+                format!(": a backslash followed by {}", quote_rune(full))
+            };
+            return self.fail_at(backslash, format!("unknown text escape{escape}; valid escapes are \\n \\t \\r \\\\ \\\" \\{{ \\}} and \\u{{H}}"));
+        }
+        Ok(())
     }
 
     fn scan_interpolation(&mut self) -> PResult<()> {

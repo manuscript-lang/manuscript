@@ -76,6 +76,50 @@ struct FailedTypeArgs {
     diagnostic: Box<Diagnostic>,
 }
 
+/// The position of byte `index` of a text token's source.
+fn text_pos(token: Token, full: &str, index: usize) -> Pos {
+    let before = &full[..index];
+    let offset = (token.pos.offset as usize + index) as u32;
+    match before.rfind('\n') {
+        None => Pos {
+            line: token.pos.line,
+            column: (token.pos.column as usize + index) as u32,
+            offset,
+        },
+        Some(last) => Pos {
+            line: token.pos.line + before.matches('\n').count() as u32,
+            column: (index - last) as u32,
+            offset,
+        },
+    }
+}
+
+/// Splits the text between multi-line delimiters into its content (without
+/// the line break after the opening quotes and the closing line), the closing
+/// line's indentation width, and the content's start within `body`.
+fn multiline_body(body: &str) -> (&str, usize, usize) {
+    let last = body.rfind('\n').unwrap_or(0);
+    let indent = body.len() - last - 1;
+    (&body[1.min(last)..last], indent, 1.min(last))
+}
+
+/// Removes up to `indent` leading blanks from every line of `content`.
+fn dedent(content: &str, indent: usize) -> String {
+    let mut out = String::with_capacity(content.len());
+    for (i, line) in content.split('\n').enumerate() {
+        if i > 0 {
+            out.push('\n');
+        }
+        let blanks = line
+            .bytes()
+            .take(indent)
+            .take_while(|b| matches!(b, b' ' | b'\t'))
+            .count();
+        out.push_str(&line[blanks..]);
+    }
+    out
+}
+
 fn describe(src: &str, t: Token) -> String {
     match t.kind {
         Tok::Newline => "end of line".into(),
@@ -571,6 +615,7 @@ impl<'a> Parser<'a> {
         }
         self.need_from()?;
         let token = self.need(Tok::String)?;
+        self.single_line(token, "import paths")?;
         let mut parts = self.text_parts_of(token)?;
         let path = match (parts.len(), parts.pop()) {
             (1, Some(TextPart::Lit(text))) => text,
@@ -1052,6 +1097,7 @@ impl<'a> Parser<'a> {
     /// Parses the rest of `test "name":` or `bench "name":` after the keyword.
     fn test_block(&mut self, bench: bool) -> PResult<DeclKind> {
         let name = self.need(Tok::String)?;
+        self.single_line(name, if bench { "bench names" } else { "test names" })?;
         let mut parts = self.text_parts_of(name)?;
         let text = match (parts.len(), parts.pop()) {
             (1, Some(TextPart::Lit(text))) => text,
@@ -2597,18 +2643,46 @@ impl<'a> Parser<'a> {
 
     // ---- text ----
 
+    /// Rejects multi-line text where only a one-line name or path fits.
+    fn single_line(&self, token: Token, what: &str) -> PResult<()> {
+        let full = self.text(token);
+        if full.starts_with("\"\"\"") || full.starts_with("r\"\"\"") {
+            return self.fail(
+                token,
+                format!("{what} are one-line text; write them with a single pair of quotes"),
+            );
+        }
+        Ok(())
+    }
+
     /// Decodes a text token into literal and interpolated parts.
     fn text_parts_of(&mut self, token: Token) -> PResult<Vec<TextPart>> {
         let full = self.text(token);
+        if let Some(body) = full.strip_prefix("r\"\"\"") {
+            let (content, indent, _) = multiline_body(&body[..body.len() - 3]);
+            return Ok(vec![TextPart::Lit(dedent(content, indent).into())]);
+        }
+        if full.starts_with("\"\"\"") {
+            return self.text_parts(token, &full[3..full.len() - 3], 3);
+        }
         let raw = &full[1..full.len() - 1];
         if !raw.bytes().any(|b| b == b'\\' || b == b'{') {
             return Ok(vec![TextPart::Lit(raw.into())]);
         }
-        self.text_parts(token, raw)
+        self.text_parts(token, raw, 1)
     }
 
-    fn text_parts(&mut self, token: Token, raw: &str) -> PResult<Vec<TextPart>> {
+    /// `quotes` is the width of the opening delimiter; `raw` excludes both
+    /// delimiters. A multi-line body drops its first and last line break and
+    /// the closing line's indentation from every line.
+    fn text_parts(&mut self, token: Token, raw: &str, quotes: usize) -> PResult<Vec<TextPart>> {
         let rb = raw.as_bytes();
+        let (first, end, indent) = if quotes == 3 {
+            let (content, indent, first) = multiline_body(raw);
+            (first, first + content.len(), indent)
+        } else {
+            (0, rb.len(), 0)
+        };
         let mut parts: Vec<TextPart> = Vec::new();
         let mut literal: Vec<u8> = Vec::new();
         let flush = |literal: &mut Vec<u8>, parts: &mut Vec<TextPart>| {
@@ -2617,8 +2691,18 @@ impl<'a> Parser<'a> {
                 parts.push(TextPart::Lit(s.into_boxed_str()));
             }
         };
-        let mut i = 0;
-        while i < rb.len() {
+        let mut i = first;
+        let mut line_start = indent > 0;
+        while i < end {
+            if line_start {
+                line_start = false;
+                let mut skipped = 0;
+                while skipped < indent && i < end && matches!(rb[i], b' ' | b'\t') {
+                    i += 1;
+                    skipped += 1;
+                }
+                continue;
+            }
             let mut c = rb[i];
             i += 1;
             if c == b'\\' {
@@ -2646,18 +2730,19 @@ impl<'a> Parser<'a> {
             }
             if c != b'{' {
                 literal.push(c);
+                line_start = c == b'\n' && indent > 0;
                 continue;
             }
             flush(&mut literal, &mut parts);
             let start = i;
-            let brace = self.source_origin + token.lo as usize + start;
+            let brace = self.source_origin + token.lo as usize + quotes + start - 1;
             i = self
                 .boundaries
                 .interpolation_end(brace)
                 .expect("validated interpolation")
-                - (self.source_origin + token.lo as usize + 1);
+                - (self.source_origin + token.lo as usize + quotes);
             let source = &raw[start..i - 1];
-            let value = self.interpolation(token, start, source)?;
+            let value = self.interpolation(token, quotes + start, source)?;
             parts.push(TextPart::Interp(value));
         }
         flush(&mut literal, &mut parts);
@@ -2669,24 +2754,19 @@ impl<'a> Parser<'a> {
 
     /// Lexes and parses the expression inside one `{...}` of a text literal.
     /// Failures also state the escape for a literal brace.
-    fn interpolation(&mut self, token: Token, start: usize, source: &str) -> PResult<Expr> {
+    fn interpolation(&mut self, token: Token, at: usize, source: &str) -> PResult<Expr> {
+        let full = self.text(token);
         let suffix = format!(
             " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
-            token.pos.column as usize + start
+            text_pos(token, full, at - 1).column
         );
-        let origin = self.source_origin + token.lo as usize + start + 1;
-        let shift = |p: Pos| -> Pos {
-            let offset = (p.offset as usize + 1).min(source.len() + 1);
-            Pos {
-                line: token.pos.line,
-                column: (token.pos.column as usize + start + offset) as u32,
-                offset: (token.pos.offset as usize + start + offset) as u32,
-            }
-        };
+        let origin = self.source_origin + token.lo as usize + at;
+        let shift =
+            |p: Pos| -> Pos { text_pos(token, full, at + (p.offset as usize).min(source.len())) };
         let mut tokens =
             match crate::lexer::lex_interpolation(self.file, source, origin, self.boundaries) {
                 Ok(tokens) => tokens,
-                Err(_) => return self.interpolation_wrapped(token, start, source),
+                Err(_) => return self.interpolation_wrapped(token, at, source),
             };
         for t in &mut tokens {
             t.pos = shift(t.pos);
@@ -3080,19 +3160,19 @@ impl<'a> Parser<'a> {
 
     /// Preserve the historical wrapper path for expressions whose lexical
     /// error depends on its physical closing parenthesis.
-    fn interpolation_wrapped(&mut self, token: Token, start: usize, source: &str) -> PResult<Expr> {
+    fn interpolation_wrapped(&mut self, token: Token, at: usize, source: &str) -> PResult<Expr> {
+        let full = self.text(token);
         let suffix = format!(
             " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
-            token.pos.column as usize + start
+            text_pos(token, full, at - 1).column
         );
         let wrapped = format!("({source})");
         let shift = |p: Pos| -> Pos {
-            let offset = (p.offset as usize).min(source.len() + 1);
-            Pos {
-                line: token.pos.line,
-                column: (token.pos.column as usize + start + offset) as u32,
-                offset: (token.pos.offset as usize + start + offset) as u32,
-            }
+            text_pos(
+                token,
+                full,
+                at - 1 + (p.offset as usize).min(source.len() + 1),
+            )
         };
         let mut lexed = match lex(self.file, &wrapped) {
             Ok(l) => l,
@@ -3114,7 +3194,7 @@ impl<'a> Parser<'a> {
             t.pos = shift(t.pos);
             t.end = shift(t.end);
         }
-        let origin = self.source_origin + token.lo as usize + start;
+        let origin = self.source_origin + token.lo as usize + at - 1;
         let mut nested = Parser::new(
             self.file,
             &lexed.source,

@@ -22,3 +22,14 @@ test('opaque is a keyword only before type', () => {
   assert.ok(opaque.test('export opaque type Token:'));
   assert.ok(!opaque.test('fn opaque(x: Int) Int:'));
 });
+
+test('multi-line and raw strings are scoped before the one-line rule', () => {
+  const order = grammar.patterns.map(p => p.include).filter(Boolean);
+  assert.deepEqual(order.slice(0, 3), ['#raw-multiline-string', '#multiline-string', '#string']);
+  const multiline = grammar.repository['multiline-string'];
+  assert.equal(multiline.begin, '"""');
+  assert.ok(multiline.patterns.some(p => p.name === 'meta.interpolation.manuscript'));
+  const raw = grammar.repository['raw-multiline-string'];
+  assert.equal(raw.begin, 'r"""');
+  assert.equal(raw.patterns, undefined);
+});
