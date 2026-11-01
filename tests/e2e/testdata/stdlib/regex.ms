@@ -115,6 +115,8 @@ test "regex collection budgets preserve empty adjacency and exact counts":
         let matching = try compile(pattern)
         try expect_equal((try matching.find_all("none", 0)), [])
         try expect_equal((try matching.captures_all("none", 0)), [])
+        try expect_equal((try matching.find_all("é🙂", 0)), [])
+        try expect_equal((try matching.captures_all("é🙂", 0)), [])
         try expect_equal(matching.find_all("x", 0), find_limit)
         try expect_equal(matching.captures_all("x", 0), capture_limit)
 

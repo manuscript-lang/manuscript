@@ -86,10 +86,10 @@ impl Regex {
         }
     }
 
-    fn spans(&self, text: &str, max: usize) -> Result<Vec<(usize, usize)>, Fail> {
+    fn spans(&self, text: &str, limit: usize) -> Vec<(usize, usize)> {
         let mut found = Vec::new();
         let (mut pos, mut prev_end) = (0usize, usize::MAX);
-        while pos <= text.len() {
+        while found.len() < limit && pos <= text.len() {
             #[cfg(test)]
             self.scans.set(self.scans.get() + 1);
             let Some(m) = self.pattern.find_at(text, pos) else {
@@ -106,18 +106,28 @@ impl Regex {
             }
             prev_end = m.end();
             if accept {
-                if found.len() == max {
-                    return Err(Fail::LimitExceeded);
-                }
                 found.push((m.start(), m.end()));
             }
         }
-        Ok(found)
+        found
     }
 
     pub fn find_all(&self, text: &str, max: Option<i64>) -> Result<Vec<String>, Fail> {
         let max = limit(max)?;
-        let spans = self.spans(text, max)?;
+        if max == 0 {
+            #[cfg(test)]
+            self.scans.set(self.scans.get() + 1);
+            return if self.pattern.is_match(text) {
+                Err(Fail::LimitExceeded)
+            } else {
+                Ok(Vec::new())
+            };
+        }
+        let n = max.min(text.len() + 1);
+        let spans = self.spans(text, n + 1);
+        if spans.len() > n {
+            return Err(Fail::LimitExceeded);
+        }
         Ok(spans.into_iter().map(|(a, b)| text[a..b].into()).collect())
     }
 
@@ -144,7 +154,20 @@ impl Regex {
     /// [`captures`](Self::captures) for every match, under the `find_all` match budget.
     pub fn captures_all(&self, text: &str, max: Option<i64>) -> Result<Vec<Vec<String>>, Fail> {
         let max = limit(max)?;
-        let spans = self.spans(text, max)?;
+        if max == 0 {
+            #[cfg(test)]
+            self.scans.set(self.scans.get() + 1);
+            return if self.pattern.is_match(text) {
+                Err(Fail::LimitExceeded)
+            } else {
+                Ok(Vec::new())
+            };
+        }
+        let n = max.min(text.len() + 1);
+        let spans = self.spans(text, n + 1);
+        if spans.len() > n {
+            return Err(Fail::LimitExceeded);
+        }
         if spans.is_empty() {
             return Ok(Vec::new());
         }
@@ -308,7 +331,7 @@ impl Regex {
     pub fn split(&self, text: &str, max: Option<i64>) -> Result<Vec<String>, Fail> {
         let max = limit(max)?;
         if max == usize::MAX {
-            let spans = self.spans(text, usize::MAX)?;
+            let spans = self.spans(text, usize::MAX);
             let mut out = Vec::with_capacity(spans.len() + 1);
             let mut at = 0;
             for (a, b) in spans {
@@ -567,15 +590,11 @@ mod tests {
                 let expected = re.spans_iter(text).collect::<Vec<_>>();
                 assert_eq!(
                     re.spans(text, usize::MAX),
-                    Ok(expected.clone()),
+                    expected,
                     "pattern {pattern:?}, text {text:?}"
                 );
                 for max in [0, 1, 2, 4, 8, expected.len(), expected.len() + 1] {
-                    let bounded = if expected.len() > max {
-                        Err(Fail::LimitExceeded)
-                    } else {
-                        Ok(expected.clone())
-                    };
+                    let bounded: Vec<_> = expected.iter().copied().take(max).collect();
                     assert_eq!(
                         re.spans(text, max),
                         bounded,
@@ -608,10 +627,20 @@ mod tests {
             }
             assert_eq!(re.find_all("none", Some(0)), Ok(Vec::new()));
             assert_eq!(re.captures_all("none", Some(0)), Ok(Vec::new()));
+            assert_eq!(re.find_all("é🙂", Some(0)), Ok(Vec::new()));
+            assert_eq!(re.captures_all("é🙂", Some(0)), Ok(Vec::new()));
             re.scans.set(0);
             assert_eq!(re.find_all(&text, Some(-1)), Err(Fail::InvalidInput));
             assert_eq!(re.captures_all(&text, Some(-1)), Err(Fail::InvalidInput));
             assert_eq!(re.scans.get(), 0);
+        }
+        for pattern in ["", "a*", "(a)?()", "^", "$", r"\b"] {
+            let re = compile(pattern).unwrap();
+            for text in ["", "a", "é🙂"] {
+                let expected = re.pattern.find(text).is_some();
+                assert_eq!(re.find_all(text, Some(0)).is_err(), expected);
+                assert_eq!(re.captures_all(text, Some(0)).is_err(), expected);
+            }
         }
     }
 
