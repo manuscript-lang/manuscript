@@ -132,6 +132,8 @@ pub struct Program {
     pub lenders: Rc<HashSet<(Name, NodeId)>>,
     /// Lending calls whose result the caller owns, by module file and call node.
     pub owned_lends: Rc<HashSet<(Name, NodeId)>>,
+    /// Conditional and match expressions whose value is a reference, by module file and node.
+    pub lent_matches: Rc<HashSet<(Name, NodeId)>>,
     /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
     /// identity. Filled together with `borrows`.
     pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,

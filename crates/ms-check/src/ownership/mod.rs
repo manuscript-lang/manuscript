@@ -175,6 +175,9 @@ pub struct CallableOwnership {
     /// Calls bound with `var` as an exclusive borrow of the field chain the callee returns, by
     /// call node: lowering names that place instead of calling.
     pub getter_borrows: HashMap<NodeId, Vec<Name>>,
+    /// Conditional and match expressions whose value is a reference on every arm: lowering
+    /// joins the arms without copying.
+    pub lent_matches: HashSet<NodeId>,
 }
 
 impl CallableOwnership {
@@ -218,6 +221,8 @@ pub struct Ownership {
     /// `var` bindings of a lending call, by module file and call node: the field chain of the
     /// argument the binding borrows exclusively.
     pub getter_borrows: HashMap<(Name, NodeId), Vec<Name>>,
+    /// Conditional and match expressions whose value is a reference, by module file and node.
+    pub lent_matches: HashSet<(Name, NodeId)>,
 }
 
 impl Ownership {
@@ -305,7 +310,9 @@ impl Hir<'_> {
         let mut lenders = HashSet::new();
         let mut owned_lends = HashSet::new();
         let mut getter_borrows = HashMap::new();
+        let mut lent_matches = HashSet::new();
         for (c, out) in callables.iter().zip(outcomes) {
+            lent_matches.extend(out.facts.lent_matches.iter().map(|n| (c.module.file, *n)));
             if out.facts.lends {
                 lenders.insert((c.module.file, c.id()));
             }
@@ -370,6 +377,7 @@ impl Hir<'_> {
             lenders,
             owned_lends,
             getter_borrows,
+            lent_matches,
         }
     }
 }

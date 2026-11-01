@@ -85,6 +85,7 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         program.consumes = Rc::new(own.consumes);
         program.lenders = Rc::new(own.lenders);
         program.owned_lends = Rc::new(own.owned_lends);
+        program.lent_matches = Rc::new(own.lent_matches);
         program.getter_borrows = Rc::new(own.getter_borrows);
         program.diagnostics.extend(own.diagnostics);
     }

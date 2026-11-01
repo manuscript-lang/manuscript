@@ -9,7 +9,9 @@ test "Error boundaries retain selected local and generic implementations":
     let second = second_error(original.clone())
     (first.message() != "first 7" or second.message() != "second 7") | try expect_false
 
-    let others: List[Error] = [first_generic(original.clone()), first_box(original.clone())]
+    let others: List[Error] = [
+        first_generic(original.clone()), first_box(original.clone())
+    ]
     for cause in others:
         cause.message() | try expect_equal("first 7")
     original.code = 8

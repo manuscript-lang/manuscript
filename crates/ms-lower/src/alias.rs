@@ -79,6 +79,12 @@ impl<'a> FnLower<'a> {
                     (ExprKind::Member { left, .. }, Resolution::Method(_)) => &**left,
                     _ => &args[0].value,
                 };
+                // The callee runs for its effects; the borrow then names the part it returned,
+                // which the checker found to be this field chain of the argument.
+                let result = self.expr(e)?;
+                if result.own {
+                    self.drop_value(result.v);
+                }
                 let mut a = self.alias_chain(arg)?;
                 a.steps.extend(fields.into_iter().map(AStep::Field));
                 Ok(a)

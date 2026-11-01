@@ -189,6 +189,8 @@ pub struct Cx {
     /// Lending calls whose result the caller owns because an argument is a temporary: the
     /// result is copied out before the temporary is dropped.
     pub owned_lends: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Conditional and match expressions whose value is a reference on every arm.
+    pub lent_matches: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Which types are resources, for the closers of records and collections that hold them.
     pub classes: ms_check::ownership::Classifier,
 }
@@ -250,6 +252,7 @@ impl Cx {
             getters: program.getter_borrows.clone(),
             lenders: program.lenders.clone(),
             owned_lends: program.owned_lends.clone(),
+            lent_matches: program.lent_matches.clone(),
             classes: ms_check::ownership::Classifier::new(program),
         }
     }

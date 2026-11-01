@@ -49,7 +49,13 @@ pub struct Outcome {
 enum Operand<'e> {
     Receiver(&'e Expr),
     Argument(&'e Expr),
+    /// An operand of an operator, index, literal or interpolation.
+    Part(&'e Expr),
 }
+
+/// An operand with the places it holds for the whole call (changed when `true`) and the places
+/// the calls inside it changed or moved while it was computed.
+type Logged<'e> = (Operand<'e>, Vec<(Place, bool)>, Vec<Place>);
 
 /// What an expression's value is used for.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -145,6 +151,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         hidden: 0,
         let_pos: HashMap::new(),
         used: cx.live.uses.keys().map(|(_, uid)| *uid).collect(),
+        nested_cache: HashMap::new(),
         resources: Vec::new(),
         arm_payloads: Vec::new(),
         chain_places: HashMap::new(),
@@ -226,6 +233,8 @@ struct Walker<'a> {
     let_pos: HashMap<usize, Pos>,
     /// Bindings that are read, changed or moved somewhere after their declaration.
     used: HashSet<usize>,
+    /// `nested_writes` by expression, so a long chain is walked once.
+    nested_cache: HashMap<NodeId, Vec<Place>>,
     /// Owned `let` and `var` resources: binding, name and declaration position.
     resources: Vec<(usize, Name, Pos, bool)>,
     /// Payload bindings of match arms over a consumed scrutinee.
@@ -467,6 +476,13 @@ impl Walker<'_> {
             self.expr(e, Demand::Consume);
             return;
         }
+        // Each branch of a conditional or match expression is a returned value of its own.
+        if let ExprKind::Match { scrutinee, arms } = &e.kind
+            && arms.iter().all(|a| a.value.is_some())
+        {
+            self.match_expr(e, scrutinee, arms, Demand::Consume, true);
+            return;
+        }
         // A resource is never lent: returning one hands it to the caller, which closes it.
         if self.class_of(e) == Class::Move
             && self.returns_as_declared(e)
@@ -490,13 +506,6 @@ impl Walker<'_> {
                 return;
             }
             self.owned_return.get_or_insert(e.pos);
-        }
-        // Each branch of a conditional or match expression is a returned value of its own.
-        if let ExprKind::Match { scrutinee, arms } = &e.kind
-            && arms.iter().all(|a| a.value.is_some())
-        {
-            self.match_expr(e, scrutinee, arms, Demand::Consume, true);
-            return;
         }
         self.expr(e, Demand::Consume);
     }
@@ -637,6 +646,19 @@ impl Walker<'_> {
     /// rooted in a parameter or the receiver, or a lending call whose sources all are. `None`
     /// for an owned value, including a part of a local, a temporary or a default argument.
     fn lend_source(&self, e: &Expr) -> Option<LendSource> {
+        // A field or element of what a lending call returns (`self.head().tags[0]`) is a part of
+        // the same sources; a field chain extends the path, an element ends it.
+        if let Some((call, fields)) = self.part_of_call(e) {
+            let mut src = self.lend_source(call)?;
+            src.path = match (src.path.take(), fields) {
+                (Some((root, mut path)), Some(more)) => {
+                    path.extend(more);
+                    Some((root, path))
+                }
+                _ => None,
+            };
+            return Some(src);
+        }
         if self.is_place(e) {
             let root = match &e.kind {
                 ExprKind::Name(_) => e,
@@ -736,6 +758,46 @@ impl Walker<'_> {
             return Some(out);
         }
         None
+    }
+
+    /// The lending call a projection chain starts from, with the fields from it when the chain
+    /// is fields only (`None` for an element).
+    fn part_of_call<'e>(&self, e: &'e Expr) -> Option<(&'e Expr, Option<Vec<Name>>)> {
+        match &e.kind {
+            ExprKind::Member { left, name } => {
+                if let ExprKind::Call { .. } = &left.kind {
+                    return self.lends(left).then_some((&**left, Some(vec![*name])));
+                }
+                let (call, fields) = self.part_of_call(left)?;
+                Some((
+                    call,
+                    fields.map(|mut f| {
+                        f.push(*name);
+                        f
+                    }),
+                ))
+            }
+            ExprKind::Index { left, .. }
+            | ExprKind::Apply {
+                left,
+                value: Some(_),
+                ..
+            } => {
+                if let ExprKind::Call { .. } = &left.kind {
+                    return self.lends(left).then_some((&**left, None));
+                }
+                let (call, _) = self.part_of_call(left)?;
+                Some((call, None))
+            }
+            _ => None,
+        }
+    }
+
+    /// Whether a call hands back a reference into its operands.
+    fn lends(&self, call: &Expr) -> bool {
+        self.class_of(call) != Class::Copy
+            && (self.native_lend_receiver(call).is_some()
+                || call_lend(self.cx.m, call, self.cx.summaries).lends)
     }
 
     /// The label of the parameter `operand` is written for in call `e`.
@@ -2042,16 +2104,41 @@ impl Walker<'_> {
         self.pure_origins(e)
     }
 
+    /// The places a conditional's value is a reference into, when every arm yields one.
+    fn arm_origins(&self, arms: &[Arm]) -> Option<Vec<Place>> {
+        let mut out: Vec<Place> = Vec::new();
+        for arm in arms {
+            let v = arm.value.as_ref()?;
+            let places = if self.is_place(v) {
+                self.pure_places(v)?
+            } else {
+                self.pure_origins(v)?
+            };
+            for p in places {
+                // A payload of this match is not declared yet: it may own its part, which
+                // ends with the arm.
+                self.meta.get(&p.root)?;
+                if !out.contains(&p) {
+                    out.push(p);
+                }
+            }
+        }
+        Some(out)
+    }
+
     /// The places a call result is a reference into, without evaluating it: the places of the
     /// arguments a lending callee returns a part of, or the container of a native read that is
     /// lent in place. `None` when the result owns, including when a source is a temporary.
     fn pure_origins(&self, e: &Expr) -> Option<Vec<Place>> {
-        let ExprKind::Call { .. } = &e.kind else {
-            return None;
-        };
         if self.class_of(e) == Class::Copy {
             return None;
         }
+        if let ExprKind::Match { arms, .. } = &e.kind {
+            return self.arm_origins(arms);
+        }
+        let ExprKind::Call { .. } = &e.kind else {
+            return None;
+        };
         let operands = match self.native_lend_receiver(e) {
             Some(recv) => vec![recv],
             None => {
@@ -2163,10 +2250,16 @@ impl Walker<'_> {
                 "`?` after an index is only written as `if var name = place[key]?`, where it borrows the entry in place",
             ),
             ExprKind::Text(parts) => {
-                for part in parts {
-                    if let TextPart::Interp(i) = part {
-                        self.expr(i, Demand::Read);
-                    }
+                let interps: Vec<&Expr> = parts
+                    .iter()
+                    .filter_map(|p| match p {
+                        TextPart::Interp(i) => Some(i),
+                        _ => None,
+                    })
+                    .collect();
+                self.parts_overlap(e.pos, "this text", &interps);
+                for i in interps {
+                    self.expr(i, Demand::Read);
                 }
             }
             ExprKind::Name(_) => match self.cx.m.resolution(e) {
@@ -2198,8 +2291,14 @@ impl Walker<'_> {
                 }
                 self.projection(e, d)
             }
-            ExprKind::List(items) => items.iter().for_each(|i| self.expr(i, Demand::Consume)),
+            ExprKind::List(items) => {
+                let parts: Vec<&Expr> = items.iter().collect();
+                self.parts_overlap(e.pos, "this list", &parts);
+                items.iter().for_each(|i| self.expr(i, Demand::Consume))
+            }
             ExprKind::Map(entries) => {
+                let parts: Vec<&Expr> = entries.iter().flat_map(|en| [&en.key, &en.value]).collect();
+                self.parts_overlap(e.pos, "this map", &parts);
                 for entry in entries {
                     self.expr(&entry.key, Demand::Consume);
                     self.expr(&entry.value, Demand::Consume);
@@ -2209,7 +2308,8 @@ impl Walker<'_> {
                 let inner = if *op == UnaryOp::Try { d } else { Demand::Read };
                 self.expr(operand, inner);
             }
-            ExprKind::Binary { left, right, .. } => {
+            ExprKind::Binary { left, right, op } => {
+                self.parts_overlap(e.pos, &format!("`{}`", op.as_str()), &[left, right]);
                 self.expr(left, Demand::Read);
                 self.expr(right, Demand::Read);
             }
@@ -2412,10 +2512,14 @@ impl Walker<'_> {
                     self.expr(left, if take { Demand::Consume } else { Demand::Read })
                 }
                 ExprKind::Index { left, index } => {
+                    self.parts_overlap(e.pos, "this index", &[left, index]);
                     self.expr(left, if take { Demand::Consume } else { Demand::Read });
                     self.expr(index, Demand::Read);
                 }
                 ExprKind::Apply { left, value, .. } => {
+                    if let Some(v) = value {
+                        self.parts_overlap(e.pos, "this index", &[left, v]);
+                    }
                     self.expr(left, Demand::Read);
                     if let Some(v) = value {
                         self.expr(v, Demand::Read);
@@ -2706,7 +2810,7 @@ impl Walker<'_> {
         }
         // Evaluate in order. What an operand keeps hold of for the whole call
         // is checked against the others afterwards.
-        let mut operands: Vec<(Operand, Vec<(Place, bool)>)> = Vec::new();
+        let mut operands: Vec<Logged> = Vec::new();
         let reported = self.diags.len();
         if let Some(r) = receiver_expr {
             if self.cx.m.info(e).native_str() == "clone" && self.class_of(r) == Class::Resource {
@@ -2728,7 +2832,7 @@ impl Walker<'_> {
             }
             let held = self.held(r, mode);
             self.receiver(r, mode);
-            operands.push((Operand::Receiver(r), held));
+            operands.push((Operand::Receiver(r), held, Vec::new()));
         } else {
             self.callees.insert(callee.id);
             self.expr(callee, Demand::Read);
@@ -2737,11 +2841,18 @@ impl Walker<'_> {
             let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             let mut held = self.held(&a.value, mode);
             held.extend(self.argument(a, mode, &modes, i));
-            operands.push((Operand::Argument(&a.value), held));
+            operands.push((Operand::Argument(&a.value), held, Vec::new()));
         }
-        // An operand that already failed its own check is not reported twice.
-        if self.diags.len() == reported {
-            self.check_overlap(e.pos, &name, &operands);
+        // An operand that already failed its own check is not reported twice. Only a held
+        // place can clash, so the operands' inner changes are collected only when one is held.
+        if self.diags.len() == reported && operands.iter().any(|(_, held, _)| !held.is_empty()) {
+            for (operand, _, passing) in &mut operands {
+                let x = match operand {
+                    Operand::Receiver(x) | Operand::Argument(x) | Operand::Part(x) => *x,
+                };
+                *passing = self.nested_writes(x);
+            }
+            self.check_overlap(e.pos, &format!("`{name}`"), &operands);
         }
         // Results. A lending callee returns a reference into its arguments: holding it is a
         // borrow of them, storing or returning it needs a copy, and when a source is a
@@ -2811,6 +2922,122 @@ impl Walker<'_> {
             .into_iter()
             .map(|p| (p, write))
             .collect()
+    }
+
+    /// The places changed or moved by the calls inside `e`, closures excluded: a `var` or
+    /// consumed argument place, or a receiver changed in place.
+    fn nested_writes(&mut self, e: &Expr) -> Vec<Place> {
+        if let Some(v) = self.nested_cache.get(&e.id) {
+            return v.clone();
+        }
+        let mut out = self.own_writes(e);
+        let children: Vec<&Expr> = match &e.kind {
+            ExprKind::Number(_)
+            | ExprKind::Bool(_)
+            | ExprKind::Unit
+            | ExprKind::Name(_)
+            | ExprKind::Lambda(_) => Vec::new(),
+            ExprKind::Text(parts) => parts
+                .iter()
+                .filter_map(|p| match p {
+                    TextPart::Interp(x) => Some(x),
+                    _ => None,
+                })
+                .collect(),
+            ExprKind::Member { left, .. } | ExprKind::Probe(left) => vec![left],
+            ExprKind::Unary { operand, .. } => vec![operand],
+            ExprKind::Apply { left, value, .. } => {
+                std::iter::once(&**left).chain(value.as_deref()).collect()
+            }
+            ExprKind::Index { left, index }
+            | ExprKind::Binary {
+                left, right: index, ..
+            } => {
+                vec![left, index]
+            }
+            ExprKind::List(items) => items.iter().collect(),
+            ExprKind::Map(entries) => entries.iter().flat_map(|en| [&en.key, &en.value]).collect(),
+            ExprKind::Call { callee, args } => std::iter::once(&**callee)
+                .chain(args.iter().map(|a| &a.value))
+                .collect(),
+            ExprKind::Match { scrutinee, arms } => std::iter::once(&**scrutinee)
+                .chain(arms.iter().filter_map(|a| a.value.as_ref()))
+                .collect(),
+        };
+        for child in children {
+            for p in self.nested_writes(child) {
+                if !out.contains(&p) {
+                    out.push(p);
+                }
+            }
+        }
+        self.nested_cache.insert(e.id, out.clone());
+        out
+    }
+
+    /// The places one call changes or moves through its `var` and consumed operands.
+    fn own_writes(&self, call: &Expr) -> Vec<Place> {
+        let ExprKind::Call { callee, args } = &call.kind else {
+            return Vec::new();
+        };
+        let modes = call_modes(self.cx.m, call, args, self.cx.summaries);
+        let mut written: Vec<(&Expr, ParamMode)> = Vec::new();
+        if let (ExprKind::Member { left, .. }, Resolution::Method(_)) =
+            (&callee.kind, self.cx.m.resolution(call))
+            && modes.receiver == Some(ParamMode::Mutate)
+        {
+            written.push((left, ParamMode::Mutate));
+        }
+        for (i, a) in args.iter().enumerate() {
+            let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
+            if mode != ParamMode::Borrow {
+                written.push((&a.value, mode));
+            }
+        }
+        let mut out = Vec::new();
+        for (operand, mode) in written {
+            if !self.is_place(operand)
+                || (mode == ParamMode::Consume && self.class_of(operand) == Class::Copy)
+            {
+                continue;
+            }
+            for p in self.pure_places(operand).unwrap_or_default() {
+                if !out.contains(&p) {
+                    out.push(p);
+                }
+            }
+        }
+        out
+    }
+
+    /// The operands of one operator, index, literal or interpolation are computed in order,
+    /// and one that lends or reads a place is held while the next runs; a change or move of
+    /// that place by a later operand would leave a dangling reference.
+    fn parts_overlap(&mut self, pos: Pos, name: &str, parts: &[&Expr]) {
+        if parts.len() < 2 {
+            return;
+        }
+        let mut operands: Vec<Logged> = parts
+            .iter()
+            .map(|p| {
+                (
+                    Operand::Part(p),
+                    self.held(p, ParamMode::Borrow),
+                    Vec::new(),
+                )
+            })
+            .collect();
+        // Only a held place can clash, so the operands' inner changes matter only then.
+        if operands.iter().all(|(_, held, _)| held.is_empty()) {
+            return;
+        }
+        for (part, _, passing) in &mut operands {
+            let Operand::Part(p) = part else {
+                unreachable!()
+            };
+            *passing = self.nested_writes(p);
+        }
+        self.check_overlap(pos, name, &operands);
     }
 
     fn receiver(&mut self, r: &Expr, mode: ParamMode) {
@@ -2891,23 +3118,33 @@ impl Walker<'_> {
                 format!("the closure at {}", self.at(e.id))
             }
             Operand::Argument(e) => format!("argument `{}`", self.expr_text(e)),
+            Operand::Part(e) => format!("operand `{}`", self.expr_text(e)),
         }
     }
 
-    fn check_overlap(&mut self, pos: Pos, name: &str, operands: &[(Operand, Vec<(Place, bool)>)]) {
-        for (i, (label, log)) in operands.iter().enumerate() {
-            for (place, write) in log {
-                if !*write {
-                    continue;
-                }
-                let clash = operands.iter().enumerate().find(|(j, (_, other))| {
-                    *j != i && other.iter().any(|(q, _)| q.overlaps(place))
+    /// `context` names the call or expression the operands belong to, already quoted. A place an
+    /// operand holds for the whole call clashes with a change of it by another operand: one held
+    /// for the call, or one finished while that operand was computed, which leaves a held read
+    /// or a held part dangling (a whole variable passed `var` keeps its slot).
+    fn check_overlap(&mut self, pos: Pos, context: &str, operands: &[Logged]) {
+        for (i, (label, log, passing)) in operands.iter().enumerate() {
+            let writes = log
+                .iter()
+                .filter(|(_, w)| *w)
+                .map(|(p, _)| (p, true))
+                .chain(passing.iter().map(|p| (p, false)));
+            for (place, held) in writes {
+                let clash = operands.iter().enumerate().find(|(j, (_, other, _))| {
+                    *j != i
+                        && other
+                            .iter()
+                            .any(|(q, w)| q.overlaps(place) && (held || !*w || !q.path.is_empty()))
                 });
-                if let Some((_, (other, _))) = clash {
+                if let Some((_, (other, _, _))) = clash {
                     let (label, other) = (self.operand_text(label), self.operand_text(other));
                     self.error(
                         pos,
-                        format!("{label} of `{name}` is changed in place but overlaps {other}; a changed value cannot also be read or changed through another operand, so pass distinct variables or copy one first"),
+                        format!("{label} of {context} is changed in place but overlaps {other}; a changed value cannot also be read or changed through another operand, so pass distinct variables or copy one first"),
                     );
                     return;
                 }
@@ -2924,6 +3161,13 @@ impl Walker<'_> {
         let source = self.scrutinee(e.id, scrutinee);
         self.keep_scrutinee = false;
         self.release_pending();
+        // The value is a reference when every arm yields one and nothing consumes it: lowering
+        // joins the arms without copying.
+        let lent = !returning
+            && d != Demand::Consume
+            && self.class_of(e) != Class::Copy
+            && self.arm_origins(arms).is_some();
+        let lent_before = self.lent_return;
         let entry = self.active.clone();
         let mut joined: Vec<Borrow> = Vec::new();
         for arm in arms {
@@ -2959,6 +3203,12 @@ impl Walker<'_> {
             joined = Self::join_active(joined, end);
         }
         self.active = Self::join_active(entry, joined);
+        // A returned match lends when its arms all did; a mix is reported by `mixed_returns`.
+        let returned_lent =
+            returning && self.owned_return.is_none() && self.lent_return != lent_before;
+        if lent || returned_lent {
+            self.facts.lent_matches.insert(e.id);
+        }
     }
 
     // --------------------------------------------------------- lambda

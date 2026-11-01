@@ -19,7 +19,7 @@ fn mutable_alias_captures_write_through() {
         );
         assert_eq!(
             String::from_utf8_lossy(&out.stdout),
-            "1 [[1, 9, 9], [2]]\n6\n[[3], [4, 8]]\nMap(dynamic-1: [5, 1])\nPair(left: [1, 3], right: [2, 4])\n[[10, 11]]\n[Box(count: 21, items: [])]\n[[1, 9, 9], [2, 12]]\n"
+            "1 [[1, 9, 9], [2]]\n3\n[[3], [4, 8]]\nMap(dynamic-1: [5, 1])\nPair(left: [1, 3], right: [2, 4])\n[[10, 11]]\n[Box(count: 21, items: [])]\n[[1, 9, 9], [2, 12]]\n"
         );
     }
 }
