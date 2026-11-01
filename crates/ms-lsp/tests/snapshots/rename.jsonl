@@ -200,15 +200,15 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":199,"jsonrpc":"2.0"}
 {"id":200,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":15,"line":40},"start":{"character":10,"line":40}}}}
 {"id":201,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":15,"line":40},"start":{"character":10,"line":40}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":202,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":203,"jsonrpc":"2.0"}
+{"id":202,"jsonrpc":"2.0","result":{"placeholder":"Circle","range":{"end":{"character":14,"line":41},"start":{"character":8,"line":41}}}}
+{"id":203,"jsonrpc":"2.0","result":{"placeholder":"Circle","range":{"end":{"character":14,"line":41},"start":{"character":8,"line":41}}}}
 {"id":204,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":16,"line":41},"start":{"character":15,"line":41}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":205,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":206,"jsonrpc":"2.0"}
 {"id":207,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":20,"line":42},"start":{"character":19,"line":42}}}}
 {"id":208,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":24,"line":42},"start":{"character":23,"line":42}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":209,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":210,"jsonrpc":"2.0"}
+{"id":209,"jsonrpc":"2.0","result":{"placeholder":"Square","range":{"end":{"character":14,"line":43},"start":{"character":8,"line":43}}}}
+{"id":210,"jsonrpc":"2.0","result":{"placeholder":"Square","range":{"end":{"character":14,"line":43},"start":{"character":8,"line":43}}}}
 {"id":211,"jsonrpc":"2.0","result":{"placeholder":"s","range":{"end":{"character":16,"line":43},"start":{"character":15,"line":43}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":212,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":213,"jsonrpc":"2.0"}
@@ -336,7 +336,7 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":335,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":336,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":337,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":338,"jsonrpc":"2.0"}
+{"id":338,"jsonrpc":"2.0","result":{"documentChanges":[{"edits":[{"newText":"renamed","range":{"end":{"character":14,"line":41},"start":{"character":8,"line":41}}},{"newText":"renamed","range":{"end":{"character":15,"line":10},"start":{"character":9,"line":10}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}]}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":339,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":340,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":341,"jsonrpc":"2.0"}
