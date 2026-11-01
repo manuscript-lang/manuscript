@@ -106,6 +106,7 @@ export fn use_stats_runtime() Int:
     if host() == "linux":
         target = "{arch}-unknown-linux-gnu"
         release = "{target}/release"
+        set_environment("CFLAGS_{target.replace("-", "_")}", "-fno-stack-protector").get()
     else if host() == "windows":
         target = "{arch}-pc-windows-gnullvm"
         release = "{target}/release"
