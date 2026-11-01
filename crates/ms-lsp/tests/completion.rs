@@ -117,3 +117,41 @@ fn an_opaque_record_offers_no_fields_outside_its_file() {
     );
     assert!(inside.contains(&"id".to_string()), "{inside:?}");
 }
+
+#[test]
+fn alternative_cases_complete_bare_unless_opaque_elsewhere() {
+    let workspace = Workspace::new("completion-cases");
+    std::fs::write(
+        workspace.path("shapes.ms"),
+        "export type Shape:\n    case Circle(r: Float)\n    case Sq(s: Float)\n\nexport opaque type Hidden:\n    case Secret\n    case Other\n",
+    )
+    .expect("shapes source");
+    let labels = |source: &str, line: usize, character: usize| {
+        let document = Document::new(workspace.uri("main.ms"), source.to_string());
+        completion_at(
+            &document,
+            &Documents::new(),
+            Position { line, character },
+            false,
+        )
+        .expect("completion")
+        .into_iter()
+        .filter_map(|item| {
+            item.json()
+                .get("label")
+                .and_then(|j| j.as_str())
+                .map(str::to_string)
+        })
+        .collect::<Vec<_>>()
+    };
+    let source = "import Shape, Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    let _a = Cir\n    return 0\n";
+    let found = labels(source, 3, 16);
+    assert!(found.contains(&"Circle".to_string()), "{found:?}");
+    let source = "import Shape, Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    let _a = Sec\n    return 0\n";
+    let found = labels(source, 3, 16);
+    assert!(!found.contains(&"Secret".to_string()), "{found:?}");
+    let source =
+        "import Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    let _a = Hidden.\n    return 0\n";
+    let found = labels(source, 3, 19);
+    assert!(!found.contains(&"Secret".to_string()), "{found:?}");
+}
