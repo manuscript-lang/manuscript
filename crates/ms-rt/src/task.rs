@@ -1870,6 +1870,26 @@ mod tests {
         unsafe { msrt_task_join(arg as u64, null_mut()) };
     }
 
+    unsafe extern "C-unwind" fn deadlocked_channel(arg: *mut u8) {
+        crate::channel::msrt_channel_park(arg as i64);
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_deadlocked_channel_wait_frees_its_token() {
+        let _g = lock();
+        teardown();
+        // SAFETY: the guard contains the deliberate deadlock and the token belongs to it.
+        unsafe {
+            let token = crate::channel::msrt_channel_token() as u64;
+            let status = fault::msrt_guard_call(deadlocked_channel, token as *mut u8, null_mut());
+            let retained = token_mut(&mut sched(), token).is_some();
+            teardown();
+            assert_eq!(status, 1);
+            assert!(!retained, "a channel token lasts for only one wait");
+        }
+    }
+
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn a_deadlocked_token_wait_releases_its_registration() {

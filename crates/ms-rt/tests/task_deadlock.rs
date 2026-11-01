@@ -7,6 +7,35 @@ use std::sync::Mutex;
 
 static LOCK: Mutex<()> = Mutex::new(());
 
+unsafe extern "C-unwind" fn park_channel(arg: *mut u8) {
+    ms_rt::channel::msrt_channel_park(arg as i64);
+}
+
+#[test]
+fn repeated_deadlocked_channel_waits_reuse_their_token_storage() {
+    let _lock = LOCK.lock().unwrap_or_else(|error| error.into_inner());
+    task::teardown();
+    // SAFETY: each guard owns its single-use channel token; no completion is provided.
+    unsafe {
+        let mut token = ms_rt::channel::msrt_channel_token() as u64;
+        let slot = token as u32;
+        let mut reused = true;
+        for _ in 0..64 {
+            let status = fault::msrt_guard_call(park_channel, token as *mut u8, null_mut());
+            assert_eq!(status, 1);
+            let next = ms_rt::channel::msrt_channel_token() as u64;
+            reused &= next as u32 == slot && next != token;
+            token = next;
+        }
+        task::msrt_token_free(token);
+        task::teardown();
+        assert!(
+            reused,
+            "faulted channel waits must release their token slots"
+        );
+    }
+}
+
 struct Recovery {
     token: u64,
     target: u64,
