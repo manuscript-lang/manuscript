@@ -1028,7 +1028,7 @@ impl<'a> FnLower<'a> {
         Ok(self.owned(x))
     }
 
-    /// A default written as a literal, `none`, an empty list or a constructor call of literals in a
+    /// A default written as a literal, `none`, an empty list or map, or a constructor call of literals in a
     /// declaration module without checked facts; none when `d` is anything else.
     pub(crate) fn literal_default(&mut self, d: &Expr, t: &ct::Ty) -> Result<Option<Val>, Error> {
         let mt = self.cx.lower_ty(self.b.m, t)?;
@@ -1073,6 +1073,15 @@ impl<'a> FnLower<'a> {
             }
             ExprKind::List(items) if items.is_empty() => {
                 let v = self.call_runtime("msrt_list_new", &[], mt)?;
+                Some(Val { v, own: true })
+            }
+            // `Map[K, V]()`: an empty map.
+            ExprKind::Call { args, .. }
+                if args.is_empty()
+                    && crate::mapset::is_map_or_set(self.b.m, mt)
+                    && t.is_std("Map") =>
+            {
+                let v = self.map_new(mt)?;
                 Some(Val { v, own: true })
             }
             ExprKind::Call { args, .. } if args.iter().all(|a| a.name.is_some()) => {

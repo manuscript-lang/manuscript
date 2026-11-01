@@ -868,7 +868,13 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
     // The runtime takes a map argument as two parallel lists.
     let mut lists = Vec::new();
     if sym == "msstd_process_replace" {
-        lists = fl.split_map_argument(&mut decl, &mut nargs, 2, ["env_names", "env_values"])?;
+        lists = fl.split_map_argument(&mut decl, &mut nargs, 2, 1, ["env_names", "env_values"])?;
+    }
+    if matches!(
+        sym.as_str(),
+        "msstd_process_command_run" | "msstd_process_command_spawn"
+    ) {
+        lists = fl.split_map_argument(&mut decl, &mut nargs, 6, 1, ["env_names", "env_values"])?;
     }
     if matches!(sym.as_str(), "msstd_fs_glob_entries" | "msstd_fs_copy") {
         let r = fl.fs_walk(sym, &decl, &nargs, job.ret)?;
@@ -942,19 +948,20 @@ fn load_handle(
 
 impl FnLower<'_> {
     /// Replaces the map argument at `at` by its keys and values as two lists named `names`, typed
-    /// like the argument before it. The lists are owned by the caller, which drops them after the
+    /// like the list argument at `list_at`. The lists are owned by the caller, which drops them after the
     /// call.
     fn split_map_argument(
         &mut self,
         decl: &mut Vec<ct::Param>,
         nargs: &mut Vec<NArg>,
         at: usize,
+        list_at: usize,
         names: [&str; 2],
     ) -> Result<Vec<ms_mir::ir::Value>, Error> {
         let map = nargs[at].val;
         let map_ty = self.ty_of(map.v);
-        let list_ty = self.ty_of(nargs[at - 1].val.v);
-        let list_decl = decl[at - 1].ty.clone();
+        let list_ty = self.ty_of(nargs[list_at].val.v);
+        let list_decl = decl[list_at].ty.clone();
         let mut lists = Vec::new();
         let mut split = Vec::new();
         for (name, method) in names.into_iter().zip(["keys", "values"]) {

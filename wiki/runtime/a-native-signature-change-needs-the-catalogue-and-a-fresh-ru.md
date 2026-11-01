@@ -4,6 +4,8 @@
 
 Verified: lowering marshals native calls from `crates/ms-rt/SYMBOLS.md`, not from the Rust source, and programs link `target/ms-native/libms_native.a`. Adding parameters to `msstd_process_command_spawn` without editing its catalogue line made compiled calls pass the out pointer as a mode and segfault inside the native; a stale archive instead ignored the new arguments. Crate tests that call the native directly passed both times.
 
+A default that an implementation inherits from a bundled interface must be one `literal_default` understands (literals, `none`, `[]`, `Map[K, V]()`, `Bytes`, payload-free cases); anything else fails lowering with "missing argument" in programs that implement the interface (`Commands` fakes). A map parameter reaches the native as two lists through `split_map_argument`.
+
 Apply when: changing the parameters of any `ms-std-*` or `ms-rt` export.
 Evidence: [catalogue](../../crates/ms-rt/SYMBOLS.md), [Stdio default](../../crates/ms-lower/src/call.rs), [called source check](../../tests/e2e/testdata/stdlib/host.ms).
 Verify: run `make runtime` and rebuild `ms-cli`, then run a compiled program that calls the native, not only crate tests; `runtime_symbol_catalogue_matches_archive` checks names, not parameters.

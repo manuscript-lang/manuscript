@@ -88,6 +88,8 @@ pub struct Output {
     pub code: i64,
     pub stdout: Vec<u8>,
     pub stderr: Vec<u8>,
+    /// Peak resident set size of the child in bytes; 0 when the host cannot say.
+    pub max_resident: i64,
 }
 
 /// Kills the child's group and reaps it unless it was already collected.
@@ -109,6 +111,8 @@ pub fn run(
     input: &[u8],
     max_output: i64,
     timeout_ns: Option<i64>,
+    cwd: Option<&[u8]>,
+    env: &[(&str, &[u8])],
 ) -> Res<Output> {
     let (mut in_w, in_r) = pipe(false).map_err(start_failure)?;
     let (mut out_r, out_w) = pipe(true).map_err(start_failure)?;
@@ -122,7 +126,8 @@ pub fn run(
             StdStream::Pipe(err_w.0),
         ],
         None,
-        &[],
+        env,
+        cwd,
     )?;
     let mut child = Reaper(child);
     drop((in_r, out_w, err_w));
@@ -262,6 +267,7 @@ pub fn run(
         code,
         stdout,
         stderr,
+        max_resident: child.0.max_resident,
     })
 }
 
@@ -281,8 +287,14 @@ pub struct Subprocess {
 }
 
 /// Starts `program`; `modes` gives stdin, stdout and stderr each as a `STDIO_*` value.
-pub fn spawn(program: &[u8], args: &[Vec<u8>], modes: [i64; 3]) -> Res<Subprocess> {
-    spawn_with(program, args, modes, None, &[])
+pub fn spawn(
+    program: &[u8],
+    args: &[Vec<u8>],
+    modes: [i64; 3],
+    cwd: Option<&[u8]>,
+    env: &[(&str, &[u8])],
+) -> Res<Subprocess> {
+    spawn_with(program, args, modes, None, env, cwd)
 }
 
 /// [`spawn`] with the extra variables `env` and the child's end of an IPC pipe.
@@ -292,6 +304,7 @@ pub fn spawn_with(
     modes: [i64; 3],
     ipc: Option<&ChildEnd>,
     env: &[(&str, &[u8])],
+    cwd: Option<&[u8]>,
 ) -> Res<Subprocess> {
     let mut parent = [
         Fd(sys::INVALID_FD),
@@ -314,7 +327,7 @@ pub fn spawn_with(
             _ => StdStream::Null,
         };
     }
-    let child = start(program, args, streams, ipc, env)?;
+    let child = start(program, args, streams, ipc, env, cwd)?;
     drop(child_ends);
     let [stdin, stdout, stderr] = parent;
     Ok(Subprocess {
@@ -384,19 +397,38 @@ mod tests {
             b"hello",
             i64::MAX,
             None,
+            None,
+            &[],
         )
         .unwrap();
         assert_eq!(
             (out.code, out.stdout.as_slice(), out.stderr.as_slice()),
             (3, b"hello".as_slice(), b"err\n".as_slice())
         );
-        let killed = run(b"sh", &args(&["-c", "kill -9 $$"]), b"", i64::MAX, None).unwrap();
+        let killed = run(
+            b"sh",
+            &args(&["-c", "kill -9 $$"]),
+            b"",
+            i64::MAX,
+            None,
+            None,
+            &[],
+        )
+        .unwrap();
         assert_eq!(killed.code, -1);
         assert_eq!(
-            run(b"definitely-not-a-program", &[], b"", i64::MAX, None)
-                .err()
-                .unwrap()
-                .status,
+            run(
+                b"definitely-not-a-program",
+                &[],
+                b"",
+                i64::MAX,
+                None,
+                None,
+                &[]
+            )
+            .err()
+            .unwrap()
+            .status,
             STATUS_UNAVAILABLE
         );
     }
@@ -410,6 +442,8 @@ mod tests {
             b"",
             1000,
             None,
+            None,
+            &[],
         );
         assert_eq!(big.err().unwrap().status, STATUS_OUTPUT_LIMIT);
         let start = now_ns();
@@ -419,10 +453,20 @@ mod tests {
             b"",
             i64::MAX,
             Some(100_000_000),
+            None,
+            &[],
         );
         assert_eq!(slow.err().unwrap().status, STATUS_TIMEOUT);
         assert!(now_ns() - start < 5_000_000_000);
-        let background = run(b"sh", &args(&["-c", "sleep 5 &"]), b"", i64::MAX, None);
+        let background = run(
+            b"sh",
+            &args(&["-c", "sleep 5 &"]),
+            b"",
+            i64::MAX,
+            None,
+            None,
+            &[],
+        );
         assert_eq!(
             background.err().unwrap().message.as_deref(),
             Some(BACKGROUND_OUTPUT)
@@ -432,7 +476,7 @@ mod tests {
     #[test]
     fn subprocess_pipes_and_close() {
         let _guard = crate::environment_guard();
-        let mut p = spawn(b"cat", &[], [STDIO_PIPE; 3]).unwrap();
+        let mut p = spawn(b"cat", &[], [STDIO_PIPE; 3], None, &[]).unwrap();
         assert_eq!(p.wait(Some(20_000_000)).unwrap_err().status, STATUS_TIMEOUT);
         sys::write(p.stdin.0, b"ping").unwrap();
         p.stdin.close();
@@ -440,7 +484,7 @@ mod tests {
         let mut buf = [0u8; 8];
         assert_eq!(sys::read(p.stdout.0, &mut buf).unwrap(), 4);
         p.stop();
-        let mut sleeper = spawn(b"sleep", &args(&["30"]), [STDIO_PIPE; 3]).unwrap();
+        let mut sleeper = spawn(b"sleep", &args(&["30"]), [STDIO_PIPE; 3], None, &[]).unwrap();
         // Waits park on the child's exit (pidfd or kqueue) instead of checking in slices.
         assert!(sleeper.child.exit_fd().is_some());
         sleeper.child.signal(false);
@@ -455,6 +499,8 @@ mod tests {
             b"sh",
             &args(&["-c", "cat; echo done >&2"]),
             [STDIO_NULL, STDIO_INHERIT, STDIO_PIPE],
+            None,
+            &[],
         )
         .unwrap();
         assert!(!p.stdin.is_open() && !p.stdout.is_open() && p.stderr.is_open());
@@ -462,6 +508,39 @@ mod tests {
         let mut buf = [0u8; 8];
         assert_eq!(sys::read(p.stderr.0, &mut buf).unwrap(), 5);
         assert_eq!(&buf[..5], b"done\n");
+    }
+
+    #[test]
+    fn cwd_env_and_peak_memory() {
+        let _guard = crate::environment_guard();
+        let dir = std::env::temp_dir();
+        let out = run(
+            b"sh",
+            &args(&["-c", "pwd -P; echo \"$MS_PROBE\""]),
+            b"",
+            i64::MAX,
+            None,
+            Some(dir.as_os_str().as_encoded_bytes()),
+            &[("MS_PROBE", b"set")],
+        )
+        .unwrap();
+        let want = std::fs::canonicalize(&dir).unwrap();
+        let text = String::from_utf8(out.stdout).unwrap();
+        let mut lines = text.lines();
+        assert_eq!(lines.next().map(std::path::Path::new), Some(want.as_path()));
+        assert_eq!(lines.next(), Some("set"));
+        assert!(out.max_resident > 0);
+        let mut p = spawn(b"true", &[], [STDIO_NULL; 3], None, &[]).unwrap();
+        assert_eq!(p.wait(Some(5_000_000_000)).unwrap(), 0);
+        assert!(p.child.max_resident > 0);
+        let missing = spawn(
+            b"true",
+            &[],
+            [STDIO_NULL; 3],
+            Some(b"/definitely/not/here"),
+            &[],
+        );
+        assert!(missing.is_err());
     }
 }
 
@@ -475,12 +554,15 @@ mod windows_tests {
 
     #[test]
     fn waits_park_on_the_process_handle() {
-        let mut quick = spawn(b"cmd", &args(&["/c", "exit 3"]), [STDIO_NULL; 3]).unwrap();
+        let mut quick =
+            spawn(b"cmd", &args(&["/c", "exit 3"]), [STDIO_NULL; 3], None, &[]).unwrap();
         assert_eq!(quick.wait(Some(20_000_000_000)).unwrap(), 3);
         let mut slow = spawn(
             b"cmd",
             &args(&["/c", "ping -n 30 127.0.0.1"]),
             [STDIO_NULL; 3],
+            None,
+            &[],
         )
         .unwrap();
         assert_eq!(
@@ -504,6 +586,8 @@ mod windows_tests {
             b"ax\r\nb\r\n",
             1 << 20,
             Some(20_000_000_000),
+            None,
+            &[],
         )
         .unwrap();
         assert_eq!(out.code, 0);
@@ -516,6 +600,8 @@ mod windows_tests {
             &big,
             1 << 20,
             Some(20_000_000_000),
+            None,
+            &[],
         )
         .unwrap();
         assert_eq!(echoed.stdout.len(), big.len());
