@@ -35,7 +35,7 @@ fn merged_wide() Map[WideKey, WideValue]:
     var target = Map[WideKey, WideValue]()
     target.add(key(2), value(99))
     target.add(key(-1), value(-1))
-    target.merge(source)
+    target.merge(source.clone())
     target.merge(source)
 
     let empty = Map[WideKey, WideValue]()
@@ -45,6 +45,7 @@ fn merged_wide() Map[WideKey, WideValue]:
 test "wide Map merge preserves order and owns values after the source drops":
     let merged = merged_wide()
     try expect_equal(merged.keys().map(fn k: k.a), [2, -1, 0, 1, 4, 5, 7])
+
     for i in [2, -1, 0, 1, 4, 5, 7]:
         let found = merged.get(key(i)).get()
         let text = "a long independently owned runtime value " + i.to_string()
@@ -57,7 +58,8 @@ test "wide Map merge preserves order and owns values after the source drops":
 test "primitive Map merge preserves overwrite and empty-source behavior":
     var target: Map[Int, Int] = {2: 99, -1: -1}
     let source: Map[Int, Int] = {0: 0, 1: 1, 2: 2}
-    target.merge(source)
+    target.merge(source.clone())
+
     let empty = Map[Int, Int]()
     target.merge(empty)
     try expect_equal(target.keys(), [2, -1, 0, 1])
