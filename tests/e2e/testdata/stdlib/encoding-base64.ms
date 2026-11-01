@@ -53,10 +53,10 @@ fn padded_input(length: Int) Bytes:
     out.append(42)
     return out.build().slice(1, length + 1).get(Bytes([]))
 
-test "Base64 batches preserve tails and sliced byte inputs":
+test "Base64 preserves tails across small and batch boundaries":
     for length in [
-        12285, 12286, 12287, 12288, 12289, 12290, 12291, 24573, 24574, 24575, 24576,
-        24577, 24578, 24579
+        31, 32, 33, 34, 35, 12285, 12286, 12287, 12288, 12289, 12290, 12291, 24573,
+        24574, 24575, 24576, 24577, 24578, 24579
     ]:
         let data = padded_input(length)
         try expect_equal(data.length(), length)
