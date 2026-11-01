@@ -77,17 +77,17 @@ struct FailedTypeArgs {
 }
 
 /// The position of byte `index` of a text token's source.
-fn text_pos(token: Token, full: &str, index: usize) -> Pos {
+fn text_pos(pos: Pos, full: &str, index: usize) -> Pos {
     let before = &full[..index];
-    let offset = (token.pos.offset as usize + index) as u32;
+    let offset = (pos.offset as usize + index) as u32;
     match before.rfind('\n') {
         None => Pos {
-            line: token.pos.line,
-            column: (token.pos.column as usize + index) as u32,
+            line: pos.line,
+            column: (pos.column as usize + index) as u32,
             offset,
         },
         Some(last) => Pos {
-            line: token.pos.line + before.matches('\n').count() as u32,
+            line: pos.line + before.matches('\n').count() as u32,
             column: (index - last) as u32,
             offset,
         },
@@ -2720,6 +2720,7 @@ impl<'a> Parser<'a> {
         };
         let mut i = first;
         let mut line_start = indent > 0;
+        let (mut positioned, mut position) = (0, token.pos);
         while i < end {
             if line_start {
                 line_start = false;
@@ -2769,7 +2770,12 @@ impl<'a> Parser<'a> {
                 .expect("validated interpolation")
                 - (self.source_origin + token.lo as usize + quotes);
             let source = &raw[start..i - 1];
-            let value = self.interpolation(token, quotes + start, source)?;
+            // Advance through each prefix once, including physical lines in
+            // multiline text. Interpolation expressions themselves have no newlines.
+            let at = quotes + start;
+            position = text_pos(position, &self.text(token)[positioned..], at - positioned);
+            positioned = at;
+            let value = self.interpolation(token, at, source, position)?;
             parts.push(TextPart::Interp(value));
         }
         flush(&mut literal, &mut parts);
@@ -2781,15 +2787,28 @@ impl<'a> Parser<'a> {
 
     /// Lexes and parses the expression inside one `{...}` of a text literal.
     /// Failures also state the escape for a literal brace.
-    fn interpolation(&mut self, token: Token, at: usize, source: &str) -> PResult<Expr> {
-        let full = self.text(token);
+    fn interpolation(
+        &mut self,
+        token: Token,
+        at: usize,
+        source: &str,
+        position: Pos,
+    ) -> PResult<Expr> {
         let suffix = format!(
             " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
-            text_pos(token, full, at - 1).column
+            position.column - 1
         );
         let origin = self.source_origin + token.lo as usize + at;
-        let shift =
-            |p: Pos| -> Pos { text_pos(token, full, at + (p.offset as usize).min(source.len())) };
+        // The lexer rejects physical newlines inside an interpolation. Map
+        // each token from its relative byte offset without rescanning the text.
+        let shift = |p: Pos| -> Pos {
+            let offset = p.offset.min(source.len() as u32);
+            Pos::new(
+                position.offset + offset,
+                position.line,
+                position.column + offset,
+            )
+        };
         let mut tokens =
             match crate::lexer::lex_interpolation(self.file, source, origin, self.boundaries) {
                 Ok(tokens) => tokens,
@@ -3191,12 +3210,12 @@ impl<'a> Parser<'a> {
         let full = self.text(token);
         let suffix = format!(
             " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
-            text_pos(token, full, at - 1).column
+            text_pos(token.pos, full, at - 1).column
         );
         let wrapped = format!("({source})");
         let shift = |p: Pos| -> Pos {
             text_pos(
-                token,
+                token.pos,
                 full,
                 at - 1 + (p.offset as usize).min(source.len() + 1),
             )
