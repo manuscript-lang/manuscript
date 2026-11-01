@@ -9,6 +9,7 @@ description = "Native implementation of @std/io/archive.ms (zip, tar, gzip, zlib
 miniz_oxide = { version = "0.9", default-features = false, features = ["with-alloc"] }
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-rt = { path = "../ms-rt" }
+ms-std-core = { path = "../ms-std-core" }
 
 
 [lints]

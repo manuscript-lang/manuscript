@@ -9,10 +9,6 @@ description = "Small native math, random, encoding and checksum operations"
 crate-type = ["rlib"]
 
 [dependencies]
-crabmole = { version = "0.1.8", default-features = false, features = ["ascii85"] }
-crc32fast = "1.5.2"
-data-encoding = { version = "2.11.1", default-features = false, features = ["alloc"] }
-simd-adler32 = { version = "0.3.10", default-features = false, features = ["std"] }
 getrandom = { version = "0.4", default-features = false, features = ["sys_rng"] }
 libm = { version = "0.2", default-features = false }
 ms-rt-abi = { path = "../ms-rt-abi" }
