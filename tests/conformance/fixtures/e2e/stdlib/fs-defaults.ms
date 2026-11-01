@@ -3,25 +3,28 @@
 # conform: origin=tests/e2e/testdata/stdlib/fs-defaults.ms
 import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
 import TextError from "@std/core.ms"
-import FileSystemError, copy_file, copy_tree, create_directory, list, read_file, remove, stat, temporary, write_file, write_file_bytes from "@std/os/fs.ms"
+import (
+    FileSystemError,
+    copy_file,
+    copy_tree,
+    create_directory,
+    list,
+    read_file,
+    remove,
+    stat,
+    temporary,
+    write_file,
+    write_file_bytes
+) from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
-fn generic_write(
-    path: String,
-    data: String
-) Unit!FileSystemError:
+fn generic_write(path: String, data: String) Unit!FileSystemError:
     return write_file(path, data)
 
-fn generic_copy(
-    source: String,
-    destination: String
-) Unit!FileSystemError:
+fn generic_copy(source: String, destination: String) Unit!FileSystemError:
     return copy_file(source, destination)
 
-fn generic_tree(
-    source: String,
-    destination: String
-) Unit!FileSystemError:
+fn generic_tree(source: String, destination: String) Unit!FileSystemError:
     return copy_tree(source, destination)
 
 fn generic_directory(path: String) Unit!FileSystemError:
@@ -83,12 +86,12 @@ test "filesystem file copies default to no replacement and retain byte limits":
     (generic_copy(source, "{temporary.path()}/generic") | try expect_ok)
 
     let limited: Unit!FileSystemError = error(FileSystemError.LimitExceeded)
-    copy_file(
-        source, "{temporary.path()}/limited", max_bytes: 0
-    ) | try expect_equal(limited)
-    copy_file(
-        source, "{temporary.path()}/limited", max_bytes: 6
-    ) | try expect_equal(limited)
+    copy_file(source, "{temporary.path()}/limited", max_bytes: 0) | try expect_equal(
+        limited
+    )
+    copy_file(source, "{temporary.path()}/limited", max_bytes: 6) | try expect_equal(
+        limited
+    )
 
     let invalid: Unit!FileSystemError = error(FileSystemError.InvalidInput)
     ((copy_file(source, "{temporary.path()}/negative", max_bytes: -1) != invalid)) | try expect_false

@@ -1,6 +1,13 @@
 import Bytes from "@std/bytes.ms"
 import ReadStream from "@std/io/io.ms"
-import msstd_archive_compress_stream, msstd_archive_decompress_stream, msrt_archive_pack, msrt_archive_unpack, msrt_compress_compress, msrt_compress_decompress from "@std/internal/archive.ms"
+import (
+    msstd_archive_compress_stream,
+    msstd_archive_decompress_stream,
+    msrt_archive_pack,
+    msrt_archive_unpack,
+    msrt_compress_compress,
+    msrt_compress_decompress
+) from "@std/internal/archive.ms"
 
 # Errors returned when an archive cannot be read or written.
 export type ArchiveError:

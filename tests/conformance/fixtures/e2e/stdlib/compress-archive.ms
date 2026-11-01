@@ -13,14 +13,10 @@ test "compression formats roundtrip and enforce expanded byte budgets":
         let packed = try compress(input, format, 6)
         try expect_equal((try decompress(packed, format, 17)), input)
 
-        let limited: Bytes!CompressionError = error(
-            CompressionError.LimitExceeded
-        )
+        let limited: Bytes!CompressionError = error(CompressionError.LimitExceeded)
         try expect_equal(decompress(packed, format, 16), limited)
 
-    let unsupported: Bytes!CompressionError = error(
-        CompressionError.Unsupported
-    )
+    let unsupported: Bytes!CompressionError = error(CompressionError.Unsupported)
     try expect_equal(compress(input, "invalid", 6), unsupported)
 
     let malformed: Bytes!CompressionError = error(CompressionError.InvalidData)
@@ -36,9 +32,7 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
         let packed = try pack(entries, format)
         try expect_equal((try unpack(packed, format)), entries)
 
-        let limited: List[ArchiveEntry]!ArchiveError = error(
-            ArchiveError.LimitExceeded
-        )
+        let limited: List[ArchiveEntry]!ArchiveError = error(ArchiveError.LimitExceeded)
         try expect_equal(unpack(packed, format, ArchiveLimits(1)), limited)
         try expect_equal(
             unpack(packed, format, ArchiveLimits(max_entry_bytes: 4)), limited

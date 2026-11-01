@@ -22,7 +22,13 @@ import create, LogError, Transport from "@std/log.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
 import Bytes from "@std/bytes.ms"
-import access_log, request_id, RouteParams, Router, RouterError from "@std/net/router.ms"
+import (
+    access_log,
+    request_id,
+    RouteParams,
+    Router,
+    RouterError
+) from "@std/net/router.ms"
 import body_stream from "@std/net/sse.ms"
 
 fn get(path: String) HttpRequest:
@@ -107,9 +113,7 @@ test "invalid and duplicate patterns are rejected":
     try expect_true(r.route(HttpMethod.Get, "/a/:y", say("y")).is_error())
     r.route(HttpMethod.Post, "/a/:y", say("y")).get()
 
-fn tag(
-    label: String
-) fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError:
+fn tag(label: String) fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError:
     return fn exchange, next: tagged(label.clone(), exchange, next)
 
 fn tagged(
@@ -137,10 +141,7 @@ test "middleware also wraps the 404 answer":
     r.use(tag("a"))
     try expect_equal((try r.call(get("/missing"))).status, 404)
 
-fn refuse(
-    exchange: HttpExchange,
-    next: fn(HttpExchange) Unit!HttpError
-) Unit!HttpError:
+fn refuse(exchange: HttpExchange, next: fn(HttpExchange) Unit!HttpError) Unit!HttpError:
     return reply(exchange, text(401, "no"))
 
 test "middleware may answer without calling the rest":

@@ -3,7 +3,20 @@
 # Usage: ms run bench/tools/web_bench.ms -- run [SECONDS]     serves the same endpoints from Manuscript, Go and Rust and measures each
 #        ms run bench/tools/web_bench.ms -- fetch [SECONDS]  Manuscript's fetch and Go's net/http client against one Go file server
 # Environment: MS, GO, SERVER_CPUS (0,1), LOAD_CPUS (2,3), MS_THREADS (2). Without taskset or with fewer than 4 CPUs nothing is pinned.
-import absolute, build_go, build_ms, capture, env, fail, fixed, must, platform, read_text, usage, write_text from "./lib.ms"
+import (
+    absolute,
+    build_go,
+    build_ms,
+    capture,
+    env,
+    fail,
+    fixed,
+    must,
+    platform,
+    read_text,
+    usage,
+    write_text
+) from "./lib.ms"
 import Invalid, Ran, invalid from "./lib.ms"
 import Stdio, arguments, Subprocess, spawn from "@std/os/process.ms"
 import copy_tree, create_directory, list, temporary from "@std/os/fs.ms"

@@ -16,11 +16,7 @@ fn items(value: YamlValue) List[YamlValue]!:
         ArrayValue(values): return ok(values)
         _: return error(TextError("expected YAML sequence"))
 
-fn limits(
-    bytes: Int?,
-    depth: Int?,
-    values: Int?
-) YamlLimits?:
+fn limits(bytes: Int?, depth: Int?, values: Int?) YamlLimits?:
     return YamlLimits(max_bytes: bytes, max_depth: depth, max_values: values)
 
 type ScalarCase:
@@ -485,12 +481,8 @@ test "YAML merge and block header errors name their own line":
 
 test "YAML limits fields default to none":
     let limited: YamlValue!YamlError = error(YamlError.LimitExceeded)
-    parse(text: "a: 1", limits: YamlLimits(max_bytes: 2)) | try expect_equal(
-        limited
-    )
-    parse(text: "a: 1", limits: YamlLimits()) | try expect_equal(
-        parse(text: "a: 1")
-    )
+    parse(text: "a: 1", limits: YamlLimits(max_bytes: 2)) | try expect_equal(limited)
+    parse(text: "a: 1", limits: YamlLimits()) | try expect_equal(parse(text: "a: 1"))
 
 test "YAML stringify round trips scalars sequences and mappings":
     let source = "title: \"é🙂 \\\"q\\\" \\t tab\"\nnone: null\nflag: true\nint: -42\nfloat: 1.5e3\nlist:\n  - 1\n  - two\n  - [3, 4]\n  - a: 1\n    b: [x, y]\nempty_list: []\nempty_map: \{\}\n\"odd key\": 1\n\"true\": 2\nnested:\n  deep:\n    value: ok\n"

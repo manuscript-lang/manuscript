@@ -24,7 +24,7 @@ test "primitive storage retains generic record Optional and independent copies":
     try expect_equal(record.values.length(), 4098)
     try expect_equal(values[-1], 17)
     try expect_equal(values[0], 9223372036854775807)
-    try expect_equal(wrapped.get() [0], 9223372036854775807)
+    try expect_equal(wrapped.get()[0], 9223372036854775807)
 
     var copy = values.clone()
     values.set(0, 42)

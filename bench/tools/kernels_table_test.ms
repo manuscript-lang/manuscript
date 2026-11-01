@@ -1,4 +1,10 @@
-import ablations, base_versions, c_versions, suite_names, summarize from "./kernels_table.ms"
+import (
+    ablations,
+    base_versions,
+    c_versions,
+    suite_names,
+    summarize
+) from "./kernels_table.ms"
 import must, Ran from "./lib.ms"
 import expect_contains, expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 

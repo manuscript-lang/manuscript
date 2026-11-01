@@ -112,3 +112,12 @@ fn chain_hugging_preserves_first_call_width_and_later_operators() {
         assert_eq!(ms_syntax::format(&file, &actual).unwrap(), actual);
     }
 }
+
+#[test]
+fn long_bare_import_wraps_one_name_per_line() {
+    let file: Arc<str> = Arc::from("edits.ms");
+    let source = include_str!("format_edits/long_import.src");
+    let expected = include_str!("format_edits/long_import.expected");
+    assert_eq!(ms_syntax::format(&file, source).unwrap(), expected);
+    assert_eq!(ms_syntax::format(&file, expected).unwrap(), expected);
+}

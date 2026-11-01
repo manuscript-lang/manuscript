@@ -2,7 +2,15 @@ import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
 import memory_usage, process_info from "@std/os/process.ms"
 import arguments from "@std/os/process.ms"
 import random_bytes from "@std/os/random.ms"
-import append_file, open, read_file, remove, stat, watch_native, write_file from "@std/os/fs.ms"
+import (
+    append_file,
+    open,
+    read_file,
+    remove,
+    stat,
+    watch_native,
+    write_file
+) from "@std/os/fs.ms"
 import system_info from "@std/os/process.ms"
 import now from "@std/os/time.ms"
 import uuid_v4 from "@std/os/random.ms"

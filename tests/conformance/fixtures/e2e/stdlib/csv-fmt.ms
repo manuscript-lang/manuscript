@@ -45,9 +45,7 @@ test "CSV quoted empty fields respect exact row cell and byte budgets":
         try expect_equal(stringify([[""]], options, 0), limited_text)
         try expect_equal((try parse(text, options, 3, 3)), rows)
 
-        let limited_rows: List[List[String]]!CsvError = error(
-            CsvError.LimitExceeded
-        )
+        let limited_rows: List[List[String]]!CsvError = error(CsvError.LimitExceeded)
         try expect_equal(parse(text, options, 2), limited_rows)
         try expect_equal(parse(text, options, max_cells: 2), limited_rows)
         try expect_equal(parse("\"\"", options, 0), limited_rows)

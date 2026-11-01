@@ -1,5 +1,12 @@
 import expect_equal from "@std/test/test.ms"
-import nanoseconds, microseconds, milliseconds, seconds, minutes, hours from "@std/os/time.ms"
+import (
+    nanoseconds,
+    microseconds,
+    milliseconds,
+    seconds,
+    minutes,
+    hours
+) from "@std/os/time.ms"
 
 test "unit constructors build exact nanosecond counts":
     try expect_equal(nanoseconds(7).to_nanoseconds(), 7)

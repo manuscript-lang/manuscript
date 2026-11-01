@@ -15,11 +15,7 @@ fn items(value: TomlValue) List[TomlValue]!:
         ArrayValue(values): return ok(values)
         _: return error(TextError("expected TOML array"))
 
-fn limits(
-    bytes: Int?,
-    depth: Int?,
-    values: Int?
-) TomlLimits?:
+fn limits(bytes: Int?, depth: Int?, values: Int?) TomlLimits?:
     return TomlLimits(max_bytes: bytes, max_depth: depth, max_values: values)
 
 test "TOML scalars quoted keys comments exact integers and dates":
@@ -220,12 +216,8 @@ test "TOML errors report the offending line and column":
 
 test "TOML limits fields default to none":
     let limited: TomlValue!TomlError = error(TomlError.LimitExceeded)
-    parse(text: "a=1", limits: TomlLimits(max_bytes: 2)) | try expect_equal(
-        limited
-    )
-    parse(text: "a=1", limits: TomlLimits()) | try expect_equal(
-        parse(text: "a=1")
-    )
+    parse(text: "a=1", limits: TomlLimits(max_bytes: 2)) | try expect_equal(limited)
+    parse(text: "a=1", limits: TomlLimits()) | try expect_equal(parse(text: "a=1"))
 
 test "TOML stringify round trips scalars tables and arrays of tables":
     let source = "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], \{a = 1\}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"

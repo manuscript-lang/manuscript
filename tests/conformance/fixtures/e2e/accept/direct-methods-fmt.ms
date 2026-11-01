@@ -21,10 +21,7 @@ impl Bumper for Counter:
     fn bump(by: Int) Int: self.n + by
 
 impl Scaler for Counter:
-    fn scale(factor: Int, offset: Int?) Int: (
-        self.n * factor
-        + offset.get(0)
-    )
+    fn scale(factor: Int, offset: Int?) Int: (self.n * factor + offset.get(0))
 
 impl Bumper for Shape:
     fn bump(by: Int) Int:

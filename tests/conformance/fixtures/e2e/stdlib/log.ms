@@ -34,9 +34,7 @@ test "logger writes typed escaped records and protects metadata":
     let output = MemoryStream("".to_bytes(), 0, closed: false)
     var transport = stream_transport(WriteStream(output))
     let logger = try create(transport, timestamp: false)
-    let fields = Payload(
-        9007199254740993, ok: true, Items([none, 1]), 0, "fake", 0
-    )
+    let fields = Payload(9007199254740993, ok: true, Items([none, 1]), 0, "fake", 0)
     try record(logger, LogLevel.Info, "say \"hi\"\nnext", fields)
 
     let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"

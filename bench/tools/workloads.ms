@@ -3,7 +3,29 @@
 # output, and reports the minimum wall time in ms. Needs go and rustc on PATH. Unlike the kernels suite, these are ordinary
 # parsing/string/map programs.
 # Usage: ms run bench/tools/workloads.ms [-- repeats]; MS picks the compiler; BENCH_OUTPUT keeps the evidence directory.
-import Invalid, absolute, capture, dump, ensure_directory, env, file_sha256, finish, invalid, jint, jlist, jobject, jstr, must, ms_binary, read_text, repeats, run_in, sample, usage, write_text from "./lib.ms"
+import (
+    Invalid,
+    absolute,
+    capture,
+    dump,
+    ensure_directory,
+    env,
+    file_sha256,
+    finish,
+    invalid,
+    jint,
+    jlist,
+    jobject,
+    jstr,
+    must,
+    ms_binary,
+    read_text,
+    repeats,
+    run_in,
+    sample,
+    usage,
+    write_text
+) from "./lib.ms"
 import Measured, header, measure, row, versions from "./workloads_measure.ms"
 import hex_encode from "@std/data/encoding.ms"
 import sha256 from "@std/crypto.ms"

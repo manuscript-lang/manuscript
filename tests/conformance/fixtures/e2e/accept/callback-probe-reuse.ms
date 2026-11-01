@@ -50,9 +50,7 @@ test "callback inference retains captures and contextual metadata":
 
     try expect_equal(failure, Result[Int, TextError].error(TextError("expected")))
 
-    let failed: Int! = apply(
-        value: 9, transform: fn item: error(Failure(item))
-    )
+    let failed: Int! = apply(value: 9, transform: fn item: error(Failure(item)))
     try expect_false(failed.is_ok())
     try expect_equal(failed.err().message(), "9")
 

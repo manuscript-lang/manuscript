@@ -55,9 +55,7 @@ test "shared categories keep exact standard domain values":
     category(SystemError.PermissionDenied) | try expect_equal(
         ErrorCategory.PermissionDenied
     )
-    category(CryptoError.Unsupported) | try expect_equal(
-        ErrorCategory.Unsupported
-    )
+    category(CryptoError.Unsupported) | try expect_equal(ErrorCategory.Unsupported)
     category(IoError.Closed) | try expect_equal(ErrorCategory.Closed)
     (
         (
@@ -68,15 +66,9 @@ test "shared categories keep exact standard domain values":
             ) != ErrorCategory.InvalidData
         )
     ) | try expect_false
-    category(YamlError.LimitExceeded) | try expect_equal(
-        ErrorCategory.LimitExceeded
-    )
-    category(TomlError.InvalidInput) | try expect_equal(
-        ErrorCategory.InvalidInput
-    )
-    category(SseError.LimitExceeded) | try expect_equal(
-        ErrorCategory.LimitExceeded
-    )
+    category(YamlError.LimitExceeded) | try expect_equal(ErrorCategory.LimitExceeded)
+    category(TomlError.InvalidInput) | try expect_equal(ErrorCategory.InvalidInput)
+    category(SseError.LimitExceeded) | try expect_equal(ErrorCategory.LimitExceeded)
     category(SseError.Truncated).is_some() | try expect_false
 
     let allocation_error = range_by(start: 0, end: 268435457, step: 1).err()

@@ -41,9 +41,7 @@ test "JSON errors need only JSON cases":
             try expect_equal(json_error_code(cause), 2)
 
 test "explicit error mapping preserves the cause":
-    let expected: Unit!ApplicationError = error(
-        Encoding(EncodingError.InvalidData)
-    )
+    let expected: Unit!ApplicationError = error(Encoding(EncodingError.InvalidData))
     decode_bad_input() | try expect_equal(expected)
 
 # Error is an ordinary operation contract. Custom errors use ordinary impl blocks.

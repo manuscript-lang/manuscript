@@ -2,7 +2,12 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/compression-defaults.ms
 import expect_equal from "@std/test/test.ms"
-import compress, decompress, CompressionFormat, CompressionError from "@std/io/archive.ms"
+import (
+    compress,
+    decompress,
+    CompressionFormat,
+    CompressionError
+) from "@std/io/archive.ms"
 import Bytes from "@std/bytes.ms"
 
 fn forwarded[T](item: T) T: item
@@ -56,9 +61,7 @@ test "compression defaults retain invalid levels formats and output budgets":
     let data = "abc".to_bytes()
     let invalid: Bytes!CompressionError = error(CompressionError.InvalidInput)
     let limited: Bytes!CompressionError = error(CompressionError.LimitExceeded)
-    let unsupported: Bytes!CompressionError = error(
-        CompressionError.Unsupported
-    )
+    let unsupported: Bytes!CompressionError = error(CompressionError.Unsupported)
 
     for format in [
         CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate

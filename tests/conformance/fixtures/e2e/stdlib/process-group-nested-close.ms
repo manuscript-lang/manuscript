@@ -47,9 +47,7 @@ export fn main() Int:
     c.result().get()
     group.close().get(none)
     stdout().write(
-        "leaf survived: " + read_file(
-            marker()
-        ).is_ok().to_string() + "\n"
+        "leaf survived: " + read_file(marker()).is_ok().to_string() + "\n"
     ).get()
 
     let _ = remove(marker())

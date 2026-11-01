@@ -1,5 +1,13 @@
 import Bytes from "@std/bytes.ms"
-import Files, IoError, NativeRawTerminal, ReadStream, Terminal, TerminalError, WriteStream from "@std/io/io.ms"
+import (
+    Files,
+    IoError,
+    NativeRawTerminal,
+    ReadStream,
+    Terminal,
+    TerminalError,
+    WriteStream
+) from "@std/io/io.ms"
 import Duration from "@std/os/time.ms"
 
 export extern fn msstd_terminal_event_kind() Int

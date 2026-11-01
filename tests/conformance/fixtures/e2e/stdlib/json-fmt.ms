@@ -2,8 +2,22 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/json.ms
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
-import parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode from "@std/data/json.ms"
-import timestamp, nanoseconds, Timestamp, Duration, Instant, monotonic from "@std/os/time.ms"
+import (
+    parse,
+    stringify,
+    JsonValue,
+    JsonLimits,
+    JsonError,
+    JsonEncode
+) from "@std/data/json.ms"
+import (
+    timestamp,
+    nanoseconds,
+    Timestamp,
+    Duration,
+    Instant,
+    monotonic
+) from "@std/os/time.ms"
 import Url from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/math/decimal.ms"
@@ -85,9 +99,7 @@ test "JSON stringify encodes records in declaration order and omits none fields"
     let named = "\{\"model\":\"m\",\"stream\":true,\"user\":\"u\",\"temperature\":0.5,\"tags\":[\"a\",\"b\"]\}"
     try expect_equal((try encoded(request)), named)
     try expect_equal((try encoded(Box[Int](1, none))), "\{\"first\":1\}")
-    try expect_equal(
-        (try encoded(Box[Int](1, 2))), "\{\"first\":1,\"second\":2\}"
-    )
+    try expect_equal((try encoded(Box[Int](1, 2))), "\{\"first\":1,\"second\":2\}")
 
 test "JSON stringify encodes alternatives and nested optionals":
     let scene = Scene(Shape.Circle(2), [Shape.Dot, Shape.Rect(1, 2)], none)
@@ -495,9 +507,7 @@ test "JSON parse needs a default for fields without a JSON form":
     try expect_false(outcome.is_ok())
 
 test "JSON parse reads standard alternatives and rejects keys that collide":
-    let good: Int!JsonError = try parse[Int!JsonError](
-        "\{\"ok\":\{\"value\":5\}\}"
-    )
+    let good: Int!JsonError = try parse[Int!JsonError]("\{\"ok\":\{\"value\":5\}\}")
     let want_ok: Int!JsonError = ok(5)
     try expect_equal(good, want_ok)
 
@@ -564,8 +574,7 @@ test "JSON round trips generic records alternatives and Duration keys":
     chain_2.add(nanoseconds(5), "five")
 
     let w = Wrap(
-        [Op.Add(1, 2), Op.Neg(none), Op.Neg(3), Op.Nop], [Pair(1, Op.Nop)],
-        chain_2
+        [Op.Add(1, 2), Op.Neg(none), Op.Neg(3), Op.Nop], [Pair(1, Op.Nop)], chain_2
     )
     let t = try stringify(w)
     let back = try parse[Wrap](t)

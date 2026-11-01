@@ -19,17 +19,13 @@ test "raw monotonic nanoseconds share the typed process uptime origin":
 
 test "closed codec strings reject spelling changes with their domain errors":
     let data = "text".to_bytes()
-    let normalization_error: String!StringError = error(
-        StringError.InvalidInput
-    )
+    let normalization_error: String!StringError = error(StringError.InvalidInput)
     for form in ["nfc", "NFC ", ""]:
         try expect_equal("text".normalize(form), normalization_error)
     for form in ["NFC", "NFD", "NFKC", "NFKD"]:
         try expect_equal((try "text".normalize(form)), "text")
 
-    let compression_error: Bytes!CompressionError = error(
-        CompressionError.Unsupported
-    )
+    let compression_error: Bytes!CompressionError = error(CompressionError.Unsupported)
 
     for format in ["GZIP", "ZLIB", "DEFLATE", ""]:
         try expect_equal(compress(data, format, 0), compression_error)
@@ -46,16 +42,12 @@ test "closed codec strings reject spelling changes with their domain errors":
                 data
             )
 
-    let level_error: Bytes!CompressionError = error(
-        CompressionError.InvalidInput
-    )
+    let level_error: Bytes!CompressionError = error(CompressionError.InvalidInput)
     for level in [-1, 10]:
         try expect_equal(compress(data, "gzip", level), level_error)
 
     let pack_error: Bytes!ArchiveError = error(ArchiveError.Unsupported)
-    let unpack_error: List[ArchiveEntry]!ArchiveError = error(
-        ArchiveError.Unsupported
-    )
+    let unpack_error: List[ArchiveEntry]!ArchiveError = error(ArchiveError.Unsupported)
 
     for format in ["ZIP", "TAR", ""]:
         try expect_equal(pack([], format), pack_error)

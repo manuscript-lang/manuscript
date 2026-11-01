@@ -6,7 +6,12 @@ import http_result from "./support/http.ms"
 import headers, HttpMethod, buffered from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import http_client, request, serve, web_socket from "@std/net/net.ms"
-import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/net/http.ms"
+import (
+    HttpExchange,
+    HttpError,
+    HttpServerOptions,
+    HttpClientOptions
+) from "@std/net/http.ms"
 import WebSocketOptions, WebSocketError from "@std/net/net.ms"
 import TlsOptions from "@std/net/net.ms"
 
@@ -48,9 +53,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     let options = HttpServerOptions(
         max_requests: 4, timeout: 3.seconds, grace: 0.seconds, tls: none
     )
-    let server = serve(
-        address: "127.0.0.1:0", handler: echo, options: options
-    ) | try expect_ok
+    let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
     let url = "http://{server.address()}/"
     let response = request(
         method: HttpMethod.Get, url: url,
@@ -91,9 +94,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 
 test "WebSocket negotiates a protocol and echoes a text frame":
     let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
-    let server = serve(
-        address: "127.0.0.1:0", handler: echo, options: options
-    ) | try expect_ok
+    let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
     let client_options = WebSocketOptions(
         max_message_bytes: 1024, timeout: 2.seconds, tls: tls_options(),
         compression: false
@@ -119,9 +120,7 @@ test "HTTP streaming handlers see the Host request header":
     let options = HttpServerOptions(
         max_requests: 2, timeout: 3.seconds, grace: 0.seconds, tls: none
     )
-    let server = serve(
-        address: "127.0.0.1:0", handler: report_host, options: options
-    ) | try expect_ok
+    let server = serve(address: "127.0.0.1:0", handler: report_host, options: options) | try expect_ok
     let response = request(
         method: HttpMethod.Get, url: "http://{server.address()}/",
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
@@ -129,7 +128,6 @@ test "HTTP streaming handlers see the Host request header":
     response.body | try expect_equal(server.address().to_bytes())
 
 test "HTTP requests reject an empty method":
-
     match request(
         method: HttpMethod.Custom(value: ""), url: "http://127.0.0.1:1/",
         headers: (try text_headers(Map[String, String]())), body: "", timeout: 1.seconds

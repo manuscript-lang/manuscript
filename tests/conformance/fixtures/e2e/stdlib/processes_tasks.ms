@@ -92,11 +92,7 @@ fn long_alive() Bool:
 # Names the error when the listing command cannot run, instead of failing inside `long_alive`.
 test "the process listing command runs":
     if os_type() == "windows":
-        try expect_ok(
-            run(
-                "tasklist", ["/FI", "IMAGENAME eq ping.exe", "/NH"]
-            )
-        )
+        try expect_ok(run("tasklist", ["/FI", "IMAGENAME eq ping.exe", "/NH"]))
     else:
         try expect_ok(run("pgrep", ["-f", "sleep 30.717"]))
 

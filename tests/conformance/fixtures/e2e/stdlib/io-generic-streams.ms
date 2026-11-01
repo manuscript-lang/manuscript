@@ -1,6 +1,14 @@
 # conform: tags=interfaces,optional,stdlib-io,tier-stdlib,try-result
 # conform: phase=run
-import ReadStream, WriteStream, IoError, stdout, read_all, read_line, copy from "@std/io/io.ms"
+import (
+    ReadStream,
+    WriteStream,
+    IoError,
+    stdout,
+    read_all,
+    read_line,
+    copy
+) from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 
 type Mem:
