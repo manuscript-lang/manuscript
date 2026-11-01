@@ -1379,6 +1379,36 @@ macro_rules! abi_record {
     };
 }
 
+/// Test-only half of [`native!`]: records the shim's C signature for `cargo xtask symbols`, which
+/// generates the table lowering marshals runtime calls from (`ms-lower/rt_symbols.txt`).
+#[doc(hidden)]
+#[macro_export]
+macro_rules! native_signature {
+    (
+        $name:ident,
+        [$($p:ident: $t:ty),*],
+        [$($e:ident: $et:ty),*],
+        $ret:expr
+    ) => {
+        #[cfg(test)]
+        #[allow(unused_imports, non_snake_case)]
+        mod $name {
+            use super::*;
+            #[test]
+            fn ms_signature() {
+                $crate::ffi::record_signature(
+                    stringify!($name),
+                    &[
+                        $((stringify!($p), ::core::any::type_name::<<$t as $crate::ffi::AbiType>::Raw>()),)*
+                        $((stringify!($e), ::core::any::type_name::<*mut <$et as $crate::ffi::IntoAbi>::Raw>()),)*
+                    ],
+                    $ret,
+                );
+            }
+        }
+    };
+}
+
 /// Defines native entry points from safe signatures.
 ///
 /// ```ignore
@@ -1427,6 +1457,7 @@ macro_rules! native {
                 Err(e) => $crate::ffi::Status::status(e),
             }
         }
+        $crate::native_signature! { $name, [$($p: $t),*], [], Some("u8") }
         $crate::native! { $($rest)* }
     };
     (
@@ -1458,6 +1489,7 @@ macro_rules! native {
                 Err(e) => $crate::ffi::Status::status(e),
             }
         }
+        $crate::native_signature! { $name, [$($p: $t),*], [out: $a, out2: $b], Some("u8") }
         $crate::native! { $($rest)* }
     };
     (
@@ -1485,6 +1517,7 @@ macro_rules! native {
                 Err(e) => $crate::ffi::Status::status(e),
             }
         }
+        $crate::native_signature! { $name, [$($p: $t),*], [out: $ok], Some("u8") }
         $crate::native! { $($rest)* }
     };
     (
@@ -1510,6 +1543,7 @@ macro_rules! native {
                 out2.write($crate::ffi::IntoAbi::into_raw(y));
             }
         }
+        $crate::native_signature! { $name, [$($p: $t),*], [out: $a, out2: $b], None }
         $crate::native! { $($rest)* }
     };
     (
@@ -1531,6 +1565,7 @@ macro_rules! native {
             // SAFETY: `out` is writable for one result slot by the caller contract.
             unsafe { out.write($crate::ffi::IntoAbi::into_raw(v)) };
         }
+        $crate::native_signature! { $name, [$($p: $t),*], [out: $res], None }
         $crate::native! { $($rest)* }
     };
     // Strings are three words: they come back through a trailing out-pointer, like lists.
@@ -1595,6 +1630,12 @@ macro_rules! native {
             fn native_body($($p: $t),*) -> $ret $body
             // SAFETY: arguments are live values of their declared types (`FromAbi`).
             $crate::ffi::IntoAbi::into_raw(native_body($(unsafe { <$t as $crate::ffi::FromAbi>::from_raw($p) }),*))
+        }
+        $crate::native_signature! {
+            $name,
+            [$($p: $t),*],
+            [],
+            Some(::core::any::type_name::<<$ret as $crate::ffi::IntoAbi>::Raw>())
         }
         $crate::native! { $($rest)* }
     };

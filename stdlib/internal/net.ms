@@ -66,7 +66,9 @@ export extern fn msstd_net_connection_shutdown_write(
     handle: NativeConnection
 ) Unit!NetworkError
 
-export extern fn msstd_net_connection_tls_info(handle: NativeConnection) TlsInfo!TlsError
+export extern fn msstd_net_connection_tls_info(
+    handle: NativeConnection
+) TlsInfo!TlsError
 
 export extern fn msstd_net_connection_write(
     handle: NativeConnection,

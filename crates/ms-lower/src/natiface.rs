@@ -944,7 +944,7 @@ fn takes_handle(sym: &str) -> bool {
         .and_then(|s| {
             s.params
                 .first()
-                .map(|p| p.name == "h" || p.ty == "*const Obj")
+                .map(|p| p.name == "h" || p.ty.starts_with("*const ObjCell<"))
         })
         .unwrap_or(false)
 }

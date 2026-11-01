@@ -1193,5 +1193,5 @@ fn failure_symbol(sym: &str) -> Option<String> {
 
 /// Whether a runtime function returns a new runtime handle object for an interface value.
 fn is_handle_return(ret: &str) -> bool {
-    ret.starts_with("*mut Handle<") || ret == "*mut HasherObj"
+    ret.starts_with("*mut ObjCell<")
 }

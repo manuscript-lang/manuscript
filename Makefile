@@ -32,6 +32,7 @@ runtime:
 	cargo xtask runtime
 
 check: runtime
+	cargo xtask symbols --check
 	cargo fmt --all --check
 	cargo clippy --workspace --all-targets -- -D warnings
 
