@@ -207,7 +207,7 @@ fn metadata_link_preserves_source(
     assert_eq!(status, 0, "{stdout}{stderr}");
     assert_eq!(std::fs::read_to_string(&source).unwrap(), MAIN);
     assert_eq!(backend.lowering.0.get(), 1, "warm build must use its cache");
-    let document = ms_json::parse(&std::fs::read_to_string(&metadata).unwrap()).unwrap();
+    let document = ms_json::parse(std::fs::read_to_string(&metadata).unwrap()).unwrap();
     assert_eq!(document.get("format").unwrap().as_i64(), Some(1));
     assert_eq!(Command::new(&output).status().unwrap().code(), Some(7));
     assert_eq!(
