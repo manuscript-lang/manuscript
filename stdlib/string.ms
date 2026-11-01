@@ -1,4 +1,10 @@
 import msrt_string_from_scalars, msstd_regex_compile from "@std/internal/string.ms"
+import msstd_unicode_fields from "@std/internal/unicode.ms"
+import (
+    msstd_regex_find_all_spans,
+    msstd_regex_capture_spans,
+    msstd_regex_capture_all_spans
+) from "@std/internal/string.ms"
 
 interface StringAffixCuts:
     fn cut_prefix(prefix: String) String?
@@ -72,15 +78,24 @@ impl StringBuilder:
 
 # Errors returned for invalid patterns or configured result limits.
 export type RegexError:
-    # A supplied match-count or output-byte budget is negative.
+    # A supplied match-count, capture-slot or output-byte budget is negative.
     case InvalidInput
     # Pattern syntax is invalid for the native regular-expression engine (Rust `regex` syntax).
     case InvalidData
-    # More matches exist than permitted, or replacement output exceeds its byte budget.
+    # A match-count, capture-slot or replacement output-byte budget is exceeded.
     case LimitExceeded
 
 # A compiled regular expression that can be reused across input strings.
 export extern type Regex
+
+# A match or capture range in UTF-8 bytes, with an exclusive end; no normalization is applied.
+# Example: a match of `é` in `aé` spans bytes 1 through 3, not scalar positions 1 through 2.
+# Extract text with `data.decode_utf8_range(span.start, span.end)` on its original Bytes.
+export type RegexSpan:
+    # Zero-based inclusive UTF-8 byte offset in the input string.
+    start: Int
+    # Exclusive UTF-8 byte offset; equal to start for a participating empty match.
+    end: Int
 
 impl Regex:
     # Tests whether any match occurs; anchor the pattern explicitly to require a whole-string match.
@@ -123,3 +138,74 @@ export fn compile(pattern: String) Regex!RegexError:
 impl Error for RegexError:
     # Returns a regular-expression-prefixed diagnostic without echoing pattern or input text.
     fn message() String: ...
+
+impl String:
+    # Splits on Unicode White_Space, omitting empty fields; empty or all-whitespace text gives an empty list.
+    # Exact field text is preserved without normalization; the byte-order mark and zero-width space are not separators.
+    fn fields() List[String]:
+        return msstd_unicode_fields(self)
+
+fn capture_slots(raw: List[Int], start: Int, count: Int) List[RegexSpan?]:
+    var out = List[RegexSpan?](reserve: count)
+
+    for index in 0..count:
+        let at = start + index * 2
+
+        if raw[at] < 0:
+            out.append(none)
+        else:
+            out.append(RegexSpan(raw[at], raw[at + 1]))
+
+    return out
+
+interface RegexSpanQueries:
+    fn find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!RegexError
+    fn capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!RegexError
+    fn capture_all_spans(
+        text: String,
+        max_matches: Int?,
+        max_captures: Int?
+    ) List[List[RegexSpan?]]!RegexError
+
+impl RegexSpanQueries for Regex:
+    # Returns all full-match byte ranges in find_all order, without copying matched text.
+    # max_matches is a strict output budget: negatives return InvalidInput, excess returns LimitExceeded.
+    fn find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!RegexError:
+        let raw = try msstd_regex_find_all_spans(self, text, max_matches)
+        var out = List[RegexSpan](reserve: raw.length() / 2)
+        for index in 0..(raw.length() / 2):
+            out.append(RegexSpan(raw[index * 2], raw[index * 2 + 1]))
+        return ok(out)
+
+    # Returns the first match's [whole, group1, ...] byte ranges, or outer none when no match exists.
+    # An unmatched group is inner none; a participating empty group has start == end.
+    # max_captures bounds slots including the whole match and unmatched groups. Negative budgets return InvalidInput;
+    # excess returns LimitExceeded. The budget bounds output, not input scanning or engine scratch space.
+    fn capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!RegexError:
+        let raw = try msstd_regex_capture_spans(self, text, max_captures)
+        if raw.is_empty(): return ok(none)
+
+        return ok(capture_slots(raw, 1, raw[0]))
+
+    # Like capture_spans for every match in captures_all order; no match gives an empty list.
+    # max_matches bounds rows; max_captures bounds total slots across rows, including whole and unmatched groups.
+    # Negative budgets return InvalidInput, excess returns LimitExceeded; these are output budgets, not search limits.
+    fn capture_all_spans(
+        text: String,
+        max_matches: Int?,
+        max_captures: Int?
+    ) List[List[RegexSpan?]]!RegexError:
+        let raw = try msstd_regex_capture_all_spans(
+            self, text, max_matches, max_captures
+        )
+        if raw.is_empty(): return ok(List[List[RegexSpan?]]())
+
+        let count = raw[0]
+        var out = List[List[RegexSpan?]](reserve: (raw.length() - 1) / (count * 2))
+        var at = 1
+
+        while at < raw.length():
+            out.append(capture_slots(raw, at, count))
+            at = at + count * 2
+
+        return ok(out)
