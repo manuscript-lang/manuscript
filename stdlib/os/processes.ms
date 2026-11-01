@@ -11,7 +11,7 @@ import Closeable, Data from "@std/core.ms"
 import ReadStream, WriteStream from "@std/io/io.ms"
 import parse, stringify from "@std/data/json.ms"
 import CommandError, Stdio from "@std/os/process.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import Duration from "@std/os/time.ms"
 import msrt_obj_share from "@std/internal/processes.ms"
 
@@ -147,60 +147,84 @@ fn decode[T: Data](body: String) T!ChannelError:
             ChannelError.Broken("cannot decode the value: " + e.message())
         )
 
-# The next whole frame, waiting for more bytes as needed; `none` once the other process closed
-# the pipe or is gone. One task reads the pipe at a time: another waits, then returns a `RETRY`
-# frame so its caller sees what the reader recorded (a `RESULT` or `CLOSE`) before reading again.
-fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Frame?!ChannelError:
-    while true:
-        var state = inbox.lock()
-        let available = state.value.pending.length()
+# One end's IPC pipe, with what that end has read from it.
+type PipeEnd:
+    link: NativeLink
+    inbox: Shared[Inbox]
 
-        if available >= 5:
-            let size = state.value.pending.uint32_le(0).get(0).to_int()
-            if size > FRAME_LIMIT:
-                return error(ChannelError.Broken("a frame is larger than 16 MiB"))
+impl PipeEnd:
+    # The next whole frame, waiting for more bytes as needed; `none` once the other process closed
+    # the pipe or is gone. One task reads the pipe at a time: another waits, then returns a `RETRY`
+    # frame so its caller sees what the reader recorded (a `RESULT` or `CLOSE`) before reading again.
+    fn next_frame() Frame?!ChannelError:
+        while true:
+            let available = self.inbox.pending.length()
 
-            if available >= 5 + size:
-                let kind = state.value.pending.get(4).to_int()
-                let body = state.value.pending.slice(5, 5 + size).get("".to_bytes())
-                state.value.pending = state.value.pending.slice(
-                    5 + size, available
-                ).get("".to_bytes())
-                if let text = body.decode_utf8():
-                    return ok(Frame(kind: kind, body: text))
+            if available >= 5:
+                let size = self.inbox.pending.uint32_le(0).get(0).to_int()
+                if size > FRAME_LIMIT:
+                    return error(ChannelError.Broken("a frame is larger than 16 MiB"))
 
-                return error(ChannelError.Broken("a frame is not UTF-8"))
+                if available >= 5 + size:
+                    let kind = self.inbox.pending.get(4).to_int()
+                    let body = self.inbox.pending.slice(5, 5 + size).get("".to_bytes())
+                    self.inbox.pending = self.inbox.pending.slice(
+                        5 + size, available
+                    ).get("".to_bytes())
+                    if let text = body.decode_utf8():
+                        return ok(Frame(kind: kind, body: text))
 
-        state.close().get(none)
-        if msstd_process_ipc_wait_reader(link):
-            return ok(Frame(kind: RETRY, body: ""))
+                    return error(ChannelError.Broken("a frame is not UTF-8"))
 
-        let chunk = msstd_process_ipc_read(link, 65536)
-        if chunk.is_empty():
-            return ok(none)
+            if msstd_process_ipc_wait_reader(self.link):
+                return ok(Frame(kind: RETRY, body: ""))
 
-        var more = inbox.lock()
-        more.value.pending = more.value.pending.concat(chunk)
+            let chunk = msstd_process_ipc_read(self.link, 65536)
+            if chunk.is_empty():
+                return ok(none)
 
-    return ok(none)
+            self.inbox.pending = self.inbox.pending.concat(chunk)
 
-# Marks that the other end sent no more messages, keeping the result body if this was it.
-fn finish(inbox: Shared[Inbox], result: String?) Unit:
-    var state = inbox.lock()
-    state.value.finished = true
-    if result.is_some():
-        state.value.result = result
+        return ok(none)
 
-# Marks this end closed and sends `close` once unless `notify` is False (a parent about to kill
-# the child: the write could wait forever on a full pipe the child never reads).
-fn close_end(link: NativeLink, inbox: Shared[Inbox], notify: Bool = true) Unit:
-    var first = false
-    var state = inbox.lock()
-    first = not state.value.closed
-    state.value.closed = true
-    state.close().get(none)
-    if first and notify:
-        msstd_process_ipc_write(link, frame(CLOSE, ""))
+    # Marks that the other end sent no more messages, keeping the result body if this was it.
+    fn finish(result: String?) Unit:
+        self.inbox.finished = true
+        if result.is_some():
+            self.inbox.result = result
+
+    # Marks this end closed and sends `close` once unless `notify` is False (a parent about to kill
+    # the child: the write could wait forever on a full pipe the child never reads).
+    fn shut(notify: Bool = true) Unit:
+        let first = not self.inbox.closed
+        self.inbox.closed = true
+        if first and notify:
+            msstd_process_ipc_write(self.link, frame(CLOSE, ""))
+
+    # Waits for the entry to return and gives its result, or `Exited` with the status of a child that ended first.
+    fn result[T: Data](native: NativeProcess) T!ProcessError:
+        while true:
+            if let body = self.inbox.result.clone():
+                match decode[T](body):
+                    ok(value): return ok(value)
+                    error(e): return error(ProcessError.Broken(e.message()))
+
+            match self.next_frame():
+                ok(next):
+                    if next.is_none():
+                        let code = msstd_process_forked_wait(native, -1).get(-1)
+                        return error(ProcessError.Exited(code))
+
+                    let frame = next.get(Frame(kind: -1, body: ""))
+
+                    if frame.kind == RESULT:
+                        self.finish(frame.body.clone())
+                    else if frame.kind == CLOSE:
+                        self.finish(none)
+                error(e):
+                    return error(ProcessError.Broken(e.message()))
+
+        return error(ProcessError.Exited(-1))
 
 # One end of a process channel: JSON frames over the IPC pipe.
 type ProcessTransport[In: Data, Out: Data]:
@@ -209,8 +233,7 @@ type ProcessTransport[In: Data, Out: Data]:
 
 impl Transport[In, Out] for ProcessTransport[In, Out]:
     fn send(value: In) Unit!ChannelError:
-        let state = self.inbox.get()
-        if state.closed or state.finished:
+        if self.inbox.closed or self.inbox.finished:
             return error(ChannelError.Closed)
 
         let text = try encode(value)
@@ -220,21 +243,21 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
         return ok(unit)
 
     fn receive() Out?!ChannelError:
-        let state = self.inbox.get()
-        if state.closed:
+        if self.inbox.closed:
             return error(ChannelError.Closed)
-        if state.finished:
+        if self.inbox.finished:
             return ok(none)
 
+        let end = PipeEnd(self.link.clone(), self.inbox)
         while true:
-            let next = try next_frame(self.link, self.inbox)
+            let next = try end.next_frame()
             if next.is_none():
                 return error(ChannelError.Broken("the other process exited"))
 
             let frame = next.get(Frame(kind: -1, body: ""))
 
             if frame.kind == RETRY:
-                if self.inbox.get().finished:
+                if self.inbox.finished:
                     return ok(none)
 
                 continue
@@ -243,11 +266,11 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
                 return ok(try decode[Out](frame.body))
 
             if frame.kind == CLOSE:
-                finish(self.inbox, none)
+                end.finish(none)
                 return ok(none)
 
             if frame.kind == RESULT:
-                finish(self.inbox, frame.body.clone())
+                end.finish(frame.body.clone())
                 return ok(none)
 
             return error(ChannelError.Broken("a frame has an unknown kind"))
@@ -255,13 +278,13 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
         return ok(none)
 
     var fn close() Unit:
-        close_end(self.link, self.inbox)
+        PipeEnd(self.link.clone(), self.inbox).shut()
 
 # The child's side: runs `entry` on the child's end of the channel, then sends `close` (if the
 # entry did not) and the result, and closes the pipe.
 fn serve[T: Data, In: Data, Out: Data](entry: fn(Channel[Out, In]) T) Unit:
     let link = msstd_process_ipc_child()
-    let inbox: Shared[Inbox] = share(Inbox())
+    let inbox = Shared(Inbox())
     let value = entry(
         Channel[Out, In](
             transport: ProcessTransport[Out, In](
@@ -269,7 +292,7 @@ fn serve[T: Data, In: Data, Out: Data](entry: fn(Channel[Out, In]) T) Unit:
             )
         )
     )
-    close_end(link, inbox)
+    PipeEnd(link.clone(), inbox).shut()
 
     match encode(value):
         ok(text): msstd_process_ipc_write(link, frame(RESULT, text))
@@ -282,35 +305,6 @@ fn nanos(limit: Duration?) Int:
         return d.to_nanoseconds()
 
     return -1
-
-# Waits for the entry to return and gives its result, or `Exited` with the status of a child that ended first.
-fn wait_result[T: Data](
-    native: NativeProcess,
-    link: NativeLink,
-    inbox: Shared[Inbox]
-) T!ProcessError:
-    while true:
-        if let body = inbox.get().result.clone():
-            match decode[T](body):
-                ok(value): return ok(value)
-                error(e): return error(ProcessError.Broken(e.message()))
-
-        match next_frame(link, inbox):
-            ok(next):
-                if next.is_none():
-                    let code = msstd_process_forked_wait(native, -1).get(-1)
-                    return error(ProcessError.Exited(code))
-
-                let frame = next.get(Frame(kind: -1, body: ""))
-
-                if frame.kind == RESULT:
-                    finish(inbox, frame.body.clone())
-                else if frame.kind == CLOSE:
-                    finish(inbox, none)
-            error(e):
-                return error(ProcessError.Broken(e.message()))
-
-    return error(ProcessError.Exited(-1))
 
 # What a group keeps of a process until it is closed: enough to close its channel and stop the child.
 export type Open:
@@ -325,7 +319,7 @@ export type Open:
 
 # Closes the channel, then stops and joins the child.
 fn stop_child(link: NativeLink, inbox: Shared[Inbox], native: NativeProcess) Unit:
-    close_end(link, inbox, false)
+    PipeEnd(link.clone(), inbox).shut(false)
     msstd_process_forked_close(native)
 
 # A child process started by `ProcessGroup.spawn` at an entry returning `T`, with the parent's
@@ -349,7 +343,7 @@ impl Process[T, In, Out]:
     # that ended first. Another task may receive from the channel meanwhile; one task reads the
     # pipe at a time and the other waits. Messages the child sent and the parent has not received are dropped.
     fn result() T!ProcessError:
-        return wait_result[T](self.native, self.link, self.inbox)
+        return PipeEnd(self.link.clone(), self.inbox).result[T](self.native)
 
     # The child's standard input, when spawned with `stdin: Stdio.Pipe`; otherwise already closed,
     # so writes return `Closed`. Closing it delivers end of input to the child.
@@ -384,11 +378,9 @@ impl Closeable for Process[T, In, Out]:
     var fn close() Unit!:
         stop_child(self.link, self.inbox, self.native)
 
-        var all = self.registry.lock()
-
-        for index in 0..all.value.length():
-            if all.value[index].id == self.id:
-                all.value.remove(index)
+        for index in 0..self.registry.length():
+            if self.registry[index].id == self.id:
+                self.registry.remove(index)
                 break
 
         return ok(unit)
@@ -401,9 +393,9 @@ impl Closeable for Process[T, In, Out]:
 export type ProcessGroup[T: Data, In: Data = Unit, Out: Data = Unit]:
     # Internal state: the open processes in start order, changed through the shared handle so the
     # group closes when its scope ends.
-    processes: Shared[List[Open]] = share([])
+    processes: Shared[List[Open]] = Shared(List[Open]())
     # Internal state: the number of the next process.
-    started: Shared[Int] = share(0)
+    started: Shared[Int] = Shared(0)
 
 impl ProcessGroup[T, In, Out]:
     # Starts this executable again in a new process at `entry`, a top-level `def`, and returns the
@@ -422,16 +414,10 @@ impl ProcessGroup[T, In, Out]:
             not_started
         )
         let link = msstd_process_forked_link(native)
-        let inbox: Shared[Inbox] = share(Inbox())
-        var id = 0
-        var next = self.started.lock()
-        id = next.value
-        next.value = id + 1
-        next.close().get(none)
-
-        var all = self.processes.lock()
-        all.value.append(Open(id, native.clone(), link.clone(), inbox))
-        all.close().get(none)
+        let inbox = Shared(Inbox())
+        let id: Int = self.started
+        self.started = id + 1
+        self.processes.append(Open(id, native.clone(), link.clone(), inbox))
         return ok(
             Process[T, In, Out](
                 native: native,
@@ -450,21 +436,20 @@ impl ProcessGroup[T, In, Out]:
     # Waits for every open process's result in start order, or returns the first error.
     # Closed processes are not included.
     fn results() List[T]!ProcessError:
-        let count = self.processes.get().length()
+        let count = self.processes.length()
         var values = List[T]()
 
         for index in 0..count:
-            let open = self.processes.get().get(index)
-            values.append(try wait_result[T](open.native, open.link, open.inbox))
+            let open = self.processes[index].clone()
+            let end = PipeEnd(open.link.clone(), open.inbox)
+            values.append(try end.result[T](open.native))
 
         return ok(values)
 
 impl Closeable for ProcessGroup[T, In, Out]:
     # Closes every open process: its channel, then the child, which is stopped and joined. Safe to call again.
     var fn close() Unit!:
-        var all = self.processes.lock()
-        for index in 0..all.value.length():
-            stop_child(
-                all.value[index].link, all.value[index].inbox, all.value[index].native
-            )
+        for index in 0..self.processes.length():
+            let open = self.processes[index].clone()
+            stop_child(open.link, open.inbox, open.native)
         return ok(unit)

@@ -610,6 +610,27 @@ impl<'a> FnLower<'a> {
         if native.is_empty() {
             return self.source_method_call(e, view, m, recv_expr);
         }
+        // A native or interface method that changes a value in a `Shared` box, which may wait
+        // (a stream write), holds the box for the call.
+        if self.shared_root(recv_expr).is_some()
+            && crate::mutation::method_changes_receiver(m, &self.cx.mutated)
+        {
+            let holds = self.shared_hold(&[Some(recv_expr.clone())])?;
+            let r = self.unheld_method_call(e, view, m, recv_expr);
+            self.shared_release(holds)?;
+            return r;
+        }
+        self.unheld_method_call(e, view, m, recv_expr)
+    }
+
+    fn unheld_method_call(
+        &mut self,
+        e: &Expr,
+        view: &CallView<'_>,
+        m: &ct::MethodRef,
+        recv_expr: &Expr,
+    ) -> Result<Val, Error> {
+        let native = m.native.as_str();
         if native == "contract" {
             return self.contract_call(e, view, m, recv_expr);
         }
@@ -619,9 +640,6 @@ impl<'a> FnLower<'a> {
             .unwrap_or_else(|| native.rsplit('/').next().unwrap_or(native).to_string());
         if ms_check::effects::is_text_builder(&m.receiver) && method == "build" {
             return self.text_builder_build(e, recv_expr);
-        }
-        if m.receiver.is_std("Shared") {
-            return self.shared_method(e, recv_expr, &method);
         }
         if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);

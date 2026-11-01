@@ -162,36 +162,69 @@ crate::isolate_static! {
 }
 
 crate::isolate_static! {
-    /// The task that holds each `Shared` box for a call, and the box's in-use flag, by box identity.
-    static HOLDERS: Option<HashMap<usize, (u64, usize)>> = None;
+    /// The holder of each `Shared` box held for a call, by box identity.
+    static HOLDERS: Option<HashMap<usize, Hold>> = None;
 }
 
-fn holders() -> &'static mut HashMap<usize, (u64, usize)> {
+/// A call's hold of a `Shared` box.
+#[derive(Clone, Copy)]
+struct Hold {
+    /// The task that holds the box.
+    task: u64,
+    /// The box's in-use flag.
+    taken: usize,
+    /// The depth of guarded calls the task was in when it took the hold.
+    depth: usize,
+}
+
+fn holders() -> &'static mut HashMap<usize, Hold> {
     // SAFETY: only the scheduler thread of an isolate reaches its holders.
     unsafe { (*HOLDERS.ptr()).get_or_insert_with(HashMap::new) }
 }
 
-/// Marks the box `key` in use by the running task for a call, through its flag `taken`. Returns
-/// the cleanup handle that ends the hold: run when the call returns, or on the cleanup path when
-/// the task is cancelled or faults inside the call.
+/// Marks the box `key` in use by the running task for a call, through its flag `taken`, until
+/// `msrt_shared_release`, or until the task is cancelled or faults inside the call.
 ///
 /// # Safety
 /// `taken` is the in-use flag of the live box `key`, and the box outlives the hold.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_shared_hold(key: i64, taken: *mut u8) -> usize {
+pub unsafe extern "C-unwind" fn msrt_shared_hold(key: i64, taken: *mut u8) {
     // SAFETY: the caller passes the flag of a live box.
     unsafe { *taken = 1 };
-    holders().insert(key as usize, (task::current_handle(), taken as usize));
-    // SAFETY: `release` takes the key it is registered with.
-    unsafe { crate::fault::msrt_cleanup_push(release, key as usize as *mut u8) }
+    let hold = Hold {
+        task: task::current_handle(),
+        taken: taken as usize,
+        depth: crate::fault::guard_depth(),
+    };
+    holders().insert(key as usize, hold);
 }
 
-/// Ends the hold of the box whose identity is `key` and wakes the oldest task waiting for it.
-unsafe extern "C-unwind" fn release(key: *mut u8) {
-    let key = key as usize;
-    if let Some((_, taken)) = holders().remove(&key) {
+/// Ends the running task's hold of the box `key` when its call returns, and wakes the oldest task
+/// waiting for the box.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_shared_release(key: i64) {
+    end_hold(key as usize);
+}
+
+/// Ends the holds of the running task's calls that a cancellation or fault leaving guard depth
+/// `depth` abandons.
+pub(crate) fn end_abandoned_holds(depth: usize) {
+    let me = task::current_handle();
+    let abandoned: Vec<usize> = holders()
+        .iter()
+        .filter(|(_, h)| h.task == me && h.depth >= depth)
+        .map(|(key, _)| *key)
+        .collect();
+    for key in abandoned {
+        end_hold(key);
+    }
+}
+
+/// Clears the hold of the box whose identity is `key` and wakes the oldest task waiting for it.
+fn end_hold(key: usize) {
+    if let Some(hold) = holders().remove(&key) {
         // SAFETY: the box outlives its hold (`msrt_shared_hold`).
-        unsafe { *(taken as *mut u8) = 0 };
+        unsafe { *(hold.taken as *mut u8) = 0 };
     }
     msrt_waitq_wake(key as i64);
 }
@@ -203,7 +236,7 @@ unsafe extern "C-unwind" fn release(key: *mut u8) {
 pub extern "C-unwind" fn msrt_shared_wait(key: i64) {
     let me = task::current_handle();
     match holders().get(&(key as usize)) {
-        Some(&(holder, _)) if holder != me => {}
+        Some(hold) if hold.task != me => {}
         _ => crate::fault::fault(
             b"a Shared value was used again inside a call on it from the same task; finish the call first, or change the value inside that call",
         ),

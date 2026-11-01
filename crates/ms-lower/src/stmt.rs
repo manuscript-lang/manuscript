@@ -415,6 +415,14 @@ impl<'a> FnLower<'a> {
 
     /// `a.b.c = v`: rebuilds the record chain with `rec.set`.
     fn assign_member(&mut self, target: &Expr, value: &Expr, x: Val) -> Result<(), Error> {
+        if self.hir.info(value).into_shared {
+            // `holder.box = value`: the payload is replaced in its box.
+            let mut new = Some(self.owned(x));
+            return self.shared_update(target, &mut |s, old| {
+                s.drop_value(old);
+                Ok(new.take().expect("one update"))
+            });
+        }
         let mut path: Vec<&Expr> = Vec::new();
         let mut cur = target;
         while !self.through_shared(cur)

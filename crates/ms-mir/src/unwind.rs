@@ -33,7 +33,9 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 /// Runtime symbols whose presence means the program starts tasks that can be cancelled.
 const SPAWNERS: &[&str] = &["msrt_scope_spawn", "msrt_worker_start"];
 
-/// Runtime functions that never reach a cancellation point.
+/// Runtime functions that never reach a cancellation point. `msrt_shared_hold` is not one of them,
+/// although it never parks: a hold must be registered after the cleanups of the values live across
+/// the call it holds for, so that a cancelled call ends the hold before those values are dropped.
 const LEAF_PREFIXES: &[&str] = &[
     "msrt_string_",
     "msrt_str_",
@@ -58,6 +60,8 @@ const LEAF_PREFIXES: &[&str] = &[
     "msrt_drop_",
     "msrt_alloc",
     "msrt_cleanup_",
+    "msrt_shared_release",
+    "msrt_addr_id",
     "msrt_shield_",
     "msrt_unwind_",
     "msrt_json_",

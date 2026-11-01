@@ -2,7 +2,7 @@ import Data from "@std/core.ms"
 import IoError from "@std/io/io.ms"
 import WriteStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 import FileHandle, FileSystemError, open from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 import stringify from "@std/data/json.ms"
@@ -101,27 +101,21 @@ impl Transport for StreamTransport:
     fn write(data: String) Unit!LogError:
         if self.gate.is_shut(): return error(LogError.Closed)
 
-        var stream = self.stream.lock()
-
-        match stream.value.write(data):
+        match self.stream.write(data):
             ok(_): return ok(unit)
             error(cause): return error(LogError.Io(cause))
 
     fn write_bytes(data: Bytes) Unit!LogError:
         if self.gate.is_shut(): return error(LogError.Closed)
 
-        var stream = self.stream.lock()
-
-        match stream.value.write_bytes(data):
+        match self.stream.write_bytes(data):
             ok(_): return ok(unit)
             error(cause): return error(LogError.Io(cause))
 
     fn flush() Unit!LogError:
         if self.gate.is_shut(): return error(LogError.Closed)
 
-        var stream = self.stream.lock()
-
-        match stream.value.flush():
+        match self.stream.flush():
             ok(_): return ok(unit)
             error(cause): return error(LogError.Io(cause))
 
@@ -147,8 +141,7 @@ impl Transport for FileTransport:
         if not self.inner.gate.is_shut():
             self.inner.close()
 
-            var file = self.file.lock()
-            file.value.close().get(none)
+            self.file.close().get(none)
 
 # A structured logger: level filtering, bound fields, and a pluggable `Transport`. The `_with` methods
 # take fields of any `Data` type and encode them with `stringify`. Child loggers share the transport;
@@ -178,7 +171,7 @@ impl Logger:
     fn send(text: String) Unit!LogError:
         if text == "": return ok(unit)
 
-        return self.transport.get().write(text)
+        return self.transport.write(text)
 
     # Writes a record whose fields come from `fields`, which can be any value `stringify` accepts.
     #
@@ -271,12 +264,12 @@ impl Logger:
 
     # Flushes the logger's transport.
     fn flush() Unit!LogError:
-        return self.transport.get().flush()
+        return self.transport.flush()
 
     # Closes the transport this logger shares with its children, so every one of them reports `Closed`
     # afterwards. A scope that owns the logger calls it on every exit.
     var fn close() Unit:
-        self.transport.get().close()
+        self.transport.close()
 
 # Creates a logger that owns `transport`. Defaults to `Info`, timestamps enabled, and no record-size limit.
 export fn create(
@@ -290,11 +283,11 @@ export fn create(
         index = level_index(chosen)
 
     let state = try new_state(index, timestamp, max_bytes).map_error(core_error)
-    return ok(Logger(state, share(transport)))
+    return ok(Logger(state, Shared(transport)))
 
 # Writes log records to an existing byte stream.
 export fn stream_transport(output: WriteStream) Transport:
-    return StreamTransport(share(output), new_gate())
+    return StreamTransport(Shared(output), new_gate())
 
 # Writes log records to the process standard-output stream.
 export fn stdout_transport() Transport:
@@ -307,8 +300,8 @@ export fn file_transport(path: String) Transport!LogError:
         error(cause): return error(LogError.FileSystem(cause))
 
 fn file_stream_transport(file: FileHandle) Transport:
-    let stream = StreamTransport(share(file.writer()), new_gate())
-    return FileTransport(share(file), stream)
+    let stream = StreamTransport(Shared(file.writer()), new_gate())
+    return FileTransport(Shared(file), stream)
 
 impl Error for LogError:
     # Returns the preserved I/O/filesystem cause message, or a logging-prefixed diagnostic.

@@ -258,6 +258,10 @@ struct Mutations<'h> {
 impl Visitor for Mutations<'_> {
     fn stmt(&mut self, s: &Stmt) {
         if let StmtKind::Assign { target, value, .. } = &s.kind {
+            // A value assigned to a `Shared` handle goes into its box.
+            if self.hir.info(value).into_shared {
+                return;
+            }
             let root = match target {
                 AssignTarget::Name(_) => self.hir.assigned(value).map(|b| b.uid),
                 AssignTarget::Member(t) => changed_root(self.hir, t),

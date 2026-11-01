@@ -504,6 +504,16 @@ impl Checker {
         if attempt(pattern, s) {
             return true;
         }
+        // A `Proxy` handle passed where its payload is expected stands for the payload.
+        if pattern.id != actual.id
+            && let Some(payload) = self.proxy_payload(actual)
+        {
+            let mut trial = fresh(s);
+            if unify(pattern, &payload, vars, &mut trial) {
+                s.extend(trial);
+                return true;
+            }
+        }
         pattern.is_std("Optional")
             && pattern.args.len() == 1
             && (self.error_assignable(actual, &sub(&pattern.args[0], s))

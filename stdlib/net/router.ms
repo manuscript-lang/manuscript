@@ -16,7 +16,7 @@ import WebSocket, WebSocketError from "@std/net/net.ms"
 import Logger from "@std/log.ms"
 import uuid_v4 from "@std/os/random.ms"
 import monotonic from "@std/os/time.ms"
-import Shared, share from "@std/concurrency/shared.ms"
+import Shared from "@std/concurrency/shared.ms"
 
 # Errors returned while registering a route.
 export type RouterError:
@@ -201,7 +201,7 @@ impl Router:
     # Unmatched paths answer 404, a path matched only under other methods answers 405 with
     # `Allow`, and OPTIONS on a known path answers 204 with `Allow`.
     fn handler() fn(HttpExchange) Unit!HttpError:
-        let routes = share(self.routes.clone())
+        let routes = Shared(self.routes.clone())
         let middleware = self.middleware.clone()
         return fn exchange: dispatch(routes, middleware.clone(), exchange)
 
@@ -371,7 +371,7 @@ fn dispatch(
     exchange: HttpExchange
 ) Unit!HttpError:
     let method = exchange.method().text()
-    let found = lookup(routes.get(), method, split_path(exchange.path()))
+    let found = lookup(routes, method, split_path(exchange.path()))
     return chain(middleware, 0, exchange, final_step(routes, method, found))
 
 fn chain(
@@ -411,7 +411,7 @@ fn route_step(
     index: Int,
     params: RouteParams
 ) fn(HttpExchange) Unit!HttpError:
-    return fn exchange: routes.get()[index].handler(exchange, params)
+    return fn exchange: routes[index].handler(exchange, params)
 
 # Runs the matched route, or answers 404, 405 or the OPTIONS listing.
 fn finish(
@@ -421,7 +421,7 @@ fn finish(
     exchange: HttpExchange
 ) Unit!HttpError:
     if let index = found.found:
-        let around = routes.get()[index].around.clone()
+        let around = routes[index].around.clone()
         return chain(
             around, 0, exchange, route_step(routes, index, found.params.clone())
         )
@@ -444,7 +444,7 @@ impl Router:
     # A handler error is returned as is; the server would answer it with a 500. A handler that
     # sends nothing answers 204.
     fn call(request: HttpRequest) HttpResponse!HttpError:
-        let state = share(
+        var state = Shared(
             TestState(
                 status: 0, sent: false, complete: false, closed: false, head: headers(),
                 body: BytesBuilder(), unread: request.body.clone()
@@ -452,7 +452,7 @@ impl Router:
         )
         let exchange = TestExchange(request: request.clone(), state: state)
         try self.handler()(exchange)
-        return finished(state)
+        return finished(var state)
 
 # What an in-process handler has sent so far.
 type TestState:
@@ -468,22 +468,19 @@ type TestExchange:
     request: HttpRequest
     state: Shared[TestState]
 
-fn finished(state: Shared[TestState]) HttpResponse!HttpError:
-    var guard = state.lock()
-    if not guard.value.sent:
+fn finished(var state: TestState) HttpResponse!HttpError:
+    if not state.sent:
         return ok(HttpResponse(status: 204, headers: headers(), body: "".to_bytes()))
 
     return ok(
         HttpResponse(
-            status: guard.value.status, headers: guard.value.head.clone(),
-            body: guard.value.body.drain()
+            status: state.status, headers: state.head.clone(), body: state.body.drain()
         )
     )
 
 impl HttpExchange for TestExchange:
     fn close() Unit:
-        var guard = self.state.lock()
-        guard.value.closed = true
+        self.state.closed = true
 
     fn headers() HttpHeaders:
         return self.request.headers.clone()
@@ -506,11 +503,10 @@ impl HttpExchange for TestExchange:
 
         let max = if requested > 65536: 65536 else: requested
 
-        var guard = self.state.lock()
-        if guard.value.closed: return error(IoError.Closed)
+        if self.state.closed: return error(IoError.Closed)
 
-        let chunk = guard.value.unread.clone()
-        guard.value.unread = none
+        let chunk = self.state.unread.clone()
+        self.state.unread = none
 
         if let bytes = chunk:
             if bytes.length() == 0: return ok(none)
@@ -518,7 +514,7 @@ impl HttpExchange for TestExchange:
             let n = if max < bytes.length(): max else: bytes.length()
 
             if n < bytes.length():
-                guard.value.unread = bytes.slice(n, bytes.length()).get()
+                self.state.unread = bytes.slice(n, bytes.length()).get()
             return ok(bytes.slice(0, n).get())
 
         return ok(none)
@@ -529,23 +525,21 @@ impl HttpExchange for TestExchange:
         if headers.contains("Transfer-Encoding"): return error(HttpError.InvalidInput)
         if headers.contains("Connection"): return error(HttpError.InvalidInput)
 
-        var guard = self.state.lock()
-        if guard.value.closed: return error(HttpError.Closed)
-        if guard.value.sent: return error(HttpError.InvalidInput)
+        if self.state.closed: return error(HttpError.Closed)
+        if self.state.sent: return error(HttpError.InvalidInput)
 
-        guard.value.status = status
-        guard.value.head = headers.clone()
-        guard.value.sent = true
+        self.state.status = status
+        self.state.head = headers.clone()
+        self.state.sent = true
         return ok(unit)
 
     fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!HttpError:
         try self.send_headers(status, headers)
 
-        var guard = self.state.lock()
-        guard.value.complete = true
+        self.state.complete = true
         if self.request.method.text() == "HEAD" or not has_body(status): return ok(unit)
 
-        guard.value.body.append_bytes(body)
+        self.state.body.append_bytes(body)
         return ok(unit)
 
     fn upgrade(
@@ -559,15 +553,14 @@ impl HttpExchange for TestExchange:
         return self.write_bytes(data.to_bytes())
 
     fn write_bytes(data: Bytes) Unit!IoError:
-        var guard = self.state.lock()
-        if guard.value.closed: return error(IoError.Closed)
-        if not guard.value.sent or guard.value.complete: return error(
+        if self.state.closed: return error(IoError.Closed)
+        if not self.state.sent or self.state.complete: return error(
             IoError.InvalidInput
         )
-        if self.request.method.text() == "HEAD" or not has_body(guard.value.status):
+        if self.request.method.text() == "HEAD" or not has_body(self.state.status):
             return error(IoError.InvalidInput)
 
-        guard.value.body.append_bytes(data)
+        self.state.body.append_bytes(data)
         return ok(unit)
 
 # Whether a response with this status may carry a body.
@@ -589,7 +582,7 @@ type Tap:
 fn new_tap(inner: HttpExchange, extra: HttpHeaders, request: HttpHeaders) Tap:
     return Tap(
         inner: inner, extra: extra, request: request,
-        state: share(TapState(status: 0, bytes: 0))
+        state: Shared(TapState(status: 0, bytes: 0))
     )
 
 # Wraps `exchange` so that `headers()` reports `request` and everything else passes through.
@@ -600,14 +593,9 @@ export fn with_request_headers(
 ) HttpExchange:
     return new_tap(exchange, headers(), request)
 
-fn counted(state: Shared[TapState], status: Int, bytes: Int) Unit:
-    var guard = state.lock()
-    if status != 0: guard.value.status = status
-    guard.value.bytes += bytes
-
-fn snapshot(state: Shared[TapState]) TapState:
-    var guard = state.lock()
-    return TapState(status: guard.value.status, bytes: guard.value.bytes)
+fn counted(var state: TapState, status: Int, bytes: Int) Unit:
+    if status != 0: state.status = status
+    state.bytes += bytes
 
 # `sent` plus the `extra` headers it does not already have.
 fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
@@ -642,12 +630,12 @@ impl HttpExchange for Tap:
 
     fn send_headers(status: Int, headers: HttpHeaders) Unit!HttpError:
         try self.inner.send_headers(status, with_extra(headers, self.extra))
-        counted(self.state, status, 0)
+        counted(var self.state, status, 0)
         return ok(unit)
 
     fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!HttpError:
         try self.inner.send(status, with_extra(headers, self.extra), body)
-        counted(self.state, status, body.length())
+        counted(var self.state, status, body.length())
         return ok(unit)
 
     fn upgrade(
@@ -659,12 +647,12 @@ impl HttpExchange for Tap:
 
     fn write(data: String) Unit!IoError:
         try self.inner.write(data)
-        counted(self.state, 0, data.byte_length())
+        counted(var self.state, 0, data.byte_length())
         return ok(unit)
 
     fn write_bytes(data: Bytes) Unit!IoError:
         try self.inner.write_bytes(data)
-        counted(self.state, 0, data.length())
+        counted(var self.state, 0, data.length())
         return ok(unit)
 
 # Middleware that gives every request an id: the request's own `X-Request-Id` when it is 1 to 128
@@ -733,7 +721,7 @@ fn with_access_log(
     let tap = new_tap(exchange, headers(), request)
     let state = tap.state
     let result = next(tap)
-    let sent = snapshot(state)
+    let sent: TapState = state
     let status = answered(sent.status, result.is_ok())
     let entry = AccessEntry(
         method: method, path: path, protocol: protocol, status: status,

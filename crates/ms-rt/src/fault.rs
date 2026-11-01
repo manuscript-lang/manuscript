@@ -956,6 +956,20 @@ pub fn stop_shield_exit() {
     }
 }
 
+/// The depth of guarded calls the running task is in: a cancellation or fault leaves the
+/// innermost one, abandoning what began at this depth or deeper.
+pub(crate) fn guard_depth() -> usize {
+    // SAFETY: single threaded access to the guard stack.
+    unsafe { (*GUARDS.ptr()).len() }
+}
+
+/// Runs the cleanup actions of a cancellation or fault leaving the innermost guard. The `Shared`
+/// holds of the abandoned calls end first, so the actions find those values free.
+fn unwind_cleanups() {
+    crate::channel::end_abandoned_holds(guard_depth());
+    while run_one_cleanup() {}
+}
+
 /// Pops and runs the innermost cleanup action; false when none remain.
 fn run_one_cleanup() -> bool {
     // SAFETY: single threaded access to the cleanup stack.
@@ -999,7 +1013,7 @@ pub fn fault_vec(mut report: Vec<u8>) -> ! {
         if *FAULTING.ptr() {
             // A fault inside a cleanup action: record it and keep unwinding from here.
             (*SECONDARY.ptr()).push(report);
-            while run_one_cleanup() {}
+            unwind_cleanups();
             finish_report(None)
         }
         *FAULTING.ptr() = true;
@@ -1013,7 +1027,7 @@ pub fn fault_vec(mut report: Vec<u8>) -> ! {
     unsafe {
         *UNWIND_DROPS.ptr() = guard_active();
     }
-    while run_one_cleanup() {}
+    unwind_cleanups();
     finish_report(None)
 }
 
@@ -1320,7 +1334,7 @@ pub extern "C-unwind" fn msrt_cancelled() -> ! {
     unsafe {
         *UNWIND_DROPS.ptr() = guard_active();
     }
-    while run_one_cleanup() {}
+    unwind_cleanups();
     #[cfg(test)]
     {
         std::panic::panic_any(crate::testutil::FaultPayload(std::format!(

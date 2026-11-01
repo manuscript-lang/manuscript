@@ -448,10 +448,21 @@ impl Walker<'_> {
         self.expr(e, Demand::Consume);
     }
 
-    /// Whether `e` is a `Copy` handle such as `Shared[T]`: it is not the storage it lends from,
-    /// and another copy of the handle can change that storage, so what it lends is a copy.
-    fn copy_handle(&self, e: &Expr) -> bool {
-        self.class_of(e) == Class::Copy && self.cx.classes.proxy(&self.cx.m.ty(e))
+    /// Whether `e` reads through a `Proxy` handle such as `Shared[T]`: another holder can change
+    /// what it reads, so a binding of it is a copy, not a borrow of the binding's place.
+    fn through_handle(&self, e: &Expr) -> bool {
+        let mut cur = e;
+        loop {
+            if self.cx.m.info(cur).through_shared.is_some() {
+                return true;
+            }
+            cur = match &cur.kind {
+                ExprKind::Member { left, .. }
+                | ExprKind::Index { left, .. }
+                | ExprKind::Apply { left, .. } => left,
+                _ => return false,
+            };
+        }
     }
 
     /// The fields from a variable to a place written as a plain chain of them.
@@ -1024,27 +1035,6 @@ impl Walker<'_> {
             self.let_pos.insert(b.uid, s.pos);
         }
         let class = self.cx.classes.class(&b.ty);
-        // `var x = handle.get()` would change a copy, not the shared value. A source method of the
-        // handle (`lock`) returns a value of its own.
-        if mutable
-            && class != Class::Copy
-            && let ExprKind::Call { callee, .. } = &value.kind
-            && let ExprKind::Member { left, .. } = &callee.kind
-            && self.copy_handle(left)
-            && !matches!(self.cx.m.resolution(callee), Resolution::Method(m) if m.native.is_empty())
-        {
-            let text = self.expr_text(value);
-            self.expr(value, Demand::Read);
-            self.error(
-                pattern.pos,
-                format!(
-                    "`var {}` cannot borrow `{text}` mutably: it is a read-only result; copy it with `{text}.{COPY}()` to own it",
-                    b.name
-                ),
-            );
-            self.declare(&b, role, Perm::Mutable, None, false);
-            return;
-        }
         // A `let` of a scalar copies; a `var` borrows its place whatever the type.
         if (mutable || class != Class::Copy)
             && let Some(origins) = self.projection_origins(value)
@@ -1273,12 +1263,17 @@ impl Walker<'_> {
                 self.check_store(s.pos, &b, *name);
                 let places = vec![Place::local(b.uid)];
                 self.check_change(s.pos, &places, "reassign", b.name.as_str(), None);
-                self.mark_mutated(b.uid);
+                // A value assigned to a `Shared` handle replaces the shared value; the binding
+                // keeps its handle.
+                if !self.cx.m.info(value).into_shared {
+                    self.mark_mutated(b.uid);
+                }
                 self.record(s.id, &b, Access::Write);
                 self.facts.drops_old.insert(s.id);
             }
             AssignTarget::Member(t) => {
-                if let Some((info, _)) = self.place(t) {
+                if let Some((mut info, _)) = self.place(t) {
+                    info.through_shared |= self.cx.m.info(value).into_shared;
                     self.mutate(t.pos, &info, "change");
                 } else {
                     self.error(t.pos, "an assignment target must be a variable or a field path of one, like `p.x` or `rows[i].x`; `get(..)` and other calls return read-only views, so index the collection or bind the part with var first");
@@ -1359,8 +1354,12 @@ impl Walker<'_> {
             );
             return;
         }
+        // A type's own methods change the `Shared` values in its fields: the hold of the box,
+        // not the receiver's binding, keeps those changes apart.
+        let own_handle = info.through_shared && receiver;
         match perm {
             Perm::Mutable | Perm::Captured | Perm::MutBorrowed => {}
+            _ if own_handle => {}
             Perm::Borrowed => {
                 let from = self
                     .meta
@@ -1632,6 +1631,9 @@ impl Walker<'_> {
     /// Origins of an expression that reads part of a value in place: a
     /// projection or a native accessor on a place.
     fn projection_origins(&mut self, e: &Expr) -> Option<Vec<Place>> {
+        if self.through_handle(e) {
+            return None;
+        }
         if self.is_place(e) {
             if matches!(e.kind, ExprKind::Name(_)) {
                 return None;

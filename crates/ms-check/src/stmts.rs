@@ -254,7 +254,7 @@ impl Checker {
                     }
                 }
                 let tty = tinfo.t();
-                let v = self.expression(value, Some(&tty));
+                let v = self.assigned_value(value, &tty);
                 (!tinfo.no_return && !v.no_return, tinfo.breaks || v.breaks)
             }
             AssignTarget::Name(name) => {
@@ -292,26 +292,31 @@ impl Checker {
                         fix,
                     );
                 }
-                if let Some(payload) = self.proxy_payload(&b.ty) {
-                    // `box = value` replaces the payload when the value is a payload, and points
-                    // the binding at another box when it is a handle.
-                    let inferred = self.infer(value, Some(&payload));
-                    let handle = inferred.t().id == b.ty.id;
-                    let mut i = self.check_expression(
-                        value,
-                        inferred,
-                        Some(if handle { &b.ty } else { &payload }),
-                    );
-                    if !handle {
-                        i.into_shared = true;
-                        self.set_info(value, i.clone());
-                    }
-                    return (!i.no_return, i.breaks);
-                }
-                let i = self.expression(value, Some(&b.ty));
+                let i = self.assigned_value(value, &b.ty);
                 (!i.no_return, i.breaks)
             }
         }
+    }
+
+    /// Checks a value assigned to a target of type `target`. A `Proxy` target such as a `Shared`
+    /// takes a payload, which replaces the shared value, or a handle, which points the target at
+    /// another value.
+    fn assigned_value(&mut self, value: &Expr, target: &Ty) -> Info {
+        let Some(payload) = self.proxy_payload(target) else {
+            return self.expression(value, Some(target));
+        };
+        let inferred = self.infer(value, Some(&payload));
+        let handle = inferred.t().id == target.id;
+        let mut i = self.check_expression(
+            value,
+            inferred,
+            Some(if handle { target } else { &payload }),
+        );
+        if !handle {
+            i.into_shared = true;
+            self.set_info(value, i.clone());
+        }
+        i
     }
 
     fn check_return(&mut self, s: &Stmt, value: Option<&Expr>) -> (bool, bool) {

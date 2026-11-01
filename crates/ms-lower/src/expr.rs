@@ -57,8 +57,7 @@ impl<'a> FnLower<'a> {
         let x = x?;
         // A `Shared` handle that stands for its payload reads the payload in place.
         let x = if through_shared && !self.dead {
-            let handle = self.borrow(x);
-            self.shared_op(e, handle, "get", &[])?
+            self.shared_read(e, x)?
         } else {
             x
         };
