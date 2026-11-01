@@ -15,7 +15,6 @@ import (
     msstd_http_headers_remove,
     msstd_http_headers_clone,
     msstd_http_headers_new,
-
     msstd_http_client_request,
     msstd_http_client_request_bytes,
     msstd_http_client_request_stream,

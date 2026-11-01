@@ -71,7 +71,10 @@ export extern fn msstd_http_headers_append(
     value: Bytes
 ) Unit!HttpError
 
-export extern fn msstd_http_headers_values(value: HttpHeaders, name: String) List[Bytes]?
+export extern fn msstd_http_headers_values(
+    value: HttpHeaders,
+    name: String
+) List[Bytes]?
 
 export extern fn msstd_http_headers_names(value: HttpHeaders) List[String]
 
