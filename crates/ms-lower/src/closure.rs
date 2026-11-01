@@ -1400,9 +1400,45 @@ fn lower_bound_native(
             .expect("capture");
     let recv = Val { v: cap, own: false };
     let func = job.method.decl.as_ref().and_then(|d| d.func());
+    let ret = fl.ret_ty;
+    // `ok_or` constructs MissingValue when the cause is omitted, whereas an explicit
+    // `none` remains a supplied argument. Keep that distinction before unwrapping omission.
+    if job.method.native == "core/ok_or"
+        && job.method.receiver.is_std("Optional")
+        && job
+            .method
+            .ty
+            .result_ty()
+            .args
+            .get(1)
+            .is_some_and(|t| t.is_std("MissingValue"))
+        && params.len() == 2
+        && fl.ty_of(params[1]) != fl.mty(&job.method.ty.params[0].ty)?
+    {
+        let supplied = fl.b.opt_is_some(params[1]);
+        let out = fl.two_ways(
+            supplied,
+            ret,
+            &mut |s| {
+                let args = s.thunk_native_args(
+                    job.method.module,
+                    func,
+                    &job.method.ty.params,
+                    &params[1..],
+                )?;
+                let out = s.bound_native_call(&job.method, recv, &args, ret)?;
+                Ok(Some(s.owned(out)))
+            },
+            &mut |s| {
+                let out = s.bound_native_call(&job.method, recv, &[], ret)?;
+                Ok(Some(s.owned(out)))
+            },
+        )?;
+        fl.emit_return(Some(out));
+        return Ok(());
+    }
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
-    let ret = fl.ret_ty;
     if job.shared.is_some() {
         let out = fl.shared_native_call(&job.method, cap, recv_ty, &args, ret)?;
         fl.emit_return(Some(out));

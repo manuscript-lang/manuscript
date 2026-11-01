@@ -1,4 +1,4 @@
-import expect_true, expect_false, expect_equal from "@std/test/test.ms"
+import expect_true, expect_false, expect_equal, expect_fault from "@std/test/test.ms"
 
 fn every[T](values: List[T], predicate: fn(T) Bool) Bool:
     return values.all(fn value: predicate(value))
@@ -27,6 +27,17 @@ fn same_optional(left: Int?, right: Int?) Bool:
     return left.get() == right.get()
 
 fn optional_default(value: Int? = 7) Int: value.get(-1)
+
+fn bound_missing[T](value: T?) T!MissingValue:
+    let convert = value.ok_or[MissingValue]
+    return convert()
+
+fn nested_bound_missing[T](value: T?) T!MissingValue:
+    let convert = fn:
+        let bound = value.ok_or[MissingValue]
+        return bound()
+
+    return convert()
 
 type Defaults:
     base: Int
@@ -152,3 +163,46 @@ test "bound generic native defaults preserve concrete and Optional payload types
 
     let present: Int? = 0
     try expect_equal(nested(present).err().get(), 0)
+
+test "bound MissingValue defaults distinguish omission from explicit none":
+    let missing: Int? = none
+    let direct = missing.ok_or()
+    try expect_true(direct.err().message().contains("generic-optional-callbacks.ms:"))
+
+    let convert = missing.ok_or[MissingValue]
+    let converted = convert()
+    try expect_true(
+        converted.err().message().contains("generic-optional-callbacks.ms:")
+    )
+    try expect_true(
+        bound_missing(missing).err().message().contains(
+            "generic-optional-callbacks.ms:"
+        )
+    )
+    try expect_true(
+        nested_bound_missing(missing).err().message().contains(
+            "generic-optional-callbacks.ms:"
+        )
+    )
+
+    let direct_fault = try expect_fault(
+        fn:
+            let _ignored = missing.ok_or[MissingValue](none)
+    )
+    let bound_fault = try expect_fault(
+        fn:
+            let _ignored = convert(none)
+    )
+    try expect_true(direct_fault.contains("Optional.get() on none"))
+    try expect_true(bound_fault.contains("Optional.get() on none"))
+
+    let present: Int? = 0
+    let keep = present.ok_or[MissingValue]
+    try expect_equal(keep().get(), 0)
+    try expect_equal(keep(none).get(), 0)
+    try expect_equal(bound_missing(present).get(), 0)
+    try expect_equal(nested_bound_missing(present).get(), 0)
+
+    let text: String? = "present"
+    try expect_equal(bound_missing(text).get(), "present")
+    try expect_equal(nested_bound_missing(text).get(), "present")
