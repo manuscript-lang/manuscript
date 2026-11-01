@@ -24,7 +24,7 @@ ms run main.ms --build-type Debug
 
 Use `Debug` for unoptimized code and source attribution, `Release` for optimized code and profiles, and `MinSizeRel` for the smallest executable.
 
-On Linux, programs link the system glibc (2.34 or newer) dynamically. Pass `--static` to `build`, `run`, `test`, or `bench` to link a fully static musl executable instead, for example to ship to a machine without a matching glibc. musl is never linked unless you ask: its resolver, for one, differs from glibc's, so names in `/etc/hosts` and other NSS sources resolve only through glibc.
+On Linux, programs link glibc dynamically and run on glibc 2.28 or newer, whatever glibc the build machine has. Pass `--static` to `build`, `run`, `test`, or `bench` to link a fully static musl executable instead, for example to ship to a machine without a matching glibc. musl is never linked unless you ask: its resolver, for one, differs from glibc's, so names in `/etc/hosts` and other NSS sources resolve only through glibc.
 
 ## Levels
 

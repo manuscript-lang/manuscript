@@ -6,7 +6,7 @@ Cancellation, cleanup, resources, networking, workers, test helpers.
 
 - [BigInt power estimates do not prove a result fits](bigint-power-estimates-do-not-prove-a-result-fits.md): a lower bit-length bound rejects some oversized powers, but the computed result still needs its exact size checked.
 
-- [Linux programs link glibc unless `--static` is asked](linux-programs-link-glibc-unless-static-is-asked.md): static musl's resolver misses mixed-case `/etc/hosts` names; musl is opt-in.
+- [Linux programs link glibc unless `--static` is asked](linux-programs-link-glibc-unless-static-is-asked.md): static musl's resolver misses mixed-case `/etc/hosts` names, so musl is opt-in; glibc programs link 2.28 stubs and run on any later glibc.
 - [A native signature change needs a regenerated table and a fresh runtime archive](a-native-signature-change-needs-a-regenerated-table-and-a-fre.md): lowering marshals native calls from the generated `crates/ms-lower/rt_symbols.txt`, not from the Rust source, and programs link `target/ms-native/libms_native.a`.
 - [A process entry is found by code offset, so it must capture nothing](a-process-entry-is-found-by-code-offset-so-it-must-capture-n.md): `ProcessGroup.spawn` passes `lambda: serve(entry)` to `msstd_process_fork`, which reads the runner's and the entry's code and drop…
 - [A runtime builder makes compiler-laid-out values through a thunk, not a copy of the layout](a-runtime-builder-makes-compiler-laid-out-values-through-a-t.md): an untyped `parse` builds `JsonValue` in `ms_rt::tree::TreeBuilder` while the scanner runs, with no document.
