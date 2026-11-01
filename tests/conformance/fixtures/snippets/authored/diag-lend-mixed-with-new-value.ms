@@ -1,4 +1,4 @@
-# conform: tags=diagnostics,ownership,strings,tier-core
+# conform: tags=diagnostics,mutation,strings,tier-core
 # conform: phase=check
 # conform: origin=proposals/reference-ownership.md
 type User:

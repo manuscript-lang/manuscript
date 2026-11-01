@@ -1,4 +1,4 @@
-# conform: tags=diagnostics,ownership,maps,tier-core
+# conform: tags=diagnostics,mutation,maps,tier-core
 # conform: phase=check
 # conform: origin=issue 2181
 fn held() Int:

@@ -1,4 +1,4 @@
-# conform: tags=ownership,maps,lists,tier-io
+# conform: tags=mutation,maps,lists,tier-io
 # conform: phase=run
 # conform: origin=issues 2164 and 2168
 import stdout from "@std/io/io.ms"

@@ -114,7 +114,9 @@ Each step lands in the same PR; `make verify-full`, `bench/perf` against `bench/
 4. Lost-change error, diagnostic rewrite, `ms guide` example.
 5. Gates: ownership corpus with one fixture per use-after-free shape (above); conformance; `leak-check`; valgrind over the corpus run natively; differential Debug (Cranelift) versus Release (LLVM) run of the corpus comparing output and `count-check` allocations; a mutation run of `ms check` over the accept corpus (each accept program with one statement deleted) expecting no verifier failure; an adversarial review of lowering for dangling or double-dropped lent values; Haiku agent bench rerun with the first-build rate recorded in `bench/agent/results`.
 
-## Open questions
+## Open questions, resolved while implementing
 
-- Interface operations: own (implementation writes `.clone()`) or lend (every implementation must lend)? Recommendation: own; revisit with the bench rerun.
-- Should a lender be allowed through a `var` parameter or `var fn` receiver for `let` results (`fn f(var a: Acc) List[Int]: return a.items`)? The words are valid while `a` is frozen; nothing returns an address. Recommendation: yes, with a fixture.
+- Interface operations own their results (an implementation that returns a stored field writes `.clone()`): a call through the interface cannot know which implementation runs. A type's own methods (`impl T:`, checked as a synthesized interface) lend like functions.
+- A lender through a `var` parameter or `var fn` receiver is accepted for `let` results (`fn f(var a: Acc) List[Int]: return a.items`): the result borrows the frozen argument and nothing returns an address.
+- Resources never lend: `return r` of a `Closeable` hands it to the caller, which closes it.
+- An argument converted on the way in (an `Optional` wrap, a widened error, an interface) is a temporary, so the call's result is owned and copied before the temporary drops.

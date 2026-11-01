@@ -19,7 +19,7 @@ fn run[R](v: Visitor[R], n: Int) R:
 
 test "one receiver implements two applications of a generic contract":
     let d = Doubler(k: 3)
-    let as_int: Visitor[Int] = d
+    let as_int: Visitor[Int] = d.clone()
     let as_string: Visitor[String] = d
     let a: Int = run(as_int, 5)
     let b: String = run(as_string, 5)

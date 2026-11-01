@@ -1,4 +1,4 @@
-# conform: tags=ownership,records,lists,tier-io
+# conform: tags=mutation,records,lists,tier-io
 # conform: phase=run
 # conform: origin=proposals/reference-ownership.md
 import stdout from "@std/io/io.ms"
