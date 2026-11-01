@@ -74,6 +74,17 @@ impl<'a> FnLower<'a> {
         };
         // The conversion to the interface comes first: `Shape?` takes a `Sq` as `some(Shape(sq))`.
         let x = match self.hir.info(e).wrap_some {
+            // A reference wrapped on its way to a binding or a return stays one: `opt.view`.
+            Some(_)
+                if !self.dead
+                    && !x.own
+                    && self.cx.view_wraps.contains(&(self.hir.data.file, e.id)) =>
+            {
+                Val {
+                    v: self.b.opt_view(x.v),
+                    own: false,
+                }
+            }
             Some(_) if !self.dead => {
                 let o = self.owned(x);
                 Val {

@@ -186,6 +186,8 @@ pub struct Cx {
     pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
     /// Callables whose result is a reference into their arguments, by module file and node.
     pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Wrappers of lent values built as `opt.view` / `alt.view`, by module file and node.
+    pub view_wraps: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Lending calls whose result the caller owns because an argument is a temporary: the
     /// result is copied out before the temporary is dropped.
     pub owned_lends: Rc<
@@ -253,6 +255,7 @@ impl Cx {
             consumes: program.consumes.clone(),
             getters: program.getter_borrows.clone(),
             lenders: program.lenders.clone(),
+            view_wraps: program.view_wraps.clone(),
             owned_lends: program.owned_lends.clone(),
             lent_matches: program.lent_matches.clone(),
             classes: ms_check::ownership::Classifier::new(program),

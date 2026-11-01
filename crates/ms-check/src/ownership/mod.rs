@@ -179,6 +179,9 @@ pub struct CallableOwnership {
     /// The result is a reference into the receiver or a parameter on every path: lowering
     /// returns it without copying, and the caller holds it without dropping.
     pub lends: bool,
+    /// Wrappers of a lent value (`x` as `x?`, `ok(x)`, `error(x)`) that stay references:
+    /// lowering builds them with `opt.view` / `alt.view` instead of copying the payload.
+    pub view_wraps: HashSet<NodeId>,
     /// Calls of lending callables whose sources are temporaries: the caller owns the result,
     /// by taking the temporary over or by a copy made before it is dropped.
     pub owned_lends: HashMap<NodeId, OwnedLend>,
@@ -225,6 +228,8 @@ pub struct Ownership {
     pub consumes: HashMap<Key, Vec<bool>>,
     /// Callables whose result is a reference into their arguments.
     pub lenders: HashSet<Key>,
+    /// Wrappers of lent values that stay references, by module file and node.
+    pub view_wraps: HashSet<(Name, NodeId)>,
     /// Lending calls whose result the caller owns (a source was a temporary), by module file and
     /// call node.
     pub owned_lends: HashMap<(Name, NodeId), OwnedLend>,
@@ -318,6 +323,7 @@ impl Hir<'_> {
         let mut borrowed_captures = HashSet::new();
         let mut consumes = HashMap::new();
         let mut lenders = HashSet::new();
+        let mut view_wraps = HashSet::new();
         let mut owned_lends = HashMap::new();
         let mut getter_borrows = HashMap::new();
         let mut lent_matches = HashSet::new();
@@ -326,6 +332,7 @@ impl Hir<'_> {
             if out.facts.lends {
                 lenders.insert((c.module.file, c.id()));
             }
+            view_wraps.extend(out.facts.view_wraps.iter().map(|n| (c.module.file, *n)));
             owned_lends.extend(
                 out.facts
                     .owned_lends
@@ -390,6 +397,7 @@ impl Hir<'_> {
             borrowed_captures,
             consumes,
             lenders,
+            view_wraps,
             owned_lends,
             getter_borrows,
             lent_matches,
