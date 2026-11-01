@@ -1230,34 +1230,39 @@ pub unsafe extern "C-unwind" fn msrt_map_merge(
         let (kd, vdo) = (&*kd, opt(vd));
         let l = layout(kd, vdo);
         let o = &*other;
+        if o.len == 0 {
+            return;
+        }
+        // Each insertion consumes the copied values, so their scratch slots can be reused.
+        // Wide records need one temporary allocation per merge, rather than per entry.
+        let mut kb = [0u64; 8];
+        let mut vb = [0u64; 8];
+        let kp = if l.ksize <= 64 {
+            kb.as_mut_ptr() as *mut u8
+        } else {
+            alloc::alloc(l.ksize)
+        };
+        let vp = if l.vsize <= 64 {
+            vb.as_mut_ptr() as *mut u8
+        } else {
+            alloc::alloc(l.vsize)
+        };
         for i in 0..o.used {
             let p = slot(o, &l, i);
             if slot_hash_of(p) & LIVE == 0 {
                 continue;
             }
-            let mut kb = [0u64; 8];
-            let mut vb = [0u64; 8];
-            let kp = if l.ksize <= 64 {
-                kb.as_mut_ptr() as *mut u8
-            } else {
-                alloc::alloc(l.ksize)
-            };
-            let vp = if l.vsize <= 64 {
-                vb.as_mut_ptr() as *mut u8
-            } else {
-                alloc::alloc(l.vsize)
-            };
             slot_copy(kd, p.add(l.koff), kp);
             if let Some(v) = vdo {
                 slot_copy(v, p.add(l.voff), vp);
             }
             insert(&mut *m, kd, vdo, kp, vp);
-            if l.ksize > 64 {
-                alloc::free(kp);
-            }
-            if l.vsize > 64 {
-                alloc::free(vp);
-            }
+        }
+        if l.ksize > 64 {
+            alloc::free(kp);
+        }
+        if l.vsize > 64 {
+            alloc::free(vp);
         }
     }
 }
@@ -1453,6 +1458,164 @@ mod tests {
     use super::*;
     use crate::desc::{msrt_desc_int, msrt_desc_string};
     use crate::string::{self, from_bytes};
+
+    fn merge_plain_desc(size: u32) -> TypeDesc {
+        TypeDesc {
+            size,
+            align: 8,
+            kind: KIND_POD,
+            reserved: 0,
+            inner0: core::ptr::null(),
+            inner1: core::ptr::null(),
+            drop: None,
+            copy: None,
+            eq: None,
+            hash: None,
+        }
+    }
+
+    unsafe extern "C" fn merge_copy_strings(src: *const u8, dst: *mut u8) {
+        // SAFETY: both slots hold three strings; the destination is uninitialised.
+        unsafe {
+            for i in 0..3 {
+                (dst as *mut StrVal)
+                    .add(i)
+                    .write(string::cloned(&*(src as *const StrVal).add(i)));
+            }
+        }
+    }
+
+    unsafe extern "C" fn merge_drop_strings(src: *mut u8) {
+        // SAFETY: the slot owns three live strings.
+        unsafe {
+            for i in 0..3 {
+                string::release(&*(src as *const StrVal).add(i));
+            }
+        }
+    }
+
+    #[test]
+    fn merge_wide_slots_preserves_order_holes_and_owned_values() {
+        let _g = testutil::lock();
+        let before = alloc::live_blocks();
+        let kd = merge_plain_desc(80);
+        let vd = TypeDesc {
+            kind: KIND_CUSTOM,
+            copy: Some(merge_copy_strings),
+            drop: Some(merge_drop_strings),
+            ..merge_plain_desc(core::mem::size_of::<[StrVal; 3]>() as u32)
+        };
+        // SAFETY: maps own wide integer-array keys and three-string values.
+        unsafe {
+            let mut source = empty();
+            let mut target = empty();
+            for (m, keys) in [
+                (&mut source, (0..12).collect::<Vec<i64>>()),
+                (&mut target, vec![-1, 2, 99]),
+            ] {
+                for k in keys {
+                    let mut key = [k; 10];
+                    let text = format!("long independently owned value for key {k}");
+                    let mut values =
+                        core::array::from_fn::<_, 3, _>(|_| from_bytes(text.as_bytes()));
+                    insert(
+                        m,
+                        &kd,
+                        Some(&vd),
+                        key.as_mut_ptr().cast(),
+                        values.as_mut_ptr().cast(),
+                    );
+                }
+            }
+            for k in [1i64, 5, 9] {
+                let key = [k; 10];
+                assert!(remove(&mut source, &kd, Some(&vd), key.as_ptr().cast()));
+            }
+            for _ in 0..2 {
+                msrt_map_merge(&mut target, &source, &kd, &vd);
+                let mut keys = core::mem::MaybeUninit::uninit();
+                msrt_map_keys(&target, &kd, &vd, keys.as_mut_ptr());
+                let mut keys = keys.assume_init();
+                let got: Vec<i64> = (0..keys.len)
+                    .map(|i| *(keys.ptr as *const [i64; 10]).add(i).cast::<i64>())
+                    .collect();
+                assert_eq!(got, [-1, 2, 99, 0, 3, 4, 6, 7, 8, 10, 11]);
+                crate::vec::drop_list(&mut keys, &kd);
+                let key = [2i64; 10];
+                let a = msrt_map_get_ptr(&source, &kd, &vd, key.as_ptr().cast()) as *const StrVal;
+                let b = msrt_map_get_ptr(&target, &kd, &vd, key.as_ptr().cast()) as *const StrVal;
+                for i in 0..3 {
+                    assert_eq!(string::bytes(a.add(i)), string::bytes(b.add(i)));
+                    assert_ne!(
+                        string::bytes(a.add(i)).as_ptr(),
+                        string::bytes(b.add(i)).as_ptr()
+                    );
+                }
+            }
+            drop_map(&mut source, &kd, Some(&vd));
+            for k in [-1i64, 2, 99, 0, 3, 4, 6, 7, 8, 10, 11] {
+                let key = [k; 10];
+                let p = msrt_map_get_ptr(&target, &kd, &vd, key.as_ptr().cast()) as *const StrVal;
+                let text = format!("long independently owned value for key {k}");
+                for i in 0..3 {
+                    assert_eq!(string::bytes(p.add(i)), text.as_bytes());
+                }
+            }
+            drop_map(&mut target, &kd, Some(&vd));
+        }
+        assert_eq!(alloc::live_blocks(), before);
+    }
+
+    #[test]
+    #[cfg(feature = "stats")]
+    fn merge_scratch_allocations_are_bounded_by_slot_types() {
+        let _g = testutil::lock();
+        let before = alloc::live_blocks();
+        for ksize in [8, 64, 72, 128] {
+            for vsize in [0, 8, 64, 72, 128] {
+                let kd = merge_plain_desc(ksize);
+                let vd = merge_plain_desc(vsize);
+                // SAFETY: each array provides enough storage for the descriptor's slots.
+                unsafe {
+                    let mut source = empty();
+                    for i in 0..32u64 {
+                        let mut key = [i; 16];
+                        let mut value = [i + 1; 16];
+                        insert(
+                            &mut source,
+                            &kd,
+                            Some(&vd),
+                            key.as_mut_ptr().cast(),
+                            value.as_mut_ptr().cast(),
+                        );
+                    }
+                    let mut target = core::mem::MaybeUninit::uninit();
+                    copy_map(&source, &kd, Some(&vd), target.as_mut_ptr());
+                    let mut target = target.assume_init();
+                    let counts = alloc::requested();
+                    msrt_map_merge(&mut target, &source, &kd, &vd);
+                    let after = alloc::requested();
+                    assert_eq!(
+                        after[0] - counts[0],
+                        u64::from(ksize > 64) + u64::from(vsize > 64)
+                    );
+                    assert_eq!(
+                        after[1] - counts[1],
+                        u64::from(if ksize > 64 { ksize } else { 0 })
+                            + u64::from(if vsize > 64 { vsize } else { 0 })
+                    );
+                    assert!(eq_map(&source, &target, &kd, Some(&vd)));
+                    drop_map(&mut source, &kd, Some(&vd));
+                    let counts = alloc::requested();
+                    msrt_map_merge(&mut target, &source, &kd, &vd);
+                    assert_eq!(alloc::requested(), counts);
+                    assert_eq!(target.len, 32);
+                    drop_map(&mut target, &kd, Some(&vd));
+                }
+            }
+        }
+        assert_eq!(alloc::live_blocks(), before);
+    }
     use crate::testutil;
     use crate::testutil::hot::*;
     use core::sync::atomic::{AtomicUsize, Ordering};
