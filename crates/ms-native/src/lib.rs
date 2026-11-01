@@ -18,6 +18,7 @@ extern crate ms_std_path;
 extern crate ms_std_process;
 extern crate ms_std_regex;
 extern crate ms_std_system;
+extern crate ms_std_table;
 extern crate ms_std_terminal;
 extern crate ms_std_time;
 extern crate ms_std_url;

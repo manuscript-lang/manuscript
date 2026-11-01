@@ -27,6 +27,7 @@ ms-std-path = { path = "../ms-std-path" }
 ms-std-process = { path = "../ms-std-process" }
 ms-std-regex = { path = "../ms-std-regex" }
 ms-std-system = { path = "../ms-std-system" }
+ms-std-table = { path = "../ms-std-table" }
 ms-std-terminal = { path = "../ms-std-terminal" }
 ms-std-time = { path = "../ms-std-time" }
 ms-std-url = { path = "../ms-std-url" }
