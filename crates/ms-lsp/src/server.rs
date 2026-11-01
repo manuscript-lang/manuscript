@@ -921,7 +921,7 @@ impl Server<'_> {
         if self.request_canceled(r) {
             return ok(Json::Null);
         }
-        if !checked.success() {
+        if !checked.resolves() {
             return Outcome::Error(failure(-32602, "rename requires a checked document"));
         }
         let mut name = p.new_name.as_str();
