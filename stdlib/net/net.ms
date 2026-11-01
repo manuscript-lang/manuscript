@@ -12,7 +12,7 @@ import HttpServer from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
 import IoError from "@std/io/io.ms"
 import Timestamp from "@std/os/time.ms"
-import WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
+import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 import (
     msstd_url_encode_component,
     msstd_net_ip_address_text,
@@ -48,6 +48,8 @@ import (
     msstd_net_listener_accept_raw,
     msstd_net_listener_address,
     msstd_net_listener_close,
+    msstd_net_listener_raw_owner,
+    msstd_net_release_unadopted,
     msstd_websocket_close,
     msstd_websocket_ping,
     msstd_websocket_ping_bytes,
@@ -685,19 +687,38 @@ export fn serve_cores(
     if cores < 1:
         return error(NetworkError.InvalidInput)
 
-    let group = WorkerGroup[Int, Int]()
-    let started = group.spawn_many(entry, cores)
+    var serving = Serving(
+        group: WorkerGroup[Int, Int](),
+        owner: msstd_net_listener_raw_owner(listener.native)
+    )
+    let started = serving.group.spawn_many(entry, cores)
     if started.is_error():
         return error(NetworkError.Failed("could not start a serving worker"))
 
-    let workers = started.get()
+    return deal(listener, started.get())
+
+# The workers of `serve_cores` and the owner key of the listener whose unadopted handles go with them.
+# Its close runs on every exit, a cancellation included.
+type Serving:
+    group: WorkerGroup[Int, Int]
+    owner: Int
+
+impl Closeable for Serving:
+    # Ends the workers first, so no adopter can still claim a handle that stays unadopted, then closes those handles.
+    var fn close() Unit!:
+        self.group.close().get(none)
+        msstd_net_release_unadopted(self.owner)
+        return ok(unit)
+
+# Deals accepted connections round robin to `workers` until accepting or a send fails.
+fn deal(listener: Listener, workers: List[Worker[Int, Int]]) Unit!NetworkError:
     var next = 0
 
     while true:
         let accepted = listener.accept_raw(none)
         if accepted.is_error():
             return error(accepted.err().clone())
-        if workers[next % cores].channel.send(accepted.get()).is_error():
+        if workers[next % workers.length()].channel.send(accepted.get()).is_error():
             return error(NetworkError.Failed("a serving worker ended"))
 
         next += 1

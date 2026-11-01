@@ -348,6 +348,16 @@ native! {
         Ok(())
     }
 
+    /// `Listener.raw_owner()`: the identity under which this listener's raw handles are tracked.
+    fn msstd_net_listener_raw_owner(l: ObjRef<ListenerH>) -> i64 {
+        l.owner_key() as i64
+    }
+
+    /// `release_unadopted(owner)`: closes the raw handles of `owner` that no server adopted.
+    fn msstd_net_release_unadopted(owner: i64) -> () {
+        crate::conn::release_unadopted(owner as usize);
+    }
+
     /// `Listener.address()`.
     fn msstd_net_listener_address(l: ObjRef<ListenerH>) -> String {
         l.address().to_string()

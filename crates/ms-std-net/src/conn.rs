@@ -681,27 +681,32 @@ impl Listener {
     /// (a descriptor, or a `SOCKET` on Windows) for `Server::adopt`, possibly on another thread.
     /// The caller owns the handle until `Server::adopt` takes it: dropping it unadopted leaks the socket. A listener that
     /// upgrades accepted sockets (TLS) refuses, since the handshake belongs to the adopter.
+    /// Identifies this listener as the owner of the handles it released.
+    pub fn owner_key(&self) -> usize {
+        self as *const Listener as usize
+    }
+
     pub fn accept_raw(&self, timeout: Option<i64>) -> Result<i64, NetErr> {
         if self.upgrade.is_some() {
             return Err(NetErr::InvalidInput);
         }
         let deadline = Deadline::from_nanos(timeout).map_err(|_| NetErr::InvalidInput)?;
         let (sock, _peer) = self.accept_socket(deadline)?;
-        Ok(into_raw_handle(sock))
+        Ok(into_raw_handle(sock, self.owner_key()))
     }
 }
 
 /// Handles `accept_raw` released and `take_raw_handle` has not yet claimed, so a number a program
 /// invents, or a handle used twice, never reaches `from_raw_*`.
-static OUTSTANDING: std::sync::LazyLock<std::sync::Mutex<std::collections::HashSet<i64>>> =
+static OUTSTANDING: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<i64, usize>>> =
     std::sync::LazyLock::new(Default::default);
 
-fn outstanding() -> std::sync::MutexGuard<'static, std::collections::HashSet<i64>> {
+fn outstanding() -> std::sync::MutexGuard<'static, std::collections::HashMap<i64, usize>> {
     OUTSTANDING.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 /// The socket's operating-system handle, released from its owner and recorded as outstanding.
-fn into_raw_handle(sock: Socket) -> i64 {
+fn into_raw_handle(sock: Socket, owner: usize) -> i64 {
     #[cfg(unix)]
     let raw = {
         use std::os::fd::IntoRawFd;
@@ -712,16 +717,14 @@ fn into_raw_handle(sock: Socket) -> i64 {
         use std::os::windows::io::IntoRawSocket;
         sock.into_raw_socket() as i64
     };
-    outstanding().insert(raw);
+    outstanding().insert(raw, owner);
     raw
 }
 
 /// The socket behind a handle `accept_raw` returned, or `None` for a number that is not an
 /// outstanding handle (invented, or already adopted).
 pub fn take_raw_handle(raw: i64) -> Option<Socket> {
-    if !outstanding().remove(&raw) {
-        return None;
-    }
+    outstanding().remove(&raw)?;
     #[cfg(unix)]
     {
         use std::os::fd::FromRawFd;
@@ -1124,6 +1127,18 @@ impl Network {
             return Err(NetErr::Closed);
         }
         Ok(d)
+    }
+}
+
+/// Closes every handle released under `owner` (a `Listener::owner_key`) that no server adopted.
+pub fn release_unadopted(owner: usize) {
+    let mine: Vec<i64> = outstanding()
+        .iter()
+        .filter(|(_, held_by)| **held_by == owner)
+        .map(|(raw, _)| *raw)
+        .collect();
+    for raw in mine {
+        drop(take_raw_handle(raw));
     }
 }
 
