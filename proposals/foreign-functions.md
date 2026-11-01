@@ -6,7 +6,7 @@
 - Change: grow `ms_abi.h` into the complete, versioned contract for C shims. C code stays in C and Manuscript code stays in Manuscript: a binding is a shim written against this one header, plus typed `extern fn` declarations in `.ms`.
 - The header has eleven groups: version, status codes, strings and bytes, values, lists, native objects, errors and faults, calls into Manuscript (same thread and any thread), blocking work and sockets, stop requests, and per-isolate state. Together they cover the use cases of Node's N-API, Python's C API and Go's cgo; the doc maps each use case to its entries.
 - Manuscript code stays memory safe: no pointers, no raw memory, no new syntax. Records, optionals and other compound types are converted in Manuscript wrappers, not in C.
-- Decision requested: approve the header and the three open questions.
+- Decided: the three open questions take their recommended answers (see Decisions). The header awaits approval before implementation.
 
 ## Status
 
@@ -466,10 +466,10 @@ Each stage lands green on Linux, macOS and Windows; no platform skips.
 - Embedding Manuscript in a C program.
 - Generating shims from C headers.
 
-## Open questions
+## Decisions
 
-1. **Building shims.** Shims and libraries must target musl on Linux and the mingw UCRT on Windows, and `ms` bundles no C compiler.
-   - Recommended: document the commands per platform for now (for example `zig cc`, or clang with a musl sysroot), and decide on bundling a compiler separately.
-   - Alternative: bundle clang as `ms cc` now.
-2. **Callbacks that wait.** Recommended: `ms_call` faults if the callback would wait, and `ms_post` callbacks may wait. Alternative: allow waiting and make re-entrancy the shim's responsibility.
-3. **Zero-copy buffers.** Recommended: copy now, and add native-owned `Bytes` only if a benchmark shows copies matter. Alternative: design it now.
+Chinmay accepted the recommended answer to each open question (2026-11-01).
+
+1. **Building shims.** Document the commands for each platform: for example `zig cc`, or clang with a musl sysroot on Linux and the mingw UCRT on Windows. Whether to bundle a compiler as `ms cc` is a separate decision.
+2. **Callbacks that wait.** If an `ms_call` callback would wait, it faults. `ms_post` callbacks run as tasks and may wait.
+3. **Zero-copy buffers.** Copy for now. Add native-owned `Bytes` only if a benchmark shows that copies matter.
