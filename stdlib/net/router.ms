@@ -198,7 +198,8 @@ impl Router:
 
     # Returns the function to pass to `serve`.
     # Unmatched paths answer 404, a path matched only under other methods answers 405 with
-    # `Allow`, and OPTIONS on a known path answers 204 with `Allow`.
+    # `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *` answers 204 with
+    # the `Allow` of every registered method.
     fn handler() fn(HttpExchange) Unit!HttpError:
         let routes = share(self.routes.clone())
         let middleware = self.middleware.clone()
@@ -424,6 +425,12 @@ fn finish(
         return chain(
             around, 0, exchange, route_step(routes, index, found.params.clone())
         )
+
+    if method == "OPTIONS" and exchange.path() == "*":
+        var server_wide = text(204, "")
+        let all = routes.get().map(fn route: route.method.clone())
+        try server_wide.headers.append("Allow", allow_text(all))
+        return reply(exchange, server_wide)
 
     if found.allow.is_empty(): return reply(exchange, text(404, "not found\n"))
 

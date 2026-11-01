@@ -89,6 +89,12 @@ test "OPTIONS lists the methods without calling a handler":
     try expect_equal(response.status, 204)
     try expect_equal(allow_of(response), "GET, HEAD, OPTIONS")
 
+test "OPTIONS * lists the methods of every route":
+    let r = router()
+    let response = try r.call(request(HttpMethod.Options, "*"))
+    try expect_equal(response.status, 204)
+    try expect_equal(allow_of(response), "GET, HEAD, OPTIONS, POST")
+
 test "HEAD is answered from the GET route without a body":
     let r = router()
     let response = try r.call(request(HttpMethod.Head, "/users"))

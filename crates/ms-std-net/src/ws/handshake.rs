@@ -291,7 +291,7 @@ pub struct Rejected {
 }
 
 impl Rejected {
-    const fn new(status: u16, message: &'static str) -> Rejected {
+    pub const fn new(status: u16, message: &'static str) -> Rejected {
         Rejected { status, message }
     }
 
@@ -353,7 +353,8 @@ pub fn accept(req: &Request<'_>, options: &ServerOptions<'_>) -> Result<Accepted
         return Err(Rejected::new(403, "websocket: request origin not allowed"));
     }
     let key = first_text(fields, "Sec-WebSocket-Key");
-    if !valid_challenge_key(&key) {
+    // The field must appear once (RFC 6455 section 4.1), or two parsers could read two keys.
+    if !valid_challenge_key(&key) || values(fields, "Sec-WebSocket-Key").count() > 1 {
         return Err(Rejected::new(
             400,
             "websocket: 'Sec-WebSocket-Key' header must be the Base64 text of 16 bytes",
@@ -775,6 +776,11 @@ mod tests {
         assert!(r.message.contains("must be the Base64 text of 16 bytes"));
         // The checks run in a fixed order: a bad key hides behind a bad method.
         assert_eq!(reject(&f, "PUT").status, 405);
+        // A repeated key is ambiguous, so it is refused even when each copy is valid.
+        let f = upgrade_fields(&[("Sec-WebSocket-Key", SAMPLE_KEY)]);
+        let r = reject(&f, "GET");
+        assert_eq!(r.status, 400);
+        assert!(r.message.contains("Sec-WebSocket-Key"));
     }
 
     #[test]
