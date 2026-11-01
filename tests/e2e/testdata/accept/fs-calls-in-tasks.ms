@@ -1,5 +1,15 @@
 import Bytes from "@std/bytes.ms"
-import append_file, copy_file, create_directory, list, read_file, remove, rename, temporary_directory, write_file from "@std/os/fs.ms"
+import (
+    append_file,
+    copy_file,
+    create_directory,
+    list,
+    read_file,
+    remove,
+    rename,
+    temporary_directory,
+    write_file
+) from "@std/os/fs.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_ok from "@std/test/test.ms"
 

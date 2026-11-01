@@ -2,43 +2,43 @@
 # Usage: ms run bench/tools/compile_time.ms [-- packages files fns]   (default 40 25 10, about 122k lines of Manuscript)
 # OUT keeps the generated sources; MS picks the compiler; SKIP_LLVM=1 skips the release build.
 # Generated Manuscript and Go source contains many braces; `q` writes them as ‹ and › so the generator reads as source.
-import absolute, env, fail, ms_binary, must, now_ns, run_in, usage, write_text from "./lib.ms"
+import (
+    absolute,
+    env,
+    fail,
+    ms_binary,
+    must,
+    now_ns,
+    run_in,
+    usage,
+    write_text
+) from "./lib.ms"
 import create_directory, remove, temporary from "@std/os/fs.ms"
 import arguments, set_environment from "@std/os/process.ms"
-import shift_right_unsigned, wrapping_add, wrapping_multiply from "@std/math/math.ms"
+import SeededRandom, seeded from "@std/os/random.ms"
 import stdout from "@std/io/io.ms"
 
 fn q(text: String) String:
     return text.replace("‹", "\{").replace("›", "\}")
 
-# Workaround for #2166 (replace with a seeded @std/random generator). A small deterministic generator, so the same arguments always produce the same program.
-type Rng:
-    state: Int
-
-impl Rng:
-    var fn next(bound: Int) Int:
-        self.state = wrapping_add(
-            wrapping_multiply(self.state, 6364136223846793005), 1442695040888963407
-        )
-        return shift_right_unsigned(self.state, 33) % bound
-
-    var fn chance() Bool:
-        return self.next(100) < 70
+# Whether the next draw picks a nearby dependency (70% of draws).
+fn chance(var rng: SeededRandom) Bool:
+    return rng.int(0, 100) < 70
 
 type Dep:
     pkg: Int
     file: Int
 
-fn deps(var rng: Rng, files: Int, p: Int, f: Int) List[Dep]:
+fn deps(var rng: SeededRandom, files: Int, p: Int, f: Int) List[Dep]:
     let i = p * files + f
     var found = List[Dep]()
 
     for _n in 0..3:
         if i == 0: break
 
-        let low = if rng.chance(): (if i - 60 > 0: i - 60 else: 0) else: 0
+        let low = if chance(var rng): (if i - 60 > 0: i - 60 else: 0) else: 0
 
-        let j = low + rng.next(i - low)
+        let j = low + rng.int(0, i - low)
         let d = Dep(j / files, j % files)
         if not found.any(fn e: e.pkg == d.pkg and e.file == d.file): found.append(d)
 
@@ -144,7 +144,7 @@ fn go_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
     return q(b.join("\n")) + "\n"
 
 fn generate(out: String, packages: Int, files: Int, fns: Int) Unit:
-    var rng = Rng(1)
+    var rng = seeded(1)
     create_directory("{out}/ms/src", recursive: true).get()
     create_directory("{out}/go", recursive: true).get()
     write_text("{out}/go/go.mod", "module bigprog\n\ngo 1.21\n")

@@ -51,7 +51,7 @@ export fn first_queries() Bool:
 
 export fn first_converted(cause: Cause) Int!:
     let missing: Int? = none
-    return convert(missing, fn() Error: cause)
+    return convert(missing, fn() Error: cause.clone())
 
 export fn first_folded(cause: Cause) Error:
     var values = Map[String, Int]()

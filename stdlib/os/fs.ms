@@ -5,23 +5,55 @@ import ReadStream from "@std/io/io.ms"
 import Timestamp from "@std/os/time.ms"
 import WriteStream from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
-import msstd_fs_constants, msrt_path_basename, msrt_path_dirname, msrt_path_extension, msrt_path_is_absolute, msrt_path_join, msrt_path_normalize, msrt_path_basename_without, msrt_path_separator, msrt_path_delimiter, msrt_path_to_namespaced_path from "@std/internal/fs.ms"
-
-extern fn msstd_fs_filesystem() FileSystem
-
-extern fn msrt_path_relative(base: String, target: String) String!PathError
-
-extern fn msstd_fs_posix() PathOperations
-
-extern fn msstd_fs_win32() PathOperations
-
-extern fn msrt_path_resolve(base: String, parts: List[String]) String!PathError
-
-extern fn msrt_path_parse(path: String) PathParts
-
-extern fn msrt_path_format(parts: PathParts) String
-
-extern fn msrt_path_matches_glob(path: String, pattern: String) Bool!PathError
+import (
+    msstd_fs_constants,
+    msstd_path_basename,
+    msstd_path_dirname,
+    msstd_path_extension,
+    msstd_path_is_absolute,
+    msstd_path_join,
+    msstd_path_normalize,
+    msstd_path_basename_without,
+    msstd_path_separator,
+    msstd_path_delimiter,
+    msstd_path_to_namespaced_path,
+    msstd_fs_filesystem,
+    msstd_path_relative,
+    msstd_fs_posix,
+    msstd_fs_win32,
+    msstd_path_resolve,
+    msstd_path_parse,
+    msstd_path_format,
+    msstd_path_matches_glob,
+    msstd_fs_file_reader,
+    msstd_fs_file_writer,
+    msstd_io_close,
+    msstd_fs_file_clone,
+    msstd_io_read,
+    msstd_io_write,
+    msstd_io_write_bytes,
+    msstd_fs_file_read_at,
+    msstd_fs_file_write_at,
+    msstd_fs_file_read_file,
+    msstd_fs_file_read_vectors,
+    msstd_fs_file_write_vectors,
+    msstd_fs_file_seek,
+    msstd_fs_file_stat,
+    msstd_fs_file_truncate,
+    msstd_fs_file_sync,
+    msstd_fs_file_data_sync,
+    msstd_fs_file_chmod,
+    msstd_fs_file_chown,
+    msstd_fs_file_set_times,
+    msstd_fs_file_read_lines,
+    msstd_fs_directory_read,
+    msstd_fs_directory_path,
+    msstd_fs_directory_close,
+    msstd_fs_watch_next,
+    msstd_fs_watch_close,
+    msstd_fs_temporary_path,
+    msstd_fs_temporary_close
+) from "@std/internal/fs.ms"
 
 # Errors returned by filesystem operations. `Failed` retains the host error text.
 export type FileSystemError:
@@ -250,79 +282,6 @@ interface FileSystem:
 # The runtime handle behind a `FileHandle`.
 export extern type NativeFile
 
-extern fn msstd_fs_file_reader(file: NativeFile) ReadStream
-
-extern fn msstd_fs_file_writer(file: NativeFile) WriteStream
-
-extern fn msstd_io_close(file: NativeFile) Unit
-
-extern fn msstd_fs_file_clone(file: NativeFile) FileHandle!FileSystemError
-
-extern fn msstd_io_read(file: NativeFile, max_bytes: Int?) Bytes?!FileSystemError
-
-extern fn msstd_io_write(file: NativeFile, data: String) Unit!FileSystemError
-
-extern fn msstd_io_write_bytes(file: NativeFile, data: Bytes) Unit!FileSystemError
-
-extern fn msstd_fs_file_read_at(
-    file: NativeFile,
-    offset: Int,
-    max_bytes: Int?
-) Bytes!FileSystemError
-
-extern fn msstd_fs_file_write_at(
-    file: NativeFile,
-    offset: Int,
-    data: Bytes
-) Unit!FileSystemError
-
-extern fn msstd_fs_file_read_file(
-    file: NativeFile,
-    max_bytes: Int?
-) Bytes!FileSystemError
-
-extern fn msstd_fs_file_read_vectors(
-    file: NativeFile,
-    sizes: List[Int],
-    offset: Int
-) List[Bytes]!FileSystemError
-
-extern fn msstd_fs_file_write_vectors(
-    file: NativeFile,
-    buffers: List[Bytes],
-    offset: Int
-) Unit!FileSystemError
-
-extern fn msstd_fs_file_seek(
-    file: NativeFile,
-    offset: Int,
-    origin: Int
-) Int!FileSystemError
-
-extern fn msstd_fs_file_stat(file: NativeFile) FileInfo!FileSystemError
-
-extern fn msstd_fs_file_truncate(file: NativeFile, size: Int) Unit!FileSystemError
-
-extern fn msstd_fs_file_sync(file: NativeFile) Unit!FileSystemError
-
-extern fn msstd_fs_file_data_sync(file: NativeFile) Unit!FileSystemError
-
-extern fn msstd_fs_file_chmod(file: NativeFile, mode: Int) Unit!FileSystemError
-
-extern fn msstd_fs_file_chown(file: NativeFile, uid: Int, gid: Int) Unit!FileSystemError
-
-extern fn msstd_fs_file_set_times(
-    file: NativeFile,
-    accessed: Timestamp,
-    modified: Timestamp
-) Unit!FileSystemError
-
-extern fn msstd_fs_file_read_lines(
-    file: NativeFile,
-    max_bytes: Int?,
-    max_lines: Int?
-) List[String]!FileSystemError
-
 # An open file supporting sequential and positional I/O. It owns its descriptor: `close` it, or let
 # its binding go out of scope.
 export type FileHandle:
@@ -439,12 +398,6 @@ impl FileHandle:
 # The runtime handle behind a `Directory`.
 export extern type NativeDirectory
 
-extern fn msstd_fs_directory_read(dir: NativeDirectory) DirectoryEntry?!FileSystemError
-
-extern fn msstd_fs_directory_path(dir: NativeDirectory) String
-
-extern fn msstd_fs_directory_close(dir: NativeDirectory) Unit
-
 # An open directory that yields one child per read and must be closed.
 export type Directory:
     # The runtime handle for the open directory; it is released by `close` and owned by this value.
@@ -470,10 +423,6 @@ impl Directory:
 # The runtime handle behind a `FileWatcher`.
 export extern type NativeWatcher
 
-extern fn msstd_fs_watch_next(watcher: NativeWatcher) List[FileEvent]!FileSystemError
-
-extern fn msstd_fs_watch_close(watcher: NativeWatcher) Unit
-
 # A change stream returned by a filesystem watch operation.
 export type FileWatcher:
     # The runtime handle for the watch; it is released by `close` and owned by this value.
@@ -494,10 +443,6 @@ impl FileWatcher:
 
 # The runtime handle behind a `TemporaryDirectory`.
 export extern type NativeTemporary
-
-extern fn msstd_fs_temporary_path(temporary: NativeTemporary) String
-
-extern fn msstd_fs_temporary_close(temporary: NativeTemporary) Unit!FileSystemError
 
 # A temporary directory whose contents are removed when it is closed.
 export type TemporaryDirectory:
@@ -821,31 +766,31 @@ export type PathError:
 
 # Returns the final path component, excluding trailing separators.
 export fn basename(path: String) String:
-    return msrt_path_basename(path)
+    return msstd_path_basename(path)
 
 # Returns the directory portion of a path.
 export fn dirname(path: String) String:
-    return msrt_path_dirname(path)
+    return msstd_path_dirname(path)
 
 # Returns the final extension, including its leading dot, or an empty string.
 export fn extension(path: String) String:
-    return msrt_path_extension(path)
+    return msstd_path_extension(path)
 
 # Reports whether a path is absolute according to the host path rules.
 export fn is_absolute(path: String) Bool:
-    return msrt_path_is_absolute(path)
+    return msstd_path_is_absolute(path)
 
 # Joins path parts using the host separator and normalizes the result.
 export fn join(parts: List[String]) String:
-    return msrt_path_join(parts)
+    return msstd_path_join(parts)
 
 # Normalizes separators and dot segments without accessing the filesystem.
 export fn normalize(path: String) String:
-    return msrt_path_normalize(path)
+    return msstd_path_normalize(path)
 
 # Computes a relative path from `base` to `target` using host path rules.
 export fn relative(base: String, target: String) String!PathError:
-    return msrt_path_relative(base, target)
+    return msstd_path_relative(base, target)
 
 # Parsed path components using the familiar root, directory, base, extension, and name fields.
 export type PathParts:
@@ -904,35 +849,35 @@ export fn win32() PathOperations:
 
 # Returns the basename with the supplied suffix removed when it matches.
 export fn basename_without(path: String, suffix: String) String:
-    return msrt_path_basename_without(path, suffix)
+    return msstd_path_basename_without(path, suffix)
 
 # Resolves path parts against a base using host path conventions.
 export fn resolve(base: String, parts: List[String]) String!PathError:
-    return msrt_path_resolve(base, parts)
+    return msstd_path_resolve(base, parts)
 
 # Splits a path into its root, directory, base, extension, and name.
 export fn parse(path: String) PathParts:
-    return msrt_path_parse(path)
+    return msstd_path_parse(path)
 
 # Formats parsed path components as a path string.
 export fn format(parts: PathParts) String:
-    return msrt_path_format(parts)
+    return msstd_path_format(parts)
 
 # Returns the host's path separator.
 export fn separator() String:
-    return msrt_path_separator()
+    return msstd_path_separator()
 
 # Returns the host's path-list delimiter.
 export fn delimiter() String:
-    return msrt_path_delimiter()
+    return msstd_path_delimiter()
 
 # Converts a path to the host's namespaced representation when applicable.
 export fn to_namespaced_path(path: String) String:
-    return msrt_path_to_namespaced_path(path)
+    return msstd_path_to_namespaced_path(path)
 
 # Tests a path against a glob pattern.
 export fn matches_glob(path: String, pattern: String) Bool!PathError:
-    return msrt_path_matches_glob(path, pattern)
+    return msstd_path_matches_glob(path, pattern)
 
 impl Error for PathError:
     # Returns a path-prefixed diagnostic without revealing the supplied paths or pattern.

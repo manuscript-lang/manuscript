@@ -42,7 +42,7 @@ export fn first_generic() fn(Item) Int:
 
 test "first local extensions":
     let item = Item(2)
-    (item.get() != 12 or invoke(item) != 12 or relay(item) != 12) | try expect_false
+    (item.get() != 12 or invoke(item) != 12 or relay(item.clone()) != 12) | try expect_false
     as_view(item).get() | try expect_equal(12)
 
     let holder = Holder(item)

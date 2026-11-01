@@ -6,10 +6,6 @@ type Counter:
 fn bump(var c: Counter) Unit:
     c.n += 1
 
-fn from_param(c: Counter) Unit:
-    var d = c  # error: cannot copy
-    bump(var d)
-
 fn from_clone(c: Counter) Counter:
     return c.clone()  # error: cannot copy
 

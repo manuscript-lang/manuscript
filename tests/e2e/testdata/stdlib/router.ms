@@ -19,7 +19,14 @@ import http_client, serve from "@std/net/net.ms"
 import create, LogError, Transport from "@std/log.ms"
 import Shared from "@std/concurrency/shared.ms"
 import Bytes from "@std/bytes.ms"
-import access_log, request_id, RouteParams, Router, RouterError, with_request_headers from "@std/net/router.ms"
+import (
+    access_log,
+    request_id,
+    RouteParams,
+    Router,
+    RouterError,
+    with_request_headers
+) from "@std/net/router.ms"
 import body_stream from "@std/net/sse.ms"
 
 fn get(path: String) HttpRequest:

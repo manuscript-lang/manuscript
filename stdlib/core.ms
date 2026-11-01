@@ -1,4 +1,4 @@
-# Expected failures share this explicitly implemented diagnostic contract.
+# An optional diagnostic contract for expected failures at a common reporting boundary.
 # A contract for expected failures that can provide a human-readable message.
 export interface Error:
     # Returns a human-readable description of this expected error.
@@ -114,13 +114,13 @@ impl T?:
 
     # Returns ok with the original payload, or error with the eager cause.
     # Without a cause, E is MissingValue and the error names the calling source file and line.
-    fn ok_or[E: Error = MissingValue](cause: E?) T!E: ...
+    fn ok_or[E = MissingValue](cause: E?) T!E: ...
 
     # Constructs an error once only for none; present payloads remain unchanged.
-    fn ok_or_else[E: Error](create: fn() E) T!E: ...
+    fn ok_or_else[E](create: fn() E) T!E: ...
 
 # Holds either a successful value (`ok`) or an expected failure (`error`).
-export type Result[T, E: Error]:
+export type Result[T, E]:
     # A successful result, retaining its payload without a deep copy.
     case ok(
         # The successful value returned by unwrap, matching, or propagation.
@@ -153,7 +153,7 @@ impl T!E:
     fn or_else(create: fn(E) T!E) T!E: ...
 
     # Transforms only an error, preserving a successful payload unchanged.
-    fn map_error[F: Error](transform: fn(E) F) T!F: ...
+    fn map_error[F](transform: fn(E) F) T!F: ...
 
     # Transforms only a successful payload, preserving an error unchanged.
     fn map[U](transform: fn(T) U) U!E: ...
@@ -185,8 +185,8 @@ export interface Clonable:
 # anywhere inside. Bytes cross a boundary only as data, so `json.parse`, `json.stringify`, and the
 # message types of processes, workers, tasks and channels require `T: Data`.
 # There is nothing to implement. Records and alternatives are `Data` when every field is; among the collections
-# only `List` is, when its element is. A `Map` or `Set` is never `Data`, nor is a `Closeable` type or an `opaque type`; `JsonValue`
-# is `Data` by declaration, so a JSON object travels as a `JsonValue`.
+# only `List` is, when its element is, and a `Map[String, T]` is, when `T` is (it is a JSON object). A `Set` or a `Map` with another key type is never `Data`, nor is a `Closeable` type or an `opaque type`; `JsonValue`
+# is `Data` by declaration, so a dynamic JSON object travels as a `JsonValue`.
 export interface Data: ...
 
 # A type whose values are plain words in the runtime, so passing one duplicates it with a bit copy and

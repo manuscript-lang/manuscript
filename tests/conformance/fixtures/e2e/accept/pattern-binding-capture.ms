@@ -29,7 +29,7 @@ fn precise[T](result: Result[Int, Failure[T]]) Int:
 fn failure_reason(cause: Failure[String]) String:
     match cause:
         NotFound: return "missing"
-        Denied(reason): return reason
+        Denied(reason): return reason.clone()
 
 fn deliberate(result: Result[Int, Failure[String]]) String:
     match result:

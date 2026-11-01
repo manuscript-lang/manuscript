@@ -3,7 +3,12 @@ import http_result from "./support/http.ms"
 import headers, HttpMethod, buffered from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import http_client, request, serve, web_socket from "@std/net/net.ms"
-import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/net/http.ms"
+import (
+    HttpExchange,
+    HttpError,
+    HttpServerOptions,
+    HttpClientOptions
+) from "@std/net/http.ms"
 import WebSocketOptions, WebSocketError from "@std/net/net.ms"
 import TlsOptions from "@std/net/net.ms"
 

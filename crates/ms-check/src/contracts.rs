@@ -202,8 +202,8 @@ impl DataBlocker {
                 format!("add `{}: Data` to the type parameter", self.ty),
             ),
             DataReason::Collection => (
-                "a Map or Set, which has no portable form".to_string(),
-                "send a List, or a JsonValue object".to_string(),
+                "a Set or a Map whose key is not a String, which has no portable form".to_string(),
+                "send a List, a Map[String, T], or a JsonValue object".to_string(),
             ),
             DataReason::Opaque => (
                 "opaque".to_string(),
@@ -874,6 +874,13 @@ impl Checker {
             return t
                 .args
                 .first()
+                .and_then(|a| self.data_blocker(a, visiting, path));
+        }
+        if t.is_std("Map") && t.args.first().is_some_and(|k| k.id.as_str() == "String") {
+            // A `Map[String, T]` is a JSON object.
+            return t
+                .args
+                .get(1)
                 .and_then(|a| self.data_blocker(a, visiting, path));
         }
         if t.is_std("Map") || t.is_std("Set") {

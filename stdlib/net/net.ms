@@ -13,48 +13,49 @@ import HttpServerOptions from "@std/net/http.ms"
 import IoError from "@std/io/io.ms"
 import Timestamp from "@std/os/time.ms"
 import WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
-import msrt_url_encode_component from "@std/internal/net.ms"
-
-extern fn msrt_net_ip_address_text(value: IpAddress) String
-
-extern fn msrt_net_ip_address_family(value: IpAddress) Bool
-
-extern fn msrt_net_cidr_text(value: Cidr) String
-
-extern fn msrt_net_contains_ip(cidr: Cidr, address: IpAddress) Bool!NetworkError
-
-extern fn msrt_net_parse_cidr(text: String) Cidr!NetworkError
-
-extern fn msrt_net_parse_ip(text: String) IpAddress!NetworkError
-
-extern fn msrt_net_network() Network
-
-extern fn msrt_tls_parse_certificates(
-    pem: String,
-    max_certificates: Int?
-) List[CertificateInfo]!TlsError
-
-extern fn msrt_tls_verify_certificates(
-    chain_pem: String,
-    roots_pem: String,
-    server_name: String,
-    now: Timestamp
-) Unit!TlsError
-
-extern fn msrt_url_decode_component(text: String) String!UrlError
-
-extern fn msrt_url_format(value: Url) String!UrlError
-
-extern fn msrt_url_format_query(entries: List[QueryEntry]) String
-
-extern fn msrt_url_parse(text: String) Url!UrlError
-
-extern fn msrt_url_parse_query(
-    text: String,
-    max_entries: Int?
-) List[QueryEntry]!UrlError
-
-extern fn msrt_url_resolve(base: Url, reference: String) Url!UrlError
+import (
+    msstd_url_encode_component,
+    msstd_net_ip_address_text,
+    msstd_net_ip_address_family,
+    msstd_net_cidr_text,
+    msstd_net_contains_ip,
+    msstd_net_parse_cidr,
+    msstd_net_parse_ip,
+    msstd_net_network,
+    msstd_tls_parse_certificates,
+    msstd_tls_verify_certificates,
+    msstd_url_decode_component,
+    msstd_url_format,
+    msstd_url_format_query,
+    msstd_url_parse,
+    msstd_url_parse_query,
+    msstd_url_resolve,
+    msstd_net_connection_close,
+    msstd_net_connection_local_address,
+    msstd_net_connection_peer_address,
+    msstd_net_connection_read,
+    msstd_net_connection_clone,
+    msstd_net_connection_shutdown_write,
+    msstd_net_connection_tls_info,
+    msstd_net_connection_write,
+    msstd_net_connection_write_bytes,
+    msstd_net_datagram_address,
+    msstd_net_datagram_close,
+    msstd_net_datagram_receive,
+    msstd_net_datagram_send,
+    msstd_net_datagram_send_bytes,
+    msstd_net_listener_accept,
+    msstd_net_listener_accept_raw,
+    msstd_net_listener_address,
+    msstd_net_listener_close,
+    msstd_websocket_close,
+    msstd_websocket_ping,
+    msstd_websocket_ping_bytes,
+    msstd_websocket_receive,
+    msstd_websocket_send,
+    msstd_websocket_send_bytes,
+    msstd_websocket_subprotocol
+) from "@std/internal/net.ms"
 
 # Errors returned by socket, DNS, and network connection operations.
 export type NetworkError:
@@ -81,36 +82,6 @@ export type NetworkError:
 # The runtime handle behind a `Connection`.
 export extern type NativeConnection
 
-extern fn msrt_net_connection_close(handle: NativeConnection) Unit
-
-extern fn msrt_net_connection_local_address(handle: NativeConnection) String
-
-extern fn msrt_net_connection_peer_address(handle: NativeConnection) String
-
-extern fn msrt_net_connection_read(
-    handle: NativeConnection,
-    max_bytes: Int?,
-    timeout: Duration?
-) Bytes?!IoError
-
-extern fn msrt_net_connection_clone(handle: NativeConnection) Connection!NetworkError
-
-extern fn msrt_net_connection_shutdown_write(handle: NativeConnection) Unit!NetworkError
-
-extern fn msrt_net_connection_tls_info(handle: NativeConnection) TlsInfo!TlsError
-
-extern fn msrt_net_connection_write(
-    handle: NativeConnection,
-    data: String,
-    timeout: Duration?
-) Unit!IoError
-
-extern fn msrt_net_connection_write_bytes(
-    handle: NativeConnection,
-    data: Bytes,
-    timeout: Duration?
-) Unit!IoError
-
 # A connected stream socket, optionally protected by TLS.
 # Several tasks may wait on one connection: each `read` parks until data arrives, and tasks are woken together, so the one that finds data proceeds and the rest wait again. Writers sharing a connection should serialize whole messages themselves.
 export type Connection:
@@ -121,46 +92,46 @@ impl Closeable for Connection:
     # Closes the socket, interrupting calls in progress, and waits for them to stop.
     # Safe to call repeatedly; later calls wait for the first. Reads and writes afterwards return Closed.
     var fn close() Unit!:
-        msrt_net_connection_close(self.native)
+        msstd_net_connection_close(self.native)
         return ok(unit)
 
 impl Connection:
     # Returns this end's address as `host:port` text, with IPv6 hosts in brackets; for Unix sockets it is the socket path.
     fn local_address() String:
-        return msrt_net_connection_local_address(self.native)
+        return msstd_net_connection_local_address(self.native)
 
     # Returns the remote end's address as `host:port` text, with IPv6 hosts in brackets.
     fn peer_address() String:
-        return msrt_net_connection_peer_address(self.native)
+        return msstd_net_connection_peer_address(self.native)
 
     # Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout.
     fn read(max_bytes: Int?, timeout: Duration?) Bytes?!IoError:
-        return msrt_net_connection_read(self.native, max_bytes, timeout)
+        return msstd_net_connection_read(self.native, max_bytes, timeout)
 
     # Returns a second connection over a duplicate of the socket, which closes on its own, so one task
     # can read while another writes. Both share the stream: bytes read through one are not seen by the other.
     # While a clone is open, closing a copy closes only its descriptor: the peer sees no end of stream, and a call parked on the closed copy ends at its timeout or the next data.
     # Returns Unsupported for a TLS connection, whose session state cannot be shared, and Closed on a closed connection.
     fn clone() Connection!NetworkError:
-        return msrt_net_connection_clone(self.native)
+        return msstd_net_connection_clone(self.native)
 
     # Half-closes the connection so the peer sees end of stream, while this side can keep reading.
     # Returns Unsupported for stream kinds that cannot half-close, and Closed on a closed connection.
     fn shutdown_write() Unit!NetworkError:
-        return msrt_net_connection_shutdown_write(self.native)
+        return msstd_net_connection_shutdown_write(self.native)
 
     # Returns the negotiated TLS version, cipher suite, protocol, and peer certificates.
     # A connection that is not TLS returns InvalidInput.
     fn tls_info() TlsInfo!TlsError:
-        return msrt_net_connection_tls_info(self.native)
+        return msstd_net_connection_tls_info(self.native)
 
     # Writes all bytes on success; failure can leave a prefix. Local timeout uses IoError.Failed.
     fn write(data: String, timeout: Duration?) Unit!IoError:
-        return msrt_net_connection_write(self.native, data, timeout)
+        return msstd_net_connection_write(self.native, data, timeout)
 
     # Writes raw bytes with the same rules as write.
     fn write_bytes(data: Bytes, timeout: Duration?) Unit!IoError:
-        return msrt_net_connection_write_bytes(self.native, data, timeout)
+        return msstd_net_connection_write_bytes(self.native, data, timeout)
 
 # One datagram and the address from which it was received.
 export type Datagram:
@@ -172,30 +143,6 @@ export type Datagram:
 # The runtime handle behind a `DatagramSocket`.
 export extern type NativeDatagramSocket
 
-extern fn msrt_net_datagram_address(handle: NativeDatagramSocket) String
-
-extern fn msrt_net_datagram_close(handle: NativeDatagramSocket) Unit
-
-extern fn msrt_net_datagram_receive(
-    handle: NativeDatagramSocket,
-    max_bytes: Int?,
-    timeout: Duration?
-) Datagram!NetworkError
-
-extern fn msrt_net_datagram_send(
-    handle: NativeDatagramSocket,
-    data: String,
-    address: String,
-    timeout: Duration?
-) Unit!NetworkError
-
-extern fn msrt_net_datagram_send_bytes(
-    handle: NativeDatagramSocket,
-    data: Bytes,
-    address: String,
-    timeout: Duration?
-) Unit!NetworkError
-
 # A connectionless socket for sending and receiving datagrams.
 export type DatagramSocket:
     # The runtime handle; it is released by `close` and owned by this value.
@@ -205,27 +152,27 @@ impl Closeable for DatagramSocket:
     # Closes the socket, interrupting calls in progress, and waits for them to stop.
     # Safe to call repeatedly.
     var fn close() Unit!:
-        msrt_net_datagram_close(self.native)
+        msstd_net_datagram_close(self.native)
         return ok(unit)
 
 impl DatagramSocket:
     # Returns the bound local address as `host:port` text, which reveals the port chosen when binding port 0.
     fn address() String:
-        return msrt_net_datagram_address(self.native)
+        return msstd_net_datagram_address(self.native)
 
     # Waits for one datagram and returns its bytes with the sender's address. `max_bytes` is 1 through 65535 and defaults to 65535.
     # A larger datagram returns LimitExceeded and is discarded. A timeout returns Timeout and a closed socket returns Closed.
     fn receive(max_bytes: Int?, timeout: Duration?) Datagram!NetworkError:
-        return msrt_net_datagram_receive(self.native, max_bytes, timeout)
+        return msstd_net_datagram_receive(self.native, max_bytes, timeout)
 
     # Sends `data` as a single datagram to `address` (`host:port`), resolving a host name with the network's resolver.
     # The network's restrictions apply to both the name and the resolved address. A short send returns Failed; a timeout returns Timeout.
     fn send(data: String, address: String, timeout: Duration?) Unit!NetworkError:
-        return msrt_net_datagram_send(self.native, data, address, timeout)
+        return msstd_net_datagram_send(self.native, data, address, timeout)
 
     # Sends raw bytes as a single datagram with the same rules as send.
     fn send_bytes(data: Bytes, address: String, timeout: Duration?) Unit!NetworkError:
-        return msrt_net_datagram_send_bytes(self.native, data, address, timeout)
+        return msstd_net_datagram_send_bytes(self.native, data, address, timeout)
 
 # Supported DNS query categories; unknown spellings are rejected by checking.
 export type DnsKind:
@@ -281,11 +228,11 @@ impl Data for IpAddress:
 impl IpAddress:
     # Returns canonical text; mapped IPv6 input is normalized to IPv4.
     fn text() String:
-        return msrt_net_ip_address_text(self)
+        return msstd_net_ip_address_text(self)
 
     # Returns the normalized address family.
     fn family() IpFamily:
-        if msrt_net_ip_address_family(self):
+        if msstd_net_ip_address_family(self):
             return IPv6
 
         return IPv4
@@ -298,7 +245,7 @@ impl Data for Cidr:
 impl Cidr:
     # Returns the canonical masked prefix without reparsing.
     fn text() String:
-        return msrt_net_cidr_text(self)
+        return msstd_net_cidr_text(self)
 
 # DNS record data returned by a typed lookup.
 export type DnsRecord:
@@ -316,20 +263,6 @@ export type DnsRecord:
 # The runtime handle behind a `Listener`.
 export extern type NativeListener
 
-extern fn msrt_net_listener_accept(
-    handle: NativeListener,
-    timeout: Duration?
-) Connection!NetworkError
-
-extern fn msrt_net_listener_accept_raw(
-    handle: NativeListener,
-    timeout: Duration?
-) Int!NetworkError
-
-extern fn msrt_net_listener_address(handle: NativeListener) String
-
-extern fn msrt_net_listener_close(handle: NativeListener) Unit
-
 # A listening socket that accepts incoming connections.
 # Several tasks may call `accept` on one listener (an accept pool); each incoming connection goes to exactly one of them.
 export type Listener:
@@ -340,35 +273,35 @@ impl Closeable for Listener:
     # Stops accepting, interrupts a pending `accept`, and waits for it to stop.
     # Safe to call repeatedly; connections already accepted stay open.
     var fn close() Unit!:
-        msrt_net_listener_close(self.native)
+        msstd_net_listener_close(self.native)
         return ok(unit)
 
 impl Listener:
     # Waits for the next incoming connection and returns it. A timeout returns Timeout and a closed listener returns Closed.
     # On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and returns Failed.
     fn accept(timeout: Duration?) Connection!NetworkError:
-        return msrt_net_listener_accept(self.native, timeout)
+        return msstd_net_listener_accept(self.native, timeout)
 
     # Waits for the next incoming connection and returns its socket handle without wrapping it, to give to `HttpServer.adopt` (on this or another thread). The caller owns the handle until then; one that is never adopted leaks its socket.
     # A timeout returns Timeout and a closed listener returns Closed. A TLS listener returns InvalidInput: the adopting server performs the handshake.
     fn accept_raw(timeout: Duration?) Int!NetworkError:
-        return msrt_net_listener_accept_raw(self.native, timeout)
+        return msstd_net_listener_accept_raw(self.native, timeout)
 
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
     fn address() String:
-        return msrt_net_listener_address(self.native)
+        return msstd_net_listener_address(self.native)
 
 # Reports whether an IP address belongs to a CIDR range.
 export fn contains_ip(cidr: Cidr, address: IpAddress) Bool!NetworkError:
-    return msrt_net_contains_ip(cidr, address)
+    return msstd_net_contains_ip(cidr, address)
 
 # Validates and canonicalizes an IPv4 or IPv6 CIDR range.
 export fn parse_cidr(text: String) Cidr!NetworkError:
-    return msrt_net_parse_cidr(text)
+    return msstd_net_parse_cidr(text)
 
 # Validates and canonicalizes an IPv4 or IPv6 address.
 export fn parse_ip(text: String) IpAddress!NetworkError:
-    return msrt_net_parse_ip(text)
+    return msstd_net_parse_ip(text)
 
 impl Error for NetworkError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `network: <reason>`.
@@ -498,7 +431,7 @@ export interface Network:
 
 # The network of the current host.
 fn host_network() Network:
-    return msrt_net_network()
+    return msstd_net_network()
 
 # Errors returned when TLS configuration, certificates, or peer authentication fail.
 export type TlsError:
@@ -560,7 +493,7 @@ export fn parse_certificates(
     pem: String,
     max_certificates: Int?
 ) List[CertificateInfo]!TlsError:
-    return msrt_tls_parse_certificates(pem, max_certificates)
+    return msstd_tls_parse_certificates(pem, max_certificates)
 
 # Verifies a PEM certificate chain against roots, name constraints, and the supplied time.
 export fn verify_certificates(
@@ -569,7 +502,7 @@ export fn verify_certificates(
     server_name: String,
     now: Timestamp
 ) Unit!TlsError:
-    return msrt_tls_verify_certificates(chain_pem, roots_pem, server_name, now)
+    return msstd_tls_verify_certificates(chain_pem, roots_pem, server_name, now)
 
 impl Error for TlsError:
     # Returns the fixed diagnostic `TLS: <reason>`, such as `TLS: authentication failed`, without echoing certificate text.
@@ -613,32 +546,32 @@ export type Url:
 
 # Decodes one percent-encoded URL component. `+` is not treated as a space.
 export fn decode_component(text: String) String!UrlError:
-    return msrt_url_decode_component(text)
+    return msstd_url_decode_component(text)
 
 # Percent-encodes one URL component using UTF-8 bytes.
 export fn encode_component(text: String) String:
-    return msrt_url_encode_component(text)
+    return msstd_url_encode_component(text)
 
 # Formats URL components as an absolute hierarchical URL.
 # Missing or malformed schemes and hostless relative paths return InvalidInput, as do other invalid components.
 export fn format(value: Url) String!UrlError:
-    return msrt_url_format(value)
+    return msstd_url_format(value)
 
 # Encodes query entries as a query string.
 export fn format_query(entries: List[QueryEntry]) String:
-    return msrt_url_format_query(entries)
+    return msstd_url_format_query(entries)
 
 # Parses an absolute URL into its components.
 export fn parse(text: String) Url!UrlError:
-    return msrt_url_parse(text)
+    return msstd_url_parse(text)
 
 # Parses a query string, preserving duplicate keys and their input order.
 export fn parse_query(text: String, max_entries: Int?) List[QueryEntry]!UrlError:
-    return msrt_url_parse_query(text, max_entries)
+    return msstd_url_parse_query(text, max_entries)
 
 # Resolves a relative reference against a base URL.
 export fn resolve(base: Url, reference: String) Url!UrlError:
-    return msrt_url_resolve(base, reference)
+    return msstd_url_resolve(base, reference)
 
 impl Error for UrlError:
     # Returns a URL-prefixed diagnostic without echoing addresses, query values or credentials.
@@ -671,29 +604,6 @@ export type WebSocketError:
 # The runtime handle behind a `WebSocket`.
 export extern type NativeWebSocket
 
-extern fn msrt_websocket_close(handle: NativeWebSocket) Unit
-
-extern fn msrt_websocket_ping(handle: NativeWebSocket, data: String) Unit!WebSocketError
-
-extern fn msrt_websocket_ping_bytes(
-    handle: NativeWebSocket,
-    data: Bytes
-) Unit!WebSocketError
-
-extern fn msrt_websocket_receive(
-    handle: NativeWebSocket
-) WebSocketMessage?!WebSocketError
-
-extern fn msrt_websocket_send(handle: NativeWebSocket, data: String) Unit!WebSocketError
-
-extern fn msrt_websocket_send_bytes(
-    handle: NativeWebSocket,
-    data: Bytes,
-    text: Bool
-) Unit!WebSocketError
-
-extern fn msrt_websocket_subprotocol(handle: NativeWebSocket) String
-
 # A WebSocket connection. Send and receive byte messages with an explicit text flag.
 export type WebSocket:
     # The runtime handle; it is released by `close` and owned by this value.
@@ -703,36 +613,36 @@ impl Closeable for WebSocket:
     # Sends a normal-closure frame, waiting at most about 100 ms to write it, then closes the connection and waits for in-flight calls to stop.
     # Safe to call repeatedly; later calls wait for the first.
     var fn close() Unit!:
-        msrt_websocket_close(self.native)
+        msstd_websocket_close(self.native)
         return ok(unit)
 
 impl WebSocket:
     # Sends a ping frame carrying `data`, which must be at most 125 bytes, with a one-second write deadline.
     # It does not wait for the pong. Returns Closed on a closed socket.
     fn ping(data: String) Unit!WebSocketError:
-        return msrt_websocket_ping(self.native, data)
+        return msstd_websocket_ping(self.native, data)
 
     # Sends a ping frame carrying raw bytes, with the same limits and deadline as ping.
     fn ping_bytes(data: Bytes) Unit!WebSocketError:
-        return msrt_websocket_ping_bytes(self.native, data)
+        return msstd_websocket_ping_bytes(self.native, data)
 
     # Waits for the next complete message and returns it, or none once the peer closes normally.
     # A larger message returns LimitExceeded and a malformed text message InvalidData; after any receive failure the connection is closed. One receive runs at a time, and others wait their turn.
     fn receive() WebSocketMessage?!WebSocketError:
-        return msrt_websocket_receive(self.native)
+        return msstd_websocket_receive(self.native)
 
     # Sends `data` as one text message; a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
     fn send(data: String) Unit!WebSocketError:
-        return msrt_websocket_send(self.native, data)
+        return msstd_websocket_send(self.native, data)
 
     # Sends `data` as one message, a text frame when `text` is True and a binary frame (the default) otherwise.
     # Text must be valid UTF-8 or the call returns InvalidData, and a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
     fn send_bytes(data: Bytes, text: Bool = false) Unit!WebSocketError:
-        return msrt_websocket_send_bytes(self.native, data, text)
+        return msstd_websocket_send_bytes(self.native, data, text)
 
     # Returns the subprotocol the server selected during the handshake, or an empty string when none was negotiated.
     fn subprotocol() String:
-        return msrt_websocket_subprotocol(self.native)
+        return msstd_websocket_subprotocol(self.native)
 
 # A received message and whether its payload is UTF-8 text.
 export type WebSocketMessage:

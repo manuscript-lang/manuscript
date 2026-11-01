@@ -13,7 +13,6 @@ ms-check = { path = "../ms-check" }
 ms-mir = { path = "../ms-mir" }
 ms-clif = { path = "../ms-clif" }
 ms-lower = { path = "../ms-lower" }
-sha2 = { version = "0.11", default-features = false }
 
 [dev-dependencies]
 ms-rt = { path = "../ms-rt" }

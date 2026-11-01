@@ -15,7 +15,7 @@ impl Doc:
         var best = 0
         for i in 0..self.lines.length():
             if self.lines[i].length() > self.lines[best].length(): best = i
-        return self.lines[best].clone()
+        return self.lines[best] # lends
 
 fn load(path: String) Result[Doc, Error]:
     let f = try open(path, flags: "r", mode: 0)
@@ -45,13 +45,13 @@ export fn main() Int:
 - Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)` or `T(1)`; alternatives `case A`, `case B(x: Int)`. Methods in `impl T:` (`var fn` mutates `self`), never in `type`; `interface I:` with `impl I for T:`, and a `T` passes where `I` is expected.
 - `T?` (Optional): plain values convert (no `some`); `none` is absent; unwrap with `if let x = v:` or `.get(d)`; `a?.b`.
 - `match v:` only on your own types: `Case(x):`, `_:`, exhaustive. Never match `Result`/`Optional` or nest `match`.
-- Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` implements `Error`, which has `.message()`. `try r` gives the `ok` value or returns the error from the current function. `if let x = r:` runs only on success and ignores the error.
+- Errors: `T!E` (`Result[T, E]`) is `ok(v)` / `error(e)`; E needs no interface. Bare `T!` selects `Error`, whose implementations have `.message()`. `try r` gives the value or returns a compatible error; `if let x = r:` handles success.
 - Faults (`panic`, failed `get()`) abort the program, not a `Result`.
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`.
 - Ownership: every `String`, list, map, record and alternative has one owner: a variable, field or element. `Int`, `Float`, `Bool` copy freely (no `.clone()`). `let` is immutable including contents: `let xs = [1]; xs.append(2)` fails, write `var xs`.
-- Move: giving a value to a new owner (`xs.append(s)`, a field, `return`, a parameter the callee keeps) kills the old name, so `xs.append(s.clone())` unless it is the last use.
-- Borrow: `xs[i]`, `let x = a.b`, loop variables, match payloads and read-only parameters cannot be moved or stored, and a field or element cannot move out: `names.append(u.name.clone())`, `out.append(first.clone())`.
-- A result owns its value: a fn returning part of a parameter or receiver returns `.clone()`: `fn name(u: User) String: return u.name.clone()`. The compiler elides the copy when the source is dead.
+- Borrow: `let b = a`, `let x = a.b`, `xs[i]`, arguments, loop variables and match payloads read the owner's value in place; while `b` is used, `a` cannot change. `var x = a.b` changes `a.b` through `x`.
+- Move: storing a value (`xs.append(s)`, a field, a list) gives it a new owner and kills the old name, so `xs.append(s.clone())` unless it is the last use. A borrowed part cannot be stored: `names.append(u.name.clone())`.
+- A fn returning part of a parameter or receiver lends it, no `.clone()`: `fn name(u: User) String: return u.name`; the caller reads it in place, `.clone()` to keep it. A sibling path returning a new value needs `.clone()` on the lent path.
 - `export opaque type T:` hides fields and cases outside its file.
 - `var` parameter: `fn add(var xs: List[Int])`, called `add(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints: `ms lint`/`ms verify` fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail check (prefix `_`).

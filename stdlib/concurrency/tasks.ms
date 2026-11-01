@@ -2,7 +2,24 @@ import Channel, ChannelError, Transport from "@std/io/channels.ms"
 import Closeable, panic from "@std/core.ms"
 import Shared from "@std/concurrency/shared.ms"
 import Duration from "@std/os/time.ms"
-import msrt_scope_new, msrt_scope_spawn, msrt_scope_contain, msrt_scope_fault_message, msrt_scope_started, msrt_task_cancel_requested, msrt_scope_join, msrt_scope_wait, msrt_scope_close, msrt_channel_token, msrt_channel_park, msrt_channel_post, msrt_obj_share from "@std/internal/tasks.ms"
+import (
+    msrt_scope_new,
+    msrt_scope_spawn,
+    msrt_scope_contain,
+    msrt_scope_fault_message,
+    msrt_scope_started,
+    msrt_task_cancel_requested,
+    msrt_scope_join,
+    msrt_scope_wait,
+    msrt_scope_close,
+    msrt_channel_token,
+    msrt_channel_park,
+    msrt_channel_post,
+    msrt_obj_share,
+    msrt_channel_group_new,
+    msrt_channel_group_add,
+    msrt_channel_group_close
+) from "@std/internal/tasks.ms"
 
 # Internal lifetime tracker for the group's channels; it never owns its channel leases.
 export extern type TaskChannels
@@ -14,12 +31,6 @@ impl TaskChannelLease:
     # Another holder of the same lease: the channel closes when the last holder is released.
     fn clone() TaskChannelLease:
         return msrt_obj_share(self)
-
-extern fn msrt_channel_group_new() TaskChannels
-
-extern fn msrt_channel_group_add(group: TaskChannels, close: fn() Unit) TaskChannelLease
-
-extern fn msrt_channel_group_close(group: TaskChannels) Unit
 
 # Why a task produced no result.
 export type TaskError:
@@ -369,11 +380,13 @@ impl TaskGroup[T, In, Out]:
             return error(TaskError.Closed)
 
         var values = List[T]()
+        let handles = self.tasks.keys()
 
-        for handle in self.tasks.keys():
-            if let found = self.tasks.get(handle):
-                var next = found
-                let value = next.collect(self.scope)
+        for handle in handles:
+            if self.tasks.contains(handle):
+                # A copy of the entry: the wait parks, so it holds no box.
+                var found = self.tasks[handle]
+                let value = found.collect(self.scope)
                 self.tasks.remove(handle)
                 values.append(try value)
 

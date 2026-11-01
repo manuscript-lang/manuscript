@@ -84,6 +84,13 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         program.borrowed_captures = Rc::new(own.borrowed_captures);
         program.escaping_lambdas = Rc::new(own.escaping_lambdas);
         program.consumes = Rc::new(own.consumes);
+        program.lenders = Rc::new(own.lenders);
+        program.view_lenders = Rc::new(own.view_lenders);
+        program.view_wraps = Rc::new(own.view_wraps);
+        program.view_moves = Rc::new(own.view_moves);
+        program.owned_lends = Rc::new(own.owned_lends);
+        program.lent_matches = Rc::new(own.lent_matches);
+        program.getter_borrows = Rc::new(own.getter_borrows);
         program.diagnostics.extend(own.diagnostics);
     }
     if program.diagnostics.is_empty() {

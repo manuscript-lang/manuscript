@@ -1,15 +1,11 @@
 # conform: tags=alternatives,control-flow,decimal,diagnostics,interfaces,match,records,strings,tier-core,try-result
 # conform: phase=check
 # conform: origin=documentation/core-language/errors/results.md:14
+import Decimal from "@std/math/decimal.ms"
+
 type DiscountError:
     case InvalidPrice
     case InvalidPercent
-
-impl Error for DiscountError:
-    fn message() String:
-        match self:
-            InvalidPrice: return "invalid price"
-            InvalidPercent: return "invalid percent"
 
 fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
     if price < 0d:

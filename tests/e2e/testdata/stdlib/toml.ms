@@ -234,7 +234,7 @@ test "TOML stringify requires a table root and honors max_bytes":
 
 fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
-    if count == 1: return text
+    if count == 1: return text.clone()
 
     let half = repeated(text: text.clone(), count: count / 2)
     if count % 2 == 1: return half.concat(half).concat(text)

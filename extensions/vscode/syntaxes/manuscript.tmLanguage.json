@@ -6,6 +6,12 @@
       "match": "#.*$"
     },
     {
+      "include": "#raw-multiline-string"
+    },
+    {
+      "include": "#multiline-string"
+    },
+    {
       "include": "#string"
     },
     {
@@ -76,6 +82,51 @@
     }
   ],
   "repository": {
+    "multiline-string": {
+      "name": "string.quoted.triple.manuscript",
+      "begin": "\"\"\"",
+      "end": "\"\"\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.manuscript",
+          "match": "\\\\(?:u\\{[0-9A-Fa-f]{1,6}\\}|[\"\\\\nrt{}])"
+        },
+        {
+          "name": "meta.interpolation.manuscript",
+          "begin": "\\{",
+          "end": "\\}",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.section.interpolation.begin.manuscript"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.section.interpolation.end.manuscript"
+            }
+          },
+          "patterns": [
+            {
+              "begin": "\\{",
+              "end": "\\}",
+              "patterns": [
+                {
+                  "include": "$self"
+                }
+              ]
+            },
+            {
+              "include": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    "raw-multiline-string": {
+      "name": "string.quoted.other.raw.manuscript",
+      "begin": "r\"\"\"",
+      "end": "\"\"\""
+    },
     "string": {
       "name": "string.quoted.double.manuscript",
       "begin": "\"",

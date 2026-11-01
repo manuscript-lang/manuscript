@@ -17,6 +17,16 @@ pub use classify::{Class, Classifier};
 pub use modes::{CallModes, ParamMode};
 pub use places::{Place, Step};
 
+/// How the caller comes to own the result of a lending call over a temporary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OwnedLend {
+    /// The result is a part of the temporary: copied out before the temporary is dropped.
+    Copy,
+    /// The result is the whole temporary passed as the receiver (`None`) or as the parameter
+    /// with this label: the caller keeps the temporary instead of dropping it, no copy.
+    Whole(Option<Name>),
+}
+
 use crate::hir::*;
 use crate::types::*;
 use modes::{Key, Summaries};
@@ -166,6 +176,27 @@ pub struct CallableOwnership {
     pub parameters: Vec<ParamMode>,
     /// The receiver's mode, for a method.
     pub receiver: Option<ParamMode>,
+    /// The result is a reference into the receiver or a parameter on every path: lowering
+    /// returns it without copying, and the caller holds it without dropping.
+    pub lends: bool,
+    /// With `lends`: the result is an owned interface view of the arguments (a converted lent
+    /// value, `iface.lend`): the caller drops it and holds the arguments while it lives.
+    pub view: bool,
+    /// Wrappers of a lent value (`x` as `x?`, `ok(x)`, `error(x)`) that stay references:
+    /// lowering builds them with `opt.view` / `alt.view` instead of copying the payload.
+    pub view_wraps: HashSet<NodeId>,
+    /// Name expressions that move an interface view out of the local holding it, into a result
+    /// that holds the same origins: lowering takes the value and leaves a view that owns nothing.
+    pub view_moves: HashSet<NodeId>,
+    /// Calls of lending callables whose sources are temporaries: the caller owns the result,
+    /// by taking the temporary over or by a copy made before it is dropped.
+    pub owned_lends: HashMap<NodeId, OwnedLend>,
+    /// Calls bound with `var` as an exclusive borrow of the field chain the callee returns, by
+    /// call node: lowering names that place instead of calling.
+    pub getter_borrows: HashMap<NodeId, Vec<Name>>,
+    /// Conditional and match expressions whose value is a reference on every arm: lowering
+    /// joins the arms without copying.
+    pub lent_matches: HashSet<NodeId>,
 }
 
 impl CallableOwnership {
@@ -204,6 +235,23 @@ pub struct Ownership {
     /// For each callable with a `Consume` parameter or receiver, which parameters (declaration
     /// order, the receiver first for a method) the body moves, stores or returns.
     pub consumes: HashMap<Key, Vec<bool>>,
+    /// Callables whose result is a reference into their arguments.
+    pub lenders: HashSet<Key>,
+    /// Callables whose result is an owned interface view of their arguments: the caller drops
+    /// it and holds the arguments while it lives (`ret_view` in MIR).
+    pub view_lenders: HashSet<Key>,
+    /// Wrappers of lent values that stay references, by module file and node.
+    pub view_wraps: HashSet<(Name, NodeId)>,
+    /// Name expressions moving an interface view out of its local, by module file and node.
+    pub view_moves: HashSet<(Name, NodeId)>,
+    /// Lending calls whose result the caller owns (a source was a temporary), by module file and
+    /// call node.
+    pub owned_lends: HashMap<(Name, NodeId), OwnedLend>,
+    /// `var` bindings of a lending call, by module file and call node: the field chain of the
+    /// argument the binding borrows exclusively.
+    pub getter_borrows: HashMap<(Name, NodeId), Vec<Name>>,
+    /// Conditional and match expressions whose value is a reference, by module file and node.
+    pub lent_matches: HashSet<(Name, NodeId)>,
 }
 
 impl Ownership {
@@ -289,7 +337,34 @@ impl Hir<'_> {
         let mut borrowed_captures = HashSet::new();
         let mut escaping_lambdas = HashSet::new();
         let mut consumes = HashMap::new();
+        let mut lenders = HashSet::new();
+        let mut view_lenders = HashSet::new();
+        let mut view_wraps = HashSet::new();
+        let mut view_moves = HashSet::new();
+        let mut owned_lends = HashMap::new();
+        let mut getter_borrows = HashMap::new();
+        let mut lent_matches = HashSet::new();
         for (c, out) in callables.iter().zip(outcomes) {
+            lent_matches.extend(out.facts.lent_matches.iter().map(|n| (c.module.file, *n)));
+            if out.facts.lends && out.facts.view {
+                view_lenders.insert((c.module.file, c.id()));
+            } else if out.facts.lends {
+                lenders.insert((c.module.file, c.id()));
+            }
+            view_wraps.extend(out.facts.view_wraps.iter().map(|n| (c.module.file, *n)));
+            view_moves.extend(out.facts.view_moves.iter().map(|n| (c.module.file, *n)));
+            owned_lends.extend(
+                out.facts
+                    .owned_lends
+                    .iter()
+                    .map(|(n, how)| ((c.module.file, *n), *how)),
+            );
+            getter_borrows.extend(
+                out.facts
+                    .getter_borrows
+                    .iter()
+                    .map(|(n, f)| ((c.module.file, *n), f.clone())),
+            );
             for (node, lambda) in &out.facts.lambdas {
                 if lambda.escaping {
                     escaping_lambdas.insert((c.module.file, *node));
@@ -345,6 +420,13 @@ impl Hir<'_> {
             borrowed_captures,
             escaping_lambdas,
             consumes,
+            lenders,
+            view_lenders,
+            view_wraps,
+            view_moves,
+            owned_lends,
+            getter_borrows,
+            lent_matches,
         }
     }
 }

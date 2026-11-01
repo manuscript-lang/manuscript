@@ -1,7 +1,27 @@
 # Builds Release Manuscript reproductions of the List workloads (bench/lists/program.ms) and measures native wall time and peak RSS.
 # Usage: ms run bench/tools/lists_native.ms -- --cli MS --output DIR [--runs 3] [--cpu N]
-# Peak RSS needs a C compiler (bench/perf/representative/rss.c) and a Unix host; --cpu pins executions with `taskset` (Linux).
-import absolute, build_rss, dump, ensure_directory, fail, file_sha256, finish, jfloat, jint, jlist, jobject, jstr, median, must, capture, now_ns, options, read_text, rss_run, write_text from "./lib.ms"
+# --cpu pins executions with `taskset` (Linux).
+import (
+    absolute,
+    dump,
+    ensure_directory,
+    fail,
+    file_sha256,
+    finish,
+    jfloat,
+    jint,
+    jlist,
+    jobject,
+    jstr,
+    median,
+    must,
+    capture,
+    now_ns,
+    options,
+    peak_run,
+    read_text,
+    write_text
+) from "./lib.ms"
 import arguments from "@std/os/process.ms"
 import JsonValue from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
@@ -23,7 +43,6 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 
     let cli = absolute(opts.get("cli").get(""))
     let cpu = opts.get("cpu").get("")
-    let rss = try build_rss(out)
     let source = read_text("bench/lists/program.ms")
     var results = List[JsonValue]()
 
@@ -59,12 +78,9 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 
         for i in 0..runs:
             let start = now_ns()
-            let record = "{out}/{label}-{i + 1}.rss.json"
 
-            let measured = if cpu == "": try rss_run(
-                rss.clone(), record, binary.clone(), []
-            ) else: try rss_run(
-                rss.clone(), record, "taskset", ["-c", cpu.clone(), binary.clone()]
+            let measured = if cpu == "": try peak_run(binary.clone(), []) else: try peak_run(
+                "taskset", ["-c", cpu.clone(), binary.clone()]
             )
 
             let elapsed = (now_ns() - start).to_float() / 1000000000.0

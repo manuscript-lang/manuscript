@@ -9,6 +9,7 @@ use ms_rt as _;
 
 extern crate alloc;
 
+pub mod compress;
 pub mod ffi;
 mod tar;
 mod zip;
@@ -123,7 +124,7 @@ pub fn pack(entries: &[Entry], format: &str, max_bytes: Option<i64>) -> Result<V
                 })
                 .collect();
             zip::pack(&members, 5, |data, level| {
-                ms_std_compress::encode(data, ms_std_compress::Format::Deflate, level)
+                crate::compress::encode(data, crate::compress::Format::Deflate, level)
             })
         }
         "tar" => {

@@ -16,26 +16,6 @@ use ms_mir::ir::{FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, Param, Vtable
 use ms_mir::types::{IfaceId, Ty as MTy, TyKind};
 use std::rc::Rc;
 
-/// Native functions that return an interface over a runtime handle: the function, the
-/// interface module, and the runtime call that makes the handle with its constant argument.
-pub(crate) const HANDLE_FUNCTIONS: &[(&str, &str, &str, i64)] = &[
-    ("io/stdin", "io", "msstd_io_standard", 0),
-    // No handle: the interface value carries nothing and its operations open handles.
-    ("io/files", "io", "", 0),
-    ("fs/filesystem", "fs", "", 0),
-    ("process/commands", "process", "", 0),
-    ("process/control", "process", "", 0),
-    ("process/system", "system", "", 0),
-    ("io/terminal", "terminal", "", 0),
-    ("time/clock", "time", "", 0),
-    ("time/wall_clock", "time", "", 0),
-    // The rules are the table: `path_win` forwards with the Windows flag set.
-    ("random/host_entropy", "random", "", 0),
-    ("fs/posix", "path", "", 0),
-    ("fs/win32", "path_win", "", 0),
-    ("net/network", "net", "msrt_net_network", 0),
-];
-
 /// Interfaces whose values carry no data.
 const UNIT_DATA: &[(&str, &str)] = &[
     ("io", "Files"),
@@ -71,175 +51,193 @@ const METHODS: &[MethodRow] = &[
         "net",
         "Network",
         "bind_datagram",
-        "msrt_net_network_bind_datagram",
+        "msstd_net_network_bind_datagram",
         &[],
     ),
-    ("net", "Network", "close", "msrt_net_network_close", &[]),
-    ("net", "Network", "connect", "msrt_net_network_connect", &[]),
+    ("net", "Network", "close", "msstd_net_network_close", &[]),
+    (
+        "net",
+        "Network",
+        "connect",
+        "msstd_net_network_connect",
+        &[],
+    ),
     (
         "net",
         "Network",
         "connect_unix",
-        "msrt_net_network_connect_unix",
+        "msstd_net_network_connect_unix",
         &[],
     ),
-    ("net", "Network", "listen", "msrt_net_network_listen", &[]),
+    ("net", "Network", "listen", "msstd_net_network_listen", &[]),
     (
         "net",
         "Network",
         "connect_tls",
-        "msrt_net_network_connect_tls",
+        "msstd_net_network_connect_tls",
         &[],
     ),
     (
         "net",
         "Network",
         "connect_tls_config",
-        "msrt_net_network_connect_tls_config",
+        "msstd_net_network_connect_tls_config",
         &[],
     ),
     (
         "net",
         "Network",
         "listen_tls",
-        "msrt_net_network_listen_tls",
+        "msstd_net_network_listen_tls",
         &[],
     ),
     (
         "net",
         "Network",
         "listen_unix",
-        "msrt_net_network_listen_unix",
+        "msstd_net_network_listen_unix",
         &[],
     ),
     (
         "net",
         "Network",
         "restrict",
-        "msrt_net_network_restrict",
+        "msstd_net_network_restrict",
         &[],
     ),
     (
         "net",
         "Network",
         "with_resolver",
-        "msrt_net_network_with_resolver",
+        "msstd_net_network_with_resolver",
         &[],
     ),
-    ("net", "Network", "lookup", "msrt_net_network_lookup", &[]),
-    ("net", "Network", "resolve", "msrt_net_network_resolve", &[]),
+    ("net", "Network", "lookup", "msstd_net_network_lookup", &[]),
+    (
+        "net",
+        "Network",
+        "resolve",
+        "msstd_net_network_resolve",
+        &[],
+    ),
     (
         "net",
         "Network",
         "http_client",
-        "msrt_net_network_http_client",
+        "msstd_net_network_http_client",
         &[],
     ),
     (
         "net",
         "Network",
         "web_socket",
-        "msrt_net_network_web_socket",
+        "msstd_net_network_web_socket",
         &[],
     ),
-    ("net", "Network", "request", "msrt_net_network_request", &[]),
+    (
+        "net",
+        "Network",
+        "request",
+        "msstd_net_network_request",
+        &[],
+    ),
     (
         "net",
         "Network",
         "request_bytes",
-        "msrt_net_network_request_bytes",
+        "msstd_net_network_request_bytes",
         &[],
     ),
-    ("net", "Network", "serve", "msrt_net_network_serve", &[]),
+    ("net", "Network", "serve", "msstd_net_network_serve", &[]),
     (
         "net",
         "Network",
         "serve_connections",
-        "msrt_net_network_serve_connections",
+        "msstd_net_network_serve_connections",
         &[],
     ),
     (
         "http",
         "HttpExchange",
         "close",
-        "msrt_http_exchange_close",
+        "msstd_http_exchange_close",
         &[],
     ),
     (
         "http",
         "HttpExchange",
         "headers",
-        "msrt_http_exchange_headers",
+        "msstd_http_exchange_headers",
         &[],
     ),
     (
         "http",
         "HttpExchange",
         "method",
-        "msrt_http_exchange_method",
+        "msstd_http_exchange_method",
         &[],
     ),
     (
         "http",
         "HttpExchange",
         "path",
-        "msrt_http_exchange_path",
+        "msstd_http_exchange_path",
         &[],
     ),
     (
         "http",
         "HttpExchange",
         "protocol",
-        "msrt_http_exchange_protocol",
+        "msstd_http_exchange_protocol",
         &[],
     ),
     (
         "http",
         "HttpExchange",
         "query",
-        "msrt_http_exchange_query",
+        "msstd_http_exchange_query",
         &[],
     ),
     (
         "http",
         "HttpExchange",
         "read",
-        "msrt_http_exchange_read",
+        "msstd_http_exchange_read",
         &[],
     ),
     (
         "http",
         "HttpExchange",
         "send",
-        "msrt_http_exchange_send",
+        "msstd_http_exchange_send",
         &[],
     ),
     (
         "http",
         "HttpExchange",
         "send_headers",
-        "msrt_http_exchange_send_headers",
+        "msstd_http_exchange_send_headers",
         &[],
     ),
     (
         "http",
         "HttpExchange",
         "write",
-        "msrt_http_exchange_write",
+        "msstd_http_exchange_write",
         &[],
     ),
     (
         "http",
         "HttpExchange",
         "write_bytes",
-        "msrt_http_exchange_write_bytes",
+        "msstd_http_exchange_write_bytes",
         &[],
     ),
     (
         "http",
         "HttpExchange",
         "upgrade",
-        "msrt_http_exchange_upgrade",
+        "msstd_http_exchange_upgrade",
         &[],
     ),
     ("io", "Files", "open", "msstd_io_open", &[]),
@@ -386,14 +384,14 @@ const METHODS: &[MethodRow] = &[
         "crypto",
         "Hasher",
         "update",
-        "msrt_crypto_hasher_update",
+        "msstd_crypto_hasher_update",
         &[],
     ),
     (
         "crypto",
         "Hasher",
         "finish",
-        "msrt_crypto_hasher_finish",
+        "msstd_crypto_hasher_finish",
         &[],
     ),
     ("time", "Clock", "now", "msstd_time_clock_now", &[]),
@@ -764,9 +762,9 @@ impl Cx {
                 .find(|(md, i, op, ..)| *md == module && *i == iface_name && *op == s.name);
             let (sym, extras) =
                 if let Some(windows) = module.strip_prefix("path").map(|r| r == "_win") {
-                    // Every operation is the `msrt_path_<operation>` entry point with the rules flag.
+                    // Every operation is the `msstd_path_<operation>` entry point with the rules flag.
                     (
-                        Some(format!("msrt_path_{}", s.name)),
+                        Some(format!("msstd_path_{}", s.name)),
                         vec![("windows", Extra::Bool(windows))],
                     )
                 } else {
@@ -874,7 +872,7 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
             Extra::Bool(b) => (ct::bool_(), fl.b.bconst(b)),
         };
         // The rules flag leads a path entry point's arguments.
-        let lead = sym.starts_with("msrt_path_");
+        let lead = sym.starts_with("msstd_path_");
         decl.insert(
             if lead { 0 } else { decl.len() },
             ct::Param {
@@ -895,7 +893,13 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
     // The runtime takes a map argument as two parallel lists.
     let mut lists = Vec::new();
     if sym == "msstd_process_replace" {
-        lists = fl.split_map_argument(&mut decl, &mut nargs, 2, ["env_names", "env_values"])?;
+        lists = fl.split_map_argument(&mut decl, &mut nargs, 2, 1, ["env_names", "env_values"])?;
+    }
+    if matches!(
+        sym.as_str(),
+        "msstd_process_command_run" | "msstd_process_command_spawn"
+    ) {
+        lists = fl.split_map_argument(&mut decl, &mut nargs, 6, 1, ["env_names", "env_values"])?;
     }
     if matches!(sym.as_str(), "msstd_fs_glob_entries" | "msstd_fs_copy") {
         let r = fl.fs_walk(sym, &decl, &nargs, job.ret)?;
@@ -947,7 +951,7 @@ fn takes_handle(sym: &str) -> bool {
         .and_then(|s| {
             s.params
                 .first()
-                .map(|p| p.name == "h" || p.ty == "*const Obj")
+                .map(|p| p.name == "h" || p.ty.starts_with("*const ObjCell<"))
         })
         .unwrap_or(false)
 }
@@ -969,19 +973,20 @@ fn load_handle(
 
 impl FnLower<'_> {
     /// Replaces the map argument at `at` by its keys and values as two lists named `names`, typed
-    /// like the argument before it. The lists are owned by the caller, which drops them after the
+    /// like the list argument at `list_at`. The lists are owned by the caller, which drops them after the
     /// call.
     fn split_map_argument(
         &mut self,
         decl: &mut Vec<ct::Param>,
         nargs: &mut Vec<NArg>,
         at: usize,
+        list_at: usize,
         names: [&str; 2],
     ) -> Result<Vec<ms_mir::ir::Value>, Error> {
         let map = nargs[at].val;
         let map_ty = self.ty_of(map.v);
-        let list_ty = self.ty_of(nargs[at - 1].val.v);
-        let list_decl = decl[at - 1].ty.clone();
+        let list_ty = self.ty_of(nargs[list_at].val.v);
+        let list_decl = decl[list_at].ty.clone();
         let mut lists = Vec::new();
         let mut split = Vec::new();
         for (name, method) in names.into_iter().zip(["keys", "values"]) {

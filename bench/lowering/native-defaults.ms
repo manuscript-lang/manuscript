@@ -34,7 +34,9 @@ fn command_bind() fn(
     List[String],
     Bytes,
     Int?,
-    Duration?
+    Duration?,
+    String?,
+    Map[String, String]
 ) Result[CommandOutput, CommandError]:
     return run
 

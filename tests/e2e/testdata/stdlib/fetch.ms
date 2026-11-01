@@ -1,5 +1,12 @@
 import expect_equal from "@std/test/test.ms"
-import FetchBody, FetchOptions, FetcherOptions, fetch, fetcher, json_body from "@std/net/fetch.ms"
+import (
+    FetchBody,
+    FetchOptions,
+    FetcherOptions,
+    fetch,
+    fetcher,
+    json_body
+) from "@std/net/fetch.ms"
 import (
     HttpError,
     HttpHeaders,

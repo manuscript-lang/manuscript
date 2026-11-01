@@ -5,7 +5,7 @@
 # A change may not raise a count without a stated reason; update the header in the same change.
 # MS names the ms that runs the programs (default target/release/ms).
 # Usage: ms run tools/count-check.ms [-- files]
-import tool_ms, host, use_stats_runtime from "./lib.ms"
+import tool_ms, use_stats_runtime from "./lib.ms"
 import glob, read_file, temporary from "@std/os/fs.ms"
 import arguments, change_directory, working_directory, run from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
@@ -30,17 +30,6 @@ export fn main() Int:
         for f in glob("tests/ownership-counts", "*.ms").get(List[String]()): files.append(
             "tests/ownership-counts/{f}"
         )
-
-    # The headers are written against Linux and macOS. A Windows process makes one more 16-byte allocation than they do
-    # in every counted program, release and debug alike, so the Windows run adds that constant to the expectation
-    # instead of loosening any count.
-    # Workaround: remove it once the allocation is found (https://github.com/manuscript-lang/manuscript/issues/2052).
-    var startup_allocs = 0
-    var startup_bytes = 0
-
-    if host() == "windows":
-        startup_allocs = 1
-        startup_bytes = 16
 
     let ms = tool_ms(root.clone())
     let scratch = temporary("ms-counts-").get()
@@ -83,12 +72,7 @@ export fn main() Int:
 
                     checked += 1
 
-                    var want = pair.clone()
-
-                    if pair.starts_with("allocs="):
-                        want = "allocs={pair.slice(7, pair.length()).get("").parse_int().get(0) + startup_allocs}"
-                    else if pair.starts_with("alloc_bytes="):
-                        want = "alloc_bytes={pair.slice(12, pair.length()).get("").parse_int().get(0) + startup_bytes}"
+                    let want = pair.clone()
 
                     if not have.contains(want):
                         failures += 1

@@ -25,6 +25,7 @@ fn next(var count: Int) Int:
 
 fn branch(var box: Box, take: Bool) Unit:
     if take:
+        # A scalar `var` copies, so the closure changes the copy, not `box.count`.
         var _count = box.count
         invoke(fn: _count += 3)
 

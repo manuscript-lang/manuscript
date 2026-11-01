@@ -382,10 +382,13 @@ impl<'a> FnLower<'a> {
         // A changed parameter is moved into a slot the callee takes from and puts back into.
         let mut slots_out: Vec<(usize, Value, MTy, bool)> = Vec::new();
         let mut vals: Vec<Value> = Vec::new();
+        // Which borrowed arguments were owned temporaries, for a lender that hands one back whole.
+        let mut owned_args: Vec<bool> = Vec::new();
         // The only changed parameter is a field or list element of an owned variable: the callee
         // takes it out of its place and puts it back, instead of working on a copy.
         let mut in_place: Option<(usize, Expr, MTy)> = None;
         for (i, a) in args.slots.into_iter().flatten().enumerate() {
+            owned_args.push(a.own && !vars.contains(&i));
             if !vars.contains(&i) {
                 // A consumed parameter takes the value itself: a copy only when `a` is a borrow.
                 if owned_mask.as_ref().is_some_and(|mask| mask[i]) {
@@ -498,6 +501,37 @@ impl<'a> FnLower<'a> {
             }
         }
         self.shared_release(holds)?;
+        if self.b.m.funcs[fid.index()].ret_borrowed {
+            // A lending callee: the result points into the arguments. When one of them is a
+            // temporary, the caller owns the result: the temporary itself when the callee hands
+            // it back whole, otherwise a copy taken before the temporary is dropped.
+            let Some(how) = self.cx.owned_lends.get(&(self.hir.data.file, e.id)) else {
+                return Ok(Val { v, own: false });
+            };
+            if let ms_check::ownership::OwnedLend::Whole(source) = how {
+                let offset = usize::from(c.self_binding.is_some());
+                let slot = match source {
+                    None => Some(0),
+                    Some(label) => c
+                        .parameters
+                        .iter()
+                        .position(|p| p.name == *label)
+                        .map(|i| i + offset),
+                };
+                if let Some(k) = slot
+                    && owned_args.get(k).copied().unwrap_or(false)
+                    && let Some(&arg) = vals.get(k)
+                    && self.ty_of(arg) == self.ty_of(v)
+                {
+                    // The result is that temporary: use the argument value itself, which the
+                    // MIR knows as owned, and stop dropping it with the statement.
+                    self.unhold_temp(arg);
+                    return Ok(self.val(arg, true));
+                }
+            }
+            let copy = self.owned(Val { v, own: false });
+            return Ok(self.val(copy, true));
+        }
         Ok(self.val(v, true))
     }
 
@@ -952,8 +986,11 @@ impl<'a> FnLower<'a> {
         &self,
         callee: &Callable,
     ) -> Option<(Option<ms_check::syntax::FuncRef>, ct::Ty)> {
+        // Node ids repeat across modules, so the module must match too.
         let im = self.cx.methods.iter().find(|m| {
-            !m.id.as_str().is_empty() && m.decl.as_ref().is_some_and(|d| d.id() == callee.func.id())
+            !m.id.as_str().is_empty()
+                && m.module == callee.module.file
+                && m.decl.as_ref().is_some_and(|d| d.id() == callee.func.id())
         })?;
         let def = im.contract.as_ref()?.def.as_ref()?;
         let ops = def.operations.borrow();
@@ -1008,6 +1045,30 @@ impl<'a> FnLower<'a> {
         }
         if matches!(self.b.m.types.kind(mt), TyKind::Obj(n, _) if n == "Shared") {
             return self.construct_shared(view, &t, mt);
+        }
+        // `ok(x)` / `error(x)` of a reference the checker keeps one: `alt.view` of the payload.
+        if let (TyKind::Alt(a), Some(c), [arg]) = (
+            self.b.m.types.kind(mt).clone(),
+            case,
+            view.arguments.as_slice(),
+        ) && self.cx.view_wraps.contains(&(self.hir.data.file, e.id))
+        {
+            let x = self.expr(arg.expr)?;
+            if self.dead {
+                return Ok(x);
+            }
+            let idx = self.b.m.alts[a.index()]
+                .cases
+                .iter()
+                .position(|x| x.name == c.as_str())
+                .ok_or_else(|| Error::new("unknown case"))?;
+            if !x.own && arg.wrap_optional.is_none() {
+                let v = self.b.alt_view(a, idx as u32, &[x.v]);
+                return Ok(Val { v, own: false });
+            }
+            let o = self.owned(x);
+            let v = self.b.alt_new(a, idx as u32, &[o]);
+            return Ok(Val { v, own: true });
         }
         // Parameter names and types of the constructor.
         let params: Vec<ct::Param> = match case {
@@ -1143,7 +1204,7 @@ impl<'a> FnLower<'a> {
         Ok(self.owned(x))
     }
 
-    /// A default written as a literal, `none`, an empty list or a constructor call of literals in a
+    /// A default written as a literal, `none`, an empty list or map, or a constructor call of literals in a
     /// declaration module without checked facts; none when `d` is anything else.
     pub(crate) fn literal_default(&mut self, d: &Expr, t: &ct::Ty) -> Result<Option<Val>, Error> {
         let mt = self.cx.lower_ty(self.b.m, t)?;
@@ -1188,6 +1249,15 @@ impl<'a> FnLower<'a> {
             }
             ExprKind::List(items) if items.is_empty() => {
                 let v = self.call_runtime("msrt_list_new", &[], mt)?;
+                Some(Val { v, own: true })
+            }
+            // `Map[K, V]()`: an empty map.
+            ExprKind::Call { args, .. }
+                if args.is_empty()
+                    && crate::mapset::is_map_or_set(self.b.m, mt)
+                    && t.is_std("Map") =>
+            {
+                let v = self.map_new(mt)?;
                 Some(Val { v, own: true })
             }
             ExprKind::Call { args, .. } if args.iter().all(|a| a.name.is_some()) => {

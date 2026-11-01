@@ -36,18 +36,9 @@ pub(crate) struct RtSig {
     pub ret: String,
 }
 
-/// Bodiless natives the runtime implements directly, with their symbol. They are generic (`extern fn` has no type
-/// parameters) or live in modules where an `extern fn` wrapper makes an import cycle among the bundled sources.
-const GENERIC_NATIVES: &[(&str, &str)] = &[
-    ("collections/filled", "msrt_list_filled"),
-    ("collections/flatten", "msrt_list_flatten"),
-    ("collections/range", "msrt_list_range"),
-    ("collections/range_by", "msrt_list_range_by"),
-    ("string/compile", "msrt_regex_compile"),
-    ("string/from_scalars", "msrt_string_from_scalars"),
-    ("bytes/join", "msrt_bytes_join"),
-    ("bytes/values", "msrt_bytes_values"),
-];
+/// Bodiless natives the runtime implements directly, with their symbol. The loop lowering recognises `range` by its
+/// native identity, so it stays a declaration instead of a wrapper over an extern.
+const GENERIC_NATIVES: &[(&str, &str)] = &[("collections/range", "msrt_list_range")];
 
 pub(crate) fn function_symbol(native: &str) -> Option<String> {
     let (_, sym) = GENERIC_NATIVES.iter().find(|(n, _)| *n == native)?;
@@ -150,7 +141,7 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
 }
 
 /// Native types whose methods are runtime symbols named after the type, and the module
-/// they live in: `msstd_time_timestamp_shift`, `msrt_regex_matches`.
+/// they live in: `msstd_time_timestamp_shift`, `msstd_regex_matches`.
 const TYPED_NATIVES: &[(&str, &str)] = &[("Regex", "regex")];
 
 /// The runtime symbol of `method` on a native type from [`TYPED_NATIVES`].
@@ -1059,7 +1050,7 @@ impl FnLower<'_> {
         };
         // Crypto uses status 6 for authentication failure (the shared host status
         // table uses it for AlreadyExists). Match the module's actual ABI.
-        let statuses: &[(i64, &str)] = if sym.starts_with("msrt_crypto_") {
+        let statuses: &[(i64, &str)] = if sym.starts_with("msstd_crypto_") {
             &[
                 (1, "InvalidInput"),
                 (9, "Unsupported"),
@@ -1188,10 +1179,10 @@ impl FnLower<'_> {
 /// (`ms-std-net/ABI.md`) instead of sharing the `STATUS_CASES` codes.
 fn ordinal_status(sym: &str) -> bool {
     [
-        "msrt_net_",
-        "msrt_http_",
-        "msrt_websocket_",
-        "msrt_tls_",
+        "msstd_net_",
+        "msstd_http_",
+        "msstd_websocket_",
+        "msstd_tls_",
         "msrt_pipe_",
         "extern:",
     ]
@@ -1208,5 +1199,5 @@ fn failure_symbol(sym: &str) -> Option<String> {
 
 /// Whether a runtime function returns a new runtime handle object for an interface value.
 fn is_handle_return(ret: &str) -> bool {
-    ret.starts_with("*mut Handle<") || ret == "*mut HasherObj"
+    ret.starts_with("*mut ObjCell<")
 }

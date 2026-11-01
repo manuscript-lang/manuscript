@@ -5,9 +5,8 @@ import Bytes from "@std/bytes.ms"
 import Shared from "@std/concurrency/shared.ms"
 import FileHandle, FileSystemError, open from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
-import stringify from "@std/data/json.ms"
+import JsonError, JsonValue, parse, stringify from "@std/data/json.ms"
 import now from "@std/os/time.ms"
-import LogCoreError, LogGate, LogState, new_gate, new_state, object_text from "@std/logcore.ms"
 
 # Errors returned while validating or writing a structured log record.
 export type LogError:
@@ -60,69 +59,120 @@ export interface Transport:
     # Releases owned resources; native close cancels admitted operations and leaves borrowed streams open.
     var fn close() Unit
 
-# Level indexes shared with the encoder: Trace is 0 and Silent is 6.
-fn level_index(level: LogLevel) Int:
+# The number a level writes into the record's `level` field. Silent is a threshold that no record reaches.
+fn level_value(level: LogLevel) Int:
     match level:
-        Trace: return 0
-        Debug: return 1
-        Info: return 2
-        Warn: return 3
-        Error: return 4
-        Fatal: return 5
-        Silent: return 6
+        Trace: return 10
+        Debug: return 20
+        Info: return 30
+        Warn: return 40
+        Error: return 50
+        Fatal: return 60
+        Silent: return 70
 
-fn level_at(index: Int) LogLevel:
-    if index == 0: return LogLevel.Trace
-    if index == 1: return LogLevel.Debug
-    if index == 2: return LogLevel.Info
-    if index == 3: return LogLevel.Warn
-    if index == 4: return LogLevel.Error
-    if index == 5: return LogLevel.Fatal
+fn level_at(value: Int) LogLevel:
+    if value == 10: return LogLevel.Trace
+    if value == 20: return LogLevel.Debug
+    if value == 30: return LogLevel.Info
+    if value == 40: return LogLevel.Warn
+    if value == 50: return LogLevel.Error
+    if value == 60: return LogLevel.Fatal
 
     return LogLevel.Silent
-
-fn core_error(cause: LogCoreError) LogError:
-    if cause == LogCoreError.InvalidInput: return LogError.InvalidInput
-    if cause == LogCoreError.LimitExceeded: return LogError.LimitExceeded
-
-    return LogError.InvalidData
 
 # Milliseconds since the Unix epoch, the unit of the `time` field.
 fn now_ms() Int:
     let now = now()
     return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
 
-# Writes to a byte stream the caller owns; closing the transport leaves the stream open.
-type StreamTransport:
-    stream: Shared[WriteStream]
-    gate: LogGate
+# Encodes `fields` as JSON text. Anything `stringify` rejects is `InvalidData`.
+fn encode_fields[F: Data](fields: F) String!LogError:
+    let text = stringify(fields)
+    if text.is_error(): return error(LogError.InvalidData)
 
-impl Transport for StreamTransport:
+    return ok(text.get())
+
+# The context of a child: the parent's object members with the child's added, or the child's text
+# alone when either side is not an object. This runs once per child, never per record.
+fn merge_context(parent: String?, child: String) String!LogError:
+    let base = parent.get("")
+    if base == "": return ok(child)
+
+    let left = parse(base)
+    let right = parse(child)
+    if left.is_error() or right.is_error(): return error(LogError.InvalidData)
+
+    let members = left.get().as_map()
+    let added = right.get().as_map()
+    if members.is_none() or added.is_none(): return ok(child)
+
+    var merged = members.get(Map[String, JsonValue]()).clone()
+    for entry in added.get(Map[String, JsonValue]()).entries():
+        merged.add(entry.key, entry.value.clone())
+
+    let text = stringify(JsonValue.ObjectValue(merged))
+    if text.is_error(): return error(LogError.InvalidData)
+
+    return ok(text.get())
+
+fn encode_error(cause: JsonError) LogError:
+    if cause == JsonError.LimitExceeded: return LogError.LimitExceeded
+
+    return LogError.InvalidData
+
+# The open stream of a stream transport and whether the transport was closed.
+type StreamState:
+    stream: WriteStream
+    closed: Bool
+
+# Writes to a byte stream. Child loggers share one transport, so the state is guarded here: the
+# logger itself never locks. Closing a transport over a caller's stream leaves the stream open.
+type StreamTransport:
+    state: Shared[StreamState]
+
+impl StreamState:
     var fn write(data: String) Unit!LogError:
-        if self.gate.is_shut(): return error(LogError.Closed)
+        if self.closed: return error(LogError.Closed)
 
         match self.stream.write(data):
             ok(_): return ok(unit)
             error(cause): return error(LogError.Io(cause))
 
     var fn write_bytes(data: Bytes) Unit!LogError:
-        if self.gate.is_shut(): return error(LogError.Closed)
+        if self.closed: return error(LogError.Closed)
 
         match self.stream.write_bytes(data):
             ok(_): return ok(unit)
             error(cause): return error(LogError.Io(cause))
 
     var fn flush() Unit!LogError:
-        if self.gate.is_shut(): return error(LogError.Closed)
+        if self.closed: return error(LogError.Closed)
 
         match self.stream.flush():
             ok(_): return ok(unit)
             error(cause): return error(LogError.Io(cause))
 
-    var fn close() Unit:
-        self.gate.shut()
+    # Marks the transport closed and tells whether this call closed it.
+    var fn shut() Bool:
+        if self.closed: return false
 
-# Appends to a file the transport opened, and closes it with the transport.
+        self.closed = true
+        return true
+
+impl Transport for StreamTransport:
+    var fn write(data: String) Unit!LogError:
+        return self.state.write(data)
+
+    var fn write_bytes(data: Bytes) Unit!LogError:
+        return self.state.write_bytes(data)
+
+    var fn flush() Unit!LogError:
+        return self.state.flush()
+
+    var fn close() Unit:
+        let _first = self.state.shut()
+
+# Appends to a file the transport opened, and closes the file with the transport.
 type FileTransport:
     file: Shared[FileHandle]
     inner: StreamTransport
@@ -138,128 +188,108 @@ impl Transport for FileTransport:
         return self.inner.flush()
 
     var fn close() Unit:
-        if not self.inner.gate.is_shut():
-            self.inner.close()
+        if self.inner.state.shut():
             self.file.close().get(none)
 
-# A structured logger: level filtering, bound fields, and a pluggable `Transport`. The `_with` methods
-# take fields of any `Data` type and encode them with `stringify`. Child loggers share the transport;
-# closing any of them closes it for all.
+# A structured logger: level filtering, bound fields, and a pluggable `Transport`. The level methods
+# take optional fields of any `Data` type and encode them with `stringify`. Child loggers share the
+# transport; closing any of them closes it for all.
 export type Logger:
-    # Internal state: level threshold, bound fields and the record encoder.
-    state: LogState
+    # Internal state: the lowest level number that is written.
+    threshold: Int
+    # Internal state: whether records carry a `time` field.
+    timestamp: Bool
+    # Internal state: the largest record in bytes including the newline; none is unlimited.
+    max_bytes: Int?
+    # Internal state: JSON text of the fields bound by `child`, written as `context`; none if unbound.
+    context: String?
     # Internal state: the transport this logger and its children write to.
     transport: Shared[Transport]
 
 impl Logger:
-    # Internal: encodes a plain record at a level index and sends it.
-    var fn emit(level: Int, message: String) Unit!LogError:
-        let encoded = self.state.line(level, message, now_ms())
-        if encoded.is_error(): return error(core_error(encoded.err()))
+    # Internal: writes one record at a level number. `data` is JSON text attached as is.
+    var fn emit(level: Int, message: String, data: String?) Unit!LogError:
+        let msg = stringify(JsonValue.StringValue(message))
+        if msg.is_error(): return error(encode_error(msg.err()))
 
-        return self.send(encoded.get())
+        var line = "\{\"level\":{level},\"msg\":{msg.get()}"
+        if self.timestamp: line = "{line},\"time\":{now_ms()}"
+        if let context = self.context: line = "{line},\"context\":{context}"
+        if let text = data: line = "{line},\"data\":{text}"
+        line = "{line}\}\n"
+        if let max = self.max_bytes:
+            if line.to_bytes().length() > max: return error(LogError.LimitExceeded)
+        return self.transport.write(line)
 
-    # Internal: encodes a record with fields given as JSON object text and sends it.
-    var fn emit_json(level: Int, message: String, fields: String) Unit!LogError:
-        let encoded = self.state.line_json(level, message, fields, now_ms())
-        if encoded.is_error(): return error(core_error(encoded.err()))
-
-        return self.send(encoded.get())
-
-    # Internal: a filtered record encodes to no text and never reaches the transport.
-    var fn send(text: String) Unit!LogError:
-        if text == "": return ok(unit)
-
-        return self.transport.write(text)
-
-    # Writes a record whose fields come from `fields`, which can be any value `stringify` accepts.
+    # Writes a record at the selected level. `fields` is any `Data` value `stringify` accepts.
     #
-    # A record, map, or `JsonValue` object contributes its members at the top level of the record.
-    # Any other value, such as a number, string, list, or `none`, is written under the key `data`.
-    # A value that cannot be encoded, such as a cyclic one, returns `InvalidData`; encoding happens
-    # only when the level is enabled. The reserved keys `level`, `msg`, and `time` are ignored.
-    var fn log_with[F: Data](level: LogLevel, message: String, fields: F) Unit!LogError:
+    # The value is written as is under the record's `data` key, so a record, map, list, or number
+    # keeps its shape. No fields, or `none`, write the message alone. A value that cannot be encoded,
+    # such as a cyclic one, returns `InvalidData`; encoding happens only when the level is enabled.
+    # The fields of `child` loggers are written under `context`. `Silent` is a threshold, not a
+    # record level, and returns `InvalidInput`.
+    var fn log[F: Data = Unit](
+        level: LogLevel,
+        message: String,
+        fields: F? = none
+    ) Unit!LogError:
         if level == LogLevel.Silent: return error(LogError.InvalidInput)
         if not self.enabled(level): return ok(unit)
 
-        let text = stringify(fields)
-        if text.is_error(): return error(LogError.InvalidData)
+        if let value = fields:
+            let text = try encode_fields(value)
+            return self.emit(level_value(level), message, text)
 
-        return self.emit_json(level_index(level), message, object_text(text.get()))
+        return self.emit(level_value(level), message, none)
 
-    # Like `trace`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    var fn trace_with[F: Data](message: String, fields: F) Unit!LogError:
-        return self.log_with(LogLevel.Trace, message, fields)
+    # Logs at Trace when enabled. Most detailed records; a filtered call returns ok without encoding or transport access. Fields are encoded as in `log`.
+    var fn trace[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+        return self.log(LogLevel.Trace, message, fields)
 
-    # Like `debug`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    var fn debug_with[F: Data](message: String, fields: F) Unit!LogError:
-        return self.log_with(LogLevel.Debug, message, fields)
+    # Logs at Debug when enabled. Development diagnostics, including the logger's `context`. Fields are encoded as in `log`.
+    var fn debug[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+        return self.log(LogLevel.Debug, message, fields)
 
-    # Like `info`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    var fn info_with[F: Data](message: String, fields: F) Unit!LogError:
-        return self.log_with(LogLevel.Info, message, fields)
+    # Logs at Info when enabled. Ordinary operational records. Fields are encoded as in `log`.
+    var fn info[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+        return self.log(LogLevel.Info, message, fields)
 
-    # Like `warn`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    var fn warn_with[F: Data](message: String, fields: F) Unit!LogError:
-        return self.log_with(LogLevel.Warn, message, fields)
+    # Logs at Warn when enabled. Warning records, returning encoding, size-budget, or transport errors unchanged. Fields are encoded as in `log`.
+    var fn warn[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+        return self.log(LogLevel.Warn, message, fields)
 
-    # Like `error`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    var fn error_with[F: Data](message: String, fields: F) Unit!LogError:
-        return self.log_with(LogLevel.Error, message, fields)
+    # Logs at Error when enabled. Failure records: an expected diagnostic rather than a fault. Fields are encoded as in `log`.
+    var fn error[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+        return self.log(LogLevel.Error, message, fields)
 
-    # Like `fatal`, with fields of any `Data` type; see `log_with` for how they are encoded.
-    var fn fatal_with[F: Data](message: String, fields: F) Unit!LogError:
-        return self.log_with(LogLevel.Fatal, message, fields)
+    # Logs at Fatal when enabled. Critical records; the caller remains responsible for process termination. Fields are encoded as in `log`.
+    var fn fatal[F: Data = Unit](message: String, fields: F? = none) Unit!LogError:
+        return self.log(LogLevel.Fatal, message, fields)
 
-    # Returns a logger that adds the members of `fields` to each record, with the encoding rules of
-    # `log_with`. A value that cannot be encoded returns `InvalidData`.
+    # Returns a logger that writes `fields` under `context` in each record. A child of a child merges
+    # object members, the newer value winning; any other combination keeps the newer value. A value
+    # that cannot be encoded returns `InvalidData`.
     var fn child[F: Data](fields: F) Logger!LogError:
-        let text = stringify(fields)
-        if text.is_error(): return error(LogError.InvalidData)
-
-        let child = try self.state.child(object_text(text.get())).map_error(core_error)
-        return ok(Logger(child, self.transport))
-
-impl Logger:
-    # Writes a record at the selected level with no fields.
-    var fn log(level: LogLevel, message: String) Unit!LogError:
-        return self.emit(level_index(level), message)
-
-    # Logs at Trace when enabled; a filtered call returns ok without encoding or transport access.
-    var fn trace(message: String) Unit!LogError:
-        return self.emit(0, message)
-
-    # Logs at Debug when enabled, including the logger's bound fields.
-    var fn debug(message: String) Unit!LogError:
-        return self.emit(1, message)
-
-    # Logs at Info when enabled; reserved level, msg, and time fields remain controlled by the logger.
-    var fn info(message: String) Unit!LogError:
-        return self.emit(2, message)
-
-    # Logs at Warn when enabled, returning encoding, size-budget, or transport errors unchanged.
-    var fn warn(message: String) Unit!LogError:
-        return self.emit(3, message)
-
-    # Logs at Error when enabled; it records an expected diagnostic rather than raising a fault.
-    var fn error(message: String) Unit!LogError:
-        return self.emit(4, message)
-
-    # Logs at Fatal when enabled; the caller remains responsible for process termination.
-    var fn fatal(message: String) Unit!LogError:
-        return self.emit(5, message)
+        let text = try encode_fields(fields)
+        let context = try merge_context(self.context, text)
+        return ok(
+            Logger(
+                self.threshold, self.timestamp, self.max_bytes, context, self.transport
+            )
+        )
 
     # Tests the current filtering threshold; Silent is never enabled as a record level.
     fn enabled(level: LogLevel) Bool:
-        return self.state.enabled(level_index(level))
+        let value = level_value(level)
+        return value >= self.threshold and value < 70
 
     # Returns this logger's current threshold, independent of its parent or children.
     fn level() LogLevel:
-        return level_at(self.state.level())
+        return level_at(self.threshold)
 
     # Changes only this logger's threshold; existing child loggers retain their copied threshold.
     var fn set_level(level: LogLevel) Unit:
-        self.state.set_level(level_index(level))
+        self.threshold = level_value(level)
 
     # Flushes the logger's transport.
     var fn flush() Unit!LogError:
@@ -277,16 +307,21 @@ export fn create(
     timestamp: Bool?,
     max_bytes: Int?
 ) Logger!LogError:
-    var index: Int? = none
-    if let chosen = level:
-        index = level_index(chosen)
+    if let max = max_bytes:
+        if max < 0: return error(LogError.InvalidInput)
 
-    let state = try new_state(index, timestamp, max_bytes).map_error(core_error)
-    return ok(Logger(state, Shared(transport)))
+    var threshold = 30
+    if let chosen = level:
+        threshold = level_value(chosen)
+    return ok(
+        Logger(
+            threshold, timestamp.get(true), max_bytes, none, Shared(transport)
+        )
+    )
 
 # Writes log records to an existing byte stream.
 export fn stream_transport(output: WriteStream) Transport:
-    return StreamTransport(Shared(output), new_gate())
+    return StreamTransport(Shared(StreamState(output, false)))
 
 # Writes log records to the process standard-output stream.
 export fn stdout_transport() Transport:
@@ -299,7 +334,7 @@ export fn file_transport(path: String) Transport!LogError:
         error(cause): return error(LogError.FileSystem(cause))
 
 fn file_stream_transport(file: FileHandle) Transport:
-    let stream = StreamTransport(Shared(file.writer()), new_gate())
+    let stream = StreamTransport(Shared(StreamState(file.writer(), false)))
     return FileTransport(Shared(file), stream)
 
 impl Error for LogError:

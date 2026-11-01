@@ -311,7 +311,7 @@ fn decode[T: Data](matches: Matches) T!CliError:
 # Renders one supplied value as the JSON literal for its kind.
 fn literal(kind: FlagKind, text: String) String:
     match kind:
-        Bool: return text
+        Bool: return text.clone()
         Int: return "{text.parse_int().get()}"
         Float: return "{text.parse_float().get()}"
         _: return stringify(text.clone()).get()

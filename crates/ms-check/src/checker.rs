@@ -128,6 +128,18 @@ pub struct Program {
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
+    /// Callables whose result is a reference into their arguments (`ownership::Ownership`).
+    pub lenders: Rc<HashSet<(Name, NodeId)>>,
+    /// Callables whose result is an owned interface view of their arguments.
+    pub view_lenders: Rc<HashSet<(Name, NodeId)>>,
+    /// Wrappers (`x?`, `ok(x)`, `error(x)`) of lent values that stay references.
+    pub view_wraps: Rc<HashSet<(Name, NodeId)>>,
+    /// Name expressions moving an interface view out of the local holding it.
+    pub view_moves: Rc<HashSet<(Name, NodeId)>>,
+    /// Lending calls whose result the caller owns, by module file and call node.
+    pub owned_lends: Rc<HashMap<(Name, NodeId), crate::ownership::OwnedLend>>,
+    /// Conditional and match expressions whose value is a reference, by module file and node.
+    pub lent_matches: Rc<HashSet<(Name, NodeId)>>,
     /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
     /// identity. Filled together with `borrows`.
     pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
@@ -682,7 +694,15 @@ impl Checker {
                         .and_then(|names| names.borrow().get(&item.name).cloned());
                     f.filter(|f| f.module == pn)
                 } else {
-                    stdlib::standard_module_symbol(pn, item.name)
+                    // A file that mixes native declarations and bodies exports both halves under its own name.
+                    stdlib::standard_module_symbol(pn, item.name).or_else(|| {
+                        let twin = stdlib::import_source(item)?;
+                        stdlib::ensure_source(&twin)
+                            .exports
+                            .get(&item.name)
+                            .filter(|s| s.module == twin.file)
+                            .cloned()
+                    })
                 }
             } else {
                 self.imports.get(module.file, item.id).and_then(|target| {
@@ -696,7 +716,12 @@ impl Checker {
                 })
             };
             let hidden = stdlib::is_internal(path) && !module.file.starts_with("@std/");
-            let usable = found.as_ref().filter(|f| f.export && !hidden).cloned();
+            // An internal module declares the natives of its host and names the host's private types.
+            let host = stdlib::is_internal(module.file.as_str());
+            let usable = found
+                .as_ref()
+                .filter(|f| (f.export || host) && !hidden)
+                .cloned();
             let Some(found) = usable else {
                 let end = Pos::new(
                     item.name_pos.offset + item.name.len() as u32,

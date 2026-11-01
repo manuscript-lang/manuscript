@@ -456,9 +456,9 @@ mod stack {
 
     /// Fibers carry their own bounds, which `task_main` records when it starts.
     pub unsafe fn prepare(base: *mut u8, _len: usize) -> (usize, usize, usize, *mut fault::Hdr) {
-        let hdr = alloc::alloc(size_of::<fault::Hdr>()).cast::<fault::Hdr>();
-        // SAFETY: a fresh block of the right size.
-        unsafe { hdr.write(fault::Hdr::new(0)) };
+        // The system heap, not the runtime allocator: Unix keeps the header in the stack slot, so
+        // counting it here would make Windows report one more allocation per task.
+        let hdr = Box::into_raw(Box::new(fault::Hdr::new(0)));
         (0, 0, base as usize, hdr)
     }
 
@@ -547,7 +547,12 @@ unsafe fn free_task(t: *mut Task) {
         s.slots[idx].task = null_mut();
         s.free_slots.push(idx);
         #[cfg(windows)]
-        alloc::free((*t).ctx.hdr_ptr().cast());
+        {
+            let hdr = (*t).ctx.hdr_ptr();
+            if !hdr.is_null() {
+                drop(Box::from_raw(hdr));
+            }
+        }
         core::ptr::drop_in_place(t);
         alloc::free(t as *mut u8);
     }

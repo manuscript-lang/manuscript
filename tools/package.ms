@@ -3,8 +3,20 @@
 # each target builds it natively.
 # Usage: ms run tools/package.ms [-- OS ARCH]
 import capture, dist_arch, dist_os, file_sha256, note, run_program from "./lib.ms"
-import chmod, copy_file, create_directory, remove, temporary, write_file from "@std/os/fs.ms"
-import arguments, change_directory, set_environment, working_directory from "@std/os/process.ms"
+import (
+    chmod,
+    copy_file,
+    create_directory,
+    remove,
+    temporary,
+    write_file
+) from "@std/os/fs.ms"
+import (
+    arguments,
+    change_directory,
+    set_environment,
+    working_directory
+) from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
 
 fn supported(target_os: String, target_arch: String) Bool:

@@ -9,7 +9,7 @@ weight = 4
 
 ## String literals
 
-A literal is delimited by `"` and fits on one source line, interpolations included. Raw newlines and control characters U+0000 to U+001F are rejected; other Unicode appears directly. There are no single-quoted, raw, multiline, or byte literals.
+A literal is delimited by `"` and fits on one source line, interpolations included. Raw newlines and control characters U+0000 to U+001F are rejected; other Unicode appears directly. [Multi-line and raw literals](#multi-line-and-raw-literals) span lines. There are no single-quoted or byte literals.
 
 | Escape | Value |
 | --- | --- |
@@ -29,6 +29,25 @@ let template = "Literal braces: \{name\}"
 let lines = "first\nsecond"
 let symbol = "\u{1F642}"
 ```
+
+## Multi-line and raw literals
+
+`"""` opens text that spans lines. The opening quotes end their line, the closing quotes stand alone on a later line, and the closing line's indentation is removed from every line, so the text can be indented with the code around it. The line break after the opening quotes and the one before the closing line are not part of the value. A blank line may be shorter than the indentation; any other line indented less than the closing quotes is an error. Escapes and `{expression}` interpolation work as in `"..."` (an interpolated expression still stays on one line), and `"` needs no escape. The text cannot contain `"""` at all.
+
+`r"""` opens raw text with the same layout where every character is literal: no escapes, no interpolation, braces and backslashes included. Use it for JSON, regular expressions, and fixtures.
+
+```manuscript
+let name = "Ada"
+let greeting = """
+    Hello, {name}!
+      Indented line, "quoted".
+    """
+let config = r"""
+    {"name": "ada", "tags": ["a", "b"], "pattern": "\d+"}
+    """
+```
+
+`greeting` is `Hello, Ada!` and `  Indented line, "quoted".` on two lines; `config` holds the JSON exactly as written. Import paths, `test` names and `bench` names must be one-line `"..."` text. The formatter keeps the literal's lines and moves them with the line where the literal starts.
 
 Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values. [Equality](../types/equality-and-hashing.md) compares contents exactly.
 

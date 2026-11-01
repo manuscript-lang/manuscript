@@ -55,5 +55,5 @@ let route: fn(var HttpExchange, RouteParams) Unit!HttpError = fn var exchange, p
 
 ## Decisions
 
-1. Copying a handle on shared state (`var e = ex`, `ex.clone()`, a record built from `self.field`) out of a `let` or a plain parameter is an error, so `let` means read-only. The types are those `Classifier::shares_state` finds: a `Proxy`, an interface with a `var fn`, or a type holding one. A `let` that owns its value hands it on at its last use. Decided by Chinmay: "Reject the copy, build fn(var T)".
+1. Copying a handle on shared state (`var e = ex`, `ex.clone()`, a record built from `self.field`) out of a `let` or a plain parameter is an error, so `let` means read-only. The types are those `Classifier::shares_state` finds: a `Proxy`, an interface with a `var fn`, or a type holding one. A `let` that owns its value hands it on at its last use. Since one-owner references (#2199) records and interface values move instead of copying, so in practice the rule covers `Shared` handles and `.clone()`. Decided by Chinmay: "Reject the copy, build fn(var T)".
 2. A stored closure may pass a handle it captured from a `var` as `var`; the change reaches the shared state, and the closure still counts as reading its capture. Changing a capture taken from a `let` is an error. Built as recommended; Chinmay's answer is pending.

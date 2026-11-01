@@ -21,7 +21,7 @@ pub fn run(m: &mut Module) -> bool {
         changed |= borrow_str_copies_across_blocks(m, fi);
         changed |= borrow_str_phis(m, fi);
         changed |= unbox_dead_sources(m, fi);
-        changed |= unbox_dead_options(&mut m.funcs[fi]);
+        changed |= unbox_dead_options(m, fi);
         changed |= borrow_opt_str_reads(m, fi);
     }
     changed
@@ -81,6 +81,7 @@ impl BlockUses {
 /// would otherwise deep-copy the old value on every iteration.
 fn move_dead_sources(m: &mut Module, fi: usize) -> bool {
     let borrows_of = borrows_of(m, fi);
+    let tainted = view_tainted(m, fi);
     let f = &mut m.funcs[fi];
     let mut rename: Vec<Option<Value>> = vec![None; f.values.len()];
     let mut touched = vec![false; f.values.len()];
@@ -92,7 +93,7 @@ fn move_dead_sources(m: &mut Module, fi: usize) -> bool {
                 continue;
             };
             let v = inst.args[0];
-            if touched[c.index()] || touched[v.index()] {
+            if touched[c.index()] || touched[v.index()] || tainted[v.index()] {
                 continue;
             }
             // The copy is a move when the next use of `v` in the block is its drop.
@@ -152,12 +153,55 @@ fn borrows_of(m: &Module, fi: usize) -> Vec<Vec<Value>> {
     for b in &f.blocks {
         for inst in &b.insts {
             let Some(r) = inst.res else { continue };
-            if !matches!(m.result_mode(f, inst), Some(Mode::Own) | None) {
+            if !matches!(m.result_mode(f, inst), Some(Mode::Own) | None) || m.result_views(inst) {
                 inst.args.iter().for_each(|a| borrows_of[a.index()].push(r));
             }
         }
     }
     borrows_of
+}
+
+/// Values of function `fi` that may be interface views (`iface.lend`, `iface.view`, a view
+/// lender's result) or hold one: an owned value whose payload is borrowed from elsewhere. A copy
+/// of such a value owns its payload, so the copy is never turned into a move or a take of the
+/// source; a copy's result itself is never a view.
+fn view_tainted(m: &Module, fi: usize) -> Vec<bool> {
+    let f = &m.funcs[fi];
+    let mut tainted = vec![false; f.values.len()];
+    loop {
+        let mut changed = false;
+        for b in &f.blocks {
+            for inst in &b.insts {
+                let Some(r) = inst.res else { continue };
+                if tainted[r.index()] {
+                    continue;
+                }
+                let hit = m.result_views(inst)
+                    || (!matches!(inst.op, Op::Copy)
+                        && !inst.op.is_call()
+                        && inst.args.iter().any(|a| tainted[a.index()]));
+                if hit {
+                    tainted[r.index()] = true;
+                    changed = true;
+                }
+            }
+            b.term.for_each_target(|t| {
+                let params = &f.blocks[t.block.index()].params;
+                for (k, a) in t.args.iter().enumerate() {
+                    if tainted[a.index()]
+                        && let Some(p) = params.get(k)
+                        && !tainted[p.value.index()]
+                    {
+                        tainted[p.value.index()] = true;
+                        changed = true;
+                    }
+                }
+            });
+        }
+        if !changed {
+            return tainted;
+        }
+    }
 }
 
 /// Turns `c = copy v` into a move when every path from the copy reaches `v` again only to drop
@@ -181,12 +225,17 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
             let Some(r) = inst.res else { continue };
             home[r.index()] = bi;
             match m.result_mode(f, inst) {
+                Some(Mode::Own) if m.result_views(inst) => {
+                    owned[r.index()] = true;
+                    inst.args.iter().for_each(|a| borrows_of[a.index()].push(r));
+                }
                 Some(Mode::Own) => owned[r.index()] = true,
                 Some(_) => inst.args.iter().for_each(|a| borrows_of[a.index()].push(r)),
                 None => {}
             }
         }
     }
+    let tainted = view_tainted(m, fi);
     let preds = f.predecessors();
     let mut touched = vec![false; n];
     let mut rename: Vec<Option<Value>> = vec![None; n];
@@ -197,7 +246,7 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
                 continue;
             };
             let v = inst.args[0];
-            if !owned[v.index()] || touched[v.index()] || touched[c.index()] {
+            if !owned[v.index()] || tainted[v.index()] || touched[v.index()] || touched[c.index()] {
                 continue;
             }
             // `v` and every value borrowed out of it.
@@ -997,7 +1046,9 @@ fn remove_insts(f: &mut Func, dead: &[(usize, usize)]) {
 /// instead of the payload being deep-copied and then dropped with its source. This is the
 /// shape of unwrapping a recursive result, which would otherwise copy every subtree once per
 /// level.
-fn unbox_dead_options(f: &mut Func) -> bool {
+fn unbox_dead_options(m: &mut Module, fi: usize) -> bool {
+    let tainted = view_tainted(m, fi);
+    let f = &mut m.funcs[fi];
     let mut uses = vec![0u32; f.values.len()];
     for b in &f.blocks {
         for i in &b.insts {
@@ -1021,7 +1072,7 @@ fn unbox_dead_options(f: &mut Func) -> bool {
                     continue;
                 };
                 let v = get.args[0];
-                if uses[p.index()] != 1 {
+                if uses[p.index()] != 1 || tainted[v.index()] {
                     continue;
                 }
                 let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Copy) else {
@@ -1053,6 +1104,7 @@ fn unbox_dead_options(f: &mut Func) -> bool {
 /// would otherwise deep-copy the whole tail on every iteration.
 fn unbox_dead_sources(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
+    let tainted = view_tainted(m, fi);
     let mut uses = vec![0u32; f.values.len()];
     for b in &f.blocks {
         for i in &b.insts {
@@ -1073,7 +1125,7 @@ fn unbox_dead_sources(m: &mut Module, fi: usize) -> bool {
                     continue;
                 };
                 let v = get.args[0];
-                if uses[p.index()] != 1 || !nd[p.index()] {
+                if uses[p.index()] != 1 || !nd[p.index()] || tainted[v.index()] {
                     continue;
                 }
                 let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Copy) else {
@@ -1161,6 +1213,7 @@ pub fn run_takes(m: &mut Module) -> bool {
 /// both moved and still owned by the record.
 fn take_record_fields(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
+    let tainted = view_tainted(m, fi);
     let mut uses = vec![0u32; f.values.len()];
     for b in &f.blocks {
         for i in &b.insts {
@@ -1183,7 +1236,7 @@ fn take_record_fields(m: &mut Module, fi: usize) -> bool {
             let TyKind::Rec(_) = m.types.kind(f.ty(v)) else {
                 continue;
             };
-            if idx.after(v, di).next().is_some() {
+            if tainted[v.index()] || idx.after(v, di).next().is_some() {
                 continue;
             }
             let mut gets: Vec<usize> = Vec::new();
@@ -1257,6 +1310,7 @@ fn take_record_fields(m: &mut Module, fi: usize) -> bool {
 
 fn take_dead_sources(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
+    let tainted = view_tainted(m, fi);
     let mut uses = vec![0u32; f.values.len()];
     for b in &f.blocks {
         for i in &b.insts {
@@ -1278,6 +1332,9 @@ fn take_dead_sources(m: &mut Module, fi: usize) -> bool {
                 continue;
             }
             let v = drop.args[0];
+            if tainted[v.index()] {
+                continue;
+            }
             let mut gets: Vec<usize> = Vec::new();
             let mut ok = true;
             let mut shape = None;

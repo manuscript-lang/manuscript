@@ -21,7 +21,7 @@ impl import in interface let match not or ref return self test true try type
 unit var while
 ```
 
-- `ref` is reserved but has no meaning: a program that writes it is rejected with a hint to drop it and return `.clone()` where a result is part of a parameter.
+- `ref` is reserved but has no meaning: a program that writes it is rejected with a hint to drop it, because a function that returns a part of a parameter lends it without a marker.
 - `opaque` is contextual too: it modifies a `type` declaration only directly before `type` (`export opaque type Name:`), so `let opaque = 1` is valid.
 - `from` ends an import's names and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `let from = 2` and `let bench = 3` are valid.
 - Words from other languages (`def`, `lambda`, `elif`, `True`, `False`, `None`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) and Python spellings (`f"..."`, `from "p" import x`, `Callable[[Int], Int]`, `a if c else b`, `case` arms, `()` for Unit) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `else if`, `true`, `none`, `unit`, `try expr`, and so on).

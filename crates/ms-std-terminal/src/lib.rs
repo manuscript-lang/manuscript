@@ -30,24 +30,11 @@ abi_handle!(raw::Raw);
 
 #[cfg(unix)]
 mod imp {
-    use rustix::fd::BorrowedFd;
-    use rustix::stdio::{stderr, stdin, stdout};
-    use rustix::termios::{isatty, tcgetwinsize};
+    use super::is_terminal;
+    use rustix::stdio::{stdin, stdout};
+    use rustix::termios::tcgetwinsize;
     use std::ffi::OsString;
     use std::os::unix::ffi::OsStrExt;
-
-    /// The standard descriptor numbered `fd` (0 and 1; anything else is standard error).
-    fn standard(fd: i32) -> BorrowedFd<'static> {
-        match fd {
-            0 => stdin(),
-            1 => stdout(),
-            _ => stderr(),
-        }
-    }
-
-    pub fn is_terminal(fd: i32) -> bool {
-        isatty(standard(fd))
-    }
 
     fn env(name: &str) -> Option<OsString> {
         std::env::var_os(name)
@@ -83,15 +70,7 @@ mod imp {
 
 #[cfg(not(unix))]
 mod imp {
-    use std::io::IsTerminal;
-
-    pub fn is_terminal(fd: i32) -> bool {
-        match fd {
-            0 => std::io::stdin().is_terminal(),
-            1 => std::io::stdout().is_terminal(),
-            _ => std::io::stderr().is_terminal(),
-        }
-    }
+    use super::is_terminal;
 
     pub fn colors() -> i64 {
         0
@@ -106,6 +85,16 @@ mod imp {
             return Err(ms_rt_abi::STATUS_NOT_TERMINAL);
         }
         crate::raw::Raw::open(0, 1, alternate)
+    }
+}
+
+/// Whether standard descriptor `fd` (0 and 1; anything else is standard error) is a terminal.
+fn is_terminal(fd: i32) -> bool {
+    use std::io::IsTerminal;
+    match fd {
+        0 => std::io::stdin().is_terminal(),
+        1 => std::io::stdout().is_terminal(),
+        _ => std::io::stderr().is_terminal(),
     }
 }
 
@@ -127,7 +116,7 @@ fn key_flag(read: impl FnOnce(bool, bool, bool) -> bool) -> bool {
 }
 
 fn raw_mode_capable() -> bool {
-    cfg!(unix) && imp::is_terminal(0) && imp::is_terminal(1)
+    cfg!(unix) && is_terminal(0) && is_terminal(1)
 }
 
 native! {
@@ -137,15 +126,15 @@ native! {
     }
 
     safe fn msstd_terminal_capabilities_input_is_terminal() -> bool {
-        imp::is_terminal(0)
+        is_terminal(0)
     }
 
     safe fn msstd_terminal_capabilities_output_is_terminal() -> bool {
-        imp::is_terminal(1)
+        is_terminal(1)
     }
 
     safe fn msstd_terminal_capabilities_error_is_terminal() -> bool {
-        imp::is_terminal(2)
+        is_terminal(2)
     }
 
     safe fn msstd_terminal_capabilities_raw_mode() -> bool {
@@ -161,7 +150,7 @@ native! {
     }
 
     safe fn msstd_terminal_size_status() -> u8 {
-        if !imp::is_terminal(1) {
+        if !is_terminal(1) {
             STATUS_NOT_TERMINAL
         } else if imp::size().is_some() {
             STATUS_OK

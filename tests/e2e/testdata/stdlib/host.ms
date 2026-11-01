@@ -1,7 +1,16 @@
 import expect_equal, expect_false, expect_not_equal from "@std/test/test.ms"
 import arguments from "@std/os/process.ms"
 import endianness, end_of_line, os_type, dev_null, system_info from "@std/os/process.ms"
-import CommandError, CommandOutput, Stdio, run, spawn, environment, process_info, set_environment from "@std/os/process.ms"
+import (
+    CommandError,
+    CommandOutput,
+    Stdio,
+    run,
+    spawn,
+    environment,
+    process_info,
+    set_environment
+) from "@std/os/process.ms"
 import read_line from "@std/io/io.ms"
 
 test "CLI test roots have empty arguments and host metadata agrees":

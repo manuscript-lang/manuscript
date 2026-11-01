@@ -43,9 +43,9 @@ For deterministic work counts, collect only the corresponding native entry:
 
 ```sh
 valgrind --tool=callgrind --collect-atstart=no \
-  --toggle-collect=msrt_json_parse_tree /tmp/json-before 65536 3 escaped
+  --toggle-collect=msstd_json_parse_tree /tmp/json-before 65536 3 escaped
 valgrind --tool=callgrind --collect-atstart=no \
-  --toggle-collect=msrt_json_parse /tmp/json-before 65536 3 typed-escaped
+  --toggle-collect=msstd_json_parse /tmp/json-before 65536 3 typed-escaped
 ```
 
 Repeat for the after binary. Require successful output/checksums; these instruction

@@ -8,7 +8,14 @@
 # Usage: ms run tools/e2e.ms [-- fixture paths to run instead]
 import env, exe, host, note, run_program from "./lib.ms"
 import DirectoryEntry, access, list, read_file, stat from "@std/os/fs.ms"
-import CpuInfo, arguments, change_directory, working_directory, run, cpus from "@std/os/process.ms"
+import (
+    CpuInfo,
+    arguments,
+    change_directory,
+    working_directory,
+    run,
+    cpus
+) from "@std/os/process.ms"
 import TaskGroup, Task from "@std/concurrency/tasks.ms"
 import stdout from "@std/io/io.ms"
 

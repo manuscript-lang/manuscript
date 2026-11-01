@@ -1,3 +1,5 @@
+import TaskChannelLease, TaskChannels from "@std/concurrency/tasks.ms"
+
 export extern fn msrt_scope_new() Int
 
 export extern fn msrt_scope_spawn(
@@ -28,3 +30,12 @@ export extern fn msrt_channel_park(token: Int) Unit
 export extern fn msrt_channel_post(token: Int) Unit
 
 export extern fn msrt_obj_share[T](value: T) T
+
+export extern fn msrt_channel_group_new() TaskChannels
+
+export extern fn msrt_channel_group_add(
+    group: TaskChannels,
+    close: fn() Unit
+) TaskChannelLease
+
+export extern fn msrt_channel_group_close(group: TaskChannels) Unit

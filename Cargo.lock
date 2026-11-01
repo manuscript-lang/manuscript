@@ -982,7 +982,6 @@ dependencies = [
  "ms-lower",
  "ms-mir",
  "ms-rt",
- "sha2",
 ]
 
 [[package]]
@@ -1089,20 +1088,16 @@ dependencies = [
  "ms-rt-abi",
  "ms-std-archive",
  "ms-std-bigint",
- "ms-std-compress",
+ "ms-std-core",
  "ms-std-crypto",
  "ms-std-decimal",
- "ms-std-encoding",
  "ms-std-fs",
  "ms-std-html",
  "ms-std-io",
  "ms-std-json",
- "ms-std-log",
- "ms-std-math",
  "ms-std-net",
  "ms-std-path",
  "ms-std-process",
- "ms-std-random",
  "ms-std-regex",
  "ms-std-system",
  "ms-std-terminal",
@@ -1146,9 +1141,9 @@ dependencies = [
 name = "ms-std-archive"
 version = "0.1.0"
 dependencies = [
+ "miniz_oxide",
  "ms-rt",
  "ms-rt-abi",
- "ms-std-compress",
 ]
 
 [[package]]
@@ -1162,10 +1157,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-std-compress"
+name = "ms-std-core"
 version = "0.1.0"
 dependencies = [
- "miniz_oxide",
+ "getrandom 0.4.3",
  "ms-rt",
  "ms-rt-abi",
 ]
@@ -1209,14 +1204,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-std-encoding"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
-]
-
-[[package]]
 name = "ms-std-fs"
 version = "0.1.0"
 dependencies = [
@@ -1254,22 +1241,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-std-log"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
- "ms-std-json",
-]
-
-[[package]]
-name = "ms-std-math"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
-]
-
-[[package]]
 name = "ms-std-net"
 version = "0.1.0"
 dependencies = [
@@ -1278,7 +1249,7 @@ dependencies = [
  "mio",
  "ms-rt",
  "ms-rt-abi",
- "ms-std-encoding",
+ "ms-std-core",
  "psl",
  "ring",
  "rustix",
@@ -1307,15 +1278,6 @@ dependencies = [
  "ms-std-fs",
  "ms-std-io",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "ms-std-random"
-version = "0.1.0"
-dependencies = [
- "getrandom 0.4.3",
- "ms-rt",
- "ms-rt-abi",
 ]
 
 [[package]]

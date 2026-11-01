@@ -2,8 +2,10 @@ name: Cache maintenance
 
 # Two jobs. `warm` starts a manual CI/CD run on main at most once an hour, because only a finished
 # manual run saves the sccache caches (push runs are replaced before they finish). It starts from
-# the hourly schedule and, because new schedules have not fired (#2158), from the end of any push
-# run on main. `prune` keeps one cache per name.
+# the end of any push run on main and from an hourly schedule. GitHub runs schedules on a best-effort
+# basis (one of about seven hourly slots ran in the first seven hours, #2158), so the schedule only
+# covers quiet hours and the workflow_run trigger is what keeps the caches warm. `prune` keeps one
+# cache per name.
 #
 # Keeps one cache per name. A lockfile change writes a new cargo cache and nothing removes the old
 # one, so copies pile up until GitHub evicts at the 10 GB limit and takes live entries with it.

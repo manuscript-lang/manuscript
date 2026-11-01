@@ -63,10 +63,10 @@ impl Source {
 
 fn render(raw: &str, line: usize, column: usize, end: Option<(usize, usize)>) -> String {
     let source = raw.strip_suffix('\r').unwrap_or(raw);
-    let start = clamp(source, column.saturating_sub(1));
+    let start = source.floor_char_boundary(column.saturating_sub(1));
     let stop = match end {
         Some((end_line, end_column)) if end_line == line => {
-            clamp(source, end_column.saturating_sub(1))
+            source.floor_char_boundary(end_column.saturating_sub(1))
         }
         Some((end_line, _)) if end_line > line => source.len(),
         _ => start,
@@ -81,15 +81,6 @@ fn render(raw: &str, line: usize, column: usize, end: Option<(usize, usize)>) ->
         " ".repeat(indent),
         "^".repeat(marks)
     )
-}
-
-/// `index` moved back to a character boundary inside `text`.
-fn clamp(text: &str, index: usize) -> usize {
-    let mut index = index.min(text.len());
-    while !text.is_char_boundary(index) {
-        index -= 1;
-    }
-    index
 }
 
 fn expand(text: &str) -> String {

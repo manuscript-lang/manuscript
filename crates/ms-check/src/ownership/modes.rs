@@ -18,6 +18,40 @@ pub enum ParamMode {
     Consume,
 }
 
+/// Where a callable's result comes from.
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
+pub struct Lend {
+    /// Every return path yields a part of the receiver or of a parameter, so the result is a
+    /// reference into those arguments: the caller holds it as a borrow of them.
+    pub lends: bool,
+    /// The result is an owned interface view of the sources (a lent value converted to an
+    /// interface on the way out): lowering returns an owned value the caller drops, and the
+    /// caller still holds the sources. A path returning a new value is allowed beside it.
+    pub view: bool,
+    /// The receiver is a source.
+    pub receiver: bool,
+    /// The parameters that are sources, by label.
+    pub params: Vec<Name>,
+    /// Every path yields the same chain of fields of one source (`return self.items`): a `var`
+    /// binding of the call is an exclusive borrow of that place. The source is a parameter by
+    /// label, or the receiver.
+    pub path: Option<(Option<Name>, Vec<Name>)>,
+}
+
+impl Lend {
+    /// The optimistic start of the fixpoint: a body not yet walked may lend from everything.
+    /// Walking withdraws sources that are not returned and the claim when any path owns.
+    fn optimistic(params: &[ms_syntax::ast::Param]) -> Lend {
+        Lend {
+            lends: true,
+            view: false,
+            receiver: true,
+            params: params.iter().map(|p| p.name).collect(),
+            path: None,
+        }
+    }
+}
+
 /// The modes of a source callable.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Summary {
@@ -25,6 +59,8 @@ pub struct Summary {
     pub receiver: ParamMode,
     /// Parameters by label.
     pub params: Vec<(Name, ParamMode)>,
+    /// Where the result comes from.
+    pub result: Lend,
 }
 
 impl Summary {
@@ -54,6 +90,7 @@ impl Summary {
                     )
                 })
                 .collect(),
+            result: Lend::optimistic(params),
         }
     }
 
@@ -183,6 +220,39 @@ fn value_modes(m: &ModuleHir, call: &Expr, mut modes: CallModes) -> CallModes {
         }
     }
     modes
+}
+
+/// Where the result of `call` comes from: a source callable's inferred lending, or nothing for
+/// a native, an interface operation, a constructor or a function value, whose results own.
+pub fn call_lend(m: &ModuleHir, call: &Expr, summaries: &Summaries) -> Lend {
+    match m.resolution(call) {
+        Resolution::Function(s) | Resolution::Constant(s) => {
+            if !s.native.as_str().is_empty() {
+                return Lend::default();
+            }
+            let Some(d) = s.decl.as_ref() else {
+                return Lend::default();
+            };
+            let func = FuncRef::of_decl(d.clone());
+            summaries
+                .get(&(s.module, func.id()))
+                .map(|k| k.result.clone())
+                .unwrap_or_else(|| Summary::declared(&func).result)
+        }
+        Resolution::Method(method) => {
+            if !method.native.as_str().is_empty() {
+                return Lend::default();
+            }
+            let Some(func) = &method.decl else {
+                return Lend::default();
+            };
+            summaries
+                .get(&(method.module, func.id()))
+                .map(|k| k.result.clone())
+                .unwrap_or_else(|| Summary::declared(func).result)
+        }
+        _ => Lend::default(),
+    }
 }
 
 fn from_summary(

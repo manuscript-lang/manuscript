@@ -1,19 +1,6 @@
 import Data from "@std/core.ms"
 import parse_float from "@std/math/math.ms"
-
-# The compiler lowers these two calls from the type argument; see `json_parse` and `json_stringify` in ms-lower.
-extern fn msrt_json_parse[T](
-    text: String,
-    limits: JsonLimits?,
-    ignore_unknown_fields: Bool
-) T!JsonError
-
-extern fn msrt_json_stringify[T](
-    value: T,
-    max_bytes: Int?,
-    indent: Int?,
-    strict: Bool
-) String!JsonError
+import msstd_json_parse, msstd_json_stringify from "@std/internal/json.ms"
 
 # Errors returned for malformed JSON or configured input and nesting limits.
 export type JsonError:
@@ -175,7 +162,7 @@ export fn parse[T: Data = JsonValue](
     limits: JsonLimits?,
     ignore_unknown_fields: Bool = true
 ) T!JsonError:
-    return msrt_json_parse[T](text, limits, ignore_unknown_fields)
+    return msstd_json_parse[T](text, limits, ignore_unknown_fields)
 
 # Customizes how `stringify` encodes a type. It takes precedence over the
 # structural encoding for every record and alternative, so it is the way to choose a tagged or
@@ -257,7 +244,7 @@ export fn stringify[T: Data](
     indent: Int?,
     strict: Bool = false
 ) String!JsonError:
-    return msrt_json_stringify(value, max_bytes, indent, strict)
+    return msstd_json_stringify(value, max_bytes, indent, strict)
 
 impl Error for JsonError:
     # Returns a JSON-prefixed diagnostic without echoing input text or number tokens.

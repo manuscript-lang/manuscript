@@ -273,6 +273,22 @@ pub struct Operation {
     pub decl: Option<FuncRef>,
 }
 
+/// Whether interface `t` declares a `var fn` operation: a call through it may change the
+/// value, so a converted value cannot stay a view of borrowed storage.
+pub fn contract_mutates(t: &Ty) -> bool {
+    let Some(def) = &t.def else {
+        return false;
+    };
+    let mutating = |op: &Operation| {
+        let f = op.decl.as_ref()?;
+        Some(f.decl.methods().get(f.index?)?.mutating)
+    };
+    def.operations
+        .borrow()
+        .iter()
+        .any(|op| mutating(op).unwrap_or(false))
+}
+
 /// A nominal type definition.
 pub struct Definition {
     symbol: RefCell<Weak<Sym>>,

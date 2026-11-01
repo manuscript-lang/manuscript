@@ -316,8 +316,9 @@ fn family(m: &Module, f: &Func, ix: &Index, v: Value) -> HashSet<Value> {
                     // intermediate alive until the end of the scope).
                     let fresh = matches!(i.imm, Imm::Ext(e) if m.externs[e.index()].fresh);
                     // A lending function's result is a borrow of its arguments.
-                    let lent = m.result_mode(f, i) == Some(Mode::Borrow)
-                        && matches!(i.op, Op::Call | Op::CallMethod);
+                    let lent = (m.result_mode(f, i) == Some(Mode::Borrow)
+                        && matches!(i.op, Op::Call | Op::CallMethod))
+                        || m.result_views(i);
                     if (i.op == Op::CallRt && !fresh || lent)
                         && let Some(r) = i.res
                         && !is_scalar(m, f.ty(r))

@@ -186,6 +186,21 @@ pub struct Cx {
     pub consumes: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<bool>>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
     pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
+    /// Callables whose result is a reference into their arguments, by module file and node.
+    pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Callables whose result is an interface view of their arguments (`ret_view`).
+    pub view_lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Wrappers of lent values built as `opt.view` / `alt.view`, by module file and node.
+    pub view_wraps: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Name expressions moving an interface view out of the local holding it.
+    pub view_moves: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Lending calls whose result the caller owns because an argument is a temporary: the
+    /// result is copied out before the temporary is dropped.
+    pub owned_lends: Rc<
+        std::collections::HashMap<(Name, ms_syntax::ast::NodeId), ms_check::ownership::OwnedLend>,
+    >,
+    /// Conditional and match expressions whose value is a reference on every arm.
+    pub lent_matches: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Which types are resources, for the closers of records and collections that hold them.
     pub classes: ms_check::ownership::Classifier,
 }
@@ -246,6 +261,12 @@ impl Cx {
             escaping_lambdas: program.escaping_lambdas.clone(),
             consumes: program.consumes.clone(),
             getters: program.getter_borrows.clone(),
+            lenders: program.lenders.clone(),
+            view_lenders: program.view_lenders.clone(),
+            view_wraps: program.view_wraps.clone(),
+            view_moves: program.view_moves.clone(),
+            owned_lends: program.owned_lends.clone(),
+            lent_matches: program.lent_matches.clone(),
             classes: ms_check::ownership::Classifier::new(program),
         }
     }

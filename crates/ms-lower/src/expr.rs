@@ -91,6 +91,17 @@ impl<'a> FnLower<'a> {
         };
         // The conversion to the interface comes first: `Shape?` takes a `Sq` as `some(Shape(sq))`.
         let x = match self.hir.info(e).wrap_some {
+            // A reference wrapped on its way to a binding or a return stays one: `opt.view`.
+            Some(_)
+                if !self.dead
+                    && !x.own
+                    && self.cx.view_wraps.contains(&(self.hir.data.file, e.id)) =>
+            {
+                Val {
+                    v: self.b.opt_view(x.v),
+                    own: false,
+                }
+            }
             Some(_) if !self.dead => {
                 let o = self.owned(x);
                 Val {
@@ -284,6 +295,15 @@ impl<'a> FnLower<'a> {
     fn name(&mut self, e: &Expr) -> Result<Val, Error> {
         match self.hir.resolution(e) {
             Resolution::Local(b) => {
+                if self.cx.view_moves.contains(&(self.hir.data.file, e.id)) && !self.dead {
+                    // The interface view this local holds moves into the result; what stays
+                    // behind owns nothing, so the scope's drop frees nothing.
+                    let l = self.local(&b)?;
+                    let v = self.local_take(&l);
+                    // The return this move belongs to skips the local's drop on this path.
+                    self.closed_on_path.insert(b.uid);
+                    return Ok(Val { v, own: true });
+                }
                 let x = self.read_local(&b)?;
                 self.moved_closer(b.uid, e);
                 self.fit_function_value(e, x)

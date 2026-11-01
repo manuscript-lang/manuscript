@@ -1,31 +1,13 @@
 import Bytes from "@std/bytes.ms"
 import ReadStream from "@std/io/io.ms"
-import msstd_archive_compress_stream, msstd_archive_decompress_stream from "@std/internal/archive.ms"
-
-extern fn msrt_archive_pack(
-    entries: List[ArchiveEntry],
-    format: String,
-    max_bytes: Int?
-) Bytes!ArchiveError
-
-extern fn msrt_archive_unpack(
-    data: Bytes,
-    format: String,
-    limits: ArchiveLimits?
-) List[ArchiveEntry]!ArchiveError
-
-extern fn msrt_compress_compress(
-    data: Bytes,
-    format: String,
-    level: Int,
-    max_bytes: Int?
-) Bytes!CompressionError
-
-extern fn msrt_compress_decompress(
-    data: Bytes,
-    format: String,
-    max_bytes: Int?
-) Bytes!CompressionError
+import (
+    msstd_archive_compress_stream,
+    msstd_archive_decompress_stream,
+    msstd_archive_pack,
+    msstd_archive_unpack,
+    msstd_compress_compress,
+    msstd_compress_decompress
+) from "@std/internal/archive.ms"
 
 # Errors returned when an archive cannot be read or written.
 export type ArchiveError:
@@ -67,7 +49,7 @@ export fn pack(
     format: String,
     max_bytes: Int?
 ) Bytes!ArchiveError:
-    return msrt_archive_pack(entries, format, max_bytes)
+    return msstd_archive_pack(entries, format, max_bytes)
 
 # Decodes exactly `zip` or `tar` (case-sensitive); other formats return Unsupported.
 # Applies each supplied entry and total-size limit.
@@ -76,7 +58,7 @@ export fn unpack(
     format: String,
     limits: ArchiveLimits?
 ) List[ArchiveEntry]!ArchiveError:
-    return msrt_archive_unpack(data, format, limits)
+    return msstd_archive_unpack(data, format, limits)
 
 impl Error for ArchiveError:
     # Returns original Failed text, or an archive-prefixed diagnostic for other cases.
@@ -136,7 +118,7 @@ export fn compress(
     level: Int = 6,
     max_bytes: Int?
 ) Bytes!CompressionError:
-    return msrt_compress_compress(data, format, level, max_bytes)
+    return msstd_compress_compress(data, format, level, max_bytes)
 
 # Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return Unsupported.
 # Stops when the supplied output limit is reached.
@@ -145,7 +127,7 @@ export fn decompress(
     format: String,
     max_bytes: Int?
 ) Bytes!CompressionError:
-    return msrt_compress_decompress(data, format, max_bytes)
+    return msstd_compress_decompress(data, format, max_bytes)
 
 impl Error for CompressionError:
     # Returns original Failed text, or a compression-prefixed diagnostic for other cases.

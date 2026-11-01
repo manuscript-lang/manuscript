@@ -2,7 +2,17 @@
 # max ns per operation for each case, optionally limited to names containing a prefix.
 # Usage: ms run bench/tools/stdlib_bench.ms [-- samples [name-prefix]]
 # With `--table` as the first argument it reads an `ms bench --json` document from standard input instead of running it.
-import Invalid, finish, ms_binary, left, read_stdin, repeats, right, stdlib_bench, usage from "./lib.ms"
+import (
+    Invalid,
+    finish,
+    ms_binary,
+    left,
+    read_stdin,
+    repeats,
+    right,
+    stdlib_bench,
+    usage
+) from "./lib.ms"
 import Stats, case_labels, read_cases from "./stdlib_results.ms"
 import arguments from "@std/os/process.ms"
 

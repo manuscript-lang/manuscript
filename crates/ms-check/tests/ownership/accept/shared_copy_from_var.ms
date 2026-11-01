@@ -11,6 +11,11 @@ fn from_var_param(var c: Counter) Counter:
     bump(var d)
     return c.clone()
 
+# A record has one owner: binding it to a `var` takes the caller's value over, nothing is copied.
+fn take_over(c: Counter) Unit:
+    var d = c
+    bump(var d)
+
 fn hand_on() Counter:
     let fresh = Counter(n: Shared(0))
     var mine = fresh

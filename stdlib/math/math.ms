@@ -1,59 +1,76 @@
 import Data, panic from "@std/core.ms"
-import msstd_math_acos, msstd_math_asin, msstd_math_atan, msstd_math_atan2, msstd_math_ceil, msstd_math_cos, msstd_math_cosh, msstd_math_exp, msstd_math_floor, msstd_math_hypot, msstd_math_log, msstd_math_log10, msstd_math_log2, msstd_math_pow, msstd_math_remainder, msstd_math_round, msstd_math_sin, msstd_math_sinh, msstd_math_sqrt, msstd_math_tan, msstd_math_tanh, msstd_math_truncate, msstd_math_acosh, msstd_math_asinh, msstd_math_atanh, msstd_math_cbrt, msstd_math_expm1, msstd_math_log1p, msstd_math_is_integer, msstd_math_is_safe_integer, msrt_bits_bit_and, msrt_bits_bit_or, msrt_bits_bit_xor, msrt_bits_bit_not, msrt_bits_shift_left, msrt_bits_shift_right, msrt_bits_shift_right_unsigned, msrt_bits_rotate_left, msrt_bits_rotate_right, msrt_bits_count_ones, msrt_bits_leading_zeros, msrt_bits_trailing_zeros, msrt_bits_wrapping_add, msrt_bits_wrapping_subtract, msrt_bits_wrapping_multiply from "@std/internal/math.ms"
-
-extern fn msrt_numbers_parse_float(text: String) Float!NumberError
-
-extern fn msrt_numbers_parse_int(text: String, radix: Int) Int!NumberError
-
-extern fn msstd_bigint_add(value: BigInt, other: BigInt) BigInt
-
-extern fn msstd_bigint_subtract(value: BigInt, other: BigInt) BigInt
-
-extern fn msstd_bigint_multiply(value: BigInt, other: BigInt) BigInt
-
-extern fn msstd_bigint_divide(value: BigInt, other: BigInt) BigInt!BigIntError
-
-extern fn msstd_bigint_remainder(value: BigInt, other: BigInt) BigInt!BigIntError
-
-extern fn msstd_bigint_quotient(value: BigInt, other: BigInt) BigInt
-
-extern fn msstd_bigint_modulo(value: BigInt, other: BigInt) BigInt
-
-extern fn msstd_bigint_compare(value: BigInt, other: BigInt) Int
-
-extern fn msstd_bigint_bit_and(value: BigInt, other: BigInt) BigInt
-
-extern fn msstd_bigint_bit_or(value: BigInt, other: BigInt) BigInt
-
-extern fn msstd_bigint_bit_xor(value: BigInt, other: BigInt) BigInt
-
-extern fn msstd_bigint_bit_not(value: BigInt) BigInt
-
-extern fn msstd_bigint_negate(value: BigInt) BigInt
-
-extern fn msstd_bigint_abs(value: BigInt) BigInt
-
-extern fn msstd_bigint_sign(value: BigInt) Int
-
-extern fn msstd_bigint_pow(value: BigInt, exponent: Int) BigInt!BigIntError
-
-extern fn msstd_bigint_shift_left(value: BigInt, count: Int) BigInt!BigIntError
-
-extern fn msstd_bigint_shift_right(value: BigInt, count: Int) BigInt!BigIntError
-
-extern fn msstd_bigint_to_float(value: BigInt) Float
-
-extern fn msstd_bigint_to_int(value: BigInt) Int?
-
-extern fn msstd_bigint_to_string_radix(value: BigInt, radix: Int) String
-
-extern fn msstd_bigint_from_int(value: Int) BigInt
-
-extern fn msstd_bigint_parse(
-    text: String,
-    radix: Int,
-    max_digits: Int?
-) BigInt!BigIntError
+import (
+    msstd_math_acos,
+    msstd_math_asin,
+    msstd_math_atan,
+    msstd_math_atan2,
+    msstd_math_ceil,
+    msstd_math_cos,
+    msstd_math_cosh,
+    msstd_math_exp,
+    msstd_math_floor,
+    msstd_math_hypot,
+    msstd_math_log,
+    msstd_math_log10,
+    msstd_math_log2,
+    msstd_math_pow,
+    msstd_math_remainder,
+    msstd_math_round,
+    msstd_math_sin,
+    msstd_math_sinh,
+    msstd_math_sqrt,
+    msstd_math_tan,
+    msstd_math_tanh,
+    msstd_math_truncate,
+    msstd_math_acosh,
+    msstd_math_asinh,
+    msstd_math_atanh,
+    msstd_math_cbrt,
+    msstd_math_expm1,
+    msstd_math_log1p,
+    msstd_math_is_integer,
+    msstd_math_is_safe_integer,
+    msrt_bits_bit_and,
+    msrt_bits_bit_or,
+    msrt_bits_bit_xor,
+    msrt_bits_bit_not,
+    msrt_bits_shift_left,
+    msrt_bits_shift_right,
+    msrt_bits_shift_right_unsigned,
+    msrt_bits_rotate_left,
+    msrt_bits_rotate_right,
+    msrt_bits_count_ones,
+    msrt_bits_leading_zeros,
+    msrt_bits_trailing_zeros,
+    msrt_bits_wrapping_add,
+    msrt_bits_wrapping_subtract,
+    msrt_bits_wrapping_multiply,
+    msrt_numbers_parse_float,
+    msrt_numbers_parse_int,
+    msstd_bigint_add,
+    msstd_bigint_subtract,
+    msstd_bigint_multiply,
+    msstd_bigint_divide,
+    msstd_bigint_remainder,
+    msstd_bigint_quotient,
+    msstd_bigint_modulo,
+    msstd_bigint_compare,
+    msstd_bigint_bit_and,
+    msstd_bigint_bit_or,
+    msstd_bigint_bit_xor,
+    msstd_bigint_bit_not,
+    msstd_bigint_negate,
+    msstd_bigint_abs,
+    msstd_bigint_sign,
+    msstd_bigint_pow,
+    msstd_bigint_shift_left,
+    msstd_bigint_shift_right,
+    msstd_bigint_to_float,
+    msstd_bigint_to_int,
+    msstd_bigint_to_string_radix,
+    msstd_bigint_from_int,
+    msstd_bigint_parse
+) from "@std/internal/math.ms"
 
 # Returns the inverse cosine in radians.
 export fn acos(value: Float) Float:
@@ -328,6 +345,10 @@ export extern type BigInt
 impl Data for BigInt:
 
 impl BigInt:
+    # Returns an independent copy, so `var acc = base.clone()` starts an accumulator.
+    fn clone() BigInt:
+        return msstd_bigint_add(self, msstd_bigint_from_int(0))
+
     # Returns the exact sum; arbitrary precision means it cannot overflow.
     fn add(other: BigInt) BigInt:
         return msstd_bigint_add(self, other)

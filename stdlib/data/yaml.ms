@@ -474,7 +474,7 @@ fn merge(
 
 # A plain scalar continued across lines folds each break into one space; blank lines stay breaks.
 fn fold_plain(text: String) String:
-    if not text.contains("\n"): return text
+    if not text.contains("\n"): return text.clone()
 
     var result = ""
     var blanks = 0
@@ -1209,7 +1209,7 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
         column: column,
         context: Context(
             lines: [], final_break: context.final_break, index: context.index,
-            limits: context.limits, values: context.values,
+            limits: context.limits.clone(), values: context.values,
             anchors: context.anchors.clone(), sizes: context.sizes.clone(), simple: [],
             blank: [], dash: [], ind: [], col: []
         ),
@@ -1856,7 +1856,7 @@ export fn parse(text: String, limits: YamlLimits?) YamlValue!YamlError:
 
     var context = Context(
         lines: normalized.split("\n"), final_break: normalized.ends_with("\n"),
-        index: 0, limits: options, values: 0, anchors: Map[String, YamlValue](),
+        index: 0, limits: options.clone(), values: 0, anchors: Map[String, YamlValue](),
         sizes: Map[String, Int](), simple: [], blank: [], dash: [], ind: [], col: []
     )
 
@@ -1988,7 +1988,7 @@ fn format_key(key: String) String:
         if ["null", "true", "false", "yes", "no", "on", "off", "y", "n"].contains(
             key.lower()
         ): plain = false
-    if plain: return key
+    if plain: return key.clone()
 
     return quote_text(key)
 

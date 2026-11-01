@@ -9,19 +9,19 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "String does not satisfy Error; use a type that implements it",
+        "message": "local binding g is never read; remove it, use it, or name it with a leading '_' to ignore it",
         "position": {
           "file": "testresulttypefollowsparameterswithoutarrow-6.ms",
           "line": 5,
-          "column": 36,
-          "offset": 233
+          "column": 9,
+          "offset": 206
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testresulttypefollowsparameterswithoutarrow-6.ms:5:36: type: String does not satisfy Error; use a type that implements it\n   |\n 5 |     let g = fn(x: Int) Int!String: ok(x)\n   |                                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testresulttypefollowsparameterswithoutarrow-6.ms:5:9: type: local binding g is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 5 |     let g = fn(x: Int) Int!String: ok(x)\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

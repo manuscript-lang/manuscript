@@ -1,4 +1,15 @@
 import Data from "@std/core.ms"
+import (
+    msrt_bytes_join,
+    msrt_bytes_values,
+    msrt_bytes_read_word,
+    msrt_float_from_bits,
+    msrt_float_to_bits,
+    msrt_float32_from_bits,
+    msrt_float32_to_bits,
+    msrt_bits_bit_and,
+    msrt_bits_shift_right
+) from "@std/internal/bytes.ms"
 
 # An immutable sequence of bytes. Indices and slice bounds are zero-based.
 export extern type Bytes
@@ -69,10 +80,12 @@ impl Bytes:
     fn decode_utf8_range(start: Int, end: Int) String?: ...
 
 # Returns the parts end to end as one new Bytes; an empty list gives empty bytes. One allocation and one copy of each part, unlike repeated concat.
-export fn join(parts: List[Bytes]) Bytes: ...
+export fn join(parts: List[Bytes]) Bytes:
+    return msrt_bytes_join(parts)
 
 # Returns a fresh mutable list of bytes, like data.values().
-export fn values(data: Bytes) List[UInt8]: ...
+export fn values(data: Bytes) List[UInt8]:
+    return msrt_bytes_values(data)
 
 # Builds a byte sequence efficiently before freezing it into an immutable value.
 export extern type BytesBuilder
@@ -98,28 +111,6 @@ export type BinaryError:
 impl Error for BinaryError:
     # Returns a binary-prefixed diagnostic without echoing source bytes or numeric input.
     fn message() String: ...
-
-# Fixed-width number codecs for Bytes and BytesBuilder, written in Manuscript over one word reader and four float bit casts.
-# They apply wherever Bytes and BytesBuilder are used, without an import.
-# The `width` bytes at `at` (1, 2, 4 or 8) as an unsigned number; eight bytes keep their bit pattern as an Int.
-extern fn msrt_bytes_read_word(
-    data: Bytes,
-    at: Int,
-    width: Int,
-    little: Bool
-) Int!BinaryError
-
-extern fn msrt_float_from_bits(bits: Int) Float
-
-extern fn msrt_float_to_bits(value: Float) Int
-
-extern fn msrt_float32_from_bits(bits: Int) Float
-
-extern fn msrt_float32_to_bits(value: Float) Int
-
-extern fn msrt_bits_bit_and(left: Int, right: Int) Int
-
-extern fn msrt_bits_shift_right(value: Int, count: Int) Int
 
 # Appends the low `width` bytes of `value` in the requested byte order.
 fn put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) Unit:

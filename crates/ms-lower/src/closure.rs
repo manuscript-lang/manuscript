@@ -1329,11 +1329,14 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
             return Ok(());
         }
         other => {
-            let handle = crate::natiface::HANDLE_FUNCTIONS
-                .iter()
-                .find(|f| f.0 == other);
-            if let Some(&(_, module, make, constant)) = handle {
-                let out = fl.handle_interface(&job.result, ret, module, make, constant)?;
+            if let Some(handle) = crate::stdnative::handle_of(other) {
+                let out = fl.handle_interface(
+                    &job.result,
+                    ret,
+                    handle.module,
+                    handle.make,
+                    handle.constant,
+                )?;
                 fl.emit_return(Some(out));
                 return Ok(());
             }
@@ -1659,7 +1662,8 @@ pub(crate) fn slotted_in(fl: &FnLower<'_>, body: &[Stmt]) -> std::collections::H
         fn expr(&mut self, e: &Expr) {
             if let ExprKind::Lambda(lam) = &e.kind {
                 let captures = self.fl.hir.captures(e);
-                self.found.extend(lambda_changes(self.fl, e, lam, &captures));
+                self.found
+                    .extend(lambda_changes(self.fl, e, lam, &captures));
             }
         }
     }

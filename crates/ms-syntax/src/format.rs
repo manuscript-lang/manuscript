@@ -19,6 +19,74 @@ const WIDTH: usize = 88;
 /// Formats `source`. Invalid syntax never produces output.
 pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     parse(file, source)?;
+    let normalized = source.replace("\r\n", "\n");
+    let tokens = lex(file, &normalized)?.tokens;
+    let multiline: Vec<&Token> = tokens
+        .iter()
+        .filter(|t| {
+            t.kind == Tok::String && normalized[t.lo as usize..t.hi as usize].contains('\n')
+        })
+        .collect();
+    if multiline.is_empty() {
+        return format_lines(file, source);
+    }
+    // The line-based passes cannot see inside a multi-line text literal, so a
+    // one-line placeholder stands in for each and the literal text returns
+    // afterwards, shifted with the line it lands on.
+    let marker = ('\u{e000}'..='\u{f8ff}')
+        .find(|c| !normalized.contains(*c))
+        .expect("source does not use the whole private use area");
+    let placeholder = |i: usize| format!("\"{marker}{i}\"");
+    let mut masked = String::with_capacity(normalized.len());
+    let mut copied = 0;
+    for (i, t) in multiline.iter().enumerate() {
+        masked.push_str(&normalized[copied..t.lo as usize]);
+        masked.push_str(&placeholder(i));
+        copied = t.hi as usize;
+    }
+    masked.push_str(&normalized[copied..]);
+    let mut result = format_lines(file, &masked)?;
+    for (i, t) in multiline.iter().enumerate() {
+        let text = &normalized[t.lo as usize..t.hi as usize];
+        let line_start = normalized[..t.lo as usize].rfind('\n').map_or(0, |n| n + 1);
+        let before = indent_of(&normalized[line_start..]);
+        let at = result
+            .find(&placeholder(i))
+            .expect("placeholder survives formatting");
+        let line_start = result[..at].rfind('\n').map_or(0, |n| n + 1);
+        let after = indent_of(&result[line_start..]);
+        result.replace_range(
+            at..at + placeholder(i).len(),
+            &shift_lines(text, before, after),
+        );
+    }
+    parse(file, &result)?;
+    Ok(result)
+}
+
+/// Moves every line after the first of `text` from indentation `before` to
+/// `after`; the text is unchanged when a line lacks the indentation to give up.
+fn shift_lines(text: &str, before: usize, after: usize) -> String {
+    let mut lines = text.split('\n');
+    let mut out = String::from(lines.next().unwrap_or(""));
+    for line in lines {
+        out.push('\n');
+        if line.trim().is_empty() {
+            out.push_str(line);
+        } else if after >= before {
+            out.push_str(&" ".repeat(after - before));
+            out.push_str(line);
+        } else if indent_of(line) >= before - after {
+            out.push_str(&line[before - after..]);
+        } else {
+            return text.to_string();
+        }
+    }
+    out
+}
+
+fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
+    parse(file, source)?;
     let mut normalized = source.replace("\r\n", "\n");
     let mut lines: Vec<String> = normalized.split('\n').map(str::to_string).collect();
     let module = parse(file, &normalized)?;
@@ -84,6 +152,9 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
         }
         let last = parts[parts.len() - 1];
         let tail = last.pos.column as usize - 1 + text(&last).len();
+        if let Some(rows) = wrap_import(parts, &formatted, &normalized) {
+            formatted = rows;
+        }
         if tail < line.len()
             && let Some(comment) = line[tail..].find('#')
         {
@@ -103,9 +174,32 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     let result = format_expression_layout(file, &result)?;
     parse(file, &result)?;
     if realigned && result != source {
-        return format(file, &result);
+        return format_lines(file, &result);
     }
     Ok(result)
+}
+
+/// A bare import list wider than the line wraps into the parenthesized form,
+/// one name per line with a trailing comma. Parenthesized imports keep the
+/// author's layout, so a second pass leaves the wrapped form unchanged.
+fn wrap_import(parts: &[Token], flat: &str, source: &str) -> Option<String> {
+    let text = |t: &Token| &source[t.lo as usize..t.hi as usize];
+    if parts.first()?.kind != Tok::Import
+        || parts.get(1)?.kind == Tok::LParen
+        || flat.chars().count() <= WIDTH
+    {
+        return None;
+    }
+    let from = parts
+        .iter()
+        .position(|t| t.kind != Tok::Import && text(t) == "from")?;
+    let indent = " ".repeat(parts[0].pos.column as usize - 1);
+    let mut out = format!("{indent}import (\n");
+    for t in parts[1..from].iter().filter(|t| t.kind == Tok::Name) {
+        out.push_str(&format!("{indent}    {},\n", text(t)));
+    }
+    out.push_str(&format!("{indent}) from {}", text(parts.get(from + 1)?)));
+    Some(out)
 }
 
 fn indent_of(line: &str) -> usize {
@@ -580,8 +674,14 @@ fn format_expression_layout(file: &Arc<str>, source: &str) -> PResult<String> {
             && index >= 2
             && nodes[index - 1].tok.kind == Tok::Name
             && nodes[index - 2].tok.kind == Tok::Dot;
+        let import_list =
+            g.open.kind == Tok::LParen && index >= 1 && nodes[index - 1].tok.kind == Tok::Import;
         let following = if chained {
             layout.following_width(&nodes[index + 1..], true)
+        } else if import_list {
+            // The `from "path"` clause shares the closing line.
+            let rest = &source[g.close.hi as usize..];
+            rest.split('\n').next().map_or(0, |l| l.chars().count())
         } else {
             0
         };

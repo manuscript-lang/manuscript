@@ -1,4 +1,10 @@
-import expect_equal, expect_error, expect_false, expect_ok, expect_true from "@std/test/test.ms"
+import (
+    expect_equal,
+    expect_error,
+    expect_false,
+    expect_ok,
+    expect_true
+) from "@std/test/test.ms"
 import (
     Logger,
     Transport,
@@ -13,8 +19,15 @@ import IoError, WriteStream from "@std/io/io.ms"
 import Shared from "@std/concurrency/shared.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
-import JsonValue from "@std/data/json.ms"
-import FileSystemError, append_file_bytes, open, read_file, temporary, write_file from "@std/os/fs.ms"
+import JsonValue, parse from "@std/data/json.ms"
+import (
+    FileSystemError,
+    append_file_bytes,
+    open,
+    read_file,
+    temporary,
+    write_file
+) from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 type Items:
@@ -39,9 +52,9 @@ test "logger writes typed escaped records and protects metadata":
     let file = try open(path: path, flags: "w", mode: 420)
     var logger = try create(stream_transport(file.writer()), timestamp: false)
     let fields = Payload(9007199254740993, ok: true, Items([none, 1]), 0, "fake", 0)
-    try logger.info_with("say \"hi\"\nnext", fields)
+    try logger.info("say \"hi\"\nnext", fields)
 
-    let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
+    let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"data\":\{\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\},\"level\":0,\"msg\":\"fake\",\"time\":0\}\}\n"
     try expect_equal((try written(path)), expected)
     try logger.flush()
     logger.close()
@@ -52,8 +65,8 @@ test "non-object values are written under data":
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
     var logger = try create(stream_transport(file.writer()), timestamp: false)
-    try logger.info_with("n", 7)
-    try logger.warn_with("l", ["a", "b"])
+    try logger.info("n", 7)
+    try logger.warn("l", ["a", "b"])
 
     let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
     try expect_equal((try written(path)), expected)
@@ -72,7 +85,7 @@ test "levels filter methods and function values":
     try expect_equal((try written(path)), "")
     try logger.warn("warn")
 
-    let error_log = logger.error
+    let error_log = fn(message: String) Unit!LogError: logger.error(message)
     try error_log("error")
     try logger.fatal("fatal")
     logger.set_level(LogLevel.Trace)
@@ -110,10 +123,10 @@ test "child bindings snapshot values and merge without mutating inputs":
     var child = try logger.child(Request(7))
     logger.set_level(LogLevel.Fatal)
     try expect_equal(child.level(), LogLevel.Info)
-    try child.info_with("child", Service("worker"))
+    try child.info("child", Service("worker"))
     try logger.fatal("parent")
 
-    let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
+    let expected = "\{\"level\":30,\"msg\":\"child\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"service\":\"worker\"\}\}\n\{\"level\":60,\"msg\":\"parent\",\"context\":\{\"service\":\"api\"\}\}\n"
     try expect_equal((try written(path)), expected)
 
 test "limits and unencodable values reject before writing":
@@ -151,7 +164,7 @@ test "limits and unencodable values reject before writing":
     var unlimited = try create(stream_transport(file.writer()), timestamp: false)
     let bad = JsonValue.NumberValue("NaN")
     let invalid_data: Unit!LogError = error(LogError.InvalidData)
-    try expect_equal(unlimited.info_with("bad", bad), invalid_data)
+    try expect_equal(unlimited.info("bad", bad), invalid_data)
     try expect_equal((try written(path)), before)
 
 test "transport closure and stream errors preserve identity":
@@ -240,20 +253,20 @@ test "source transports receive complete records and close through their contrac
     logger.close()
     try expect_true(read_file("{path}.closed").is_ok())
 
-test "unencodable fields are rejected and non-objects go under data":
+test "unencodable fields are rejected and fields keep their shape under data":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
     var logger = try create(stream_transport(file.writer()), timestamp: false)
     let invalid: Unit!LogError = error(LogError.InvalidData)
     let nan = JsonValue.NumberValue("NaN")
-    try expect_equal(logger.info_with("m", nan), invalid)
+    try expect_equal(logger.info("m", nan), invalid)
     try expect_false(logger.child(nan).is_ok())
     try expect_equal((try written(path)), "")
-    try logger.log_with(LogLevel.Info, "m", Service("a"))
-    try logger.info_with("m", [1])
+    try logger.log(LogLevel.Info, "m", Service("a"))
+    try logger.info("m", [1])
 
-    let expected = "\{\"level\":30,\"msg\":\"m\",\"service\":\"a\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
+    let expected = "\{\"level\":30,\"msg\":\"m\",\"data\":\{\"service\":\"a\"\}\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
     try expect_equal((try written(path)), expected)
 
 # A stream that suspends in the middle of a write, so only the transport keeps records whole.
@@ -278,9 +291,8 @@ impl WriteStream for SlowStream:
         return self.write(data.decode_utf8().get(""))
 
 fn chatter(var logger: Logger, name: String) Unit!:
-    var log = logger.clone()
     for n in 0..3:
-        try log.info_with("m", name)
+        try logger.info("m", name)
     return ok(unit)
 
 test "concurrent tasks never interleave a record":
@@ -303,3 +315,75 @@ test "concurrent tasks never interleave a record":
                 or line == "\{\"level\":30,\"msg\":\"m\",\"data\":\"b\"\}",
                 true
             )
+
+# A transport that keeps every record in memory.
+type Memory:
+    out: Shared[List[String]]
+
+impl Transport for Memory:
+    var fn write(data: String) Unit!LogError:
+        self.out.append(data.clone())
+        return ok(unit)
+
+    var fn write_bytes(data: Bytes) Unit!LogError:
+        return self.write(data.decode_utf8().get(""))
+
+    fn flush() Unit!LogError:
+        return ok(unit)
+
+    fn close() Unit:
+        return unit
+
+fn recorded(out: Shared[List[String]]) String:
+    return out.join("")
+
+test "messages are escaped and fields keep their shape under data":
+    var out = Shared(List[String]())
+    var logger = try create(Memory(out), timestamp: false)
+    try logger.info("a<b>&\"\n\t\u{1}é")
+    try logger.info("m", Items([none, 1]))
+    try logger.info("m", "text")
+    try logger.info("m", JsonValue.Null)
+    try logger.info("m", JsonValue.ObjectValue(Map[String, JsonValue]()))
+
+    let expected = "\{\"level\":30,\"msg\":\"a<b>&\\\"\\n\\t\\u0001é\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\{\"items\":[null,1]\}\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\"text\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":null\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\{\}\}\n"
+    try expect_equal(recorded(out), expected)
+
+test "child context merges per child and the newer value wins":
+    var out = Shared(List[String]())
+    var root = try create(Memory(out), timestamp: false)
+    var api = try root.child(Service("api"))
+    var both = try api.child(Request(7))
+    var renamed = try both.child(Service("worker"))
+    var replaced = try both.child(3)
+    try root.info("root")
+    try api.info("api")
+    try both.info("both", Request(9))
+    try renamed.info("renamed")
+    try replaced.info("replaced")
+
+    let expected = "\{\"level\":30,\"msg\":\"root\"\}\n\{\"level\":30,\"msg\":\"api\",\"context\":\{\"service\":\"api\"\}\}\n\{\"level\":30,\"msg\":\"both\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"request\":9\}\}\n\{\"level\":30,\"msg\":\"renamed\",\"context\":\{\"service\":\"worker\",\"request\":7\}\}\n\{\"level\":30,\"msg\":\"replaced\",\"context\":3\}\n"
+    try expect_equal(recorded(out), expected)
+
+test "the time field is a millisecond count and the size limit counts the newline":
+    var out = Shared(List[String]())
+    var stamped = try create(Memory(out))
+    try stamped.info("t")
+
+    let line = recorded(out)
+    try expect_true(line.starts_with("\{\"level\":30,\"msg\":\"t\",\"time\":1"))
+
+    var quiet = Shared(List[String]())
+    let plain = "\{\"level\":30,\"msg\":\"ab\"\}\n"
+    var exact = try create(
+        Memory(quiet), timestamp: false, max_bytes: plain.to_bytes().length()
+    )
+    try exact.info("ab")
+    try expect_equal(recorded(quiet), plain)
+
+    var tight = try create(
+        Memory(quiet), timestamp: false, max_bytes: plain.to_bytes().length() - 1
+    )
+    let limited: Unit!LogError = error(LogError.LimitExceeded)
+    try expect_equal(tight.info("ab"), limited)
+    try expect_equal(recorded(quiet), plain)

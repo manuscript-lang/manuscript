@@ -286,6 +286,23 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.alt(a);
         self.val(Op::AltNew, fields, Imm::Case(a, case), t)
     }
+    /// `alt.view`: an alternative holding the borrowed `fields` themselves, which it neither
+    /// retains nor releases.
+    pub fn alt_view(&mut self, a: AltId, case: u32, fields: &[Value]) -> Value {
+        let t = self.m.types.alt(a);
+        self.val(Op::AltView, fields, Imm::Case(a, case), t)
+    }
+    /// `iface.lend`: an interface value whose box holds a bitwise copy of the borrowed `data`
+    /// leaves (vtable word tagged 1): dropping it frees the box and leaves the payload alone.
+    pub fn iface_lend(&mut self, vt: VtableId, data: Value, t: Ty) -> Value {
+        self.val(Op::IfaceLend, &[data], Imm::Vtable(vt), t)
+    }
+    /// `iface.view`: the borrowed interface value `x` as an owned value that owns nothing
+    /// (vtable word tagged 2): dropping it frees nothing.
+    pub fn iface_view(&mut self, x: Value) -> Value {
+        let t = self.ty(x);
+        self.val(Op::IfaceView, &[x], Imm::None, t)
+    }
     /// `alt.tag`.
     pub fn alt_tag(&mut self, obj: Value) -> Value {
         self.val(Op::AltTag, &[obj], Imm::None, Ty::INT)
@@ -294,6 +311,17 @@ impl<'m> FuncBuilder<'m> {
     pub fn alt_get(&mut self, a: AltId, case: u32, field: u32, obj: Value) -> Value {
         let ty = self.m.alts[a.index()].cases[case as usize].fields[field as usize].1;
         self.val(Op::AltGet, &[obj], Imm::AltField(a, case, field), ty)
+    }
+    /// `alt.take`: moves `field` of the active `case` out of the owned `obj`, which an
+    /// `alt.release` naming that field must then free.
+    pub fn alt_take(&mut self, a: AltId, case: u32, field: u32, obj: Value) -> Value {
+        let ty = self.m.alts[a.index()].cases[case as usize].fields[field as usize].1;
+        self.val(Op::AltTake, &[obj], Imm::AltField(a, case, field), ty)
+    }
+    /// `alt.release`: drops the owned `obj` of `case` except the fields in `mask`, which were
+    /// taken out.
+    pub fn alt_release(&mut self, a: AltId, case: u32, mask: u32, obj: Value) {
+        self.emit(Op::AltRelease, &[obj], Imm::AltMask(a, case, mask), None);
     }
 
     // Lists.

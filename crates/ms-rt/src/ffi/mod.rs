@@ -272,6 +272,53 @@ pub fn desc_bytes() -> *const TypeDesc {
     &raw const msrt_desc_bytes
 }
 
+/// Appends one native's C signature to the file named by `MS_SIG_OUT`, as a line of
+/// `name(param: type, ..) -> ret` with module paths stripped from the types. `cargo xtask symbols`
+/// runs the tests the `native!` macro generates to collect them.
+#[doc(hidden)]
+pub fn record_signature(name: &str, params: &[(&str, &str)], ret: Option<&str>) {
+    use std::io::Write as _;
+    let Some(path) = std::env::var_os("MS_SIG_OUT") else {
+        return;
+    };
+    let params: Vec<String> = params
+        .iter()
+        .map(|(p, t)| std::format!("{}: {}", p.trim_start_matches('_'), strip_paths(t)))
+        .collect();
+    let ret = ret
+        .filter(|r| *r != "()")
+        .map(|r| std::format!(" -> {}", strip_paths(r)))
+        .unwrap_or_default();
+    let line = std::format!("{name}({}){ret}\n", params.join(", "));
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .expect("open MS_SIG_OUT");
+    file.write_all(line.as_bytes()).expect("write MS_SIG_OUT");
+}
+
+/// `*const ms_rt_abi::StrVal` as `*const StrVal`: drops every `path::` prefix.
+fn strip_paths(ty: &str) -> String {
+    let mut out = String::new();
+    let mut word = String::new();
+    let mut chars = ty.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c.is_alphanumeric() || c == '_' {
+            word.push(c);
+        } else if c == ':' && chars.peek() == Some(&':') {
+            chars.next();
+            word.clear();
+        } else {
+            out.push_str(&word);
+            word.clear();
+            out.push(c);
+        }
+    }
+    out.push_str(&word);
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

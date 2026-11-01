@@ -22,19 +22,19 @@ test "levels filter, fields nest under data, and bound fields merge":
     try expect_equal(logger.enabled(LogLevel.Info), false)
     try logger.info("filtered")
     try logger.warn("warn")
-    try logger.error_with("n", 7)
-    try logger.fatal_with("l", ["a", "b"])
+    try logger.error("n", 7)
+    try logger.fatal("l", ["a", "b"])
 
     var root = try logger.child(Service("api"))
     var child = try root.child(Request(7))
-    try child.warn_with("child", Service("worker"))
+    try child.warn("child", Service("worker"))
     logger.set_level(LogLevel.Trace)
     try expect_equal(logger.level(), LogLevel.Trace)
     try logger.trace("trace")
     try logger.flush()
     logger.close()
 
-    let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"n\",\"data\":7\}\n\{\"level\":60,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n\{\"level\":40,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":10,\"msg\":\"trace\"\}\n"
+    let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"n\",\"data\":7\}\n\{\"level\":60,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n\{\"level\":40,\"msg\":\"child\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"service\":\"worker\"\}\}\n\{\"level\":10,\"msg\":\"trace\"\}\n"
     try expect_equal(try lines(path), expected)
 
 test "limits, invalid levels, and closed transports are errors":

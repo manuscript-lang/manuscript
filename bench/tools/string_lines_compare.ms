@@ -2,7 +2,17 @@
 # by bench/tools/bytes_index_compare.ms).
 # Usage: ms run bench/tools/string_lines_compare.ms -- BEFORE AFTER OUTPUT.csv [--pairs 7] [--identity-file FILE.json]
 # A program prints CSV `case,input_bytes,iterations,elapsed_ns,checksum`; the identity file is `{case: [input bytes, iterations, checksum]}`.
-import Invalid, absolute, fail, finish, invalid, median, options, read_text, write_text from "./lib.ms"
+import (
+    Invalid,
+    absolute,
+    fail,
+    finish,
+    invalid,
+    median,
+    options,
+    read_text,
+    write_text
+) from "./lib.ms"
 import all_ints, run_pinned from "./study.ms"
 import arguments from "@std/os/process.ms"
 import JsonValue, parse from "@std/data/json.ms"

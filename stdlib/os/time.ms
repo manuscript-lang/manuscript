@@ -1,57 +1,34 @@
 import Data, panic from "@std/core.ms"
-import msstd_time_duration_add, msstd_time_duration_subtract, msstd_time_duration_multiply, msstd_time_duration_divide, msstd_time_duration_negate, msstd_time_duration_abs, msstd_time_duration_to_microseconds, msstd_time_duration_to_milliseconds, msstd_time_duration_to_seconds, msstd_time_duration_to_minutes, msstd_time_duration_to_hours, msstd_time_local_zone, msstd_time_sleep from "@std/internal/time.ms"
-
-extern fn msstd_time_instant_shift(value: Instant, duration: Int) Instant
-
-extern fn msstd_time_instant_unshift(value: Instant, duration: Int) Instant
-
-extern fn msstd_time_instant_difference(value: Instant, other: Instant) Int
-
-extern fn msstd_time_instant_compare(value: Instant, other: Instant) Int
-
-extern fn msstd_time_timestamp_to_string(value: Timestamp) String
-
-extern fn msstd_time_timestamp_shift(
-    value: Timestamp,
-    duration: Int
-) Timestamp!TimeError
-
-extern fn msstd_time_timestamp_difference(
-    value: Timestamp,
-    other: Timestamp
-) Int!TimeError
-
-extern fn msstd_time_timestamp_compare(value: Timestamp, other: Timestamp) Int
-
-extern fn msstd_time_timestamp_calendar(
-    value: Timestamp,
-    zone: String
-) Calendar!TimeError
-
-extern fn msstd_time_timestamp_format(
-    value: Timestamp,
-    pattern: String,
-    zone: String
-) String!TimeError
-
-extern fn msstd_time_parse_timestamp(text: String) Timestamp!TimeError
-
-extern fn msstd_time_from_calendar(
-    year: Int,
-    month: Int,
-    day: Int,
-    hour: Int,
-    minute: Int,
-    second: Int,
-    nanosecond: Int,
-    zone: String
-) Timestamp!TimeError
-
-extern fn msstd_time_timestamp(seconds: Int, nanoseconds: Int) Timestamp!TimeError
-
-extern fn msstd_time_clock() Clock
-
-extern fn msstd_time_wall_clock() WallClock
+import (
+    msstd_time_duration_add,
+    msstd_time_duration_subtract,
+    msstd_time_duration_multiply,
+    msstd_time_duration_divide,
+    msstd_time_duration_negate,
+    msstd_time_duration_abs,
+    msstd_time_duration_to_microseconds,
+    msstd_time_duration_to_milliseconds,
+    msstd_time_duration_to_seconds,
+    msstd_time_duration_to_minutes,
+    msstd_time_duration_to_hours,
+    msstd_time_local_zone,
+    msstd_time_sleep,
+    msstd_time_instant_shift,
+    msstd_time_instant_unshift,
+    msstd_time_instant_difference,
+    msstd_time_instant_compare,
+    msstd_time_timestamp_to_string,
+    msstd_time_timestamp_shift,
+    msstd_time_timestamp_difference,
+    msstd_time_timestamp_compare,
+    msstd_time_timestamp_calendar,
+    msstd_time_timestamp_format,
+    msstd_time_parse_timestamp,
+    msstd_time_from_calendar,
+    msstd_time_timestamp,
+    msstd_time_clock,
+    msstd_time_wall_clock
+) from "@std/internal/time.ms"
 
 # Errors returned by timestamp parsing, arithmetic, or range conversion.
 export type TimeError:

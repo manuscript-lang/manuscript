@@ -774,7 +774,7 @@ impl Verifier<'_> {
                     )
                 }
             }
-            Op::AltNew => {
+            Op::AltNew | Op::AltView => {
                 let Imm::Case(a, c) = inst.imm else {
                     return Err("missing case".into());
                 };
@@ -795,6 +795,11 @@ impl Verifier<'_> {
                     res.map(|r| matches!(m.types.kind(r), TyKind::Alt(x) if *x == a))
                         .unwrap_or(false),
                     "alt.new yields the alternative type",
+                )?;
+                // A boxed alternative holds its payload in a heap block, which a borrow cannot own.
+                want(
+                    inst.op == Op::AltNew || !Boxing::default().alt(m, a),
+                    "alt.view cannot lend a boxed alternative",
                 )
             }
             Op::AltTag => {
@@ -1000,7 +1005,7 @@ impl Verifier<'_> {
                     "closure.cap reads the environment (ptr) and yields the capture type",
                 )
             }
-            Op::IfaceNew => {
+            Op::IfaceNew | Op::IfaceLend => {
                 arity(1)?;
                 let Imm::Vtable(v) = inst.imm else {
                     return Err("missing vtable".into());
@@ -1011,7 +1016,14 @@ impl Verifier<'_> {
                         && res
                             .map(|r| matches!(m.types.kind(r), TyKind::Iface(i) if *i == vt.iface))
                             .unwrap_or(false),
-                    "iface.new wraps the vtable's data type",
+                    "iface.new and iface.lend wrap the vtable's data type",
+                )
+            }
+            Op::IfaceView => {
+                arity(1)?;
+                want(
+                    matches!(m.types.kind(t(0)), TyKind::Iface(_)) && res == Some(t(0)),
+                    "iface.view takes an interface value and yields the same type",
                 )
             }
             Op::IfaceIs => {
@@ -1374,7 +1386,17 @@ impl Verifier<'_> {
             blk.term.for_each_target(|t| edges.push(t.clone()));
             if let Term::Ret(v) = &blk.term {
                 if let Some(v) = v.filter(|v| rc(*v)) {
-                    if !owned_def[v.index()] {
+                    if f.ret_borrowed {
+                        if owned_def[v.index()] {
+                            self.err(
+                                Some(bi),
+                                format!(
+                                    "ret: %{} is owned, but this function lends its result; it would leak",
+                                    v.0
+                                ),
+                            );
+                        }
+                    } else if !owned_def[v.index()] {
                         self.err(
                             Some(bi),
                             format!(

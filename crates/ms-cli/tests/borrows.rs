@@ -60,10 +60,10 @@ fn touching_the_origin_while_borrowed_is_rejected() {
 }
 
 #[test]
-fn var_of_a_scalar_part_writes_through() {
+fn var_of_a_scalar_part_copies_and_if_var_writes_through() {
     let (status, text) = run_ms(&["run", &fixture("scalar_borrows.ms")]);
     assert_eq!(status, Some(0), "{text}");
-    assert_eq!(text, "4 Optional.some(2) [11, 2, 3] 104\n");
+    assert_eq!(text, "2 20 Optional.some(2) [1, 2, 3] 102\n");
 }
 
 #[test]

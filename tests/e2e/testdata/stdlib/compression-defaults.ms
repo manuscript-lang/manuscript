@@ -1,5 +1,10 @@
 import expect_equal from "@std/test/test.ms"
-import compress, decompress, CompressionFormat, CompressionError from "@std/io/archive.ms"
+import (
+    compress,
+    decompress,
+    CompressionFormat,
+    CompressionError
+) from "@std/io/archive.ms"
 import Bytes from "@std/bytes.ms"
 
 fn forwarded[T](item: T) T: item

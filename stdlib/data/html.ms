@@ -1,6 +1,8 @@
-import msrt_html_escape, msrt_html_unescape from "@std/internal/html.ms"
-
-extern fn msrt_html_parse(text: String, limits: HtmlLimits?) HtmlNode!HtmlError
+import (
+    msstd_html_escape,
+    msstd_html_unescape,
+    msstd_html_parse
+) from "@std/internal/html.ms"
 
 # Errors returned for malformed HTML or parser resource limits.
 export type HtmlError:
@@ -70,17 +72,17 @@ export type HtmlNode:
 
 # Escapes text for insertion into an HTML text or quoted attribute context.
 export fn escape(text: String) String:
-    return msrt_html_escape(text)
+    return msstd_html_escape(text)
 
 # Decodes HTML5 named and numeric character references in text context, once.
 # Recognized references can omit semicolons; unrecognized text remains literal.
 # Does not parse markup or normalize text; invalid numeric scalars become U+FFFD.
 export fn unescape(text: String) String:
-    return msrt_html_unescape(text)
+    return msstd_html_unescape(text)
 
 # Parses HTML into a normalized tree and applies the supplied resource limits.
 export fn parse(text: String, limits: HtmlLimits?) HtmlNode!HtmlError:
-    return msrt_html_parse(text, limits)
+    return msstd_html_parse(text, limits)
 
 impl Error for HtmlError:
     # Returns an HTML-prefixed diagnostic without echoing source markup.

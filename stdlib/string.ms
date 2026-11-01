@@ -1,3 +1,5 @@
+import msrt_string_from_scalars, msstd_regex_compile from "@std/internal/string.ms"
+
 # Errors returned by Unicode scalar conversions and bounded string operations.
 export type StringError:
     # Scalar values, normalization form or a supplied repeat/padding/output budget is invalid.
@@ -29,7 +31,8 @@ impl NormalizationForm:
     fn normalize(text: String, max_bytes: Int?) String!StringError: ...
 
 # Builds text from Unicode scalar values. Invalid scalars return `InvalidInput`.
-export fn from_scalars(values: List[Int]) String!StringError: ...
+export fn from_scalars(values: List[Int]) String!StringError:
+    return msrt_string_from_scalars(values)
 
 impl Error for StringError:
     # Returns original Failed text, or a string-prefixed diagnostic for other cases.
@@ -95,7 +98,8 @@ impl Regex:
     ) String!RegexError: ...
 
 # Compiles a regular expression. Invalid pattern syntax is returned as an error.
-export fn compile(pattern: String) Regex!RegexError: ...
+export fn compile(pattern: String) Regex!RegexError:
+    return msstd_regex_compile(pattern)
 
 impl Error for RegexError:
     # Returns a regular-expression-prefixed diagnostic without echoing pattern or input text.

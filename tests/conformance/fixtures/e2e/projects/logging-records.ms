@@ -22,6 +22,6 @@ export fn emit(var logger: Logger) Unit!LogError:
         level: 0, msg: "spoofed", time: 0
     )
     try child.debug("filtered")
-    try child.info_with("received \"payload\"\nnext", fields)
+    try child.info("received \"payload\"\nnext", fields)
     try logger.warn("complete")
     return ok(unit)

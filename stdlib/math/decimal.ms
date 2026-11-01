@@ -1,5 +1,12 @@
 import Copy, Data, panic from "@std/core.ms"
 import NumberError from "@std/math/math.ms"
+import (
+    msstd_decimal_compare,
+    msstd_decimal_to_float,
+    msstd_decimal_truncate_to_int,
+    msstd_decimal_round,
+    msstd_decimal_to_fixed
+) from "@std/internal/decimal.ms"
 
 # How a Decimal rounds to a multiple of the requested power of ten.
 export type RoundingMode:
@@ -20,24 +27,6 @@ export extern type Decimal
 impl Data for Decimal:
 
 impl Copy for Decimal:
-
-extern fn msstd_decimal_compare(left: Decimal, right: Decimal) Int
-
-extern fn msstd_decimal_to_float(value: Decimal) Float
-
-extern fn msstd_decimal_truncate_to_int(value: Decimal) Int?
-
-extern fn msstd_decimal_round(
-    value: Decimal,
-    places: Int,
-    mode: RoundingMode?
-) Decimal!NumberError
-
-extern fn msstd_decimal_to_fixed(
-    value: Decimal,
-    digits: Int,
-    mode: RoundingMode?
-) String!NumberError
 
 impl Decimal:
     # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`; trailing zeros do not matter.

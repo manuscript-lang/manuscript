@@ -72,12 +72,12 @@ fn handshake_headers(h: &Headers) -> Option<Vec<(String, Vec<u8>)>> {
 
 native! {
     /// `WebSocketError.message()` for a status and the `Failed` text (nullable).
-    fn msrt_websocket_error_message(status: u8, has_failed: bool, failed: &str) -> String {
+    fn msstd_websocket_error_message(status: u8, has_failed: bool, failed: &str) -> String {
         ws_from_code(status, (if has_failed { failed } else { "" }).to_string()).message()
     }
 
     /// `Network.web_socket(address, headers, subprotocols, options)`.
-    fn msrt_net_network_web_socket(
+    fn msstd_net_network_web_socket(
         net: ObjRef<NetH>,
         address: &str,
         headers: ObjRef<HeadersH>,
@@ -115,7 +115,7 @@ native! {
     }
 
     /// `HttpExchange.upgrade(origins, subprotocols, max_message_bytes)`.
-    fn msrt_http_exchange_upgrade(
+    fn msstd_http_exchange_upgrade(
         x: ObjRef<ExchH>,
         origins: Vec<&str>,
         subprotocols: Vec<&str>,
@@ -132,32 +132,32 @@ native! {
     }
 
     /// `WebSocket.close()`.
-    fn msrt_websocket_close(s: ObjRef<SocketH>) -> () {
+    fn msstd_websocket_close(s: ObjRef<SocketH>) -> () {
         s.close();
     }
 
     /// `WebSocket.subprotocol()`.
-    fn msrt_websocket_subprotocol(s: ObjRef<SocketH>) -> String {
+    fn msstd_websocket_subprotocol(s: ObjRef<SocketH>) -> String {
         s.subprotocol().to_string()
     }
 
     /// `WebSocket.ping(data)`.
-    fn msrt_websocket_ping(s: ObjRef<SocketH>, data: &str, err: ErrOut) -> Result<(), StatusCode> {
+    fn msstd_websocket_ping(s: ObjRef<SocketH>, data: &str, err: ErrOut) -> Result<(), StatusCode> {
         report(s.ping(data.as_bytes()), &err)
     }
 
     /// `WebSocket.ping(data: Bytes)`.
-    fn msrt_websocket_ping_bytes(s: ObjRef<SocketH>, data: &[u8], err: ErrOut) -> Result<(), StatusCode> {
+    fn msstd_websocket_ping_bytes(s: ObjRef<SocketH>, data: &[u8], err: ErrOut) -> Result<(), StatusCode> {
         report(s.ping(data), &err)
     }
 
     /// `WebSocket.send(data)`.
-    fn msrt_websocket_send(s: ObjRef<SocketH>, data: &str, err: ErrOut) -> Result<(), StatusCode> {
+    fn msstd_websocket_send(s: ObjRef<SocketH>, data: &str, err: ErrOut) -> Result<(), StatusCode> {
         report(s.send_text(data, None), &err)
     }
 
     /// `WebSocket.send(data: Bytes, text)`.
-    fn msrt_websocket_send_bytes(
+    fn msstd_websocket_send_bytes(
         s: ObjRef<SocketH>,
         data: &[u8],
         text: bool,
@@ -167,7 +167,7 @@ native! {
     }
 
     /// `WebSocket.receive()`; the peer's normal close is `STATUS_NONE`.
-    fn msrt_websocket_receive(
+    fn msstd_websocket_receive(
         s: ObjRef<SocketH>,
         out: Out<WebSocketMessageRec>,
         err: ErrOut,

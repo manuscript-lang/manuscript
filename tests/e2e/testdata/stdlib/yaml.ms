@@ -1,4 +1,11 @@
-import expect_equal, expect_error, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
+import (
+    expect_equal,
+    expect_error,
+    expect_false,
+    expect_ok,
+    expect_true,
+    fail
+) from "@std/test/test.ms"
 import from_scalars from "@std/string.ms"
 import TextError from "@std/core.ms"
 import parse, stringify, YamlValue, YamlError, YamlLimits from "@std/data/yaml.ms"
@@ -639,7 +646,7 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
 
 fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
-    if count == 1: return text
+    if count == 1: return text.clone()
 
     let half = repeated(text: text.clone(), count: count / 2)
     if count % 2 == 1: return half.concat(half).concat(text)

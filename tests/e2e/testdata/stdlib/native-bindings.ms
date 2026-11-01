@@ -1,7 +1,28 @@
 import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
 import TextError from "@std/core.ms"
-import ControlError, cpu_usage, groups, memory_usage, process_info, replace, resource_usage, set_groups, set_identity from "@std/os/process.ms"
-import FileSystemError, FileEvent, FileWatcher, join, create_directory, stat_filesystem, temporary, watch, watch_native, write_file from "@std/os/fs.ms"
+import (
+    ControlError,
+    cpu_usage,
+    groups,
+    memory_usage,
+    process_info,
+    replace,
+    resource_usage,
+    set_groups,
+    set_identity
+) from "@std/os/process.ms"
+import (
+    FileSystemError,
+    FileEvent,
+    FileWatcher,
+    join,
+    create_directory,
+    stat_filesystem,
+    temporary,
+    watch,
+    watch_native,
+    write_file
+) from "@std/os/fs.ms"
 import milliseconds, sleep from "@std/os/time.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import Shared from "@std/concurrency/shared.ms"

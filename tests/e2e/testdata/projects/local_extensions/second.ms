@@ -42,7 +42,7 @@ export fn second_generic() fn(Item) Int:
 
 test "second local extensions":
     let item = Item(2)
-    (item.get() != 22 or invoke(item) != 22 or relay(item) != 22) | try expect_false
+    (item.get() != 22 or invoke(item) != 22 or relay(item.clone()) != 22) | try expect_false
     as_view(item).get() | try expect_equal(22)
 
     let holder = Holder(item)

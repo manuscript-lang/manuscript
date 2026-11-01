@@ -20,7 +20,7 @@ fn copy_all(xs: List[String]) List[String]:
 
 fn name_of(shape: Shape) String:
     match shape:
-        Name(text): return text
+        Name(text): return text.clone()
         _: return ""
 
 export fn main() Int:
@@ -33,7 +33,7 @@ export fn main() Int:
     let size = area(shape) + area(shape)
     let copy = copy_all(words)
 
-    # Moving a part out makes the function take the parameter at its last use.
+    # A path that builds a new value makes every path own its result, so the part is copied.
     let name = name_of(shape)
     if sum + size + copy.length() + name.length() == 12 + 6 + 2 + 3:
         return 0

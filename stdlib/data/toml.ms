@@ -1068,7 +1068,7 @@ fn format_key(key: String) String:
         if not "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-".contains(
             c
         ): bare = false
-    if bare: return key
+    if bare: return key.clone()
 
     return quote_text(key)
 
@@ -1091,7 +1091,7 @@ fn inline_value(value: TomlValue) String:
         IntValue(number): return number.to_string()
         FloatValue(number): return format_float(number)
         BoolValue(flag): return flag.to_string()
-        DateTimeValue(text): return text
+        DateTimeValue(text): return text.clone()
         ArrayValue(values):
             var parts: List[String] = []
             for item in values: parts.append(inline_value(item))
