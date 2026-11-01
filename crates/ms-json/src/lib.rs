@@ -425,8 +425,10 @@ impl Parser<'_> {
             .s
             .get(self.at..self.at + 4)
             .ok_or("invalid unicode escape")?;
-        let text = std::str::from_utf8(digits).map_err(|_| "invalid unicode escape")?;
-        let value = u32::from_str_radix(text, 16).map_err(|_| "invalid unicode escape")?;
+        let value = digits
+            .iter()
+            .try_fold(0u32, |acc, &c| Some(acc << 4 | char::from(c).to_digit(16)?));
+        let value = value.ok_or("invalid unicode escape")?;
         self.at += 4;
         Ok(value)
     }
@@ -517,6 +519,14 @@ mod tests {
     fn keeps_number_spelling() {
         let value = parse(b"[1.0, 10]").unwrap();
         assert_eq!(value.compact(Escape::Plain), "[1.0,10]");
+    }
+
+    #[test]
+    fn unicode_escape_requires_hex_digits() {
+        assert!(parse(br#""\u+041""#).is_err());
+        assert!(parse(br#""\u-041""#).is_err());
+        assert!(parse(br#""\u 041""#).is_err());
+        assert!(parse(br#""\u0041""#).is_ok());
     }
 
     #[test]
