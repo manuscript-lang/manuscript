@@ -658,6 +658,7 @@ msstd_net_network_web_socket(net: *const ObjCell<NetH>, address: *const StrVal, 
 msstd_net_network_with_resolver(net: *const ObjCell<NetH>, address: *const StrVal, out: *mut *mut ObjCell<NetH>, err: *mut StrVal) -> u8
 msstd_net_parse_cidr(text: *const StrVal, out: *mut *mut ObjCell<Cidr>, err: *mut StrVal) -> u8
 msstd_net_parse_ip(text: *const StrVal, out: *mut *mut ObjCell<IpH>, err: *mut StrVal) -> u8
+msstd_net_release_raw(connection: i64)
 msstd_path_basename(windows: u8, path: *const StrVal, out: *mut StrVal)
 msstd_path_basename_without(windows: u8, path: *const StrVal, suffix: *const StrVal, out: *mut StrVal)
 msstd_path_delimiter(windows: u8, out: *mut StrVal)

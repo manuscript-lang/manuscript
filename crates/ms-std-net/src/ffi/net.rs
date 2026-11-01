@@ -348,6 +348,11 @@ native! {
         Ok(())
     }
 
+    /// `release_raw(connection)`: closes a handle from `Listener.accept_raw` that nobody adopted.
+    fn msstd_net_release_raw(connection: i64) -> () {
+        drop(crate::conn::take_raw_handle(connection));
+    }
+
     /// `Listener.address()`.
     fn msstd_net_listener_address(l: ObjRef<ListenerH>) -> String {
         l.address().to_string()

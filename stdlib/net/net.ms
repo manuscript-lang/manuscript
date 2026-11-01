@@ -48,6 +48,7 @@ import (
     msstd_net_listener_accept_raw,
     msstd_net_listener_address,
     msstd_net_listener_close,
+    msstd_net_release_raw,
     msstd_websocket_close,
     msstd_websocket_ping,
     msstd_websocket_ping_bytes,
@@ -697,7 +698,9 @@ export fn serve_cores(
         let accepted = listener.accept_raw(none)
         if accepted.is_error():
             return error(accepted.err().clone())
+
         if workers[next % cores].channel.send(accepted.get()).is_error():
+            msstd_net_release_raw(accepted.get())
             return error(NetworkError.Failed("a serving worker ended"))
 
         next += 1
