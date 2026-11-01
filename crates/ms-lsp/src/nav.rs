@@ -404,7 +404,7 @@ pub fn type_definition(
     match hit.info.ty.as_ref().and_then(|t| t.symbol()) {
         Some(symbol) => {
             // Point at the declared name, as definition does, not at the declaration keyword.
-            let key = crate::index::symbol_key(Some(&symbol));
+            let key = crate::index::symbol_key(&analysis.module_path(""), Some(&symbol));
             let name = index.iter().find(|e| e.declaration && e.key == key);
             match name.and_then(|e| occurrence_location(analysis, e)) {
                 Some(found) => Json::Arr(vec![found]),

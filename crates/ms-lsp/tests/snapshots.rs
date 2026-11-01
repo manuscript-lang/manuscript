@@ -642,7 +642,7 @@ fn opaque_is_a_keyword_only_before_type() {
 }
 
 #[test]
-fn string_extensions_preserve_none_reference_locations_beyond_snapshot_limit() {
+fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
     let ws = Workspace::new("text-none-references");
     let main = ws.uri("main.ms");
     let mut script = Script::initialize(&ws.root.to_string_lossy(), true);
@@ -653,11 +653,7 @@ fn string_extensions_preserve_none_reference_locations_beyond_snapshot_limit() {
     let math = include_str!("../../../stdlib/math/math.ms");
     let conversion = math.find("fn to_float() Float?:").unwrap();
     let absent = conversion + math[conversion..].find("return none").unwrap() + "return ".len();
-    let parse = math
-        .find("export fn parse(text: String, radix: Int, max_digits: Int?)")
-        .unwrap();
-    let default = parse + math[parse..].find("Int?").unwrap();
-    let math_references = [absent, default].map(|offset| {
+    let math_references = [absent].map(|offset| {
         let start = ms_lsp::text::position(math, offset);
         (
             "math/math.ms",
@@ -666,27 +662,17 @@ fn string_extensions_preserve_none_reference_locations_beyond_snapshot_limit() {
             start.character + 4,
         )
     });
-    // The general snapshot caps large responses. Keep every prior location, plus the
-    // new String source defaults and expressions, explicit in this focused check.
+    // The general snapshot caps large responses. Pin every written reference;
+    // implicit Optional defaults have no `none` token and must not add ranges.
     let retained = [
         ("string.ms", 18, 15, 19),
         ("string.ms", 25, 15, 19),
         ("main.ms", 30, 31, 35),
-        ("io/io.ms", 36, 23, 27),
         ("io/io.ms", 68, 34, 38),
-        ("io/io.ms", 85, 66, 70),
-        ("io/io.ms", 89, 49, 53),
-        ("io/io.ms", 94, 50, 54),
-        ("io/io.ms", 107, 15, 19),
-        ("io/io.ms", 109, 13, 17),
         ("io/io.ms", 121, 19, 23),
         ("io/io.ms", 127, 19, 23),
         ("io/io.ms", 131, 19, 23),
-        ("io/io.ms", 137, 46, 50),
         ("io/io.ms", 138, 40, 44),
-        ("collections/collections.ms", 279, 53, 57),
-        ("collections/collections.ms", 290, 15, 19),
-        ("io/io.ms", 299, 27, 31),
         ("io/io.ms", 301, 38, 42),
         ("collections/collections.ms", 560, 15, 19),
         ("collections/collections.ms", 572, 15, 19),
@@ -696,18 +682,7 @@ fn string_extensions_preserve_none_reference_locations_beyond_snapshot_limit() {
         ("collections/collections.ms", 709, 19, 23),
         ("collections/collections.ms", 754, 34, 38),
     ];
-    let added = [
-        ("string.ms", 154, 23, 27),
-        ("string.ms", 161, 49, 53),
-        ("string.ms", 162, 49, 53),
-        ("string.ms", 165, 21, 25),
-        ("string.ms", 166, 22, 26),
-        ("string.ms", 172, 49, 53),
-        ("string.ms", 183, 49, 53),
-        ("string.ms", 185, 37, 41),
-        ("string.ms", 194, 21, 25),
-        ("string.ms", 195, 22, 26),
-    ];
+    let added = [("string.ms", 154, 23, 27), ("string.ms", 185, 37, 41)];
     for id in [first, second] {
         let locations = responses
             .iter()
@@ -729,6 +704,14 @@ fn string_extensions_preserve_none_reference_locations_beyond_snapshot_limit() {
             };
             let range = ms_lsp::text::Range::from_json(location.get("range").unwrap()).unwrap();
             assert_eq!(range.start.line, range.end.line);
+            let source = if uri == main {
+                ws.read("main.ms")
+            } else {
+                ms_lsp::analysis::standard_library_source(uri).unwrap()
+            };
+            let start = ms_lsp::text::offset(&source, range.start).unwrap();
+            let end = ms_lsp::text::offset(&source, range.end).unwrap();
+            assert_eq!(&source[start..end], "none", "{uri}: {range:?}");
             assert!(actual.insert((
                 module,
                 range.start.line,
