@@ -1,5 +1,5 @@
 //! Bundles what linking needs so `ms build` runs no C toolchain: on Linux, the self-contained musl startup objects and libc
-//! that Rust's musl target carries, or, on Windows, the mingw-w64 startup object, libraries and import
+//! that Rust's musl target carries and the glibc symbol table the libc stubs are made from, or, on Windows, the mingw-w64 startup object, libraries and import
 //! libraries of the pinned llvm-mingw release (`toolchain/fetch-mingw.sh`). It also pins the downloads
 //! (`lld`, the LLVM tools) that `ms` fetches on first use, so they stay out of the binary.
 
@@ -80,6 +80,15 @@ fn main() {
             strip_debug(&to, None);
             names.push(name.to_string());
         }
+        // The glibc ABI the link-time stubs are generated from (`toolchain/glibc/generate.sh`).
+        let symbols = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../../toolchain/glibc/{arch}.symbols"));
+        copy(
+            &symbols,
+            &bundle.join("glibc.symbols"),
+            "the glibc symbol table",
+        );
+        names.push("glibc.symbols".to_string());
     }
     names.push(embed_hot_ir(&bundle));
     let mut id = 0xcbf29ce484222325u64;
