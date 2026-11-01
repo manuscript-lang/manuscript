@@ -565,8 +565,8 @@ impl HttpExchange for TestExchange:
         if not guard.value.sent or guard.value.complete: return error(
             IoError.InvalidInput
         )
-        if self.request.method.text() == "HEAD" or not has_body(guard.value.status):
-            return error(IoError.InvalidInput)
+        if not has_body(guard.value.status): return error(IoError.InvalidInput)
+        if self.request.method.text() == "HEAD": return ok(unit)
 
         guard.value.body.append_bytes(data)
         return ok(unit)

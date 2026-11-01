@@ -95,6 +95,31 @@ test "HEAD is answered from the GET route without a body":
     try expect_equal(response.status, 200)
     try expect_equal(response.body.length(), 0)
 
+fn stream_parts(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+    try exchange.send_headers(200, headers())
+    try exchange.write("one").map_error(from_io)
+    try exchange.write("two").map_error(from_io)
+    return ok(unit)
+
+test "a streaming GET route answers HEAD, dropping the body writes":
+    var r = Router()
+    r.get("/s", stream_parts).get()
+
+    let head = try r.call(request(HttpMethod.Head, "/s"))
+    try expect_equal(head.status, 200)
+    try expect_equal(head.body.length(), 0)
+    try expect_equal(body_of(try r.call(get("/s"))), "onetwo")
+
+    let server = try serve("127.0.0.1:0", r.handler(), HttpServerOptions())
+    let client = try http_client(HttpClientOptions())
+    let over_socket = try client.request(
+        HttpMethod.Head, "http://{server.address()}/s", headers()
+    )
+    try expect_equal(over_socket.metadata().status, 200)
+
+    let rest = try read_all(body_stream(over_socket))
+    try expect_equal(rest.length(), 0)
+
 test "the first matching route wins":
     var r = Router()
     r.get("/a/:x", say("param")).get()

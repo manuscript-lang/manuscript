@@ -265,7 +265,7 @@ export interface HttpExchange:
         max_message_bytes: Int?
     ) WebSocket!WebSocketError
     # Writes one chunk of the response body and flushes it.
-    # `send_headers` must come first, and writing beyond `max_response_bytes` returns IoError.Failed. Responses to HEAD requests and with status 204 or 304 cannot have a body.
+    # `send_headers` must come first, and writing beyond `max_response_bytes` returns IoError.Failed. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return InvalidInput.
     fn write(data: String) Unit!IoError
     # Writes one chunk of raw bytes with the same rules as write.
     fn write_bytes(data: Bytes) Unit!IoError
