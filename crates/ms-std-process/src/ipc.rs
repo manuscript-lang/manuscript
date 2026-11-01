@@ -110,12 +110,14 @@ mod plat {
     use super::CHILD_FD;
     use alloc::vec::Vec;
     use ms_rt::glue::{WAIT_READ, WAIT_WRITE, poll_cancel, task_wait_fd};
+    use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
+    use std::os::unix::net::UnixStream;
 
     /// An open socket, closed on drop.
-    pub struct Link(i32);
+    pub struct Link(OwnedFd);
 
     /// The child's socket in the parent, closed once the child has its copy.
-    pub struct ChildLink(pub(crate) i32);
+    pub struct ChildLink(pub(crate) OwnedFd);
 
     /// A reader and a writer hold separate descriptors on one socket, so each parks on its own.
     pub struct Reader(Link);
@@ -124,20 +126,6 @@ mod plat {
     impl ChildLink {
         pub fn env_value(&self) -> Vec<u8> {
             alloc::format!("{CHILD_FD}").into_bytes()
-        }
-    }
-
-    impl Drop for ChildLink {
-        fn drop(&mut self) {
-            // SAFETY: the descriptor is ours and closed once.
-            unsafe { libc::close(self.0) };
-        }
-    }
-
-    impl Drop for Link {
-        fn drop(&mut self) {
-            // SAFETY: the descriptor is ours and closed once.
-            unsafe { libc::close(self.0) };
         }
     }
 
@@ -172,15 +160,10 @@ mod plat {
     }
 
     pub fn pair() -> Result<(Link, ChildLink), i32> {
-        let mut fds = [0i32; 2];
-        // SAFETY: `fds` has room for two descriptors.
-        if unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) } != 0 {
-            return Err(errno());
-        }
-        // The child's end stays close-on-exec until `start` moves it to `CHILD_FD`.
-        cloexec(fds[0]);
-        cloexec(fds[1]);
-        Ok((Link(fds[0]), ChildLink(fds[1])))
+        // `UnixStream::pair` makes both ends close-on-exec; the child's end stays so until
+        // `start` moves it to `CHILD_FD`.
+        let (a, b) = UnixStream::pair().map_err(|e| e.raw_os_error().unwrap_or(0))?;
+        Ok((Link(a.into()), ChildLink(b.into())))
     }
 
     pub fn adopt(value: &[u8]) -> Result<Link, i32> {
@@ -195,17 +178,17 @@ mod plat {
         }
         // So the child's own children do not hold the pipe open.
         cloexec(fd);
-        Ok(Link(fd))
+        // SAFETY: the parent passed this descriptor to us alone; nothing else owns it.
+        Ok(Link(unsafe { OwnedFd::from_raw_fd(fd) }))
     }
 
     impl Link {
         pub fn split(self) -> Result<(Reader, Writer), i32> {
-            // SAFETY: plain system call on an open descriptor.
-            let second = unsafe { libc::fcntl(self.0, libc::F_DUPFD_CLOEXEC, 0) };
-            if second < 0 {
-                return Err(errno());
-            }
-            nonblocking(self.0);
+            let second = self
+                .0
+                .try_clone()
+                .map_err(|e| e.raw_os_error().unwrap_or(0))?;
+            nonblocking(self.0.as_raw_fd());
             Ok((Reader(self), Writer(Link(second))))
         }
     }
@@ -215,13 +198,15 @@ mod plat {
             loop {
                 poll_cancel();
                 // SAFETY: `buf` is writable for its length.
-                let n = unsafe { libc::read((self.0).0, buf.as_mut_ptr().cast(), buf.len()) };
+                let n = unsafe {
+                    libc::read((self.0).0.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len())
+                };
                 if n >= 0 {
                     return Ok(n as usize);
                 }
                 match errno() {
                     libc::EAGAIN | libc::EINTR => {
-                        task_wait_fd((self.0).0, WAIT_READ, -1);
+                        task_wait_fd((self.0).0.as_raw_fd(), WAIT_READ, -1);
                     }
                     libc::ECONNRESET => return Ok(0),
                     e => return Err(e),
@@ -239,14 +224,21 @@ mod plat {
             while !data.is_empty() {
                 poll_cancel();
                 // SAFETY: `data` is readable for its length.
-                let n = unsafe { libc::send((self.0).0, data.as_ptr().cast(), data.len(), flags) };
+                let n = unsafe {
+                    libc::send(
+                        (self.0).0.as_raw_fd(),
+                        data.as_ptr().cast(),
+                        data.len(),
+                        flags,
+                    )
+                };
                 if n >= 0 {
                     data = &data[n as usize..];
                     continue;
                 }
                 match errno() {
                     libc::EAGAIN | libc::EINTR => {
-                        task_wait_fd((self.0).0, WAIT_WRITE, -1);
+                        task_wait_fd((self.0).0.as_raw_fd(), WAIT_WRITE, -1);
                     }
                     e => return Err(e),
                 }

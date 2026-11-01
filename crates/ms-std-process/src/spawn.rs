@@ -128,7 +128,7 @@ pub fn start(
         #[cfg(unix)]
         {
             use std::os::unix::process::CommandExt;
-            let fd = end.end.0;
+            let fd = std::os::fd::AsRawFd::as_raw_fd(&end.end.0);
             // SAFETY: only async-signal-safe calls between fork and exec.
             unsafe {
                 cmd.pre_exec(move || {
