@@ -36,18 +36,9 @@ pub(crate) struct RtSig {
     pub ret: String,
 }
 
-/// Bodiless natives the runtime implements directly, with their symbol. They are generic (`extern fn` has no type
-/// parameters) or live in modules where an `extern fn` wrapper makes an import cycle among the bundled sources.
-const GENERIC_NATIVES: &[(&str, &str)] = &[
-    ("collections/filled", "msrt_list_filled"),
-    ("collections/flatten", "msrt_list_flatten"),
-    ("collections/range", "msrt_list_range"),
-    ("collections/range_by", "msrt_list_range_by"),
-    ("string/compile", "msrt_regex_compile"),
-    ("string/from_scalars", "msrt_string_from_scalars"),
-    ("bytes/join", "msrt_bytes_join"),
-    ("bytes/values", "msrt_bytes_values"),
-];
+/// Bodiless natives the runtime implements directly, with their symbol. The loop lowering recognises `range` by its
+/// native identity, so it stays a declaration instead of a wrapper over an extern.
+const GENERIC_NATIVES: &[(&str, &str)] = &[("collections/range", "msrt_list_range")];
 
 pub(crate) fn function_symbol(native: &str) -> Option<String> {
     let (_, sym) = GENERIC_NATIVES.iter().find(|(n, _)| *n == native)?;

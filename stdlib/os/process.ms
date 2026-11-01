@@ -4,13 +4,7 @@ import Duration from "@std/os/time.ms"
 import IpFamily from "@std/net/net.ms"
 import ReadStream from "@std/io/io.ms"
 import WriteStream from "@std/io/io.ms"
-import msrt_args, msstd_system_endianness, msstd_system_end_of_line, msstd_system_dev_null, msstd_system_os_type, msstd_system_constants from "@std/internal/process.ms"
-
-extern fn msstd_process_commands() Commands
-
-extern fn msstd_process_control() ProcessControl
-
-extern fn msstd_process_system() System
+import msrt_args, msstd_system_endianness, msstd_system_end_of_line, msstd_system_dev_null, msstd_system_os_type, msstd_system_constants, msstd_process_commands, msstd_process_control, msstd_process_system, msstd_process_subprocess_stdin, msstd_process_subprocess_stream, msstd_process_subprocess_wait, msstd_process_subprocess_terminate, msstd_process_subprocess_kill, msstd_process_subprocess_close from "@std/internal/process.ms"
 
 # Errors returned when a process cannot start, times out, or exceeds an output bound.
 export type CommandError:
@@ -69,24 +63,6 @@ export interface Commands:
 
 # The runtime handle behind a `Subprocess`.
 export extern type NativeSubprocess
-
-extern fn msstd_process_subprocess_stdin(handle: NativeSubprocess) WriteStream
-
-extern fn msstd_process_subprocess_stream(
-    handle: NativeSubprocess,
-    which: Int
-) ReadStream
-
-extern fn msstd_process_subprocess_wait(
-    handle: NativeSubprocess,
-    timeout: Duration?
-) Int!CommandError
-
-extern fn msstd_process_subprocess_terminate(handle: NativeSubprocess) Unit
-
-extern fn msstd_process_subprocess_kill(handle: NativeSubprocess) Unit
-
-extern fn msstd_process_subprocess_close(handle: NativeSubprocess) Unit
 
 # A long-lived child process with live stdin, stdout, and stderr streams. Closing it
 # kills the child's process group, joins it, and closes all three streams.

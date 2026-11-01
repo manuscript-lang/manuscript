@@ -5,23 +5,7 @@ import ReadStream from "@std/io/io.ms"
 import Timestamp from "@std/os/time.ms"
 import WriteStream from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
-import msstd_fs_constants, msrt_path_basename, msrt_path_dirname, msrt_path_extension, msrt_path_is_absolute, msrt_path_join, msrt_path_normalize, msrt_path_basename_without, msrt_path_separator, msrt_path_delimiter, msrt_path_to_namespaced_path from "@std/internal/fs.ms"
-
-extern fn msstd_fs_filesystem() FileSystem
-
-extern fn msrt_path_relative(base: String, target: String) String!PathError
-
-extern fn msstd_fs_posix() PathOperations
-
-extern fn msstd_fs_win32() PathOperations
-
-extern fn msrt_path_resolve(base: String, parts: List[String]) String!PathError
-
-extern fn msrt_path_parse(path: String) PathParts
-
-extern fn msrt_path_format(parts: PathParts) String
-
-extern fn msrt_path_matches_glob(path: String, pattern: String) Bool!PathError
+import msstd_fs_constants, msrt_path_basename, msrt_path_dirname, msrt_path_extension, msrt_path_is_absolute, msrt_path_join, msrt_path_normalize, msrt_path_basename_without, msrt_path_separator, msrt_path_delimiter, msrt_path_to_namespaced_path, msstd_fs_filesystem, msrt_path_relative, msstd_fs_posix, msstd_fs_win32, msrt_path_resolve, msrt_path_parse, msrt_path_format, msrt_path_matches_glob, msstd_fs_file_reader, msstd_fs_file_writer, msstd_io_close, msstd_fs_file_clone, msstd_io_read, msstd_io_write, msstd_io_write_bytes, msstd_fs_file_read_at, msstd_fs_file_write_at, msstd_fs_file_read_file, msstd_fs_file_read_vectors, msstd_fs_file_write_vectors, msstd_fs_file_seek, msstd_fs_file_stat, msstd_fs_file_truncate, msstd_fs_file_sync, msstd_fs_file_data_sync, msstd_fs_file_chmod, msstd_fs_file_chown, msstd_fs_file_set_times, msstd_fs_file_read_lines, msstd_fs_directory_read, msstd_fs_directory_path, msstd_fs_directory_close, msstd_fs_watch_next, msstd_fs_watch_close, msstd_fs_temporary_path, msstd_fs_temporary_close from "@std/internal/fs.ms"
 
 # Errors returned by filesystem operations. `Failed` retains the host error text.
 export type FileSystemError:
@@ -250,79 +234,6 @@ interface FileSystem:
 # The runtime handle behind a `FileHandle`.
 export extern type NativeFile
 
-extern fn msstd_fs_file_reader(file: NativeFile) ReadStream
-
-extern fn msstd_fs_file_writer(file: NativeFile) WriteStream
-
-extern fn msstd_io_close(file: NativeFile) Unit
-
-extern fn msstd_fs_file_clone(file: NativeFile) FileHandle!FileSystemError
-
-extern fn msstd_io_read(file: NativeFile, max_bytes: Int?) Bytes?!FileSystemError
-
-extern fn msstd_io_write(file: NativeFile, data: String) Unit!FileSystemError
-
-extern fn msstd_io_write_bytes(file: NativeFile, data: Bytes) Unit!FileSystemError
-
-extern fn msstd_fs_file_read_at(
-    file: NativeFile,
-    offset: Int,
-    max_bytes: Int?
-) Bytes!FileSystemError
-
-extern fn msstd_fs_file_write_at(
-    file: NativeFile,
-    offset: Int,
-    data: Bytes
-) Unit!FileSystemError
-
-extern fn msstd_fs_file_read_file(
-    file: NativeFile,
-    max_bytes: Int?
-) Bytes!FileSystemError
-
-extern fn msstd_fs_file_read_vectors(
-    file: NativeFile,
-    sizes: List[Int],
-    offset: Int
-) List[Bytes]!FileSystemError
-
-extern fn msstd_fs_file_write_vectors(
-    file: NativeFile,
-    buffers: List[Bytes],
-    offset: Int
-) Unit!FileSystemError
-
-extern fn msstd_fs_file_seek(
-    file: NativeFile,
-    offset: Int,
-    origin: Int
-) Int!FileSystemError
-
-extern fn msstd_fs_file_stat(file: NativeFile) FileInfo!FileSystemError
-
-extern fn msstd_fs_file_truncate(file: NativeFile, size: Int) Unit!FileSystemError
-
-extern fn msstd_fs_file_sync(file: NativeFile) Unit!FileSystemError
-
-extern fn msstd_fs_file_data_sync(file: NativeFile) Unit!FileSystemError
-
-extern fn msstd_fs_file_chmod(file: NativeFile, mode: Int) Unit!FileSystemError
-
-extern fn msstd_fs_file_chown(file: NativeFile, uid: Int, gid: Int) Unit!FileSystemError
-
-extern fn msstd_fs_file_set_times(
-    file: NativeFile,
-    accessed: Timestamp,
-    modified: Timestamp
-) Unit!FileSystemError
-
-extern fn msstd_fs_file_read_lines(
-    file: NativeFile,
-    max_bytes: Int?,
-    max_lines: Int?
-) List[String]!FileSystemError
-
 # An open file supporting sequential and positional I/O. It owns its descriptor: `close` it, or let
 # its binding go out of scope.
 export type FileHandle:
@@ -439,12 +350,6 @@ impl FileHandle:
 # The runtime handle behind a `Directory`.
 export extern type NativeDirectory
 
-extern fn msstd_fs_directory_read(dir: NativeDirectory) DirectoryEntry?!FileSystemError
-
-extern fn msstd_fs_directory_path(dir: NativeDirectory) String
-
-extern fn msstd_fs_directory_close(dir: NativeDirectory) Unit
-
 # An open directory that yields one child per read and must be closed.
 export type Directory:
     # The runtime handle for the open directory; it is released by `close` and owned by this value.
@@ -470,10 +375,6 @@ impl Directory:
 # The runtime handle behind a `FileWatcher`.
 export extern type NativeWatcher
 
-extern fn msstd_fs_watch_next(watcher: NativeWatcher) List[FileEvent]!FileSystemError
-
-extern fn msstd_fs_watch_close(watcher: NativeWatcher) Unit
-
 # A change stream returned by a filesystem watch operation.
 export type FileWatcher:
     # The runtime handle for the watch; it is released by `close` and owned by this value.
@@ -494,10 +395,6 @@ impl FileWatcher:
 
 # The runtime handle behind a `TemporaryDirectory`.
 export extern type NativeTemporary
-
-extern fn msstd_fs_temporary_path(temporary: NativeTemporary) String
-
-extern fn msstd_fs_temporary_close(temporary: NativeTemporary) Unit!FileSystemError
 
 # A temporary directory whose contents are removed when it is closed.
 export type TemporaryDirectory:

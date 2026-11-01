@@ -14,7 +14,7 @@ import CommandError, Stdio from "@std/os/process.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
 import Duration from "@std/os/time.ms"
-import msrt_obj_share from "@std/internal/processes.ms"
+import msrt_obj_share, msstd_process_fork, msstd_process_forked_link, msstd_process_forked_stdin, msstd_process_forked_output, msstd_process_forked_wait, msstd_process_forked_signal, msstd_process_forked_close, msstd_process_ipc_child, msstd_process_ipc_read, msstd_process_ipc_wait_reader, msstd_process_ipc_write, msstd_process_ipc_close from "@std/internal/processes.ms"
 
 # A running child, owned by its `Process`.
 export extern type NativeProcess
@@ -31,38 +31,6 @@ impl NativeLink:
     # Another holder of the same pipe end; the pipe closes with `msstd_process_ipc_close`.
     fn clone() NativeLink:
         return msrt_obj_share(self)
-
-extern fn msstd_process_fork(
-    runner: fn() Unit,
-    stdin: Stdio,
-    stdout: Stdio,
-    stderr: Stdio
-) NativeProcess!CommandError
-
-extern fn msstd_process_forked_link(process: NativeProcess) NativeLink
-
-extern fn msstd_process_forked_stdin(process: NativeProcess) WriteStream
-
-extern fn msstd_process_forked_output(process: NativeProcess, which: Int) ReadStream
-
-extern fn msstd_process_forked_wait(
-    process: NativeProcess,
-    timeout_ns: Int
-) Int!CommandError
-
-extern fn msstd_process_forked_signal(process: NativeProcess, force: Bool) Unit
-
-extern fn msstd_process_forked_close(process: NativeProcess) Unit
-
-extern fn msstd_process_ipc_child() NativeLink
-
-extern fn msstd_process_ipc_read(link: NativeLink, max: Int) Bytes
-
-extern fn msstd_process_ipc_wait_reader(link: NativeLink) Bool
-
-extern fn msstd_process_ipc_write(link: NativeLink, data: Bytes) Bool
-
-extern fn msstd_process_ipc_close(link: NativeLink) Unit
 
 # Frame kinds: a message, the end of the sender's messages, and the entry's result.
 let MESSAGE = 0
