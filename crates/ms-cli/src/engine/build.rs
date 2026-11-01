@@ -242,6 +242,12 @@ impl BuildCache {
             .join(".ms-cache")
             .join("build");
         let mut inputs = vec![std::env::current_exe().ok()?];
+        // A newly created nearer manifest can change resolution without changing any recorded
+        // source. Include the current selection in the key, resolving directory symlinks as the
+        // loader does, so even a previously absent manifest invalidates a cached program.
+        let source_dir = pathops::eval_symlinks(&pathops::dir(&filename)).ok()?;
+        inputs
+            .extend(ms_driver::load::enclosing_manifest(&source_dir).map(std::path::PathBuf::from));
         inputs.extend(backend.runtime.clone());
         inputs.extend(ms_build::runtime_override().ok()?);
         inputs.extend(request.link.iter().map(std::path::PathBuf::from));
