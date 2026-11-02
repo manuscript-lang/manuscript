@@ -29,6 +29,7 @@ pub mod simplify;
 pub mod slotfuse;
 pub mod sortgen;
 pub mod strfuse;
+pub mod unroll;
 
 /// Optimization level.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -109,6 +110,8 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
         check(m, "copyelim");
         changed |= range::run(m);
         check(m, "range");
+        changed |= unroll::run(m);
+        check(m, "unroll");
         changed |= ifconv::run(m);
         check(m, "ifconv");
         if !changed && round > 0 {
