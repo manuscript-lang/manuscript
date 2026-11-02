@@ -102,8 +102,9 @@ pub struct Decoder {
     /// Running check of the current payload: CRC-32 (gzip) or Adler-32 (zlib).
     check: u32,
     size: u32,
-    /// Decoded bytes not yet handed out.
+    /// Decoded bytes; the unread range starts at `pending_head`.
     pending: Vec<u8>,
+    pending_head: usize,
     failed: Option<Fail>,
 }
 
@@ -128,6 +129,7 @@ impl Decoder {
             check: 0,
             size: 0,
             pending: Vec::new(),
+            pending_head: 0,
             failed: None,
         }
     }
@@ -155,8 +157,14 @@ impl Decoder {
     }
 
     fn take_pending(&mut self, max: usize) -> Result<Poll, Fail> {
-        let n = max.min(self.pending.len());
-        let out: Vec<u8> = self.pending.drain(..n).collect();
+        let n = max.min(self.pending.len() - self.pending_head);
+        let end = self.pending_head + n;
+        let out = self.pending[self.pending_head..end].to_vec();
+        self.pending_head = end;
+        if self.pending_head == self.pending.len() {
+            self.pending.clear();
+            self.pending_head = 0;
+        }
         self.total = self.total.saturating_add(out.len() as i64);
         if self.total > self.max {
             return Err(Fail::LimitExceeded);
