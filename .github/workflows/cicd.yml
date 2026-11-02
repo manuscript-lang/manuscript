@@ -1,15 +1,18 @@
 name: CI/CD
 
-# The merge queue's group runs and manual runs. Pull requests run pr.yml (two Linux jobs).
-#   merge queue   one run per group of PRs, on the group's combined commit: the darwin and windows
-#                 legs here, next to the two Linux jobs from pr.yml. `Platform checks` sums them up.
-#   manual run    all six platforms. cache-maintenance.yml starts one on main every hour, and only a
-#                 manual run on main saves the sccache caches. Run it by hand on a branch to test a
-#                 platform-specific change. It also deploys Pages.
-# Each platform runs as two parts on separate runners (`tests` and `conformance`; see
-# .github/actions/rust-checks).
+# One workflow, three triggers:
+#   pull request  `Build checks`: format, clippy, a build of every target, the language checks and the
+#                 book, in one job on linux-amd64. No tests.
+#   merge queue   the heavy checks, once per group of PRs on the group's combined commit: all six
+#                 platforms in two parts each (see .github/actions/rust-checks), the language checks
+#                 and the book. `Platform checks` sums the platforms up.
+#   manual run    the same as the queue, plus Pages. cache-maintenance.yml starts one on main every
+#                 hour; only a manual run on main saves the sccache caches.
+# Require `Build checks` and `Platform checks`: each is skipped (and so passes) where it does not apply.
+# The account runs 20 jobs at once and every extra job waits in the queue, so a pull request is one job.
 
 on:
+  pull_request:
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
@@ -18,6 +21,10 @@ permissions:
   contents: read
 
 env:
+  # sccache stores each compiler output, so the saved cache stays small and bounded
+  # (`target/` grew to several GB) and a changed crate rebuilds only itself.
+  RUSTC_WRAPPER: sccache
+  SCCACHE_CACHE_SIZE: 2G
   # Debug info makes the dev and test builds slower to link and the saved caches several times
   # larger; nothing in CI reads the compiler's own debug info. Release keeps the profile setting.
   CARGO_PROFILE_DEV_DEBUG: '0'
@@ -25,13 +32,54 @@ env:
   CARGO_INCREMENTAL: '0'
 
 concurrency:
-  # Queue and manual runs never cancel or replace each other.
-  group: ci-${{ github.run_id }}
-  cancel-in-progress: false
+  # A new commit cancels the earlier run of the same pull request; queue and manual runs are never cancelled.
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
+  # A pull request: the cheap checks, in one job.
+  build:
+    name: Build checks
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      # A commit pushed within a minute cancels this run before any build starts.
+      - name: Wait for a newer push
+        run: sleep 60
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - id: sccache
+        uses: ./.github/actions/sccache
+        with:
+          prefix: cargo-sccache-linux-amd64-a-
+      - uses: ./.github/actions/rust-env
+        with:
+          os: linux
+          arch: amd64
+      # Language and book checks run for every change, documentation included.
+      - uses: ./.github/actions/language-checks
+      - uses: ./.github/actions/book-checks
+      # Documentation-only changes skip the Rust checks.
+      - id: scope
+        uses: ./.github/actions/rust-scope
+      - uses: ./.github/actions/build-checks
+        if: steps.scope.outputs.rust == 'true'
+      - uses: ./.github/actions/sccache-save
+        if: ${{ !cancelled() }}
+        with:
+          cache-hit: ${{ steps.sccache.outputs.cache-hit }}
+          primary-key: ${{ steps.sccache.outputs.primary-key }}
+
+  # The merge queue and manual runs: the heavy checks.
   rust:
     name: ${{ matrix.leg.os }}-${{ matrix.leg.arch }} · ${{ matrix.part == 'a' && 'tests' || 'conformance' }}
+    if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.leg.runner }}
     timeout-minutes: 75
     strategy:
@@ -42,23 +90,13 @@ jobs:
         # `MS_BACKEND=cranelift`, so release builds use the Cranelift backend that Debug builds use.
         # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
         # in tests/conformance/expect-fail.<os>.txt with a reason.
-        leg: ${{ fromJSON(github.event_name == 'merge_group' && '[
-          {"os":"darwin","arch":"amd64","runner":"macos-15-intel"},
-          {"os":"darwin","arch":"arm64","runner":"macos-15","cranelift":true},
-          {"os":"windows","arch":"amd64","runner":"windows-2025","cranelift":true},
-          {"os":"windows","arch":"arm64","runner":"windows-11-arm"}]' || '[
-          {"os":"linux","arch":"amd64","runner":"ubuntu-24.04","lint":true,"cranelift":true},
-          {"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm"},
-          {"os":"darwin","arch":"amd64","runner":"macos-15-intel"},
-          {"os":"darwin","arch":"arm64","runner":"macos-15","cranelift":true},
-          {"os":"windows","arch":"amd64","runner":"windows-2025","cranelift":true},
-          {"os":"windows","arch":"arm64","runner":"windows-11-arm"}]') }}
-    defaults:
-      run:
-        shell: bash
-    env:
-      RUSTC_WRAPPER: sccache
-      SCCACHE_CACHE_SIZE: 2G
+        leg:
+          - {os: linux, arch: amd64, runner: ubuntu-24.04, lint: true, cranelift: true}
+          - {os: linux, arch: arm64, runner: ubuntu-24.04-arm}
+          - {os: darwin, arch: amd64, runner: macos-15-intel}
+          - {os: darwin, arch: arm64, runner: macos-15, cranelift: true}
+          - {os: windows, arch: amd64, runner: windows-2025, cranelift: true}
+          - {os: windows, arch: arm64, runner: windows-11-arm}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -97,15 +135,14 @@ jobs:
           RESULT: ${{ needs.rust.result }}
         run: test "$RESULT" = success
 
-  # The queue runs these in pr.yml's amd64 job.
   language:
     name: Language checks
-    if: github.event_name != 'merge_group'
+    if: github.event_name != 'pull_request'
     uses: ./.github/workflows/test-language.yml
 
-  build:
+  book:
     name: Build design book
-    if: github.event_name != 'merge_group'
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -131,7 +168,7 @@ jobs:
 
   pages:
     name: Publish Pages docs
-    needs: [build, language]
+    needs: [book, language]
     if: github.event_name == 'workflow_dispatch' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-24.04
     permissions:

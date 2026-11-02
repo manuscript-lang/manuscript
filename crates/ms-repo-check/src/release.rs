@@ -22,10 +22,10 @@ pub fn extension_version() -> Vec<String> {
     )]
 }
 
-/// The pull request workflow must run on every PR, whatever files it changes, and on the merge
-/// queue's combined commit: the ruleset on `main` requires its two jobs.
+/// The CI workflow must run on every PR, whatever files it changes, and on the merge queue's combined
+/// commit: the ruleset on `main` requires its `Build checks` and `Platform checks` jobs.
 pub fn workflow_triggers() -> Vec<String> {
-    let path = ".github/workflows/pr.yml";
+    let path = ".github/workflows/cicd.yml";
     match std::fs::read_to_string(path) {
         Ok(text) => triggers(&text)
             .map(|e| format!("{path}: {e}"))
