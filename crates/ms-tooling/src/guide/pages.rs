@@ -175,7 +175,7 @@ pub fn index() -> String {
         let mut shown = 0;
         for d in &m.declarations {
             let next = format!("{line} {},", d.name);
-            if next.len() > 72 && shown > 0 {
+            if next.len() > 62 && shown > 0 {
                 break;
             }
             line = next;
