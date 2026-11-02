@@ -1,4 +1,5 @@
 import expect_contains, expect_fault, expect_true from "@std/test/test.ms"
+import ListCopies from "@std/collections/collections.ms"
 import StringBuilder from "@std/string.ms"
 
 type Folded:
@@ -88,8 +89,8 @@ test "size and shape methods as values":
     (set_is_empty() == false) | try expect_true
 
 test "sorted as a value":
-    # `sorted` comes from both `ListCopies` and `ListOrderCopy`, so a value names it through a closure.
-    let sort = fn(compare: fn(Int, Int) Int) List[Int]: [3, 1, 2].sorted(compare)
+    let view: ListCopies[Int] = [3, 1, 2]
+    let sort = view.sorted
     let ordered = sort(compare: fn a, b: a - b)
     (ordered.get(index: 0) == 1) | try expect_true
     (ordered.get(index: 2) == 3) | try expect_true
@@ -162,3 +163,9 @@ test "native calls pass as Equal":
     (same("a".to_bytes(), "a".to_bytes())) | try expect_true
     (same("ab".slice(start: 0, end: 1), "ab".slice(start: 0, end: 1))) | try expect_true
     ("a".to_bytes().equals("a".to_bytes())) | try expect_true
+
+test "native contract methods through an interface value":
+    let view: ListCopies[Int] = [3, 1, 2]
+    (view.take(2).length() == 2) | try expect_true
+    (view.reversed().get(index: 0) == 2) | try expect_true
+    (view.clone().length() == 3) | try expect_true

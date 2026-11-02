@@ -1,7 +1,7 @@
 //! Lambdas and calls through function values.
 
 use crate::Error;
-use crate::cx::{BoundNativeJob, Cx, Job, JobKind, LambdaJob, NativeThunkJob};
+use crate::cx::{BoundNativeJob, Cx, IfaceNativeJob, Job, JobKind, LambdaJob, NativeThunkJob};
 use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
@@ -1321,7 +1321,7 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
 impl FnLower<'_> {
     /// The arguments of a native called through a function value: a parameter the function type
     /// made optional is read as its supplied value or the declared default.
-    fn thunk_native_args(
+    pub(crate) fn thunk_native_args(
         &mut self,
         module: ct::Name,
         func: Option<&ms_syntax::ast::Func>,
@@ -1406,6 +1406,47 @@ pub(crate) fn build_bound_native(
     result?;
     f.compact_blocks();
     m.funcs[func.index()] = f;
+    Ok(())
+}
+
+/// Lowers the body of a native method behind an interface table entry.
+pub(crate) fn build_iface_native(
+    cx: &mut Cx,
+    m: &mut Module,
+    func: FuncId,
+    job: &IfaceNativeJob,
+) -> Result<(), Error> {
+    let proto = m.funcs[func.index()].clone();
+    let file = m.add_file(job.hir.data.file.as_str());
+    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
+    b.func_mut().kind = proto.kind.clone();
+    b.func_mut().linkage = proto.linkage;
+    let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
+    fl.scope_override = Some(job.scope);
+    let result = lower_iface_native(&mut fl, job);
+    let mut f = fl.b.into_func();
+    result?;
+    f.compact_blocks();
+    m.funcs[func.index()] = f;
+    Ok(())
+}
+
+fn lower_iface_native(fl: &mut FnLower<'_>, job: &IfaceNativeJob) -> Result<(), Error> {
+    let params = fl.b.params();
+    let func = job.method.decl.as_ref().and_then(|d| d.func());
+    let ret = fl.ret_ty;
+    let args =
+        fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
+    let out = if ms_check::effects::collection_mutation(&job.method) {
+        // The table entry receives the address of the value it changes.
+        fl.shared_native_call(&job.method, params[0], job.data, &args, ret)?
+    } else {
+        let v =
+            fl.b.emit(Op::Load, &[params[0]], Imm::Ty(job.data), Some(job.data))
+                .expect("load");
+        fl.bound_native_call(&job.method, Val { v, own: false }, &args, ret)?
+    };
+    fl.emit_return(Some(out));
     Ok(())
 }
 
