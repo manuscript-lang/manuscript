@@ -11,6 +11,7 @@ use cranelift_codegen::ir::{
     self, Block, ExtFuncData, ExternalName, Function, GlobalValueData, Inst, InstructionData,
     Opcode, Type, Value, types,
 };
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
 
@@ -150,7 +151,7 @@ impl DebugInfo {
         let fnode = self.file_node(file);
         let n = self.push(format!(
             "distinct !DISubprogram(name: \"{}\", scope: !{fnode}, file: !{fnode}, line: 1, type: !4, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !0)",
-            name.replace(['"', '\\'], "'")
+            metadata_string(&name)
         ));
         self.scope_sp.insert((idx, fn_sp), n);
         n
@@ -224,6 +225,26 @@ impl DebugInfo {
 /// Metadata ids fixed by [`LlvmModule::finish`]: compile unit, two module flags, the empty
 /// type list and the subroutine type; file `i` is `FIRST_FILE + i`.
 const FIRST_FILE: usize = 5;
+
+/// LLVM quoted byte strings use hexadecimal escapes. Keep each metadata node on one
+/// physical line, including names and paths that contain line breaks or line markers.
+fn metadata_string(text: &str) -> Cow<'_, str> {
+    if !text
+        .bytes()
+        .any(|b| b.is_ascii_control() || matches!(b, b'"' | b'\\'))
+    {
+        return Cow::Borrowed(text);
+    }
+    let mut escaped = String::with_capacity(text.len());
+    for c in text.chars() {
+        if c.is_ascii_control() || matches!(c, '"' | '\\') {
+            let _ = write!(escaped, "\\{:02X}", c as u32);
+        } else {
+            escaped.push(c);
+        }
+    }
+    Cow::Owned(escaped)
+}
 
 impl LlvmModule {
     /// A module whose debug info names `files` relative to `cwd`.
@@ -1171,8 +1192,8 @@ impl LlvmModule {
         let file_node = self.di.file_node(sp_file);
         self.di.meta.push(format!(
             "distinct !DISubprogram(name: \"{}\", linkageName: \"{}\", scope: !{file_node}, file: !{file_node}, line: {sp_line}, type: !4, scopeLine: {sp_line}, spFlags: DISPFlagDefinition, unit: !0)",
-            display.replace(['"', '\\'], "'"),
-            name.replace(['"', '\\'], "'")
+            metadata_string(display),
+            metadata_string(name)
         ));
         let none_loc = self.di.push(format!("!DILocation(line: 0, scope: !{sp})"));
         let mut tr = Tr {
@@ -1467,7 +1488,6 @@ impl LlvmModule {
             s.push_str("declare i64 @msrt_cpu_level() nounwind willreturn memory(none)\n");
         }
         // Debug metadata: line tables only (no variables, types or inline frames).
-        let esc = |t: &str| t.replace('\\', "\\5C").replace('"', "\\22");
         let first_file = self.di.files.iter().position(Option::is_some).unwrap_or(0);
         s.push_str("!llvm.dbg.cu = !{!0}\n!llvm.module.flags = !{!1, !2}\n");
         let _ = writeln!(
@@ -1484,8 +1504,8 @@ impl LlvmModule {
                 s,
                 "!{} = !DIFile(filename: \"{}\", directory: \"{}\")",
                 FIRST_FILE + i,
-                esc(name),
-                esc(&self.di.cwd)
+                metadata_string(name),
+                metadata_string(&self.di.cwd)
             );
         }
         for (i, n) in self
@@ -1542,6 +1562,118 @@ mod tests {
     fn only_a_huge_body_skips_optimization() {
         assert!(!is_huge(&"  ret void\n".repeat(HUGE_FUNCTION_LINES)));
         assert!(is_huge(&"  ret void\n".repeat(HUGE_FUNCTION_LINES + 1)));
+    }
+
+    #[test]
+    fn metadata_strings_preserve_unicode_and_escape_quoted_control_bytes() {
+        assert_eq!(metadata_string("plain/雪.ms"), "plain/雪.ms");
+        assert_eq!(
+            metadata_string("quote\"slash\\tab\tline\nreturn\r\0\u{7f}雪"),
+            "quote\\22slash\\5Ctab\\09line\\0Areturn\\0D\\00\\7F雪"
+        );
+    }
+
+    #[test]
+    fn metadata_line_markers_stay_inside_their_quoted_fields() {
+        struct Inlined;
+        impl Symbols for Inlined {
+            fn symbol(&self, _: u32, _: u32) -> String {
+                unreachable!()
+            }
+            fn loc(&self, _: u32) -> Option<(u32, u32, u32)> {
+                None
+            }
+            fn scope(&self, _: u32) -> Option<(String, u32, u32, u32)> {
+                Some(("inline\n}\ndefine scope".into(), 0, 0, 1))
+            }
+        }
+        let mut m = LlvmModule::new(
+            vec![Some("part\n}\ndefine file.ms".into())],
+            "dir\r\n}\ndefine cwd".into(),
+        );
+        m.add_function(
+            "plain",
+            "display\n}\ndefine name",
+            (0, 1),
+            &returning(1),
+            &TestSymbols,
+            true,
+        );
+        m.di.scope_sp(&Inlined, 1, FIRST_FILE + 1);
+        let text = m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false);
+        assert_eq!(text.lines().filter(|l| l.starts_with("define ")).count(), 1);
+        assert_eq!(text.lines().filter(|l| *l == "}").count(), 1);
+        for quoted in [
+            "part\\0A}\\0Adefine file.ms",
+            "dir\\0D\\0A}\\0Adefine cwd",
+            "display\\0A}\\0Adefine name",
+            "inline\\0A}\\0Adefine scope",
+        ] {
+            assert!(text.contains(quoted), "missing {quoted}: {text}");
+        }
+    }
+
+    #[test]
+    fn quoted_metadata_survives_llvm_and_fault_table_reconstruction() {
+        struct Inlined;
+        const INLINE: &str = "inline\"\\雪\n}\ndefine scope";
+        impl Symbols for Inlined {
+            fn symbol(&self, _: u32, _: u32) -> String {
+                unreachable!()
+            }
+            fn loc(&self, bits: u32) -> Option<(u32, u32, u32)> {
+                (bits == 0).then_some((0, 7, 1))
+            }
+            fn scope(&self, idx: u32) -> Option<(String, u32, u32, u32)> {
+                (idx == 1).then(|| (INLINE.into(), 0, 0, 3))
+            }
+        }
+        let mut sig = Signature::new(CallConv::SystemV);
+        sig.params.push(AbiParam::new(types::I64));
+        sig.returns.push(AbiParam::new(types::I64));
+        let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+        let mut context = FunctionBuilderContext::new();
+        let mut b = FunctionBuilder::new(&mut f, &mut context);
+        let entry = b.create_block();
+        b.append_block_params_for_function_params(entry);
+        b.switch_to_block(entry);
+        b.set_srcloc(ir::SourceLoc::new(0));
+        let arg = b.block_params(entry)[0];
+        let next = b.ins().iadd_imm_s(arg, 1);
+        b.ins().return_(&[next]);
+        b.seal_all_blocks();
+        b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
+            default_call_conv: CallConv::SystemV,
+            pointer_width: target_lexicon::PointerWidth::U64,
+            page_size_align_log2: 12,
+        });
+        let file = "/source/雪\nquote\".ms".to_string();
+        let display = "display\"\\雪\n}\ndefine name";
+        let mut m = LlvmModule::new(vec![Some(file.clone())], "dir\r\n}\ndefine cwd".into());
+        m.add_function("metadata", display, (0, 1), &f, &Inlined, true);
+        let triple = format!("{}-unknown-linux-gnu", std::env::consts::ARCH);
+        let text = m.finish(&triple, &HashSet::new(), false);
+        let object = crate::llvm_obj::compile(&text, "3").unwrap();
+        let funcs = [crate::cg::LlvmFn {
+            id: cranelift_module::FuncId::from_u32(0),
+            symbol: "metadata".into(),
+            copy: false,
+            name: display.into(),
+            file: 0,
+            line: 1,
+        }];
+        let tables = crate::llvm_tables::read(object.path(), &funcs, &[file], false).unwrap();
+        assert!(
+            tables
+                .scopes
+                .iter()
+                .any(|s| s.name == INLINE && s.call_line == 3),
+            "inlined name or call line lost: {:?}",
+            tables.scopes
+        );
+        // Line-table-only DWARF may omit the abstract origin's declaration file. The
+        // instruction row still has to recover the exact source path and line.
+        assert!(tables.dbg[0].ranges.iter().any(|r| r.1 == 0 && r.2 == 7));
     }
 
     #[test]

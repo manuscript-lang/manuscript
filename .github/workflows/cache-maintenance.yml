@@ -1,11 +1,10 @@
 name: Cache maintenance
 
 # Two jobs. `warm` starts a manual CI/CD run on main at most once an hour, because only a finished
-# manual run saves the sccache caches (push runs are replaced before they finish). It starts from
-# the end of any push run on main and from an hourly schedule. GitHub runs schedules on a best-effort
-# basis (one of about seven hourly slots ran in the first seven hours, #2158), so the schedule only
-# covers quiet hours and the workflow_run trigger is what keeps the caches warm. `prune` keeps one
-# cache per name.
+# manual run saves the sccache caches. It starts from a push to main (a merged queue group) and from
+# an hourly schedule. GitHub runs schedules on a best-effort basis (one of about seven hourly slots
+# ran in the first seven hours, #2158), so the schedule only covers quiet hours and the push trigger
+# is what keeps the caches warm. `prune` keeps one cache per name.
 #
 # Keeps one cache per name. A lockfile change writes a new cargo cache and nothing removes the old
 # one, so copies pile up until GitHub evicts at the 10 GB limit and takes live entries with it.
@@ -13,6 +12,9 @@ name: Cache maintenance
 # keys are dead and go too.
 
 on:
+  # A merge into main: the queue's run does not save caches, so ask for the manual run.
+  push:
+    branches: [main]
   # Right after a main run saved its caches, so the superseded entries go before the limit is reached.
   workflow_run:
     workflows: [CI/CD]
@@ -31,7 +33,7 @@ concurrency:
 
 jobs:
   warm:
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push')
+    if: github.event_name == 'schedule' || github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
