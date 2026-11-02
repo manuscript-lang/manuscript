@@ -21,7 +21,7 @@
   - A callback takes at most 6 parameters, which are numbers, `Bool`, `String`, `Bytes` or extern types. Its result is one of those but an extern type, or `Unit`. Lists are not supported. The signature fits one word.
   - The `ms_fn` is a runtime object around a generated closure. The closure reads its arguments from 24-byte cells that the runtime fills, so the conversion is in Rust and the closure is plain MIR that both backends compile. There is no hand-written thunk at the Cranelift level.
   - A callback that waits is not detected.
-  - Gate: `extern_link.rs` calls back with every parameter kind on both backends, keeps a callback past its call, and faults on a wrong kind and inside a callback. On Unix, SIGINT reaches a shim blocked in C through its hook, and the program exits 130. The hook registry has a runtime unit test that runs on every platform.
+  - Gate: `extern_link.rs` calls back with every parameter kind on both backends, keeps a callback past its call, and faults on a wrong kind and inside a callback. SIGINT on Unix, and Ctrl-Break on Windows, reaches a shim blocked in C through its hook, and the program exits 130.
 - Direction (Chinmay, 2026-10-31):
   - "design a process /ffi to enable integrating with other external software"
   - "use case could be to integrate with libuv for instance"

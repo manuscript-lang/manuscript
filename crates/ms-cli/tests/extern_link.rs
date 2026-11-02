@@ -130,17 +130,15 @@ fn every_signature_type_round_trips_on_both_backends() {
     let _ = std::fs::remove_file(&object);
 }
 
-/// A shim blocked in C returns when a stop hook runs, and the program then stops with 130.
-/// Unix only, like the other signal tests (`shutdown.rs`); `run_stop_hooks` is covered on every
-/// platform by the runtime's unit tests.
-#[cfg(unix)]
+/// A shim blocked in C returns when a stop hook runs, and the program then stops with 130. The
+/// stop is SIGINT on Unix and Ctrl-Break, sent to the program's own process group, on Windows.
 #[test]
 fn a_stop_hook_ends_a_blocked_shim() {
     use std::io::{BufRead, BufReader};
     use std::process::Stdio;
     let object = compile("abi");
     let file = format!("{}/tests/extern_link/abi.ms", env!("CARGO_MANIFEST_DIR"));
-    let exe = object.with_extension("stop");
+    let exe = object.with_extension(if cfg!(windows) { "exe" } else { "stop" });
     let built = Command::new(env!("CARGO_BIN_EXE_ms"))
         .args(["build", &file, "--link"])
         .arg(&object)
@@ -149,12 +147,19 @@ fn a_stop_hook_ends_a_blocked_shim() {
         .output()
         .unwrap();
     assert!(built.status.success(), "{}", text(&built));
-    let mut child = Command::new(&exe)
+    let mut command = Command::new(&exe);
+    command
         .arg("stop")
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
+        .stderr(Stdio::piped());
+    #[cfg(windows)]
+    {
+        // A group of its own, so Ctrl-Break reaches the program and not the test runner.
+        use std::os::windows::process::CommandExt;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x200;
+        command.creation_flags(CREATE_NEW_PROCESS_GROUP);
+    }
+    let mut child = command.spawn().unwrap();
     // Lines arrive through a channel so a shim that never returns fails the test, not hangs it.
     let (tx, lines) = std::sync::mpsc::channel();
     let stdout = child.stdout.take().unwrap();
@@ -170,11 +175,7 @@ fn a_stop_hook_ends_a_blocked_shim() {
             .unwrap_or_else(|_| panic!("no {what} line within {wait:?}"))
     };
     let ready = next("ready");
-    let sent = Command::new("kill")
-        .args(["-INT", &child.id().to_string()])
-        .status()
-        .unwrap();
-    assert!(sent.success());
+    request_stop(child.id());
     let after = lines.recv_timeout(wait);
     if after.is_err() {
         let _ = child.kill();
@@ -185,4 +186,27 @@ fn a_stop_hook_ends_a_blocked_shim() {
     assert_eq!(status.code(), Some(130));
     let _ = std::fs::remove_file(&exe);
     let _ = std::fs::remove_file(&object);
+}
+
+/// Sends SIGINT to `pid`.
+#[cfg(unix)]
+fn request_stop(pid: u32) {
+    let sent = Command::new("kill")
+        .args(["-INT", &pid.to_string()])
+        .status()
+        .unwrap();
+    assert!(sent.success());
+}
+
+/// Sends Ctrl-Break to the process group `pid` leads; the runtime treats it as SIGINT.
+#[cfg(windows)]
+fn request_stop(pid: u32) {
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GenerateConsoleCtrlEvent(event: u32, group: u32) -> i32;
+    }
+    const CTRL_BREAK_EVENT: u32 = 1;
+    // SAFETY: a plain system call on a process group this test created.
+    let sent = unsafe { GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid) };
+    assert_ne!(sent, 0, "GenerateConsoleCtrlEvent failed");
 }
