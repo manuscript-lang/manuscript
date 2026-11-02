@@ -1235,6 +1235,13 @@ pub unsafe extern "C-unwind" fn msrt_cleanup_push(f: CleanupFn, arg: *mut u8) ->
     }
 }
 
+/// Whether the current task has registered cleanups.
+#[inline]
+pub(crate) fn has_cleanups() -> bool {
+    // SAFETY: the cleanup stack belongs to this isolate and follows the current task.
+    unsafe { !(*CLEANUPS.ptr()).is_empty() }
+}
+
 /// Runs the action behind `handle` (and newer pending ones first).
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_cleanup_run(handle: usize) {

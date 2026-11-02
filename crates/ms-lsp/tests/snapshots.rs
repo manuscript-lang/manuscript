@@ -695,7 +695,7 @@ fn string_extensions_preserve_none_reference_locations_beyond_snapshot_limit() {
         ("collections/collections.ms", 672, 19, 23),
         ("collections/collections.ms", 690, 19, 23),
         ("collections/collections.ms", 709, 19, 23),
-        ("collections/collections.ms", 754, 34, 38),
+        ("collections/collections.ms", 866, 34, 38),
     ];
     let added = [
         ("string.ms", 193, 32, 36),

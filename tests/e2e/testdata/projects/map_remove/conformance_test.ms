@@ -1,6 +1,6 @@
 import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import Key from "./key.ms"
-import id_map, id_direct, id_bound, id_generic, id_empty from "./by_id.ms"
+import id_map, id_direct, id_bound, id_generic, id_empty, id_set from "./by_id.ms"
 import label_map, label_direct, label_bound, label_generic from "./by_label.ms"
 
 test "Map removal keeps direct bound generic and defining-module key scopes":
@@ -49,3 +49,49 @@ test "An empty returned Map keeps creator evidence before its first insertion":
     values.add(Key(1, "second"), 2)
     values.length() | try expect_equal(1)
     values.get(Key(1, "third")).get() | try expect_equal(2)
+
+test "Returned Maps compare using their stored key evidence":
+    let first = id_map()
+    let second = id_map()
+    try expect_true(first == second)
+    try expect_true(second == first)
+    try expect_true(first == second.clone())
+    try expect_true(id_empty() == id_empty())
+    try expect_true([id_map()] == [id_map()])
+
+test "Returned Map equality keeps creator identity order independence and value checks":
+    let original = id_map()
+    var reordered = id_map()
+    reordered.remove(Key(1, "different"))
+    reordered.add(Key(1, "changed label"), 10)
+    try expect_true(original == reordered)
+    try expect_true(reordered == original)
+    reordered.add(Key(2, "ignored label"), 99)
+    try expect_false(original == reordered)
+    try expect_false(reordered == original)
+
+    var changed_keys = id_map()
+    changed_keys.remove(Key(1, "ignored"))
+    changed_keys.add(Key(7, "one"), 10)
+    try expect_false(original == changed_keys)
+    try expect_false(changed_keys == original)
+
+    var labels = label_map()
+    labels.remove(Key(99, "one"))
+    labels.add(Key(100, "one"), 10)
+    try expect_true(labels == label_map())
+    try expect_true(label_map() == labels)
+
+test "Returned Sets compare using their stored element evidence":
+    let original = id_set()
+    var reordered = id_set()
+    reordered.remove(Key(1, "ignored"))
+    reordered.add(Key(1, "changed label"))
+    try expect_true(original == reordered)
+    try expect_true(reordered == original)
+    try expect_true(original == reordered.clone())
+    try expect_true([id_set()] == [id_set()])
+    reordered.remove(Key(2, "ignored"))
+    reordered.add(Key(9, "two"))
+    try expect_false(original == reordered)
+    try expect_false(reordered == original)
