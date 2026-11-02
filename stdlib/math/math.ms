@@ -631,6 +631,21 @@ impl BigInt:
     fn to_string_radix(radix: Int) String:
         return msstd_bigint_to_string_radix(self, radix)
 
+    # Reports whether this value is probably prime: trial division by the primes below 100, then Miller-Rabin
+    # with the first `rounds` primes as bases (at most 25; larger counts use 25). The default 13 rounds is exact below
+    # 3.3e24; above that, a composite value built to fool fixed bases can pass, and the odds for any other input are negligible.
+    # Values below 2, including negatives, are not prime. A `rounds` below 1 is a programming fault.
+    fn is_probable_prime(rounds: Int = 13) Bool:
+        if rounds < 1:
+            panic("is_probable_prime: rounds must be at least 1")
+        return bigint_probable_prime(self, rounds)
+
+    # Returns a square root of this value modulo the odd prime `modulus`, in 0 through modulus - 1, or none when the value is not a square there.
+    # The other root is `modulus` minus the result. A modulus below 3, an even modulus, or one that is not prime returns InvalidInput
+    # (a composite modulus is detected only when the computation fails to produce a root).
+    fn mod_sqrt(modulus: BigInt) BigInt?!BigIntError:
+        return bigint_mod_sqrt(self, modulus)
+
 # Converts a machine-sized integer without loss.
 export fn from_int(value: Int) BigInt:
     return msstd_bigint_from_int(value)
@@ -646,3 +661,171 @@ impl Error for BigIntError:
             InvalidInput: return "big integer: invalid input"
             InvalidData: return "big integer: invalid data"
             LimitExceeded: return "big integer: limit exceeded"
+
+# Returns n! for a non-negative n; a negative n returns InvalidInput. Work and result size grow quickly with n.
+export fn factorial(n: Int) BigInt!BigIntError:
+    if n < 0:
+        return error(BigIntError.InvalidInput)
+
+    var product = msstd_bigint_from_int(1)
+    for factor in 2..n + 1:
+        product = product * msstd_bigint_from_int(factor)
+    return ok(product)
+
+# Returns the binomial coefficient "n choose k", which is 0 when k exceeds n; a negative n or k returns InvalidInput.
+export fn binomial(n: Int, k: Int) BigInt!BigIntError:
+    if n < 0 or k < 0:
+        return error(BigIntError.InvalidInput)
+    if k > n:
+        return ok(msstd_bigint_from_int(0))
+
+    var choose = k
+    if n - k < k:
+        choose = n - k
+
+    var result = msstd_bigint_from_int(1)
+    for step in 0..choose:
+        result = (
+            result
+            * msstd_bigint_from_int(n - step)
+            / msstd_bigint_from_int(step + 1)
+        )
+    return ok(result)
+
+fn bigint_zero() BigInt:
+    return msstd_bigint_from_int(0)
+
+fn bigint_is_even(value: BigInt) Bool:
+    return (value % msstd_bigint_from_int(2)).sign() == 0
+
+fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
+    if n.compare(msstd_bigint_from_int(2)) < 0:
+        return false
+
+    let primes = [
+        2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73,
+        79, 83, 89, 97
+    ]
+
+    for p in primes:
+        let divisor = msstd_bigint_from_int(p)
+        if n.compare(divisor) == 0:
+            return true
+        if (n % divisor).sign() == 0:
+            return false
+
+    let one = msstd_bigint_from_int(1)
+    let minus_one = n - one
+    var odd_part = minus_one.clone()
+    var twos = 0
+
+    while bigint_is_even(odd_part):
+        odd_part = odd_part / msstd_bigint_from_int(2)
+        twos += 1
+
+    var bases = rounds
+    if bases > primes.length():
+        bases = primes.length()
+
+    for index in 0..bases:
+        let base = msstd_bigint_from_int(primes[index])
+        var x = base.pow_mod(odd_part, n).get(bigint_zero())
+        if x.compare(one) == 0 or x.compare(minus_one) == 0:
+            continue
+
+        var passed = false
+        var step = 1
+
+        while step < twos:
+            x = x * x % n
+
+            if x.compare(minus_one) == 0:
+                passed = true
+                break
+
+            step += 1
+
+        if not passed:
+            return false
+
+    return true
+
+# Squares `value` modulo `modulus` `times` times.
+fn bigint_square_times(value: BigInt, times: Int, modulus: BigInt) BigInt:
+    var result = value % modulus
+    for _round in 0..times:
+        result = result * result % modulus
+    return result
+
+fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!BigIntError:
+    let one = msstd_bigint_from_int(1)
+    let two = msstd_bigint_from_int(2)
+    if modulus.compare(msstd_bigint_from_int(3)) < 0 or bigint_is_even(modulus):
+        return error(BigIntError.InvalidInput)
+
+    var target = value % modulus
+    if target.sign() < 0:
+        target = target + modulus
+
+    let absent: BigInt? = none
+    if target.sign() == 0:
+        return ok(bigint_zero())
+
+    let minus_one = modulus - one
+    let half = minus_one / two
+    if target.pow_mod(half, modulus).get(bigint_zero()).compare(one) != 0:
+        return ok(absent)
+
+    var root = bigint_zero()
+
+    if (modulus % msstd_bigint_from_int(4)).compare(msstd_bigint_from_int(3)) == 0:
+        root = target.pow_mod(
+            (modulus + one) / msstd_bigint_from_int(4), modulus
+        ).get(bigint_zero())
+    else:
+        var odd_part = minus_one.clone()
+        var twos = 0
+
+        while bigint_is_even(odd_part):
+            odd_part = odd_part / two
+            twos += 1
+
+        var non_residue = two.clone()
+        var tries = 0
+
+        while (
+            non_residue.pow_mod(half, modulus).get(bigint_zero()).compare(
+                minus_one
+            ) != 0
+        ):
+            non_residue = non_residue + one
+            tries += 1
+            if tries > 1000:
+                return error(BigIntError.InvalidInput)
+
+        var m = twos
+        var c = non_residue.pow_mod(odd_part, modulus).get(bigint_zero())
+        var t = target.pow_mod(odd_part, modulus).get(bigint_zero())
+        root = target.pow_mod((odd_part + one) / two, modulus).get(bigint_zero())
+
+        while t.compare(one) != 0:
+            var i = 0
+            var probe = t.clone()
+
+            while probe.compare(one) != 0 and i < m:
+                probe = probe * probe % modulus
+                i += 1
+
+            if i == 0 or i >= m:
+                return error(BigIntError.InvalidInput)
+
+            let b = bigint_square_times(c, m - i - 1, modulus)
+            m = i
+            c = b * b % modulus
+            t = t * c % modulus
+            root = root * b % modulus
+
+    if (root * root % modulus).compare(target) != 0:
+        return error(BigIntError.InvalidInput)
+
+    return ok(root)
