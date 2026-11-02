@@ -525,7 +525,7 @@ impl GlobState {
         }
         self.remaining -= 1;
         let mut info = lstat(p)?;
-        let rel = ops::lossy_name(&relative(root, p));
+        let rel = portable_separators(ops::lossy_name(&relative(root, p)));
         let name = ops::lossy_name(&path::base(p));
         let value = PathEntry {
             path: rel.clone(),
@@ -585,6 +585,19 @@ impl GlobState {
 }
 
 /// `filepath.Rel(root, p)` for an `p` at or under `root`, or reached through `..` patterns.
+/// Matched paths use `/` on every host, as patterns do; a Windows backslash is a separator, not a name byte.
+#[cfg(windows)]
+fn portable_separators(path: Vec<u8>) -> Vec<u8> {
+    path.into_iter()
+        .map(|b| if b == b'\\' { b'/' } else { b })
+        .collect()
+}
+
+#[cfg(not(windows))]
+fn portable_separators(path: Vec<u8>) -> Vec<u8> {
+    path
+}
+
 fn relative(root: &[u8], p: &[u8]) -> Vec<u8> {
     let root = path::clean(root);
     let p = path::clean(p);
