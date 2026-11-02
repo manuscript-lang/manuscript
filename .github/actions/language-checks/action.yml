@@ -1,0 +1,24 @@
+name: Language checks
+description: Repository rules, license check, and the VS Code extension package. Needs a checkout and a Rust toolchain.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: .node-version
+        cache: npm
+        cache-dependency-path: extensions/vscode/package-lock.json
+    - name: Repo rules and licenses
+      shell: bash
+      run: make repo-check licenses-check
+    - name: Validate and package VS Code extension
+      shell: bash
+      working-directory: extensions/vscode
+      run: |
+        npm ci
+        npm run package -- --allow-missing-repository
+    - uses: actions/upload-artifact@v7
+      with:
+        name: manuscript-vscode
+        path: extensions/vscode/*.vsix
