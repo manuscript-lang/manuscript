@@ -9,12 +9,11 @@
 import env, exe, host, note, run_program from "./lib.ms"
 import DirectoryEntry, access, list, read_file, stat from "@std/os/fs.ms"
 import (
-    CpuInfo,
     arguments,
     change_directory,
     working_directory,
     run,
-    cpus
+    system_info
 ) from "@std/os/process.ms"
 import TaskGroup, Task from "@std/concurrency/tasks.ms"
 import Instant, monotonic from "@std/os/time.ms"
@@ -262,7 +261,8 @@ export fn main() Int:
     var jobs = 2
 
     if let n = env("E2E_JOBS", "").parse_int(): jobs = n
-    else: jobs = cpus().get(List[CpuInfo]()).length()
+    # `cpus()` is Linux-only; on macOS and Windows it failed and the suite ran on one worker.
+    else: jobs = system_info().cpu_count
 
     if jobs < 1: jobs = 1
 

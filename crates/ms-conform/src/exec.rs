@@ -108,7 +108,10 @@ pub fn run(
         }
         thread::sleep(Duration::from_millis(5));
     };
-    // Descendants of ms (the built program) may outlive it; reap the group.
+    // Descendants of ms (the built program) may outlive it; reap the group. Unix keeps the group after its leader
+    // exits. Windows walks the tree from a live root, so `taskkill /T` on an exited process finds nothing, and
+    // starting it cost about 250 ms per fixture (most of the Windows corpus time).
+    #[cfg(unix)]
     kill_group(pid);
     if let Some(writer) = writer {
         let _ = writer.join();

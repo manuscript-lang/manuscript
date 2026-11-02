@@ -155,12 +155,24 @@ fn llvm_builds_a_huge_straight_line_function_in_bounded_time() {
 
 /// A Debug build keeps every element of one `list.lit` live at once, and the Cranelift register
 /// allocator is quadratic in that: 40000 elements took 20s. A long literal of plain values is
-/// built in chunks, in order, and builds in about a second.
+/// built in chunks, in order, so the build grows linearly with the literal. The test compares 40000
+/// elements against 10000 instead of a wall-clock limit, which a slow or loaded runner can miss
+/// (macOS Intel took 12.2 s under nextest): linear growth is at most 4x, the quadratic one about 10x.
 #[test]
 fn debug_builds_a_long_list_literal_in_bounded_time() {
-    let dir = std::env::temp_dir().join(format!("ms-long-literal-{}", std::process::id()));
+    let small = build_long_literal(10_000);
+    let large = build_long_literal(40_000);
+    assert!(
+        large < small * 6,
+        "40000 elements took {large:?}, 10000 took {small:?}: the build is not linear"
+    );
+}
+
+/// Builds and runs `long_literal.ms` with `count` runtime elements and returns the build time.
+fn build_long_literal(count: i64) -> std::time::Duration {
+    let dir = std::env::temp_dir().join(format!("ms-long-literal-{}-{count}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let items: Vec<String> = (0..40_000)
+    let items: Vec<String> = (0..count)
         .map(|i| format!("n + {}", i * 7 % 1000))
         .collect();
     let source =
@@ -180,15 +192,12 @@ fn debug_builds_a_long_list_literal_in_bounded_time() {
     );
     let run = Command::new(dir.join("long")).output().unwrap();
     let _ = std::fs::remove_dir_all(&dir);
-    let expected = (0..40_000i64).fold(0, |t, i| (t * 31 + i * 7 % 1000) % 1_000_003);
+    let expected = (0..count).fold(0, |t, i| (t * 31 + i * 7 % 1000) % 1_000_003);
     assert_eq!(
         String::from_utf8_lossy(&run.stdout),
-        format!("{expected} 40000\n")
+        format!("{expected} {count}\n")
     );
-    assert!(
-        elapsed < std::time::Duration::from_secs(12),
-        "build took {elapsed:?}"
-    );
+    elapsed
 }
 
 /// A long literal of constants is static data whatever the element type: each type stores its
