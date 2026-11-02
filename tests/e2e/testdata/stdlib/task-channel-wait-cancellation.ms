@@ -1,25 +1,24 @@
-import Channel from "@std/io/channels.ms"
 import memory_usage from "@std/os/process.ms"
-import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import TaskChannel, TaskError, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
-fn hold_receive(ch: Channel[Int, Int]) Unit:
+fn hold_receive(ch: TaskChannel[Int, Int]) Unit:
     var end = ch
     end.receive().get()
 
-fn hold_send(ch: Channel[Int, Int]) Unit:
+fn hold_send(ch: TaskChannel[Int, Int]) Unit:
     var end = ch
     for value in 0..17:
         end.send(value).get()
 
-fn echo_rounds(ch: Channel[Int, Int]) Unit:
+fn echo_rounds(ch: TaskChannel[Int, Int]) Unit:
     var end = ch
 
     while true:
         let value = end.receive().get().get(-1)
         end.send(value).get()
 
-fn drain_rounds(ch: Channel[Int, Int]) Unit:
+fn drain_rounds(ch: TaskChannel[Int, Int]) Unit:
     var end = ch
 
     while true:
@@ -28,21 +27,21 @@ fn drain_rounds(ch: Channel[Int, Int]) Unit:
         for value in 0..17:
             end.receive().get()
 
-fn receive_value(ready: Channel[Unit, Unit], target: Channel[Int, Int]) Int:
+fn receive_value(ready: TaskChannel[Unit, Unit], target: TaskChannel[Int, Int]) Int:
     var started = ready
     started.send(unit).get()
 
     var end = target.clone()
     return end.receive().get().get(-1)
 
-fn send_value(ready: Channel[Unit, Unit], target: Channel[Int, Int]) Unit:
+fn send_value(ready: TaskChannel[Unit, Unit], target: TaskChannel[Int, Int]) Unit:
     var started = ready
     started.send(unit).get()
 
     var end = target.clone()
     end.send(42).get()
 
-fn cancel_receive(target: Channel[Int, Int]) Unit!:
+fn cancel_receive(target: TaskChannel[Int, Int]) Unit!:
     var group = TaskGroup[Int]()
     let end = target.clone()
     var task = group.spawn(fn ready: receive_value(ready, end))
@@ -54,7 +53,7 @@ fn cancel_receive(target: Channel[Int, Int]) Unit!:
     try group.close()
     return ok(unit)
 
-fn cancel_send(target: Channel[Int, Int]) Unit!:
+fn cancel_send(target: TaskChannel[Int, Int]) Unit!:
     var group = TaskGroup[Unit]()
     let end = target.clone()
     var task = group.spawn(fn ready: send_value(ready, end))
@@ -64,13 +63,13 @@ fn cancel_send(target: Channel[Int, Int]) Unit!:
     try group.close()
     return ok(unit)
 
-fn wake_receiver(target: Channel[Int, Int]) Unit!:
+fn wake_receiver(target: TaskChannel[Int, Int]) Unit!:
     var end = target.clone()
     end.send(7) | try expect_ok
     end.receive() | try expect_ok | try expect_equal(7)
     return ok(unit)
 
-fn wake_sender(target: Channel[Int, Int]) Unit!:
+fn wake_sender(target: TaskChannel[Int, Int]) Unit!:
     var end = target.clone()
     for value in 0..17:
         end.receive() | try expect_ok | try expect_equal(value)
@@ -140,7 +139,7 @@ test "cancelled sends retain no more storage than the woken control":
         )
     )
 
-fn echo_one(ch: Channel[Int, Int]) Unit:
+fn echo_one(ch: TaskChannel[Int, Int]) Unit:
     var end = ch
     let value = end.receive().get().get(-1)
     end.send(value).get()
