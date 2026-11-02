@@ -67,13 +67,13 @@ test "repeated copies the list":
     try expect_equal([1, 2].repeated(0), List[Int]())
     try expect_equal(["x"].repeated(2), ["x", "x"])
 
-test "remove_if on Map and Set":
+test "retain on Map and Set":
     var counts = {"a": 0, "b": 2, "c": 0, "d": 5}
-    counts.remove_if(fn key, n: n == 0)
+    counts.retain(fn key, n: n != 0)
     try expect_equal(counts.keys(), ["b", "d"])
 
     var seen = Set([3, -1, 4, -5])
-    seen.remove_if(fn n: n < 0)
+    seen.retain(fn n: n >= 0)
     try expect_equal(seen.values(), [3, 4])
 
 test "Deque rotate turns the ring":

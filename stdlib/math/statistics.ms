@@ -6,8 +6,8 @@ import sqrt from "@std/math/math.ms"
 # A violated precondition (a percentile outside 0 to 100, mismatched list lengths, a bin count below 1) faults.
 # `statistics.mean([1.0, 2.0, 6.0])` is `3.0`.
 
-# Equal-width counts over a range of values, from `histogram`.
-export type Histogram:
+# Equal-width counts over a range of values, from `bin_counts`. (`@std/os/metrics.ms` has the recording `Histogram`.)
+export type BinCounts:
     # The least value counted, which is the lower edge of the first bin.
     low: Float
     # The greatest value counted, which is the upper edge of the last bin.
@@ -146,10 +146,10 @@ export fn quantiles(values: List[Float], parts: Int) List[Float]:
 
 # Counts the values into `bins` equal-width bins between the least and greatest value, or returns none for an empty list.
 # Values equal to the greatest value fall in the last bin; when every value is equal they all fall in the first bin. A `bins` below 1 faults.
-# Example: `histogram([1.0, 2.0, 2.0, 3.0], 2).counts` is `[1, 3]`.
-export fn histogram(values: List[Float], bins: Int) Histogram?:
+# Example: `bin_counts([1.0, 2.0, 2.0, 3.0], 2).counts` is `[1, 3]`.
+export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
     if bins < 1:
-        panic("histogram: bins must be at least 1")
+        panic("bin_counts: bins must be at least 1")
     if values.is_empty():
         return none
 
@@ -168,7 +168,7 @@ export fn histogram(values: List[Float], bins: Int) Histogram?:
             bin = bins - 1
         counts.set(bin, counts[bin] + 1)
 
-    return Histogram(low: low, high: high, counts: counts)
+    return BinCounts(low: low, high: high, counts: counts)
 
 # Returns the sum of products of deviations of two lists of equal length, with both sums of squares, or none when there are fewer than two pairs.
 type Spread:

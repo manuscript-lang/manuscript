@@ -668,7 +668,6 @@ impl Error for BigIntError:
 export fn factorial(n: Int) BigInt!BigIntError:
     if n < 0:
         return error(BigIntError.InvalidInput)
-
     if n < 2:
         return ok(msstd_bigint_from_int(1))
 
@@ -738,21 +737,23 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
     var fixed = rounds
     if fixed > primes.length():
         fixed = primes.length()
-
     for index in 0..fixed:
-        if not bigint_strong_probable(n, msstd_bigint_from_int(primes[index]), odd_part, twos):
+        if not bigint_strong_probable(
+            n, msstd_bigint_from_int(primes[index]), odd_part, twos
+        ):
             return false
 
     # The first 13 prime bases decide every value below this bound exactly. Above it, fixed bases can be
     # fooled by a composite built for them, so the requested rounds are repeated with secret random bases.
-    let bound = msstd_bigint_parse("3317044064679887385961981", 10, none).get(bigint_zero())
+    let bound = msstd_bigint_parse("3317044064679887385961981", 10, none).get(
+        bigint_zero()
+    )
     if n.compare(bound) < 0:
         return true
 
     for _round in 0..rounds:
         if not bigint_strong_probable(n, bigint_random_base(n), odd_part, twos):
             return false
-
     return true
 
 # One Miller-Rabin round: whether `n` (odd, with n - 1 = odd_part * 2^twos) is a strong probable prime to `base`.
