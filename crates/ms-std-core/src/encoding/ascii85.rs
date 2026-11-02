@@ -28,7 +28,27 @@ pub fn ascii85_encode(data: &[u8]) -> String {
 
 pub fn ascii85_decode(text: &str, max_bytes: Option<i64>) -> Result<Vec<u8>, Fail> {
     let limit = super::limit(max_bytes)?;
-    let mut out = Vec::new();
+    let mut size = 0;
+    if max_bytes.is_some() {
+        // A supplied budget must reject the complete output before allocating it.
+        visit_groups(text, |bytes| {
+            size = grow(size, bytes.len(), limit)?;
+            Ok(())
+        })?;
+        if size == 0 {
+            return Ok(Vec::new());
+        }
+    }
+    let mut out = Vec::with_capacity(size);
+    visit_groups(text, |bytes| {
+        grow(out.len(), bytes.len(), limit)?;
+        out.extend_from_slice(bytes);
+        Ok(())
+    })?;
+    Ok(out)
+}
+
+fn visit_groups(text: &str, mut emit: impl FnMut(&[u8]) -> Result<(), Fail>) -> Result<(), Fail> {
     let mut word = 0u64;
     let mut digits = 0usize;
     for &byte in text.as_bytes() {
@@ -39,8 +59,7 @@ pub fn ascii85_decode(text: &str, max_bytes: Option<i64>) -> Result<Vec<u8>, Fai
             if digits != 0 {
                 return Err(Fail::InvalidData);
             }
-            grow(&out, 4, limit)?;
-            out.extend_from_slice(&[0; 4]);
+            emit(&[0; 4])?;
             continue;
         }
         if !(b'!'..=b'u').contains(&byte) {
@@ -50,8 +69,7 @@ pub fn ascii85_decode(text: &str, max_bytes: Option<i64>) -> Result<Vec<u8>, Fai
         digits += 1;
         if digits == 5 {
             let v = u32::try_from(word).map_err(|_| Fail::InvalidData)?;
-            grow(&out, 4, limit)?;
-            out.extend_from_slice(&v.to_be_bytes());
+            emit(&v.to_be_bytes())?;
             word = 0;
             digits = 0;
         }
@@ -65,15 +83,14 @@ pub fn ascii85_decode(text: &str, max_bytes: Option<i64>) -> Result<Vec<u8>, Fai
             word = word * 85 + 84;
         }
         let v = u32::try_from(word).map_err(|_| Fail::InvalidData)?;
-        grow(&out, digits - 1, limit)?;
-        out.extend_from_slice(&v.to_be_bytes()[..digits - 1]);
+        emit(&v.to_be_bytes()[..digits - 1])?;
     }
-    Ok(out)
+    Ok(())
 }
 
-fn grow(out: &[u8], count: usize, limit: usize) -> Result<(), Fail> {
-    match out.len().checked_add(count) {
-        Some(next) if next <= limit => Ok(()),
+fn grow(size: usize, count: usize, limit: usize) -> Result<usize, Fail> {
+    match size.checked_add(count) {
+        Some(next) if next <= limit => Ok(next),
         _ => Err(Fail::LimitExceeded),
     }
 }
