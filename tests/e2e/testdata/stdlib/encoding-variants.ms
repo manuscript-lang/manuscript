@@ -157,8 +157,11 @@ test "Base32 rejects interior padding before output budgets":
             try expect_equal(base32_decode(text, hex, true, 0), invalid)
             try expect_equal(base32_decode(text, hex, true, -1), negative)
             try expect_equal(base32_decode(text, hex, true), invalid)
+            try expect_equal(base32_decode(text, hex, true, 100), invalid)
 
         try expect_equal(base32_decode("A=AA", hex, false, 0), invalid)
+        try expect_equal(base32_decode("A=AA", hex, false, 100), invalid)
         try expect_equal(base32_decode("!!!!!!!!", hex, true, 0), limited)
+        try expect_equal(base32_decode("!!!!!!!!", hex, true, 100), invalid)
 
     try expect_equal(base64_decode_unpadded("A=AA", max_bytes: 0), limited)

@@ -50,10 +50,6 @@ fn decode(
     let t = text.as_bytes();
     let pad = t.iter().rev().take_while(|&&c| c == b'=').count();
     let n = t.len() - pad;
-    // Base32 rejects interior padding before considering the output budget.
-    if bits == 5 && t[..n].contains(&b'=') {
-        return Err(Fail::InvalidData);
-    }
     // Padding belongs only to padded text, only at the end, and completes the last block.
     if (pad > 0 && !padded) || (padded && !t.len().is_multiple_of(group)) {
         return Err(Fail::InvalidData);
@@ -69,6 +65,11 @@ fn decode(
     }
     let bytes = (n as u128 * u128::from(bits) / 8) as usize;
     if bytes > max {
+        // Base32 interior padding takes precedence over an insufficient budget.
+        // With a fitting budget, the normal alphabet loop rejects it instead.
+        if bits == 5 && t[..n].contains(&b'=') {
+            return Err(Fail::InvalidData);
+        }
         return Err(Fail::LimitExceeded);
     }
     let mut out = Vec::with_capacity(bytes);

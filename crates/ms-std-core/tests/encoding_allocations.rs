@@ -159,11 +159,19 @@ fn base32_internal_padding_precedes_output_limits_without_changing_other_errors(
                 base32_decode(text, hex, padded, None),
                 Err(Fail::InvalidData)
             );
+            assert_eq!(
+                base32_decode(text, hex, padded, Some(100)),
+                Err(Fail::InvalidData)
+            );
         }
         for padded in [false, true] {
             assert_eq!(
                 base32_decode("!!!!!!!!", hex, padded, Some(0)),
                 Err(Fail::LimitExceeded)
+            );
+            assert_eq!(
+                base32_decode("!!!!!!!!", hex, padded, Some(100)),
+                Err(Fail::InvalidData)
             );
         }
     }
