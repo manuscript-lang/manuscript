@@ -6009,7 +6009,7 @@ export fn now() Instant:
 
 export fn close_output() Unit:
     stdout().close()
-resolution	2	8	42	module does not export clock; @std/os/time.ms exports: Calendar, Duration, Instant, TimeError, Timestamp, from_calendar, hours, local_zone, microseconds, milliseconds, minutes, monotonic, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/time.ms"'
+resolution	2	8	42	module does not export clock; @std/os/time.ms exports: Calendar, Deadline, Duration, Instant, Ticker, TimeError, Timestamp, deadline_after, from_calendar, hours, local_zone, microseconds, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/time.ms"'
 resolution	6	12	146	unknown binding clock; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"fn private_value() Int:
     return 7
 export fn defaulted(value: Int = private_value()) Int:
