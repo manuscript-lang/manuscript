@@ -613,13 +613,14 @@ export fn uptime() Duration!ControlError:
     return host_control().uptime()
 
 # Finds the executable that running `name` would start, or none.
-# A name containing a path separator is checked as given. Otherwise each directory of `PATH` is searched in order, skipping empty entries. On Windows the variable is found without regard to case, and each directory is also tried with every `PATHEXT` extension (`.COM;.EXE;.BAT;.CMD` when unset). The result is a regular file the process may execute (any regular file on Windows) and is not made absolute or canonical.
+# A name containing a path separator is checked without searching PATH. Otherwise each directory of `PATH` is searched in order, skipping empty entries. Candidates are tried as given, then on Windows with each `PATHEXT` extension (`.COM;.EXE;.BAT;.CMD` when unset); environment variable names are case-insensitive there. The result is a regular file the process may execute (any regular file on Windows) and is not made absolute or canonical.
 # Example: `which("git")` is `/usr/bin/git`.
 export fn which(name: String) String?:
     if name == "": return none
 
-    let windows = os_type() == "windows"
-    var extensions = [""]
+    let windows = os_type() == "Windows_NT"
+    let has_path = name.contains("/") or (windows and name.contains("\\"))
+    var extensions = List[String]()
     var separator = ":"
     var directories = List[String]()
 
@@ -635,16 +636,19 @@ export fn which(name: String) String?:
             if key == "PATH": directories = entry.value.split(separator)
             if key == "PATHEXT" and windows: extensions = entry.value.split(";")
 
-    if name.contains("/") or (windows and name.contains("\\")):
+    if has_path:
         directories = [""]
 
     for directory in directories:
-        if directory == "" and not name.contains("/"): continue
+        if directory == "" and not has_path: continue
+
+        let candidate = if directory == "": name.clone() else: join(
+            [directory.clone(), name.clone()]
+        )
+        if runnable(candidate, windows): return candidate
 
         for extension in extensions:
-            let candidate = if directory == "": name.clone() else: join(
-                [directory.clone(), name.clone()]
-            )
+            if extension == "": continue
             if runnable("{candidate}{extension}", windows): return "{candidate}{extension}"
 
     return none
