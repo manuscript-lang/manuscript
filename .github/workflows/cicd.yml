@@ -1,15 +1,15 @@
 name: CI/CD
 
 # One workflow, four triggers:
-#   pull request  the Linux legs (amd64 and arm64, `tests` and `conformance` each), the language checks
-#                 and the book. A green pull request auto-merges on them; there is no merge queue, which
+#   pull request  the Linux legs (amd64 and arm64, `tests` and `conformance` each, four jobs), with the
+#                 language checks and the book inside linux-arm64 conformance. A green pull request auto-merges on them; there is no merge queue, which
 #                 built every stacked ref with the full matrix and restarted on every outside merge.
 #   merge queue   the same as a pull request, in case a queue is configured again.
 #   push to main  all six platforms in two parts each (see .github/actions/rust-checks), the language
 #                 checks and the book, plus Pages and the sccache caches. A newer push cancels the running
 #                 one, so the latest main is the one being tested. A platform failure is fixed or reverted.
 #   manual run    the same as a push; its `os` input runs one platform's legs.
-# Require `Platform checks`, `Language checks` and `Build design book`.
+# Require `Platform checks`; language and book run inside it on pull requests.
 # The account runs 20 jobs at once and every extra job waits in the queue.
 
 on:
@@ -51,18 +51,32 @@ defaults:
     shell: bash
 
 jobs:
-  # The platform legs of the Rust jobs. A job `if` cannot read the matrix, so the legs are picked here:
-  # Linux on pull requests, the `os` input on a manual run, all six on a push.
+  # One job per platform leg and part. Pull requests run the Linux legs; a manual run's `os` input picks
+  # one platform; a push runs all six. The matrix is picked in an expression because a job `if`
+  # cannot read it, and a separate job to pick it would cost one more job per run.
   # `lint`: also format and clippy. `cranelift`: also the corpus and fixtures with
   # `MS_BACKEND=cranelift`, so release builds use the Cranelift backend that Debug builds use.
+  # `docs`: on pull requests, also the language checks and the book in the conformance part (on
+  # pushes they are their own jobs, since Pages needs the book).
   # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
   # in tests/conformance/expect-fail.<os>.txt with a reason.
-  legs:
-    name: Platform legs
-    runs-on: ubuntu-latest
-    outputs:
-      legs: ${{ steps.legs.outputs.legs }}
-      rust: ${{ steps.scope.outputs.rust }}
+  rust:
+    name: ${{ matrix.leg.os }}-${{ matrix.leg.arch }} · ${{ matrix.part == 'a' && 'tests' || 'conformance' }}
+    runs-on: ${{ matrix.leg.runner }}
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [a, b]
+        leg: >-
+          ${{ fromJSON(
+          (github.event_name == 'pull_request' || github.event_name == 'merge_group' || inputs.os == 'linux') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": true}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}]' ||
+          inputs.os == 'darwin' && '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": true}]' ||
+          inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": true}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]' ||
+          '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": true}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}, {"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": true}, {"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": true}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]'
+          ) }}
+    env:
+      PR: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
     steps:
       # A commit pushed within a minute cancels this run before any build starts.
       - name: Wait for a newer push
@@ -71,38 +85,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-      # Documentation-only pull requests skip the Rust jobs.
+      # Documentation-only pull requests skip the Rust steps.
       - id: scope
         uses: ./.github/actions/rust-scope
-      - id: legs
-        env:
-          OS: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 'linux' || inputs.os || 'all' }}
-          LEGS: >-
-            [
-            {"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": true},
-            {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm"},
-            {"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"},
-            {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": true},
-            {"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": true},
-            {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}
-            ]
-        run: echo "legs=$(jq -c --arg os "$OS" 'map(select($os == "all" or .os == $os))' <<<"$LEGS")" >> "$GITHUB_OUTPUT"
-
-  rust:
-    name: ${{ matrix.leg.os }}-${{ matrix.leg.arch }} · ${{ matrix.part == 'a' && 'tests' || 'conformance' }}
-    needs: legs
-    if: needs.legs.outputs.rust == 'true'
-    runs-on: ${{ matrix.leg.runner }}
-    timeout-minutes: 75
-    strategy:
-      fail-fast: false
-      matrix:
-        part: [a, b]
-        leg: ${{ fromJSON(needs.legs.outputs.legs) }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
       - id: sccache
         uses: ./.github/actions/sccache
         with:
@@ -112,7 +97,12 @@ jobs:
           os: ${{ matrix.leg.os }}
           arch: ${{ matrix.leg.arch }}
           llvm-consumers: ${{ matrix.part == 'a' && 'true' || 'false' }}
+      - uses: ./.github/actions/language-checks
+        if: env.PR == 'true' && matrix.leg.docs && matrix.part == 'b'
+      - uses: ./.github/actions/book-checks
+        if: env.PR == 'true' && matrix.leg.docs && matrix.part == 'b'
       - uses: ./.github/actions/rust-checks
+        if: steps.scope.outputs.rust == 'true'
         with:
           os: ${{ matrix.leg.os }}
           arch: ${{ matrix.leg.arch }}
@@ -129,22 +119,22 @@ jobs:
   platforms:
     name: Platform checks
     if: always()
-    needs: [legs, rust]
+    needs: rust
     runs-on: ubuntu-latest
     steps:
       - name: Require every platform leg
         env:
-          LEGS: ${{ needs.legs.result }}
-          RUST: ${{ needs.rust.result }}
-          SCOPE: ${{ needs.legs.outputs.rust }}
-        run: test "$LEGS" = success && { test "$RUST" = success || { test "$SCOPE" = false && test "$RUST" = skipped; }; }
+          RESULT: ${{ needs.rust.result }}
+        run: test "$RESULT" = success
 
   language:
     name: Language checks
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/test-language.yml
 
   book:
     name: Build design book
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -165,7 +155,6 @@ jobs:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
       - uses: actions/upload-pages-artifact@v5
-        if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
         with:
           path: .artifacts/book
 
