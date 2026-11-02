@@ -90,4 +90,21 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn unpack_tar_accepts_dot_slash_prefix() {
+        let mut w = crate::tar::Writer::new();
+        w.entry(b"./", b"", true).unwrap();
+        w.entry(b"./a.txt", b"hi", false).unwrap();
+        w.entry(b"./d/", b"", true).unwrap();
+        let back = crate::unpack(&w.finish(), "tar", None).unwrap();
+        let got: Vec<_> = back
+            .iter()
+            .map(|e| (e.path.as_str(), e.directory))
+            .collect();
+        assert_eq!(got, [("a.txt", false), ("d", true)]);
+        let mut w = crate::tar::Writer::new();
+        w.entry(b"./../x", b"", false).unwrap();
+        assert!(crate::unpack(&w.finish(), "tar", None).is_err());
+    }
 }
