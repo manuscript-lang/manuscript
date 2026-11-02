@@ -1,4 +1,6 @@
-import Bytes from "@std/bytes.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
+import panic from "@std/core.ms"
+import bit_and, bit_not, bit_or, bit_xor, shift_right from "@std/math/math.ms"
 import (
     msstd_crypto_constant_time_equal,
     msstd_crypto_verify,
@@ -52,6 +54,33 @@ export type CryptoError:
 # Compares byte strings without making the comparison time depend on their contents.
 export fn constant_time_equal(left: Bytes, right: Bytes) Bool:
     return msstd_crypto_constant_time_equal(left, right)
+
+# Returns `left` if `choice` is 1 and `right` if it is 0, without branching on `choice`. Any other `choice` faults.
+export fn constant_time_select(choice: Int, left: Int, right: Int) Int:
+    if choice != 0 and choice != 1:
+        panic("crypto: choice must be 0 or 1")
+
+    let mask = -choice
+    return bit_or(bit_and(mask, left), bit_and(bit_not(mask), right))
+
+# Returns 1 if `left <= right` and 0 otherwise, without branching on the values.
+# Both must be in 0 through 2^62 or the result is unspecified.
+export fn constant_time_less_or_equal(left: Int, right: Int) Int:
+    return 1 + shift_right(right - left, 63)
+
+# Returns the byte-wise exclusive OR of two equal-length byte strings, or InvalidInput when the lengths differ.
+export fn xor_bytes(left: Bytes, right: Bytes) Bytes!CryptoError:
+    if left.length() != right.length():
+        return error(CryptoError.InvalidInput)
+
+    var out = BytesBuilder()
+    for index in 0..left.length():
+        out.append(
+            bit_xor(
+                left.get(index).to_int(), right.get(index).to_int()
+            ).to_uint8().get(0)
+        )
+    return ok(out.build())
 
 # Derives a key with PBKDF2-HMAC-SHA-256 using the supplied iteration count and length.
 export fn derive_key(
