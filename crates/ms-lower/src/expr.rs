@@ -10,6 +10,8 @@ use ms_syntax::ast::*;
 
 /// Element count above which a list literal of constants is emitted as static data.
 const CONST_LIST_LITERAL: usize = 64;
+const LONG_LIST_LITERAL: usize = 512;
+const LONG_LIST_CHUNK: usize = 256;
 
 impl<'a> FnLower<'a> {
     /// A placeholder for the value of code that cannot run.
@@ -255,6 +257,12 @@ impl<'a> FnLower<'a> {
         {
             return Ok(v);
         }
+        if items.len() > LONG_LIST_LITERAL
+            && !self.needs_drop(elem)
+            && !items.iter().any(crate::mutation::has_try)
+        {
+            return self.long_list_literal(lt, elem, items);
+        }
         let mut vals = Vec::new();
         let mut pending = Vec::new();
         for (n, it) in items.iter().enumerate() {
@@ -328,6 +336,38 @@ impl<'a> FnLower<'a> {
             .collect::<Option<Vec<i64>>>()?;
         let v = self.b.list_const(elem, data);
         Some(Val { v, own: true })
+    }
+
+    /// A long literal of plain values is built from `list.lit` chunks joined by `list.concat`. One
+    /// `list.lit` over every element keeps all of them live until it runs, and the register
+    /// allocator is quadratic in that (40000 elements took 20s in a Debug build). Pushing each
+    /// element instead bloats the code (a Release build got 5x slower). Values that need no drop
+    /// are copied by the join exactly as they would be moved, and none of the items returns early.
+    fn long_list_literal(&mut self, lt: MTy, elem: MTy, items: &[Expr]) -> Result<Val, Error> {
+        let d = self.type_desc(elem);
+        let mut list: Option<Value> = None;
+        for chunk in items.chunks(LONG_LIST_CHUNK) {
+            let mut vals = Vec::with_capacity(chunk.len());
+            for it in chunk {
+                let x = self.expr(it)?;
+                if self.dead {
+                    return Ok(self.dummy(lt));
+                }
+                vals.push(self.owned(x));
+            }
+            let part = self.b.list_lit(elem, &vals);
+            list = Some(match list {
+                None => part,
+                Some(head) => {
+                    let joined = self.call_runtime("msrt_list_concat", &[head, part, d], lt)?;
+                    self.drop_value(head);
+                    self.drop_value(part);
+                    joined
+                }
+            });
+        }
+        let v = list.expect("a long literal has items");
+        Ok(Val { v, own: true })
     }
 
     // ----------------------------------------------------------------- names
