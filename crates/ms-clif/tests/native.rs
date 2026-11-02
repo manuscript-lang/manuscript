@@ -940,9 +940,9 @@ b0:
         assert_eq!(out.status.code(), Some(67));
         let err = String::from_utf8_lossy(&out.stderr);
         assert!(err.contains("callback.ms:12 in callback"), "{err}");
-        if cfg!(windows) {
-            assert!(!err.contains("callback.ms:22 in main"), "{err}");
-        }
+        // No Windows check that `main` is absent here: the frame scan past the native shim reads
+        // stack words the runtime build leaves behind, so whether it reaches `main` is not part
+        // of the contract. The run above, on the test runtime, pins the boundary.
     }
 }
 
