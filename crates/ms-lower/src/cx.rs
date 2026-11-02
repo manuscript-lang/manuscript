@@ -30,6 +30,8 @@ pub enum JobKind {
     NativeThunk(Rc<NativeThunkJob>),
     /// A native method bound to its receiver.
     BoundNative(Rc<BoundNativeJob>),
+    /// A native method behind an interface table entry.
+    IfaceNative(Rc<IfaceNativeJob>),
     /// A mutating method value bound to a mutable alias.
     BoundAlias(Rc<crate::bound_alias::BoundAliasJob>),
     /// A source callable used as a value whose omittable parameters are optionals.
@@ -80,6 +82,19 @@ pub struct BoundNativeJob {
     /// The receiver's type when the closure holds the address of the variable it changes.
     pub shared: Option<MTy>,
     /// The module whose local implementations the method's key and element types use.
+    pub scope: Name,
+}
+
+/// A native method called through an interface table, waiting to be lowered. The first
+/// parameter is the address of the implementing value.
+pub struct IfaceNativeJob {
+    /// The method under the implementing type's substitution.
+    pub method: ct::MethodRef,
+    /// Module the method is declared in.
+    pub hir: Rc<ModuleHir>,
+    /// The implementing type.
+    pub data: MTy,
+    /// The module whose local implementations the method's types use.
     pub scope: Name,
 }
 

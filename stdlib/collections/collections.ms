@@ -407,7 +407,7 @@ impl ListFloat32Sum for List[Float32]:
         return total
 
 # Operations that copy elements. A copy of a resource would be closed twice, so the elements must be Clonable.
-interface ListCopies[T: Clonable]:
+export interface ListCopies[T: Clonable]:
     fn clone() List[T]
     fn slice(start: Int, end: Int) List[T]!CollectionError
     fn take(count: Int) List[T]
@@ -485,7 +485,7 @@ impl ListCopies[T] for List[T]:
 
 # Operations that copy elements. A copy of a resource would be closed twice, so the elements must be Clonable.
 # Copying operations with type parameters of their own, apart so `ListCopies` can be a value type.
-interface ListCopiesGeneric[T: Clonable]:
+export interface ListCopiesGeneric[T: Clonable]:
     fn zip[U: Clonable](other: List[U]) List[Pair[T, U]]
     fn group_by[K: Hashable](key: fn(T) K) Map[K, List[T]]
 
@@ -497,7 +497,7 @@ impl ListCopiesGeneric[T] for List[T]:
     # Keys appear in first-seen order and each group keeps the original element order.
     fn group_by[K: Hashable](key: fn(T) K) Map[K, List[T]]: ...
 
-interface MapCopies[T: Hashable, U: Clonable]:
+export interface MapCopies[T: Hashable, U: Clonable]:
     fn clone() Map[T, U]
     fn filter(predicate: fn(T, U) Bool) Map[T, U]
     fn map_keys[W: Hashable](transform: fn(T, U) W) Map[W, U]
@@ -612,7 +612,7 @@ interface ListOrder[T: Comparable]:
     var fn sort() Unit
     fn binary_search(value: T) SearchResult
 
-interface ListOrderCopy[T: Comparable & Clonable]:
+export interface ListOrderCopy[T: Comparable & Clonable]:
     fn sorted() List[T]
 
 impl ListOrderCopy[T] for List[T]:
