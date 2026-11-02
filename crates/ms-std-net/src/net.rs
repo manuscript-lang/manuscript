@@ -16,7 +16,7 @@ use socket2::{Domain, Protocol, SockAddr, Socket, Type};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::io;
-use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::rc::{Rc, Weak};
 
 /// Something a network owns and closes with itself.
@@ -638,9 +638,26 @@ impl Network {
 /// `/etc/hosts` names exactly, so `LOCALHOST` would fail there while it resolves elsewhere.
 #[expect(clippy::ptr_arg, reason = "a pool job takes `&I` for its input type")]
 fn resolve(host: &String) -> io::Result<Vec<IpAddr>> {
-    (host.to_ascii_lowercase().as_str(), 0u16)
+    let name = host.to_ascii_lowercase();
+    if let Some(loopback) = localhost_addrs(&name) {
+        return Ok(loopback);
+    }
+    (name.as_str(), 0u16)
         .to_socket_addrs()
         .map(|it| it.map(|a| a.ip()).collect())
+}
+
+/// `localhost` and `*.localhost` always name the loopback interface (RFC 6761), so they need no
+/// system lookup. Windows runners answered `localhost` too slowly for a two-second deadline.
+fn localhost_addrs(name: &str) -> Option<Vec<IpAddr>> {
+    let name = name.strip_suffix('.').unwrap_or(name);
+    let local = name == "localhost" || name.ends_with(".localhost");
+    local.then(|| {
+        vec![
+            IpAddr::V4(Ipv4Addr::LOCALHOST),
+            IpAddr::V6(Ipv6Addr::LOCALHOST),
+        ]
+    })
 }
 
 /// A bound UDP socket; a wildcard IPv6 address serves both families.
@@ -740,6 +757,19 @@ mod tests {
             Some(NetErr::InvalidInput)
         );
         assert!(n.restrict(&["localhost"], &["127.0.0.0/8"], true).is_ok());
+    }
+
+    #[test]
+    fn localhost_names_resolve_to_loopback_in_any_case() {
+        let loopback = vec![
+            IpAddr::V4(Ipv4Addr::LOCALHOST),
+            IpAddr::V6(Ipv6Addr::LOCALHOST),
+        ];
+        for name in ["localhost", "LocalHost", "localhost.", "app.localhost"] {
+            assert_eq!(resolve(&name.to_string()).unwrap(), loopback, "{name}");
+        }
+        assert_eq!(localhost_addrs("notlocalhost"), None);
+        assert_eq!(localhost_addrs("localhost.example"), None);
     }
 
     #[test]
