@@ -4,7 +4,7 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "exit_code": 0,
-    "stdout": "function read old-a-name-long-enough-for-the-heap\nfunction written\nmethod read new-a-name-long-enough-for-the-heap\nmethod written\ninterface read old-a-name-long-enough-for-the-heap\ninterface written\nlent written\nlent read old-a-name-long-enough-for-the-heap\nstart first\nstart second\nend first new-a-name-long-enough-for-the-heap\nend second new-a-name-long-enough-for-the-heap\nchanged after-cancel-a-name-long-enough-for-the-heap\n",
+    "stdout": "function read old-a-name-long-enough-for-the-heap\nfunction written\nmethod read new-a-name-long-enough-for-the-heap\nmethod written\ninterface read old-a-name-long-enough-for-the-heap\ninterface written\nlent written\nlent read old-a-name-long-enough-for-the-heap\nstart first\nstart second\nend first new-a-name-long-enough-for-the-heap\nend second new-a-name-long-enough-for-the-heap\nrelay read\nrelay written\nchanged after-cancel-a-name-long-enough-for-the-heap\n",
     "stderr": ""
   }
 }

@@ -26,6 +26,25 @@ impl Namer for Notes:
 type Box:
     namer: Namer
 
+interface Sink:
+    var fn put(name: String) Unit
+
+impl Sink for Notes:
+    var fn put(name: String) Unit:
+        self.names.append(name)
+
+# Changes its payload only through an interface field: still a change, so it waits for readers.
+type Relay:
+    sink: Sink
+
+impl Relay:
+    var fn send(name: String) Unit:
+        self.sink.put(name)
+
+fn slow_relay(relay: Relay) String:
+    sleep(milliseconds(50))
+    return "relay read"
+
 fn say(text: String) Unit:
     let _ = stdout().write(text + "\n")
 
@@ -129,6 +148,23 @@ export fn main() Int:
     )
     let _ = readers.results()
     readers.close().get(none)
+
+    var relay = Shared(Relay(notes("old")))
+    let relay_reader = relay
+    var relay_writer = relay
+    var relays = TaskGroup[Int]()
+    relays.spawn(fn var ch:
+        say(slow_relay(relay_reader))
+        return 0
+    )
+    relays.spawn(fn var ch:
+        sleep(milliseconds(10))
+        relay_writer.send("more")
+        say("relay written")
+        return 0
+    )
+    let _ = relays.results()
+    relays.close().get(none)
 
     # A reader cancelled while parked inside its read lets the value change.
     let parked = shared

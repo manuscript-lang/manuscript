@@ -281,10 +281,26 @@ impl Visitor for Mutations<'_> {
         if let ExprKind::Apply { left, .. } = &c.kind {
             c = left;
         }
+        // A callee whose body is not followed here (an interface method, a function value, a
+        // native) changes what it takes as `var`, and an interface's `var fn` its receiver.
+        let followed = match &view.target {
+            Resolution::Method(m) => m.native.as_str().is_empty() && m.decl.is_some(),
+            Resolution::Function(sym) => sym.native.as_str().is_empty() && sym.decl.is_some(),
+            _ => false,
+        };
+        if !followed && let ExprKind::Call { args, .. } = &e.kind {
+            for a in args.iter().filter(|a| a.mutable) {
+                self.roots.extend(changed_root(self.hir, &a.value));
+            }
+        }
         match &view.target {
             Resolution::Method(m) if !m.native.as_str().is_empty() => {
+                let contract_change = m.native.as_str() == "contract"
+                    && m.decl
+                        .as_ref()
+                        .is_some_and(|d| d.method().is_some_and(|x| x.mutating));
                 if let ExprKind::Member { left, .. } = &c.kind
-                    && ms_check::effects::collection_mutation(m)
+                    && (contract_change || ms_check::effects::collection_mutation(m))
                 {
                     self.roots.extend(changed_root(self.hir, left));
                 }
