@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/time-methods.ms
 import expect_equal, expect_false from "@std/test/test.ms"
-import nanoseconds, timestamp, parse_timestamp, TimeError, monotonic, now from "@std/os/time.ms"
+import nanoseconds, timestamp, parse_timestamp, monotonic, now from "@std/os/time.ms"
 
 test "duration arithmetic and conversion":
     let interval = nanoseconds(1500000000)
@@ -104,12 +104,12 @@ test "timestamp methods and expected range failures":
     let maximum = try timestamp(253402300799, 999999999)
     let shifted = maximum.shift(nanoseconds(1))
     try expect_false(shifted.is_ok())
-    try expect_equal(shifted.err(), TimeError.OutOfRange)
+    try expect_equal(shifted.err(), Error("time: value out of range", kind: ErrorCategory.OutOfRange))
 
     let minimum = try timestamp(-62135596800, 0)
     let difference = maximum.difference(minimum)
     try expect_false(difference.is_ok())
-    try expect_equal(difference.err(), TimeError.OutOfRange)
+    try expect_equal(difference.err(), Error("time: value out of range", kind: ErrorCategory.OutOfRange))
     try expect_equal(maximum.compare(minimum), 1)
 
     let now = now()

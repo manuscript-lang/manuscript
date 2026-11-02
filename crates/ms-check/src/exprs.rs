@@ -231,15 +231,6 @@ impl Checker {
             {
                 if self.interface_assignable(&actual, exp) {
                     i.error_source = Some(actual.clone());
-                    i.scoped_error = exp.is_std("Error") && self.error_needs_scope(&actual);
-                    i.ty = Some(exp.clone());
-                } else if self.error_assignable(&actual, exp) {
-                    i.error_source = Some(actual.clone());
-                    let mut cause = actual.clone();
-                    if cause.is_std("Result") && cause.args.len() == 2 {
-                        cause = cause.args[1].clone();
-                    }
-                    i.scoped_error = self.error_needs_scope(&cause);
                     i.ty = Some(exp.clone());
                 } else {
                     let mut msg = self.assignment_mismatch(&actual, exp);
@@ -1042,15 +1033,10 @@ impl Checker {
         if same(&returned, &failure) {
             return;
         }
-        if !self.error_assignable(&failure, &returned) {
-            self.type_error(
-                e.pos,
-                format!("try requires the same error type or an Error boundary implemented by the specific error; this function returns {enclosing} but the operand fails with {failure}, so change the return error type or implement Error for it"),
-            );
-            return;
-        }
-        i.propagated_error = Some(failure.clone());
-        i.scoped_propagation = self.error_needs_scope(&failure);
+        self.type_error(
+            e.pos,
+            format!("try requires the same error type; this function returns {enclosing} but the operand fails with {failure}, so change the return error type or translate the error with map_error"),
+        );
     }
 
     fn infer_binary(

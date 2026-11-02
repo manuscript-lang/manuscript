@@ -1,7 +1,6 @@
 # conform: tags=closures,control-flow,faults,interpolation,lists,match,modules,mutation,optional,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/local-closures-keep-semantics.ms
-import TextError from "@std/core.ms"
 import expect_true from "@std/test/test.ms"
 
 fn bump(factor: Int) Int:
@@ -32,15 +31,15 @@ fn lookup(limit: Int) Int:
 
     return total
 
-fn parse(text: String) Int!TextError:
-    let guard = fn(number: Int) Int!TextError:
+fn parse(text: String) Int!Error:
+    let guard = fn(number: Int) Int!Error:
         if number < 0:
-            return Result[Int, TextError].error(TextError("negative"))
+            return Result[Int, Error].error(Error("negative"))
 
-        return Result[Int, TextError].ok(number)
+        return Result[Int, Error].ok(number)
 
     let checked = try guard(number: text.length())
-    return Result[Int, TextError].ok(checked + 1)
+    return Result[Int, Error].ok(checked + 1)
 
 fn labels(prefix: String) String:
     let join = fn(left: String, right: String) String: "{prefix}{left}-{right}"
@@ -62,7 +61,7 @@ fn nested(n: Int) Int:
 test "local closures":
     try expect_true((bump(factor: 3) == 105))
     try expect_true((lookup(limit: 3) == 0 + 2 + 4 + 100 + 100))
-    try expect_true((parse(text: "abc") == Result[Int, TextError].ok(4)))
+    try expect_true((parse(text: "abc") == Result[Int, Error].ok(4)))
     try expect_true((labels(prefix: ">") == ">a-b"))
     try expect_true((reordered() == 5))
     try expect_true((passed().length() == 3 and passed().get(index: 2) == 6))

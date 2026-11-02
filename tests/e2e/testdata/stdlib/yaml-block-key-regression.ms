@@ -3,10 +3,9 @@ import parse, YamlValue from "@std/data/yaml.ms"
 
 fn invalid(source: String) Unit!:
     let cause = parse(source) | try expect_error
+    if cause.kind == ErrorCategory.InvalidData: return ok(unit)
 
-    match cause:
-        InvalidData(_, _, _): return ok(unit)
-        _: return fail("expected malformed YAML, got {cause}")
+    return fail("expected malformed YAML, got {cause}")
 
 test "YAML unquoted block keys reject reserved leading indicators":
     for key in ["]key", "\}key", ",key", "@key", "`key", "|key", ">key"]:
@@ -33,7 +32,5 @@ test "YAML a question mark followed by a letter is a plain block key":
 test "YAML explicit and complex mapping keys remain unsupported":
     for source in ["? key\n: value", "[key]: value"]:
         let cause = parse(source) | try expect_error
-
-        match cause:
-            UnsupportedFeature(_, _): unit
-            _: return fail("expected unsupported mapping key, got {cause}")
+        if cause.kind != ErrorCategory.Unsupported:
+            return fail("expected unsupported mapping key, got {cause}")

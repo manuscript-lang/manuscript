@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import FileSystemError, open from \"@std/os/fs.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\nfn notes_reader(path: String) fn() Result[Bytes, FileSystemError]:\n    return fn:\n        let file = try open(path: path, flags: \"r\", mode: 0)\n        return file.read_file(max_bytes: 1048576)\n"
+    "fmt": "import open from \"@std/os/fs.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\nfn notes_reader(path: String) fn() Result[Bytes, Error]:\n    return fn:\n        let file = try open(path: path, flags: \"r\", mode: 0)\n        return file.read_file(max_bytes: 1048576)\n"
   }
 }

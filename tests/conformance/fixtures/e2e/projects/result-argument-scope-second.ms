@@ -4,11 +4,10 @@
 import Cause, make from "./domain.ms"
 import erase, forward from "./helper.ms"
 
-impl Error for Cause[T]:
-    fn message() String: "second {self.value}"
+fn second_error(cause: Cause[Int]) Error: Error("second {cause.value}")
 
-export fn second() Int!: erase(Result[Int, Cause[Int]].error(make()))
+export fn second() Int!: erase(Result[Int, Cause[Int]].error(make()).map_error(second_error))
 
 export fn second_generic() Int!: forward(
-    Result[Int, Cause[Int]].error(make())
+    Result[Int, Cause[Int]].error(make()).map_error(second_error)
 )

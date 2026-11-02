@@ -251,12 +251,6 @@ pub struct Info {
     pub type_args: Vec<Option<Ty>>,
     /// Concrete type when an Error boundary accepts it.
     pub error_source: Option<Ty>,
-    /// The error boundary needs dispatch evidence.
-    pub scoped_error: bool,
-    /// Error type propagated through `try` with conversion.
-    pub propagated_error: Option<Ty>,
-    /// The propagated error needs dispatch evidence.
-    pub scoped_propagation: bool,
     /// Arguments in written order with labels resolved.
     pub arguments: Option<Vec<ArgSlot>>,
     /// Wraps this supplied argument once into this Optional.

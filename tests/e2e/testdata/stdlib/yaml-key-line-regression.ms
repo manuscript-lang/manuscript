@@ -3,12 +3,13 @@ import parse, YamlValue from "@std/data/yaml.ms"
 
 fn invalid(source: String) Unit!:
     let cause = parse(source) | try expect_error
+    if cause.kind != ErrorCategory.InvalidData:
+        return fail("expected malformed implicit key, got {cause}")
 
-    match cause:
-        InvalidData(_, _, reason):
-            reason | try expect_equal("an implicit mapping key must stay on one line")
-            return ok(unit)
-        _: return fail("expected malformed implicit key, got {cause}")
+    cause.details["reason"] | try expect_equal(
+        "an implicit mapping key must stay on one line"
+    )
+    return ok(unit)
 
 test "YAML plain implicit keys cannot span physical lines":
     for source in ["\{key\n next: value\}", "\{key\n: value\}"]:

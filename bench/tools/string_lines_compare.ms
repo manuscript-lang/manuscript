@@ -3,7 +3,6 @@
 # Usage: ms run bench/tools/string_lines_compare.ms -- BEFORE AFTER OUTPUT.csv [--pairs 7] [--identity-file FILE.json]
 # A program prints CSV `case,input_bytes,iterations,elapsed_ns,checksum`; the identity file is `{case: [input bytes, iterations, checksum]}`.
 import (
-    Invalid,
     absolute,
     fail,
     finish,
@@ -51,7 +50,7 @@ export fn run_rows(
     executable: String,
     expected: Map[String, Identity],
     cpu: String
-) Result[List[Row], Invalid]:
+) List[Row]!:
     let text = try run_pinned(executable, [], cpu)
     let lines = text.split("\n").filter(fn l: l.trim() != "")
     if (
@@ -89,7 +88,7 @@ export fn run_rows(
 
     return ok(rows)
 
-fn read_identities(path: String) Result[Map[String, Identity], Invalid]:
+fn read_identities(path: String) Map[String, Identity]!:
     let doc = parse[JsonValue](read_text(path))
     if doc.is_error(): return invalid("identity file is not JSON")
 
@@ -176,7 +175,7 @@ export fn main() Int:
     let parsed = options(
         args.slice(3, args.length()).get([]), ["pairs", "identity-file"], []
     )
-    if parsed.is_error(): return fail(parsed.err().message())
+    if parsed.is_error(): return fail(parsed.err().message)
 
     let opts = parsed.get(Map[String, String]())
     let pairs = opts.get("pairs").get("7").parse_int().get(0)
@@ -186,7 +185,7 @@ export fn main() Int:
 
     if let file = opts.get("identity-file"):
         let loaded = read_identities(file)
-        if loaded.is_error(): return fail(loaded.err().message())
+        if loaded.is_error(): return fail(loaded.err().message)
 
         expected = loaded.get(expected)
 

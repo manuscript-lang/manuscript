@@ -19,12 +19,6 @@ import round from "@std/math/math.ms"
 import BytesBuilder from "@std/bytes.ms"
 import compress from "@std/io/archive.ms"
 import decompress from "@std/io/archive.ms"
-import JsonError from "@std/data/json.ms"
-import EncodingError from "@std/data/encoding.ms"
-import StringError from "@std/string.ms"
-import UrlError from "@std/net/net.ms"
-import CompressionError from "@std/io/archive.ms"
-import ArchiveError from "@std/io/archive.ms"
 import pack from "@std/io/archive.ms"
 import unpack from "@std/io/archive.ms"
 import ArchiveEntry from "@std/io/archive.ms"
@@ -159,7 +153,7 @@ test "expanded packages run through compiler":
     ("é🙂").scalar_length() | try expect_equal(2)
     ("é").scalar_values() | try expect_equal([233])
 
-    let text_success: String!StringError = ok("é")
+    let text_success: String! = ok("é")
     from_scalars(values: [233]) | try expect_equal(text_success)
     sqrt(value: 9.0) | try expect_equal(3.0)
     round(value: 2.5) | try expect_equal(3.0)
@@ -173,17 +167,17 @@ test "expanded packages run through compiler":
     flipped | try expect_equal([2, 1])
 
 test "malformed and bounded inputs return errors":
-    let failure1: Bytes!EncodingError = error(EncodingError.InvalidData)
+    let failure1: Bytes! = error(Error("encoding: invalid data", kind: ErrorCategory.InvalidData))
     base64_decode(text: "Zh==", url_safe: false, max_bytes: 10) | try expect_equal(
         failure1
     )
 
-    let failure2: Bytes!EncodingError = error(EncodingError.LimitExceeded)
+    let failure2: Bytes! = error(Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded))
     hex_decode(text: "abcd", max_bytes: 1) | try expect_equal(failure2)
 
     let limits = JsonLimits(max_bytes: 100, max_depth: 2, max_values: 10)
-    let failure3: JsonValue!JsonError = error(JsonError.InvalidData)
+    let failure3: JsonValue! = error(Error("JSON: invalid data", kind: ErrorCategory.InvalidData))
     parse(text: "\{\"a\":1,\"a\":2\}", limits: limits) | try expect_equal(failure3)
 
-    let failure4: JsonValue!JsonError = error(JsonError.LimitExceeded)
+    let failure4: JsonValue! = error(Error("JSON: limit exceeded", kind: ErrorCategory.LimitExceeded))
     parse(text: "[[[]]]", limits: limits) | try expect_equal(failure4)

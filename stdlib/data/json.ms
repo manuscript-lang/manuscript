@@ -2,15 +2,6 @@ import Data from "@std/core.ms"
 import parse_float from "@std/math/math.ms"
 import msstd_json_parse, msstd_json_stringify from "@std/internal/json.ms"
 
-# Errors returned for malformed JSON or configured input and nesting limits.
-export type JsonError:
-    # An explicit input, depth, value-count or output budget is negative.
-    case InvalidInput
-    # JSON syntax, Unicode escapes, duplicate keys, number text or a cyclic value is invalid.
-    case InvalidData
-    # The input, nesting, value count or encoded output exceeds a supplied budget.
-    case LimitExceeded
-
 # Optional bounds for JSON input bytes, nesting depth, and parsed values.
 export type JsonLimits:
     # Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
@@ -135,7 +126,7 @@ impl JsonValue:
 # Parses one JSON value and applies the supplied input, depth, and value limits.
 #
 # With the default `T = JsonValue` the result is the parsed tree. Any other `T` is read from the
-# document by the inverse of the `stringify` encoding, so `parse[Request](text)` and `let result: Request!JsonError = parse(text)`
+# document by the inverse of the `stringify` encoding, so `parse[Request](text)` and `let result: Request! = parse(text)`
 # return a decoded `Request` in a `Result` (`try` passes no expected type, so write `try parse[Request](text)`). A value whose shape does not match `T` returns
 # `InvalidData`; nothing is rejected at compile time, as with `stringify`. Input, depth and value limits
 # apply to the document before decoding.
@@ -162,7 +153,7 @@ export fn parse[T: Data = JsonValue](
     text: String,
     limits: JsonLimits?,
     ignore_unknown_fields: Bool = true
-) T!JsonError:
+) T!:
     return msstd_json_parse[T](text, limits, ignore_unknown_fields)
 
 # Customizes how `stringify` encodes a type. It takes precedence over the
@@ -244,16 +235,8 @@ export fn stringify[T: Data](
     max_bytes: Int?,
     indent: Int?,
     strict: Bool = false
-) String!JsonError:
+) String!:
     return msstd_json_stringify(value, max_bytes, indent, strict)
-
-impl Error for JsonError:
-    # Returns a JSON-prefixed diagnostic without echoing input text or number tokens.
-    fn message() String:
-        match self:
-            InvalidInput: return "JSON: invalid input"
-            InvalidData: return "JSON: invalid data"
-            LimitExceeded: return "JSON: limit exceeded"
 
 # The member of `value` at `keys[from:]`, read one object level at a time.
 fn member_path(value: JsonValue, keys: List[String], from: Int) JsonValue?:

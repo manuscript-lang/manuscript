@@ -1,19 +1,18 @@
 # conform: tags=faults,formatter,generics,lists,modules,optional,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-16.ms
-import TextError from "@std/core.ms"
 import expect_equal, expect_false from "@std/test/test.ms"
 
 type Input:
     names: List[String?]
 
-fn outcome_value(outcome: Int!TextError) Int:
+fn outcome_value(outcome: Int!Error) Int:
     return outcome.get(-1)
 
 test "data constructor context":
     let _input = Input([none, "Ada"])
-    let success: Int!TextError = ok(3)
-    let failure: Int!TextError = error(TextError("unavailable"))
+    let success: Int!Error = ok(3)
+    let failure: Int!Error = error(Error("unavailable"))
     let _absent: Int? = none
     let _nested: List[List[Int]] = [[], [1]]
     try expect_equal(outcome_value(success), 3)

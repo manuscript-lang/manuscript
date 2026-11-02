@@ -11,8 +11,7 @@ import (
     parse_query,
     format_query,
     QueryEntry,
-    Url,
-    UrlError
+    Url
 ) from "@std/net/net.ms"
 
 test "URL canonicalization and relative references":
@@ -30,10 +29,10 @@ test "URL query retains duplicate keys empty values and spaces":
     try expect_false(entries.length() != 4 or entries.get(3).value != "hello world")
     try expect_equal(format_query(entries), "a=1&a=2&empty=&space=hello+world")
 
-    let limited: List[QueryEntry]!UrlError = error(UrlError.LimitExceeded)
+    let limited: List[QueryEntry]! = error(Error("URL: limit exceeded", kind: ErrorCategory.LimitExceeded))
     try expect_equal(parse_query("a=1&b=2", 1), limited)
 
-    let invalid: String!UrlError = error(UrlError.InvalidData)
+    let invalid: String! = error(Error("URL: invalid data", kind: ErrorCategory.InvalidData))
     try expect_equal(decode_component("%zz"), invalid)
 
 test "URL query skips empty segments":
@@ -45,7 +44,7 @@ test "URL query skips empty segments":
 
 test "URL format rejects queries that would not round trip":
     let base = try parse("http://h/p")
-    let invalid: String!UrlError = error(UrlError.InvalidInput)
+    let invalid: String! = error(Error("URL: invalid input", kind: ErrorCategory.InvalidInput))
 
     for query in ["a#b", "a b", "%zz", "a%2"]:
         let bad = Url(
@@ -61,7 +60,7 @@ test "URL format rejects queries that would not round trip":
     try expect_equal((try format(good)), "http://h/p?a=%41&b")
 
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
-    let invalid: Url!UrlError = error(UrlError.InvalidData)
+    let invalid: Url! = error(Error("URL: invalid data", kind: ErrorCategory.InvalidData))
     for text in ["http://host:80:80/", "http://h/p?q=a b", "http://h/p?q=%zz"]:
         if parse(text) != invalid: return fail("accepted {text}")
 
@@ -70,8 +69,8 @@ test "URL parse rejects malformed hosts and queries and keeps an empty authority
     try expect_equal((empty | try format | try parse), empty)
 
 test "URL format and resolve reject invalid schemes and hostless relative paths":
-    let invalid_text: String!UrlError = error(UrlError.InvalidInput)
-    let invalid_url: Url!UrlError = error(UrlError.InvalidInput)
+    let invalid_text: String! = error(Error("URL: invalid input", kind: ErrorCategory.InvalidInput))
+    let invalid_url: Url! = error(Error("URL: invalid input", kind: ErrorCategory.InvalidInput))
 
     for scheme in [
         "", "1http", "http:", "http:other", "http/other", "http?query", "http#fragment"

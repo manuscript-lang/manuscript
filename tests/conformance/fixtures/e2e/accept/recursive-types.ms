@@ -1,7 +1,6 @@
 # conform: tags=alternatives,control-flow,faults,generics,interfaces,maps,match,modules,optional,records,sets,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/recursive-types.ms
-import TextError from "@std/core.ms"
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 
 type Expr:
@@ -136,7 +135,7 @@ type NestedOptional:
     case Value(value: Int??)
 
 type NestedResult:
-    value: Int!TextError!TextError
+    value: Int!Error!Error
 
 type Box[T]:
     value: T

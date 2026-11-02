@@ -1,7 +1,7 @@
 # conform: tags=optional,records,stdlib-json,testing,try-result
 # conform: phase=test
 import expect_equal from "@std/test/test.ms"
-import stringify, JsonError from "@std/data/json.ms"
+import stringify from "@std/data/json.ms"
 
 type Handler:
     name: String
@@ -20,14 +20,14 @@ test "JSON stringify omits values without a JSON form unless strict":
     let handler = Handler("h", unit, none)
     try expect_equal(stringify(handler), ok("\{\"name\":\"h\"\}"))
 
-    let invalid: String!JsonError = error(JsonError.InvalidData)
+    let invalid: String! = error(Error("JSON: invalid data", kind: ErrorCategory.InvalidData))
     try expect_equal(stringify(handler, strict: true), invalid)
 
 test "JSON strict stringify rejects no-form list elements":
     let holder = Holder([unit])
     try expect_equal(stringify(holder), ok("\{\"items\":[null]\}"))
 
-    let invalid: String!JsonError = error(JsonError.InvalidData)
+    let invalid: String! = error(Error("JSON: invalid data", kind: ErrorCategory.InvalidData))
     try expect_equal(stringify(holder, strict: true), invalid)
 
 test "JSON strict stringify accepts none and nulls that are values":

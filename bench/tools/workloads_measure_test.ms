@@ -1,4 +1,4 @@
-import Invalid, invalid, repeats from "./lib.ms"
+import invalid, repeats from "./lib.ms"
 import measure, versions from "./workloads_measure.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
@@ -10,7 +10,7 @@ type Producer:
     order: List[String]
 
 impl Producer:
-    var fn run(version: String) Result[String, Invalid]:
+    var fn run(version: String) String!:
         let count = self.counts.get(version).get(0)
         self.counts.add(version.clone(), count + 1)
         self.order.append(version.clone())

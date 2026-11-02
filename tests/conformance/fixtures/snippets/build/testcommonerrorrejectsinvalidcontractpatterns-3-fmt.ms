@@ -2,4 +2,4 @@
 # conform: phase=parse
 # conform: origin=pkg/build/library_test.go:79 TestCommonErrorRejectsInvalidContractPatterns
 fn wrong() String!:
-    return Result[Int, JsonError].ok(value: 1)
+    return Result[Int, Error].ok(value: 1)

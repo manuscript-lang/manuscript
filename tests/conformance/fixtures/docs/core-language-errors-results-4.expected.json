@@ -12,9 +12,9 @@
         "message": "unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"",
         "position": {
           "file": "core-language-errors-results-4.ms",
-          "line": 6,
+          "line": 5,
           "column": 37,
-          "offset": 254
+          "offset": 217
         },
         "fix": {
           "position": {
@@ -38,9 +38,9 @@
         "message": "unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"",
         "position": {
           "file": "core-language-errors-results-4.ms",
-          "line": 6,
-          "column": 58,
-          "offset": 275
+          "line": 5,
+          "column": 54,
+          "offset": 234
         },
         "fix": {
           "position": {
@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-results-4.ms:6:37: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 6 | fn successful_price(outcome: Result[Decimal, TextError]) Decimal?:\n   |                                     ^\n<DIR>/core-language-errors-results-4.ms:6:58: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 6 | fn successful_price(outcome: Result[Decimal, TextError]) Decimal?:\n   |                                                          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-results-4.ms:5:37: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 5 | fn successful_price(outcome: Result[Decimal, Error]) Decimal?:\n   |                                     ^\n<DIR>/core-language-errors-results-4.ms:5:54: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 5 | fn successful_price(outcome: Result[Decimal, Error]) Decimal?:\n   |                                                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

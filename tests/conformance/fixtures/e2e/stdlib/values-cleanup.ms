@@ -3,7 +3,6 @@
 # conform: origin=tests/e2e/testdata/stdlib/values-cleanup.ms
 import expect_equal, expect_false, expect_not_equal, expect_ok, fail from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
-import JsonError from "@std/data/json.ms"
 import read_file, temporary, write_file from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
@@ -35,7 +34,7 @@ fn leave(dir: String) Int:
     let _inner = Resource(dir, 2)
     return 42
 
-fn propagate(result: Int!JsonError) Int!JsonError:
+fn propagate(result: Int!) Int!:
     let found = try result
     return ok(found + 1)
 
@@ -49,21 +48,13 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
     let nested: Int?? = missing
     try expect_false(not nested.is_some() or not nested.get().is_none())
 
-test "Result propagation and Error views preserve concrete causes":
-    let failed: Int!JsonError = error(JsonError.InvalidData)
+test "Result propagation preserves the Error":
+    let failed: Int! = error(Error("JSON: invalid data", kind: ErrorCategory.InvalidData))
     try expect_equal(propagate(failed), failed)
 
-    let success: Int!JsonError = ok(3)
-    let expected: Int!JsonError = ok(4)
+    let success: Int! = ok(3)
+    let expected: Int! = ok(4)
     try expect_equal(propagate(success), expected)
-
-    let view = Error(JsonError.InvalidData)
-    try expect_not_equal(view.message().byte_length(), 0)
-
-    match view:
-        JsonError(cause):
-            try expect_equal(cause, JsonError.InvalidData)
-        _: return fail("error receiver erased")
 
 test "custom equality and hashing define map key identity":
     let first = Key(1, "first")

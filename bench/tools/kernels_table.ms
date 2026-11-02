@@ -1,7 +1,7 @@
 # Validates complete trials before printing per-kernel minimum microseconds (bench/perf/kernels and competence).
 # Rows are `<version> <kernel> <microseconds> <checksum>`; each successful producer ends its trial with `<version> # end`.
 # Times below two microseconds are reported as folded rather than used in ratios.
-import Invalid, invalid, minimum from "./lib.ms"
+import invalid, minimum from "./lib.ms"
 
 export fn suite_names(suite: String) List[String]:
     if suite == "kernels": return [
@@ -38,7 +38,7 @@ export fn summarize(
     suite: String,
     repeats: Int,
     versions: List[String]
-) Result[String, Invalid]:
+) String!:
     if repeats < 1: return invalid("repeats must be positive")
 
     var allowed = [base_versions()]

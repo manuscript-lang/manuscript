@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "result-argument-inference.ms::infer success and preserve concrete error identity",
+          "name": "result-argument-inference.ms::infer success and error types from Result arguments",
           "status": "passed"
         },
         {
@@ -21,7 +21,7 @@
         },
         {
           "index": 2,
-          "name": "result-argument-inference.ms::inference and widening evaluate once in written order before defaults",
+          "name": "result-argument-inference.ms::inference evaluates once in written order before defaults",
           "status": "passed"
         }
       ],
@@ -35,7 +35,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN result-argument-inference.ms::infer success and preserve concrete error identity\nPASS result-argument-inference.ms::infer success and preserve concrete error identity\nRUN result-argument-inference.ms::nested success preserves its domain and inferred errors remain exact\nPASS result-argument-inference.ms::nested success preserves its domain and inferred errors remain exact\nRUN result-argument-inference.ms::inference and widening evaluate once in written order before defaults\nPASS result-argument-inference.ms::inference and widening evaluate once in written order before defaults\n3 tests, 0 failed\n",
+      "stdout": "RUN result-argument-inference.ms::infer success and error types from Result arguments\nPASS result-argument-inference.ms::infer success and error types from Result arguments\nRUN result-argument-inference.ms::nested success preserves its domain and inferred errors remain exact\nPASS result-argument-inference.ms::nested success preserves its domain and inferred errors remain exact\nRUN result-argument-inference.ms::inference evaluates once in written order before defaults\nPASS result-argument-inference.ms::inference evaluates once in written order before defaults\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

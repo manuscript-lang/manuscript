@@ -5,7 +5,7 @@ type Row:
 type Bad:
     why: String
 
-impl Error for Bad:
+impl Reportable for Bad:
     fn message() String: self.why.clone()
 
 # A part wrapped into an Optional or a Result on the way out is a reference to it.
@@ -46,3 +46,6 @@ fn demo(r: Row, result: Row!Bad) Int:
         + named(r).get().length()
         + tail(result).get().length()
     )
+
+interface Reportable:
+    fn message() String

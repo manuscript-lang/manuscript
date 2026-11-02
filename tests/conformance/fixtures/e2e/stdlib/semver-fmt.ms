@@ -2,12 +2,11 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/semver.ms
 import expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms"
-import TextError from "@std/core.ms"
-import parse, format, compare, Version, SemverError from "@std/data/semver.ms"
+import parse, format, compare, Version from "@std/data/semver.ms"
 
-fn failure(result: Version!SemverError) SemverError!:
+fn failure(result: Version!) Error!:
     match result:
-        ok(_): return error(TextError("accepted"))
+        ok(_): return error(Error("accepted"))
         error(cause): return ok(cause)
 
 test "semver parses and formats every component":
@@ -24,13 +23,15 @@ test "semver rejects malformed text":
         "1.2.3+", "1.2.3-01", "1.2.3-a..b", "1.2.3-a_b", "1.2.3+é"
     ]
     for text in bad:
-        if (try failure(parse(text: text))) != SemverError.InvalidData: return fail(
-            "category {text}"
-        )
+        if (
+            (try failure(parse(text: text))) != Error(
+                "semver: invalid data", kind: ErrorCategory.InvalidData
+            )
+        ): return fail("category {text}")
 
 test "semver reports numbers beyond Int":
     (try failure(parse(text: "99999999999999999999.0.0"))) | try expect_equal(
-        SemverError.OutOfRange
+        Error("semver: value out of range", kind: ErrorCategory.OutOfRange)
     )
 
 test "semver orders by precedence":
@@ -70,4 +71,6 @@ test "semver ignores build metadata and compares huge numeric identifiers":
     let small = (parse(text: "1.0.0-99999999999999999999") | try expect_ok)
     let large = (parse(text: "1.0.0-100000000000000000000") | try expect_ok)
     compare(left: small, right: large) | try expect_equal(-1)
-    SemverError.OutOfRange.message() | try expect_equal("semver: value out of range")
+    Error("semver: value out of range", kind: ErrorCategory.OutOfRange).message | try expect_equal(
+        "semver: value out of range"
+    )

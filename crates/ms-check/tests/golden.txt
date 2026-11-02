@@ -10,15 +10,15 @@ fn use(path: String) Int:
     match filesystem().stat(path: path, follow_links: true):
         error(NotFound): return 1
         ok(_): return 0
-resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	3	11	75	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"import TextError from "@std/errors.ms"
 fn fail() Result[Int, TextError]:
     return error(TextError("boom"))
 fn use() Unit:
     fail()
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	23	61	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	3	18	90	unknown binding TextError; add: import TextError from "@std/core.ms"import network from "@std/net/net.ms"
+resolution	2	23	61	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	3	18	90	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a moduleimport network from "@std/net/net.ms"
 import HttpResponse from "@std/net/http.ms"
 import panic from "@std/faults.ms"
 fn use() Unit:
@@ -458,7 +458,7 @@ fn check() Int:
 parse	1	1	0	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakimport MapBuilder from "@std/collections/collections.ms"
 type MapBuilder:
     value: Int
-resolution	1	8	7	module does not export MapBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'fn old[T: MissingBound](value: T) T:
+resolution	1	8	7	module does not export MapBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'fn old[T: MissingBound](value: T) T:
     return value
 resolution	1	11	10	unknown type MissingBound; declare it with 'type MissingBound:' / 'interface MissingBound:', declare it as a type parameter, or import itinterface Read:
     fn get() Int
@@ -567,7 +567,8 @@ fn f() Int:
 parse	4	13	62	an arm value must be its final expressionimport filesystem, FileSystemError from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 fn forward[T](item: T) T: item
-resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'fn check() Unit: ...
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	1	20	19	module does not export FileSystemError; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'fn check() Unit: ...
     import filesystem from "@std/os/fs.ms"
 fn explicit() Unit:
     let fs = filesystem()
@@ -576,7 +577,7 @@ fn explicit() Unit:
     fs.copy_tree("", "", false, max_entries: none, max_bytes: 3)
     fs.create_directory("", true)
     fs.remove("", false)
-resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	3	14	72	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 type	6	46	194	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingimport panic from "@std/faults.ms"
 type Override:
@@ -594,27 +595,27 @@ test "reject":
     let value = %s()
 parse	1	8	7	expected a name, found '%'fn wrong() Result[Unit, JsonError]:
     return error(cause: EncodingError.InvalidData)
-resolution	1	25	24	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
-resolution	2	25	60	unknown binding EncodingError; add: import EncodingError from "@std/data/encoding.ms"fn wrong() JsonError:
+resolution	1	25	24	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	2	25	60	unknown binding EncodingError; declare it with 'let EncodingError = ...' before use, define 'fn EncodingError(...) T:', or import it from a modulefn wrong() JsonError:
     return JsonError.PermissionDenied
-resolution	1	12	11	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
-resolution	2	12	33	unknown binding JsonError; add: import JsonError from "@std/data/json.ms"import hex_decode from "@std/data/encoding.ms"
+resolution	1	12	11	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	2	12	33	unknown binding JsonError; declare it with 'let JsonError = ...' before use, define 'fn JsonError(...) T:', or import it from a moduleimport hex_decode from "@std/data/encoding.ms"
 fn wrong() Result[Unit, JsonError]:
     let bytes = try hex_decode(text: "ff", max_bytes: 1)
     return ok(value: unit)
-resolution	2	25	71	unknown type JsonError; add: import JsonError from "@std/data/json.ms"type Impostor:
+resolution	2	25	71	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import ittype Impostor:
     detail: String
 fn wrong(value: Impostor) Error:
     return value
-type	4	12	78	expected Error, found Impostor (in the return value); no applicable 'impl Error for Impostor' is visible; declare an implementation before passing it as Errorfn wrong() Result[String, Error]:
+type	4	12	78	expected Error, found Impostor (in the return value)fn wrong() Result[String, Error]:
     return Result[Int, JsonError].ok(value: 1)
-resolution	2	24	57	unknown type JsonError; add: import JsonError from "@std/data/json.ms"fn wrong(value: Error) JsonError:
+resolution	2	24	57	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import itfn wrong(value: Error) JsonError:
     return value
-resolution	1	24	23	unknown type JsonError; add: import JsonError from "@std/data/json.ms"fn wrong(values: List[JsonError]) List[Error]:
+resolution	1	24	23	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import itfn wrong(values: List[JsonError]) List[Error]:
     return values
-resolution	1	23	22	unknown type JsonError; add: import JsonError from "@std/data/json.ms"fn wrong(operation: fn() JsonError) fn() Error:
+resolution	1	23	22	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import itfn wrong(operation: fn() JsonError) fn() Error:
     return operation
-resolution	1	26	25	unknown type JsonError; add: import JsonError from "@std/data/json.ms"interface Diagnostic:
+resolution	1	26	25	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import itinterface Diagnostic:
     fn message() String
 type LocalError:
     detail: String
@@ -627,26 +628,24 @@ fn wrong(value: LocalError) Diagnostic:
     detail: String
 fn wrong(value: Impostor) Error:
     return Error(value: value)
-type	4	12	78	Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directlyfn wrong(cause: Error) String:
+type	4	18	84	unknown argument value; parameters of Error: details, kind, message
+type	4	12	78	missing argument message: String in call to Error; add 'message: <String>'fn wrong(cause: Error) String:
     match cause:
         JsonError(value):
             return value.message()
-type	3	9	56	contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'
-resolution	4	20	93	unknown binding value; declare it with 'let value = ...' before use, define 'fn value(...) T:', or import it from a module
-type	2	5	35	contract match requires a final wildcard for other implementations; add a last '_' armfn wrong(cause: Error) String:
+type	2	5	35	match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/elsefn wrong(cause: Error) String:
     match cause:
         JsonError.InvalidData(value):
             return "invalid"
         _:
             return cause.message()
-type	3	9	56	contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'fn wrong(cause: Error) String:
+type	2	5	35	match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/elsefn wrong(cause: Error) String:
     match cause:
         JsonError:
             return "invalid"
         _:
             return cause.message()
-type	3	9	56	contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'
-type	3	9	56	concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'type Other:
+type	2	5	35	match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/elsetype Other:
     detail: String
 fn wrong(cause: Error) String:
     match cause:
@@ -654,7 +653,7 @@ fn wrong(cause: Error) String:
             return value.detail
         _:
             return cause.message()
-type	5	9	87	Other does not implement Errorfn wrong(cause: Error) String:
+type	4	5	66	match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/elsefn wrong(cause: Error) String:
     match cause:
         JsonError(first):
             return first.message()
@@ -662,18 +661,13 @@ fn wrong(cause: Error) String:
             return second.message()
         _:
             return cause.message()
-type	3	9	56	contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'
-resolution	4	20	93	unknown binding first; declare it with 'let first = ...' before use, define 'fn first(...) T:', or import it from a module
-type	5	9	117	contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'
-resolution	6	20	155	unknown binding second; declare it with 'let second = ...' before use, define 'fn second(...) T:', or import it from a modulefn wrong(cause: Error) String:
+type	2	5	35	match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/elsefn wrong(cause: Error) String:
     match cause:
         _:
             return cause.message()
         JsonError(value):
             return value.message()
-type	3	9	56	wildcard must appear once and be last; keep a single '_' arm at the end
-type	5	9	102	contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'
-resolution	6	20	139	unknown binding value; declare it with 'let value = ...' before use, define 'fn value(...) T:', or import it from a moduletype Box[T]:
+type	2	5	35	match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/elsetype Box[T]:
     item: T
 impl Error for Box[T]:
     fn message() String:
@@ -684,7 +678,9 @@ fn wrong(cause: Error) String:
             return value.message()
         _:
             return cause.message()
-type	8	9	150	concrete type pattern requires explicit type arguments; write e.g. Box[Int]import JsonError from "@std/data/json.ms"
+type	3	1	25	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	4	8	55	extra operation message; Error declares:  (remove it or add it to the interface)
+type	7	5	129	match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/elseimport JsonError from "@std/data/json.ms"
 import hex_decode from "@std/data/encoding.ms"
 fn general(cause: JsonError) Error:
     return cause
@@ -697,7 +693,11 @@ fn propagated() Result[Unit, Error]:
     return ok(value: unit)
 fn constructed() Result[Unit, Error]:
     return error(cause: JsonError.InvalidData)
-type	10	9	327	local binding bytes is never read; remove it, use it, or name it with a leading '_' to ignore itfn diagnostic(cause: %s) String:
+resolution	1	8	7	module does not export JsonError; @std/data/json.ms exports: JsonEncode, JsonLimits, JsonValue, parse, stringify; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/data/json.ms"'
+resolution	3	19	107	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	5	26	167	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	6	25	203	unknown binding JsonError; declare it with 'let JsonError = ...' before use, define 'fn JsonError(...) T:', or import it from a module
+resolution	13	25	451	unknown binding JsonError; declare it with 'let JsonError = ...' before use, define 'fn JsonError(...) T:', or import it from a modulefn diagnostic(cause: %s) String:
     return cause.message()
 fn view(cause: %s) Error:
     return cause
@@ -828,7 +828,8 @@ import commands, Commands, CommandOutput, CommandError from "@std/os/process.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
 fn forward[T](item: T) T: item
-resolution	3	8	121	module does not export commands; did you mean 'Commands'?let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
+resolution	3	8	121	module does not export commands; did you mean 'Commands'?
+resolution	3	43	156	module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuInfo, CpuUsage, MemoryUsage, NativeSubprocess, NetworkInterface, ProcessInfo, ResourceUsage, SignalStream, Stdio, Subprocess, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
     f(Bytes([]))parse	2	5	66	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f = forward(base64_encode)
     f(Bytes([]))parse	2	5	35	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int?, timeout: Duration?) Result[CommandOutput, CommandError] = commands().run
     f(program: "", arguments: [])parse	2	5	167	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itexport fn main() Int:
@@ -843,7 +844,7 @@ export fn main() Int:
     stdout().write(data: "ready\n")
     sleep(nanoseconds(60000000000))
     return 0
-type	4	5	110	this statement discards Result[Unit, IoError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io/io.ms"
+type	4	5	110	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io/io.ms"
 
 export fn main() Int:
     if stdout().write(data: %q).is_error():
@@ -870,7 +871,9 @@ impl Error for Cause[T]:
 fn identity[T](value: T) T: value
 fn consume[T](value: T, cause: Error, optional: T?) Unit: return
 fn first() Unit: consume(value: 1, cause: identity(Cause(2)), optional: identity(3))
-type Box[Error: Error]:
+type	3	1	29	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	4	8	61	extra operation message; Error declares:  (remove it or add it to the interface)
+type	7	43	244	expected Error, found Cause[Int] (in argument 'cause' of consume)type Box[Error: Error]:
     cause: Error
 impl Error for Box[Error]:
     fn message() String: self.cause.message()
@@ -922,23 +925,30 @@ impl Error for Failure:
     fn message() String: self.detail
 fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 fn first() Result[Int, Error]: fail_cause(Failure("empty"))
-type	4	31	87	cannot move `self.detail` out of `self`: only a whole variable can move; take an owned copy with `self.detail.clone()`fn from_callback[T](factory: fn() T) T: factory()
+type	5	21	114	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
+type	3	1	33	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	4	8	64	extra operation message; Error declares:  (remove it or add it to the interface)
+type	6	32	189	conflicting generic inference; expected result type Result[Int, Error] does not match Result[T, Failure]; give consistent argument and result types or specify the type argumentsfn from_callback[T](factory: fn() T) T: factory()
 fn first() Unit:
     let callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)
 type	3	9	75	local binding callback is never read; remove it, use it, or name it with a leading '_' to ignore itimport TextError from "@std/errors.ms"
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn first() Result[Int, Missing]: fail("empty")
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	39	77	unknown type TextError; add: import TextError from "@std/core.ms"
+resolution	2	39	77	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	3	24	138	unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import it
-resolution	2	57	95	unknown binding TextError; add: import TextError from "@std/core.ms"type Failure:
+resolution	2	57	95	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a moduletype Failure:
     code: Int
 impl Error for Failure:
     fn message() String: "failure"
 fn failing() Result[Int, Failure]: error(Failure(code: 1))
 fn count[T](r: Result[T, Error]) Int: 1
 fn use() Int: count(r: failing())
-type Pair[A, B = A]:
+type	3	1	28	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	4	8	59	extra operation message; Error declares:  (remove it or add it to the interface)
+type	7	21	206	conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)
+type	7	15	200	cannot infer type argument T for count; write count[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
+type	7	24	209	expected Result[<invalid>, Error], found Result[Int, Failure] (in argument 'r' of count)type Pair[A, B = A]:
     first: A
     second: B
 fn use() Pair[Int]: Pair[Int](1, 2)
@@ -1066,7 +1076,7 @@ fn general(value: Result) Error:
 type	4	19	85	Result requires 2 type arguments, found 0; write Result[T1, T2]
 type	1	16	15	Result requires 2 type arguments, found 0; write Result[T1, T2]
 type	1	1	0	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types
-type	5	12	111	expected Error, found Result (in the return value); use a concrete value implementing Errorimpl Error for Result[Int]:
+type	5	12	111	expected Error, found Result (in the return value)impl Error for Result[Int]:
     fn message() String:
         return "x"
 fn f(x: Result[Int]) Result[Int, Error]:
@@ -1074,7 +1084,7 @@ fn f(x: Result[Int]) Result[Int, Error]:
 type	4	9	80	Result requires 2 type arguments, found 1; write Result[T1, T2]
 type	1	16	15	Result requires 2 type arguments, found 1; write Result[T1, T2]
 type	1	1	0	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types
-type	5	18	130	expected Error, found Result[Int] (in argument 'cause' of error); use a concrete value implementing Errorfn f[Equal](a: Equal) Unit:
+type	5	18	130	expected Error, found Result[Int] (in argument 'cause' of error)fn f[Equal](a: Equal) Unit:
     return
 resolution	1	6	5	duplicate or intrinsic type parameter Equal; choose a different type parameter nametype Box[Hashable]:
     v: Hashable
@@ -1203,12 +1213,12 @@ impl parse	2	6	6	expected a name, found end of lineinterface DatagramSocket:
     fn send_bytes(data: Bytes, address: String, timeout: Duration? = none) Result[Unit, NetworkError]
 resolution	4	49	118	unknown type Duration; add: import Duration from "@std/os/time.ms"
 resolution	4	74	143	unknown type Datagram; add: import Datagram from "@std/net/net.ms"
-resolution	4	84	153	unknown type NetworkError; add: import NetworkError from "@std/net/net.ms"
+resolution	4	84	153	unknown type NetworkError; declare it with 'type NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it
 resolution	5	53	219	unknown type Duration; add: import Duration from "@std/os/time.ms"
-resolution	5	84	250	unknown type NetworkError; add: import NetworkError from "@std/net/net.ms"
+resolution	5	84	250	unknown type NetworkError; declare it with 'type NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it
 resolution	6	25	288	unknown type Bytes; add: import Bytes from "@std/bytes.ms"
 resolution	6	58	321	unknown type Duration; add: import Duration from "@std/os/time.ms"
-resolution	6	89	352	unknown type NetworkError; add: import NetworkError from "@std/net/net.ms"type DnsRecord:
+resolution	6	89	352	unknown type NetworkError; declare it with 'type NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import ittype DnsRecord:
     kind: DnsKind
     value: String
     priority: Int
@@ -1228,6 +1238,9 @@ impl T?:
     fn ok_or[E: Error = MissingValue](cause: E? = none) Result[T, E]: ...
     fn ok_or_else[E: Error](create: fn() E) Result[T, E]: ...
 resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
+type	12	17	291	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
+resolution	12	25	299	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it
+type	13	22	370	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
 type	5	1	44	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesfn helper(left: Int, right: Int) Int:
     return left + right
 export fn defaults(first: Int = -3, second: Int = helper(left: first, right: 2), text: String = "literal, )", callback: fn(Int) Int = (fn(value: Int) Int:
@@ -1453,9 +1466,9 @@ impl Missing for S:
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn first() Result[Int, TextError]: ...
     resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	39	77	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	3	24	138	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	2	57	95	unknown binding TextError; add: import TextError from "@std/core.ms"fn collect[T, U](items: List[T], step: fn(T) Result[List[U], MissingError]) Result[List[U], MissingError]:
+resolution	2	39	77	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	3	24	138	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	2	57	95	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a modulefn collect[T, U](items: List[T], step: fn(T) Result[List[U], MissingError]) Result[List[U], MissingError]:
     return step(items.get(0))
 fn first() Unit:
     let result = collect(items: [1, 2], step: fn(value: Int) Result[List[Int], MissingError]: ok([value]))
@@ -1467,9 +1480,9 @@ type	5	26	286	expected Int, found String (in the initializer of 'unrelated')imp
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn first() Result[Int, TextError]: fail[Int]("empty")
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	39	77	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	3	24	138	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	2	57	95	unknown binding TextError; add: import TextError from "@std/core.ms"fn convert[T, U](value: T) U?: none
+resolution	2	39	77	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	3	24	138	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	2	57	95	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a modulefn convert[T, U](value: T) U?: none
 fn first() Unit:
     let value = convert(1)
 type	3	17	69	cannot infer type argument U for convert; write convert[Int, U](...) with an explicit type for U; call arguments and the expected result must determine every type parameterfn broken(value: Missing) Unit: return
@@ -1501,10 +1514,12 @@ fn read() Read[Int]: Box(1)
     text: String
 impl Error for E:
     fn message() String: this.text
-resolution	4	26	68	unknown binding this; the receiver in an impl method is 'self'; write self instead of thisfn error_method() Unit:
+type	3	1	25	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	4	8	50	extra operation message; Error declares:  (remove it or add it to the interface)
+resolution	4	26	68	unknown binding this; the receiver in an impl method is 'self'; write self instead of thisfn error_method() Unit:
     let method = Error.message
-resolution	2	24	47	Error is an interface, not an alternative; declare a concrete type and 'impl Error for <Type>:', then construct that concrete typefn error_value() Error: Error.message("bad input")
-resolution	1	31	30	Error is an interface, not an alternative; declare a concrete type and 'impl Error for <Type>:', then construct that concrete typeinterface Shape:
+resolution	2	24	47	unknown or non-nullary alternative case message of Error; cases:  (cases with payloads need call syntax)fn error_value() Error: Error.message("bad input")
+resolution	1	31	30	Error has no cases or static members, so `Error.message(...)` does not exist; if message is a module function, import it and call message(...); if it is a method, call it on a valueinterface Shape:
     fn area() Int
 type Sq:
     s: Int
@@ -1519,7 +1534,9 @@ resolution	1	19	18	unknown binding Shape; did you mean 'shape'?type E:
 impl Error for E:
     fn message() String: self.text
 fn error_value() Error: E("bad input")
-type	4	31	73	cannot move `self.text` out of `self`: only a whole variable can move; take an owned copy with `self.text.clone()`fn identity(this: Int) Int: this
+type	3	1	25	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	4	8	50	extra operation message; Error declares:  (remove it or add it to the interface)
+type	5	25	102	expected Error, found E (in the return value)fn identity(this: Int) Int: this
 fn f() Int: this
 resolution	1	13	12	unknown binding this; there is no 'this'; inside an impl method the receiver is 'self'export type Sq:
     s: Int
@@ -1551,37 +1568,37 @@ let Y = X + X
 resolution	2	13	27	unknown binding nope; declare it with 'let nope = ...' before use, define 'fn nope(...) T:', or import it from a modulefn f(text: String) Result[JsonValue, JsonError]:
     return parse(text)
 resolution	1	27	26	unknown type JsonValue; add: import JsonValue from "@std/data/json.ms"
-resolution	1	38	37	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	1	38	37	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	2	12	60	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     return parse[Request](text)
-resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	4	12	90	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     return parse(text)
-resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	4	12	90	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     let request = try parse[Request](text)
     return ok(request)
-resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	4	23	101	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     let request: Request = try parse(text)
     return ok(request)
-resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	4	32	110	unknown binding parse; add: import parse from "@std/data/csv.ms"fn f[T](text: String) Result[T, JsonError]:
     return parse[T](text)
-resolution	1	33	32	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	1	33	32	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	2	12	55	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     callback: fn() Int
 fn f(text: String) Result[Request, JsonError]:
     return parse[Request](text)
-resolution	3	36	72	unknown type JsonError; add: import JsonError from "@std/data/json.ms"
+resolution	3	36	72	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	4	12	95	unknown binding parse; add: import parse from "@std/data/csv.ms"type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
@@ -1918,9 +1935,9 @@ interface Read:
 impl Read for Box[Int]:
     fn get() Int: self.value
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	4	40	209	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	4	62	231	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	5	26	280	unknown type TextError; add: import TextError from "@std/core.ms"let value = result(fn():
+resolution	4	40	209	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	4	62	231	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	5	26	280	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import itlet value = result(fn():
         let n = try checked()
         return ok(n)
     )parse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn example() Unit: ...
@@ -1983,19 +2000,20 @@ fn standard() CollectionError: CollectionError.OutOfRange
 fn recognize(value: Other) Int:
     match value:
         OutOfRange: return 1
-import ListBuilder, MapBuilder, SetBuilder, filled, map_from_entries from "@std/collections/collections.ms"
+resolution	4	15	81	unknown type CollectionError; declare it with 'type CollectionError:' / 'interface CollectionError:', declare it as a type parameter, or import it
+resolution	4	32	98	unknown binding CollectionError; declare it with 'let CollectionError = ...' before use, define 'fn CollectionError(...) T:', or import it from a moduleimport ListBuilder, MapBuilder, SetBuilder, filled, map_from_entries from "@std/collections/collections.ms"
 import ErrorCategory, TextError, category from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 fn bytes() Bytes: Bytes([1])
 fn build() List[Int]: ListBuilder[Int]().freeze()
 fn text_error(message: String) TextError: TextError(message)
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
-resolution	1	21	20	module does not export MapBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
-resolution	1	33	32	module does not export SetBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	21	20	module does not export MapBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	33	32	module does not export SetBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	2	8	115	unknown standard module @std/errors.ms
 resolution	2	23	130	unknown standard module @std/errors.ms
 resolution	2	34	141	unknown standard module @std/errors.ms
-resolution	6	32	316	unknown type TextError; add: import TextError from "@std/core.ms"
+resolution	6	32	316	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	5	23	257	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a module
 resolution	6	43	327	unknown binding TextError; did you mean 'text_error'?type Other:
     case OutOfRange
@@ -2006,7 +2024,7 @@ fn get() List[ListEntry[Int]]: [1].entries()
 resolution	1	1	0	declaration ListEntry reuses a prelude name; rename it, because ListEntry always refers to the standard declarationtype CollectionError:
     case OutOfRange
 fn get() Result[List[Int], CollectionError]: [1].slice(0, 1)
-resolution	1	1	0	declaration CollectionError reuses a prelude name; rename it, because CollectionError always refers to the standard declarationfn entries(values: MapEntry[List[Int], Int]) Unit: unit
+type	3	50	91	expected Result[List[Int], CollectionError], found Result[List[Int], Error] (in the return value)fn entries(values: MapEntry[List[Int], Int]) Unit: unit
 type	1	1	0	List[Int] does not satisfy Hashable; collections have no Hashable implementation, so use a record key or join the elements into a Stringexport type List[T]:
     value: T
 export type Set[T]:
@@ -2022,25 +2040,26 @@ export type MapEntry[K, V]:
 export type CollectionError:
     message: String
 resolution	1	8	7	declaration Map reuses a prelude name; rename it, because Map always refers to the standard declaration
-resolution	3	8	43	declaration MapEntry reuses a prelude name; rename it, because MapEntry always refers to the standard declaration
-resolution	5	8	84	declaration CollectionError reuses a prelude name; rename it, because CollectionError always refers to the standard declarationimport List, Map, Set from "@std/collections/collections.ms"
+resolution	3	8	43	declaration MapEntry reuses a prelude name; rename it, because MapEntry always refers to the standard declarationimport List, Map, Set from "@std/collections/collections.ms"
 fn get() Int: List[Int]().length()+Map[Int,Int]().length()+Set[Int]().length()
 resolution	1	8	7	redundant prelude import List; remove List from this import and use its prelude declaration directly
 resolution	1	14	13	redundant prelude import Map; remove Map from this import and use its prelude declaration directly
 resolution	1	19	18	redundant prelude import Set; remove Set from this import and use its prelude declaration directlyfn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 fn message(values: List[Int]) String: first(values).err().message()
 fn widen(cause: MissingValue) Error: cause
-type Other:
+resolution	1	41	40	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it
+resolution	3	17	162	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import ittype Other:
     case Missing(value: Int)
 fn other() Other: Other.Missing(1)
 fn standard() MissingValue: MissingValue.Missing("location")
 fn read(value: Other) Int:
     match value:
         Missing(found): return found
-type Other:
+resolution	4	15	90	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it
+resolution	4	29	104	unknown binding MissingValue; declare it with 'let MissingValue = ...' before use, define 'fn MissingValue(...) T:', or import it from a moduletype Other:
     case Missing(value: Int)
 fn get() Other: Missing(1)
-resolution	3	17	57	ambiguous alternative case Missing; qualify it with its type, e.g. Type.Missingimport compress, CompressionFormat, CompressionError from "@std/compress.ms"
+import compress, CompressionFormat, CompressionError from "@std/compress.ms"
 import Bytes from "@std/bytes.ms"
 fn forward[T](item: T) T: item
 resolution	1	8	7	unknown standard module @std/compress.ms
@@ -2102,10 +2121,13 @@ impl Error for Failure:
 fn consume(value: Int?) Unit: return
 resolution	1	8	7	unknown standard module @std/errors.ms
 resolution	2	8	46	unknown standard module @std/faults.ms
-resolution	3	39	112	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	3	57	130	unknown binding TextError; add: import TextError from "@std/core.ms"
+type	4	21	170	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
+resolution	3	39	112	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+type	20	1	627	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	21	8	658	extra operation message; Error declares:  (remove it or add it to the interface)
+resolution	3	57	130	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a module
 resolution	10	30	443	unknown binding panic; add: import panic from "@std/core.ms"fn first() Unit:
-    let result: Result[Int, TextError] = fail("empty")resolution	2	29	45	unknown type TextError; add: import TextError from "@std/core.ms"
+    let result: Result[Int, TextError] = fail("empty")resolution	2	29	45	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	2	42	58	unknown binding fail; add: import fail from "@std/test/test.ms"fn first() Unit:
     let callback: fn() Int? = fn: absent()resolution	2	35	51	unknown binding absent; declare it with 'let absent = ...' before use, define 'fn absent(...) T:', or import it from a modulefn failed[T]() Result[T, Failure]: error(Failure("empty"))
 fn first() Result[Int, Error]: failed()resolution	1	26	25	unknown type Failure; declare it with 'type Failure:' / 'interface Failure:', declare it as a type parameter, or import it
@@ -2127,7 +2149,7 @@ fn first() Unit:
     callback = required
     callback()resolution	3	33	84	unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...) T:', or import it from a module
 type	5	5	157	missing argument _0: Int in call to callback; add '_0: <Int>'fn first() Unit:
-    let value: fn(String) Result[Int, TextError] = failresolution	2	39	55	unknown type TextError; add: import TextError from "@std/core.ms"
+    let value: fn(String) Result[Int, TextError] = failresolution	2	39	55	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	2	52	68	unknown binding fail; add: import fail from "@std/test/test.ms"fn cause(value: Int) String: "cause"
 fn wrong(value: Int?) Result[Int, String]: value.ok_or_else(cause)type	2	61	97	callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest
 type	2	61	97	expected fn() String, found fn(Int) String (in argument 'create' of value.ok_or_else)fn check(value: Int, key: String) Bool: true
@@ -2611,7 +2633,7 @@ fn broken(
     let result = error(cause: "failed")
 type	2	18	30	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f() Error:
     return "failed"
-type	2	12	25	expected Error, found String (in the return value); use a concrete value implementing Errortype Other:
+type	2	12	25	expected Error, found String (in the return value)type Other:
     case Int
 fn f() Int?:
     return 1
@@ -2862,26 +2884,35 @@ fn apply[T, U](r: Result[T, Error], callback: fn(T) U) U: callback(h(r))
 fn exact[T, E: Error](r: Result[T, E]) Result[T, E]: r
 resolution	1	8	7	unknown standard module @std/errors.ms
 resolution	2	8	46	unknown standard module @std/faults.ms
+type	28	16	865	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
+type	5	1	97	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	6	8	123	extra operation message; Error declares:  (remove it or add it to the interface)
+type	9	1	169	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	10	8	195	extra operation message; Error declares:  (remove it or add it to the interface)
+type	15	1	288	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	16	8	327	extra operation message; Error declares:  (remove it or add it to the interface)
 resolution	23	26	589	unknown binding panic; did you mean 'pair'?fn first() Int:
     let r: Result[Int, Error] = f()
     return h(r)resolution	2	33	48	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module
 resolution	3	12	63	unknown binding h; declare it with 'let h = ...' before use, define 'fn h(...) T:', or import it from a modulefn bounded[T: Equal](r: Result[T, Error]) Unit: return
 fn first() Unit: bounded(f())type	2	18	72	cannot infer type argument T for bounded; write bounded[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 resolution	2	26	80	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn both[T, E: Error](cause: E, r: Result[T, E]) Unit: return
-fn first(cause: Error) Unit: both(cause: cause, r: f())type	2	30	90	cannot infer type argument T for both; write both[T, Error](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
+fn first(cause: Error) Unit: both(cause: cause, r: f())type	1	15	14	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
+type	2	30	90	cannot infer type argument T for both; write both[T, Error](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 resolution	2	52	112	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn both[T, E: Error](cause: E, r: Result[T, E]) Unit: return
-fn first(cause: Error) Unit: both[Int, Error](cause: cause, r: f())resolution	2	64	124	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a moduletype Holder[T]:
+fn first(cause: Error) Unit: both[Int, Error](cause: cause, r: f())type	1	15	14	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
+resolution	2	64	124	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a moduletype Holder[T]:
     r: Result[T, Error]
 fn first() Holder[Int]: Holder(f())resolution	3	32	71	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a moduletype Wrapped[T]:
     case value(r: Result[T, Error])
 fn first() Wrapped[Int]: Wrapped.value(f())resolution	3	40	92	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module], value: T) Unit: return
 fn first(r: parse	1	1	0	unmatched closing delimiter ']'; remove it or add the matching opener before itfn bounded[T: Equal](r: Result[T, Error]) Unit: return
-fn first(r: Result[Error, E1]) Unit: bounded(r)resolution	2	27	81	unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it
-type	2	38	92	Error does not satisfy Equal; pass a type that already implements itfn domain[T](r: Result[T, E2]) Unit: return
+fn first(r: Result[Error, E1]) Unit: bounded(r)resolution	2	27	81	unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import itfn domain[T](r: Result[T, E2]) Unit: return
 fn first() Unit: domain(f())resolution	1	27	26	unknown type E2; declare it with 'type E2:' / 'interface E2:', declare it as a type parameter, or import it
 type	2	18	61	cannot infer type argument T for domain; write domain[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 resolution	2	25	68	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn same[T, E: Error](first: Result[T, E], second: Result[T, E]) Unit: return
-fn first() Unit: same(first: f(), second: other())type	2	18	94	cannot infer type arguments T, E for same; write same[T, E](...) with explicit types for T, E; call arguments and the expected result must determine every type parameter
+fn first() Unit: same(first: f(), second: other())type	1	15	14	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
+type	2	18	94	cannot infer type arguments T, E for same; write same[T, E](...) with explicit types for T, E; call arguments and the expected result must determine every type parameter
 resolution	2	30	106	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module
 resolution	2	43	119	unknown binding other; declare it with 'let other = ...' before use, define 'fn other(...) T:', or import it from a modulefn values[T](r: List[Result[T, Error]]) Unit: return
 fn first() Unit: values([f()])type	2	18	70	cannot infer type argument T for values; write values[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
@@ -2911,7 +2942,8 @@ fn wrapped(n: Int) Result[Int, Cause]:
 fn twice(n: Int) Result[Int, Cause]:
     let value = try wrapped(n)
     return ok(value)
-type	4	31	81	cannot move `self.text` out of `self`: only a whole variable can move; take an owned copy with `self.text.clone()`let alias = affine
+type	3	1	29	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	4	8	58	extra operation message; Error declares:  (remove it or add it to the interface)let alias = affine
     resolution	1	13	12	unknown binding affine; declare it with 'let affine = ...' before use, define 'fn affine(...) T:', or import it from a modulefn probe(value: Int) Int: ...
     type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)var sum = 0
     var i = 0
@@ -2948,7 +2980,8 @@ resolution	2	28	65	unknown binding Cause; declare it with 'let Cause = ...' befo
     text: String
 impl Error for Cause:
     fn message() String: self.text
-type	4	31	81	cannot move `self.text` out of `self`: only a whole variable can move; take an owned copy with `self.text.clone()`fn probe() Int:
+type	3	1	29	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	4	8	58	extra operation message; Error declares:  (remove it or add it to the interface)fn probe() Int:
     var sum = 0
     var i = -1
     while i < 1000:
@@ -2996,13 +3029,13 @@ fn tail(value: Result[Int, TextError]) Result[Int, TextError]:
     let output = try value
     return ok(output)
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	28	66	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	2	52	90	unknown type TextError; add: import TextError from "@std/core.ms"import TextError from "@std/errors.ms"
+resolution	2	28	66	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	2	52	90	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import itimport TextError from "@std/errors.ms"
 fn tail(value: Result[Int, TextError]) Result[Int, Error]:
     let output = try value
     return ok(output)
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	28	66	unknown type TextError; add: import TextError from "@std/core.ms".ms"
+resolution	2	28	66	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it.ms"
 fn check() Unit:
     let decoded = parse(text: "a: 1")
 parse	1	4	3	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakfn operation() Result[Unit, Error]: ok(unit)
@@ -3017,7 +3050,7 @@ fn f() Result[Int, Error]:
 fn f() Result[Int, Error]:
     try operation()
     return ok(1)
-type	3	5	74	try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for itfn operation() Result[Unit, Error]: ok(unit)
+type	3	5	74	try requires the same error type; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or translate the error with map_errorfn operation() Result[Unit, Error]: ok(unit)
 fn f() Unit:
     try operation()
 type	3	5	62	try requires an enclosing Result; declare this function to return Result[T, E], or use 'if let', '.get(default)', or '.get()'fn operation() Unit: unit
@@ -4279,15 +4312,19 @@ resolution	5	11	136	unknown binding pending_withdrawal_total; declare it with 'l
         _: return 0
 resolution	1	18	17	unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import itfn work() Bool:
     return Error(value: CommandError.Failed(message: "command diagnostic")).message() != "command diagnostic"
-resolution	2	25	40	unknown binding CommandError; add: import CommandError from "@std/os/process.ms"
-type	2	12	27	Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directlyfn work() Bool:
+type	2	18	33	unknown argument value; parameters of Error: details, kind, message
+resolution	2	25	40	unknown binding CommandError; declare it with 'let CommandError = ...' before use, define 'fn CommandError(...) T:', or import it from a module
+type	2	12	27	missing argument message: String in call to Error; add 'message: <String>'
+type	2	77	92	message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function insteadfn work() Bool:
     return (
         Error(
             value: CommandError.Failed(message: "command diagnostic")
         ).message() != "command diagnostic"
     )
-resolution	4	20	63	unknown binding CommandError; add: import CommandError from "@std/os/process.ms"
-type	3	9	37	Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directlyfn work() Int:
+type	4	13	56	unknown argument value; parameters of Error: details, kind, message
+resolution	4	20	63	unknown binding CommandError; declare it with 'let CommandError = ...' before use, define 'fn CommandError(...) T:', or import it from a module
+type	3	9	37	missing argument message: String in call to Error; add 'message: <String>'
+type	5	11	124	message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function insteadfn work() Int:
     if tagged_detail(integer) != "integer 7" or tagged_detail(text) != "text diagnostic":
         return 1
     return 0
@@ -4596,14 +4633,14 @@ let A = 1
 let B = 2
 fn f() Int:
     return A + B
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'import ListBuilder from "@std/collections/collections.ms"
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'import ListBuilder from "@std/collections/collections.ms"
 
 let A = 1
 let B = 2
 
 fn f() Int:
     return A + B
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'let A = (
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'let A = (
     parse	2	5	14	unterminated delimiter '(' opened at line 1:9; add the matching ')' before the end of the fileexport fn main() Int: ...
 type	1	8	7	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)    let a = [1, 2]
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it    let m = Map[String, Int]()
@@ -4642,7 +4679,7 @@ fn answer() Int:
     written = 3
     return 0
     return 1
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'import parse from "@std/data/json.ms"
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'import parse from "@std/data/json.ms"
 fn answer(parse: Int) Int:
     return parse
 import parse from "@std/data/json.ms"
@@ -4906,7 +4943,7 @@ import CsvOptions from "@std/data/csv.ms"
 fn example() Unit:
     SetBuilder[String]()
     CsvOptions(delimiter: ",", line_ending: "\n")
-resolution	1	8	7	module does not export SetBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	8	7	module does not export SetBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	4	5	122	unknown binding SetBuilder; declare it with 'let SetBuilder = ...' before use, define 'fn SetBuilder(...) T:', or import it from a modulefn absent[T]() T?: none
 fn transform[T, U](callback: fn(T) U) fn(T) U: callback
 fn answer() Unit:
@@ -5001,7 +5038,7 @@ fn later() Int:
 import ListBuilder from "@std/collections/collections.ms"
 fn answer() Int:
     return 42
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'fn answer(value: Int?) Int:
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'fn answer(value: Int?) Int:
     match value:
         _value:
             return 1
@@ -5075,7 +5112,7 @@ fn length(values: List[Int]) Int:
     return values.length()
 fn os_name() String:
     return system().info().os
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	2	8	65	unknown standard module @std/system.ms
 resolution	6	12	187	unknown binding system; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"fn label(value: Int) String:
     return "{value}"
@@ -5092,7 +5129,8 @@ fn describe(cause: Error) String:
             return json.message()
         _:
             return cause.message()
-import parse, TomlValue from "@std/data/toml.ms"
+resolution	1	8	7	module does not export JsonError; @std/data/json.ms exports: JsonEncode, JsonLimits, JsonValue, parse, stringify; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/data/json.ms"'
+type	3	5	80	match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/elseimport parse, TomlValue from "@std/data/toml.ms"
 fn read() Unit:
     let result = parse(text: "a=1")
 type	3	9	73	local binding result is never read; remove it, use it, or name it with a leading '_' to ignore itfn read() Int:
@@ -5129,14 +5167,14 @@ fn run() Int:
     let pair = parse	3	16	50	expected an expression, found end of line; write a value, name, call, or literal herefn entries(values: List[Int]) List[ListEntry[Int]]: values.entries()
 fn pairs(values: Map[String, Int]) List[MapEntry[String, Int]]: values.entries()
 fn cut(values: List[Int]) Result[List[Int], CollectionError]: values.slice(0, 1)
-import MissingValue from "@std/errors.ms" # keep
+resolution	3	45	194	unknown type CollectionError; declare it with 'type CollectionError:' / 'interface CollectionError:', declare it as a type parameter, or import itimport MissingValue from "@std/errors.ms" # keep
 fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	41	89	unknown type MissingValue; use the prelude MissingValue declaration directly; rename any shadowing binding or declarationimport List from "@std/collections/collections.ms" # keep
+resolution	2	41	89	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import itimport List from "@std/collections/collections.ms" # keep
 fn count() Int: List[Int]().length()
 resolution	1	8	7	redundant prelude import List; remove List from this import and use its prelude declaration directlyimport ListBuilder, List from "@std/collections/collections.ms"
 fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
-resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	1	21	20	redundant prelude import List; remove List from this import and use its prelude declaration directly
 resolution	2	17	80	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a moduleimport (
     List, # keep
@@ -5144,9 +5182,9 @@ resolution	2	17	80	unknown binding ListBuilder; declare it with 'let ListBuilder
 ) from "@std/collections/collections.ms"
 fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
 resolution	2	5	13	redundant prelude import List; remove List from this import and use its prelude declaration directly
-resolution	3	5	30	module does not export ListBuilder; @std/collections/collections.ms exports: CollectionError, List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
+resolution	3	5	30	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, SearchResult, Set, filled, flatten, map_from_entries, range_by; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	5	17	100	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a modulefn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
-fn bad() Unit:
+resolution	1	41	40	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import itfn bad() Unit:
    unit
 import ListBuilder, List from "@std/collections/collections.ms"
 parse	2	4	18	indentation must be a multiple of four spaces, found 3; use 0 or 4export type Row[T]:
@@ -5302,7 +5340,8 @@ fn classify(result: Result[Int, Failure]) Int:
     match result:
         error(NotFound): return 1
         ok(value): return value
-type Failure:
+type	4	1	64	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	5	8	95	extra operation message; Error declares:  (remove it or add it to the interface)type Failure:
     case NotFound
     case Denied
 type Envelope:
@@ -5343,7 +5382,9 @@ fn use[T](value: Result[Int, Failure[T]]) Int:
     match value:
         error(NotFound): return 1
         ok(value): return value
-type	9	9	224	binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'interface Describe:
+type	4	1	62	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	5	8	96	extra operation message; Error declares:  (remove it or add it to the interface)
+type	9	9	224	binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'interface Describe:
     fn describe() String
 type State:
     case Ready
@@ -5394,7 +5435,8 @@ fn classify(result: Result[Int, Failure]) Int:
     match result:
         error(cause): return failure_code(cause)
         ok(value): return value
-export type Failure:
+type	4	1	64	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	5	8	95	extra operation message; Error declares:  (remove it or add it to the interface)export type Failure:
     case NotFound
     case Denied(reason: String)
 impl Error for Failure:
@@ -5402,7 +5444,8 @@ impl Error for Failure:
 export type Item:
     value: Int
 export fn fail() Result[Int, Failure]: error(Failure.Denied("denied"))
-"
+type	4	1	71	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
+type	5	8	102	extra operation message; Error declares:  (remove it or add it to the interface)"
 fn use() Int:
     match fail():
         error(NotFound): return 1
@@ -5416,7 +5459,7 @@ fn classify(path: String) String:
     match filesystem().stat(path: path, follow_links: true):
         error(NotFound): return "missing"
         ok(_): return "exists"
-resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	3	11	83	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"type Point:
     x: Int
     y: Int
@@ -5509,7 +5552,7 @@ export fn run() Int:
 export fn load(n: Int) Result[Int, TextError]:
     return ok(n)
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	36	74	unknown type TextError; add: import TextError from "@std/core.ms"export fn load(n: Int) Result[Int, Error]:
+resolution	2	36	74	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import itexport fn load(n: Int) Result[Int, Error]:
     return ok(n)
 fn one() Int:
     return 1
@@ -5563,7 +5606,7 @@ test "source":
     else:
         return panic("library fixture cwd changed")
 resolution	1	8	7	unknown standard module @std/faults.ms
-resolution	2	8	42	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	2	8	42	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	5	29	149	unknown binding panic; add: import panic from "@std/core.ms"
 resolution	6	19	186	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 resolution	7	39	286	unknown binding panic; add: import panic from "@std/core.ms"
@@ -5811,7 +5854,8 @@ test "selected=a=b":
 
 test "unselected":
     write_line("unselected")
-type	28	5	679	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn f() Int:
+type	21	50	566	cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead
+type	28	5	679	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn f() Int:
     return 1
 let X = f()
 type	3	9	33	a constant takes literals, operators, collections, and other constants; compute this value in a functionfn f() Int:
@@ -5848,8 +5892,8 @@ export fn main() Int:
     let result = value.ok_or_else(crash)
     return 0
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	12	50	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	3	12	72	unknown binding TextError; add: import TextError from "@std/core.ms"import Closeable from "@std/cleanup.ms"
+resolution	2	12	50	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	3	12	72	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a moduleimport Closeable from "@std/cleanup.ms"
 type AggregateResource:
     visits: List[Int]
 impl Closeable for AggregateResource:
@@ -6009,7 +6053,7 @@ export fn now() Instant:
 
 export fn close_output() Unit:
     stdout().close()
-resolution	2	8	42	module does not export clock; @std/os/time.ms exports: Calendar, Duration, Instant, TimeError, Timestamp, from_calendar, hours, local_zone, microseconds, milliseconds, minutes, monotonic, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/time.ms"'
+resolution	2	8	42	module does not export clock; @std/os/time.ms exports: Calendar, Duration, Instant, Timestamp, from_calendar, hours, local_zone, microseconds, milliseconds, minutes, monotonic, nanoseconds, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/time.ms"'
 resolution	6	12	146	unknown binding clock; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"fn private_value() Int:
     return 7
 export fn defaulted(value: Int = private_value()) Int:
@@ -6047,9 +6091,9 @@ fn chain(n: Int) Result[Int, TextError]:
 export fn main() Int:
     return chain(9223372036854775807).get()
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	32	70	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	6	30	190	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	4	22	117	unknown binding TextError; add: import TextError from "@std/core.ms"interface Counter:
+resolution	2	32	70	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	6	30	190	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	4	22	117	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a moduleinterface Counter:
     fn bump(by: Int) Int
 type Cell:
     total: Int
@@ -6097,31 +6141,31 @@ fn deep(value: Result[Int, TextError]) Int:
 export fn main() Int:
     return deep(error(TextError("expected failure")))
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	28	66	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	5	23	150	unknown binding TextError; add: import TextError from "@std/core.ms"import TextError from "@std/errors.ms"
+resolution	2	28	66	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	5	23	150	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a moduleimport TextError from "@std/errors.ms"
 export fn main() Int:
     let value: Result[Int, TextError] = ok(0)
     let extract = value.err
     return extract().text.scalar_length()
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	3	28	88	unknown type TextError; add: import TextError from "@std/core.ms"import TextError from "@std/errors.ms"
+resolution	3	28	88	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import itimport TextError from "@std/errors.ms"
 fn crash(value: Int) Int:
     return 1 / value
 export fn main() Int:
     let value: Result[Int, TextError] = ok(0)
     return value.map(crash).get()
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	5	28	135	unknown type TextError; add: import TextError from "@std/core.ms"import TextError from "@std/errors.ms"
+resolution	5	28	135	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import itimport TextError from "@std/errors.ms"
 fn crash(cause: TextError) Int:
     return 1 / 0
 export fn main() Int:
     let value: Result[Int, TextError] = error(TextError("expected failure"))
     return value.or_else(crash)
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	17	55	unknown type TextError; add: import TextError from "@std/core.ms"
+resolution	2	17	55	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 type	3	14	84	division by zero always faults; guard the divisor or use a nonzero constant
-resolution	5	28	137	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	5	47	156	unknown binding TextError; add: import TextError from "@std/core.ms"fn crash(key: String, value: Int) Bool:
+resolution	5	28	137	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	5	47	156	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a modulefn crash(key: String, value: Int) Bool:
     return 1 / value == 0
 export fn main() Int:
     let value: Map[String, Int] = {"a": 0}
@@ -6203,8 +6247,11 @@ export fn main() Int:
     if fs.rename(source: "sentinel", destination: "") != invalid: return 6
     if fs.remove(path: "child", recursive: true).is_error(): return 7
     return 0
-resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
-resolution	4	14	92	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"type Counter:
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	1	20	19	module does not export FileSystemError; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	4	14	92	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
+resolution	5	31	135	unknown type FileSystemError; declare it with 'type FileSystemError:' / 'interface FileSystemError:', declare it as a type parameter, or import it
+resolution	5	56	160	unknown binding FileSystemError; declare it with 'let FileSystemError = ...' before use, define 'fn FileSystemError(...) T:', or import it from a moduletype Counter:
     value: Int
 
 impl Counter:
@@ -6492,7 +6539,9 @@ export fn main() Int:
             return 2
 
 resolution	1	8	7	module does not export files; did you mean 'File'?
-resolution	8	18	188	unknown binding files; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"test %q:
+resolution	3	8	74	module does not export IoError; @std/io/io.ms exports: EraseRegion, File, LineReader, NativeRawTerminal, RawTerminal, ReadStream, StdStream, TerminalCapabilities, TerminalEvent, TerminalSize, WriteStream, copy, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/io/io.ms"'
+resolution	8	18	188	unknown binding files; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
+type	36	5	818	match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/elsetest %q:
     let minimum = nanoseconds(-9223372036854775808)
     let maximum = nanoseconds(9223372036854775807)
     let divide = minimum.divide
@@ -6604,7 +6653,7 @@ test "fixture next to the manifest":
                 return fail("wrong fixture size")
         error(_):
             return fail("fixture not found")
-resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemError, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	5	11	137	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"import TestHooks, expect_equal, fail, skip from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 import panic from "@std/faults.ms"

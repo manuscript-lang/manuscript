@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/html.ms
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
-import escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError from "@std/data/html.ms"
+import escape, parse, HtmlNode, HtmlAttribute, HtmlLimits from "@std/data/html.ms"
 
 fn children(node: HtmlNode) List[HtmlNode]:
     match node:
@@ -131,11 +131,11 @@ test "HTML honors optional byte depth and node limits":
     try expect_equal((try parse("", HtmlLimits(0, 2, 4))), empty)
     try expect_equal((try parse("é", HtmlLimits())), (try parse("é")))
 
-    let limited: HtmlNode!HtmlError = error(HtmlError.LimitExceeded)
+    let limited: HtmlNode! = error(Error("HTML: limit exceeded", kind: ErrorCategory.LimitExceeded))
     try expect_equal(parse("é", HtmlLimits(1)), limited)
     try expect_equal(parse("", HtmlLimits(max_depth: 1)), limited)
     try expect_equal(parse("", HtmlLimits(max_nodes: 3)), limited)
 
-    let invalid: HtmlNode!HtmlError = error(HtmlError.InvalidInput)
+    let invalid: HtmlNode! = error(Error("HTML: invalid input", kind: ErrorCategory.InvalidInput))
     try expect_equal(parse("", HtmlLimits(max_nodes: -1)), invalid)
-    try expect_not_equal(HtmlError.InvalidData.message(), "")
+    try expect_not_equal(Error("HTML: invalid data", kind: ErrorCategory.InvalidData).message, "")

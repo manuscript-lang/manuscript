@@ -40,8 +40,6 @@ pub enum JobKind {
     FnAdapt(Rc<FnAdaptJob>),
     /// A JSON decoder or encoder of a type.
     Json(Rc<crate::json::JsonJob>),
-    /// The shared category of a standard error value.
-    Category(MTy),
     /// A copy of an HTML parse tree into `HtmlNode`.
     Html(Rc<crate::html::HtmlJob>),
     /// A forwarder of an interface operation to a runtime handle function.

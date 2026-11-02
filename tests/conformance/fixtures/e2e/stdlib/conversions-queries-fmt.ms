@@ -1,7 +1,6 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interfaces,lists,maps,match,modules,optional,parser,records,sets,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/conversions-queries.ms
-import TextError from "@std/core.ms"
 import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
 
 type Counter:
@@ -41,12 +40,12 @@ fn locate[K: Hashable, V: Clonable](
 test "conversions and collection queries are callable":
     let present: Int? = 2
     let missing: Int? = none
-    present.ok_or(TextError("absent")).get() | try expect_equal(2)
+    present.ok_or(Error("absent")).get() | try expect_equal(2)
     try expect_equal(
-        missing.ok_or_else(fn: TextError("absent")).err().message(), "absent"
+        missing.ok_or_else(fn: Error("absent")).err().message, "absent"
     )
 
-    let failed: Int!TextError = error(TextError("failed"))
+    let failed: Int!Error = error(Error("failed"))
     (failed.to_optional().is_none()) | try expect_true
 
     let entries: Map[String, Int] = {"b": 2, "a": 1}
@@ -92,26 +91,26 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     let failure: Counter!Pending = error(Pending([1, 2]))
     (success_only(failure).is_none()) | try expect_true
 
-    let success: Counter!TextError = ok(counter.clone())
+    let success: Counter!Error = ok(counter.clone())
     let extract = success.to_optional
     var extracted = extract().get().clone()
     extracted.calls = 7
     counter.calls | try expect_equal(1)
 
     let nested: Int?? = none
-    let converted = nested.ok_or(TextError("absent"))
+    let converted = nested.ok_or(Error("absent"))
     (not (converted.is_ok()) or not (converted.to_optional().get().is_none())) | try expect_false
 
     let false_value: Bool? = false
-    false_value.ok_or(TextError("absent")).to_optional().get() | try expect_false
+    false_value.ok_or(Error("absent")).to_optional().get() | try expect_false
 
     let unit_value: Unit? = unit
-    (unit_value.ok_or(TextError("absent")).to_optional().is_some()) | try expect_true
+    (unit_value.ok_or(Error("absent")).to_optional().is_some()) | try expect_true
 
-    let nested_result: Int!TextError? = error(TextError("nested"))
+    let nested_result: Int!Error? = error(Error("nested"))
     nested_result.ok_or(
-        TextError("absent")
-    ).to_optional().get().err().message() | try expect_equal("nested")
+        Error("absent")
+    ).to_optional().get().err().message | try expect_equal("nested")
 
 test "Map fold uses ordered snapshots and returns independent accumulators":
     var empty_calls: List[Int] = []
@@ -514,18 +513,17 @@ fn find_port(port: Int?) Int!:
 
 test "ok_or without a cause records the calling file and line":
     let absent: Int? = none
-    let direct: Int!MissingValue = absent.ok_or()
-    (direct.err().message().contains("conversions-queries.ms:")) | try expect_true
+    let direct: Int! = absent.ok_or()
+    (direct.err().message.contains("conversions-queries.ms:")) | try expect_true
 
-    let message = find_port(none).err().message()
+    let message = find_port(none).err().message
     (message.starts_with("missing value at ")) | try expect_true
     find_port(8080).get() | try expect_equal(8080)
 
-    let named: Int!TextError = absent.ok_or(TextError("port"))
-    named.err().message() | try expect_equal("port")
+    let named: Int!Error = absent.ok_or(Error("port"))
+    named.err().message | try expect_equal("port")
 
     let missing_port = find_port(none)
 
-    match missing_port.err():
-        MissingValue(found): unit
-        _: return fail("default cause is not MissingValue")
+    if missing_port.err().kind != ErrorCategory.NotFound:
+        return fail("default cause is not a NotFound Error")

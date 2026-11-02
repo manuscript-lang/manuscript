@@ -1,17 +1,17 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-processes,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import Channel, ChannelError from "@std/io/channels.ms"
+import Channel from "@std/io/channels.ms"
 import panic from "@std/core.ms"
 import read_line, stderr, stdin, stdout from "@std/io/io.ms"
 import Stdio from "@std/os/process.ms"
-import ProcessError, ProcessGroup from "@std/os/processes.ms"
+import ProcessGroup from "@std/os/processes.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 type Job:
     name: String
     sizes: List[Int]
 
-fn square_all(ch: Channel[Int, Int]) Int!ChannelError:
+fn square_all(ch: Channel[Int, Int]) Int!:
     var c = ch
     var count = 0
 
@@ -79,7 +79,7 @@ fn report(ch: Channel[Int, Unit]) Int:
     return 3
 
 test "a child process answers each message in order":
-    let group = ProcessGroup[Int!ChannelError, Int, Int]()
+    let group = ProcessGroup[Int!, Int, Int]()
     var child = group.spawn(square_all) | try expect_ok
 
     for n in [1, 2, 3]:
@@ -146,7 +146,9 @@ test "a Unit result crosses":
 test "a child that faults is data, not a parent fault":
     let group = ProcessGroup[Unit]()
     var child = group.spawn(crash, stderr: Stdio.Null) | try expect_ok
-    child.result() | try expect_error | try expect_equal(ProcessError.Exited(67))
+    child.result() | try expect_error | try expect_equal(
+        Error("process: exited with status 67", kind: ErrorCategory.Failed, details: {"status": "67"})
+    )
 
     let _refused = child.channel.send(unit) | try expect_error
 
@@ -174,8 +176,10 @@ test "a stream that is not piped is closed":
 
 test "process errors describe themselves":
     try expect_equal(
-        ProcessError.Exited(67).message(), "process: exited with status 67"
+        Error("process: exited with status 67", kind: ErrorCategory.Failed).message,
+        "process: exited with status 67"
     )
     try expect_equal(
-        ProcessError.Broken("bad frame").message(), "process: broken: bad frame"
+        Error("process: broken: bad frame", kind: ErrorCategory.Closed).message,
+        "process: broken: bad frame"
     )

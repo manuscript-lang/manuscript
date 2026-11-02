@@ -21,7 +21,7 @@
         },
         {
           "index": 2,
-          "name": "standalone-try.ms::standalone try preserves concrete errors at Error boundaries",
+          "name": "standalone-try.ms::standalone try converts errors explicitly at Error boundaries",
           "status": "passed"
         },
         {
@@ -40,7 +40,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN standalone-try.ms::standalone try evaluates once and continues on Unit success\nPASS standalone-try.ms::standalone try evaluates once and continues on Unit success\nRUN standalone-try.ms::standalone try propagates and cleans up before returning\nPASS standalone-try.ms::standalone try propagates and cleans up before returning\nRUN standalone-try.ms::standalone try preserves concrete errors at Error boundaries\nPASS standalone-try.ms::standalone try preserves concrete errors at Error boundaries\nRUN standalone-try.ms::standalone try in closure returns from that closure\nPASS standalone-try.ms::standalone try in closure returns from that closure\n4 tests, 0 failed\n",
+      "stdout": "RUN standalone-try.ms::standalone try evaluates once and continues on Unit success\nPASS standalone-try.ms::standalone try evaluates once and continues on Unit success\nRUN standalone-try.ms::standalone try propagates and cleans up before returning\nPASS standalone-try.ms::standalone try propagates and cleans up before returning\nRUN standalone-try.ms::standalone try converts errors explicitly at Error boundaries\nPASS standalone-try.ms::standalone try converts errors explicitly at Error boundaries\nRUN standalone-try.ms::standalone try in closure returns from that closure\nPASS standalone-try.ms::standalone try in closure returns from that closure\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

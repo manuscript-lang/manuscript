@@ -9,22 +9,6 @@ import (
     msstd_compress_decompress
 ) from "@std/internal/archive.ms"
 
-# Errors returned when an archive cannot be read or written.
-export type ArchiveError:
-    # A format argument's entry paths, directory payloads or supplied output/unpack limits are invalid.
-    case InvalidInput
-    # Archive bytes, duplicate or file/directory-conflicting paths, extracted entry paths or encoded metadata are invalid.
-    case InvalidData
-    # Encoded bytes, entry count or unpacked per-entry/total bytes exceed a supplied budget.
-    case LimitExceeded
-    # The selected format or an encountered entry kind is unsupported, such as links or special files.
-    case Unsupported
-    # An explicit implementation-supplied archive diagnostic; native validation uses specific cases.
-    case Failed(
-        # Original diagnostic text, returned unchanged by message().
-        message: String
-    )
-
 # One file or directory in an archive. Paths use forward slashes.
 export type ArchiveEntry:
     # Relative forward-slash path; pack/unpack reject traversal, absolute paths and duplicate normalized names. Unpack returns directory paths without a trailing slash.
@@ -44,11 +28,7 @@ export type ArchiveLimits:
     max_total_bytes: Int?
 
 # Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return Unsupported. `max_bytes` bounds output when supplied.
-export fn pack(
-    entries: List[ArchiveEntry],
-    format: String,
-    max_bytes: Int?
-) Bytes!ArchiveError:
+export fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int?) Bytes!:
     return msstd_archive_pack(entries, format, max_bytes)
 
 # Decodes exactly `zip` or `tar` (case-sensitive); other formats return Unsupported.
@@ -57,18 +37,8 @@ export fn unpack(
     data: Bytes,
     format: String,
     limits: ArchiveLimits?
-) List[ArchiveEntry]!ArchiveError:
+) List[ArchiveEntry]!:
     return msstd_archive_unpack(data, format, limits)
-
-impl Error for ArchiveError:
-    # Returns original Failed text, or an archive-prefixed diagnostic for other cases.
-    fn message() String:
-        match self:
-            InvalidInput: return "archive: invalid input"
-            InvalidData: return "archive: invalid data"
-            LimitExceeded: return "archive: limit exceeded"
-            Unsupported: return "archive: operation not supported"
-            Failed(message): return message.clone()
 
 # Selects a supported archive format without a runtime string spelling check.
 # Existing pack/unpack format: String calls remain available.
@@ -85,59 +55,24 @@ fn archive_format_name(format: ArchiveFormat) String:
 
 impl ArchiveFormat:
     # Packs entries with the same optional output budget and path validation as pack.
-    fn pack(entries: List[ArchiveEntry], max_bytes: Int?) Bytes!ArchiveError:
+    fn pack(entries: List[ArchiveEntry], max_bytes: Int?) Bytes!:
         return pack(entries, archive_format_name(self), max_bytes)
 
     # Unpacks in memory with the same entry/byte limits and domain errors as unpack.
-    fn unpack(data: Bytes, limits: ArchiveLimits?) List[ArchiveEntry]!ArchiveError:
+    fn unpack(data: Bytes, limits: ArchiveLimits?) List[ArchiveEntry]!:
         return unpack(data, archive_format_name(self), limits)
-
-# Errors returned when compressed data is unsupported, invalid, or exceeds a limit.
-export type CompressionError:
-    # Compression level is outside 0..9, or a supplied encoded/decoded byte budget is negative.
-    case InvalidInput
-    # Compressed framing, checksum, payload or trailing data is invalid for the chosen format.
-    case InvalidData
-    # Encoded or decompressed output exceeds the supplied byte budget.
-    case LimitExceeded
-    # A String selector is not exactly gzip, zlib or deflate; typed selectors avoid spelling errors.
-    case Unsupported
-    # An explicit implementation-supplied compression diagnostic; native codecs use specific cases.
-    case Failed(
-        # Original diagnostic text, returned unchanged by message().
-        message: String
-    )
 
 # Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).
 # Other formats return Unsupported; level defaults to 6 (balanced DEFLATE compression).
 # Explicit levels must be 0..9 (0 stores data), else InvalidInput.
 # `max_bytes` bounds the encoded output when supplied.
-export fn compress(
-    data: Bytes,
-    format: String,
-    level: Int = 6,
-    max_bytes: Int?
-) Bytes!CompressionError:
+export fn compress(data: Bytes, format: String, level: Int = 6, max_bytes: Int?) Bytes!:
     return msstd_compress_compress(data, format, level, max_bytes)
 
 # Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return Unsupported.
 # Stops when the supplied output limit is reached.
-export fn decompress(
-    data: Bytes,
-    format: String,
-    max_bytes: Int?
-) Bytes!CompressionError:
+export fn decompress(data: Bytes, format: String, max_bytes: Int?) Bytes!:
     return msstd_compress_decompress(data, format, max_bytes)
-
-impl Error for CompressionError:
-    # Returns original Failed text, or a compression-prefixed diagnostic for other cases.
-    fn message() String:
-        match self:
-            InvalidInput: return "compression: invalid input"
-            InvalidData: return "compression: invalid data"
-            LimitExceeded: return "compression: limit exceeded"
-            Unsupported: return "compression: operation not supported"
-            Failed(message): return message.clone()
 
 # Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.
 # Existing compress/decompress format: String calls remain available.
@@ -158,11 +93,11 @@ fn compression_format_name(format: CompressionFormat) String:
 impl CompressionFormat:
     # Compresses with level 6 by default; explicit levels remain 0..9 (0 stores data).
     # Uses the same optional output budget/domain errors as compress.
-    fn compress(data: Bytes, level: Int = 6, max_bytes: Int?) Bytes!CompressionError:
+    fn compress(data: Bytes, level: Int = 6, max_bytes: Int?) Bytes!:
         return compress(data, compression_format_name(self), level, max_bytes)
 
     # Decompresses with the same cumulative output limit and validation as decompress.
-    fn decompress(data: Bytes, max_bytes: Int?) Bytes!CompressionError:
+    fn decompress(data: Bytes, max_bytes: Int?) Bytes!:
         return decompress(data, compression_format_name(self), max_bytes)
 
     # Returns a stream of this format's compressed bytes, reading `input` chunk by chunk.

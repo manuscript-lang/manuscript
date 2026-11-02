@@ -1,6 +1,6 @@
 # Validates every string/list sample before reducing to per-case minima (bench/perf/strappend).
 # Samples are whitespace-separated: `<trial> <version> <case> <elapsed> # <checksum>`.
-import Invalid, invalid, left, right from "./lib.ms"
+import invalid, left, right from "./lib.ms"
 
 export fn case_names() List[String]:
     var names = List[String]()
@@ -17,7 +17,7 @@ export fn checksum(name: String) Int:
 
     return 40 * name.slice(4, name.length()).get("0").parse_int().get(0)
 
-export fn summarize(lines: List[String], repeats: Int) Result[String, Invalid]:
+export fn summarize(lines: List[String], repeats: Int) String!:
     if repeats < 1: return invalid("repeats must be positive")
 
     let names = case_names()

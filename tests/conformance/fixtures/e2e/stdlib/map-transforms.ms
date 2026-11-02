@@ -1,7 +1,6 @@
 # conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,lists,maps,match,modules,optional,records,sets,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/map-transforms.ms
-import TextError from "@std/core.ms"
 import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
 type Counter:
@@ -125,8 +124,8 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
     let map = values.clone().map[Int?]
     try expect_true((map(fn k, v: none).get("a").get().is_none()))
 
-    let nested = values.map(fn k, v: Result[Int, TextError].error(TextError("nested")))
-    nested.get("a").get().err().message() | try expect_equal("nested")
+    let nested = values.map(fn k, v: Result[Int, Error].error(Error("nested")))
+    nested.get("a").get().err().message | try expect_equal("nested")
 
 test "empty transformations skip callbacks and allocate independent storage":
     var empty_calls: List[Int] = []

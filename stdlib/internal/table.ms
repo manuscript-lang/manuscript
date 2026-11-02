@@ -1,4 +1,4 @@
-import Alignment, TableError from "@std/io/table.ms"
+import Alignment from "@std/io/table.ms"
 
 export extern fn msstd_table_format(
     rows: List[List[String]],
@@ -7,4 +7,4 @@ export extern fn msstd_table_format(
     max_rows: Int?,
     max_cells: Int?,
     max_bytes: Int?
-) String!TableError
+) String!

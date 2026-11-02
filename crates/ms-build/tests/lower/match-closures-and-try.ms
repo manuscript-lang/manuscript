@@ -2,8 +2,6 @@
 # expect-mir: "switch"
 # expect-mir: "closure.new"
 
-import TextError from "@std/core.ms"
-
 type Shape:
     case Circle(radius: Int)
     case Dot
@@ -13,15 +11,15 @@ fn area(s: Shape) Int:
         Shape.Circle(r): r * r
         _: 0
 
-fn first(xs: List[Int]) Result[Int, TextError]:
+fn first(xs: List[Int]) Result[Int, Error]:
     let n = try parse(xs.length())
     return ok(n)
 
-fn parse(n: Int) Result[Int, TextError]:
+fn parse(n: Int) Result[Int, Error]:
     if n > 0:
         return ok(n)
 
-    return error(TextError(text: "empty"))
+    return error(Error(message: "empty"))
 
 export fn main() Int:
     let doubled = [1, 2, 3].map(fn(x) Int: x * 2)

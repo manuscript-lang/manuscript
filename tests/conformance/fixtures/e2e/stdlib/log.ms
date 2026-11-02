@@ -5,7 +5,6 @@ import expect_equal, expect_error, expect_false from "@std/test/test.ms"
 import (
     Transport,
     LogLevel,
-    LogError,
     create,
     record,
     bind,
@@ -13,9 +12,9 @@ import (
     stdout_transport,
     file_transport
 ) from "@std/log.ms"
-import WriteStream, IoError from "@std/io/io.ms"
+import WriteStream from "@std/io/io.ms"
 import JsonValue from "@std/data/json.ms"
-import FileSystemError, read_file, temporary from "@std/os/fs.ms"
+import read_file, temporary from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 import MemoryStream from "./support/streams.ms"
 
@@ -88,7 +87,7 @@ test "levels filter methods and function values":
     try logger.fatal("filtered")
     try expect_equal(output.data, before)
 
-    let invalid: Unit!LogError = error(LogError.InvalidInput)
+    let invalid: Unit! = error(Error("logging: invalid input", kind: ErrorCategory.InvalidInput))
     try expect_equal(logger.log(LogLevel.Silent, "invalid"), invalid)
 
 type Service:
@@ -122,7 +121,7 @@ test "limits and unencodable values reject before writing":
     try expect_equal(output.data.decode_utf8(), line)
 
     let before = output.data.clone()
-    let limited: Unit!LogError = error(LogError.LimitExceeded)
+    let limited: Unit! = error(Error("logging: limit exceeded", kind: ErrorCategory.LimitExceeded))
     try expect_equal(logger.info("xx"), limited)
 
     let zero = try create(transport, timestamp: false, max_bytes: 0)
@@ -131,13 +130,13 @@ test "limits and unencodable values reject before writing":
         (
             (
                 try expect_error(create(transport, max_bytes: -1))
-            ) != LogError.InvalidInput
+            ) != Error("logging: invalid input", kind: ErrorCategory.InvalidInput)
         )
     )
 
     let unlimited = try create(transport, timestamp: false)
     let bad = JsonValue.NumberValue("NaN")
-    let invalid_data: Unit!LogError = error(LogError.InvalidData)
+    let invalid_data: Unit! = error(Error("logging: invalid data", kind: ErrorCategory.InvalidData))
     try expect_equal(record(unlimited, LogLevel.Info, "bad", bad), invalid_data)
     try expect_equal(output.data, before)
 
@@ -147,13 +146,13 @@ test "transport closure and stream errors preserve identity":
     let logger = try create(transport)
     output.closed = true
 
-    let io_closed: Unit!LogError = error(LogError.Io(IoError.Closed))
+    let io_closed: Unit! = error(Error("I/O: resource is closed", kind: ErrorCategory.Closed))
     try expect_equal(logger.info("closed"), io_closed)
     try expect_equal(logger.flush(), io_closed)
     transport.close()
     transport.close()
 
-    let closed: Unit!LogError = error(LogError.Closed)
+    let closed: Unit! = error(Error("logging: resource is closed", kind: ErrorCategory.Closed))
     try expect_equal(logger.info("closed"), closed)
     try expect_equal(logger.flush(), closed)
 
@@ -185,7 +184,7 @@ test "file transport appends and flushes with scoped cleanup":
                         "{directory.path()}/missing/events.ndjson"
                     )
                 )
-            ) != LogError.FileSystem(FileSystemError.NotFound)
+            ) != Error("filesystem: file or directory not found", kind: ErrorCategory.NotFound)
         )
     )
 
@@ -199,17 +198,17 @@ type CaptureTransport:
     output: MemoryStream
 
 impl Transport for CaptureTransport:
-    var fn write(data: String) Unit!LogError:
+    var fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
-    var fn write_bytes(data: Bytes) Unit!LogError:
-        if self.output.closed: return error(LogError.Closed)
+    var fn write_bytes(data: Bytes) Unit!:
+        if self.output.closed: return error(Error("logging: resource is closed", kind: ErrorCategory.Closed))
 
         self.output.data = self.output.data.concat(data)
         return ok(unit)
 
-    fn flush() Unit!LogError:
-        if self.output.closed: return error(LogError.Closed)
+    fn flush() Unit!:
+        if self.output.closed: return error(Error("logging: resource is closed", kind: ErrorCategory.Closed))
 
         return ok(unit)
 
@@ -234,7 +233,7 @@ test "log_json and child_json accept only JSON objects":
     let output = MemoryStream("".to_bytes(), 0, closed: false)
     let transport = stream_transport(WriteStream(output))
     let logger = try create(transport, timestamp: false)
-    let invalid: Unit!LogError = error(LogError.InvalidData)
+    let invalid: Unit! = error(Error("logging: invalid data", kind: ErrorCategory.InvalidData))
 
     for text in ["[1]", "5", "null", "\"s\"", "nope"]:
         try expect_equal(logger.log_json(LogLevel.Info, "m", text), invalid)

@@ -1,5 +1,5 @@
 import expect_equal from "@std/test/test.ms"
-import Duration, TimeError, parse_duration, nanoseconds from "@std/os/time.ms"
+import Duration, parse_duration, nanoseconds from "@std/os/time.ms"
 
 test "duration parser accepts units, signs, components and Unicode microseconds":
     let examples = [
@@ -73,7 +73,9 @@ test "duration parser round trips formatter branches and signed extrema":
     )
 
 test "duration overflow is an expected range error":
-    let invalid: Duration!TimeError = error(TimeError.OutOfRange)
+    let invalid: Duration! = error(
+        Error("time: value out of range", kind: ErrorCategory.OutOfRange)
+    )
     for text in [
         "9223372036854775808ns", "-9223372036854775809ns", "9223372036.854775808s",
         "-9223372036.854775809s", "2562047h47m16.854775808s",
@@ -84,7 +86,9 @@ test "duration overflow is an expected range error":
         try expect_equal(parse_duration(text), invalid)
 
 test "duration parser rejects malformed input and gives syntax errors precedence":
-    let invalid: Duration!TimeError = error(TimeError.InvalidData)
+    let invalid: Duration! = error(
+        Error("time: invalid data", kind: ErrorCategory.InvalidData)
+    )
     for text in [
         "", "+", "-", ".", ".s", "00", "1", "0.0", "1d", "1S", "1e3s", "1_000s", "--1s",
         "1s-2s", "1s+2s", "1..0s", "1.2.3s", "1s.", "1msx", "ns", "1u", "1µ", "1μ",
@@ -102,11 +106,15 @@ test "duration parsing stays exact for long leading zeros and fractions":
     try expect_equal(parse_duration("1.{zeros}1s"), ok(nanoseconds(1000000000)))
     try expect_equal(parse_duration("0.{zeros}1h"), ok(nanoseconds(0)))
 
-    let invalid: Duration!TimeError = error(TimeError.InvalidData)
+    let invalid: Duration! = error(
+        Error("time: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(parse_duration("0.{zeros}1h!"), invalid)
 
     let nines = try "9".repeat(10000)
     try expect_equal(parse_duration("{nines}ns!"), invalid)
 
-    let overflow: Duration!TimeError = error(TimeError.OutOfRange)
+    let overflow: Duration! = error(
+        Error("time: value out of range", kind: ErrorCategory.OutOfRange)
+    )
     try expect_equal(parse_duration("{nines}ns"), overflow)

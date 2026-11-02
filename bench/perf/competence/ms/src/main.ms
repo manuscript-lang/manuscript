@@ -36,10 +36,6 @@ type Item:
 type Fail:
     code: Int
 
-impl Error for Fail:
-    fn message() String:
-        return "fail"
-
 type P:
     x: Int
     y: Int

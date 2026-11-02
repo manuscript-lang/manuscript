@@ -29,7 +29,7 @@ export fn main() Int:
 ms run hello.ms
 ```
 
-There is no built-in `print`. `try` propagates I/O errors; `main` returns 1 on failure. Later recipes print no diagnostics; to add one, use `cause.message()` ([error boundary](../core-language/errors/results.md#a-common-error-boundary)).
+There is no built-in `print`. `try` propagates I/O errors; `main` returns 1 on failure. Later recipes print no diagnostics; to add one, use `cause.message` ([error boundary](../core-language/errors/results.md#a-common-error-boundary)).
 
 ## Read command-line arguments
 
@@ -98,13 +98,13 @@ Save as `read.ms`. `decode_utf8()` returns `none` for invalid UTF-8.
 <!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
-import FileSystemError, read_file, write_file from "@std/os/fs.ms"
+import read_file, write_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
-    let path = try arguments().first().ok_or(FileSystemError.InvalidInput)
+    let path = try arguments().first().ok_or(Error("missing path", kind: ErrorCategory.InvalidInput))
     let text = try read_file(path, max_bytes: 1048576)
-        | .decode_utf8().ok_or(FileSystemError.InvalidData)
+        | .decode_utf8().ok_or(Error("not UTF-8", kind: ErrorCategory.InvalidData))
         | try
     try stdout().write(text)
     return stdout().flush()
@@ -129,10 +129,10 @@ Save as `write.ms`. `replace: false` fails if the file exists.
 <!-- manuscript-example: {"mode":"run","args":["saved.txt"],"want_files":{"saved.txt":"saved notes\n"},"cases":[{"args":["saved.txt"],"files":{"saved.txt":"keep me"},"want_files":{"saved.txt":"keep me"},"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
-import FileSystemError, read_file, write_file from "@std/os/fs.ms"
+import read_file, write_file from "@std/os/fs.ms"
 
 fn run() Result[Unit, Error]:
-    let path = try arguments().first().ok_or(FileSystemError.InvalidInput)
+    let path = try arguments().first().ok_or(Error("missing path", kind: ErrorCategory.InvalidInput))
     return write_file(path, "saved notes\n", replace: false)
 
 export fn main() Int:
@@ -174,7 +174,7 @@ export fn main() Int:
 printf 'line one\n\nlast line' | ms run lines.ms
 ```
 
-An empty line is `""`, and the loop ends at end of input. Line endings are stripped, and the limit applies per line. A read failure or a line over the limit also ends the loop; `error()` is `none` after a clean end. For one line at a time on demand, `read_line` returns `Result[String?, IoError]`.
+An empty line is `""`, and the loop ends at end of input. Line endings are stripped, and the limit applies per line. A read failure or a line over the limit also ends the loop; `error()` is `none` after a clean end. For one line at a time on demand, `read_line` returns `Result[String?, Error]`.
 
 ## Parse an integer
 
@@ -274,11 +274,10 @@ Save as `get.ms`. `fetch` buffers the body, `check_status()` rejects statuses ou
 ```manuscript
 import arguments from "@std/os/process.ms"
 import fetch, FetchOptions from "@std/net/fetch.ms"
-import HttpError from "@std/net/http.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
-    let url = try arguments().first().ok_or(HttpError.InvalidInput)
+    let url = try arguments().first().ok_or(Error("missing URL", kind: ErrorCategory.InvalidInput))
     let response = try fetch(url, FetchOptions(max_response_bytes: 1048576))
     try response.check_status()
     let text = try response.text()

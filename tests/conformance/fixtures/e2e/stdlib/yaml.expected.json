@@ -56,136 +56,111 @@
         },
         {
           "index": 9,
-          "name": "yaml.ms::YAML block mappings sequences exact scalars and core schema",
-          "status": "passed"
-        },
-        {
-          "index": 10,
-          "name": "yaml.ms::YAML flow collections quotes escapes comments and multiline values",
-          "status": "passed"
-        },
-        {
-          "index": 11,
-          "name": "yaml.ms::YAML literal folded and chomped block scalars preserve content",
-          "status": "passed"
-        },
-        {
-          "index": 12,
-          "name": "yaml.ms::YAML anchors aliases merge keys and override precedence",
-          "status": "passed"
-        },
-        {
-          "index": 13,
-          "name": "yaml.ms::YAML documents BOM CRLF empty input and version directive",
-          "status": "passed"
-        },
-        {
-          "index": 14,
           "name": "yaml.ms::YAML rejects duplicates invalid indentation malformed flow and aliases",
           "status": "passed"
         },
         {
-          "index": 15,
+          "index": 10,
           "name": "yaml.ms::YAML limits cover root nested nodes aliases and exact bytes",
           "status": "passed"
         },
         {
-          "index": 16,
+          "index": 11,
           "name": "yaml.ms::YAML exact decimal syntax does not depend on binary64 conversion",
           "status": "passed"
         },
         {
-          "index": 17,
+          "index": 12,
           "name": "yaml.ms::YAML merge and block header errors name their own line",
           "status": "passed"
         },
         {
-          "index": 18,
+          "index": 13,
           "name": "yaml.ms::YAML limits fields default to none",
           "status": "passed"
         },
         {
-          "index": 19,
+          "index": 14,
           "name": "yaml.ms::YAML stringify round trips scalars sequences and mappings",
           "status": "passed"
         },
         {
-          "index": 20,
+          "index": 15,
           "name": "yaml.ms::YAML stringify validates numbers and honors max_bytes",
           "status": "passed"
         },
         {
-          "index": 21,
+          "index": 16,
           "name": "yaml.ms::YAML scalars and anchors on their own line continue at the same indentation",
           "status": "passed"
         },
         {
-          "index": 22,
+          "index": 17,
           "name": "yaml.ms::YAML quoted merge key is an ordinary string key",
           "status": "passed"
         },
         {
-          "index": 23,
+          "index": 18,
           "name": "yaml.ms::YAML plain scalars continued inside flow collections fold their line breaks",
           "status": "passed"
         },
         {
-          "index": 24,
+          "index": 19,
           "name": "yaml.ms::YAML document start marker accepts same-line content",
           "status": "passed"
         },
         {
-          "index": 25,
+          "index": 20,
           "name": "yaml.ms::YAML compact mapping after a sequence marker follows the marker's spacing",
           "status": "passed"
         },
         {
-          "index": 26,
+          "index": 21,
           "name": "yaml.ms::YAML long plain scalars and large mappings parse in linear time",
           "status": "passed"
         },
         {
-          "index": 27,
+          "index": 22,
           "name": "yaml.ms::YAML flow mapping keys without a colon map to null",
           "status": "passed"
         },
         {
-          "index": 28,
+          "index": 23,
           "name": "yaml.ms::YAML long quoted block and multi-line scalars decode and stringify in linear time",
           "status": "passed"
         },
         {
-          "index": 29,
+          "index": 24,
           "name": "yaml.ms::YAML block scalar chomping counts every trailing line break",
           "status": "passed"
         },
         {
-          "index": 30,
+          "index": 25,
           "name": "yaml.ms::YAML compact nested sequences resume each level and parse deep chains in linear time",
           "status": "passed"
         },
         {
-          "index": 31,
+          "index": 26,
           "name": "yaml.ms::YAML stringify escapes C1 control characters so output reparses",
           "status": "passed"
         },
         {
-          "index": 32,
+          "index": 27,
           "name": "yaml.ms::YAML parse without limits stops alias bombs and deep nesting",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 33,
-        "selected": 33,
-        "passed": 33,
+        "available": 28,
+        "selected": 28,
+        "passed": 28,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN yaml.ms::YAML issue 133 folded paragraph\nPASS yaml.ms::YAML issue 133 folded paragraph\nRUN yaml.ms::YAML issue 133 folded multiple blank lines\nPASS yaml.ms::YAML issue 133 folded multiple blank lines\nRUN yaml.ms::YAML issue 133 single quoted paragraph\nPASS yaml.ms::YAML issue 133 single quoted paragraph\nRUN yaml.ms::YAML issue 133 double quoted paragraphs\nPASS yaml.ms::YAML issue 133 double quoted paragraphs\nRUN yaml.ms::YAML issue 133 plain paragraph before sibling\nPASS yaml.ms::YAML issue 133 plain paragraph before sibling\nRUN yaml.ms::YAML quoted folding trims physical whitespace and preserves escapes\nPASS yaml.ms::YAML quoted folding trims physical whitespace and preserves escapes\nRUN yaml.ms::YAML folded and literal blocks respect paragraphs indentation and chomping\nPASS yaml.ms::YAML folded and literal blocks respect paragraphs indentation and chomping\nRUN yaml.ms::YAML plain paragraphs retain boundaries and nested collections\nPASS yaml.ms::YAML plain paragraphs retain boundaries and nested collections\nRUN yaml.ms::YAML blank line folding retains byte node and malformed input contracts\nPASS yaml.ms::YAML blank line folding retains byte node and malformed input contracts\nRUN yaml.ms::YAML block mappings sequences exact scalars and core schema\nPASS yaml.ms::YAML block mappings sequences exact scalars and core schema\nRUN yaml.ms::YAML flow collections quotes escapes comments and multiline values\nPASS yaml.ms::YAML flow collections quotes escapes comments and multiline values\nRUN yaml.ms::YAML literal folded and chomped block scalars preserve content\nPASS yaml.ms::YAML literal folded and chomped block scalars preserve content\nRUN yaml.ms::YAML anchors aliases merge keys and override precedence\nPASS yaml.ms::YAML anchors aliases merge keys and override precedence\nRUN yaml.ms::YAML documents BOM CRLF empty input and version directive\nPASS yaml.ms::YAML documents BOM CRLF empty input and version directive\nRUN yaml.ms::YAML rejects duplicates invalid indentation malformed flow and aliases\nPASS yaml.ms::YAML rejects duplicates invalid indentation malformed flow and aliases\nRUN yaml.ms::YAML limits cover root nested nodes aliases and exact bytes\nPASS yaml.ms::YAML limits cover root nested nodes aliases and exact bytes\nRUN yaml.ms::YAML exact decimal syntax does not depend on binary64 conversion\nPASS yaml.ms::YAML exact decimal syntax does not depend on binary64 conversion\nRUN yaml.ms::YAML merge and block header errors name their own line\nPASS yaml.ms::YAML merge and block header errors name their own line\nRUN yaml.ms::YAML limits fields default to none\nPASS yaml.ms::YAML limits fields default to none\nRUN yaml.ms::YAML stringify round trips scalars sequences and mappings\nPASS yaml.ms::YAML stringify round trips scalars sequences and mappings\nRUN yaml.ms::YAML stringify validates numbers and honors max_bytes\nPASS yaml.ms::YAML stringify validates numbers and honors max_bytes\nRUN yaml.ms::YAML scalars and anchors on their own line continue at the same indentation\nPASS yaml.ms::YAML scalars and anchors on their own line continue at the same indentation\nRUN yaml.ms::YAML quoted merge key is an ordinary string key\nPASS yaml.ms::YAML quoted merge key is an ordinary string key\nRUN yaml.ms::YAML plain scalars continued inside flow collections fold their line breaks\nPASS yaml.ms::YAML plain scalars continued inside flow collections fold their line breaks\nRUN yaml.ms::YAML document start marker accepts same-line content\nPASS yaml.ms::YAML document start marker accepts same-line content\nRUN yaml.ms::YAML compact mapping after a sequence marker follows the marker's spacing\nPASS yaml.ms::YAML compact mapping after a sequence marker follows the marker's spacing\nRUN yaml.ms::YAML long plain scalars and large mappings parse in linear time\nPASS yaml.ms::YAML long plain scalars and large mappings parse in linear time\nRUN yaml.ms::YAML flow mapping keys without a colon map to null\nPASS yaml.ms::YAML flow mapping keys without a colon map to null\nRUN yaml.ms::YAML long quoted block and multi-line scalars decode and stringify in linear time\nPASS yaml.ms::YAML long quoted block and multi-line scalars decode and stringify in linear time\nRUN yaml.ms::YAML block scalar chomping counts every trailing line break\nPASS yaml.ms::YAML block scalar chomping counts every trailing line break\nRUN yaml.ms::YAML compact nested sequences resume each level and parse deep chains in linear time\nPASS yaml.ms::YAML compact nested sequences resume each level and parse deep chains in linear time\nRUN yaml.ms::YAML stringify escapes C1 control characters so output reparses\nPASS yaml.ms::YAML stringify escapes C1 control characters so output reparses\nRUN yaml.ms::YAML parse without limits stops alias bombs and deep nesting\nPASS yaml.ms::YAML parse without limits stops alias bombs and deep nesting\n33 tests, 0 failed\n",
+      "stdout": "RUN yaml.ms::YAML issue 133 folded paragraph\nPASS yaml.ms::YAML issue 133 folded paragraph\nRUN yaml.ms::YAML issue 133 folded multiple blank lines\nPASS yaml.ms::YAML issue 133 folded multiple blank lines\nRUN yaml.ms::YAML issue 133 single quoted paragraph\nPASS yaml.ms::YAML issue 133 single quoted paragraph\nRUN yaml.ms::YAML issue 133 double quoted paragraphs\nPASS yaml.ms::YAML issue 133 double quoted paragraphs\nRUN yaml.ms::YAML issue 133 plain paragraph before sibling\nPASS yaml.ms::YAML issue 133 plain paragraph before sibling\nRUN yaml.ms::YAML quoted folding trims physical whitespace and preserves escapes\nPASS yaml.ms::YAML quoted folding trims physical whitespace and preserves escapes\nRUN yaml.ms::YAML folded and literal blocks respect paragraphs indentation and chomping\nPASS yaml.ms::YAML folded and literal blocks respect paragraphs indentation and chomping\nRUN yaml.ms::YAML plain paragraphs retain boundaries and nested collections\nPASS yaml.ms::YAML plain paragraphs retain boundaries and nested collections\nRUN yaml.ms::YAML blank line folding retains byte node and malformed input contracts\nPASS yaml.ms::YAML blank line folding retains byte node and malformed input contracts\nRUN yaml.ms::YAML rejects duplicates invalid indentation malformed flow and aliases\nPASS yaml.ms::YAML rejects duplicates invalid indentation malformed flow and aliases\nRUN yaml.ms::YAML limits cover root nested nodes aliases and exact bytes\nPASS yaml.ms::YAML limits cover root nested nodes aliases and exact bytes\nRUN yaml.ms::YAML exact decimal syntax does not depend on binary64 conversion\nPASS yaml.ms::YAML exact decimal syntax does not depend on binary64 conversion\nRUN yaml.ms::YAML merge and block header errors name their own line\nPASS yaml.ms::YAML merge and block header errors name their own line\nRUN yaml.ms::YAML limits fields default to none\nPASS yaml.ms::YAML limits fields default to none\nRUN yaml.ms::YAML stringify round trips scalars sequences and mappings\nPASS yaml.ms::YAML stringify round trips scalars sequences and mappings\nRUN yaml.ms::YAML stringify validates numbers and honors max_bytes\nPASS yaml.ms::YAML stringify validates numbers and honors max_bytes\nRUN yaml.ms::YAML scalars and anchors on their own line continue at the same indentation\nPASS yaml.ms::YAML scalars and anchors on their own line continue at the same indentation\nRUN yaml.ms::YAML quoted merge key is an ordinary string key\nPASS yaml.ms::YAML quoted merge key is an ordinary string key\nRUN yaml.ms::YAML plain scalars continued inside flow collections fold their line breaks\nPASS yaml.ms::YAML plain scalars continued inside flow collections fold their line breaks\nRUN yaml.ms::YAML document start marker accepts same-line content\nPASS yaml.ms::YAML document start marker accepts same-line content\nRUN yaml.ms::YAML compact mapping after a sequence marker follows the marker's spacing\nPASS yaml.ms::YAML compact mapping after a sequence marker follows the marker's spacing\nRUN yaml.ms::YAML long plain scalars and large mappings parse in linear time\nPASS yaml.ms::YAML long plain scalars and large mappings parse in linear time\nRUN yaml.ms::YAML flow mapping keys without a colon map to null\nPASS yaml.ms::YAML flow mapping keys without a colon map to null\nRUN yaml.ms::YAML long quoted block and multi-line scalars decode and stringify in linear time\nPASS yaml.ms::YAML long quoted block and multi-line scalars decode and stringify in linear time\nRUN yaml.ms::YAML block scalar chomping counts every trailing line break\nPASS yaml.ms::YAML block scalar chomping counts every trailing line break\nRUN yaml.ms::YAML compact nested sequences resume each level and parse deep chains in linear time\nPASS yaml.ms::YAML compact nested sequences resume each level and parse deep chains in linear time\nRUN yaml.ms::YAML stringify escapes C1 control characters so output reparses\nPASS yaml.ms::YAML stringify escapes C1 control characters so output reparses\nRUN yaml.ms::YAML parse without limits stops alias bombs and deep nesting\nPASS yaml.ms::YAML parse without limits stops alias bombs and deep nesting\n28 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

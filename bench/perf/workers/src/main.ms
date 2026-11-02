@@ -1,4 +1,4 @@
-import Channel, ChannelError from "@std/io/channels.ms"
+import Channel from "@std/io/channels.ms"
 import stdout from "@std/io/io.ms"
 import arguments from "@std/os/process.ms"
 import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
@@ -10,7 +10,7 @@ fn fib(n: Int) Int:
 
     return fib(n - 1) + fib(n - 2)
 
-fn serve(var ch: Channel[Int, Int]) Result[Unit, ChannelError]:
+fn serve(var ch: Channel[Int, Int]) Result[Unit, Error]:
     while true:
         if let n = try ch.receive():
             try ch.send(fib(n))

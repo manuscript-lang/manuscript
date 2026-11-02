@@ -3,7 +3,7 @@
 import Channel from "@std/io/channels.ms"
 import stdout from "@std/io/io.ms"
 import memory_usage from "@std/os/process.ms"
-import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 # A task cancelled while parked in a channel receive must release the channel end it holds in a
@@ -31,7 +31,7 @@ fn cancel_one(ch: Channel[Int, Int]) Unit!:
     var task = group.spawn(fn ready: waiting(ready, end.clone()))
     task.channel.receive() | try expect_ok | try expect_equal(unit)
     try group.close()
-    task.result() | try expect_error | try expect_equal(TaskError.Closed)
+    task.result() | try expect_error | try expect_equal(Error("task: closed", kind: ErrorCategory.Closed))
     try group.close()
     return ok(unit)
 

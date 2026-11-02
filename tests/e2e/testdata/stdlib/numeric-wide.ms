@@ -12,9 +12,7 @@ import (
     divide_wide,
     remainder_wide,
     WordDivision,
-    NumberError,
     BigInt,
-    BigIntError,
     from_int,
     parse,
     frexp,
@@ -105,8 +103,12 @@ test "wide division distinguishes invalid divisor and quotient overflow":
     try expect_equal(division.quotient, largest)
     try expect_equal(division.remainder, 2)
 
-    let invalid: WordDivision!NumberError = error(NumberError.InvalidInput)
-    let overflow: WordDivision!NumberError = error(NumberError.OutOfRange)
+    let invalid: WordDivision! = error(
+        Error("number: invalid input", kind: ErrorCategory.InvalidInput)
+    )
+    let overflow: WordDivision! = error(
+        Error("number: value out of range", kind: ErrorCategory.OutOfRange)
+    )
     try expect_equal(divide_wide(0, 0, 0), invalid)
     try expect_equal(divide_wide(largest, largest, 0), invalid)
     try expect_equal(divide_wide(3, 0, 3), overflow)
@@ -114,7 +116,9 @@ test "wide division distinguishes invalid divisor and quotient overflow":
     try expect_equal((try remainder_wide(3, 5, 3)), 2)
     try expect_equal((try remainder_wide(largest, largest, largest)), 0)
 
-    let invalid_remainder: UInt64!NumberError = error(NumberError.InvalidInput)
+    let invalid_remainder: UInt64! = error(
+        Error("number: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(remainder_wide(largest, largest, 0), invalid_remainder)
 
 test "binary float decomposition round trips normals subnormals and signed zero":
@@ -210,7 +214,9 @@ test "modular inverse distinguishes absence invalid modulus and the unit modulus
             from_int(1)
         ) | try expect_ok | try expect_some | try expect_equal(from_int(0))
 
-    let invalid: BigInt?!BigIntError = error(BigIntError.InvalidInput)
+    let invalid: BigInt?! = error(
+        Error("big integer: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(from_int(2).inverse_mod(from_int(0)), invalid)
     try expect_equal(from_int(2).inverse_mod(from_int(-7)), invalid)
 

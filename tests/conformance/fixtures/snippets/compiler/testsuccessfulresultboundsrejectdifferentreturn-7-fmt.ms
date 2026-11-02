@@ -4,5 +4,8 @@
 type Cause:
     text: String
 
-impl Error for Cause:
-    fn message() String: self.text.clone()
+interface Named:
+    fn name() String
+
+impl Named for Cause:
+    fn name() String: self.text.clone()

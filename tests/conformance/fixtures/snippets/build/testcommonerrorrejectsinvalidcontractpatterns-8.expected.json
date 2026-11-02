@@ -7,9 +7,20 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
+        "code": "MS3004",
         "phase": "type",
-        "message": "Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directly",
+        "message": "unknown argument value; parameters of Error: details, kind, message",
+        "position": {
+          "file": "testcommonerrorrejectsinvalidcontractpatterns-8.ms",
+          "line": 8,
+          "column": 18,
+          "offset": 256
+        }
+      },
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument message: String in call to Error; add 'message: <String>'",
         "position": {
           "file": "testcommonerrorrejectsinvalidcontractpatterns-8.ms",
           "line": 8,
@@ -21,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testcommonerrorrejectsinvalidcontractpatterns-8.ms:8:12: type: Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directly\n   |\n 8 |     return Error(value: value)\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testcommonerrorrejectsinvalidcontractpatterns-8.ms:8:18: type: unknown argument value; parameters of Error: details, kind, message\n   |\n 8 |     return Error(value: value)\n   |                  ^\n<DIR>/testcommonerrorrejectsinvalidcontractpatterns-8.ms:8:12: type: missing argument message: String in call to Error; add 'message: <String>'\n   |\n 8 |     return Error(value: value)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

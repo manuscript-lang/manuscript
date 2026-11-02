@@ -1,4 +1,4 @@
-import Arg, CliError, Command, Flag, FlagKind, Matches, command from "@std/cli.ms"
+import Arg, Command, Flag, FlagKind, Matches, command from "@std/cli.ms"
 import (
     expect_contains,
     expect_equal,
@@ -71,7 +71,7 @@ fn app() Command:
         children: [serve_command(), remote_group()]
     )
 
-fn run(argv: List[String]) Matches!CliError:
+fn run(argv: List[String]) Matches!:
     let parsed = app().parse(argv)
     if parsed.is_error(): return error(parsed.err().clone())
 
@@ -81,9 +81,9 @@ fn run(argv: List[String]) Matches!CliError:
 
 fn failure(argv: List[String]) String!:
     let result = app().parse(argv)
-    if result.is_ok(): return error(CliError.InvalidSchema("accepted"))
+    if result.is_ok(): return error(Error("accepted", kind: Failed))
 
-    return ok(result.err().message())
+    return ok(result.err().message)
 
 test "nested command resolves path and typed options":
     let matches = (run(["serve", "site"]) | try expect_ok)
@@ -167,7 +167,7 @@ test "help is generated for groups, leaves and the help word":
 test "float flags reject NaN and infinities":
     let ratio = Command(name: "x", flags: [Flag(name: "ratio", kind: FlagKind.Float)])
     for text in ["NaN", "Infinity", "-Infinity"]:
-        (ratio.parse(["--ratio", text.clone()]) | try expect_error).message() | try expect_equal(
+        (ratio.parse(["--ratio", text.clone()]) | try expect_error).message | try expect_equal(
             "cli: flag ratio: {text} is not a number"
         )
 
@@ -175,7 +175,7 @@ test "float flags reject NaN and infinities":
     let bad_default = Command(
         name: "x", flags: [Flag(name: "ratio", kind: FlagKind.Float, default: "NaN")]
     )
-    (bad_default.parse([]) | try expect_error).message() | try expect_contains(
+    (bad_default.parse([]) | try expect_error).message | try expect_contains(
         "default NaN does not fit"
     )
 
@@ -186,33 +186,33 @@ test "schema mistakes are reported before parsing":
             Flag(name: "a", kind: FlagKind.Bool), Flag(name: "a", kind: FlagKind.String)
         ]
     )
-    (duplicate.parse([]) | try expect_error).message() | try expect_contains(
+    (duplicate.parse([]) | try expect_error).message | try expect_contains(
         "duplicate flag a"
     )
 
     let bad_default = Command(
         name: "x", flags: [Flag(name: "n", kind: FlagKind.Int, default: "z")]
     )
-    (bad_default.parse([]) | try expect_error).message() | try expect_contains(
+    (bad_default.parse([]) | try expect_error).message | try expect_contains(
         "default z does not fit"
     )
 
     let rest_first = Command(
         name: "x", args: [Arg(name: "a", rest: true), Arg(name: "b")]
     )
-    (rest_first.parse([]) | try expect_error).message() | try expect_contains(
+    (rest_first.parse([]) | try expect_error).message | try expect_contains(
         "must be last"
     )
 
     let order = Command(
         name: "x", args: [Arg(name: "a", required: false), Arg(name: "b")]
     )
-    (order.parse([]) | try expect_error).message() | try expect_contains(
+    (order.parse([]) | try expect_error).message | try expect_contains(
         "follows an optional"
     )
 
     let reserved = Command(name: "x", children: [Command(name: "help")])
-    (reserved.parse([]) | try expect_error).message() | try expect_contains(
+    (reserved.parse([]) | try expect_error).message | try expect_contains(
         "bad command name help"
     )
 
@@ -242,7 +242,7 @@ test "a record that does not match the schema is reported when the handler runs"
 
     match parsed:
         Run(node, matches):
-            (node.exec(matches) | try expect_error).message() | try expect_contains(
+            (node.exec(matches) | try expect_error).message | try expect_contains(
                 "does not match"
             )
         Help(_): return fail("help")

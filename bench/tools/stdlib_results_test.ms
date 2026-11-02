@@ -159,4 +159,4 @@ test "a failed producer yields no report":
     )
     let _cause = try expect_error(must("producer", failed))
     let empty = try expect_error(stdlib_table(document([])))
-    try expect_contains(empty.message(), "no cases")
+    try expect_contains(empty.message, "no cases")

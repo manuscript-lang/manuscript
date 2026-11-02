@@ -4,5 +4,5 @@
 type Request:
     callback: fn() Int
 
-fn f(text: String) Request!JsonError:
+fn f(text: String) Request!:
     return parse[Request](text)

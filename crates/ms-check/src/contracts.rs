@@ -1387,33 +1387,6 @@ impl Checker {
             && !has_generic_operation(expected)
             && self.implements(actual, expected)
     }
-
-    /// Whether the Error boundary accepts `actual` where `expected` is written.
-    pub(crate) fn error_assignable(&self, actual: &Ty, expected: &Ty) -> bool {
-        if expected.is_std("Error") {
-            return self.implements(actual, expected);
-        }
-        actual.is_std("Result")
-            && expected.is_std("Result")
-            && actual.args.len() == 2
-            && expected.args.len() == 2
-            && same(&actual.args[0], &expected.args[0])
-            && expected.args[1].is_std("Error")
-            && self.implements(&actual.args[1], &expected.args[1])
-    }
-
-    /// Whether crossing an Error boundary with `receiver` needs dispatch
-    /// evidence. Ordinary domain errors pass through unchanged; local
-    /// implementations and generic receivers retain the evidence needed outside
-    /// this module.
-    pub(crate) fn error_needs_scope(&self, receiver: &Ty) -> bool {
-        if receiver.kind == Kind::Variable || !receiver.args.is_empty() {
-            return true;
-        }
-        self.methods(receiver, n("message"))
-            .iter()
-            .any(|m| m.contract.as_ref().is_some_and(|c| c.is_std("Error")) && m.local)
-    }
 }
 
 /// A standard method that exists without an impl.

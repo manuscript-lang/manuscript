@@ -1,5 +1,4 @@
 import expect_equal from "@std/test/test.ms"
-import StringError from "@std/string.ms"
 
 test "ASCII normalization is identical under every form and byte budget":
     let pattern = "aZ09\u{0}\t\n\u{7f}"
@@ -13,13 +12,24 @@ test "ASCII normalization is identical under every form and byte budget":
 
             if length > 0:
                 try expect_equal(
-                    text.normalize(form, length - 1).err(), StringError.LimitExceeded
+                    text.normalize(form, length - 1).err(),
+                    Error(
+                        "string: limit exceeded", kind: ErrorCategory.LimitExceeded
+                    )
                 )
                 try expect_equal(
-                    text.normalize(form, 0).err(), StringError.LimitExceeded
+                    text.normalize(form, 0).err(),
+                    Error(
+                        "string: limit exceeded", kind: ErrorCategory.LimitExceeded
+                    )
                 )
 
-            try expect_equal(text.normalize(form, -1).err(), StringError.InvalidInput)
+            try expect_equal(
+                text.normalize(form, -1).err(),
+                Error(
+                    "string: invalid input", kind: ErrorCategory.InvalidInput
+                )
+            )
 
 test "normalization falls back for Unicode before and after long ASCII prefixes":
     for length in [0, 1, 4096, 1048576]:

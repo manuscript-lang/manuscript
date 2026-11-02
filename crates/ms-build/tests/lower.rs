@@ -117,5 +117,4 @@ fn rsa_source_calls_and_function_values() {
         assert!(mir.contains(&format!("msstd_crypto_rsa_{name}")), "{name}");
     }
     assert!(mir.contains("alt.tag"));
-    assert!(mir.contains("iface.new"));
 }

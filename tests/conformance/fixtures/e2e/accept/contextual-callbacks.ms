@@ -1,16 +1,15 @@
 # conform: tags=closures,control-flow,faults,generics,interfaces,lists,modules,optional,records,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/contextual-callbacks.ms
-import TextError from "@std/core.ms"
 import expect_equal, expect_false from "@std/test/test.ms"
 
 fn apply[T, U](value: T, transform: fn(T) U) U: transform(value)
 
 fn chain[T, U](first: fn() T, second: fn(T) U) U: second(first())
 
-fn with_result[T](transform: fn() T!TextError) T!TextError: transform()
+fn with_result[T](transform: fn() T!Error) T!Error: transform()
 
-fn checked() Int!TextError: ok(3)
+fn checked() Int!Error: ok(3)
 
 type Box[T]:
     value: T
@@ -60,7 +59,7 @@ test "contextual callbacks and inline returns":
     try expect_equal(nested(2), 6)
 
     let success = with_result(fn: ok(4))
-    try expect_equal(success, Result[Int, TextError].ok(4))
+    try expect_equal(success, Result[Int, Error].ok(4))
 
     let propagated = with_result(
         fn:
@@ -68,16 +67,16 @@ test "contextual callbacks and inline returns":
             return ok(value + 2)
     )
 
-    try expect_equal(propagated, Result[Int, TextError].ok(5))
+    try expect_equal(propagated, Result[Int, Error].ok(5))
 
     let failed = with_result(
         fn:
-            if true: return error(TextError("expected"))
+            if true: return error(Error("expected"))
 
             return ok(4)
     )
 
-    try expect_equal(failed, Result[Int, TextError].error(TextError("expected")))
+    try expect_equal(failed, Result[Int, Error].error(Error("expected")))
 
     let subtract: fn(Int, Int) Int = fn a, b: a - b
     try expect_equal(subtract(7, 2), 5)

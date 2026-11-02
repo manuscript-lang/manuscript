@@ -1,6 +1,5 @@
 import (
     HttpExchange,
-    HttpError,
     HttpRequest,
     HttpResponse,
     buffered,
@@ -10,7 +9,7 @@ import Connection, connect, listen, serve_connections from "@std/net/net.ms"
 import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
 import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 
-fn answer(id: Int) fn(HttpExchange) Unit!HttpError:
+fn answer(id: Int) fn(HttpExchange) Unit!:
     let handler = fn(request: HttpRequest) HttpResponse:
         return HttpResponse(
             status: 200, headers: headers(), body: "worker {id}".to_bytes()

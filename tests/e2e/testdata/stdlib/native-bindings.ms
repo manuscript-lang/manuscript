@@ -1,7 +1,5 @@
 import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
-import TextError from "@std/core.ms"
 import (
-    ControlError,
     cpu_usage,
     groups,
     memory_usage,
@@ -12,7 +10,6 @@ import (
     set_identity
 ) from "@std/os/process.ms"
 import (
-    FileSystemError,
     FileEvent,
     FileWatcher,
     join,
@@ -27,19 +24,21 @@ import milliseconds, sleep from "@std/os/time.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 
-fn expect_process_error[T](outcome: T!ControlError, expected: ControlError) Unit!:
+fn expect_process_error[T](outcome: T!, expected: Error) Unit!:
     match outcome:
-        ok(_): return error(TextError("process misuse succeeded"))
+        ok(_): return error(Error("process misuse succeeded"))
         error(cause):
-            if cause != expected: return error(TextError("wrong process error"))
+            if cause.kind != expected.kind: return error(Error("wrong process error"))
 
     return ok(unit)
 
-fn expect_fs_error[T](outcome: T!FileSystemError, expected: FileSystemError) Unit!:
+fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
     match outcome:
-        ok(_): return error(TextError("filesystem misuse succeeded"))
+        ok(_): return error(Error("filesystem misuse succeeded"))
         error(cause):
-            if cause != expected: return error(TextError("wrong filesystem error"))
+            if cause.kind != expected.kind: return error(
+                Error("wrong filesystem error")
+            )
 
     return ok(unit)
 
@@ -59,18 +58,30 @@ test "process usage records report this process":
 
 test "set_identity and set_groups validate input and apply or refuse":
     try expect_process_error(
-        set_identity(kind: "nope", id: 0), ControlError.InvalidInput
+        set_identity(kind: "nope", id: 0),
+        Error("process: invalid input", kind: ErrorCategory.InvalidInput)
     )
-    try expect_process_error(set_groups(groups: [-1]), ControlError.InvalidInput)
+    try expect_process_error(
+        set_groups(groups: [-1]),
+        Error("process: invalid input", kind: ErrorCategory.InvalidInput)
+    )
 
     let info = try process_info()
 
     if info.uid < 0:
         # Windows has no ids.
         try expect_process_error(
-            set_identity(kind: "uid", id: 0), ControlError.Unsupported
+            set_identity(kind: "uid", id: 0),
+            Error(
+                "process: operation not supported", kind: ErrorCategory.Unsupported
+            )
         )
-        try expect_process_error(set_groups(groups: [0]), ControlError.Unsupported)
+        try expect_process_error(
+            set_groups(groups: [0]),
+            Error(
+                "process: operation not supported", kind: ErrorCategory.Unsupported
+            )
+        )
     else:
         # Setting the identity it already has changes nothing and needs no privilege.
         try set_identity(kind: "uid", id: info.uid)
@@ -84,7 +95,10 @@ test "set_identity and set_groups validate input and apply or refuse":
             try set_groups(groups: groups)
         else:
             try expect_process_error(
-                set_groups(groups: groups), ControlError.PermissionDenied
+                set_groups(groups: groups),
+                Error(
+                    "process: permission denied", kind: ErrorCategory.PermissionDenied
+                )
             )
 
 test "replace rejects invalid programs before leaving this process":
@@ -96,18 +110,38 @@ test "replace rejects invalid programs before leaving this process":
 
     if info.uid < 0:
         # Windows has no exec.
-        try expect_process_error(empty, ControlError.Unsupported)
-        try expect_process_error(missing, ControlError.Unsupported)
+        try expect_process_error(
+            empty,
+            Error(
+                "process: operation not supported", kind: ErrorCategory.Unsupported
+            )
+        )
+        try expect_process_error(
+            missing,
+            Error(
+                "process: operation not supported", kind: ErrorCategory.Unsupported
+            )
+        )
     else:
-        try expect_process_error(empty, ControlError.InvalidInput)
-        try expect_process_error(missing, ControlError.NotFound)
+        try expect_process_error(
+            empty,
+            Error(
+                "process: invalid input", kind: ErrorCategory.InvalidInput
+            )
+        )
+        try expect_process_error(
+            missing, Error("process: not found", kind: ErrorCategory.NotFound)
+        )
 
 test "stat_filesystem describes the filesystem under a path":
     let info = try stat_filesystem(path: ".")
     try expect_false(info.block_size <= 0 or info.blocks <= 0)
     try expect_false(info.blocks_available > info.blocks_free)
     try expect_fs_error(
-        stat_filesystem(path: "/definitely/not/a/path"), FileSystemError.NotFound
+        stat_filesystem(path: "/definitely/not/a/path"),
+        Error(
+            "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+        )
     )
 
 fn saw(events: List[FileEvent], path: String, kind: String) Bool:
@@ -139,7 +173,7 @@ test "native watcher max_entries counts the paths under the root":
         watch_native(
             path: t.path(), recursive: true, max_entries: 1, overflow: "error"
         ),
-        FileSystemError.LimitExceeded
+        Error("filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded)
     )
 
     var w = try watch_native(

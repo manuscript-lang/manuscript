@@ -21,7 +21,7 @@ use std::sync::Arc;
 include!(concat!(env!("OUT_DIR"), "/std_sources.rs"));
 
 /// Source-backed prelude types retain their standard declaration identities.
-pub const STANDARD_PRELUDE_NAMES: [&str; 14] = [
+pub const STANDARD_PRELUDE_NAMES: [&str; 13] = [
     "Equal",
     "Comparable",
     "Hashable",
@@ -32,10 +32,9 @@ pub const STANDARD_PRELUDE_NAMES: [&str; 14] = [
     "List",
     "Map",
     "Set",
-    "CollectionError",
+    "ErrorCategory",
     "ListEntry",
     "MapEntry",
-    "MissingValue",
 ];
 
 /// The built-in types every module sees without an import.

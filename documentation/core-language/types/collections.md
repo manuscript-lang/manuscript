@@ -7,7 +7,7 @@ weight = 3
 
 Collections have one owner. Bindings, arguments and lending accessors (`first`, `last`, `Map.get`) borrow them; storing one moves it at its last use; `.clone()` makes an explicit deep copy. Mutation requires `var`; see [mutation and references](references.md).
 
-`List`, `Map`, `Set`, `CollectionError`, `ListEntry[T]`, and `MapEntry[K: Hashable, V]` are prelude names (with `Optional`, `Result`, `Error`, `MissingValue`, `Equal`, `Hashable`); importing them is rejected. Builders and factories need imports. See [names and declaration order](../modules/declarations.md#names-and-declaration-order).
+`List`, `Map`, `Set`, `ListEntry[T]`, and `MapEntry[K: Hashable, V]` are prelude names (with `Optional`, `Result`, `Error`, `ErrorCategory`, `Equal`, `Hashable`); importing them is rejected. Builders and factories need imports. See [names and declaration order](../modules/declarations.md#names-and-declaration-order).
 
 | Type | Contents |
 | --- | --- |
@@ -109,7 +109,7 @@ values.append(3)
 
 Clones copy nested values too. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra return independent owned results (Bytes `reversed()` too).
 
-List `slice` returns `Result[List[T], CollectionError]` with strict bounds `0 <= start <= end <= length()` after resolving negative bounds from the end; otherwise `CollectionError.OutOfRange`. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices).
+List `slice` returns `Result[List[T], Error]` with strict bounds `0 <= start <= end <= length()` after resolving negative bounds from the end; otherwise an `Error` of kind `OutOfRange`. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices).
 
 A collection loop or non-escaping callback borrows the receiver for the traversal. The checker rejects mutation, reassignment, or a move of that receiver while the borrow is live. To mutate the original while traversing independent data, make an explicit `.clone()` first.
 

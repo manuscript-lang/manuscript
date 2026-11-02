@@ -62,7 +62,7 @@ export fn main() Int:
         arguments(), ["before", "after", "go", "input", "output", "repeats"],
         ["before", "after", "go", "input", "output"]
     )
-    if parsed.is_error(): return fail(parsed.err().message())
+    if parsed.is_error(): return fail(parsed.err().message)
 
     let opts = parsed.get(Map[String, String]())
     let n = opts.get("repeats").get("30").parse_int().get(0)

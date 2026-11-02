@@ -1,53 +1,52 @@
 # conform: tags=closures,control-flow,faults,lists,modules,mutation,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/try-statement.ms
-import TextError from "@std/core.ms"
 import expect_equal from "@std/test/test.ms"
 
-fn parse(n: Int) Int!TextError:
+fn parse(n: Int) Int!Error:
     if n < 0:
-        return error(TextError("neg"))
+        return error(Error("neg"))
 
     return ok(n)
 
-fn bound(n: Int) Int!TextError:
+fn bound(n: Int) Int!Error:
     let v = try parse(n)
     return ok(v + 1)
 
-fn reassigned(n: Int) Int!TextError:
+fn reassigned(n: Int) Int!Error:
     var total = 1
     total = try parse(n)
     return ok(total * 2)
 
-fn check(n: Int) Unit!TextError:
+fn check(n: Int) Unit!Error:
     if n < 0:
-        return error(TextError("neg"))
+        return error(Error("neg"))
 
     return ok(unit)
 
-fn discarded(n: Int) Int!TextError:
+fn discarded(n: Int) Int!Error:
     try check(n)
     return ok(7)
 
-fn code(r: Int!TextError) Int:
+fn code(r: Int!Error) Int:
     return r.get(-1)
 
-fn nested(n: Int) Int!TextError:
+fn nested(n: Int) Int!Error:
     return ok((try parse(n)) + (try parse(n - 5)))
 
-fn chained(n: Int) Int!TextError:
+fn chained(n: Int) Int!Error:
     let a = try bound(n)
     let b = try reassigned(a - 10)
     return ok(b)
 
-fn in_loop(values: List[Int]) Int!TextError:
+fn in_loop(values: List[Int]) Int!Error:
     var sum = 0
     for v in values:
         sum += try parse(v)
     return ok(sum)
 
-fn in_lambda(n: Int) Int!TextError:
-    let inner = fn() Int!TextError:
+fn in_lambda(n: Int) Int!Error:
+    let inner = fn() Int!Error:
         let v = try parse(n)
         return ok(v * 10)
 

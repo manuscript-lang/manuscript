@@ -1,13 +1,11 @@
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import (
-    HttpError,
     headers,
     HttpRequest,
     HttpResponse,
     buffered,
     HttpServerOptions
 ) from "@std/net/http.ms"
-import TextError from "@std/core.ms"
 import connect, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 
@@ -25,7 +23,7 @@ test "serve caps the request header block":
     let reply = client.read(timeout: 5.seconds) | try expect_ok
     let text = reply.get().decode_utf8().get("")
     if not text.starts_with("HTTP/1.1 431"): return error(
-        TextError("oversized header block was not rejected: {text}")
+        Error("oversized header block was not rejected: {text}")
     )
 
 test "serve timeout closes idle connections":
@@ -36,7 +34,7 @@ test "serve timeout closes idle connections":
     ) | try expect_ok
     var silent = connect(server.address(), 2.seconds) | try expect_ok
     let closed = silent.read(timeout: 3.seconds) | try expect_ok
-    if let _data = closed: return error(TextError("silent connection was answered"))
+    if let _data = closed: return error(Error("silent connection was answered"))
 
     try silent.close()
 
@@ -45,12 +43,10 @@ test "serve timeout closes idle connections":
 
     let first = reused.read(timeout: 2.seconds) | try expect_ok
     let answered = first.get(Bytes([]))
-    if answered.length() == 0: return error(TextError("no response"))
+    if answered.length() == 0: return error(Error("no response"))
 
     let after = reused.read(timeout: 3.seconds) | try expect_ok
-    if let _data = after: return error(
-        TextError("idle keep-alive connection stayed open")
-    )
+    if let _data = after: return error(Error("idle keep-alive connection stayed open"))
 
 test "serve rejects a zero request timeout":
     let failure = try expect_error(
@@ -59,4 +55,6 @@ test "serve rejects a zero request timeout":
             options: HttpServerOptions(timeout: 0.seconds)
         )
     )
-    try expect_equal(failure, HttpError.InvalidInput)
+    try expect_equal(
+        failure, Error("network: invalid input", kind: ErrorCategory.InvalidInput)
+    )

@@ -8,7 +8,6 @@ import (
     redirect,
     reply,
     text,
-    HttpError,
     HttpExchange,
     HttpMethod,
     HttpRequest,
@@ -18,11 +17,11 @@ import (
 ) from "@std/net/http.ms"
 import read_all from "@std/io/io.ms"
 import http_client, serve from "@std/net/net.ms"
-import create, LogError, Transport from "@std/log.ms"
+import create, Transport from "@std/log.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
 import Bytes from "@std/bytes.ms"
-import access_log, request_id, RouteParams, Router, RouterError from "@std/net/router.ms"
+import access_log, request_id, RouteParams, Router from "@std/net/router.ms"
 import body_stream from "@std/net/sse.ms"
 
 fn get(path: String) HttpRequest:
@@ -33,10 +32,10 @@ fn request(method: HttpMethod, path: String) HttpRequest:
         method: method, path: path, query: "", headers: headers(), body: "".to_bytes()
     )
 
-fn say(label: String) fn(HttpExchange, RouteParams) Unit!HttpError:
+fn say(label: String) fn(HttpExchange, RouteParams) Unit!:
     return fn exchange, params: reply(exchange, text(200, label.clone()))
 
-fn show(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+fn show(exchange: HttpExchange, params: RouteParams) Unit!:
     let id = params.get("id").get("-")
     let rest = params.get("rest").get("-")
     return reply(exchange, text(200, "{id}|{rest}"))
@@ -109,19 +108,19 @@ test "invalid and duplicate patterns are rejected":
 
 fn tag(
     label: String
-) fn(HttpExchange, fn(HttpExchange) Unit!HttpError) Unit!HttpError:
+) fn(HttpExchange, fn(HttpExchange) Unit!) Unit!:
     return fn exchange, next: tagged(label.clone(), exchange, next)
 
 fn tagged(
     label: String,
     exchange: HttpExchange,
-    next: fn(HttpExchange) Unit!HttpError
-) Unit!HttpError:
+    next: fn(HttpExchange) Unit!
+) Unit!:
     let seen = exchange.headers()
     try seen.append("X-Trail", label)
     return next(exchange)
 
-fn trail(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+fn trail(exchange: HttpExchange, params: RouteParams) Unit!:
     let values = exchange.headers().values("X-Trail")
     return reply(exchange, text(200, values.join(">")))
 
@@ -139,8 +138,8 @@ test "middleware also wraps the 404 answer":
 
 fn refuse(
     exchange: HttpExchange,
-    next: fn(HttpExchange) Unit!HttpError
-) Unit!HttpError:
+    next: fn(HttpExchange) Unit!
+) Unit!:
     return reply(exchange, text(401, "no"))
 
 test "middleware may answer without calling the rest":
@@ -151,8 +150,8 @@ test "middleware may answer without calling the rest":
     let response = try r.call(get("/t"))
     try expect_equal(response.status, 401)
 
-fn fail(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
-    return error(HttpError.Failed("boom"))
+fn fail(exchange: HttpExchange, params: RouteParams) Unit!:
+    return error(Error("boom", kind: ErrorCategory.Failed))
 
 test "a handler error comes back from call":
     var r = Router()
@@ -211,10 +210,10 @@ type Answer:
     name: String
     count: Int
 
-fn answer(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+fn answer(exchange: HttpExchange, params: RouteParams) Unit!:
     return reply(exchange, try json(201, Answer(name: "ok", count: 2)))
 
-fn moved(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+fn moved(exchange: HttpExchange, params: RouteParams) Unit!:
     return reply(exchange, try redirect("/elsewhere"))
 
 test "json and redirect build responses":
@@ -231,7 +230,7 @@ test "json and redirect build responses":
     try expect_equal(moved_to.status, 303)
     try expect_equal(moved_to.headers.values("Location").join(","), "/elsewhere")
 
-fn echo_id(exchange: HttpExchange, params: RouteParams) Unit!HttpError:
+fn echo_id(exchange: HttpExchange, params: RouteParams) Unit!:
     let seen = exchange.headers().values("X-Request-Id")
     return reply(exchange, text(200, seen.join(",")))
 
@@ -263,16 +262,16 @@ type Sink:
     lines: Shared[List[String]]
 
 impl Transport for Sink:
-    var fn write(data: String) Unit!LogError:
+    var fn write(data: String) Unit!:
         var guard = lock(self.lines)
         guard.value.append(data.clone())
         guard.close().get(none)
         return ok(unit)
 
-    var fn write_bytes(data: Bytes) Unit!LogError:
+    var fn write_bytes(data: Bytes) Unit!:
         return self.write(data.decode_utf8().get(""))
 
-    var fn flush() Unit!LogError:
+    var fn flush() Unit!:
         return ok(unit)
 
     var fn close() Unit:

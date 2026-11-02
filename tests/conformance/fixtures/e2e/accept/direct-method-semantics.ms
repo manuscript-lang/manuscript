@@ -1,13 +1,12 @@
 # conform: tags=alternatives,control-flow,interfaces,lists,match,modules,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/direct-method-semantics.ms
-import TextError from "@std/core.ms"
 import expect_true, fail from "@std/test/test.ms"
 
 interface Shape:
     fn area() Int
     fn scaled(by: Int) Int
-    fn checked(limit: Int) Int!TextError
+    fn checked(limit: Int) Int!Error
     fn grow(depth: Int) Int
 
 type Rect:
@@ -25,9 +24,9 @@ impl Shape for Rect:
     fn scaled(by: Int) Int:
         return self.area() * by
 
-    fn checked(limit: Int) Int!TextError:
+    fn checked(limit: Int) Int!Error:
         if self.area() > limit:
-            return error(cause: TextError("too big"))
+            return error(cause: Error("too big"))
 
         return ok(value: self.area())
 
@@ -46,7 +45,7 @@ impl Shape for Sign:
     fn scaled(by: Int) Int:
         return self.area() * by
 
-    fn checked(limit: Int) Int!TextError:
+    fn checked(limit: Int) Int!Error:
         return ok(value: self.area())
 
     fn grow(depth: Int) Int:
@@ -55,7 +54,7 @@ impl Shape for Sign:
 fn through(shape: Shape) Int:
     return shape.scaled(by: 2)
 
-fn tried(rect: Rect, limit: Int) Int!TextError:
+fn tried(rect: Rect, limit: Int) Int!Error:
     let first = try rect.checked(limit: limit)
     return ok(value: first + (try rect.checked(limit: limit + 100)))
 
@@ -78,11 +77,11 @@ test "direct methods":
 
     match tried(rect: rect, limit: 12):
         ok(value): (value == 24) | try expect_true
-        error(cause): return fail(cause.message())
+        error(cause): return fail(cause.message)
 
     match tried(rect: rect, limit: 11):
         ok(_value): return fail("expected failure")
-        error(cause): (cause.message() == "too big") | try expect_true
+        error(cause): (cause.message == "too big") | try expect_true
 
     var log = List[String]()
     (order(rect: rect, log: var log) == 12) | try expect_true

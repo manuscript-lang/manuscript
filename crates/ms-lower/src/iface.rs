@@ -115,7 +115,7 @@ impl Cx {
                 ty: *t,
                 mode: Mode::Borrow,
             }));
-            let mut writes_back = false;
+            let writes_back;
             // A hook a `TestHooks` implementation leaves out has no body: it does nothing.
             let missing = native.as_str().is_empty()
                 && s.ret == MTy::UNIT
@@ -131,7 +131,10 @@ impl Cx {
                 continue;
             }
             let callee = if !native.as_str().is_empty() {
-                self.native_method_fn(m, native.as_str(), concrete, data_ty)?
+                return Err(Error::new(format!(
+                    "unsupported native method {}",
+                    native.as_str()
+                )));
             } else {
                 let c = self
                     .callables
@@ -362,107 +365,6 @@ impl FnLower<'_> {
     }
 }
 
-/// How a case of a standard error type reads in `message()`.
-pub(crate) enum Message {
-    Text(&'static str),
-    /// The case's first field.
-    Payload,
-}
-
-impl Cx {
-    /// A function computing a native `Error` implementation's message from a borrowed receiver.
-    pub(crate) fn native_method_fn(
-        &mut self,
-        m: &mut Module,
-        native: &str,
-        concrete: &ct::Ty,
-        data_ty: MTy,
-    ) -> Result<ms_mir::ir::FuncId, Error> {
-        if native != "core/message" {
-            return Err(Error::new(format!("unsupported native method {native}")));
-        }
-        self.message_fn(m, &concrete.to_string(), data_ty)
-    }
-
-    fn message_fn(
-        &mut self,
-        m: &mut Module,
-        name: &str,
-        data_ty: MTy,
-    ) -> Result<ms_mir::ir::FuncId, Error> {
-        let key = format!("native.message:{name}");
-        if let Some(f) = self.helpers.get(&key) {
-            return Ok(*f);
-        }
-        let ps = vec![Param {
-            ty: data_ty,
-            mode: Mode::Borrow,
-        }];
-        let mut b = FuncBuilder::new(m, &format!("{name}.message"), ps, MTy::STR);
-        b.func_mut().linkage = Linkage::Internal;
-        let recv = b.params()[0];
-        let copy = |b: &mut FuncBuilder<'_>, v| {
-            b.emit(Op::Copy, &[v], Imm::None, Some(MTy::STR))
-                .expect("copy")
-        };
-        match (name, b.m.types.kind(data_ty).clone()) {
-            ("TextError", TyKind::Rec(r)) => {
-                let t = b.rec_get(r, 0, recv);
-                let t = copy(&mut b, t);
-                b.ret(Some(t));
-            }
-            ("MissingValue", TyKind::Alt(a)) => {
-                let loc = b.alt_get(a, 0, 0, recv);
-                let prefix = b.str_lit("missing value at ");
-                let ext = crate::text::runtime_fn(
-                    b.m,
-                    "msrt_string_concat",
-                    &[MTy::STR, MTy::STR],
-                    MTy::STR,
-                );
-                let t = b.call_rt(ext, &[prefix, loc]);
-                b.ret(Some(t));
-            }
-            (n, TyKind::Alt(a)) => {
-                let table = crate::messages::table(n)
-                    .ok_or_else(|| Error::new(format!("unsupported native message of {n}")))?;
-                let cases = b.m.alts[a.index()].cases.clone();
-                let tag = b.alt_tag(recv);
-                let blocks: Vec<_> = cases.iter().map(|_| b.new_block()).collect();
-                let arms: Vec<(i64, _)> = blocks
-                    .iter()
-                    .enumerate()
-                    .map(|(i, k)| (i as i64, *k))
-                    .collect();
-                let default = blocks[0];
-                b.switch(tag, &arms, default);
-                for (i, c) in cases.iter().enumerate() {
-                    b.seal_block(blocks[i]);
-                    b.switch_to(blocks[i]);
-                    let msg = table.iter().find(|(case, _)| *case == c.name);
-                    let v = match msg {
-                        Some((_, Message::Text(t))) => {
-                            let l = b.str_lit(t);
-                            copy(&mut b, l)
-                        }
-                        Some((_, Message::Payload)) => {
-                            let p = b.alt_get(a, i as u32, 0, recv);
-                            copy(&mut b, p)
-                        }
-                        None => return Err(Error::new(format!("{n}.{} has no message", c.name))),
-                    };
-                    b.ret(Some(v));
-                }
-            }
-            _ => return Err(Error::new(format!("unsupported native message of {name}"))),
-        }
-        let f = b.into_func();
-        let id = m.add_func(f);
-        self.helpers.insert(key, id);
-        Ok(id)
-    }
-}
-
 impl FnLower<'_> {
     /// A `Result[T, E]` rebuilt as `Result[T, F]` with the error converted to `F`.
     fn convert_result(&mut self, x: Val, concrete: &ct::Ty, want: MTy) -> Result<Val, Error> {
@@ -527,38 +429,6 @@ impl FnLower<'_> {
         self.enter(join);
         let v = self.b.use_var(res);
         Ok(Val { v, own: true })
-    }
-}
-
-impl Cx {
-    /// A table for an `Error`-shaped interface over a message string (the testing failures).
-    pub(crate) fn message_vtable(&mut self, m: &mut Module, iface: IfaceId) -> VtableId {
-        let key = format!("vtable:message:{}", iface.0);
-        if let Some(v) = self.vtables.get(&key) {
-            return *v;
-        }
-        let sigs = m.ifaces[iface.index()].methods.clone();
-        let mut methods = Vec::new();
-        for s in &sigs {
-            let ps = vec![Param {
-                ty: MTy::PTR,
-                mode: Mode::Borrow,
-            }];
-            let mut b = FuncBuilder::new(m, &format!("message.{}", s.name), ps, s.ret);
-            b.func_mut().kind = FuncKind::Method;
-            b.func_mut().linkage = Linkage::Internal;
-            let p = b.params()[0];
-            let text = b
-                .emit(Op::Load, &[p], Imm::Ty(MTy::STR), Some(MTy::STR))
-                .expect("load");
-            let owned = b
-                .emit(Op::Copy, &[text], Imm::None, Some(MTy::STR))
-                .expect("copy");
-            b.ret(Some(owned));
-            let f = b.into_func();
-            methods.push(m.add_func(f));
-        }
-        self.intern_vtable(m, key, iface, methods, MTy::STR)
     }
 }
 

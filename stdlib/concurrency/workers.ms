@@ -15,7 +15,7 @@
 #         let _ = ch.send(received.get() * 2)
 # ```
 import Bytes from "@std/bytes.ms"
-import Channel, ChannelError, Transport from "@std/io/channels.ms"
+import Channel, Transport from "@std/io/channels.ms"
 import Closeable, Data from "@std/core.ms"
 import parse, stringify from "@std/data/json.ms"
 import Shared, share from "@std/concurrency/shared.ms"
@@ -41,70 +41,45 @@ type PipeEnd:
     # The other end closed and every message was read.
     case Ended
 
-impl Error for PipeEnd:
-    # Returns `pipe: closed` or `pipe: ended`.
-    fn message() String:
-        match self:
-            Closed: return "pipe: closed"
-            Ended: return "pipe: ended"
-
-# Why a worker did not return normally.
-export type WorkerError:
-    # The worker stopped a fault; the report is its message and stack.
-    case Faulted(
-        # The fault report from the worker.
-        report: String
-    )
-    # The worker was cancelled before it returned.
-    case Cancelled
-    # The worker could not start: too many are running, or the system refused a thread.
-    case NotStarted
-
-impl Error for WorkerError:
-    # Returns `worker: faulted: <report>`, `worker: cancelled` or `worker: not started`.
-    fn message() String:
-        match self:
-            Faulted(report): return "worker: faulted: " + report
-            Cancelled: return "worker: cancelled"
-            NotStarted: return "worker: not started"
-
 # One end of the in-memory pipe between a group and a worker.
 type WorkerTransport[In: Data, Out: Data]:
     # The pipe end this transport sends and receives on.
     end: Int
 
 # What a failed read means for the channel: the other end finishing is the normal end of input.
-fn stopped[Out](why: PipeEnd) Out?!ChannelError:
+fn stopped[Out](why: PipeEnd) Out?!:
     match why:
         Ended: return ok(none)
-        Closed: return error(ChannelError.Closed)
+        Closed: return error(Error("channel: closed", kind: ErrorCategory.Closed))
 
 impl WorkerTransport[In, Out]:
     # Decodes a message, or says it could not be.
-    fn decode(text: String) Out?!ChannelError:
+    fn decode(text: String) Out?!:
         match parse[Out](text):
             ok(value): return ok(value)
             error(why): return error(
-                ChannelError.Broken(
-                    "a message could not be decoded: " + why.message()
+                Error(
+                    "channel: a message could not be decoded: " + why.message,
+                    kind: InvalidData
                 )
             )
 
 impl Transport[In, Out] for WorkerTransport[In, Out]:
-    fn send(value: In) Unit!ChannelError:
+    fn send(value: In) Unit!:
         match stringify(value):
             error(why): return error(
-                ChannelError.Broken(
-                    "a message could not be encoded: " + why.message()
+                Error(
+                    "channel: a message could not be encoded: " + why.message,
+                    kind: InvalidData
                 )
             )
             ok(text):
                 if msrt_pipe_send(self.end, text) != 0:
-                    return error(ChannelError.Closed)
+                    return error(Error("channel: closed", kind: ErrorCategory.Closed))
 
                 return ok(unit)
 
-    fn receive() Out?!ChannelError:
+    fn receive() Out?!:
         match msrt_pipe_receive(self.end):
             ok(text): return self.decode(text)
             error(why): return stopped(why)
@@ -126,13 +101,13 @@ type WorkerBytesTransport:
     end: Int
 
 impl Transport[Bytes, Bytes] for WorkerBytesTransport:
-    fn send(value: Bytes) Unit!ChannelError:
+    fn send(value: Bytes) Unit!:
         if msrt_pipe_send_bytes(self.end, value) != 0:
-            return error(ChannelError.Closed)
+            return error(Error("channel: closed", kind: ErrorCategory.Closed))
 
         return ok(unit)
 
-    fn receive() Bytes?!ChannelError:
+    fn receive() Bytes?!:
         match msrt_pipe_receive_bytes(self.end):
             ok(data): return ok(data)
             error(why): return stopped(why)
@@ -160,13 +135,13 @@ export type Worker[In: Data, Out: Data]:
     # Internal state: the group's pipe end, shared with `channel`.
     end: Int
     # Internal state: empty until the worker was collected, then how it ended.
-    ended: Shared[List[Unit!WorkerError]]
+    ended: Shared[List[Unit!]]
 
 impl Worker[In, Out]:
     # Closes the group's end of the channel, waits for the worker to end, and returns how it ended.
     # A worker that is still reading ends once its input is closed; call `cancel` first to stop one that is not.
     # Safe to call again: later calls return the same outcome.
-    var fn wait() Unit!WorkerError:
+    var fn wait() Unit!:
         var held = lock(self.ended)
         if held.value.length() > 0:
             return held.value[0].clone()
@@ -189,11 +164,18 @@ impl Worker[In, Out]:
         msrt_worker_cancel(self.handle)
 
 # How a worker ended, from the status digit and report the runtime returns.
-fn outcome_of(report: String) Unit!WorkerError:
+fn outcome_of(report: String) Unit!:
     if report.starts_with("1"):
-        return error(WorkerError.Faulted(report.slice(1, report.length()).get("")))
+        let fault = report.slice(1, report.length()).get("").clone()
+        return error(
+            Error(
+                "worker: faulted: " + fault, kind: Failed,
+                details: {"report": fault.clone()}
+            )
+        )
+
     if report.starts_with("2"):
-        return error(WorkerError.Cancelled)
+        return error(Error("worker: cancelled", kind: Other))
 
     return ok(unit)
 
@@ -209,22 +191,22 @@ impl WorkerGroup[In, Out]:
     # Starts `entry`, a named top-level `fn`, on a new thread and returns its handle. The handle's
     # `channel` is this side of the worker's two-way channel; the worker takes the other from
     # `worker_channel`.
-    fn spawn(entry: fn() Unit) Worker[In, Out]!WorkerError:
+    fn spawn(entry: fn() Unit) Worker[In, Out]!:
         return self.start(entry)
 
     # Starts `count` workers on `entry`, a named top-level `fn`, and returns their handles in start
     # order. If one cannot start, the ones already started stay in the group and the error is returned.
-    fn spawn_many(entry: fn() Unit, count: Int) List[Worker[In, Out]]!WorkerError:
+    fn spawn_many(entry: fn() Unit, count: Int) List[Worker[In, Out]]!:
         var started: List[Worker[In, Out]] = []
         for i in 0..count:
             started.append(try self.start(entry))
         return ok(started)
 
     # Starts one worker on `entry`; `spawn` and `spawn_many` share it.
-    fn start(entry: fn() Unit) Worker[In, Out]!WorkerError:
+    fn start(entry: fn() Unit) Worker[In, Out]!:
         let near = msrt_pipe_new()
         if near == 0:
-            return error(WorkerError.NotStarted)
+            return error(Error("worker: not started", kind: Unavailable))
 
         let far = msrt_pipe_peer(near)
         let handle = msrt_worker_start(entry, far)
@@ -232,10 +214,10 @@ impl WorkerGroup[In, Out]:
         if handle == 0:
             msrt_pipe_close(near)
             msrt_pipe_close(far)
-            return error(WorkerError.NotStarted)
+            return error(Error("worker: not started", kind: Unavailable))
 
         let channel = Channel[In, Out](transport: WorkerTransport[In, Out](end: near))
-        let ended: Shared[List[Unit!WorkerError]] = share([])
+        let ended: Shared[List[Unit!]] = share([])
         let worker = Worker(handle, channel, near, ended)
         var started = lock(self.workers)
         started.value.append(worker.clone())

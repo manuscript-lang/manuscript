@@ -1,7 +1,6 @@
 # conform: tags=aliasing,closures,control-flow,generics,interfaces,lists,modules,mutation,optional,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/default-arguments.ms
-import TextError from "@std/core.ms"
 import expect_equal, expect_false from "@std/test/test.ms"
 
 type Cell:
@@ -33,10 +32,10 @@ fn unit_value(value: Unit = unit_default()) Unit:
 fn optional(value: Int? = 3) Int?:
     return value
 
-fn fail() Int!TextError:
-    return error(TextError("default failure"))
+fn fail() Int!Error:
+    return error(Error("default failure"))
 
-fn propagate(value: Int = try fail()) Int!TextError:
+fn propagate(value: Int = try fail()) Int!Error:
     return ok(value)
 
 interface Add:
@@ -68,10 +67,10 @@ test "omitted and explicit defaults":
     (not optional(value: none).is_none() or optional() != 3) | try expect_false
     (
         (
-            propagate() != Result[Int, TextError].error(
-                TextError("default failure")
+            propagate() != Result[Int, Error].error(
+                Error("default failure")
             )
-            or propagate(7) != Result[Int, TextError].ok(7)
+            or propagate(7) != Result[Int, Error].ok(7)
         )
     ) | try expect_false
 

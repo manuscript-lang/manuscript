@@ -1,64 +1,60 @@
 import expect_equal, expect_true, expect_fault from "@std/test/test.ms"
 
-fn generic_convert[T](value: T?) T!MissingValue:
-    let convert = value.ok_or[MissingValue]
+fn generic_convert[T](value: T?) T!Error:
+    let convert = value.ok_or[Error]
     return convert()
 
-fn ordinary(cause: MissingValue? = none) Int!MissingValue:
+fn ordinary(cause: Error? = none) Int!Error:
     return ok(if cause.is_none(): 77 else: 88)
 
 interface Convert:
-    fn convert(cause: MissingValue? = none) Int!MissingValue
+    fn convert(cause: Error? = none) Int!Error
 
 type Source:
     sentinel: Int
 
 impl Convert for Source:
-    fn convert(cause: MissingValue?) Int!MissingValue:
+    fn convert(cause: Error?) Int!Error:
         return ok(if cause.is_none(): self.sentinel else: 88)
 
 # Exact expectations deliberately identify invocation lines, not binding lines.
-test "bound MissingValue defaults use each invocation line":
+test "bound Error defaults use each invocation line":
     let absent: Int? = none
-    let convert = absent.ok_or[MissingValue]
+    let convert = absent.ok_or[Error]
     let first_result = convert()
     let second_result = convert()
     try expect_equal(
-        first_result.err().message(),
-        "missing value at bound-missing-value-source.ms:24"
+        first_result.err().message, "missing value at bound-missing-value-source.ms:24"
     )
     try expect_equal(
-        second_result.err().message(),
-        "missing value at bound-missing-value-source.ms:25"
+        second_result.err().message, "missing value at bound-missing-value-source.ms:25"
     )
 
 test "immutable copies and captured native values keep invocation defaults":
     let absent: Int? = none
-    let convert = absent.ok_or[MissingValue]
+    let convert = absent.ok_or[Error]
     let copied = convert
     let copied_result = copied()
     let nested = fn:
         return copied()
     let nested_result = nested()
     try expect_equal(
-        copied_result.err().message(),
-        "missing value at bound-missing-value-source.ms:39"
+        copied_result.err().message, "missing value at bound-missing-value-source.ms:39"
     )
     try expect_equal(
-        nested_result.err().message(),
-        "missing value at bound-missing-value-source.ms:41"
+        nested_result.err().message, "missing value at bound-missing-value-source.ms:41"
     )
 
 test "generic callers and direct calls keep their invocation lines":
     let absent: Int? = none
     try expect_equal(
-        generic_convert(absent).err().message(),
+        generic_convert(absent).err().message,
         "missing value at bound-missing-value-source.ms:5"
     )
 
     let direct = absent.ok_or()
     try expect_equal(
-        direct.err().message(), "missing value at bound-missing-value-source.ms:59"
+        direct.err().message, "missing value at bound-missing-value-source.ms:59"
     )
 
     let zero: Int? = 0
@@ -81,18 +77,18 @@ test "required joins preserve native and source behavior with supplied none":
 
     for flag in [true, false]:
         let native_first = match flag:
-            true: zero.ok_or[MissingValue]
+            true: zero.ok_or[Error]
             false: ordinary
 
         let source_first = match flag:
             true: ordinary
-            false: zero.ok_or[MissingValue]
+            false: zero.ok_or[Error]
 
         let native_only = match flag:
-            true: zero.ok_or[MissingValue]
-            false: zero.ok_or[MissingValue]
+            true: zero.ok_or[Error]
+            false: zero.ok_or[Error]
 
-        let conditional = if flag: zero.ok_or[MissingValue] else: ordinary
+        let conditional = if flag: zero.ok_or[Error] else: ordinary
         try expect_equal(native_first(none).get(), if flag: 0 else: 77)
         try expect_equal(source_first(none).get(), if flag: 77 else: 0)
         try expect_equal(native_only(none).get(), 0)
@@ -100,20 +96,20 @@ test "required joins preserve native and source behavior with supplied none":
 
 test "supplied none remains supplied and nested Optional errors remain intact":
     let absent: Int? = none
-    let convert = absent.ok_or[MissingValue]
+    let convert = absent.ok_or[Error]
     let bound_fault = try expect_fault(
         fn:
             let _ignored = convert(none)
     )
     let direct_fault = try expect_fault(
         fn:
-            let _ignored = absent.ok_or[MissingValue](none)
+            let _ignored = absent.ok_or[Error](none)
     )
     try expect_true(bound_fault.contains("Optional.get() on none"))
     try expect_true(direct_fault.contains("Optional.get() on none"))
 
     let supplied = absent.ok_or().err()
-    try expect_equal(convert(supplied).err().message(), supplied.message())
+    try expect_equal(convert(supplied).err().message, supplied.message)
 
     let nested = absent.ok_or[Int?]
     let inner_none: Int? = none

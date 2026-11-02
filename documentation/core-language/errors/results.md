@@ -5,13 +5,13 @@ weight = 1
 
 # Expected failures with Result
 
-Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected error `E`. `E` may be any value type; domain errors usually use named records or alternatives. No interface implementation is required. `Result`, `ok`, and `error` are in the prelude.
+Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected error `E`. `E` may be any value type. Most failures use the prelude record [`Error`](#the-error-record). `Result`, `ok`, `error`, and `Error` are in the prelude.
 
 Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can test it with `is_error()`, read the success path with `if let`, or pass the error back with `try`. Validate runtime input with ordinary conditions before doing the work.
 
 ## Shorthand: `T!` and `T!E`
 
-`T!` is `Result[T, Error]` and `T!E` (with no space before `E`) is `Result[T, E]`, mirroring `T?` for optionals. Bare `T!` selects the common reporting interface; a failure without an `Error` implementation uses `T!E`. `Result[T, E]` stays valid.
+`T!` is `Result[T, Error]` and `T!E` (with no space before `E`) is `Result[T, E]`, mirroring `T?` for optionals. Use `T!E` for a failure that is not an `Error`. `Result[T, E]` stays valid.
 
 ```manuscript
 fn parse_port(text: String) Int!:
@@ -21,7 +21,41 @@ fn parse_port(text: String) Int!:
 
 Suffixes apply left to right: `Int?!` is `Result[Int?, Error]` and `Int!?` is `Optional[Result[Int, Error]]`. A function type needs parentheses first, as with `?`: `(fn() Int)!`.
 
+## The Error record
+
+`Error` is a plain record with a fixed shape, in the style of Go's `errors.New`:
+
+```manuscript
+export type Error:
+    message: String
+    kind: ErrorCategory = ErrorCategory.Other
+    details: Map[String, String] = Map[String, String]()
+```
+
+- `message` is the text to show a person.
+- `kind` is an `ErrorCategory` a caller can branch on: `InvalidInput`, `InvalidData`, `LimitExceeded`, `NotFound`, `AlreadyExists`, `PermissionDenied`, `Unsupported`, `Closed`, `Timeout`, `Unavailable`, `OutOfRange`, `Failed`, or `Other` (the default).
+- `details` holds extra named context as text, such as a path or a line number.
+
+Build one with the record call. There is no separate constructor and no namespace.
+
+```manuscript
+fn find_user(id: Int) String!:
+    if id < 0:
+        return error(Error("negative id", kind: ErrorCategory.InvalidInput))
+    return error(Error("no such user", kind: ErrorCategory.NotFound, details: {"id": id.to_string()}))
+
+fn describe(id: Int) String:
+    let outcome = find_user(id)
+    if outcome.is_ok(): return outcome.get()
+    if outcome.err().kind == ErrorCategory.NotFound: return "missing {outcome.err().details["id"]}"
+    return outcome.err().message.clone()
+```
+
+Standard-library failures are `Error` values too: branch on `kind`, read `details`, and do not import a per-module error type. Two errors are equal when their three fields are equal.
+
 ## Returning a domain error
+
+An `Error` fits most code. Use your own type as `E` when callers need typed payloads or exhaustive cases.
 
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
@@ -83,8 +117,7 @@ Callbacks run sequentially in the caller's context; faults and cancellation prop
 `to_optional() T?` returns the original payload as a present optional, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
 
 ```manuscript
-import TextError from "@std/core.ms"
-fn successful_price(outcome: Result[Decimal, TextError]) Decimal?:
+fn successful_price(outcome: Result[Decimal, Error]) Decimal?:
     return outcome.to_optional()
 ```
 
@@ -100,21 +133,16 @@ let _ = discount(price: 20d, percent: 10d)
 
 The initializer still runs and the outcome is dropped unread. Several `let _` may share a scope. This does not handle an error or stop a fault.
 
-## A common error boundary
+## Converting a domain error to Error
 
-Usually keep the concrete domain error type. To accept several error types and report their messages, opt into the prelude `Error` interface (`message() String`). Standard errors implement it; custom errors need `impl Error` only when used at this boundary. `TextError("message")` supplies a text-only implementation.
+`try` forwards the error type unchanged and never converts one. Translate a domain error with an ordinary function or `map_error`:
 
 ```manuscript
-import Bytes from "@std/bytes.ms"
-import hex_decode from "@std/data/encoding.ms"
+fn discount_error(cause: DiscountError) Error:
+    return Error("discount failed", kind: ErrorCategory.InvalidInput)
 
-fn decode(text: String) Result[Bytes, Error]:
-    let bytes = try hex_decode(text)
-    return ok(bytes)
+fn discount_checked(price: Decimal, percent: Decimal) Decimal!:
+    return discount(price, percent).map_error(discount_error)
 ```
-
-`try` passes the original `EncodingError` into the `Error` boundary. Callers use `cause.message()` or recover the type with a [contract type pattern](../control-flow/pattern-matching.md#contract-type-patterns). A caller needing only encoding errors can keep `Result[Bytes, EncodingError]`.
-
-An `Error` implementer can be passed, assigned, or returned where `Error` is expected, and `Result[T, SpecificError]` can be returned as `Result[T, Error]` with payloads preserved. See [error compatibility](propagation.md#error-compatibility).
 
 Use [Optional](../types/optionals.md) for absence and [faults](faults.md) for broken invariants.

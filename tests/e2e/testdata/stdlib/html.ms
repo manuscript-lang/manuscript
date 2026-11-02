@@ -1,13 +1,6 @@
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
 import monotonic from "@std/os/time.ms"
-import (
-    escape,
-    parse,
-    HtmlNode,
-    HtmlAttribute,
-    HtmlLimits,
-    HtmlError
-) from "@std/data/html.ms"
+import (escape, parse, HtmlNode, HtmlAttribute, HtmlLimits) from "@std/data/html.ms"
 
 fn children(node: HtmlNode) List[HtmlNode]:
     match node:
@@ -136,20 +129,28 @@ test "HTML honors optional byte depth and node limits":
     try expect_equal((try parse("", HtmlLimits(0, 2, 4))), empty)
     try expect_equal((try parse("é", HtmlLimits())), (try parse("é")))
 
-    let limited: HtmlNode!HtmlError = error(HtmlError.LimitExceeded)
+    let limited: HtmlNode! = error(
+        Error("HTML: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     try expect_equal(parse("é", HtmlLimits(1)), limited)
     try expect_equal(parse("", HtmlLimits(max_depth: 1)), limited)
     try expect_equal(parse("", HtmlLimits(max_nodes: 3)), limited)
 
-    let invalid: HtmlNode!HtmlError = error(HtmlError.InvalidInput)
+    let invalid: HtmlNode! = error(
+        Error("HTML: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(parse("", HtmlLimits(max_nodes: -1)), invalid)
-    try expect_not_equal(HtmlError.InvalidData.message(), "")
+    try expect_not_equal(
+        Error("HTML: invalid data", kind: ErrorCategory.InvalidData).message, ""
+    )
 
 test "HTML depth limit stops deeply nested input without quadratic work":
     # 60,000 open divs take tens of seconds when the parser only checks depth afterwards.
     let nested = "<div>".repeat(60000).get()
     let started = monotonic()
-    let limited: HtmlNode!HtmlError = error(HtmlError.LimitExceeded)
+    let limited: HtmlNode! = error(
+        Error("HTML: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     try expect_equal(parse(nested, HtmlLimits(max_depth: 100)), limited)
 
     let elapsed = monotonic().difference(started).to_milliseconds()
@@ -157,7 +158,9 @@ test "HTML depth limit stops deeply nested input without quadratic work":
 
 test "HTML parse without limits applies defaults and an empty limits record lifts them":
     let nested = "<div>".repeat(20000).get()
-    let limited: HtmlNode!HtmlError = error(HtmlError.LimitExceeded)
+    let limited: HtmlNode! = error(
+        Error("HTML: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     try expect_equal(parse(nested), limited)
 
     let lifted = parse(nested, HtmlLimits())

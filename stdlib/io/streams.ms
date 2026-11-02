@@ -1,6 +1,6 @@
 import Bytes from "@std/bytes.ms"
 import HashAlgorithm from "@std/crypto.ms"
-import ReadStream, WriteStream, IoError, read_line from "@std/io/io.ms"
+import ReadStream, WriteStream, read_line from "@std/io/io.ms"
 
 # Transform and composition helpers for byte streams. Each helper takes its input first, so
 # flows read left to right: `source | map(upper) | take(1024) | copy(sink)`.
@@ -14,14 +14,16 @@ impl ReadStream for BytesSource:
         self.offset = self.data.length()
         return unit
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
-        if self.chunk <= 0: return error(IoError.InvalidInput)
+    var fn read(max_bytes: Int? = none) Bytes?!:
+        if self.chunk <= 0: return error(
+            Error("I/O: invalid input", kind: InvalidInput)
+        )
 
         let remaining = self.data.length() - self.offset
         if remaining <= 0: return ok(none)
 
         let wanted = max_bytes.get(self.chunk)
-        if wanted <= 0: return error(IoError.InvalidInput)
+        if wanted <= 0: return error(Error("I/O: invalid input", kind: InvalidInput))
 
         var size = remaining
         if wanted < remaining: size = wanted
@@ -43,7 +45,7 @@ impl ReadStream for MappedStream:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
+    var fn read(max_bytes: Int? = none) Bytes?!:
         while true:
             let chunk = try self.input.read(max_bytes)
 
@@ -69,8 +71,10 @@ impl ReadStream for LimitedStream:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
-        if self.remaining < 0: return error(IoError.InvalidInput)
+    var fn read(max_bytes: Int? = none) Bytes?!:
+        if self.remaining < 0: return error(
+            Error("I/O: invalid input", kind: InvalidInput)
+        )
         if self.remaining == 0: return ok(none)
 
         let wanted = max_bytes.get(self.remaining)
@@ -107,7 +111,7 @@ impl ReadStream for ConcatStream:
         self.index = self.inputs.length()
         return unit
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
+    var fn read(max_bytes: Int? = none) Bytes?!:
         while self.index < self.inputs.length():
             # Read the stored stream in place: a stream is a value, so a local copy would lose its position.
             let chunk = try self.inputs[self.index].read(max_bytes)
@@ -130,7 +134,7 @@ impl ReadStream for TeeStream:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
+    var fn read(max_bytes: Int? = none) Bytes?!:
         let chunk = try self.input.read(max_bytes)
 
         if let bytes = chunk:
@@ -152,13 +156,13 @@ impl WriteStream for MappedWriter:
     var fn close() Unit:
         return self.output.close()
 
-    var fn flush() Unit!IoError:
+    var fn flush() Unit!:
         return self.output.flush()
 
-    var fn write(data: String) Unit!IoError:
+    var fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
-    var fn write_bytes(data: Bytes) Unit!IoError:
+    var fn write_bytes(data: Bytes) Unit!:
         let mapped = self.transform(data)
         if mapped.length() == 0: return ok(unit)
 
@@ -170,7 +174,7 @@ export fn map_writer(output: WriteStream, transform: fn(Bytes) Bytes) WriteStrea
     return MappedWriter(output, transform)
 
 # Reads `input` to its end and returns its digest, hashing chunk by chunk so memory stays bounded.
-export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Bytes!IoError:
+export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Bytes!:
     let hasher = algorithm.hasher()
 
     while true:
@@ -184,7 +188,7 @@ export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Bytes!IoError:
     return ok(hasher.finish())
 
 # Reads every remaining line from `input`, omitting line endings. `max_bytes` bounds each line, as in `read_line`.
-export fn read_lines(input: ReadStream, max_bytes: Int?) List[String]!IoError:
+export fn read_lines(input: ReadStream, max_bytes: Int?) List[String]!:
     var lines = List[String]()
 
     while true:

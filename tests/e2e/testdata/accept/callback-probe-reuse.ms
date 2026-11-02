@@ -1,4 +1,3 @@
-import TextError from "@std/core.ms"
 import expect_equal, expect_false from "@std/test/test.ms"
 
 fn apply[T, U](value: T, transform: fn(T) U) U: transform(value)
@@ -8,16 +7,13 @@ fn choose[T](first: fn() T, second: fn() T) T: first()
 fn optional[T, U](value: T, transform: (fn(T) U)?) U:
     return transform.get()(value)
 
-fn with_result[T](transform: fn() T!TextError) T!TextError: transform()
+fn with_result[T](transform: fn() T!Error) T!Error: transform()
 
 type Callback[T, U]:
     transform: fn(T) U
 
 type Failure[T]:
     detail: T
-
-impl Error for Failure[T]:
-    fn message() String: self.detail.to_string()
 
 test "callback inference retains captures and contextual metadata":
     let offset = 7
@@ -40,16 +36,18 @@ test "callback inference retains captures and contextual metadata":
 
     let failure = with_result(
         fn:
-            if true: return error(TextError("expected"))
+            if true: return error(Error("expected"))
 
             return ok(4)
     )
 
-    try expect_equal(failure, Result[Int, TextError].error(TextError("expected")))
+    try expect_equal(failure, Result[Int, Error].error(Error("expected")))
 
-    let failed: Int! = apply(value: 9, transform: fn item: error(Failure(item)))
+    let failed: Int!Failure[Int] = apply(
+        value: 9, transform: fn item: error(Failure(item))
+    )
     try expect_false(failed.is_ok())
-    try expect_equal(failed.err().message(), "9")
+    try expect_equal(failed.err().detail, 9)
 
 fn absent[T]() T?: none
 
@@ -73,15 +71,15 @@ test "later returns repair incomplete and convertible evidence":
             return Failure(2)
     )
 
-    try expect_equal(cause.message(), "2")
+    try expect_equal(cause.detail, 2)
 
-fn operation() Int!TextError: ok(4)
+fn operation() Int!Error: ok(4)
 
 test "try rechecks the inferred enclosing result":
     let value = from_callback(
         fn:
             let number = try operation()
-            return Result[Int, TextError].ok(number)
+            return Result[Int, Error].ok(number)
     )
 
-    try expect_equal(value, Result[Int, TextError].ok(4))
+    try expect_equal(value, Result[Int, Error].ok(4))

@@ -41,38 +41,38 @@ test "mapped output keeps lexical Hashable and Equal evidence":
     first_generic_map(input).length() | try expect_equal(1)
     first_lookup() | try expect_equal("found")
 
-test "Result composition retains concrete Error and its local implementation":
+test "Result composition builds each module's own Error from the domain value":
     var cause = Cause(1)
     let one = first_failure(cause)
     let two = second_failure(cause)
     try expect_false(
-        (one.err().message() != "first 1" or two.err().message() != "second 1")
+        (one.err().message != "first 1" or two.err().message != "second 1")
     )
     cause.count = 2
-    (cause.count != 2 or two.err().message() != "second 2") | try expect_false
+    (cause.count != 2 or two.err().message != "second 1") | try expect_false
 
-test "conversions and queries retain scoped generic evidence and Error identity":
+test "conversions and queries retain scoped generic evidence and a plain Error":
     (not (first_queries()) or not (second_queries())) | try expect_false
 
     var cause = Cause(1)
     let one = first_converted(cause)
     let two = second_converted(cause)
     try expect_false(
-        (one.err().message() != "first 1" or two.err().message() != "second 1")
+        (one.err().message != "first 1" or two.err().message != "second 1")
     )
     cause.count = 3
     try expect_false(
-        (one.err().message() != "first 3" or two.err().message() != "second 3")
+        (one.err().message != "first 1" or two.err().message != "second 1")
     )
     (one.to_optional().is_none()) | try expect_true
 
-test "generic folds preserve scoped interface accumulators":
+test "generic folds preserve plain Error accumulators":
     var cause = Cause(4)
     let one = first_folded(cause)
     let two = second_folded(cause)
-    (one.message() != "first 4" or two.message() != "second 4") | try expect_false
+    (one.message != "first 4" or two.message != "second 4") | try expect_false
     cause.count = 5
-    (one.message() != "first 5" or two.message() != "second 5") | try expect_false
+    (one.message != "first 4" or two.message != "second 4") | try expect_false
 
 test "Map transformations preserve input and output equality evidence":
     let input: Map[Int, Int] = {1: 10, 2: 20}

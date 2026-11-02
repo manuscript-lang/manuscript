@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/stdlib/http-upload.ms
 import expect_equal from "@std/test/test.ms"
 import headers, HttpClientOptions, HttpMethod, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
-import IoError, ReadStream, read_all from "@std/io/io.ms"
+import ReadStream, read_all from "@std/io/io.ms"
 import body_stream from "@std/net/sse.ms"
 import http_client, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
@@ -18,10 +18,10 @@ impl ReadStream for Chunks:
     fn close() Unit:
         return unit
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
+    var fn read(max_bytes: Int? = none) Bytes?!:
         if self.next == self.parts.length():
             match self.failure:
-                message: return error(IoError.Failed(message.clone()))
+                message: return error(Error(message.clone(), kind: ErrorCategory.Failed))
                 none: return ok(none)
 
         let chunk = self.parts[self.next]

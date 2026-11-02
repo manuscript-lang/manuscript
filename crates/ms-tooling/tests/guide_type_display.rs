@@ -56,7 +56,7 @@ fn source_type_compositions_preserve_the_parsed_structure() {
             format!("({seed})?"),
             format!("List[{seed}]"),
             format!("fn({seed}) Int?"),
-            format!("Result[{seed}, TextError]"),
+            format!("Result[{seed}, Error]"),
             format!("Map[String, {seed}]"),
         ] {
             let original = parse_type(&text);
@@ -80,7 +80,7 @@ fn source_optional_types_render_as_parseable_suffixes() {
         "List[Int??]",
         "(fn(Int?) String)?",
         "fn(Int) String?",
-        "Result[Int, TextError]?",
+        "Result[Int, Error]?",
         "Result[Int?, Error]",
     ];
     assert_eq!(function.params.len(), expected.len());

@@ -368,10 +368,7 @@ fn is_bench(c: &Callable) -> bool {
 /// Lowers queued jobs until none remain. The text of an interface value tests every table of
 /// the interface, so it waits until no other job can still add one.
 fn drain(cx: &mut Cx, m: &mut Module) -> Result<(), Error> {
-    let deferred = |m: &Module, j: &Job| {
-        matches!(&j.kind, JobKind::Category(_))
-            || matches!(&j.kind, JobKind::Format(t, _) if matches!(m.types.kind(*t), ms_mir::types::TyKind::Iface(_)))
-    };
+    let deferred = |m: &Module, j: &Job| matches!(&j.kind, JobKind::Format(t, _) if matches!(m.types.kind(*t), ms_mir::types::TyKind::Iface(_)));
     loop {
         let next = match cx.queue.iter().rposition(|j| !deferred(m, j)) {
             Some(i) => cx.queue.remove(i),
@@ -405,7 +402,6 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
         JobKind::Json(j) => return crate::json::build_json(cx, m, job.func, j),
         JobKind::FnAdapt(j) => return crate::closure::build_fn_adapter(cx, m, job.func, j),
         JobKind::IfaceThunk(j) => return crate::closure::build_iface_thunk(cx, m, job.func, j),
-        JobKind::Category(t) => return crate::category::build_category(cx, m, job.func, *t),
         JobKind::Html(j) => return crate::html::build_html(cx, m, job.func, j),
     };
     let hir = cx.module(c.module.file)?;

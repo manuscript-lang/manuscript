@@ -1,5 +1,5 @@
 import keep, measure from "@std/test/bench.ms"
-import compile, RegexError from "@std/string.ms"
+import compile from "@std/string.ms"
 import expect_equal from "@std/test/test.ms"
 
 fn rows_bench(count: Int, grouped: Bool) Result[Unit, Error]:
@@ -71,8 +71,10 @@ bench "regex.cardinality.whole.over_limit":
 
     fn work() Result[Unit, Error]:
         let out = re.captures_all(text, 1)
-        let expected: Result[List[List[String]], RegexError] = error(
-            RegexError.LimitExceeded
+        let expected: Result[List[List[String]], Error] = error(
+            Error(
+                "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+            )
         )
         try expect_equal(out, expected)
         return keep(if out.is_error(): 1 else: 0)

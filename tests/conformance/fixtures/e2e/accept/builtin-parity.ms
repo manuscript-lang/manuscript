@@ -6,7 +6,6 @@ import from_int from "@std/math/math.ms"
 import compile from "@std/string.ms"
 import filled, range_by, map_from_entries from "@std/collections/collections.ms"
 import Bytes from "@std/bytes.ms"
-import StringError from "@std/string.ms"
 
 fn positive(value: Int) Bool:
     return value > 0
@@ -34,7 +33,7 @@ fn compare(left: Int, right: Int) Int:
 
     return 0
 
-fn common_result[T, E: Error](result: T!E) T!:
+fn common_result[T](result: T!) T!:
     match result:
         ok(value):
             return ok(value)
@@ -310,7 +309,7 @@ test "string methods use Unicode scalars":
         ok(_):
             let _completed = unit
         error(cause):
-            return fail(message: cause.message())
+            return fail(message: cause.message)
 
 test "bytes have analogous immutable operations":
     let data = Bytes([1, 2, 3, 2])
@@ -340,12 +339,8 @@ test "growth limits and invalid inputs return values":
     "x".pad_start(target_length: -1, padding: " ") | try expect_equal("x")
     "x".pad_end(target_length: 4, padding: "") | try expect_equal("x")
 
-    let list_limit: List[Int]!CollectionError = error(
-        CollectionError.LimitExceeded
-    )
-    let list_invalid: List[Int]!CollectionError = error(
-        CollectionError.InvalidInput
-    )
+    let list_limit: List[Int]! = error(Error("collection: limit exceeded", kind: ErrorCategory.LimitExceeded))
+    let list_invalid: List[Int]! = error(Error("collection: invalid input", kind: ErrorCategory.InvalidInput))
     range_by(start: 0, end: 4, step: 1, max_items: 3) | try expect_equal(list_limit)
     range_by(start: 0, end: 4, step: 0, max_items: 3) | try expect_equal(list_invalid)
     filled(value: 1, count: 2, max_items: 1) | try expect_equal(list_limit)
@@ -423,7 +418,7 @@ test "normalization, empty separators, and precision formatting":
         ok(_):
             let _completed = unit
         error(cause):
-            return fail(message: cause.message())
+            return fail(message: cause.message)
 
     "é🙂".split(separator: "", max_parts: 8) | try expect_equal(["é", "🙂"])
 
@@ -433,8 +428,8 @@ test "normalization, empty separators, and precision formatting":
     "".replace_first(old: "", new: "-") | try expect_equal("-")
     "é".concat(other: "🙂") | try expect_equal("é🙂")
 
-    let invalid: String!StringError = error(StringError.InvalidInput)
-    let limit: String!StringError = error(StringError.LimitExceeded)
+    let invalid: String! = error(Error("string: invalid input", kind: ErrorCategory.InvalidInput))
+    let limit: String! = error(Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded))
     "é".normalize(form: "invalid", max_bytes: 8) | try expect_equal(invalid)
     "é".normalize(form: "NFD", max_bytes: 2) | try expect_equal(limit)
 
@@ -476,7 +471,7 @@ test "BigInt and Regex share function implementations with methods":
         ok(_):
             let _completed = unit
         error(cause):
-            return fail(message: cause.message())
+            return fail(message: cause.message)
 
 test "generic native methods accept omitted single-parameter labels":
     let values = [1, 2]

@@ -2,7 +2,7 @@
 # conform: phase=test
 import share, Shared from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
-import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
@@ -108,7 +108,7 @@ test "a task that passes its timeout is cancelled":
     let group = TaskGroup[String]()
     let late = group.spawn(fn ch: slow(2000, "late"), timeout: nanoseconds(20000000))
     let quick = group.spawn(fn ch: slow(1, "quick"), timeout: nanoseconds(2000000000))
-    late.result() | try expect_error | try expect_equal(TaskError.TimedOut)
+    late.result() | try expect_error | try expect_equal(Error("task: timed out", kind: ErrorCategory.Timeout))
     quick.result() | try expect_ok | try expect_equal("quick")
 
 test "a group timeout limits every task started in it":
@@ -116,17 +116,17 @@ test "a group timeout limits every task started in it":
     let late = group.spawn(fn ch: slow(2000, "late"))
     let early = group.spawn(fn ch: slow(1, "early"))
     early.result() | try expect_ok | try expect_equal("early")
-    late.result() | try expect_error | try expect_equal(TaskError.TimedOut)
+    late.result() | try expect_error | try expect_equal(Error("task: timed out", kind: ErrorCategory.Timeout))
 
 test "a task shorter than its group limit uses its own limit":
     let group = TaskGroup[String](timeout: nanoseconds(2000000000))
     let late = group.spawn(fn ch: slow(2000, "late"), timeout: nanoseconds(20000000))
-    late.result() | try expect_error | try expect_equal(TaskError.TimedOut)
+    late.result() | try expect_error | try expect_equal(Error("task: timed out", kind: ErrorCategory.Timeout))
 
 test "wait reports a task that timed out":
     let group = TaskGroup[String]()
     group.spawn(fn ch: slow(2000, "late"), timeout: nanoseconds(20000000))
-    group.wait() | try expect_error | try expect_equal(TaskError.TimedOut)
+    group.wait() | try expect_error | try expect_equal(Error("task: timed out", kind: ErrorCategory.Timeout))
 
 test "a task without a timeout runs to its end":
     let group = TaskGroup[String]()
@@ -137,27 +137,27 @@ test "wait leaves every outcome readable through its handle":
     let group = TaskGroup[String]()
     let done = group.spawn(fn ch: slow(1, "done"))
     let late = group.spawn(fn ch: slow(2000, "late"), timeout: nanoseconds(20000000))
-    group.wait() | try expect_error | try expect_equal(TaskError.TimedOut)
+    group.wait() | try expect_error | try expect_equal(Error("task: timed out", kind: ErrorCategory.Timeout))
     done.result() | try expect_ok | try expect_equal("done")
-    late.result() | try expect_error | try expect_equal(TaskError.TimedOut)
+    late.result() | try expect_error | try expect_equal(Error("task: timed out", kind: ErrorCategory.Timeout))
 
 test "results reports the first task that has no result":
     let group = TaskGroup[String]()
     group.spawn(fn ch: slow(1, "done"))
     group.spawn(fn ch: slow(2000, "late"), timeout: nanoseconds(20000000))
-    group.results() | try expect_error | try expect_equal(TaskError.TimedOut)
+    group.results() | try expect_error | try expect_equal(Error("task: timed out", kind: ErrorCategory.Timeout))
 
 test "a zero timeout times the task out":
     let group = TaskGroup[String]()
     let task = group.spawn(fn ch: slow(1, "x"), timeout: nanoseconds(0))
-    task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
+    task.result() | try expect_error | try expect_equal(Error("task: timed out", kind: ErrorCategory.Timeout))
 
 test "a group whose time has passed times new tasks out":
     let group = TaskGroup[String](timeout: nanoseconds(10000000))
     pause(30)
 
     let task = group.spawn(fn ch: slow(1, "x"))
-    task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
+    task.result() | try expect_error | try expect_equal(Error("task: timed out", kind: ErrorCategory.Timeout))
 
 test "a task that never ran releases what it captured":
     let text = "captured by a task that is cancelled before it runs, long enough for the heap"
@@ -238,20 +238,20 @@ test "using a task after its group closed gives Closed":
     var group = TaskGroup[Int]()
     let task = group.spawn(fn ch: slow_square(3))
     try group.close()
-    task.result() | try expect_error | try expect_equal(TaskError.Closed)
+    task.result() | try expect_error | try expect_equal(Error("task: closed", kind: ErrorCategory.Closed))
     (
         group.spawn(
             fn ch: slow_square(4)
-        ).result() | try expect_error | try expect_equal(TaskError.Closed)
+        ).result() | try expect_error | try expect_equal(Error("task: closed", kind: ErrorCategory.Closed))
     )
-    group.wait() | try expect_error | try expect_equal(TaskError.Closed)
-    group.results() | try expect_error | try expect_equal(TaskError.Closed)
+    group.wait() | try expect_error | try expect_equal(Error("task: closed", kind: ErrorCategory.Closed))
+    group.results() | try expect_error | try expect_equal(Error("task: closed", kind: ErrorCategory.Closed))
 
 test "a second result call gives Closed":
     let group = TaskGroup[Int]()
     let task = group.spawn(fn ch: square(2))
     task.result() | try expect_ok | try expect_equal(4)
-    task.result() | try expect_error | try expect_equal(TaskError.Closed)
+    task.result() | try expect_error | try expect_equal(Error("task: closed", kind: ErrorCategory.Closed))
 
 test "a group forgets collected tasks":
     let group = TaskGroup[Int]()
@@ -260,8 +260,8 @@ test "a group forgets collected tasks":
     let third = group.spawn(fn ch: square(4))
     second.result() | try expect_ok | try expect_equal(9)
     group.results() | try expect_ok | try expect_equal([4, 16])
-    first.result() | try expect_error | try expect_equal(TaskError.Closed)
-    third.result() | try expect_error | try expect_equal(TaskError.Closed)
+    first.result() | try expect_error | try expect_equal(Error("task: closed", kind: ErrorCategory.Closed))
+    third.result() | try expect_error | try expect_equal(Error("task: closed", kind: ErrorCategory.Closed))
     group.results() | try expect_ok | try expect_equal([])
 
 test "a group with a timeout collects many tasks":

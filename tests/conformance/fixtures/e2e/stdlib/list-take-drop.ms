@@ -1,7 +1,6 @@
 # conform: tags=closures,faults,generics,lists,modules,mutation,optional,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/list-take-drop.ms
-import TextError from "@std/core.ms"
 import expect_equal, expect_false from "@std/test/test.ms"
 
 test "List take and drop copy prefix and remainder":
@@ -69,10 +68,10 @@ fn copy_window[T: Clonable](values: List[T], first: Int, skip: Int) List[T]:
 test "List take and drop support generic and nested values":
     try expect_equal(copy_window[String](["a", "b", "c"], 2, 1), ["b"])
 
-    let values: List[Int?!TextError] = [
-        ok(1), error(TextError("cause"))
+    let values: List[Int?!Error] = [
+        ok(1), error(Error("cause"))
     ]
-    try expect_equal(copy_window(values, 2, 1).get(0).err().message(), "cause")
+    try expect_equal(copy_window(values, 2, 1).get(0).err().message, "cause")
 
     let callbacks = [fn(value: Int) Int: value + 1]
     try expect_equal(callbacks.take(1).drop(0).get(0)(1), 2)

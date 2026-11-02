@@ -1,7 +1,6 @@
 # conform: tags=aliasing,alternatives,closures,control-flow,decimal,formatter,generics,interfaces,interpolation,lists,maps,modules,optional,parser,records,sets,stdlib-bytes,stdlib-decimal,stdlib-errors,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/to-string.ms
-import TextError from "@std/core.ms"
 import fail from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/math/decimal.ms"
@@ -74,12 +73,12 @@ test "records alternatives and collections convert":
 
     let absent: Int? = none
     let present: Int? = 3
-    let result: Int!TextError = error(TextError("failed"))
+    let result: Int!Error = error(Error("failed"))
     (try check(value: absent.to_string(), expected: "Optional.none"))
     (try check(value: present.to_string(), expected: "Optional.some(3)"))
     (
         try check(
-            value: result.to_string(), expected: "Result.error(TextError(text: failed))"
+            value: result.to_string(), expected: "Result.error(Error(message: failed))"
         )
     )
     (try check(value: [1, 2, 3].to_string(), expected: "[1, 2, 3]"))

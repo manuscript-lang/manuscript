@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/path.ms
 import expect_equal, expect_false from "@std/test/test.ms"
-import posix, win32, PathError, dirname, basename_without from "@std/os/fs.ms"
+import posix, win32, dirname, basename_without from "@std/os/fs.ms"
 
 test "POSIX paths normalize resolve parse and match without host access":
     let paths = posix()
@@ -31,6 +31,6 @@ test "module dirname and basename_without follow the host dialect":
     try expect_equal(basename_without("dir/file.txt", ".md"), "file.txt")
 
 test "glob matching rejects NUL in the path as it does in the pattern":
-    let invalid: Bool!PathError = error(PathError.InvalidInput)
+    let invalid: Bool! = error(Error("path: invalid input", kind: ErrorCategory.InvalidInput))
     try expect_equal(posix().matches_glob("a\u{0}b", "*"), invalid)
     try expect_equal(posix().matches_glob("ab", "*\u{0}"), invalid)

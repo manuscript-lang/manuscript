@@ -9,7 +9,7 @@ fn first[T](left: T, right: T) T: left
 
 fn optional[T](value: T?, fallback: T) T: value.get(fallback)
 
-fn describe[T](value: T, cause: Error) String: cause.message()
+fn describe[T](value: T, cause: Error) String: cause.message
 
 type Events:
     values: List[Int]
@@ -17,14 +17,14 @@ type Events:
 type Failure:
     detail: String
 
-impl Error for Failure:
-    fn message() String: self.detail.clone()
+fn failure_error(cause: Failure) Error: Error(cause.detail.clone())
 
 type GenericFailure[T]:
     detail: T
 
-impl Error for GenericFailure[T]:
-    fn message() String: self.detail.to_string()
+fn generic_failure_error[T](cause: GenericFailure[T]) Error: Error(
+    cause.detail.to_string()
+)
 
 fn record(var events: Events, value: Int) Int:
     events.values.append(value)
@@ -43,10 +43,12 @@ test "reused inference preserves evaluation and argument conversions":
     try expect_equal(wrapped, 3)
     try expect_equal(events.values, [2, 1, 3])
 
-    let message = describe(value: 1, cause: identity(Failure("cached")))
+    let message = describe(value: 1, cause: identity(failure_error(Failure("cached"))))
     try expect_equal(message, "cached")
 
-    let generic_message = describe(value: 1, cause: identity(GenericFailure(4)))
+    let generic_message = describe(
+        value: 1, cause: identity(generic_failure_error(GenericFailure(4)))
+    )
     try expect_equal(generic_message, "4")
 
     let offset = 7

@@ -51,17 +51,18 @@ ms test ms.toml --json
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import parse, JsonError from "@std/data/json.ms"
+import parse from "@std/data/json.ms"
 import expect_equal, expect_ok, expect_error, expect_some from "@std/test/test.ms"
 
 test "typed JSON and Optional payloads":
     let number = try expect_ok(parse[Int]("3"))
     try expect_equal(number, 3)
-    try expect_error(parse[Int]("true")) | try expect_equal(JsonError.InvalidData)
+    let cause = try expect_error(parse[Int]("true"))
+    try expect_equal(cause.kind, ErrorCategory.InvalidData)
     try expect_some([number].first()) | try expect_equal(3)
 ```
 
-Tests can also propagate errors from calls whose error type implements `Error`. See [Results](../core-language/errors/results.md).
+Tests can also propagate an `Error` with `try`. See [Results](../core-language/errors/results.md).
 
 ## Select and repeat
 

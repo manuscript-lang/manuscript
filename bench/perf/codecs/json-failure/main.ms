@@ -1,4 +1,4 @@
-import parse, JsonError from "@std/data/json.ms"
+import parse from "@std/data/json.ms"
 import StringBuilder from "@std/string.ms"
 import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
@@ -44,7 +44,7 @@ export fn main() Int:
                 if result.get() != wanted: return 8
             else:
                 if result.is_ok(): return 3
-                if result.err() != JsonError.InvalidData: return 5
+                if result.err().kind != ErrorCategory.InvalidData: return 5
         else:
             let result = parse(text)
 
@@ -56,7 +56,7 @@ export fn main() Int:
                 if parsed.as_string().get("") != wanted: return 8
             else:
                 if result.is_ok(): return 3
-                if result.err() != JsonError.InvalidData: return 5
+                if result.err().kind != ErrorCategory.InvalidData: return 5
 
         checksum += 1
 

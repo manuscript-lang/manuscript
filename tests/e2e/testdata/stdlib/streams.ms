@@ -1,5 +1,5 @@
 import from_bytes, map, take, concat, tee, map_writer, digest from "@std/io/streams.ms"
-import read_all, copy, IoError, read_line from "@std/io/io.ms"
+import read_all, copy, read_line from "@std/io/io.ms"
 import CompressionFormat from "@std/io/archive.ms"
 import HashAlgorithm, sha256 from "@std/crypto.ms"
 import Bytes from "@std/bytes.ms"
@@ -74,7 +74,7 @@ test "compression streams round trip all formats":
 test "take rejects a negative limit and read_line counts the terminator":
     var negative = take(from_bytes("abc".to_bytes()), -1)
     let failed = negative.read()
-    if failed.is_ok() or failed.err() != IoError.InvalidInput: return panic(
+    if failed.is_ok() or failed.err().kind != ErrorCategory.InvalidInput: return panic(
         "negative take"
     )
 

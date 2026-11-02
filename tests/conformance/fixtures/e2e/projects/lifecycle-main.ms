@@ -1,7 +1,6 @@
 # conform: tags=aliasing,closures,control-flow,interfaces,interpolation,lists,match,modules,mutation,records,stdlib-cleanup,stdlib-errors,stdlib-io,stdlib-testing,strings,tier-stdlib,try-result,scope-cleanup
 # conform: phase=run
 # conform: origin=tests/e2e/testdata/projects/lifecycle/main.ms
-import TextError from "@std/core.ms"
 import expect_equal, fail from "@std/test/test.ms"
 import stderr from "@std/io/io.ms"
 import stdout from "@std/io/io.ms"
@@ -37,10 +36,10 @@ fn early(var output: WriteStream) Int:
     let _inner = Resource(label: "inner", output: stdout())
     return report(output: var output, label: "return value", value: 5)
 
-fn failure() Int!TextError:
-    return error(TextError("expected"))
+fn failure() Int!Error:
+    return error(Error("expected"))
 
-fn propagate(output: WriteStream) Int!TextError:
+fn propagate(output: WriteStream) Int!Error:
     let _resource = Resource(label: "propagation", output: output)
     let number = try failure()
     return ok(number)
@@ -103,5 +102,5 @@ export fn main() Int:
     match exercise():
         ok(status): return status
         error(cause):
-            let written = stderr().write("{cause.message()}\n")
+            let written = stderr().write("{cause.message}\n")
             return 1

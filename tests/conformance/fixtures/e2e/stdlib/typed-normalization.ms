@@ -2,9 +2,9 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/typed-normalization.ms
 import expect_equal from "@std/test/test.ms"
-import NormalizationForm, StringError from "@std/string.ms"
+import NormalizationForm from "@std/string.ms"
 
-fn normalize(form: NormalizationForm, text: String) String!StringError:
+fn normalize(form: NormalizationForm, text: String) String!:
     return form.normalize(text)
 
 fn call[T](operation: fn(String, Int?) T, text: String) T:
@@ -36,7 +36,7 @@ test "typed normalization keeps UTF-8 byte budgets and domain errors":
     let form = NormalizationForm.Nfc
     try expect_equal(form.normalize("é", 2).get(), "é")
     try expect_equal(form.normalize("", 0).get(), "")
-    try expect_equal(form.normalize("é", 1).err(), StringError.LimitExceeded)
-    try expect_equal(form.normalize("x", 0).err(), StringError.LimitExceeded)
-    try expect_equal(form.normalize("", -1).err(), StringError.InvalidInput)
-    try expect_equal("x".normalize("nfc").err(), StringError.InvalidInput)
+    try expect_equal(form.normalize("é", 1).err(), Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded))
+    try expect_equal(form.normalize("x", 0).err(), Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded))
+    try expect_equal(form.normalize("", -1).err(), Error("string: invalid input", kind: ErrorCategory.InvalidInput))
+    try expect_equal("x".normalize("nfc").err(), Error("string: invalid input", kind: ErrorCategory.InvalidInput))

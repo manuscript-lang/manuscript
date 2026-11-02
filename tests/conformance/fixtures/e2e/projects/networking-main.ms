@@ -4,53 +4,22 @@
 import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
 import headers, HttpMethod, buffered from "@std/net/http.ms"
 import http_client, serve, web_socket from "@std/net/net.ms"
-import HttpError from "@std/net/http.ms"
-import WebSocketError from "@std/net/net.ms"
-import IoError from "@std/io/io.ms"
 import HttpExchange from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
 import HttpClientOptions from "@std/net/http.ms"
 import TlsOptions from "@std/net/net.ms"
 import WebSocketOptions from "@std/net/net.ms"
 
-fn websocket_error(cause: WebSocketError) HttpError:
-    match cause:
-        InvalidInput:
-            return HttpError.InvalidInput
-        InvalidData:
-            return HttpError.InvalidData
-        LimitExceeded:
-            return HttpError.LimitExceeded
-        PermissionDenied:
-            return HttpError.PermissionDenied
-        Closed:
-            return HttpError.Closed
-        Timeout:
-            return HttpError.Timeout
-        Failed(message):
-            return HttpError.Failed(message)
-
-fn socket_result[T](result: T!WebSocketError) T!HttpError:
-    match result:
-        ok(value):
-            return ok(value)
-        error(cause):
-            return error(websocket_error(cause))
-
-fn echo(exchange: HttpExchange) Unit!HttpError:
+fn echo(exchange: HttpExchange) Unit!:
     if exchange.path() == "/ws":
-        var socket = try socket_result(
-            result: exchange.upgrade(
-                allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024
-            )
+        var socket = try exchange.upgrade(
+            allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024
         )
 
-        match try socket_result(result: socket.receive()):
+        match try socket.receive():
             message:
-                let _sent = try socket_result(
-                    result: socket.send_bytes(
-                        data: message.data, text: message.text
-                    )
+                let _sent = try socket.send_bytes(
+                    data: message.data, text: message.text
                 )
             none:
                 return ok(unit)
@@ -66,7 +35,7 @@ fn echo(exchange: HttpExchange) Unit!HttpError:
         ok(_):
             return ok(unit)
         error(_):
-            return error(HttpError.Failed("write failed"))
+            return error(Error("write failed", kind: ErrorCategory.Failed))
 
 fn exercise() Unit!:
     let tls = TlsOptions(
@@ -111,17 +80,15 @@ fn exercise() Unit!:
     let websocket_options = WebSocketOptions(
         max_message_bytes: 1024, timeout: 2.seconds, tls: tls, compression: false
     )
-    let socket = try socket_result(
-        result: web_socket(
-            url: "ws://{server.address()}/ws", headers: headers(),
-            subprotocols: ["echo"], options: websocket_options
-        )
+    let socket = try web_socket(
+        url: "ws://{server.address()}/ws", headers: headers(),
+        subprotocols: ["echo"], options: websocket_options
     )
     socket.subprotocol() | try expect_equal("echo")
 
-    let _sent = try socket_result(result: socket.send(data: "echo me"))
+    let _sent = try socket.send(data: "echo me")
 
-    match try socket_result(result: socket.receive()):
+    match try socket.receive():
         message:
             (message.text) | try expect_true
             try expect_equal(message.data.decode_utf8(), "echo me")

@@ -119,17 +119,9 @@ export fn file_sha256(path: String) String:
 export fn read_text(path: String) String:
     return read_file(path).get().decode_utf8().get("")
 
-# A validation failure in a driver or table: the evidence is not what the benchmark protocol requires.
-export type Invalid:
-    text: String
-
-impl Error for Invalid:
-    fn message() String:
-        return self.text.clone()
-
 # Fails with `text`.
-export fn invalid[T](text: String) Result[T, Invalid]:
-    return error(Invalid(text))
+export fn invalid[T](text: String) T!:
+    return error(Error(text))
 
 # `text` unless it is longer than `width`; padded on the left to `width` columns.
 export fn right(text: String, width: Int) String:
@@ -161,7 +153,7 @@ export fn fixed(value: Float, digits: Int) String:
     return "{head}.{parts[1]}"
 
 # Parses a positive repeat count.
-export fn repeats(text: String) Result[Int, Invalid]:
+export fn repeats(text: String) Int!:
     if let n = text.parse_int():
         if n > 0: return ok(n)
     return invalid("repeats must be a positive integer")
@@ -177,7 +169,7 @@ export fn run_in(dir: String, program: String, arguments: List[String]) Ran:
     return capture(program, arguments, cwd: dir)
 
 # Fails with the program's stderr unless `ran` exited zero.
-export fn must(what: String, ran: Ran) Result[String, Invalid]:
+export fn must(what: String, ran: Ran) String!:
     if ran.ok and ran.code == 0: return ok(ran.stdout.clone())
 
     return invalid("{what} failed ({ran.code}): {ran.stderr}")
@@ -187,14 +179,14 @@ export fn ms_binary() String:
     return absolute(env("MS", "target/release/ms"))
 
 # Builds the Manuscript project in `dir` to `out` (a file name inside `dir`'s parent is fine; pass an absolute path).
-export fn build_ms(dir: String, out: String) Result[Unit, Invalid]:
+export fn build_ms(dir: String, out: String) Unit!:
     let _stale = remove("{dir}/ms.lock")
     let ran = run_in(dir, ms_binary(), ["build", "ms.toml", "-o", out])
     let _ = try must("ms build {dir}", ran)
     return ok(unit)
 
 # Builds the Go module in `dir` as a static binary.
-export fn build_go(dir: String, out: String) Result[Unit, Invalid]:
+export fn build_go(dir: String, out: String) Unit!:
     set_environment("CGO_ENABLED", "0").get()
 
     let go = env("GO", "go")
@@ -210,11 +202,7 @@ export fn build_go(dir: String, out: String) Result[Unit, Invalid]:
     return ok(unit)
 
 # Compiles one Rust source at the usual release settings plus `flags`.
-export fn build_rust(
-    source: String,
-    out: String,
-    flags: List[String]
-) Result[Unit, Invalid]:
+export fn build_rust(source: String, out: String, flags: List[String]) Unit!:
     var args = ["--edition", "2021", "-C", "opt-level=3", "-C", "codegen-units=1"]
     args = args.concat(flags)
     args = args.concat(["-o", out.clone(), source.clone()])
@@ -223,27 +211,23 @@ export fn build_rust(
     return ok(unit)
 
 # Runs `exe` with `input` on standard input and returns its standard output.
-export fn sample(
-    exe: String,
-    arguments: List[String],
-    input: String = ""
-) Result[String, Invalid]:
+export fn sample(exe: String, arguments: List[String], input: String = "") String!:
     return must(exe, capture(exe, arguments, input))
 
 # Prints the text of `result` to standard output and returns 0, or reports its error and returns 1.
-export fn finish(result: Result[String, Error]) Int:
+export fn finish(result: String!) Int:
     if let text = result:
         stdout().write(text + "\n").get()
         return 0
 
-    return fail(result.err().message())
+    return fail(result.err().message.clone())
 
 # Parses `--name value` pairs. A name outside `known` or a missing value is an error; `required` names must be present.
 export fn options(
     args: List[String],
     known: List[String],
     required: List[String]
-) Result[Map[String, String], Invalid]:
+) Map[String, String]!:
     var found = Map[String, String]()
     var i = 0
 
@@ -314,7 +298,7 @@ export fn read_stdin() String:
     return read_all(stdin(), none).get().decode_utf8().get("")
 
 # Runs `ms bench` for the bench/perf/stdlib suite and returns its JSON document.
-export fn stdlib_bench(ms: String, samples: Int, filter: String) Result[String, Invalid]:
+export fn stdlib_bench(ms: String, samples: Int, filter: String) String!:
     var args = ["bench", "ms.toml", "--json", "--samples", "{samples}"]
     if filter != "": args = args.concat(["--filter", filter.clone()])
     return must("ms bench", run_in("bench/perf/stdlib", ms, args))
@@ -363,11 +347,7 @@ export type RssRun:
     ran: Ran
 
 # Runs `program arguments` and returns the child's peak resident set in KiB. The child's output is captured in `ran`.
-export fn peak_run(
-    program: String,
-    arguments: List[String],
-    input: String = ""
-) Result[RssRun, Invalid]:
+export fn peak_run(program: String, arguments: List[String], input: String = "") RssRun!:
     let ran = capture(program, arguments, input)
     if not ran.ok or ran.code != 0: return invalid(
         "{program} failed ({ran.code}): {ran.stderr}"
