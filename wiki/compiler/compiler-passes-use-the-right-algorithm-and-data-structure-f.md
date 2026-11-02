@@ -22,6 +22,9 @@ Evidence: [LLVM invocation](../../crates/ms-clif/src/llvm_obj.rs), [large litera
 Verified: a `list.lit` over every element keeps all of them live, and Cranelift's register allocator is quadratic in the live set at each block (40000 runtime elements: 20s in Debug). A literal over 512 plain-value elements is built from 256-element chunks joined with `msrt_list_concat`, 1s. Pushing each element instead made the LLVM IR 18x larger and Release 5x slower, so measure both profiles.
 Evidence: [long literal lowering](../../crates/ms-lower/src/expr.rs), [Debug build-time regression](../../crates/ms-cli/tests/llvm.rs).
 
+Verified: nominal ownership classification tracks active declaration identities and generic arguments, never display strings. Equal spellings from separate modules can hide nested resources if treated as a cycle; formatting shared phantom arguments can expand exponentially even when the actual fields are small. Keep ancestry local to the query, the existing depth cutoff and Closeable-first rule, and exercise checked multi-module cleanup as well as recursive and shared-DAG controls.
+Evidence: [classification regressions](../../crates/ms-check/tests/type_classification.rs), [native cleanup fixture](../../tests/e2e/testdata/projects/nominal_cycle_identity/conformance_test.ms).
+
 Apply when: adding or changing a lexer, parser, checker, or lowering pass, or a cache or table they share.
 Evidence: [type recursion pass](../../crates/ms-check/src/recursion.rs), issues #490 and #491.
 Evidence: [method registration and lookup](../../crates/ms-check/src/contracts.rs), [candidate regressions](../../crates/ms-check/src/method_candidates_tests.rs), [editor queries](../../crates/ms-check/src/editor.rs).
