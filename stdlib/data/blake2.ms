@@ -158,3 +158,98 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
         )
 
     return out.build()
+
+# Rotates a 32-bit word toward the low end.
+fn rotr32(value: Int, count: Int) Int:
+    return bit_and(
+        bit_or(
+            shift_right_unsigned(value, count), shift_left(value, 32 - count)
+        ),
+        4294967295
+    )
+
+# Returns the BLAKE2s digest (RFC 7693) of `data`, optionally keyed, of `length` bytes.
+# `length` is 1 through 32 and `key` at most 32 bytes; a violation faults. An empty key is unkeyed.
+# `blake2s("abc".to_bytes())` begins with the bytes 508c5e8c327c14e2.
+export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
+    check(length, key, 32)
+
+    let iv = [
+        1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924,
+        528734635, 1541459225
+    ]
+    var h = iv.clone()
+    h.set(0, bit_xor(h.get(0), 16842752 + key.length() * 256 + length))
+
+    let message = padded(key, data, 64)
+    let blocks = message.length() / 64
+    let schedule = sigma()
+    var total = data.length()
+    if key.length() > 0:
+        total += 64
+
+    for block in 0..blocks:
+        let last = block == blocks - 1
+        var counted = (block + 1) * 64
+        if last:
+            counted = total
+
+        var m: List[Int] = []
+        for index in 0..16:
+            m.append(word(message, block * 64 + index * 4, 4))
+
+        var v = h.clone()
+        for index in 0..8:
+            v.append(iv.get(index))
+        v.set(12, bit_xor(v.get(12), bit_and(counted, 4294967295)))
+        v.set(13, bit_xor(v.get(13), shift_right_unsigned(counted, 32)))
+        if last:
+            v.set(14, bit_xor(v.get(14), 4294967295))
+
+        for round in 0..10:
+            let s = schedule.get(round)
+
+            for step in 0..8:
+                let a = step % 4
+                var b = 4 + step % 4
+                var c = 8 + step % 4
+                var d = 12 + step % 4
+
+                if step >= 4:
+                    b = 4 + (step + 1) % 4
+                    c = 8 + (step + 2) % 4
+                    d = 12 + (step + 3) % 4
+
+                let x = m.get(s.get(2 * step))
+                let y = m.get(s.get(2 * step + 1))
+                var va = v.get(a)
+                var vb = v.get(b)
+                var vc = v.get(c)
+                var vd = v.get(d)
+                va = bit_and(va + vb + x, 4294967295)
+                vd = rotr32(bit_xor(vd, va), 16)
+                vc = bit_and(vc + vd, 4294967295)
+                vb = rotr32(bit_xor(vb, vc), 12)
+                va = bit_and(va + vb + y, 4294967295)
+                vd = rotr32(bit_xor(vd, va), 8)
+                vc = bit_and(vc + vd, 4294967295)
+                vb = rotr32(bit_xor(vb, vc), 7)
+                v.set(a, va)
+                v.set(b, vb)
+                v.set(c, vc)
+                v.set(d, vd)
+
+        for index in 0..8:
+            h.set(index, bit_xor(bit_xor(h.get(index), v.get(index)), v.get(index + 8)))
+
+    var out = BytesBuilder()
+
+    for index in 0..length:
+        let w = h.get(index / 4)
+        out.append(
+            bit_and(
+                shift_right_unsigned(w, 8 * (index % 4)), 255
+            ).to_uint8().get(0)
+        )
+
+    return out.build()
