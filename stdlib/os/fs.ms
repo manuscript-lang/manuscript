@@ -703,12 +703,7 @@ export fn write_atomic_bytes(path: String, data: Bytes) Unit!:
     return error(Error("filesystem: already exists", kind: ErrorCategory.AlreadyExists))
 
 # Writes, syncs, closes and renames the temporary file, removing it when any step fails.
-fn finish_atomic(
-    file: FileHandle,
-    temporary: String,
-    path: String,
-    data: Bytes
-) Unit!:
+fn finish_atomic(file: FileHandle, temporary: String, path: String, data: Bytes) Unit!:
     var out = file
     let written = out.write_bytes(data)
     let synced = if written.is_error(): written else: out.sync()
@@ -730,18 +725,18 @@ export fn move(source: String, destination: String) Unit!:
     if renamed.is_ok(): return renamed
 
     let cause = renamed.err()
+    if cause.kind == ErrorCategory.Failed: return move_by_copy(
+        source, destination, cause
+    )
 
-    if cause.kind == ErrorCategory.Failed: return move_by_copy(source, destination, cause)
     return error(cause)
 
-fn move_by_copy(
-    source: String,
-    destination: String,
-    cause: Error
-) Unit!:
+fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
     let info = stat(source, false)
     if info.is_error(): return error(cause)
-    if stat(destination, false).is_ok(): return error(Error("filesystem: already exists", kind: ErrorCategory.AlreadyExists))
+    if stat(destination, false).is_ok(): return error(
+        Error("filesystem: already exists", kind: ErrorCategory.AlreadyExists)
+    )
 
     let copied = if info.get().directory: copy_tree(
         source, destination, false, none, none

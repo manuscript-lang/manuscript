@@ -263,11 +263,11 @@ test "source transports receive complete records and close through their contrac
     logger.close()
     try expect_true(read_file("{path}.closed").is_ok())
 
-fn log_from_child(logger: Logger) Unit!LogError:
+fn log_from_child(logger: Logger) Unit!:
     let child = try logger.child("worker")
     return child.info("from child")
 
-fn log_in_scope(path: String) Unit!LogError:
+fn log_in_scope(path: String) Unit!:
     let logger = try create(CaptureTransport(path.clone()), timestamp: false)
     try log_from_child(logger)
     return logger.info("parent after child")

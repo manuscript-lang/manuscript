@@ -1,5 +1,5 @@
 import Closeable from "@std/core.ms"
-import Shared from "@std/concurrency/shared.ms"
+import Shared, share from "@std/concurrency/shared.ms"
 import (
     msrt_channel_token,
     msrt_channel_park,
@@ -61,3 +61,29 @@ export fn lock[T](box: Shared[T]) SharedGuard[T]:
         ticket.parked = false
 
     return SharedGuard[T](box: box, value: box.take(), held: true)
+
+# Runs an action at most once, however many tasks ask. Tasks that arrive while the action runs wait for it
+# to finish, then return without running it again. Copies of a `Once` share one outcome.
+export type Once:
+    # Internal state: true once the action has completed.
+    done: Shared[Bool]
+
+# Returns a `Once` that has not run yet.
+export fn once() Once:
+    return Once(done: share(false))
+
+impl Once:
+    # Runs `action` the first time any copy of this `Once` calls it; later calls return at once. If the first
+    # caller is cancelled or faults inside `action`, the action counts as not run and the next caller runs it.
+    fn run(action: fn() Unit) Unit:
+        var guard = lock(self.done)
+        if guard.value:
+            return unit
+
+        action()
+        guard.value = true
+        return unit
+
+    # Whether the action has completed.
+    fn is_done() Bool:
+        return self.done.get()

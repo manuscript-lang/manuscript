@@ -181,3 +181,26 @@ export interface Copy: ...
 export interface Hashable:
     # Returns a stable hash consistent with `equals` for the same value.
     fn hash() Int
+
+# Returns a copy of `cause` with `context` in front of its message: `try read(path)` becomes
+# `error(wrap("read config", cause))`. The kind and details are kept, and the original message is
+# in `details["cause"]`.
+export fn wrap(context: String, cause: Error) Error:
+    var details = cause.details.clone()
+    details.add("cause", cause.message.clone())
+    return Error(context + ": " + cause.message, cause.kind, details)
+
+# Combines `errors` into one error whose message holds theirs, one per line, and whose `count` detail is
+# how many there were. Returns none when the list is empty.
+export fn join(errors: List[Error]) Error?:
+    if errors.length() == 0:
+        return none
+
+    var text = ""
+
+    for cause in errors:
+        if text != "":
+            text += "\n"
+        text += cause.message
+
+    return Error(text, ErrorCategory.Other, {"count": errors.length().to_string()})
