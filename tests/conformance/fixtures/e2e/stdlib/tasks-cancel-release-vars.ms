@@ -3,9 +3,8 @@
 # Cancelling a task must drop every owned value its frames hold, whatever shape holds it.
 # CI runs this program against the counting runtime (tools/leak-check.ms): any live block fails.
 import stdout from "@std/io/io.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
-import Channel from "@std/io/channels.ms"
 
 type Box:
     name: String
@@ -76,7 +75,7 @@ fn t_match() Int:
         none:
             return 0
 
-fn t_chan(ch: Channel[Unit, Unit]) Int:
+fn t_chan(ch: TaskChannel[Unit, Unit]) Int:
     var c = ch
     let held = ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
     let _got = c.receive()

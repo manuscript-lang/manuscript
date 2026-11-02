@@ -1,22 +1,21 @@
 # conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
-import Channel from "@std/io/channels.ms"
 import stdout from "@std/io/io.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
 # A task cancelled while parked in a channel send or receive must not drop the channel end twice:
 # the receiver `var def` takes it out of the caller's slot, and the frames above own the same memory.
 # Later allocations expose the corrupted heap.
 
-fn receiver(ch: Channel[Int, Int]) Int:
+fn receiver(ch: TaskChannel[Int, Int]) Int:
     var c = ch
     if let _got = c.receive():
         return 1
 
     return 0
 
-fn sender(ch: Channel[Int, Int]) Int:
+fn sender(ch: TaskChannel[Int, Int]) Int:
     var c = ch
     for i in 0..100:
         let _ = c.send(i)
