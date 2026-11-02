@@ -22,8 +22,8 @@ pub fn extension_version() -> Vec<String> {
     )]
 }
 
-/// The pull request workflow must run on every PR, whatever files it changes: the ruleset on `main`
-/// requires its two jobs. There is no merge queue.
+/// The pull request workflow must run on every PR, whatever files it changes, and on the merge
+/// queue's combined commit: the ruleset on `main` requires its two jobs.
 pub fn workflow_triggers() -> Vec<String> {
     let path = ".github/workflows/pr.yml";
     match std::fs::read_to_string(path) {
@@ -59,6 +59,16 @@ fn triggers(text: &str) -> Option<String> {
     if filtered {
         return Some("required checks must run on every pull request without path filters".into());
     }
+    let queue = block(&on, "merge_group", 2).unwrap_or_default();
+    let types: Vec<String> = queue
+        .iter()
+        .map(|l| l.trim())
+        .filter(|l| l.starts_with("types:") || l.starts_with("- "))
+        .map(|l| l.trim_start_matches("types:").trim().to_string())
+        .collect();
+    if types != ["[checks_requested]"] && types != ["- checks_requested"] {
+        return Some("required checks must run on merge_group checks_requested".into());
+    }
     None
 }
 
@@ -66,7 +76,7 @@ fn triggers(text: &str) -> Option<String> {
 mod tests {
     use super::triggers;
 
-    const GOOD: &str = "name: x\n\non:\n  push:\n    branches: [main]\n  pull_request:\n\njobs:\n  a:\n    paths: x\n";
+    const GOOD: &str = "name: x\n\non:\n  push:\n    branches: [main]\n  pull_request:\n  merge_group:\n    types: [checks_requested]\n\njobs:\n  a:\n    paths: x\n";
 
     #[test]
     fn accepts_required_triggers() {
@@ -74,8 +84,10 @@ mod tests {
     }
 
     #[test]
-    fn rejects_path_filters() {
+    fn rejects_path_filters_and_missing_queue() {
         let filtered = GOOD.replace("  pull_request:\n", "  pull_request:\n    paths: [a]\n");
         assert!(triggers(&filtered).unwrap().contains("path filters"));
+        let no_queue = GOOD.replace("  merge_group:\n    types: [checks_requested]\n", "");
+        assert!(triggers(&no_queue).unwrap().contains("merge_group"));
     }
 }

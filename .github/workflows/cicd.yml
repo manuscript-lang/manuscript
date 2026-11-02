@@ -1,16 +1,17 @@
 name: CI/CD
 
-# Pushes to main and manual runs. Pull requests run pr.yml (two Linux jobs).
-#   push to main   darwin and windows only: every pull request already ran both Linux architectures.
-#   manual run     all six platforms. cache-maintenance.yml starts one on main every hour, and only a
-#                  manual run on main saves the sccache caches (push runs are often replaced before
-#                  they finish). Run it by hand on a branch to test a platform-specific change.
+# The merge queue's group runs and manual runs. Pull requests run pr.yml (two Linux jobs).
+#   merge queue   one run per group of PRs, on the group's combined commit: the darwin and windows
+#                 legs here, next to the two Linux jobs from pr.yml. `Platform checks` sums them up.
+#   manual run    all six platforms. cache-maintenance.yml starts one on main every hour, and only a
+#                 manual run on main saves the sccache caches. Run it by hand on a branch to test a
+#                 platform-specific change. It also deploys Pages.
 # Each platform runs as two parts on separate runners (`tests` and `conformance`; see
-# .github/actions/rust-checks). Plus the language checks, the design book and, on main, Pages.
+# .github/actions/rust-checks).
 
 on:
-  push:
-    branches: [main]
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 permissions:
@@ -24,9 +25,9 @@ env:
   CARGO_INCREMENTAL: '0'
 
 concurrency:
-  # A new push to main cancels the earlier push run. Manual runs never cancel or replace each other.
-  group: ci-${{ github.event_name == 'push' && github.ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'push' }}
+  # Queue and manual runs never cancel or replace each other.
+  group: ci-${{ github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   rust:
@@ -41,7 +42,7 @@ jobs:
         # `MS_BACKEND=cranelift`, so release builds use the Cranelift backend that Debug builds use.
         # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
         # in tests/conformance/expect-fail.<os>.txt with a reason.
-        leg: ${{ fromJSON(github.event_name == 'push' && '[
+        leg: ${{ fromJSON(github.event_name == 'merge_group' && '[
           {"os":"darwin","arch":"amd64","runner":"macos-15-intel"},
           {"os":"darwin","arch":"arm64","runner":"macos-15","cranelift":true},
           {"os":"windows","arch":"amd64","runner":"windows-2025","cranelift":true},
@@ -59,10 +60,6 @@ jobs:
       RUSTC_WRAPPER: sccache
       SCCACHE_CACHE_SIZE: 2G
     steps:
-      # A push superseded within a minute cancels this run before any build starts.
-      - name: Wait for a newer push
-        if: github.event_name == 'push'
-        run: sleep 60
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
@@ -88,12 +85,27 @@ jobs:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
 
+  # The sum of the Rust jobs above, one name for the queue to require.
+  platforms:
+    name: Platform checks
+    if: github.event_name == 'merge_group' && always()
+    needs: rust
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every platform
+        env:
+          RESULT: ${{ needs.rust.result }}
+        run: test "$RESULT" = success
+
+  # The queue runs these in pr.yml's amd64 job.
   language:
     name: Language checks
+    if: github.event_name != 'merge_group'
     uses: ./.github/workflows/test-language.yml
 
   build:
     name: Build design book
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -120,7 +132,7 @@ jobs:
   pages:
     name: Publish Pages docs
     needs: [build, language]
-    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    if: github.event_name == 'workflow_dispatch' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-24.04
     permissions:
       pages: write

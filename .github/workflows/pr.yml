@@ -1,13 +1,16 @@
-name: Pull request
+name: Pull request and merge queue
 
 # A pull request runs two jobs, one per Linux architecture, in parallel. The account allows 20 jobs
 # at once and every extra job waits in the queue, so there are no detect, language, book or
 # aggregate jobs: the amd64 job runs the language and book checks as steps. Required checks:
 # `linux-amd64 · checks` and `linux-arm64 · checks`.
-# Pushes to main and manual runs (all platforms, two parts each) are in cicd.yml.
+# The merge queue runs the same two jobs on each group's combined commit, next to the darwin and
+# windows legs in cicd.yml. Manual runs (all platforms, two parts each) are in cicd.yml.
 
 on:
   pull_request:
+  merge_group:
+    types: [checks_requested]
 
 permissions:
   contents: read
@@ -24,9 +27,9 @@ env:
   SCCACHE_CACHE_SIZE: 2G
 
 concurrency:
-  # A new commit cancels the earlier run of the same pull request.
-  group: pr-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  # A new commit cancels the earlier run of the same pull request; queue runs are never cancelled.
+  group: pr-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
   run:
@@ -40,6 +43,7 @@ jobs:
     steps:
       # A commit pushed within a minute cancels this run before any build starts.
       - name: Wait for a newer push
+        if: github.event_name == 'pull_request'
         run: sleep 60
       - uses: actions/checkout@v7
         with:
@@ -79,6 +83,7 @@ jobs:
     timeout-minutes: 75
     steps:
       - name: Wait for a newer push
+        if: github.event_name == 'pull_request'
         run: sleep 60
       - uses: actions/checkout@v7
         with:
