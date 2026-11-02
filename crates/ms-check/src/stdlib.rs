@@ -5,6 +5,8 @@
 //! modules (declarations with bodies) are checked lazily with the ordinary
 //! checker and shared by every program.
 
+pub use crate::bundled::EXTENSION_MODULES;
+use crate::bundled::{decl_has_body, is_mixed, is_pure_source};
 use crate::checker::{CheckOptions, Checker, Names};
 use crate::receivers::RECEIVER_BINDINGS;
 use crate::syntax::*;
@@ -67,6 +69,8 @@ struct World {
     module_order: Vec<Name>,
     sources: Vec<ModRef>,
     source_modules: HashMap<Name, ModRef>,
+    /// Pure source modules not yet parsed; each loads when first looked up.
+    deferred: HashMap<Name, &'static str>,
     intrinsic: HashMap<Name, Ty>,
     implementations: Vec<MethodRef>,
     operation_variables: HashMap<String, Vec<Ty>>,
@@ -106,14 +110,6 @@ pub fn keeps_callbacks(native: &str) -> bool {
 const NATIVE_WITH_FIELDS: &[&str] = &["List"];
 
 // -------------------------------------------------------------------- queries
-
-/// Bundled source modules whose methods extend native standard types in every program.
-const EXTENSION_MODULES: [&str; 4] = [
-    "@std/collections/collections.ms+source",
-    "@std/bytes.ms+source",
-    "@std/collections/ordering.ms",
-    "@std/string.ms+source",
-];
 
 /// The directories that group bundled modules into packages; a module's native identifiers use its file stem without them.
 const PACKAGES: [&str; 7] = [
@@ -163,7 +159,7 @@ pub fn ensure_standard() {
 /// Every bundled module (native and source) in file-name order, with the
 /// original source text, for editors that show standard declarations.
 pub fn standard_modules() -> Vec<ModRef> {
-    ensure_standard();
+    load_deferred_all();
     world(|w| w.sources.clone())
 }
 
@@ -226,6 +222,7 @@ pub fn is_source_module(module: &ModRef) -> bool {
 /// A bundled source module by path.
 pub fn standard_source_module(path: Name) -> Option<ModRef> {
     ensure_standard();
+    load_deferred(path);
     world(|w| w.source_modules.get(&path).cloned())
 }
 
@@ -251,6 +248,7 @@ pub fn is_native_module(path: Name) -> bool {
 /// The symbol of a record or alternative declared in a bundled source module, as registered at load.
 pub fn source_type(module: Name, name: Name) -> Option<SymRef> {
     ensure_standard();
+    load_deferred(module);
     world(|w| w.source_types.get(&(module, name)).cloned())
 }
 
@@ -293,6 +291,7 @@ pub(crate) fn source_type_symbol(module: &ModRef, d: &DeclRef) -> SymRef {
 /// A native module's declaration by name.
 pub fn standard_module_symbol(path: Name, name: Name) -> Option<SymRef> {
     ensure_standard();
+    load_deferred(path);
     world(|w| {
         w.modules
             .get(&path)
@@ -323,7 +322,7 @@ pub fn is_internal(path: &str) -> bool {
 
 /// Every public bundled module path in sorted order.
 pub fn standard_module_names() -> Vec<&'static str> {
-    ensure_standard();
+    load_deferred_all();
     let mut names: BTreeSet<&'static str> = BTreeSet::new();
     world(|w| {
         names.extend(w.modules.keys().map(|k| k.as_str()));
@@ -494,7 +493,7 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
 
 /// All bundled source modules, checked.
 pub fn ensure_all_sources() {
-    ensure_standard();
+    load_deferred_all();
     let sources: Vec<ModRef> = world(|w| w.sources.clone());
     for m in sources {
         if is_source_module(&m) {
@@ -666,17 +665,6 @@ fn has_inherent_body(module: &Module) -> bool {
         matches!(&d.kind, DeclKind::Impl(i) if i.contract.is_none()
             && i.methods.iter().any(|m| !m.func.body.is_empty()))
     })
-}
-
-/// Whether a top-level declaration carries an implementation body.
-fn decl_has_body(d: &Decl) -> bool {
-    match &d.kind {
-        DeclKind::Fn(f) => !f.body.is_empty() || f.external,
-        DeclKind::Const(_) => true,
-        DeclKind::Test(t) => !t.body.is_empty(),
-        DeclKind::Impl(i) => i.methods.iter().any(|m| !m.func.body.is_empty()),
-        DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_) => false,
-    }
 }
 
 fn fresh(ids: &mut u32) -> NodeId {
@@ -856,11 +844,7 @@ fn interface_for_inherent(
 /// methods on a native type are written through an interface, so a bodied inherent method is an
 /// error. Returns `None` for any other file.
 fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
-    let bodyless_inherent = |d: &Decl| {
-        matches!(&d.kind, DeclKind::Impl(i) if i.contract.is_none()
-            && i.methods.iter().any(|m| m.func.body.is_empty()))
-    };
-    if !parsed.decls.iter().any(bodyless_inherent) || !parsed.decls.iter().any(decl_has_body) {
+    if !is_mixed(parsed) {
         return Ok(None);
     }
     let implements = |d: &Decl, name: Name| matches!(&d.kind, DeclKind::Impl(i) if i.contract.as_ref().is_some_and(|c| n(c.name()) == name));
@@ -946,29 +930,79 @@ fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
     )))
 }
 
+/// Parses and registers a deferred pure source module, if `path` names one that has not loaded yet.
+fn load_deferred(path: Name) {
+    let Some(source) = world(|w| w.deferred.remove(&path)) else {
+        return;
+    };
+    let modules = parse_bundled(path.as_str(), source)
+        .and_then(|parsed| {
+            if !is_pure_source(&parsed) {
+                return Err(format!(
+                    "{path} is not pure source; build.rs must load it eagerly"
+                ));
+            }
+            bundled_modules(&parsed)
+        })
+        .unwrap_or_else(|e| panic!("standard declarations: {e}"));
+    for module in modules {
+        register_source(&module);
+        world(|w| w.sources.push(module));
+    }
+    world(|w| {
+        w.sources
+            .sort_by(|a, b| a.file.as_str().cmp(b.file.as_str()))
+    });
+}
+
+/// Loads every deferred module, for callers that list or check the whole standard library.
+fn load_deferred_all() {
+    ensure_standard();
+    let mut paths: Vec<Name> = world(|w| w.deferred.keys().copied().collect());
+    paths.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+    for path in paths {
+        load_deferred(path);
+    }
+}
+
+fn parse_bundled(file: &str, source: &str) -> Result<Module, String> {
+    let file: Arc<str> = Arc::from(file);
+    ms_syntax::parser::parse(&file, source).map_err(|d| format!("parse {file}: {d}"))
+}
+
+/// Splits a parsed bundled file into its modules: one, or a native half and a `+source` half.
+fn bundled_modules(parsed: &Module) -> Result<Vec<ModRef>, String> {
+    // A file that declares native operations and also has bodies keeps the native declarations
+    // under its own name and checks the bodies as a source module named `<file>+source`.
+    if let Some((native, source)) = split_mixed(parsed)? {
+        let decls = fold_inherent_impls(&native)?;
+        return Ok(vec![
+            Rc::new(ModuleData::new(&native, decls, native.node_count)),
+            crate::load_module(&source),
+        ]);
+    }
+    // A module with implementation bodies is checked like user source, so its inherent
+    // methods take the same desugaring and become ordinary methods wherever the type is used.
+    if has_inherent_body(parsed) {
+        return Ok(vec![crate::load_module(parsed)]);
+    }
+    let decls = fold_inherent_impls(parsed)?;
+    Ok(vec![Rc::new(ModuleData::new(
+        parsed,
+        decls,
+        parsed.node_count,
+    ))])
+}
+
 fn load() -> Result<(), String> {
     let mut modules: Vec<ModRef> = Vec::new();
-    for (name, source) in SOURCES {
-        let file: Arc<str> = Arc::from(format!("@std/{name}").as_str());
-        let parsed =
-            ms_syntax::parser::parse(&file, source).map_err(|d| format!("parse {file}: {d}"))?;
-        // A file that declares native operations and also has bodies keeps the native declarations
-        // under its own name and checks the bodies as a source module named `<file>+source`.
-        if let Some((native, source)) = split_mixed(&parsed)? {
-            let decls = fold_inherent_impls(&native)?;
-            modules.push(Rc::new(ModuleData::new(&native, decls, native.node_count)));
-            modules.push(crate::load_module(&source));
-            continue;
+    for (name, source, eager) in SOURCES {
+        let file = format!("@std/{name}");
+        if *eager {
+            modules.extend(bundled_modules(&parse_bundled(&file, source)?)?);
+        } else {
+            world(|w| w.deferred.insert(n(&file), source));
         }
-        // A module with implementation bodies is checked like user source, so its inherent
-        // methods take the same desugaring and become ordinary methods wherever the type is used.
-        if has_inherent_body(&parsed) {
-            modules.push(crate::load_module(&parsed));
-            continue;
-        }
-        let decls = fold_inherent_impls(&parsed)?;
-        let data = ModuleData::new(&parsed, decls, parsed.node_count);
-        modules.push(Rc::new(data));
     }
     let mut checker = Checker::new(&CheckOptions::default());
     checker.standard_declarations = true;
@@ -982,6 +1016,26 @@ fn load() -> Result<(), String> {
     loader.bind_receivers()?;
     loader.check_defaults()?;
     Ok(())
+}
+
+/// Registers a source module: the exported types native modules can name before it is checked. The loader
+/// registers its `extern type`s; a deferred module has none, since `extern` anywhere in it keeps it eager.
+fn register_source(module: &ModRef) {
+    for d in &module.decls {
+        match &d.decl().kind {
+            DeclKind::Record(r) if r.external => {}
+            DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
+                if d.decl().export =>
+            {
+                let stub = source_type_symbol(module, d);
+                world(|w| w.source_types.insert((module.file, d.name()), stub));
+            }
+            _ => {}
+        }
+    }
+    world(|w| {
+        w.source_modules.insert(module.file, module.clone());
+    });
 }
 
 struct Loader<'a> {
@@ -1030,20 +1084,13 @@ impl Loader<'_> {
         let source_implementation = module.decls.iter().any(has_implementation);
         if source_implementation {
             for d in &module.decls {
-                match &d.decl().kind {
-                    DeclKind::Record(r) if r.external => self.register_extern_type(module, d)?,
-                    DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
-                        if d.decl().export =>
-                    {
-                        let stub = source_type_symbol(module, d);
-                        world(|w| w.source_types.insert((module.file, d.name()), stub));
-                    }
-                    _ => {}
+                if let DeclKind::Record(r) = &d.decl().kind
+                    && r.external
+                {
+                    self.register_extern_type(module, d)?;
                 }
             }
-            world(|w| {
-                w.source_modules.insert(module.file, module.clone());
-            });
+            register_source(module);
             return Ok(());
         }
         let mut symbols: HashMap<Name, SymRef> = HashMap::new();
@@ -1479,6 +1526,27 @@ mod tests {
     fn halves(text: &str) -> Result<Option<(Module, Module)>, String> {
         let file: Arc<str> = Arc::from("@std/t.ms");
         split_mixed(&ms_syntax::parser::parse(&file, text).expect("parses"))
+    }
+
+    #[test]
+    fn pure_source_modules_load_on_first_lookup() {
+        ensure_standard();
+        let yaml = n("@std/data/yaml.ms");
+        assert!(world(|w| w.deferred.contains_key(&yaml)));
+        let module = standard_source_module(yaml).expect("yaml loads on lookup");
+        assert!(world(|w| !w.deferred.contains_key(&yaml)));
+        assert!(!ensure_source(&module).exports.is_empty());
+        let sources = standard_modules();
+        assert!(world(|w| w.deferred.is_empty()));
+        assert_eq!(
+            sources.len(),
+            world(|w| w.source_modules.len() + w.modules.len())
+        );
+        assert!(
+            sources
+                .windows(2)
+                .all(|p| p[0].file.as_str() < p[1].file.as_str())
+        );
     }
 
     #[test]

@@ -4,6 +4,7 @@
 //! (see [`syntax::Facts`]). Types are [`types::Ty`], reference-counted and
 //! immutable apart from a type variable's bounds and default.
 
+mod bundled;
 pub mod callbacks;
 pub mod calls;
 pub mod checker;
