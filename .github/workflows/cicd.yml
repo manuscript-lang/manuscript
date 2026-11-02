@@ -152,9 +152,6 @@ jobs:
           cargo build --workspace --all-targets --locked --keep-going
           cargo nextest run --workspace --locked --no-fail-fast
           cargo test --workspace --doc --locked
-      - name: MIR signed boundaries and fault semantics
-        if: ${{ !(matrix.full || matrix.tests) }}
-        run: cargo test --locked -p ms-mir --test opt_overflow -- --nocapture
       - name: Build CLI for native source conformance
         run: |
           set -euo pipefail
@@ -210,19 +207,6 @@ jobs:
                   r.tests.some(t => t.status !== "passed")) process.exit(1);
             ' "$json"
           done
-      - name: Native overflow, fault positions, cleanup and inline frames
-        if: ${{ !(matrix.full || matrix.tests) }}
-        run: |
-          cargo test --locked -p ms-clif --test native predicated_overflow -- --nocapture
-          cargo test --locked -p ms-clif --test native fault_trace_on_real_runtime -- --nocapture
-      - name: Native object and linked source attribution
-        if: ${{ !(matrix.full || matrix.tests) }}
-        run: |
-          llvm-dwarfdump --version
-          llvm-symbolizer --version
-          cargo test --locked -p ms-clif --test dwarf -- --nocapture
-          cargo test --locked -p ms-build --test debug_artifacts -- --nocapture
-          cargo test --locked -p ms-build --lib -- --nocapture
       - name: Conformance corpus (LLVM)
         if: matrix.part == 'b' && matrix.corpus
         run: target/debug/ms run tools/conform.ms
