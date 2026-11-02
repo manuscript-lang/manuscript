@@ -143,3 +143,28 @@ tree/dump validation. Optional depth 512 improves 65.043 to 0.441 ms (147.45x),
 Result depth 256 improves 22.186 to 0.302 ms (73.53x), and generic optional
 signatures improve 6.7%. Plain signatures are unchanged and the corpus varies
 by less than 1%. Raw evidence is `results-2026-10-31-merged-suffix.json`.
+
+## 2026-11-02: replay cache replaced by a one-pass bracket classification
+
+`failed_type_args` is deleted. One pass over the tokens sets a bit on every `[`
+whose enclosed tokens could all belong to a type; a bracket without the bit is an
+index and is never tried as type arguments. Node IDs are no longer spent on failed
+speculation (one test's recorded counts changed 21 to 17 and 18 to 14).
+
+Quick check, not the full balanced protocol: release `ms-syntax bench`, pinned to
+one CPU, two alternating runs each, same machine as above. Baseline is the cache.
+
+| Workload | Cache µs/pass | Bit table µs/pass |
+| --- | ---: | ---: |
+| 16-level indexing | 6.6 | 4.9 |
+| 64-level indexing | 25.1 | 15.6 |
+| 256-level indexing | 84.2 | 49.6 |
+| 256 flat index signatures | 479 / 442 | 437 / 499 (noise) |
+| Standard library, 9 files | 1.47 / 1.67 ms | 1.48 / 1.68 ms |
+
+Residual: a malformed all-name bracket nest such as `a[b[c[d e]]]` still retries
+per level (quadratic); valid code and numeric/operator indexes do not.
+
+The lexer's `ScanBoundaries.strings` was also tried removed. Nested interpolation
+text regressed (64 levels 25 to ~83 µs, 256 levels 95 to ~800 µs) because every
+level rescans its contents, so it was kept: it is the lex pass's own output.
