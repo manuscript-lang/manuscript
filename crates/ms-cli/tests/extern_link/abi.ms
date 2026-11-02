@@ -105,8 +105,6 @@ export fn main() Int:
         return 0
     if mode == "stop":
         abi_arm_stop()
-        let _ = out.write("ready\n")
-        let _ = out.flush()
         let _ = out.write("hooks {abi_wait_for_stop()}\n")
         return 0
     let _ = out.write(

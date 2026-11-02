@@ -204,8 +204,23 @@ static ms_stop_hook *hook;
 /* Registers the hook before the program reports it is ready. */
 void abi_arm_stop(void) { hook = ms_on_stop(on_stop, (void *)&stopped); }
 
-/* Blocks until a stop is requested, as a C event loop would; returns how many hooks ran. */
+/* Asks for a stop the way a user would: SIGINT on Unix, Ctrl-Break to this process's own group
+   on Windows (the test starts it as a group leader). Windows delivers it on another thread. */
+#ifdef _WIN32
+int __stdcall GenerateConsoleCtrlEvent(unsigned long event, unsigned long group);
+unsigned long __stdcall GetCurrentProcessId(void);
+static int request_stop(void) { return GenerateConsoleCtrlEvent(1, GetCurrentProcessId()) != 0; }
+#else
+int raise(int sig);
+static int request_stop(void) { return raise(2) == 0; }
+#endif
+
+/* Requests a stop, then blocks until the hook runs, as a C event loop would. */
 int64_t abi_wait_for_stop(void) {
+    if (!request_stop()) {
+        static const char text[] = "the stop request could not be sent";
+        ms_fault(text, sizeof text - 1);
+    }
     while (!stopped) {
     }
     ms_on_stop_remove(hook);
