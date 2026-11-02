@@ -107,6 +107,11 @@ jobs:
       RUSTC_WRAPPER: sccache
       SCCACHE_CACHE_SIZE: 2G
     steps:
+      # A commit pushed within a minute of the last one cancels this run before any build starts, so
+      # a burst of pushes costs one run's slots, not one per push. Costs 60 s of latency per run.
+      - name: Wait for a newer push
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        run: sleep 60
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
