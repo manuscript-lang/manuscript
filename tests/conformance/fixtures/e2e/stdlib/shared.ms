@@ -89,7 +89,7 @@ type Hook:
     run: fn() Unit
 
 # A callback the checker cannot see (stored in a record) that changes the value the call is
-# using faults rather than changing it under the call.
+# using faults rather than changing it under the call (#2340).
 test "a hidden change inside a call on the same payload faults":
     var shared = Shared(Counter([]))
     var other = shared
