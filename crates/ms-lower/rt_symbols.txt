@@ -195,6 +195,14 @@ msrt_pipe_send(end: i64, message: *const StrVal) -> i64
 msrt_pipe_send_bytes(end: i64, message: *const VecVal) -> i64
 msrt_process_exit(code: i64) -> !
 msrt_process_on_exit(hook: extern "C" fn())
+msrt_promise_done(id: i64) -> u8
+msrt_promise_drop(id: i64)
+msrt_promise_fault_report(id: i64, out: *mut StrVal)
+msrt_promise_new() -> i64
+msrt_promise_put(id: i64, value: *mut u8, d: *const TypeDesc, failed: i64)
+msrt_promise_start(id: i64, work: *mut Closure)
+msrt_promise_take(id: i64, d: *const TypeDesc, out: *mut u8)
+msrt_promise_wait(id: i64, timeout_ns: i64) -> i64
 msrt_realloc(p: *mut u8, size: usize) -> *mut u8
 msrt_release(o: *mut Obj)
 msrt_retain(o: *mut Obj)

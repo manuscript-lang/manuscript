@@ -46,6 +46,7 @@ pub mod pipe;
 pub mod poller;
 pub mod process;
 pub mod profile;
+pub mod promise;
 pub mod scan;
 pub mod scope;
 pub mod start;
