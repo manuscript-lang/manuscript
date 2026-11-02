@@ -15,7 +15,7 @@ Types, interfaces, functions, and imports share one module namespace. Duplicates
 
 The intrinsic core type names are `Bool`, `Int`, `Float`, `String`, `Unit`, and `Never`. The standard interfaces `Equal`, `Comparable`, `Hashable`, and `Clonable` also have fixed identities in the prelude. Declarations, imports, and type parameters cannot redefine these. Locals may shadow outer names, but a shadowed value name cannot be used as a type.
 
-Prelude declarations: `Optional`, `Result`, `Error`, `List`, `Map`, `Set`, `CollectionError`, `ListEntry`, `MapEntry`, `MissingValue`, and the constructors `some`, `none`, `ok`, `error`. Qualify cases when needed (`Result[T, E].error`, `CollectionError.OutOfRange`). A module declaration or import reusing a prelude name is rejected ("reuses a prelude name"); locals, parameters, and type parameters may shadow them.
+Prelude declarations: `Optional`, `Result`, `Error`, `ErrorCategory`, `List`, `Map`, `Set`, `ListEntry`, `MapEntry`, and the constructors `some`, `none`, `ok`, `error`. Qualify cases when needed (`Result[T, E].error`, `ErrorCategory.OutOfRange`). A module declaration or import reusing a prelude name is rejected ("reuses a prelude name"); locals, parameters, and type parameters may shadow them.
 
 Explicit imports of any prelude declaration, including `Equal` and `Hashable`, are rejected with `MS2003`; remove the binding. Application declarations and imports cannot reuse prelude names. Other exports of those modules, such as collection builders or `ErrorCategory`, need explicit imports.
 

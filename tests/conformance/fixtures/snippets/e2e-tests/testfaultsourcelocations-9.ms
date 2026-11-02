@@ -1,10 +1,9 @@
 # conform: tags=faults,modules,stdlib-errors,tier-stdlib,try-result
 # conform: phase=run
 # conform: origin=tests/e2e/fault_locations_test.go:92 TestFaultSourceLocations
-import TextError from "@std/core.ms"
 
-fn deep(value: Int!TextError) Int:
+fn deep(value: Int!Error) Int:
     return value.get()
 
 export fn main() Int:
-    return deep(error(TextError("expected failure")))
+    return deep(error(Error("expected failure")))

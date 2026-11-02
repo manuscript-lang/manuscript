@@ -4,7 +4,6 @@
 import expect_false from "@std/test/test.ms"
 import parse from "@std/math/math.ms"
 import BigInt from "@std/math/math.ms"
-import BigIntError from "@std/math/math.ms"
 
 fn verify_bigint() Unit!:
     let large = try parse(text: "18446744073709551616", radix: 10, max_digits: 30)

@@ -1,11 +1,5 @@
 import Bytes from "@std/bytes.ms"
-import (
-    CommandError,
-    CommandOutput,
-    Commands,
-    Stdio,
-    Subprocess
-) from "@std/os/process.ms"
+import (CommandOutput, Commands, Stdio, Subprocess) from "@std/os/process.ms"
 import Duration from "@std/os/time.ms"
 
 export type Quiet:
@@ -20,7 +14,7 @@ impl Commands for Quiet:
         timeout: Duration?,
         cwd: String?,
         env: Map[String, String]
-    ) CommandOutput!CommandError:
+    ) CommandOutput!:
         return ok(CommandOutput(self.code, input, "".to_bytes(), 0))
 
     fn spawn(
@@ -31,5 +25,9 @@ impl Commands for Quiet:
         stderr: Stdio,
         cwd: String?,
         env: Map[String, String]
-    ) Subprocess!CommandError:
-        return error(CommandError.Unavailable)
+    ) Subprocess!:
+        return error(
+            Error(
+                "process: service unavailable", kind: ErrorCategory.Unavailable
+            )
+        )

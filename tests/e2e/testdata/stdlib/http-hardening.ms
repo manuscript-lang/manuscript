@@ -3,14 +3,12 @@ import (
     headers,
     reply,
     text,
-    HttpError,
     HttpExchange,
     HttpRequest,
     HttpResponse,
     buffered,
     HttpServerOptions
 ) from "@std/net/http.ms"
-import TextError from "@std/core.ms"
 import Connection, connect, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 import read_file, temporary, write_file_bytes from "@std/os/fs.ms"
@@ -44,12 +42,12 @@ test "serve ends a connection that trickles its request head":
 
     # The server closes the connection, so a write fails before the trickle ends. The
     # read may then see an error (a reset on macOS) instead of an end of stream.
-    if sent == 30: return error(TextError("trickled request head was never cut off"))
+    if sent == 30: return error(Error("trickled request head was never cut off"))
 
     if let reply = client.read(timeout: 3.seconds):
         let text = reply.get(Bytes([])).decode_utf8().get("")
         if text.starts_with("HTTP/1.1 200"): return error(
-            TextError("incomplete request was served: {text}")
+            Error("incomplete request was served: {text}")
         )
 
 test "close cancels a handler that outlives the grace period":
@@ -66,14 +64,14 @@ test "close cancels a handler that outlives the grace period":
     if let reply = client.read(timeout: 5.seconds):
         let text = reply.get(Bytes([])).decode_utf8().get("")
         if text.starts_with("HTTP/1.1 200"): return error(
-            TextError("handler finished instead of being cancelled")
+            Error("handler finished instead of being cancelled")
         )
 
 fn expect_file_reply(conn: Connection) Unit!:
     let reply = conn.read(timeout: 10.seconds) | try expect_ok
     let text = reply.get(Bytes([])).decode_utf8().get("")
     if not text.starts_with("HTTP/1.1 200"): return error(
-        TextError("file handler failed: {text}")
+        Error("file handler failed: {text}")
     )
 
     return ok(unit)
@@ -109,7 +107,7 @@ test "serve answers requests while handlers read and write files":
     try server.close()
     try dir.close()
 
-fn oversized(exchange: HttpExchange) Unit!HttpError:
+fn oversized(exchange: HttpExchange) Unit!:
     return reply(exchange, text(200, "z".repeat(5000).get("")))
 
 test "serve answers 500 when a whole response exceeds max_response_bytes":
@@ -125,7 +123,7 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
     let reply_bytes = client.read(timeout: 3.seconds) | try expect_ok
     let head = reply_bytes.get(Bytes([])).decode_utf8().get("")
     if not head.starts_with("HTTP/1.1 500"): return error(
-        TextError("expected a 500 reply, got: {head}")
+        Error("expected a 500 reply, got: {head}")
     )
 
 fn raw_status(address: String, request: String) String!:
@@ -141,9 +139,7 @@ test "asterisk-form target is accepted only for OPTIONS":
     let tail = "HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
     let get = raw_status(server.address(), "GET * {tail}") | try expect_ok
     let options = raw_status(server.address(), "OPTIONS * {tail}") | try expect_ok
-    if get != "HTTP/1.1 400 Bad Request": return error(
-        TextError("GET * answered: {get}")
-    )
+    if get != "HTTP/1.1 400 Bad Request": return error(Error("GET * answered: {get}"))
     if options != "HTTP/1.1 200 OK": return error(
-        TextError("OPTIONS * answered: {options}")
+        Error("OPTIONS * answered: {options}")
     )

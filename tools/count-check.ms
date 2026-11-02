@@ -51,7 +51,7 @@ export fn main() Int:
             if ran.is_error():
                 failures += 1
 
-                let cause = ran.err().message()
+                let cause = ran.err().message
                 (
                     stdout()
                     .write(

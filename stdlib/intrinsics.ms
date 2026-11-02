@@ -1,5 +1,5 @@
 # Source locations for the fixed intrinsic receiver operations.
-import StringError from "@std/string.ms"
+
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/math/decimal.ms"
 
@@ -30,7 +30,7 @@ interface StringOperations:
     fn lines() List[String]
     # Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes optionally bounds UTF-8 output.
     # Invalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded.
-    fn normalize(form: String, max_bytes: Int?) String!StringError
+    fn normalize(form: String, max_bytes: Int?) String!
     # Concatenates text without changing either operand.
     fn concat(other: String) String
     # Tests whether the exact text occurs, without normalization.
@@ -40,7 +40,7 @@ interface StringOperations:
     # Returns locale-independent full Unicode lowercase mapping; the scalar length can change.
     fn lower() String
     # Repeats text count times; negative counts/budgets return InvalidInput, exceeded UTF-8 budgets return LimitExceeded.
-    fn repeat(count: Int, max_bytes: Int?) String!StringError
+    fn repeat(count: Int, max_bytes: Int?) String!
     # Replaces the first occurrence of old; text without a match is unchanged.
     # An empty old matches at the first scalar boundary, so new is inserted at the start.
     fn replace_first(old: String, new: String) String
@@ -53,8 +53,8 @@ interface StringOperations:
     # Returns each Unicode scalar value as an integer.
     fn scalar_values() List[Int]
     # Selects [start, end) in Unicode scalars; requires 0 <= start <= end <= scalar_length().
-    # Negative, inverted, or out-of-range bounds return StringError.OutOfRange.
-    fn slice_scalars(start: Int, end: Int) String!StringError
+    # Negative, inverted, or out-of-range bounds return an `Error` of kind `OutOfRange`.
+    fn slice_scalars(start: Int, end: Int) String!
     # Returns the first min(count, scalar_length()) Unicode scalars; a negative count is a programming fault.
     fn take(count: Int) String
     # Returns the scalars after the first min(count, scalar_length()); a negative count is a programming fault.
@@ -87,8 +87,8 @@ interface StringOperations:
     # Pads on the right like `pad_start`. Example: `"id".pad_end(5, ".")` is `"id..."`.
     fn pad_end(target_length: Int, padding: String) String
     # Selects [start, end) in Unicode scalars; negative bounds are relative to the end.
-    # Bounds outside 0 <= start <= end <= scalar_length() return StringError.OutOfRange; the receiver is unchanged.
-    fn slice(start: Int, end: Int) String!StringError
+    # Bounds outside 0 <= start <= end <= scalar_length() return an `Error` of kind `OutOfRange`; the receiver is unchanged.
+    fn slice(start: Int, end: Int) String!
     # Returns the UTF-8 encoded byte length.
     fn byte_length() Int
     # Encodes the string as UTF-8 bytes.

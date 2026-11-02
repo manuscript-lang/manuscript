@@ -1,7 +1,6 @@
 # Compares two `ms` builds on the bench/perf/stdlib bench blocks, alternating runs and checking the cases match.
 # Usage: ms run bench/tools/compare_stdlib.ms -- --before MS --after MS --output DIR [--repeats 5] [--samples 5] [--filter TEXT]
 import (
-    Invalid,
     absolute,
     dump,
     ensure_directory,
@@ -28,10 +27,7 @@ export type Sample:
     operations: Map[String, Int]
     medians: Map[String, Float]
 
-export fn parse_sample(
-    output: String,
-    expected: Map[String, Int]?
-) Result[Sample, Invalid]:
+export fn parse_sample(output: String, expected: Map[String, Int]?) Sample!:
     let cases = try read_cases(output)
     var operations = Map[String, Int]()
     var medians = Map[String, Float]()
@@ -153,7 +149,7 @@ export fn main() Int:
         arguments(), ["before", "after", "output", "repeats", "samples", "filter"],
         ["before", "after", "output"]
     )
-    if parsed.is_error(): return fail(parsed.err().message())
+    if parsed.is_error(): return fail(parsed.err().message)
 
     let opts = parsed.get(Map[String, String]())
     let repeats = opts.get("repeats").get("5").parse_int().get(0)

@@ -275,6 +275,6 @@ export fn main() Int:
         out = temporary("compile-time-").get().path()
 
     let result = run(out, dims[0], dims[1], dims[2])
-    if result.is_error(): return fail(result.err().message())
+    if result.is_error(): return fail(result.err().message)
 
     return 0

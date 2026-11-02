@@ -24,12 +24,12 @@ Read known JSON shapes with `parse[T]`. Unknown members are ignored unless you p
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import expect_equal, expect_error from "@std/test/test.ms"
-import parse, JsonError from "@std/data/json.ms"
+import parse from "@std/data/json.ms"
 
 type Config:
     port: Int = 8080
 
-fn port_of(text: String) Result[Int, Error]:
+fn port_of(text: String) Int!:
     return ok(try parse[Config](text) | .port)
 
 test "configuration defaults":
@@ -37,7 +37,8 @@ test "configuration defaults":
     try expect_equal(try port_of("\{\"port\": 9000\}"), 9000)
 
 test "configuration rejects a wrong type":
-    try expect_error(parse[Config]("\{\"port\": true\}")) | try expect_equal(JsonError.InvalidData)
+    let cause = try expect_error(parse[Config]("\{\"port\": true\}"))
+    try expect_equal(cause.kind, ErrorCategory.InvalidData)
 ```
 
 See the [testing guide](testing.md) for more.

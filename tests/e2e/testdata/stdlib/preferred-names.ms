@@ -1,6 +1,6 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
-import compile, Regex, RegexError from "@std/string.ms"
+import compile, Regex from "@std/string.ms"
 
 interface ListMutation:
     var fn reverse() Unit
@@ -47,13 +47,13 @@ impl SetMutation for SetAdapter:
         return self.items.values()
 
 interface RegexReplacement:
-    fn replace_all(text: String, replacement: String, max_bytes: Int?) String!RegexError
+    fn replace_all(text: String, replacement: String, max_bytes: Int?) String!
 
 type RegexAdapter:
     pattern: Regex
 
 impl RegexReplacement for RegexAdapter:
-    fn replace_all(text: String, replacement: String, max_bytes: Int?) String!RegexError:
+    fn replace_all(text: String, replacement: String, max_bytes: Int?) String!:
         return self.pattern.replace_all(text, replacement, max_bytes)
 
 fn add_generic[T: Hashable](var items: Set[T], value: T) Unit:
@@ -166,8 +166,16 @@ test "regex replace_all preserves literal text and exact output budgets":
     try expect_equal((try all(replacement: "$1", "aa")), "$1$1")
     try expect_equal((try pattern.replace_all("aa", "é", 4)), "éé")
 
-    let limited: String!RegexError = error(RegexError.LimitExceeded)
-    let invalid: String!RegexError = error(RegexError.InvalidInput)
+    let limited: String! = error(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
+    )
+    let invalid: String! = error(
+        Error(
+            "regular expression: invalid input", kind: ErrorCategory.InvalidInput
+        )
+    )
     try expect_equal(pattern.replace_all("aa", "é", 3), limited)
     try expect_equal(all("a", "", -1), invalid)
     try expect_equal((try all("a", "", 0)), "")

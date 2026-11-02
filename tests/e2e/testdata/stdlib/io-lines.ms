@@ -1,9 +1,9 @@
 import expect_equal from "@std/test/test.ms"
-import IoError, LineReader, lines from "@std/io/io.ms"
+import LineReader, lines from "@std/io/io.ms"
 import Iterator from "@std/core.ms"
 import MemoryStream from "./support/streams.ms"
 
-fn collect(text: String, max_bytes: Int?) List[String]!IoError:
+fn collect(text: String, max_bytes: Int?) List[String]!:
     var reader = lines(MemoryStream(text.to_bytes(), 0, closed: false), max_bytes)
     var seen: List[String] = []
     for line in reader:
@@ -30,7 +30,9 @@ test "an over-budget line stops the loop and sets the error":
     for line in reader:
         seen.append(line.clone())
     try expect_equal(seen, ["ok"])
-    try expect_equal(reader.error(), IoError.LimitExceeded)
+    try expect_equal(
+        reader.error(), Error("I/O: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
 
 test "a closed stream ends the loop with its error":
     var reader = lines(MemoryStream("a\n".to_bytes(), 0, closed: true))
@@ -38,7 +40,9 @@ test "a closed stream ends the loop with its error":
     for line in reader:
         count += 1
     try expect_equal(count, 0)
-    try expect_equal(reader.error(), IoError.Closed)
+    try expect_equal(
+        reader.error(), Error("I/O: resource is closed", kind: ErrorCategory.Closed)
+    )
 
 test "break and continue work in an iterator loop":
     var reader = lines(MemoryStream("1\nskip\n3\n4\n".to_bytes(), 0, closed: false))

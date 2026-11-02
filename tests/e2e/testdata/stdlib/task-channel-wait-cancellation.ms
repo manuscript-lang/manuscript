@@ -1,5 +1,5 @@
 import memory_usage from "@std/os/process.ms"
-import TaskChannel, TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 fn hold_receive(ch: TaskChannel[Int, Int]) Unit:
@@ -49,7 +49,9 @@ fn cancel_receive(target: TaskChannel[Int, Int]) Unit!:
 
     # The acknowledging task parks on the target before this receive resumes us.
     try group.close()
-    task.result() | try expect_error | try expect_equal(TaskError.Closed)
+    task.result() | try expect_error | try expect_equal(
+        Error("task: closed", kind: ErrorCategory.Closed)
+    )
     try group.close()
     return ok(unit)
 
@@ -59,7 +61,9 @@ fn cancel_send(target: TaskChannel[Int, Int]) Unit!:
     var task = group.spawn(fn ready: send_value(ready, end))
     task.channel.receive() | try expect_ok | try expect_equal(unit)
     try group.close()
-    task.result() | try expect_error | try expect_equal(TaskError.Closed)
+    task.result() | try expect_error | try expect_equal(
+        Error("task: closed", kind: ErrorCategory.Closed)
+    )
     try group.close()
     return ok(unit)
 

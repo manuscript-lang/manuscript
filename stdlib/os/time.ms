@@ -30,17 +30,6 @@ import (
     msstd_time_wall_clock
 ) from "@std/internal/time.ms"
 
-# Errors returned by time parsing, arithmetic, or range conversion.
-export type TimeError:
-    # Reserved for invalid time arguments; the current native time operations do not return it.
-    case InvalidInput
-    # Reserved for time operations on a closed resource; the current native time operations do not return it.
-    case Closed
-    # The text is not a duration span or an RFC 3339 timestamp with a four-digit year, full date and time, and an explicit `Z` or `+hh:mm` offset.
-    case InvalidData
-    # A nanosecond component is outside 0 through 999999999, or the result falls outside years 1 through 9999 or cannot be represented as a Duration.
-    case OutOfRange
-
 # A monotonic clock whose readings are suitable for measuring elapsed time.
 interface Clock:
     # Returns the current reading of this monotonic clock.
@@ -230,11 +219,11 @@ impl Timestamp:
         return self.nanos
 
     # Adds a duration to this wall-clock timestamp.
-    fn shift(duration: Duration) Timestamp!TimeError:
+    fn shift(duration: Duration) Timestamp!:
         return msstd_time_timestamp_shift(self, duration.nanos)
 
     # Returns `self - right` as a duration.
-    fn difference(other: Timestamp) Duration!TimeError:
+    fn difference(other: Timestamp) Duration!:
         let nanos = try msstd_time_timestamp_difference(self, other)
         return ok(Duration(nanos: nanos))
 
@@ -269,13 +258,13 @@ impl Timestamp:
 
     # Breaks this timestamp into calendar fields in a time zone: `"UTC"`, `"Local"`, an IANA name such as `"America/New_York"`, or a fixed offset such as `"+05:30"`.
     # An unknown zone returns InvalidInput.
-    fn calendar(zone: String) Calendar!TimeError:
+    fn calendar(zone: String) Calendar!:
         return msstd_time_timestamp_calendar(self, zone)
 
     # Formats this timestamp in a zone with a token pattern.
     # Tokens are `YYYY`, `MM`, `DD`, `HH`, `mm`, `ss`, `SSS` (milliseconds), `ZZ` (offset such as `+05:30`), and `zone` (abbreviation); other text is copied.
     # An unknown zone returns InvalidInput.
-    fn format(pattern: String, zone: String) String!TimeError:
+    fn format(pattern: String, zone: String) String!:
         return msstd_time_timestamp_format(self, pattern, zone)
 
 # Calendar fields of a timestamp in one time zone.
@@ -360,15 +349,15 @@ export fn hours(n: Int) Duration:
 # Fractions may have any number of ASCII digits; each component truncates toward zero to whole nanoseconds, without floating-point rounding. Negative zero becomes zero.
 # Whitespace, exponents, missing units, and other syntax return InvalidData, even after an overflowing prefix.
 # A syntactically valid result outside -9223372036854775808 through 9223372036854775807 nanoseconds returns OutOfRange.
-export fn parse_duration(text: String) Duration!TimeError:
+export fn parse_duration(text: String) Duration!:
     let data = text.to_bytes()
     let size = data.length()
-    if size == 0: return error(TimeError.InvalidData)
+    if size == 0: return error(Error("time: invalid data", kind: InvalidData))
 
     var pos = 0
     let negative = data.get(0).to_int() == 45
     if negative or data.get(0).to_int() == 43: pos += 1
-    if pos == size: return error(TimeError.InvalidData)
+    if pos == size: return error(Error("time: invalid data", kind: InvalidData))
     if size - pos == 1 and data.get(pos).to_int() == 48:
         return ok(nanoseconds(0))
 
@@ -411,8 +400,8 @@ export fn parse_duration(text: String) Duration!TimeError:
 
         let fraction_end = pos
         if not has_whole and fraction_start == fraction_end:
-            return error(TimeError.InvalidData)
-        if pos == size: return error(TimeError.InvalidData)
+            return error(Error("time: invalid data", kind: InvalidData))
+        if pos == size: return error(Error("time: invalid data", kind: InvalidData))
 
         var scale = 0
         let suffix = data.get(pos).to_int()
@@ -430,7 +419,7 @@ export fn parse_duration(text: String) Duration!TimeError:
                 pos += 1
         else if suffix == 110 or suffix == 117:
             if pos == size or data.get(pos).to_int() != 115:
-                return error(TimeError.InvalidData)
+                return error(Error("time: invalid data", kind: InvalidData))
 
             scale = if suffix == 110: 1 else: 1000
             pos += 1
@@ -441,12 +430,12 @@ export fn parse_duration(text: String) Duration!TimeError:
                 or data.get(pos).to_int() != second
                 or data.get(pos + 1).to_int() != 115
             ):
-                return error(TimeError.InvalidData)
+                return error(Error("time: invalid data", kind: InvalidData))
 
             scale = 1000
             pos += 2
         else:
-            return error(TimeError.InvalidData)
+            return error(Error("time: invalid data", kind: InvalidData))
 
         # Continue syntax validation after overflow, but skip further arithmetic.
         if overflow: continue
@@ -477,12 +466,12 @@ export fn parse_duration(text: String) Duration!TimeError:
         else:
             total -= fraction
 
-    if overflow: return error(TimeError.OutOfRange)
+    if overflow: return error(Error("time: value out of range", kind: OutOfRange))
 
     return ok(nanoseconds(if negative: total else: -total))
 
 # Parses an RFC 3339 timestamp with an explicit time zone.
-export fn parse_timestamp(text: String) Timestamp!TimeError:
+export fn parse_timestamp(text: String) Timestamp!:
     return msstd_time_parse_timestamp(text)
 
 # Builds a timestamp from calendar fields interpreted in a time zone (see `Timestamp.calendar` for zone names).
@@ -497,7 +486,7 @@ export fn from_calendar(
     second: Int,
     nanosecond: Int,
     zone: String
-) Timestamp!TimeError:
+) Timestamp!:
     return msstd_time_from_calendar(
         year, month, day, hour, minute, second, nanosecond, zone
     )
@@ -511,17 +500,8 @@ export fn sleep(duration: Duration) Unit:
     msstd_time_sleep(duration.nanos)
 
 # Constructs a timestamp from Unix seconds and a nanosecond adjustment.
-export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!TimeError:
+export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!:
     return msstd_time_timestamp(seconds, nanoseconds)
-
-impl Error for TimeError:
-    # Returns the fixed diagnostic `time: <reason>`, such as `time: value out of range`, without echoing the input text.
-    fn message() String:
-        match self:
-            InvalidInput: return "time: invalid input"
-            Closed: return "time: resource is closed"
-            InvalidData: return "time: invalid data"
-            OutOfRange: return "time: value out of range"
 
 # Returns the current reading of the monotonic clock, for measuring elapsed time.
 # Readings are only comparable with others from this clock and do not correspond to a calendar date.

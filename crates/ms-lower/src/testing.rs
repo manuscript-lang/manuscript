@@ -50,15 +50,11 @@ impl FnLower<'_> {
     fn testing_fail(&mut self, rty: MTy, message: Value) -> Result<Value, Error> {
         let (a, _, err) = self.result_cases(rty)?;
         let it = self.b.m.alts[a.index()].cases[err as usize].fields[0].1;
-        let TyKind::Iface(iface) = self.b.m.types.kind(it).clone() else {
-            return Err(Error::new("testing failures need an Error interface"));
+        let TyKind::Rec(er) = self.b.m.types.kind(it).clone() else {
+            return Err(Error::new("testing failures need an Error record"));
         };
-        let vt = self.cx.message_vtable(self.b.m, iface);
         self.record_failure_site(message);
-        let v = self
-            .b
-            .emit(Op::IfaceNew, &[message], Imm::Vtable(vt), Some(it))
-            .expect("iface");
+        let v = self.error_record(er, "Failed", message)?;
         Ok(self.b.alt_new(a, err, &[v]))
     }
 

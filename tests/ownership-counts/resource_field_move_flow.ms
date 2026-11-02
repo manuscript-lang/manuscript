@@ -48,10 +48,6 @@ type Room:
 type Oops:
     why: String
 
-impl Error for Oops:
-    fn message() String:
-        return self.why.clone()
-
 fn say(s: String) Unit:
     stdout().write("{s}\n").get()
 

@@ -1,8 +1,7 @@
 # Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-import TextError from "@std/core.ms"
 
 fn bad() Result[String, Error]:
-    return error(TextError("no"))
+    return error(Error("no"))
 
 fn list() Result[Int, Error]:
     let xs = ["a", try bad(), "c"]

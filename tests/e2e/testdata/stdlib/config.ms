@@ -1,5 +1,5 @@
 import expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms"
-import parse_dotenv, parse_ini, ConfigError from "@std/data/config.ms"
+import parse_dotenv, parse_ini from "@std/data/config.ms"
 
 test "dotenv reads names, quotes, comments and export":
     let text = "# settings\nPORT=8080\nexport HOST = example.com # primary\nNAME='my # app'\nTITLE=\"two\nlines\" # note\nEMPTY=\nTICK=`a b`\n"
@@ -37,7 +37,12 @@ test "dotenv rejects malformed lines with their line number":
     if let _ = result: return fail("accepted trailing text")
 
     result | try expect_equal(
-        error(ConfigError.InvalidData(3, "unexpected text after quoted value"))
+        error(
+            Error(
+                "config: line 3: unexpected text after quoted value",
+                details: {"line": "3"}, kind: ErrorCategory.InvalidData
+            )
+        )
     )
 
 test "ini reads sections, both separators, comments and quotes":
@@ -62,7 +67,14 @@ test "ini rejects malformed lines":
     let result = parse_ini("a=1\nbad")
     if let _ = result: return fail("accepted")
 
-    result | try expect_equal(error(ConfigError.InvalidData(2, "expected key = value")))
+    result | try expect_equal(
+        error(
+            Error(
+                "config: line 2: expected key = value", details: {"line": "2"},
+                kind: ErrorCategory.InvalidData
+            )
+        )
+    )
 
 test "dotenv multi-line quotes stay linear":
     let lines = "x\n".repeat(200000).get()

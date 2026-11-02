@@ -2,7 +2,7 @@
 # conform: phase=run
 # conform: origin=value-semantics-audit
 import stdout from "@std/io/io.ms"
-import Closeable, TextError from "@std/core.ms"
+import Closeable from "@std/core.ms"
 
 # Each resource closes exactly once, whichever owner holds it when its scope ends.
 type Door:
@@ -24,10 +24,10 @@ fn doors() Map[String, Door]:
     m.add("a", Door("map-a"))
     return m
 
-fn open(n: String) Door!TextError:
+fn open(n: String) Door!Error:
     return ok(Door(n))
 
-fn collect() List[Door]!TextError:
+fn collect() List[Door]!Error:
     var found = List[Door]()
     let first = open("try-move")
     found.append(try first)

@@ -1,10 +1,10 @@
-import Bytes, VarintError from "@std/bytes.ms"
-import Duration, TimeError, parse_duration from "@std/os/time.ms"
+import Bytes from "@std/bytes.ms"
+import Duration, parse_duration from "@std/os/time.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 type InputFailure:
-    case Binary(cause: VarintError)
-    case Time(cause: TimeError)
+    case Binary(cause: Error)
+    case Time(cause: Error)
     case MissingPrefix
     case MissingKey(value: Int)
 
@@ -30,14 +30,20 @@ test "library results compose with failure values without a reporting implementa
     try expect_equal(number, 300)
     try expect_equal(
         (try expect_error(read_number(Bytes([128])))),
-        InputFailure.Binary(VarintError.Incomplete)
+        InputFailure.Binary(
+            Error(
+                "binary: incomplete varint", kind: ErrorCategory.InvalidData
+            )
+        )
     )
 
     let duration = try expect_ok(read_duration("1.5us"))
     try expect_equal(duration.to_nanoseconds(), 1500)
     try expect_equal(
         (try expect_error(read_duration("invalid"))),
-        InputFailure.Time(TimeError.InvalidData)
+        InputFailure.Time(
+            Error("time: invalid data", kind: ErrorCategory.InvalidData)
+        )
     )
 
 test "absence adapters and sorted lookup retain an explicit failure type":

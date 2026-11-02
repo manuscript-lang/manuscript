@@ -1,13 +1,13 @@
 import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
-import IoError, ReadStream, lines, read_line from "@std/io/io.ms"
+import ReadStream, lines, read_line from "@std/io/io.ms"
 
 type MemoryStream:
     data: Bytes
     offset: Int
 
 impl ReadStream for MemoryStream:
-    var fn read(max_bytes: Int?) Result[Bytes?, IoError]:
+    var fn read(max_bytes: Int?) Result[Bytes?, Error]:
         if self.offset == self.data.length():
             return ok(none)
 

@@ -1,14 +1,13 @@
 # conform: tags=closures,control-flow,faults,lists,modules,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/pipe-flow.ms
-import TextError from "@std/core.ms"
 import expect_equal, expect_false from "@std/test/test.ms"
 
-fn parse(text: String) Int!TextError:
+fn parse(text: String) Int!Error:
     if text == "-":
-        return error(TextError("n"))
+        return error(Error("n"))
     if text == "big":
-        return error(TextError("big"))
+        return error(Error("big"))
 
     return ok(text.length())
 
@@ -16,23 +15,23 @@ fn double(n: Int) Int: n * 2
 
 fn add(n: Int, by: Int) Int: n + by
 
-fn check(n: Int) Int!TextError:
+fn check(n: Int) Int!Error:
     if n > 100:
-        return error(TextError("big"))
+        return error(Error("big"))
 
     return ok(n)
 
-fn flow(text: String) Int!TextError:
+fn flow(text: String) Int!Error:
     let n = try parse(text)
         | double
         | add(3)
         | try check
     return ok(n)
 
-fn bare(text: String) Int!TextError:
+fn bare(text: String) Int!Error:
     return ok(try parse(text) | double | check | try)
 
-fn describe(text: String) String!TextError:
+fn describe(text: String) String!Error:
     let label = try parse(text)
         | try check
         | add(1)
@@ -46,11 +45,11 @@ fn trace(var log: List[String], name: String) Int:
     log.append(name)
     return 1
 
-fn code(r: Int!TextError) Int:
+fn code(r: Int!Error) Int:
     if let v = r:
         return v
 
-    return 0 - r.err().message().length()
+    return 0 - r.err().message.length()
 
 test "pipe steps call functions with the value first":
     try expect_equal(code(flow("abc")), 9)

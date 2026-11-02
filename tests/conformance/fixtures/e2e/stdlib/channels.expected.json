@@ -53,24 +53,19 @@
           "index": 8,
           "name": "channels.ms::cloned ends share one channel",
           "status": "passed"
-        },
-        {
-          "index": 9,
-          "name": "channels.ms::channel errors describe themselves",
-          "status": "passed"
         }
       ],
       "summary": {
-        "available": 10,
-        "selected": 10,
-        "passed": 10,
+        "available": 9,
+        "selected": 9,
+        "passed": 9,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN channels.ms::a task answers each message in order\nPASS channels.ms::a task answers each message in order\nRUN channels.ms::the group reads what a finished task sent, then the end\nPASS channels.ms::the group reads what a finished task sent, then the end\nRUN channels.ms::sending after the other end closed gives Closed\nPASS channels.ms::sending after the other end closed gives Closed\nRUN channels.ms::an end used after closing it gives Closed\nPASS channels.ms::an end used after closing it gives Closed\nRUN channels.ms::a task cancelled while it waits closes its end\nPASS channels.ms::a task cancelled while it waits closes its end\nRUN channels.ms::a task cancelled before it first ran closes its end\nPASS channels.ms::a task cancelled before it first ran closes its end\nRUN channels.ms::closing the group closes every channel\nPASS channels.ms::closing the group closes every channel\nRUN channels.ms::a group without channel types gives each task a Unit channel\nPASS channels.ms::a group without channel types gives each task a Unit channel\nRUN channels.ms::cloned ends share one channel\nPASS channels.ms::cloned ends share one channel\nRUN channels.ms::channel errors describe themselves\nPASS channels.ms::channel errors describe themselves\n10 tests, 0 failed\n",
+      "stdout": "RUN channels.ms::a task answers each message in order\nPASS channels.ms::a task answers each message in order\nRUN channels.ms::the group reads what a finished task sent, then the end\nPASS channels.ms::the group reads what a finished task sent, then the end\nRUN channels.ms::sending after the other end closed gives Closed\nPASS channels.ms::sending after the other end closed gives Closed\nRUN channels.ms::an end used after closing it gives Closed\nPASS channels.ms::an end used after closing it gives Closed\nRUN channels.ms::a task cancelled while it waits closes its end\nPASS channels.ms::a task cancelled while it waits closes its end\nRUN channels.ms::a task cancelled before it first ran closes its end\nPASS channels.ms::a task cancelled before it first ran closes its end\nRUN channels.ms::closing the group closes every channel\nPASS channels.ms::closing the group closes every channel\nRUN channels.ms::a group without channel types gives each task a Unit channel\nPASS channels.ms::a group without channel types gives each task a Unit channel\nRUN channels.ms::cloned ends share one channel\nPASS channels.ms::cloned ends share one channel\n9 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

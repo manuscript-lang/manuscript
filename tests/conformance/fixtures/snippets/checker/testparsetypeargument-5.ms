@@ -4,6 +4,6 @@
 type Request:
     model: String
 
-fn f(text: String) Request!JsonError:
+fn f(text: String) Request!:
     let request: Request = try parse(text)
     return ok(request)

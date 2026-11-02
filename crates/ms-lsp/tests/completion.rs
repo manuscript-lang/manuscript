@@ -39,7 +39,7 @@ fn numeric_imports_preserve_main_fuzzy_completions() {
             (
                 "machine",
                 3,
-                "fn() Result[String, SystemError] — @std/os/process.ms",
+                "fn() Result[String, Error] — @std/os/process.ms",
                 "@std/os/process.ms",
                 Some(""),
             ),
@@ -81,7 +81,7 @@ fn numeric_imports_preserve_main_fuzzy_completions() {
             (
                 "remainder_wide",
                 3,
-                "fn(UInt64, UInt64, UInt64) Result[UInt64, NumberError] — @std/math/math.ms",
+                "fn(UInt64, UInt64, UInt64) Result[UInt64, Error] — @std/math/math.ms",
                 "@std/math/math.ms",
                 Some("high: ${1:high}, low: ${2:low}, divisor: ${3:divisor}"),
             ),
@@ -227,7 +227,7 @@ fn checksum_imports_preserve_numeric_fuzzy_completions() {
             (
                 "base32_decode",
                 3,
-                "fn(String, Bool, Bool, Int?) Result[Bytes, EncodingError] — @std/data/encoding.ms",
+                "fn(String, Bool, Bool, Int?) Result[Bytes, Error] — @std/data/encoding.ms",
                 Some("@std/data/encoding.ms"),
                 Some("text: ${1:text}"),
             ),

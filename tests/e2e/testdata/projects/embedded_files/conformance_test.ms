@@ -1,6 +1,5 @@
 import files from "@assets"
 import walk from "@std/os/tree.ms"
-import FileSystemError from "@std/os/fs.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 test "embedded files read back byte for byte":
@@ -23,18 +22,28 @@ test "embedded tree walks in name order":
     ) | try expect_equal(["data.bin", "hello.txt", "nested", "nested/deep.txt"])
 
 test "missing embedded files report NotFound":
-    files().read("nope.txt", none) | try expect_error | try expect_equal(
-        FileSystemError.NotFound
+    files().read(
+        "nope.txt", none
+    ) | try expect_error | try expect_equal(
+        Error(
+            "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+        )
     )
 
 test "embedded trees respect read limits and directories":
     let tree = files()
-    tree.read("data.bin", 10) | try expect_error | try expect_equal(
-        FileSystemError.LimitExceeded
+    tree.read(
+        "data.bin", 10
+    ) | try expect_error | try expect_equal(
+        Error("filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded)
     )
-    tree.read("nested", none) | try expect_error | try expect_equal(
-        FileSystemError.InvalidInput
+    tree.read(
+        "nested", none
+    ) | try expect_error | try expect_equal(
+        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
     )
-    tree.children("hello.txt", none) | try expect_error | try expect_equal(
-        FileSystemError.InvalidInput
+    tree.children(
+        "hello.txt", none
+    ) | try expect_error | try expect_equal(
+        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
     )

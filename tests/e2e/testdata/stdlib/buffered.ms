@@ -6,7 +6,7 @@ import (
     ScanStep
 ) from "@std/io/buffered.ms"
 import from_bytes from "@std/io/streams.ms"
-import read_all, IoError, ReadStream from "@std/io/io.ms"
+import read_all, ReadStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
 import open, read_file, temporary from "@std/os/fs.ms"
@@ -40,7 +40,9 @@ test "read_until enforces its limit":
     let comma: UInt8 = 44
     let result = reader.read_until(comma, 4)
     if not result.is_error(): return panic("limit")
-    if result.err() != IoError.LimitExceeded: return panic("limit kind")
+    if result.err() != Error("I/O: limit exceeded", kind: ErrorCategory.LimitExceeded): return panic(
+        "limit kind"
+    )
 
 test "read_rune decodes whole scalars across chunks":
     var reader = buffered_reader(from_bytes("a\u{e9}\u{1f600}z".to_bytes(), 1), 1)
@@ -123,17 +125,23 @@ test "scanner reports limits and bad data":
     var long = scan(from_bytes("abcdefghij\nx".to_bytes(), 3), ScanMode.Lines, 4)
     for token in long:
         return panic("token over the limit")
-    if long.error() != IoError.LimitExceeded: return panic("limit error")
+    if long.error() != Error("I/O: limit exceeded", kind: ErrorCategory.LimitExceeded): return panic(
+        "limit error"
+    )
 
     var bad = scan(from_bytes(Bytes([255, 10]), 2))
     for token in bad:
         return panic("invalid utf8 token")
-    if bad.error() != IoError.InvalidData: return panic("data error")
+    if bad.error() != Error("I/O: invalid data", kind: ErrorCategory.InvalidData): return panic(
+        "data error"
+    )
 
     var empty = scan(from_bytes("x".to_bytes()), ScanMode.Delimiter(""))
     for token in empty:
         return panic("empty delimiter")
-    if empty.error() != IoError.InvalidInput: return panic("delimiter error")
+    if empty.error() != Error("I/O: invalid input", kind: ErrorCategory.InvalidInput): return panic(
+        "delimiter error"
+    )
 
 test "scanner handles a long line and a split delimiter":
     var text = ""

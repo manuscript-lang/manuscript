@@ -1,6 +1,5 @@
 import expect_equal from "@std/test/test.ms"
 import Decimal, RoundingMode from "@std/math/decimal.ms"
-import NumberError from "@std/math/math.ms"
 
 test "decimal cents stay exact and fixed places retain zeros":
     let total = 19.99d * 3d
@@ -28,7 +27,7 @@ test "decimal rounding modes include signed ties and coarse scales":
     let fixed = 25.5d.to_fixed
     try expect_equal((try fixed(2)), "25.50")
 
-    let rounded: fn(Int, RoundingMode?) Decimal!NumberError = 2.5d.round
+    let rounded: fn(Int, RoundingMode?) Decimal! = 2.5d.round
     try expect_equal((try rounded(0, RoundingMode.HalfEven)), 2d)
 
 test "decimal scale extremes and invalid requests return typed errors":
@@ -37,15 +36,21 @@ test "decimal scale extremes and invalid requests return typed errors":
     try expect_equal((try 1e6144d.round(-6144)), 1e6144d)
     try expect_equal((try 0d.to_fixed(6176)).scalar_length(), 6178)
 
-    let invalid_round: Decimal!NumberError = error(NumberError.InvalidInput)
+    let invalid_round: Decimal! = error(
+        Error("number: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(0d.round(-6145), invalid_round)
     try expect_equal(0d.round(6177), invalid_round)
 
-    let invalid_fixed: String!NumberError = error(NumberError.InvalidInput)
+    let invalid_fixed: String! = error(
+        Error("number: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(0d.to_fixed(-1), invalid_fixed)
     try expect_equal(0d.to_fixed(6177), invalid_fixed)
 
-    let overflow: Decimal!NumberError = error(NumberError.OutOfRange)
+    let overflow: Decimal! = error(
+        Error("number: value out of range", kind: ErrorCategory.OutOfRange)
+    )
     try expect_equal(9.999999999999999999999999999999999e6144d.round(-6144), overflow)
 
 test "exact rounding retains values at every supported precision":

@@ -7,9 +7,6 @@ type Failure[T]:
     case NotFound
     case Denied(reason: T)
 
-impl Error for Failure[T]:
-    fn message() String: "Failure"
-
 # An advisory preserves the semantics of this fresh, capitalized binding.
 fn captured[T](result: Result[Int, Failure[T]]) Int:
     match result:

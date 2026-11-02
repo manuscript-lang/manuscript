@@ -6,7 +6,7 @@ import (
     walk,
     WalkEntry
 ) from "@std/os/tree.ms"
-import FileSystemError, create_directory, write_file, temporary from "@std/os/fs.ms"
+import create_directory, write_file, temporary from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
 import expect_ok from "@std/test/test.ms"
@@ -14,7 +14,7 @@ import expect_ok from "@std/test/test.ms"
 fn paths(found: List[WalkEntry]) List[String]:
     return found.map(fn e: if e.directory: "{e.path}/" else: e.path.clone())
 
-fn total_size(tree: FileTree, names: List[String]) Int!FileSystemError:
+fn total_size(tree: FileTree, names: List[String]) Int!:
     var total = 0
     for name in names:
         total += (try tree.read(name, none)).length()
@@ -47,27 +47,41 @@ test "memory tree lists and reads":
 
 test "memory tree reports precise errors":
     var tree = sample()
-    if tree.read("nope", none).err() != FileSystemError.NotFound: return panic(
-        "missing"
-    )
-    if tree.read("docs", none).err() != FileSystemError.InvalidInput: return panic(
-        "read directory"
-    )
-    if tree.children("main.ms", none).err() != FileSystemError.InvalidInput: return panic(
-        "list file"
-    )
-    if tree.read("../x", none).err() != FileSystemError.InvalidInput: return panic(
-        "escape"
-    )
-    if tree.read("main.ms", 2).err() != FileSystemError.LimitExceeded: return panic(
-        "limit"
-    )
     if (
-        tree.write_file(
-            "main.ms/inner", "x".to_bytes()
-        ).err() != FileSystemError.InvalidInput
+        tree.read("nope", none).err() != Error(
+            "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+        )
+    ): return panic("missing")
+    if (
+        tree.read("docs", none).err() != Error(
+            "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+        )
+    ): return panic("read directory")
+    if (
+        tree.children("main.ms", none).err() != Error(
+            "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+        )
+    ): return panic("list file")
+    if (
+        tree.read("../x", none).err() != Error(
+            "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+        )
+    ): return panic("escape")
+    if (
+        tree.read("main.ms", 2).err() != Error(
+            "filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
+    ): return panic("limit")
+    if (
+        tree.write_file("main.ms/inner", "x".to_bytes()).err() != Error(
+            "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+        )
     ): return panic("parent is file")
-    if tree.remove("docs").err() != FileSystemError.NotEmpty: return panic("not empty")
+    if (
+        tree.remove("docs").err() != Error(
+            "filesystem: directory not empty", kind: ErrorCategory.Other
+        )
+    ): return panic("not empty")
 
     try tree.remove("docs", recursive: true)
     if tree.exists("docs/api/index.md"): return panic("recursive remove")
@@ -87,9 +101,11 @@ test "walk is depth first and sorted":
 
     let docs = walk(tree, "docs") | try expect_ok
     if paths(docs) != ["api/", "api/index.md", "guide.md"]: return panic("sub root")
-    if walk(tree, max_entries: 2).err() != FileSystemError.LimitExceeded: return panic(
-        "limit"
-    )
+    if (
+        walk(tree, max_entries: 2).err() != Error(
+            "filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
+    ): return panic("limit")
 
 test "host tree walks the same way":
     let dir = temporary("manuscript-tree-") | try expect_ok
@@ -104,9 +120,11 @@ test "host tree walks the same way":
     if (tree.read("b/two.txt", none) | try expect_ok) != "22".to_bytes(): return panic(
         "host read"
     )
-    if tree.read("../etc", none).err() != FileSystemError.InvalidInput: return panic(
-        "host escape"
-    )
+    if (
+        tree.read("../etc", none).err() != Error(
+            "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+        )
+    ): return panic("host escape")
 
 test "memory tree listing follows writes and removals":
     var tree = memory_tree()

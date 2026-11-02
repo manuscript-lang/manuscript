@@ -1,7 +1,5 @@
 import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
-import TextError from "@std/core.ms"
 import (
-    FileSystemError,
     copy,
     CopyOptions,
     create_directory,
@@ -15,25 +13,25 @@ import (
 ) from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
-fn generic_write(path: String, data: String) Unit!FileSystemError:
+fn generic_write(path: String, data: String) Unit!:
     return write_file(path, data)
 
-fn generic_copy(source: String, destination: String) Unit!FileSystemError:
+fn generic_copy(source: String, destination: String) Unit!:
     return copy(source, destination)
 
-fn generic_tree(source: String, destination: String) Unit!FileSystemError:
+fn generic_tree(source: String, destination: String) Unit!:
     return copy(source, destination, CopyOptions(recursive: true))
 
-fn generic_directory(path: String) Unit!FileSystemError:
+fn generic_directory(path: String) Unit!:
     return create_directory(path)
 
-fn generic_remove(path: String) Unit!FileSystemError:
+fn generic_remove(path: String) Unit!:
     return remove(path)
 
-fn rejected(result: Unit!FileSystemError) Unit!:
+fn rejected(result: Unit!) Unit!:
     match result:
         error(_): return ok(unit)
-        ok(_): return error(TextError("exclusive or nonrecursive operation succeeded"))
+        ok(_): return error(Error("exclusive or nonrecursive operation succeeded"))
 
     return ok(unit)
 
@@ -81,7 +79,9 @@ test "filesystem file copies default to no replacement and retain byte limits":
     (try text(destination)) | try expect_equal("changed")
     (generic_copy(source, "{temporary.path()}/generic") | try expect_ok)
 
-    let limited: Unit!FileSystemError = error(FileSystemError.LimitExceeded)
+    let limited: Unit! = error(
+        Error("filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     copy(source, "{temporary.path()}/limited", CopyOptions(max_bytes: 0)) | try expect_equal(
         limited
     )
@@ -123,7 +123,9 @@ test "filesystem tree copies default to no replacement with distinct budgets":
     (try text("{destination}/data")) | try expect_equal("xyz")
     (generic_tree(source, "{temporary.path()}/generic") | try expect_ok)
 
-    let limited: Unit!FileSystemError = error(FileSystemError.LimitExceeded)
+    let limited: Unit! = error(
+        Error("filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     copy(
         source, "{temporary.path()}/entries",
         CopyOptions(recursive: true, max_entries: 1)
@@ -132,7 +134,9 @@ test "filesystem tree copies default to no replacement with distinct budgets":
         limited
     )
 
-    let invalid: Unit!FileSystemError = error(FileSystemError.InvalidInput)
+    let invalid: Unit! = error(
+        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     copy(
         source, "{temporary.path()}/negative-byte",
         CopyOptions(recursive: true, max_bytes: -1)

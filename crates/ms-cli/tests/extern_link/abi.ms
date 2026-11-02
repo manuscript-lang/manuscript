@@ -9,12 +9,11 @@ type ParseError:
     case Empty
     case Unknown(code: Int)
 
-impl Error for ParseError:
-    fn message() String:
-        match self:
-            Failed(code, message): return "failed at {code}: {message}"
-            Empty: return "empty"
-            Unknown(code): return "unknown {code}"
+fn text(cause: ParseError) String:
+    match cause:
+        Failed(code, message): return "failed at {code}: {message}"
+        Empty: return "empty"
+        Unknown(code): return "unknown {code}"
 
 extern fn abi_i8(x: Int8) Int8
 extern fn abi_i16(x: Int16) Int16
@@ -47,7 +46,7 @@ fn describe(result: Counter!ParseError) String:
     if let counter = result:
         return "ok {abi_counter_bump(counter)}"
 
-    return "error {result.err().message()}"
+    return "error {text(result.err())}"
 
 fn counters() Unit:
     let a = abi_counter(1)

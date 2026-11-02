@@ -2,16 +2,15 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/successful-result-int-bounds.ms
 import Closeable from "@std/core.ms"
-import TextError from "@std/core.ms"
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
-fn checked(n: Int) Int!TextError:
+fn checked(n: Int) Int!Error:
     if n < 0:
-        return error(TextError("negative"))
+        return error(Error("negative"))
 
     return ok(n + 1)
 
-fn wrapped(n: Int) Int!TextError:
+fn wrapped(n: Int) Int!Error:
     let value = try checked(n)
     return ok(value)
 
@@ -58,10 +57,10 @@ fn peer() Int:
 
     return sum
 
-fn hidden(n: Int) Int!TextError:
+fn hidden(n: Int) Int!Error:
     if n < 0:
         return error(
-            TextError(
+            Error(
                 match present(n):
                     _value:
                         return ok(9223372036854775807)

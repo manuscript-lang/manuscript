@@ -306,7 +306,7 @@ fn run_case[T](gen: Gen[T], property: fn(T) Unit!, s: Source) Outcome:
     let replayed = Source(source.choices.take(source.pos), 0, 0, false, false)
     let {value: again} = gen.make(replayed)
     let outcome = property(again)
-    return Outcome(source, outcome.err().message())
+    return Outcome(source, outcome.err().message)
 
 let property_failed = "property returned an error"
 

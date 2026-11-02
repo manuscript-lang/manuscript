@@ -1,10 +1,9 @@
 # conform: tags=formatter,modules,parser,stdlib-errors,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=internal/cli/advisory_lint_test.go:18 TestSafetyAdvisoriesDoNotBecomeCheckErrors
-import TextError from "@std/core.ms"
 
-fn fail() Int!TextError:
-    return error(TextError("boom"))
+fn fail() Int!Error:
+    return error(Error("boom"))
 
 fn use() Unit:
     let _ = fail()

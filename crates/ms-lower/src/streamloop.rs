@@ -6,6 +6,7 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
+use crate::httpserve::IO_KINDS;
 use ms_check::hir::CallView;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Block, Cc, FuncKind, Imm, Mode, Op, Param, Value};
@@ -336,7 +337,7 @@ impl FnLower<'_> {
                 MTy::INT,
                 &mut |s| {
                     let e = s.b.alt_get(src, serr as u32, 0, r);
-                    s.error_status(e, p[5]).map(Some)
+                    s.error_status(e, p[5], &IO_KINDS).map(Some)
                 },
                 &mut |s| {
                     let chunk = s.b.alt_get(src, sok as u32, 0, r);

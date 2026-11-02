@@ -1,23 +1,6 @@
 import panic from "@std/core.ms"
 import BigInt, frexp, from_int, ldexp, parse, parse_int from "@std/math/math.ms"
 
-# Errors returned while building or parsing exact rationals.
-export type BigRatError:
-    # A denominator is zero, a digit count is negative, or the value cannot be inverted or raised to a negative power because it is zero.
-    case InvalidInput
-    # The text is not `a/b`, a decimal such as `-1.25e3`, or an integer.
-    case InvalidData
-    # A decimal exponent is beyond 100000 in magnitude, which would build an enormous power of ten.
-    case LimitExceeded
-
-impl Error for BigRatError:
-    # Returns the fixed diagnostic `bigrat: <reason>` without echoing the input text.
-    fn message() String:
-        match self:
-            InvalidInput: return "bigrat: invalid input"
-            InvalidData: return "bigrat: invalid data"
-            LimitExceeded: return "bigrat: limit exceeded"
-
 # An exact fraction of two arbitrary-precision integers, always in lowest terms with a positive denominator,
 # so two equal values compare equal with `==`. Arithmetic uses named methods and never rounds.
 # Build values with `rat`, `rat_of_int`, `rat_of_big_int`, `rat_of_float` or `parse_rat`.
@@ -41,9 +24,9 @@ fn reduced(numerator: BigInt, denominator: BigInt) BigRat:
     return BigRat(num: top, den: bottom)
 
 # Returns `numerator / denominator` in lowest terms; a zero denominator returns InvalidInput.
-export fn rat(numerator: BigInt, denominator: BigInt) BigRat!BigRatError:
+export fn rat(numerator: BigInt, denominator: BigInt) BigRat!:
     if denominator.sign() == 0:
-        return error(BigRatError.InvalidInput)
+        return error(Error("bigrat: invalid input", kind: ErrorCategory.InvalidInput))
     if numerator.sign() == 0:
         return ok(BigRat(num: big(0), den: big(1)))
 
@@ -76,18 +59,18 @@ export fn rat_of_binary(mantissa: BigInt, exponent: Int) BigRat:
 
     return reduced(mantissa.clone(), shl(big(1), -exponent))
 
-fn parse_digits(text: String) BigInt!BigRatError:
+fn parse_digits(text: String) BigInt!:
     if let value = parse_big(text):
         return ok(value)
 
-    return error(BigRatError.InvalidData)
+    return error(Error("bigrat: invalid data", kind: ErrorCategory.InvalidData))
 
 # Parses `a/b`, an integer, or a decimal with an optional exponent: `3/4`, `-12`, `1.25`, `6.02e23`, `5e-3`.
 # A zero denominator returns InvalidInput, malformed text InvalidData and an exponent beyond 100000 in magnitude LimitExceeded.
-export fn parse_rat(text: String) BigRat!BigRatError:
+export fn parse_rat(text: String) BigRat!:
     let slash = text.split("/")
     if slash.length() > 2:
-        return error(BigRatError.InvalidData)
+        return error(Error("bigrat: invalid data", kind: ErrorCategory.InvalidData))
 
     if slash.length() == 2:
         let top = try parse_digits(slash[0])
@@ -96,7 +79,7 @@ export fn parse_rat(text: String) BigRat!BigRatError:
 
     let exponent_parts = text.lower().split("e")
     if exponent_parts.length() > 2:
-        return error(BigRatError.InvalidData)
+        return error(Error("bigrat: invalid data", kind: ErrorCategory.InvalidData))
 
     var exponent = 0
 
@@ -109,13 +92,17 @@ export fn parse_rat(text: String) BigRat!BigRatError:
             exponent = parse_exponent(digits)
 
         if exponent == -1000001:
-            return error(BigRatError.InvalidData)
+            return error(Error("bigrat: invalid data", kind: ErrorCategory.InvalidData))
         if exponent > 100000 or exponent < -100000:
-            return error(BigRatError.LimitExceeded)
+            return error(
+                Error(
+                    "bigrat: limit exceeded", kind: ErrorCategory.LimitExceeded
+                )
+            )
 
     let point = exponent_parts[0].split(".")
     if point.length() > 2:
-        return error(BigRatError.InvalidData)
+        return error(Error("bigrat: invalid data", kind: ErrorCategory.InvalidData))
 
     var fraction_digits = 0
     var joined = point[0].clone()
@@ -168,11 +155,11 @@ impl BigRat:
         return reduced(self.num * other.num, self.den * other.den)
 
     # Returns the exact quotient; a zero divisor returns InvalidInput.
-    fn divide(other: BigRat) BigRat!BigRatError:
+    fn divide(other: BigRat) BigRat!:
         return rat(self.num * other.den, self.den * other.num)
 
     # Returns `1 / self`; zero returns InvalidInput.
-    fn invert() BigRat!BigRatError:
+    fn invert() BigRat!:
         return rat(self.den.clone(), self.num.clone())
 
     # Returns the same magnitude with the opposite sign; zero stays zero.
@@ -211,7 +198,7 @@ impl BigRat:
 
     # Returns the exact power. A negative exponent inverts first, so zero with a negative exponent returns InvalidInput.
     # An exponent too large for BigInt.pow faults as BigInt does.
-    fn pow(exponent: Int) BigRat!BigRatError:
+    fn pow(exponent: Int) BigRat!:
         let count = exponent.abs()
         let top = self.num.pow(count).get(big(0))
         let bottom = self.den.pow(count).get(big(1))
@@ -247,9 +234,13 @@ impl BigRat:
 
     # Prints plain decimal notation with exactly `digits` fractional digits, rounding ties to even.
     # A negative digit count returns InvalidInput; a result that rounds to zero has no minus sign.
-    fn to_fixed(digits: Int) String!BigRatError:
+    fn to_fixed(digits: Int) String!:
         if digits < 0:
-            return error(BigRatError.InvalidInput)
+            return error(
+                Error(
+                    "bigrat: invalid input", kind: ErrorCategory.InvalidInput
+                )
+            )
 
         let scaled = self.num.abs() * pow10(digits)
         var quotient = scaled / self.den
@@ -278,23 +269,6 @@ impl BigRat:
             return self.num.to_string_radix(10)
 
         return "{self.num.to_string_radix(10)}/{self.den.to_string_radix(10)}"
-
-# Errors returned while building or parsing arbitrary-precision floats.
-export type BigFloatError:
-    # A divisor is zero, a square-root operand is negative, or a digit count is negative.
-    case InvalidInput
-    # The text is not an integer or decimal such as `-1.25e3`.
-    case InvalidData
-    # A decimal exponent is beyond 100000 in magnitude.
-    case LimitExceeded
-
-impl Error for BigFloatError:
-    # Returns the fixed diagnostic `bigfloat: <reason>` without echoing the input text.
-    fn message() String:
-        match self:
-            InvalidInput: return "bigfloat: invalid input"
-            InvalidData: return "bigfloat: invalid data"
-            LimitExceeded: return "bigfloat: limit exceeded"
 
 # The largest supported precision in bits.
 export let max_big_float_precision: Int = 1000000
@@ -350,18 +324,24 @@ export fn big_float_of_rat(value: BigRat, precision: Int) BigFloat:
 
 # Parses an integer or decimal with optional exponent (`2`, `-0.1`, `6.02e23`) and rounds once to `precision` bits.
 # Malformed text returns InvalidData and an exponent beyond 100000 in magnitude LimitExceeded.
-export fn parse_big_float(text: String, precision: Int) BigFloat!BigFloatError:
+export fn parse_big_float(text: String, precision: Int) BigFloat!:
     let bits = checked(precision)
     if text.contains("/"):
-        return error(BigFloatError.InvalidData)
+        return error(Error("bigfloat: invalid data", kind: ErrorCategory.InvalidData))
     if let value = parse_rat(text):
         return ok(big_float_of_rat(value, bits))
 
-    let too_large: BigRat!BigRatError = error(BigRatError.LimitExceeded)
+    let too_large: BigRat! = error(
+        Error("bigrat: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     if parse_rat(text) == too_large:
-        return error(BigFloatError.LimitExceeded)
+        return error(
+            Error(
+                "bigfloat: limit exceeded", kind: ErrorCategory.LimitExceeded
+            )
+        )
 
-    return error(BigFloatError.InvalidData)
+    return error(Error("bigfloat: invalid data", kind: ErrorCategory.InvalidData))
 
 impl BigFloat:
     # Returns the precision in bits.
@@ -423,9 +403,13 @@ impl BigFloat:
         )
 
     # Returns the quotient, rounded once at the larger operand precision; a zero divisor returns InvalidInput.
-    fn divide(other: BigFloat) BigFloat!BigFloatError:
+    fn divide(other: BigFloat) BigFloat!:
         if other.mant.sign() == 0:
-            return error(BigFloatError.InvalidInput)
+            return error(
+                Error(
+                    "bigfloat: invalid input", kind: ErrorCategory.InvalidInput
+                )
+            )
 
         let bits = larger(self.prec, other.prec)
         var top = self.mant.clone()
@@ -444,9 +428,13 @@ impl BigFloat:
         )
 
     # Returns the square root rounded once; a negative operand returns InvalidInput.
-    fn sqrt() BigFloat!BigFloatError:
+    fn sqrt() BigFloat!:
         if self.mant.sign() < 0:
-            return error(BigFloatError.InvalidInput)
+            return error(
+                Error(
+                    "bigfloat: invalid input", kind: ErrorCategory.InvalidInput
+                )
+            )
         if self.mant.sign() == 0:
             return ok(self.clone())
 
@@ -514,11 +502,11 @@ impl BigFloat:
 
     # Prints plain decimal notation with exactly `digits` fractional digits, rounding ties to even.
     # A negative digit count returns InvalidInput.
-    fn to_fixed(digits: Int) String!BigFloatError:
+    fn to_fixed(digits: Int) String!:
         if let text = self.to_rat().to_fixed(digits):
             return ok(text)
 
-        return error(BigFloatError.InvalidInput)
+        return error(Error("bigfloat: invalid input", kind: ErrorCategory.InvalidInput))
 
 fn larger(left: Int, right: Int) Int:
     if left >= right:

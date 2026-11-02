@@ -12,9 +12,9 @@
         "message": "unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it",
         "position": {
           "file": "testunknowntypedoesnotcascadeintoinference-1.ms",
-          "line": 6,
-          "column": 25,
-          "offset": 265
+          "line": 4,
+          "column": 54,
+          "offset": 256
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it",
         "position": {
           "file": "testunknowntypedoesnotcascadeintoinference-1.ms",
-          "line": 7,
-          "column": 11,
-          "offset": 288
+          "line": 4,
+          "column": 76,
+          "offset": 278
         }
       },
       {
@@ -34,9 +34,9 @@
         "message": "unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it",
         "position": {
           "file": "testunknowntypedoesnotcascadeintoinference-1.ms",
-          "line": 12,
+          "line": 9,
           "column": 55,
-          "offset": 430
+          "offset": 420
         }
       },
       {
@@ -45,16 +45,16 @@
         "message": "expected Int, found String (in the initializer of 'unrelated')",
         "position": {
           "file": "testunknowntypedoesnotcascadeintoinference-1.ms",
-          "line": 14,
+          "line": 11,
           "column": 26,
-          "offset": 487
+          "offset": 477
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testunknowntypedoesnotcascadeintoinference-1.ms:6:25: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 6 |     step: fn(T) List[U]!MissingError\n   |                         ^\n<DIR>/testunknowntypedoesnotcascadeintoinference-1.ms:7:11: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 7 | ) List[U]!MissingError:\n   |           ^\n<DIR>/testunknowntypedoesnotcascadeintoinference-1.ms:12:55: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n    |\n 12 |         items: [1, 2], step: fn(value: Int) List[Int]!MissingError: ok([value])\n    |                                                       ^\n<DIR>/testunknowntypedoesnotcascadeintoinference-1.ms:14:26: type: expected Int, found String (in the initializer of 'unrelated')\n    |\n 14 |     let unrelated: Int = \"wrong\"\n    |                          ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testunknowntypedoesnotcascadeintoinference-1.ms:4:54: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 4 | fn collect[T, U](items: List[T], step: fn(T) List[U]!MissingError) List[U]!MissingError:\n   |                                                      ^\n<DIR>/testunknowntypedoesnotcascadeintoinference-1.ms:4:76: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 4 | fn collect[T, U](items: List[T], step: fn(T) List[U]!MissingError) List[U]!MissingError:\n   |                                                                            ^\n<DIR>/testunknowntypedoesnotcascadeintoinference-1.ms:9:55: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 9 |         items: [1, 2], step: fn(value: Int) List[Int]!MissingError: ok([value])\n   |                                                       ^\n<DIR>/testunknowntypedoesnotcascadeintoinference-1.ms:11:26: type: expected Int, found String (in the initializer of 'unrelated')\n    |\n 11 |     let unrelated: Int = \"wrong\"\n    |                          ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

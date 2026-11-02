@@ -12,16 +12,16 @@
         "message": "contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'",
         "position": {
           "file": "testcommonerrorrejectsinvalidcontractpatterns-10.ms",
-          "line": 6,
+          "line": 9,
           "column": 9,
-          "offset": 225
+          "offset": 262
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testcommonerrorrejectsinvalidcontractpatterns-10.ms:6:9: type: contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'\n   |\n 6 |         JsonError.InvalidData(value):\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testcommonerrorrejectsinvalidcontractpatterns-10.ms:9:9: type: contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'\n   |\n 9 |         Circle.Big(value):\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

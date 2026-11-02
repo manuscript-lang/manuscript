@@ -12,15 +12,6 @@ import parse_int_radix from "@std/text.ms"
 #     item.attribute("id")           # "1"
 #     item.text()                    # "Hi & bye"
 
-# Errors returned for malformed XML or a nesting budget that was exceeded.
-export type XmlError:
-    # The depth budget is not positive.
-    case InvalidInput
-    # The text is not well-formed: unbalanced or mismatched tags, bad names, attributes or references.
-    case InvalidData
-    # Element nesting is deeper than the supplied budget.
-    case LimitExceeded
-
 # An XML attribute with its decoded value.
 export type XmlAttribute:
     # Attribute name as written, including any prefix.
@@ -131,14 +122,16 @@ impl Reader:
             self.at += 1
 
     # Consumes `literal` or fails.
-    var fn expect(literal: String) Unit!XmlError:
-        if not self.looking_at(literal): return error(XmlError.InvalidData)
+    var fn expect(literal: String) Unit!:
+        if not self.looking_at(literal): return error(
+            Error("XML: invalid data", kind: ErrorCategory.InvalidData)
+        )
 
         self.at += literal.chars().length()
         return ok(unit)
 
     # Returns the text up to `stop` and consumes it, or fails when `stop` never appears.
-    var fn take_until(stop: String) String!XmlError:
+    var fn take_until(stop: String) String!:
         var out = StringBuilder()
 
         while not self.done():
@@ -149,9 +142,9 @@ impl Reader:
             out.append(self.peek())
             self.at += 1
 
-        return error(XmlError.InvalidData)
+        return error(Error("XML: invalid data", kind: ErrorCategory.InvalidData))
 
-    var fn name() String!XmlError:
+    var fn name() String!:
         var out = StringBuilder()
         var first = true
 
@@ -163,12 +156,14 @@ impl Reader:
             first = false
             self.at += 1
 
-        if first: return error(XmlError.InvalidData)
+        if first: return error(
+            Error("XML: invalid data", kind: ErrorCategory.InvalidData)
+        )
 
         return ok(out.build())
 
     # Skips the XML declaration, comments, processing instructions and DOCTYPE before and after the root.
-    var fn skip_misc() Unit!XmlError:
+    var fn skip_misc() Unit!:
         while true:
             self.skip_space()
 
@@ -194,8 +189,10 @@ impl Reader:
 
         return ok(unit)
 
-    var fn element(depth: Int) XmlNode!XmlError:
-        if depth > self.max_depth: return error(XmlError.LimitExceeded)
+    var fn element(depth: Int) XmlNode!:
+        if depth > self.max_depth: return error(
+            Error("XML: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        )
 
         try self.expect("<")
 
@@ -219,15 +216,27 @@ impl Reader:
             self.skip_space()
 
             let quote = self.peek()
-            if quote != "\"" and quote != "'": return error(XmlError.InvalidData)
+            if quote != "\"" and quote != "'": return error(
+                Error(
+                    "XML: invalid data", kind: ErrorCategory.InvalidData
+                )
+            )
 
             self.at += 1
 
             let raw = try self.take_until(quote)
-            if raw.contains("<"): return error(XmlError.InvalidData)
+            if raw.contains("<"): return error(
+                Error(
+                    "XML: invalid data", kind: ErrorCategory.InvalidData
+                )
+            )
 
             for existing in attributes:
-                if existing.name == attribute_name: return error(XmlError.InvalidData)
+                if existing.name == attribute_name: return error(
+                    Error(
+                        "XML: invalid data", kind: ErrorCategory.InvalidData
+                    )
+                )
             attributes.append(
                 XmlAttribute(
                     name: attribute_name, value: try decode(raw)
@@ -237,13 +246,21 @@ impl Reader:
         var children = List[XmlNode]()
 
         while true:
-            if self.done(): return error(XmlError.InvalidData)
+            if self.done(): return error(
+                Error(
+                    "XML: invalid data", kind: ErrorCategory.InvalidData
+                )
+            )
 
             if self.looking_at("</"):
                 self.at += 2
 
                 let closing = try self.name()
-                if closing != name: return error(XmlError.InvalidData)
+                if closing != name: return error(
+                    Error(
+                        "XML: invalid data", kind: ErrorCategory.InvalidData
+                    )
+                )
 
                 self.skip_space()
                 try self.expect(">")
@@ -281,7 +298,7 @@ fn is_name_char(c: String, first: Bool) Bool:
     return true
 
 # Decodes the five predefined entities and numeric references; any other `&name;` is invalid.
-fn decode(text: String) String!XmlError:
+fn decode(text: String) String!:
     if not text.contains("&"): return ok(text.clone())
 
     var out = StringBuilder()
@@ -297,7 +314,9 @@ fn decode(text: String) String!XmlError:
         index += 1
 
         let end = tail.index_of(";")
-        if not end.is_some(): return error(XmlError.InvalidData)
+        if not end.is_some(): return error(
+            Error("XML: invalid data", kind: ErrorCategory.InvalidData)
+        )
 
         let entity = tail.take(end.get(0))
 
@@ -311,25 +330,31 @@ fn decode(text: String) String!XmlError:
         else if entity.starts_with("#"):
             out.append(try scalar(parse_int_radix(entity.drop(1), 10)))
         else:
-            return error(XmlError.InvalidData)
+            return error(Error("XML: invalid data", kind: ErrorCategory.InvalidData))
 
         out.append(tail.drop(end.get(0) + 1))
 
     return ok(out.build())
 
-fn scalar(value: Int?) String!XmlError:
-    if not value.is_some(): return error(XmlError.InvalidData)
+fn scalar(value: Int?) String!:
+    if not value.is_some(): return error(
+        Error("XML: invalid data", kind: ErrorCategory.InvalidData)
+    )
 
     let text = from_scalars([value.get(0)])
-    if text.is_error(): return error(XmlError.InvalidData)
+    if text.is_error(): return error(
+        Error("XML: invalid data", kind: ErrorCategory.InvalidData)
+    )
 
     return ok(text.get())
 
 # Parses a document with a single root element and returns that element.
 # `max_depth` bounds element nesting (default 1000); deeper input is `LimitExceeded`.
 # A document with several roots, text outside the root, or any syntax error is `InvalidData`.
-export fn parse(text: String, max_depth: Int = 1000) XmlNode!XmlError:
-    if max_depth <= 0: return error(XmlError.InvalidInput)
+export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
+    if max_depth <= 0: return error(
+        Error("XML: invalid input", kind: ErrorCategory.InvalidInput)
+    )
 
     var reader = Reader(chars: text.chars(), at: 0, max_depth: max_depth)
     if reader.peek() == "\u{feff}": reader.at += 1
@@ -337,7 +362,9 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!XmlError:
 
     let root = try reader.element(1)
     try reader.skip_misc()
-    if not reader.done(): return error(XmlError.InvalidData)
+    if not reader.done(): return error(
+        Error("XML: invalid data", kind: ErrorCategory.InvalidData)
+    )
 
     return ok(root)
 
@@ -388,11 +415,3 @@ fn write(node: XmlNode, indent: String, level: Int, var out: StringBuilder) Unit
                 for child in children:
                     write(child, indent, level + 1, var out)
                 out.append("{pad}</{name}>{newline}")
-
-impl Error for XmlError:
-    # Returns an XML-prefixed diagnostic without echoing the source.
-    fn message() String:
-        match self:
-            InvalidInput: return "XML: invalid input"
-            InvalidData: return "XML: invalid data"
-            LimitExceeded: return "XML: limit exceeded"

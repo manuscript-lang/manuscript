@@ -4,13 +4,16 @@
 type Box[T]:
     item: T
 
-impl Error for Box[T]:
-    fn message() String:
+interface Named:
+    fn name() String
+
+impl Named for Box[T]:
+    fn name() String:
         return "box"
 
-fn wrong(cause: Error) String:
-    match cause:
+fn wrong(item: Named) String:
+    match item:
         Box(value):
-            return value.message()
+            return value.name()
         _:
-            return cause.message()
+            return item.name()

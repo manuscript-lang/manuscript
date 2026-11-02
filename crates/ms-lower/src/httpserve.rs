@@ -20,6 +20,27 @@ fn pointer(mode: Mode) -> Param {
     Param { ty: MTy::PTR, mode }
 }
 
+/// The kinds an HTTP handler failure maps to, numbered from 1; the last is `Failed`.
+pub(crate) const HTTP_KINDS: [&str; 7] = [
+    "InvalidInput",
+    "InvalidData",
+    "LimitExceeded",
+    "PermissionDenied",
+    "Closed",
+    "Timeout",
+    "Failed",
+];
+
+/// The kinds a stream failure maps to, numbered from 1; the last is `Failed`.
+pub(crate) const IO_KINDS: [&str; 6] = [
+    "Closed",
+    "InvalidInput",
+    "Unavailable",
+    "InvalidData",
+    "LimitExceeded",
+    "Failed",
+];
+
 impl FnLower<'_> {
     /// The token text of an `HttpMethod` value.
     pub(crate) fn method_text(&mut self, method: Val) -> Result<Val, Error> {
@@ -178,7 +199,7 @@ impl FnLower<'_> {
             &mut |s| Ok(Some(s.b.iconst(0))),
             &mut |s| {
                 let e = s.b.alt_get(ra, err_case as u32, 0, r);
-                s.error_status(e, p[2]).map(Some)
+                s.error_status(e, p[2], &HTTP_KINDS).map(Some)
             },
         )?;
         fl.drop_value(r);
@@ -186,37 +207,67 @@ impl FnLower<'_> {
         Ok(fl.b.into_func())
     }
 
-    /// The status of an error alternative `e` (`1 + the case index`); a case that carries text
-    /// (`Failed(message)`) also stores its text through `err`.
+    /// The status of an `Error` value `e` for a runtime that numbers failures from 1 in the
+    /// order of `kinds` (the last is `Failed`). A kind the list lacks becomes `Failed`; that
+    /// status also stores the message through `err`.
     pub(crate) fn error_status(
         &mut self,
         e: ms_mir::ir::Value,
         err: ms_mir::ir::Value,
+        kinds: &[&str],
     ) -> Result<ms_mir::ir::Value, Error> {
-        let ea = self.alt_of(e)?;
-        let etag = self.b.alt_tag(e);
-        let texts: Vec<usize> = (0..self.b.m.alts[ea.index()].cases.len())
-            .filter(|i| self.b.m.alts[ea.index()].cases[*i].fields.len() == 1)
-            .collect();
-        for case in texts {
-            let k = self.b.iconst(case as i64);
-            let hit = self.b.icmp(Cc::Eq, etag, k);
-            self.two_ways(
-                hit,
-                MTy::INT,
-                &mut |s| {
-                    let text = s.b.alt_get(ea, case as u32, 0, e);
-                    let text = s.owned(Val {
-                        v: text,
-                        own: false,
-                    });
-                    s.b.emit(Op::Put, &[err, text], Imm::None, None);
-                    Ok(Some(s.b.iconst(0)))
-                },
-                &mut |s| Ok(Some(s.b.iconst(0))),
-            )?;
-        }
-        let one = self.b.iconst(1);
-        Ok(self.b.binop(Op::IAdd, etag, one))
+        let TyKind::Rec(er) = self.b.m.types.kind(self.ty_of(e)).clone() else {
+            return Err(Error::new("a stream method must fail with an Error"));
+        };
+        let kind = self.b.rec_get(er, 1, e);
+        let TyKind::Alt(ka) = self.b.m.types.kind(self.ty_of(kind)).clone() else {
+            return Err(Error::new("Error.kind is an ErrorCategory"));
+        };
+        let tag = self.b.alt_tag(kind);
+        self.kind_status(er, ka, e, tag, err, kinds, 0)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn kind_status(
+        &mut self,
+        er: ms_mir::types::RecId,
+        ka: ms_mir::types::AltId,
+        e: ms_mir::ir::Value,
+        tag: ms_mir::ir::Value,
+        err: ms_mir::ir::Value,
+        kinds: &[&str],
+        at: usize,
+    ) -> Result<ms_mir::ir::Value, Error> {
+        let failed = kinds.len() as i64;
+        let listed = at + 1 < kinds.len();
+        let case = if listed {
+            self.b.m.alts[ka.index()]
+                .cases
+                .iter()
+                .position(|c| c.name == kinds[at])
+        } else {
+            None
+        };
+        let Some(case) = case.filter(|_| listed) else {
+            if listed {
+                return self.kind_status(er, ka, e, tag, err, kinds, at + 1);
+            }
+            let text = self.b.rec_get(er, 0, e);
+            let text = self.owned(Val {
+                v: text,
+                own: false,
+            });
+            self.b.emit(Op::Put, &[err, text], Imm::None, None);
+            return Ok(self.b.iconst(failed));
+        };
+        let k = self.b.iconst(case as i64);
+        let hit = self.b.icmp(Cc::Eq, tag, k);
+        let r = self.two_ways(
+            hit,
+            MTy::INT,
+            &mut |s| Ok(Some(s.b.iconst(at as i64 + 1))),
+            &mut |s| s.kind_status(er, ka, e, tag, err, kinds, at + 1).map(Some),
+        )?;
+        Ok(r.v)
     }
 }

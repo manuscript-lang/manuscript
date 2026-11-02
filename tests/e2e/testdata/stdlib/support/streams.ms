@@ -1,4 +1,4 @@
-import ReadStream, WriteStream, IoError from "@std/io/io.ms"
+import ReadStream, WriteStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 
 export type MemoryStream:
@@ -7,12 +7,16 @@ export type MemoryStream:
     closed: Bool
 
 impl ReadStream for MemoryStream:
-    var fn read(max_bytes: Int?) Bytes?!IoError:
-        if self.closed: return error(IoError.Closed)
+    var fn read(max_bytes: Int?) Bytes?!:
+        if self.closed: return error(
+            Error("I/O: resource is closed", kind: ErrorCategory.Closed)
+        )
         if self.offset == self.data.length(): return ok(none)
 
         let count = max_bytes.get(self.data.length() - self.offset)
-        if count <= 0: return error(IoError.InvalidInput)
+        if count <= 0: return error(
+            Error("I/O: invalid input", kind: ErrorCategory.InvalidInput)
+        )
 
         var end = self.offset + count
         if end > self.data.length(): end = self.data.length()
@@ -24,17 +28,21 @@ impl ReadStream for MemoryStream:
     var fn close() Unit: self.closed = true
 
 impl WriteStream for MemoryStream:
-    var fn write(data: String) Unit!IoError:
+    var fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
-    var fn write_bytes(data: Bytes) Unit!IoError:
-        if self.closed: return error(IoError.Closed)
+    var fn write_bytes(data: Bytes) Unit!:
+        if self.closed: return error(
+            Error("I/O: resource is closed", kind: ErrorCategory.Closed)
+        )
 
         self.data = self.data.concat(data)
         return ok(unit)
 
-    fn flush() Unit!IoError:
-        if self.closed: return error(IoError.Closed)
+    fn flush() Unit!:
+        if self.closed: return error(
+            Error("I/O: resource is closed", kind: ErrorCategory.Closed)
+        )
 
         return ok(unit)
 

@@ -8,7 +8,6 @@ import (
     json_body
 ) from "@std/net/fetch.ms"
 import (
-    HttpError,
     HttpHeaders,
     HttpMethod,
     HttpRequest,
@@ -131,7 +130,7 @@ test "fetch times out a slow response":
     let url = "http://{server.address()}/slow"
     let slow = fetch(url, FetchOptions(timeout: milliseconds(200)))
     try expect_equal(slow.is_error(), true)
-    try expect_equal(slow.err().message(), "HTTP: operation timed out")
+    try expect_equal(slow.err().message, "HTTP: operation timed out")
 
 test "Fetcher.stream returns the body incrementally and reuses the client":
     let server = try serve("127.0.0.1:0", buffered(route))
@@ -161,4 +160,4 @@ test "a closed Fetcher returns Closed":
     try client.close()
 
     let sent = client.fetch("http://{server.address()}/big")
-    try expect_equal(sent.err().message(), "HTTP: resource is closed")
+    try expect_equal(sent.err().message, "HTTP: resource is closed")

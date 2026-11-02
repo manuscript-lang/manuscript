@@ -1,10 +1,5 @@
 import expect_equal from "@std/test/test.ms"
-import (
-    compress,
-    decompress,
-    CompressionFormat,
-    CompressionError
-) from "@std/io/archive.ms"
+import (compress, decompress, CompressionFormat) from "@std/io/archive.ms"
 import Bytes from "@std/bytes.ms"
 
 fn forwarded[T](item: T) T: item
@@ -56,9 +51,17 @@ test "compression omission equals explicit level six for every format":
 
 test "compression defaults retain invalid levels formats and output budgets":
     let data = "abc".to_bytes()
-    let invalid: Bytes!CompressionError = error(CompressionError.InvalidInput)
-    let limited: Bytes!CompressionError = error(CompressionError.LimitExceeded)
-    let unsupported: Bytes!CompressionError = error(CompressionError.Unsupported)
+    let invalid: Bytes! = error(
+        Error("compression: invalid input", kind: ErrorCategory.InvalidInput)
+    )
+    let limited: Bytes! = error(
+        Error("compression: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
+    let unsupported: Bytes! = error(
+        Error(
+            "compression: operation not supported", kind: ErrorCategory.Unsupported
+        )
+    )
 
     for format in [
         CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate

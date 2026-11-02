@@ -103,14 +103,13 @@ let mixed = choose(1, 2.0)
 The expected result (return type, annotation, field, argument, or callback) fills missing parameters but never overrides argument evidence or explicit specialization. A parameter in neither arguments nor result needs an explicit type argument.
 
 ```manuscript
-import TextError from "@std/core.ms"
-fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
+fn fail[T](message: String) Result[T, Error]: error(Error(message))
 
-fn first() Result[Int, TextError]: fail("empty")  # T = Int
-let failed: Result[Int, TextError] = fail("empty")
+fn first() Result[Int, Error]: fail("empty")  # T = Int
+let failed: Result[Int, Error] = fail("empty")
 ```
 
-Matching adds no numeric conversions, interface conversions, or `Optional` wrapping. A domain error implementing `Error` still widens to `Error`, so a `Result[T, Error]` parameter infers `T` from `Result[Int, Failure]`. Success types and other Optional or collection applications must match exactly. Inferred function types lose default-argument omission.
+Matching adds no numeric conversions, interface conversions, or `Optional` wrapping. Error types, success types, and Optional or collection applications must match exactly. Inferred function types lose default-argument omission.
 
 Empty lists, `none`, and similar expressions give no evidence of their own; once other evidence fixes the parameters, the substituted types give them context. For a standard `T?` parameter, inference first matches an existing optional, then a plain payload ([optional arguments](optionals.md#passing-optional-arguments)). Evaluation order is unchanged.
 

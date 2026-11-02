@@ -1,5 +1,5 @@
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import ascii85_encode, ascii85_decode, EncodingError from "@std/data/encoding.ms"
+import ascii85_encode, ascii85_decode from "@std/data/encoding.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "ASCII85 unframed vectors cover tails zero shorthand and maximum words":
@@ -34,7 +34,9 @@ test "ASCII85 ignores every ASCII control and space including after complete gro
     try expect_equal(try ascii85_decode("!" + spaces + "!"), Bytes([0]))
 
 test "ASCII85 rejects invalid characters delimiters and misplaced shorthand":
-    let invalid: Bytes!EncodingError = error(EncodingError.InvalidData)
+    let invalid: Bytes! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     for text in [
         "!", "u", "y", "v", "~", "!!z", "!z!!!", "<~z~>", "z~>", "z~", "é", "zé", "z!"
     ]:
@@ -44,13 +46,19 @@ test "ASCII85 rejects invalid characters delimiters and misplaced shorthand":
     try expect_equal(ascii85_decode(non_ascii), invalid)
 
 test "ASCII85 rejects overflowing complete and padded partial groups":
-    let invalid: Bytes!EncodingError = error(EncodingError.InvalidData)
+    let invalid: Bytes! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     for text in ["s8W-\"", "s8W", "s8W-", "uu", "uuu", "uuuu", "uuuuu", "s8W-!uuuuu"]:
         try expect_equal(ascii85_decode(text), invalid)
 
 test "ASCII85 decoded byte limits count expansions and partial groups exactly":
-    let limited: Bytes!EncodingError = error(EncodingError.LimitExceeded)
-    let invalid: Bytes!EncodingError = error(EncodingError.InvalidInput)
+    let limited: Bytes! = error(
+        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
+    let invalid: Bytes! = error(
+        Error("encoding: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(try ascii85_decode("", 0), Bytes([]))
     try expect_equal(ascii85_decode("z", 3), limited)
     try expect_equal(try ascii85_decode("z", 4), Bytes([0, 0, 0, 0]))

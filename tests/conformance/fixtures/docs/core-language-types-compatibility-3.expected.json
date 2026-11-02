@@ -12,27 +12,27 @@
         "message": "cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the binding",
         "position": {
           "file": "core-language-types-compatibility-3.ms",
-          "line": 12,
+          "line": 11,
           "column": 27,
-          "offset": 452
+          "offset": 403
         }
       },
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, TextError] but the operand fails with <invalid>, so change the return error type or implement Error for it",
+        "message": "try requires the same error type; this function returns Result[Int, Error] but the operand fails with <invalid>, so change the return error type or translate the error with map_error",
         "position": {
           "file": "core-language-types-compatibility-3.ms",
-          "line": 12,
+          "line": 11,
           "column": 23,
-          "offset": 448
+          "offset": 399
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-compatibility-3.ms:12:27: type: cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the binding\n    |\n 12 |     let number: Int = try ok(1)\n    |                           ^\n<DIR>/core-language-types-compatibility-3.ms:12:23: type: try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, TextError] but the operand fails with <invalid>, so change the return error type or implement Error for it\n    |\n 12 |     let number: Int = try ok(1)\n    |                       ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-compatibility-3.ms:11:27: type: cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the binding\n    |\n 11 |     let number: Int = try ok(1)\n    |                           ^\n<DIR>/core-language-types-compatibility-3.ms:11:23: type: try requires the same error type; this function returns Result[Int, Error] but the operand fails with <invalid>, so change the return error type or translate the error with map_error\n    |\n 11 |     let number: Int = try ok(1)\n    |                       ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

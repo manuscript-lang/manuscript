@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type E:\n    text: String\n\nimpl Error for E:\n    fn message() String: this.text\n"
+    "fmt": "interface Named:\n    fn name() String\n\ntype E:\n    text: String\n\nimpl Named for E:\n    fn name() String: this.text\n"
   }
 }

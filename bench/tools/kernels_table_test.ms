@@ -89,7 +89,7 @@ test "a late checksum mismatch produces no report":
     lines[lines.length() - 2] = lines[lines.length() - 2].replace(" 1", " 2")
 
     let cause = try expect_error(summarize(lines, "kernels", 1, kernel_versions()))
-    try expect_contains(cause.message(), "checksums differ")
+    try expect_contains(cause.message, "checksums differ")
 
 test "a producer that fails or prints nothing is rejected":
     let failed = Ran(true, 42, "", "boom")

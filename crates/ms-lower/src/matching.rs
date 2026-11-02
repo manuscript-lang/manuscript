@@ -350,18 +350,10 @@ impl FnLower<'_> {
         let cur = self.b.use_var(rv);
         let payload = self.b.alt_get(a, err as u32, 0, cur);
         let want = self.b.m.alts[ra.index()].cases[ret_err].fields[0].1;
-        let mut x = Val {
+        let x = Val {
             v: payload,
             own: false,
         };
-        if self.ty_of(payload) != want {
-            let failure = self
-                .hir
-                .info(e)
-                .propagated_error
-                .ok_or_else(|| Error::new("try without a propagated error"))?;
-            x = self.fit_ty(x, &ms_check::types::sub(&failure, &self.subst), want)?;
-        }
         if !hidden
             && !x.own
             && self.b.func_mut().ret_borrowed

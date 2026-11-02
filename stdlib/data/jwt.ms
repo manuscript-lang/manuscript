@@ -29,38 +29,6 @@ export type JwtAlgorithm:
     # Ed25519. Signing takes the 32-byte private seed; verifying takes the 32-byte public key.
     case EdDsa
 
-# Errors returned when signing or verifying a token.
-export type JwtError:
-    # The key does not suit the algorithm, or `claims` cannot be written as a JSON object.
-    case InvalidKey
-    # The token is oversized, is not three Base64url parts, or its header or claims are not valid JSON of the expected shape.
-    case Malformed
-    # The token's header names a different algorithm than the one the verifier accepts, including `none`.
-    case WrongAlgorithm
-    # The signature does not match the header and claims under the key.
-    case BadSignature
-    # The `exp` claim is at or before the current time, allowing for the leeway.
-    case Expired
-    # The `nbf` claim is after the current time, allowing for the leeway.
-    case NotYetValid
-    # The `iss` claim is missing or differs from the expected issuer.
-    case WrongIssuer
-    # The `aud` claim is missing or does not include the expected audience.
-    case WrongAudience
-
-impl Error for JwtError:
-    # Returns a fixed `jwt:`-prefixed diagnostic that never echoes the token or key.
-    fn message() String:
-        match self:
-            InvalidKey: return "jwt: invalid key"
-            Malformed: return "jwt: malformed token"
-            WrongAlgorithm: return "jwt: wrong algorithm"
-            BadSignature: return "jwt: bad signature"
-            Expired: return "jwt: token expired"
-            NotYetValid: return "jwt: token not yet valid"
-            WrongIssuer: return "jwt: wrong issuer"
-            WrongAudience: return "jwt: wrong audience"
-
 # What `verify_token` requires of a token beyond its signature.
 export type JwtCheck:
     # The only algorithm accepted; a token whose header names another returns WrongAlgorithm.
@@ -97,13 +65,15 @@ export fn sign_token[T: Data](
     claims: T,
     key: Bytes,
     algorithm: JwtAlgorithm = JwtAlgorithm.Hs256
-) String!JwtError:
+) String!:
     let header = stringify(
         value: JwtHeader(alg: algorithm_name(algorithm), typ: "JWT"), max_bytes: none,
         indent: none
     )
     let payload = stringify(value: claims, max_bytes: none, indent: none)
-    if header.is_error() or payload.is_error(): return error(JwtError.InvalidKey)
+    if header.is_error() or payload.is_error(): return error(
+        Error("jwt: invalid key", kind: ErrorCategory.InvalidInput)
+    )
 
     let head = base64_encode_unpadded(header.get("").to_bytes(), url_safe: true)
     let body = base64_encode_unpadded(payload.get("").to_bytes(), url_safe: true)
@@ -115,31 +85,41 @@ export fn sign_token[T: Data](
 # The signature is verified before the claims are read. `check.algorithm` is the only algorithm accepted, so a token cannot choose a weaker one or `none`.
 # `exp` and `nbf` (seconds since the Unix epoch) are enforced when present; `iss` and `aud` are enforced when `check` names them.
 # `key` is the secret for the HMAC algorithms and the public key for the others, in the form `JwtAlgorithm` describes.
-# Failures return a `JwtError` that says which check failed; show a caller one generic message, as the specific cause helps an attacker.
+# Failures return an `Error` that says which check failed; show a caller one generic message, as the specific cause helps an attacker.
 export fn verify_token[T: Data = JsonValue](
     token: String,
     key: Bytes,
     check: JwtCheck = JwtCheck()
-) T!JwtError:
-    if token.byte_length() > check.max_bytes: return error(JwtError.Malformed)
+) T!:
+    if token.byte_length() > check.max_bytes: return error(
+        Error("jwt: malformed token", kind: ErrorCategory.InvalidData)
+    )
 
     let parts = token.split(".")
-    if parts.length() != 3: return error(JwtError.Malformed)
+    if parts.length() != 3: return error(
+        Error("jwt: malformed token", kind: ErrorCategory.InvalidData)
+    )
 
     let header = try decode_json[JsonValue](parts[0], check.max_bytes)
     let name = header.get("alg").get(JsonValue.Null).as_string().get("")
-    if name != algorithm_name(check.algorithm): return error(JwtError.WrongAlgorithm)
+    if name != algorithm_name(check.algorithm): return error(
+        Error("jwt: wrong algorithm", kind: ErrorCategory.InvalidData)
+    )
 
     let signature = base64_decode_unpadded(
         parts[2], url_safe: true, max_bytes: check.max_bytes
     )
-    if signature.is_error(): return error(JwtError.Malformed)
+    if signature.is_error(): return error(
+        Error("jwt: malformed token", kind: ErrorCategory.InvalidData)
+    )
 
     let signing_input = "{parts[0]}.{parts[1]}"
     let genuine = try verify_bytes(
         check.algorithm, key, signing_input.to_bytes(), signature.get("".to_bytes())
     )
-    if not genuine: return error(JwtError.BadSignature)
+    if not genuine: return error(
+        Error("jwt: bad signature", kind: ErrorCategory.InvalidData)
+    )
 
     let claims = try decode_json[JsonValue](parts[1], check.max_bytes)
     try check_claims(claims, check)
@@ -154,18 +134,22 @@ fn algorithm_name(algorithm: JwtAlgorithm) String:
         Es256: return "ES256"
         EdDsa: return "EdDSA"
 
-fn decode_json[T: Data](part: String, limit: Int) T!JwtError:
+fn decode_json[T: Data](part: String, limit: Int) T!:
     let raw = base64_decode_unpadded(part, url_safe: true, max_bytes: limit)
-    if raw.is_error(): return error(JwtError.Malformed)
+    if raw.is_error(): return error(
+        Error("jwt: malformed token", kind: ErrorCategory.InvalidData)
+    )
 
     let text = raw.get("".to_bytes()).decode_utf8()
-    if text.is_none(): return error(JwtError.Malformed)
+    if text.is_none(): return error(
+        Error("jwt: malformed token", kind: ErrorCategory.InvalidData)
+    )
 
     let value = parse[T](text.get(""), limits: none)
     if let decoded = value:
         return ok(decoded)
 
-    return error(JwtError.Malformed)
+    return error(Error("jwt: malformed token", kind: ErrorCategory.InvalidData))
 
 fn hmac_hash(algorithm: JwtAlgorithm) HashAlgorithm?:
     match algorithm:
@@ -174,41 +158,41 @@ fn hmac_hash(algorithm: JwtAlgorithm) HashAlgorithm?:
         Hs512: return HashAlgorithm.Sha512
         _: return none
 
-fn sign_bytes(algorithm: JwtAlgorithm, key: Bytes, data: Bytes) Bytes!JwtError:
+fn sign_bytes(algorithm: JwtAlgorithm, key: Bytes, data: Bytes) Bytes!:
     if let hash = hmac_hash(algorithm):
         let mac = hash.hmac(key, data)
         if let bytes = mac: return ok(bytes)
 
-        return error(JwtError.InvalidKey)
+        return error(Error("jwt: invalid key", kind: ErrorCategory.InvalidInput))
 
     if algorithm == JwtAlgorithm.Rs256:
         let signed = rsa_sign(key, HashAlgorithm.Sha256, data)
         if let bytes = signed: return ok(bytes)
 
-        return error(JwtError.InvalidKey)
+        return error(Error("jwt: invalid key", kind: ErrorCategory.InvalidInput))
 
     if algorithm == JwtAlgorithm.Es256:
         let signed = ecdsa_sign(key, HashAlgorithm.Sha256, data)
         if let der = signed: return der_to_raw(der, 32)
 
-        return error(JwtError.InvalidKey)
+        return error(Error("jwt: invalid key", kind: ErrorCategory.InvalidInput))
 
     let signed = sign(key, data)
     if let bytes = signed: return ok(bytes)
 
-    return error(JwtError.InvalidKey)
+    return error(Error("jwt: invalid key", kind: ErrorCategory.InvalidInput))
 
 fn verify_bytes(
     algorithm: JwtAlgorithm,
     key: Bytes,
     data: Bytes,
     signature: Bytes
-) Bool!JwtError:
+) Bool!:
     if let hash = hmac_hash(algorithm):
         let mac = hash.hmac(key, data)
         if let bytes = mac: return ok(constant_time_equal(bytes, signature))
 
-        return error(JwtError.InvalidKey)
+        return error(Error("jwt: invalid key", kind: ErrorCategory.InvalidInput))
 
     if algorithm == JwtAlgorithm.Rs256:
         return ok(rsa_verify(key, HashAlgorithm.Sha256, data, signature))
@@ -221,7 +205,7 @@ fn verify_bytes(
 
     return ok(verify(key, data, signature))
 
-fn check_claims(claims: JsonValue, check: JwtCheck) Unit!JwtError:
+fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
     var moment = 0
 
     if let given = check.at:
@@ -232,24 +216,26 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!JwtError:
     if let exp = claims.get("exp"):
         let limit = exp.as_float().get(0.0)
         if limit + check.leeway.to_float() <= moment.to_float(): return error(
-            JwtError.Expired
+            Error("jwt: token expired", kind: ErrorCategory.InvalidData)
         )
 
     if let nbf = claims.get("nbf"):
         let start = nbf.as_float().get(0.0)
         if start - check.leeway.to_float() > moment.to_float(): return error(
-            JwtError.NotYetValid
+            Error(
+                "jwt: token not yet valid", kind: ErrorCategory.InvalidData
+            )
         )
 
     if let issuer = check.issuer:
         let actual = claims.get("iss").get(JsonValue.Null).as_string()
         if actual.is_none() or actual.get("") != issuer: return error(
-            JwtError.WrongIssuer
+            Error("jwt: wrong issuer", kind: ErrorCategory.InvalidData)
         )
 
     if let audience = check.audience:
         if not includes_audience(claims.get("aud").get(JsonValue.Null), audience): return error(
-            JwtError.WrongAudience
+            Error("jwt: wrong audience", kind: ErrorCategory.InvalidData)
         )
     return ok(unit)
 
@@ -262,8 +248,10 @@ fn includes_audience(claim: JsonValue, audience: String) Bool:
     return false
 
 # Converts an ASN.1 DER ECDSA signature to the fixed-width `r || s` form JWS uses.
-fn der_to_raw(der: Bytes, width: Int) Bytes!JwtError:
-    if der.length() < 8 or der.get(0).to_int() != 48: return error(JwtError.InvalidKey)
+fn der_to_raw(der: Bytes, width: Int) Bytes!:
+    if der.length() < 8 or der.get(0).to_int() != 48: return error(
+        Error("jwt: invalid key", kind: ErrorCategory.InvalidInput)
+    )
 
     var at = 2
     if der.get(1).to_int() >= 128: at = 3
@@ -272,13 +260,13 @@ fn der_to_raw(der: Bytes, width: Int) Bytes!JwtError:
 
     for side in 0..2:
         if at + 2 > der.length() or der.get(at).to_int() != 2: return error(
-            JwtError.InvalidKey
+            Error("jwt: invalid key", kind: ErrorCategory.InvalidInput)
         )
 
         var size = der.get(at + 1).to_int()
         var start = at + 2
         if start + size > der.length() or size > width + 1: return error(
-            JwtError.InvalidKey
+            Error("jwt: invalid key", kind: ErrorCategory.InvalidInput)
         )
 
         while size > width:

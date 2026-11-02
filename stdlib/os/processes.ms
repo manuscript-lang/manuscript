@@ -6,11 +6,11 @@
 # and the entry's return value comes back through `Process.result`. Each process is isolated: a
 # fault in the child ends only the child, and the parent sees its exit status.
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import Channel, ChannelError, Transport from "@std/io/channels.ms"
+import Channel, Transport from "@std/io/channels.ms"
 import Closeable, Data from "@std/core.ms"
 import ReadStream, WriteStream from "@std/io/io.ms"
 import parse, stringify from "@std/data/json.ms"
-import CommandError, Stdio from "@std/os/process.ms"
+import Stdio from "@std/os/process.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
 import Duration from "@std/os/time.ms"
@@ -55,36 +55,23 @@ let RETRY = -2
 # The largest frame body, 16 MiB; a larger frame breaks the channel.
 let FRAME_LIMIT = 16777216
 
-# Why a process gave no result.
-export type ProcessError:
-    # The process ended before its entry returned, with this exit status: 67 after a fault, -1
-    # when a signal ended it.
-    case Exited(
-        # The exit status the parent observed: 67 after a fault in the child, -1 after a signal.
-        code: Int
-    )
-    # What the process sent could not be read.
-    case Broken(
-        # Why the frames could not be read, for example an oversized or non-UTF-8 frame.
-        reason: String
-    )
-    # The process could not start; `cause` is the host's reason.
-    case NotStarted(
-        # Why the host refused to start the child, from the command runner.
-        cause: CommandError
-    )
-
-impl Error for ProcessError:
-    # Returns `process: exited with status <code>`, `process: broken: <reason>` or `process: not started: <cause>`.
-    fn message() String:
-        match self:
-            Exited(code): return "process: exited with status " + code.to_string()
-            Broken(reason): return "process: broken: " + reason
-            NotStarted(cause): return "process: not started: " + cause.message()
-
 # Wraps a start failure as the group's error.
-fn not_started(cause: CommandError) ProcessError:
-    return ProcessError.NotStarted(cause)
+fn not_started(cause: Error) Error:
+    return Error(
+        "process: not started: " + cause.message, kind: Unavailable,
+        details: {"cause": cause.message}
+    )
+
+# A broken channel between processes, with the reason as the message.
+fn channel_broken(reason: String) Error:
+    return Error("channel: " + reason, kind: InvalidData)
+
+# The error for a process that ended with a non-zero status.
+fn exited(code: Int) Error:
+    return Error(
+        "process: exited with status " + code.to_string(), kind: Failed,
+        details: {"status": code.to_string()}
+    )
 
 # A value inside a frame body, so values with no JSON form of their own, such as `Unit`, cross too.
 type Envelope[T: Data]:
@@ -114,26 +101,22 @@ fn frame(kind: Int, body: String) Bytes:
     out.append_bytes(data)
     return out.build()
 
-fn encode[T: Data](value: T) String!ChannelError:
+fn encode[T: Data](value: T) String!:
     match stringify(Envelope[T](value: value)):
         ok(text): return ok(text)
-        error(e): return error(
-            ChannelError.Broken("cannot encode the value: " + e.message())
-        )
+        error(e): return error(channel_broken("cannot encode the value: " + e.message))
 
-fn decode[T: Data](body: String) T!ChannelError:
+fn decode[T: Data](body: String) T!:
     match parse[Envelope[T]](body):
         ok(envelope):
             let {value} = envelope
             return ok(value)
-        error(e): return error(
-            ChannelError.Broken("cannot decode the value: " + e.message())
-        )
+        error(e): return error(channel_broken("cannot decode the value: " + e.message))
 
 # The next whole frame, waiting for more bytes as needed; `none` once the other process closed
 # the pipe or is gone. One task reads the pipe at a time: another waits, then returns a `RETRY`
 # frame so its caller sees what the reader recorded (a `RESULT` or `CLOSE`) before reading again.
-fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Frame?!ChannelError:
+fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Frame?!:
     while true:
         var state = lock(inbox)
         let available = state.value.pending.length()
@@ -141,7 +124,7 @@ fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Frame?!ChannelError:
         if available >= 5:
             let size = state.value.pending.uint32_le(0).get(0).to_int()
             if size > FRAME_LIMIT:
-                return error(ChannelError.Broken("a frame is larger than 16 MiB"))
+                return error(channel_broken("a frame is larger than 16 MiB"))
 
             if available >= 5 + size:
                 let kind = state.value.pending.get(4).to_int()
@@ -152,7 +135,7 @@ fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Frame?!ChannelError:
                 if let text = body.decode_utf8():
                     return ok(Frame(kind: kind, body: text))
 
-                return error(ChannelError.Broken("a frame is not UTF-8"))
+                return error(channel_broken("a frame is not UTF-8"))
 
         state.close().get(none)
         if msstd_process_ipc_wait_reader(link):
@@ -191,28 +174,28 @@ type ProcessTransport[In: Data, Out: Data]:
     inbox: Shared[Inbox]
 
 impl Transport[In, Out] for ProcessTransport[In, Out]:
-    fn send(value: In) Unit!ChannelError:
+    fn send(value: In) Unit!:
         let state = self.inbox.get()
         if state.closed or state.finished:
-            return error(ChannelError.Closed)
+            return error(Error("channel: closed", kind: Closed))
 
         let text = try encode(value)
         if not msstd_process_ipc_write(self.link, frame(MESSAGE, text)):
-            return error(ChannelError.Broken("the other process exited"))
+            return error(channel_broken("the other process exited"))
 
         return ok(unit)
 
-    fn receive() Out?!ChannelError:
+    fn receive() Out?!:
         let state = self.inbox.get()
         if state.closed:
-            return error(ChannelError.Closed)
+            return error(Error("channel: closed", kind: Closed))
         if state.finished:
             return ok(none)
 
         while true:
             let next = try next_frame(self.link, self.inbox)
             if next.is_none():
-                return error(ChannelError.Broken("the other process exited"))
+                return error(channel_broken("the other process exited"))
 
             let frame = next.get(Frame(kind: -1, body: ""))
 
@@ -233,7 +216,7 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
                 finish(self.inbox, frame.body.clone())
                 return ok(none)
 
-            return error(ChannelError.Broken("a frame has an unknown kind"))
+            return error(channel_broken("a frame has an unknown kind"))
 
         return ok(none)
 
@@ -271,18 +254,22 @@ fn wait_result[T: Data](
     native: NativeProcess,
     link: NativeLink,
     inbox: Shared[Inbox]
-) T!ProcessError:
+) T!:
     while true:
         if let body = inbox.get().result.clone():
             match decode[T](body):
                 ok(value): return ok(value)
-                error(e): return error(ProcessError.Broken(e.message()))
+                error(e): return error(
+                    Error(
+                        "process: broken: " + e.message, kind: Closed
+                    )
+                )
 
         match next_frame(link, inbox):
             ok(next):
                 if next.is_none():
                     let code = msstd_process_forked_wait(native, -1).get(-1)
-                    return error(ProcessError.Exited(code))
+                    return error(exited(code))
 
                 let frame = next.get(Frame(kind: -1, body: ""))
 
@@ -291,9 +278,9 @@ fn wait_result[T: Data](
                 else if frame.kind == CLOSE:
                     finish(inbox, none)
             error(e):
-                return error(ProcessError.Broken(e.message()))
+                return error(Error("process: broken: " + e.message, kind: Closed))
 
-    return error(ProcessError.Exited(-1))
+    return error(exited(-1))
 
 # What a group keeps of a process until it is closed: enough to close its channel and stop the child.
 export type Open:
@@ -331,7 +318,7 @@ impl Process[T, In, Out]:
     # Waits for the entry to return and gives its result, or `Exited` with the status of a child
     # that ended first. Another task may receive from the channel meanwhile; one task reads the
     # pipe at a time and the other waits. Messages the child sent and the parent has not received are dropped.
-    fn result() T!ProcessError:
+    fn result() T!:
         return wait_result[T](self.native, self.link, self.inbox)
 
     # The child's standard input, when spawned with `stdin: Stdio.Pipe`; otherwise already closed,
@@ -351,7 +338,7 @@ impl Process[T, In, Out]:
 
     # Waits for the child to exit and returns its exit status. Returns `Timeout` if `timeout`
     # elapses first, leaving the child running.
-    fn wait(timeout: Duration?) Int!CommandError:
+    fn wait(timeout: Duration?) Int!:
         return msstd_process_forked_wait(self.native, nanos(timeout))
 
     # Asks the child to stop (SIGTERM on Unix; Windows ends the whole tree). Does not wait.
@@ -399,7 +386,7 @@ impl ProcessGroup[T, In, Out]:
         stdin: Stdio = Stdio.Inherit,
         stdout: Stdio = Stdio.Inherit,
         stderr: Stdio = Stdio.Inherit
-    ) Process[T, In, Out]!ProcessError:
+    ) Process[T, In, Out]!:
         let runner: fn() Unit = fn: serve(entry)
         let native = try msstd_process_fork(runner, stdin, stdout, stderr).map_error(
             not_started
@@ -432,7 +419,7 @@ impl ProcessGroup[T, In, Out]:
 
     # Waits for every open process's result in start order, or returns the first error.
     # Closed processes are not included.
-    fn results() List[T]!ProcessError:
+    fn results() List[T]!:
         let count = self.processes.get().length()
         var values = List[T]()
 

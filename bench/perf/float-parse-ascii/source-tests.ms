@@ -1,5 +1,5 @@
 import expect_equal from "@std/test/test.ms"
-import parse_float, NumberError from "@std/math/math.ms"
+import parse_float from "@std/math/math.ms"
 
 test "float parsing keeps ASCII signs decimals and exponents":
     for text in ["1.25", "+1.25", "125e-2", "0.125E+1"]:
@@ -10,7 +10,9 @@ test "float parsing keeps ASCII signs decimals and exponents":
     try expect_equal((try parse_float("-0")).to_string(), "-0")
 
 test "float parsing rejects Unicode syntax and malformed or overflowing text":
-    let invalid: Float!NumberError = error(NumberError.InvalidData)
+    let invalid: Float! = error(
+        Error("number: invalid data", kind: ErrorCategory.InvalidData)
+    )
 
     for text in ["١", "１", "1.٢", "1e٣", "−1", "1 ", ".5", "1.", "1e+", " 1", "1_0"]:
         try expect_equal(text.parse_float(), none)
@@ -18,7 +20,9 @@ test "float parsing rejects Unicode syntax and malformed or overflowing text":
 
     try expect_equal("1e400".parse_float(), none)
 
-    let overflow: Float!NumberError = error(NumberError.OutOfRange)
+    let overflow: Float! = error(
+        Error("number: value out of range", kind: ErrorCategory.OutOfRange)
+    )
     try expect_equal(parse_float("1e400"), overflow)
 
     let huge = "9".repeat(4096).get()

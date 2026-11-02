@@ -1,4 +1,4 @@
-import Alignment, format, TableError from "@std/io/table.ms"
+import Alignment, format from "@std/io/table.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "table aligns columns with no added trailing spaces or final LF":
@@ -34,8 +34,12 @@ test "table supports empty inputs and zero cell rows":
     try expect_equal((try format([[""]], max_bytes: 0)), "")
 
 test "table returns typed errors for malformed cells rows and options":
-    let invalid: String!TableError = error(TableError.InvalidInput)
-    let malformed: String!TableError = error(TableError.InvalidData)
+    let invalid: String! = error(
+        Error("table: invalid input", kind: ErrorCategory.InvalidInput)
+    )
+    let malformed: String! = error(
+        Error("table: invalid data", kind: ErrorCategory.InvalidData)
+    )
     let rows = [["a", "b"]]
     try expect_equal(format(rows, padding: -1), invalid)
     try expect_equal(format(rows, max_rows: -1), invalid)
@@ -55,7 +59,9 @@ test "table applies exact optional budgets to UTF8 and generated padding":
     let rows = [["界", "x"], ["a", "yz"]]
     let expected = "界   x\n a  yz"
     let alignments = [Alignment.Right, Alignment.Right]
-    let limited: String!TableError = error(TableError.LimitExceeded)
+    let limited: String! = error(
+        Error("table: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     try expect_equal(
         (
             try format(
@@ -85,9 +91,20 @@ test "table applies exact optional budgets to UTF8 and generated padding":
     try expect_equal(format([[], []], max_bytes: 0), limited)
 
 test "table errors describe the table domain":
-    try expect_equal(TableError.InvalidInput.message(), "table: invalid input")
-    try expect_equal(TableError.InvalidData.message(), "table: invalid data")
-    try expect_equal(TableError.LimitExceeded.message(), "table: limit exceeded")
+    try expect_equal(
+        Error("table: invalid input", kind: ErrorCategory.InvalidInput).message,
+        "table: invalid input"
+    )
+    try expect_equal(
+        Error("table: invalid data", kind: ErrorCategory.InvalidData).message,
+        "table: invalid data"
+    )
+    try expect_equal(
+        Error(
+            "table: limit exceeded", kind: ErrorCategory.LimitExceeded
+        ).message,
+        "table: limit exceeded"
+    )
 
 test "table formatting borrows retained rows across repeated calls":
     var rows = [["name", "count"], ["tea", "2"]]

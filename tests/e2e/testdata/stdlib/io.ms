@@ -1,5 +1,5 @@
 import expect_equal, expect_false from "@std/test/test.ms"
-import ReadStream, WriteStream, IoError, read_all, read_line, copy from "@std/io/io.ms"
+import ReadStream, WriteStream, read_all, read_line, copy from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import open, read_file, temporary, write_file from "@std/os/fs.ms"
 import MemoryStream from "./support/streams.ms"
@@ -21,11 +21,15 @@ test "stream compositions invoke source implementations and preserve EOF":
 
 test "streams enforce byte limits and preserve original errors":
     var reader = MemoryStream("abc".to_bytes(), 0, closed: false)
-    let limited: Bytes!IoError = error(IoError.LimitExceeded)
+    let limited: Bytes! = error(
+        Error("I/O: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     try expect_equal(read_all(reader.clone(), 2), limited)
     reader.closed = true
 
-    let closed: Bytes!IoError = error(IoError.Closed)
+    let closed: Bytes! = error(
+        Error("I/O: resource is closed", kind: ErrorCategory.Closed)
+    )
     try expect_equal(read_all(reader), closed)
 
 test "native line reads reject buffered lines after the shared file is closed":
@@ -38,5 +42,7 @@ test "native line reads reject buffered lines after the shared file is closed":
     try expect_equal((try read_line(input)), "first")
     try handle.close()
 
-    let closed: String?!IoError = error(IoError.Closed)
+    let closed: String?! = error(
+        Error("I/O: resource is closed", kind: ErrorCategory.Closed)
+    )
     try expect_equal(read_line(input), closed)

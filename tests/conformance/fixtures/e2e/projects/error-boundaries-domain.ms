@@ -4,9 +4,8 @@
 export type DomainFailure:
     code: Int
 
-export type BoxFailure[T: Error]:
+export type BoxFailure[T]:
     cause: T
 
-impl Error for BoxFailure[T]:
-    fn message() String:
-        return self.cause.message()
+export fn box_error[T](box: BoxFailure[T], describe: fn(T) String) Error:
+    return Error("box: {describe(box.cause)}")

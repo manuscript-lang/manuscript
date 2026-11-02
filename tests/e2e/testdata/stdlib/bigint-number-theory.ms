@@ -1,12 +1,5 @@
 import expect_equal, expect_true, expect_false from "@std/test/test.ms"
-import (
-    BigInt,
-    BigIntError,
-    binomial,
-    factorial,
-    from_int,
-    parse
-) from "@std/math/math.ms"
+import (BigInt, binomial, factorial, from_int, parse) from "@std/math/math.ms"
 
 test "factorial and binomial are exact":
     try expect_equal((try factorial(0)).to_string_radix(10), "1")
@@ -25,7 +18,9 @@ test "factorial and binomial are exact":
     )
 
 test "factorial and binomial reject negative inputs":
-    let bad: BigInt!BigIntError = error(BigIntError.InvalidInput)
+    let bad: BigInt! = error(
+        Error("big integer: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(factorial(-1), bad)
     try expect_equal(binomial(-1, 0), bad)
     try expect_equal(binomial(3, -1), bad)
@@ -57,7 +52,7 @@ test "modular square roots":
     let root = (try from_int(10).mod_sqrt(p)).get(from_int(-1))
     try expect_equal((root * root % p).to_int(), 10)
 
-    let absent: BigInt?!BigIntError = ok(none)
+    let absent: BigInt?! = ok(none)
     try expect_equal(from_int(5).mod_sqrt(p), absent)
     try expect_equal((try from_int(0).mod_sqrt(p)).get(from_int(-1)).to_int(), 0)
 
@@ -71,6 +66,8 @@ test "modular square roots":
     let big_root = (try square.mod_sqrt(big_p)).get(from_int(-1))
     try expect_equal((big_root * big_root % big_p).compare(square), 0)
 
-    let invalid: BigInt?!BigIntError = error(BigIntError.InvalidInput)
+    let invalid: BigInt?! = error(
+        Error("big integer: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(from_int(2).mod_sqrt(from_int(8)), invalid)
     try expect_equal(from_int(2).mod_sqrt(from_int(2)), invalid)

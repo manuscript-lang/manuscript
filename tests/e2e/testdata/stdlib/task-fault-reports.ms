@@ -1,11 +1,12 @@
 import panic from "@std/core.ms"
-import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error from "@std/test/test.ms"
 
-fn report(reason: TaskError) String:
-    match reason:
-        Faulted(report): return report.split("\n").get(0).clone()
-        _: return reason.message()
+fn report(reason: Error) String:
+    if reason.kind == ErrorCategory.Failed:
+        return reason.details["report"].split("\n").get(0).clone()
+
+    return reason.message.clone()
 
 test "closing a faulted group does not replace a later wait report":
     var first = TaskGroup[Unit](contain_faults: true)

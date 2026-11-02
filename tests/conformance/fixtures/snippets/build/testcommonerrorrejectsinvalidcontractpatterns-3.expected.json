@@ -7,36 +7,21 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type JsonError; add: import JsonError from \"@std/data/json.ms\"",
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Result[String, Error], found Result[Int, Error] (in the return value)",
         "position": {
           "file": "testcommonerrorrejectsinvalidcontractpatterns-3.ms",
           "line": 5,
-          "column": 24,
-          "offset": 216
-        },
-        "fix": {
-          "position": {
-            "file": "testcommonerrorrejectsinvalidcontractpatterns-3.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "end": {
-            "file": "testcommonerrorrejectsinvalidcontractpatterns-3.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "replacement": "import JsonError from \"@std/data/json.ms\"\n"
+          "column": 31,
+          "offset": 223
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testcommonerrorrejectsinvalidcontractpatterns-3.ms:5:24: resolution: unknown type JsonError; add: import JsonError from \"@std/data/json.ms\"\n   |\n 5 |     return Result[Int, JsonError].ok(value: 1)\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testcommonerrorrejectsinvalidcontractpatterns-3.ms:5:31: type: expected Result[String, Error], found Result[Int, Error] (in the return value)\n   |\n 5 |     return Result[Int, Error].ok(value: 1)\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

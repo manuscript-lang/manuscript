@@ -5,8 +5,7 @@ import (
     uuid_v7,
     uuid_version,
     namespace_dns,
-    namespace_url,
-    UuidError
+    namespace_url
 ) from "@std/data/uuid.ms"
 import ulid, token from "@std/os/random.ms"
 

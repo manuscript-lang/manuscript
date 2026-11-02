@@ -48,7 +48,7 @@ export fn main() Int:
         let start = monotonic()
 
         for unused in 0..count:
-            last = parse_int(text, digits).err().message()
+            last = parse_int(text, digits).err().message
             checksum += last.byte_length()
 
         let elapsed = monotonic().difference(start).to_nanoseconds()

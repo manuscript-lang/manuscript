@@ -4,15 +4,6 @@ import (
     msstd_html_parse
 ) from "@std/internal/html.ms"
 
-# Errors returned for malformed HTML or parser resource limits.
-export type HtmlError:
-    # A supplied input-byte, tree-depth or node-count budget is negative.
-    case InvalidInput
-    # Input encoding or a native parser/tree conversion is invalid; HTML syntax can be recovered normally.
-    case InvalidData
-    # Input bytes or the normalized returned tree exceed a supplied budget.
-    case LimitExceeded
-
 # Optional bounds for HTML input bytes, tree depth, and node count.
 # Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 nodes; pass an `HtmlLimits` to change that.
 export type HtmlLimits:
@@ -81,13 +72,5 @@ export fn unescape(text: String) String:
     return msstd_html_unescape(text)
 
 # Parses HTML into a normalized tree and applies the supplied resource limits.
-export fn parse(text: String, limits: HtmlLimits?) HtmlNode!HtmlError:
+export fn parse(text: String, limits: HtmlLimits?) HtmlNode!:
     return msstd_html_parse(text, limits)
-
-impl Error for HtmlError:
-    # Returns an HTML-prefixed diagnostic without echoing source markup.
-    fn message() String:
-        match self:
-            InvalidInput: return "HTML: invalid input"
-            InvalidData: return "HTML: invalid data"
-            LimitExceeded: return "HTML: limit exceeded"

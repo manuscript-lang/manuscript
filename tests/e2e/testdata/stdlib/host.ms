@@ -2,7 +2,6 @@ import expect_equal, expect_false, expect_not_equal from "@std/test/test.ms"
 import arguments from "@std/os/process.ms"
 import endianness, end_of_line, os_type, dev_null, system_info from "@std/os/process.ms"
 import (
-    CommandError,
     CommandOutput,
     Stdio,
     run,
@@ -46,10 +45,14 @@ test "process environment reflects live changes":
     try set_environment(name, before)
 
 test "subprocess validation returns expected domain errors":
-    let invalid: CommandOutput!CommandError = error(CommandError.InvalidInput)
+    let invalid: CommandOutput! = error(
+        Error("process: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(run("", [], "".to_bytes()), invalid)
 
-    let unavailable: CommandOutput!CommandError = error(CommandError.Unavailable)
+    let unavailable: CommandOutput! = error(
+        Error("process: service unavailable", kind: ErrorCategory.Unavailable)
+    )
     try expect_false(
         (
             run(

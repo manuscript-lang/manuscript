@@ -2,10 +2,9 @@
 # conform: phase=parse
 # conform: origin=documentation/core-language/basics/numbers-and-booleans.md:114
 import Decimal from "@std/math/decimal.ms"
-import NumberError from "@std/math/math.ms"
 import expect_equal from "@std/test/test.ms"
 
-fn amount_text() Result[String, NumberError]:
+fn amount_text() Result[String, Error]:
     let subtotal = 19.99d * 3d
     let tax = try (subtotal * 0.0825d).round(places: 2)
     let tax_text = try tax.to_fixed(digits: 2)

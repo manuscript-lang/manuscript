@@ -9,38 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type TextError; add: import TextError from \"@std/core.ms\"",
-        "position": {
-          "file": "testexpectedresultgenericinference-1.ms",
-          "line": 5,
-          "column": 21,
-          "offset": 206
-        },
-        "fix": {
-          "position": {
-            "file": "testexpectedresultgenericinference-1.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "end": {
-            "file": "testexpectedresultgenericinference-1.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "replacement": "import TextError from \"@std/core.ms\"\n"
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
         "message": "unknown binding fail; add: import fail from \"@std/test/test.ms\"",
         "position": {
           "file": "testexpectedresultgenericinference-1.ms",
           "line": 5,
-          "column": 33,
-          "offset": 218
+          "column": 29,
+          "offset": 214
         },
         "fix": {
           "position": {
@@ -62,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testexpectedresultgenericinference-1.ms:5:21: resolution: unknown type TextError; add: import TextError from \"@std/core.ms\"\n   |\n 5 |     let result: Int!TextError = fail(\"empty\")\n   |                     ^\n<DIR>/testexpectedresultgenericinference-1.ms:5:33: resolution: unknown binding fail; add: import fail from \"@std/test/test.ms\"\n   |\n 5 |     let result: Int!TextError = fail(\"empty\")\n   |                                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testexpectedresultgenericinference-1.ms:5:29: resolution: unknown binding fail; add: import fail from \"@std/test/test.ms\"\n   |\n 5 |     let result: Int!Error = fail(\"empty\")\n   |                             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

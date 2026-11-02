@@ -286,9 +286,7 @@ impl Checker {
             return;
         }
         let substituted = sub(&pattern, s);
-        if self.error_assignable(&actual_ty, &substituted)
-            || self.unify_argument(&pattern, &actual_ty, vars, s)
-        {
+        if self.unify_argument(&pattern, &actual_ty, vars, s) {
             return;
         }
         // A `T?` argument after a plain value widens the variable to the optional.
@@ -385,25 +383,7 @@ impl Checker {
         let vars = variable_set(variables);
         let mut trial = s.clone();
         let result = sub(&context.result, s);
-        let mut matched = unify(&context.result, &expected, &vars, &mut trial);
-        if !matched
-            && result.is_std("Result")
-            && expected.is_std("Result")
-            && result.args.len() == 2
-            && expected.args.len() == 2
-            && self.error_assignable(&result.args[1], &expected.args[1])
-        {
-            trial = s.clone();
-            matched = unify(
-                &context.result.args[0],
-                &expected.args[0],
-                &vars,
-                &mut trial,
-            );
-        }
-        if !matched && self.error_assignable(&result, &expected) {
-            return; // Existing concrete error evidence needs no substitution.
-        }
+        let matched = unify(&context.result, &expected, &vars, &mut trial);
         if !matched {
             self.type_error(
                 context.pos,
@@ -419,8 +399,8 @@ impl Checker {
         }
         for (key, value) in trial {
             // A default that converts to the expected type stays the default: `x.ok_or()`
-            // returned as `Result[T, Error]` fails with `MissingValue`, which crosses the
-            // Error boundary, instead of asking for an `Error` value to build.
+            // returned as `Result[T, Error]` takes the default `Error`, which already equals the
+            // expected type, instead of asking for an `Error` value to build.
             let defaulted = !s.contains_key(&key)
                 && variables
                     .iter()
@@ -428,9 +408,7 @@ impl Checker {
                     .and_then(|v| v.default_ty())
                     .is_some_and(|d| {
                         let d = sub(&d, s);
-                        !same(&d, &value)
-                            && (self.error_assignable(&d, &value)
-                                || self.interface_assignable(&d, &value))
+                        !same(&d, &value) && self.interface_assignable(&d, &value)
                     });
             if !defaulted {
                 s.insert(key, value);
@@ -460,8 +438,7 @@ impl Checker {
         Some(info)
     }
 
-    /// Matches exactly before trying the existing Result error widening or a
-    /// single Optional argument wrapper. Result successes and nested
+    /// Matches exactly before trying a single Optional argument wrapper. Result successes and nested
     /// applications remain invariant. Each attempt commits substitutions only
     /// after its whole boundary is valid; final argument checking retains the
     /// selected Error evidence.
@@ -482,19 +459,7 @@ impl Checker {
         let attempt = |target: &Ty, s: &mut Subst| -> bool {
             let mut trial = fresh(s);
             if !unify(target, actual, vars, &mut trial) {
-                if !target.is_std("Result")
-                    || !actual.is_std("Result")
-                    || target.args.len() != 2
-                    || actual.args.len() != 2
-                {
-                    return false;
-                }
-                trial = fresh(s);
-                if !unify(&target.args[0], &actual.args[0], vars, &mut trial)
-                    || !self.error_assignable(actual, &sub(target, &trial))
-                {
-                    return false;
-                }
+                return false;
             }
             for (key, value) in trial {
                 s.insert(key, value);
@@ -504,10 +469,7 @@ impl Checker {
         if attempt(pattern, s) {
             return true;
         }
-        pattern.is_std("Optional")
-            && pattern.args.len() == 1
-            && (self.error_assignable(actual, &sub(&pattern.args[0], s))
-                || attempt(&pattern.args[0], s))
+        pattern.is_std("Optional") && pattern.args.len() == 1 && attempt(&pattern.args[0], s)
     }
 }
 

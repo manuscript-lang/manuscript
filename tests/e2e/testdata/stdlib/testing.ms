@@ -1,4 +1,3 @@
-import TextError from "@std/core.ms"
 import (
     assert_equal,
     expect_close,
@@ -33,23 +32,23 @@ test "testing assertions":
     ((present | try expect_some)) | try expect_equal(7)
     absent | try expect_none
 
-    let success: Int!TextError = ok(9)
-    let failure: Int!TextError = error(TextError("bad"))
+    let success: Int!Error = ok(9)
+    let failure: Int!Error = error(Error("bad"))
     ((success | try expect_ok)) | try expect_equal(9)
-    ((failure | try expect_error)) | try expect_equal(TextError("bad"))
+    ((failure | try expect_error)) | try expect_equal(Error("bad"))
 
     let mismatch = expect_equal(1, 2)
     let mismatch_cause = (mismatch | try expect_error)
-    mismatch_cause.message() | try expect_contains("expected 2, got 1")
+    mismatch_cause.message | try expect_contains("expected 2, got 1")
 
     let quiet = expect_fault(fn: unit)
     let quiet_cause = (quiet | try expect_error)
-    quiet_cause.message() | try expect_contains("returned normally")
+    quiet_cause.message | try expect_contains("returned normally")
 
 test "failure helpers return errors":
     let failed = fail("custom failure")
     let failed_cause = (failed | try expect_error)
-    failed_cause.message() | try expect_contains("custom failure")
+    failed_cause.message | try expect_contains("custom failure")
 
 type Key:
     id: Int

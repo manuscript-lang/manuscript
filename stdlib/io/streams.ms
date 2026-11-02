@@ -1,8 +1,8 @@
 import Bytes from "@std/bytes.ms"
 import HashAlgorithm from "@std/crypto.ms"
-import ReadStream, WriteStream, IoError, read_line from "@std/io/io.ms"
-import Channel, ChannelError from "@std/io/channels.ms"
-import FileHandle, FileSystemError from "@std/os/fs.ms"
+import ReadStream, WriteStream, read_line from "@std/io/io.ms"
+import Channel from "@std/io/channels.ms"
+import FileHandle from "@std/os/fs.ms"
 
 # Transform and composition helpers for byte streams. Each helper takes its input first, so
 # flows read left to right: `source | map(upper) | take(1024) | copy(sink)`.
@@ -16,14 +16,16 @@ impl ReadStream for BytesSource:
         self.offset = self.data.length()
         return unit
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
-        if self.chunk <= 0: return error(IoError.InvalidInput)
+    var fn read(max_bytes: Int? = none) Bytes?!:
+        if self.chunk <= 0: return error(
+            Error("I/O: invalid input", kind: InvalidInput)
+        )
 
         let remaining = self.data.length() - self.offset
         if remaining <= 0: return ok(none)
 
         let wanted = max_bytes.get(self.chunk)
-        if wanted <= 0: return error(IoError.InvalidInput)
+        if wanted <= 0: return error(Error("I/O: invalid input", kind: InvalidInput))
 
         var size = remaining
         if wanted < remaining: size = wanted
@@ -45,7 +47,7 @@ impl ReadStream for MappedStream:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
+    var fn read(max_bytes: Int? = none) Bytes?!:
         while true:
             let chunk = try self.input.read(max_bytes)
 
@@ -71,8 +73,10 @@ impl ReadStream for LimitedStream:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
-        if self.remaining < 0: return error(IoError.InvalidInput)
+    var fn read(max_bytes: Int? = none) Bytes?!:
+        if self.remaining < 0: return error(
+            Error("I/O: invalid input", kind: InvalidInput)
+        )
         if self.remaining == 0: return ok(none)
 
         let wanted = max_bytes.get(self.remaining)
@@ -109,7 +113,7 @@ impl ReadStream for ConcatStream:
         self.index = self.inputs.length()
         return unit
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
+    var fn read(max_bytes: Int? = none) Bytes?!:
         while self.index < self.inputs.length():
             # Read the stored stream in place: a stream is a value, so a local copy would lose its position.
             let chunk = try self.inputs[self.index].read(max_bytes)
@@ -132,7 +136,7 @@ impl ReadStream for TeeStream:
     var fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
+    var fn read(max_bytes: Int? = none) Bytes?!:
         let chunk = try self.input.read(max_bytes)
 
         if let bytes = chunk:
@@ -154,13 +158,13 @@ impl WriteStream for MappedWriter:
     var fn close() Unit:
         return self.output.close()
 
-    var fn flush() Unit!IoError:
+    var fn flush() Unit!:
         return self.output.flush()
 
-    var fn write(data: String) Unit!IoError:
+    var fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
-    var fn write_bytes(data: Bytes) Unit!IoError:
+    var fn write_bytes(data: Bytes) Unit!:
         let mapped = self.transform(data)
         if mapped.length() == 0: return ok(unit)
 
@@ -172,7 +176,7 @@ export fn map_writer(output: WriteStream, transform: fn(Bytes) Bytes) WriteStrea
     return MappedWriter(output, transform)
 
 # Reads `input` to its end and returns its digest, hashing chunk by chunk so memory stays bounded.
-export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Bytes!IoError:
+export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Bytes!:
     let hasher = algorithm.hasher()
 
     while true:
@@ -186,7 +190,7 @@ export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Bytes!IoError:
     return ok(hasher.finish())
 
 # Reads every remaining line from `input`, omitting line endings. `max_bytes` bounds each line, as in `read_line`.
-export fn read_lines(input: ReadStream, max_bytes: Int?) List[String]!IoError:
+export fn read_lines(input: ReadStream, max_bytes: Int?) List[String]!:
     var lines = List[String]()
 
     while true:
@@ -206,15 +210,15 @@ impl WriteStream for FanOutWriter:
             self.outputs[i].close()
         return unit
 
-    var fn flush() Unit!IoError:
+    var fn flush() Unit!:
         for i in 0..self.outputs.length():
             try self.outputs[i].flush()
         return ok(unit)
 
-    var fn write(data: String) Unit!IoError:
+    var fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
-    var fn write_bytes(data: Bytes) Unit!IoError:
+    var fn write_bytes(data: Bytes) Unit!:
         for i in 0..self.outputs.length():
             try self.outputs[i].write_bytes(data.clone())
         return ok(unit)
@@ -236,16 +240,20 @@ impl ReadStream for SectionStream:
         let _ = self.file.close()
         return unit
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
+    var fn read(max_bytes: Int? = none) Bytes?!:
         if self.remaining == 0: return ok(none)
 
         var wanted = max_bytes.get(65536)
-        if wanted <= 0: return error(IoError.InvalidInput)
+        if wanted <= 0: return error(
+            Error("I/O: invalid input", kind: ErrorCategory.InvalidInput)
+        )
 
         if wanted > self.remaining: wanted = self.remaining
 
         let piece = self.file.read_at(self.offset, wanted)
-        if piece.is_error(): return error(IoError.Failed(piece.err().message()))
+        if piece.is_error(): return error(
+            Error(piece.err().message, kind: ErrorCategory.Failed)
+        )
 
         let bytes = piece.get().clone()
 
@@ -260,17 +268,14 @@ impl ReadStream for SectionStream:
 # Streams `length` bytes of `file` starting at byte `offset`, without moving the file's own position, so several sections
 # of one file can be read independently. Fewer bytes arrive when the file ends first. The section reads through its own
 # duplicate of the descriptor and closes it when closed; the caller still owns `file`.
-# A negative offset or length, or a closed file, fails with the `FileSystemError` of the duplication.
-export fn section(file: FileHandle, offset: Int, length: Int) ReadStream!FileSystemError:
-    if offset < 0 or length < 0: return error(FileSystemError.InvalidInput)
+# A negative offset or length, or a closed file, fails with the `Error` of the duplication.
+export fn section(file: FileHandle, offset: Int, length: Int) ReadStream!:
+    if offset < 0 or length < 0: return error(
+        Error("file system: invalid input", kind: ErrorCategory.InvalidInput)
+    )
 
     let copy = try file.clone()
     return ok(SectionStream(copy, offset, length))
-
-fn channel_failure(failure: ChannelError) IoError:
-    match failure:
-        Closed: return IoError.Closed
-        Broken(reason): return IoError.Failed(reason.clone())
 
 type ChannelSource[In]:
     channel: Channel[In, Bytes]
@@ -282,13 +287,15 @@ impl ReadStream for ChannelSource[In]:
         self.channel.close()
         return unit
 
-    var fn read(max_bytes: Int? = none) Bytes?!IoError:
+    var fn read(max_bytes: Int? = none) Bytes?!:
         let wanted = max_bytes.get(65536)
-        if wanted <= 0: return error(IoError.InvalidInput)
+        if wanted <= 0: return error(
+            Error("I/O: invalid input", kind: ErrorCategory.InvalidInput)
+        )
 
         if self.offset >= self.held.length():
             let next = self.channel.receive()
-            if next.is_error(): return error(channel_failure(next.err()))
+            if next.is_error(): return error(next.err().clone())
             if next.get().is_none(): return ok(none)
 
             self.held = next.get().get().clone()
@@ -315,22 +322,22 @@ impl WriteStream for ChannelSink[Out]:
         self.channel.close()
         return unit
 
-    var fn flush() Unit!IoError:
+    var fn flush() Unit!:
         return ok(unit)
 
-    var fn write(data: String) Unit!IoError:
+    var fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
-    var fn write_bytes(data: Bytes) Unit!IoError:
+    var fn write_bytes(data: Bytes) Unit!:
         if data.is_empty(): return ok(unit)
 
         let sent = self.channel.send(data)
-        if sent.is_error(): return error(channel_failure(sent.err()))
+        if sent.is_error(): return error(sent.err().clone())
 
         return ok(unit)
 
 # Sends each write as one chunk over a task channel, so the other end reads it with `channel_reader`.
-# A write waits while the reader has many unread chunks; once the reader closes, writes return `IoError.Closed`.
+# A write waits while the reader has many unread chunks; once the reader closes, writes return an `Error` of kind `Closed`.
 # Closing the writer closes this end of the channel, which ends the reader's stream.
 export fn channel_writer[Out](channel: Channel[Bytes, Out]) WriteStream:
     return ChannelSink(channel)

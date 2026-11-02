@@ -12,9 +12,6 @@ type State:
 type Failure:
     code: Int
 
-impl Error for Failure:
-    fn message() String: "failed"
-
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for State:
     var fn close() Unit!:
@@ -35,7 +32,9 @@ fn exact(state: State, fail: Bool) String!Failure:
     return ok("done {work.calls}")
 
 fn widened(var state: State) Int!:
-    try operation(var state, fail: true)
+    try operation(var state, fail: true).map_error(
+        fn cause: Error("failed", details: {"code": cause.code.to_string()})
+    )
     return ok(0)
 
 fn closed(marker: String) Bool:
@@ -44,7 +43,7 @@ fn closed(marker: String) Bool:
 test "standalone try evaluates once and continues on Unit success":
     let temporary = temporary("manuscript-try-") | try expect_ok
     let marker = "{temporary.path()}/marker"
-    let value = try exact(State(0, marker.clone()), fail: false)
+    let value = exact(State(0, marker.clone()), fail: false).get()
     try expect_equal(value, "done 11")
     try expect_true(closed(marker))
 
@@ -56,18 +55,14 @@ test "standalone try propagates and cleans up before returning":
     try expect_equal(failed.err().code, 42)
     try expect_true(closed(marker))
 
-test "standalone try preserves concrete errors at Error boundaries":
+test "standalone try converts errors explicitly at Error boundaries":
     var state = State(0, "")
     let outcome = widened(var state)
     try expect_false(outcome.is_ok())
 
     let cause = outcome.err()
-
-    match cause:
-        Failure(value):
-            try expect_equal(value.code, 42)
-        _: return fail("concrete error lost")
-
+    try expect_equal(cause.message, "failed")
+    try expect_equal(cause.details["code"], "42")
     try expect_equal(state.calls, 1)
 
 test "standalone try in closure returns from that closure":

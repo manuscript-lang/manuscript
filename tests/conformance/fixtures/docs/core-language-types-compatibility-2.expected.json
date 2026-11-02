@@ -12,9 +12,20 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-compatibility-2.ms",
-          "line": 9,
+          "line": 8,
           "column": 13,
-          "offset": 287
+          "offset": 250
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "core-language-types-compatibility-2.ms",
+          "line": 10,
+          "column": 35,
+          "offset": 345
         }
       },
       {
@@ -24,8 +35,8 @@
         "position": {
           "file": "core-language-types-compatibility-2.ms",
           "line": 11,
-          "column": 39,
-          "offset": 386
+          "column": 35,
+          "offset": 385
         }
       },
       {
@@ -34,27 +45,16 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-compatibility-2.ms",
-          "line": 12,
-          "column": 39,
-          "offset": 430
-        }
-      },
-      {
-        "code": "MS3070",
-        "phase": "type",
-        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
-        "position": {
-          "file": "core-language-types-compatibility-2.ms",
-          "line": 14,
+          "line": 13,
           "column": 18,
-          "offset": 551
+          "offset": 502
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-compatibility-2.ms:9:13: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 9 | let input = Input([none, \"Ada\"])\n   |             ^\n<DIR>/core-language-types-compatibility-2.ms:11:39: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 11 | let success: Result[Int, TextError] = ok(1)\n    |                                       ^\n<DIR>/core-language-types-compatibility-2.ms:12:39: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 12 | let failure: Result[Int, TextError] = error(TextError(\"unavailable\"))\n    |                                       ^\n<DIR>/core-language-types-compatibility-2.ms:14:18: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 14 | let incomplete = ok(1)\n    |                  ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-compatibility-2.ms:8:13: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 8 | let input = Input([none, \"Ada\"])\n   |             ^\n<DIR>/core-language-types-compatibility-2.ms:10:35: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 10 | let success: Result[Int, Error] = ok(1)\n    |                                   ^\n<DIR>/core-language-types-compatibility-2.ms:11:35: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 11 | let failure: Result[Int, Error] = error(Error(\"unavailable\"))\n    |                                   ^\n<DIR>/core-language-types-compatibility-2.ms:13:18: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 13 | let incomplete = ok(1)\n    |                  ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

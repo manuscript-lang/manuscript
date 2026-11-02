@@ -5,7 +5,7 @@ type Row:
 type Bad:
     why: String
 
-impl Error for Bad:
+impl Reportable for Bad:
     fn message() String: self.why.clone()
 
 fn risky(n: Int) Int!Bad:
@@ -21,3 +21,6 @@ fn demo(var r: Row) Int:
     let k: Row? = r
     r.name = "changed"  # error: cannot change `r.name` while `k` borrows it (binding of a borrowed value, at 21:9); finish using `k` before this, or give `k` its own value by ending its initializer with `.clone()`
     return k.get().name.length()
+
+interface Reportable:
+    fn message() String

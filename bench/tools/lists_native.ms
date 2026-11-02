@@ -114,7 +114,7 @@ export fn main() Int:
     let parsed = options(
         arguments(), ["cli", "output", "runs", "cpu"], ["cli", "output"]
     )
-    if parsed.is_error(): return fail(parsed.err().message())
+    if parsed.is_error(): return fail(parsed.err().message)
 
     let opts = parsed.get(Map[String, String]())
     let runs = opts.get("runs").get("3").parse_int().get(0)

@@ -1,5 +1,5 @@
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
-import StringError, from_scalars from "@std/string.ms"
+import from_scalars from "@std/string.ms"
 import (parse_bool, parse_int_radix, quote, quote_ascii, unquote) from "@std/text.ms"
 
 test "text conversions and quoting":
@@ -16,11 +16,17 @@ test "text conversions and quoting":
     quote("a\"b\n") | try expect_equal("\"a\\\"b\\n\"")
     quote_ascii("é🙂") | try expect_equal("\"\\u\{e9\}\\u\{1f642\}\"")
     unquote("\"a\\tb\\u\{e9\}\"") | try expect_ok | try expect_equal("a\tbé")
-    unquote("abc") | try expect_error | try expect_equal(StringError.InvalidInput)
-    unquote("\"a\"b\"") | try expect_error | try expect_equal(StringError.InvalidInput)
-    unquote("\"\\q\"") | try expect_error | try expect_equal(StringError.InvalidInput)
+    unquote("abc") | try expect_error | try expect_equal(
+        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+    )
+    unquote("\"a\"b\"") | try expect_error | try expect_equal(
+        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+    )
+    unquote("\"\\q\"") | try expect_error | try expect_equal(
+        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     unquote("\"\\u\{d800\}\"") | try expect_error | try expect_equal(
-        StringError.InvalidInput
+        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
     )
     unquote(quote("tab\there \"q\" \\ é🙂\u{1}")) | try expect_ok | try expect_equal(
         "tab\there \"q\" \\ é🙂\u{1}"
@@ -47,7 +53,9 @@ test "text Unicode escapes reject signs nonhex digits and excess width":
         "\"\\u\{00000041\}\"", "\"\\u\{g\}\"", "\"\\u\{d800\}\"", "\"\\u\{110000\}\"",
         "\"\\u\{ffffffffffffffff\}\""
     ]:
-        unquote(text) | try expect_error | try expect_equal(StringError.InvalidInput)
+        unquote(text) | try expect_error | try expect_equal(
+            Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+        )
 
 test "text Unicode escapes preserve scalar boundaries and leading zeros":
     unquote("\"\\u\{000000\}\"") | try expect_ok | try expect_equal(

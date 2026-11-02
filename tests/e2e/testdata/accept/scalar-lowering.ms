@@ -1,4 +1,3 @@
-import TextError from "@std/core.ms"
 import (
     expect_equal,
     expect_false,
@@ -87,26 +86,26 @@ fn nested(marker: String) Unit:
 
     callback()
 
-fn failed() Int!TextError: error(TextError("expected"))
+fn failed() Int!Error: error(Error("expected"))
 
-fn propagate(marker: String) Int!TextError:
+fn propagate(marker: String) Int!Error:
     var _resource = Resource(marker.clone())
     let value = try failed()
     return ok(value)
     return ok(0)
 
-fn bare_propagate() Int!TextError:
+fn bare_propagate() Int!Error:
     let value = try failed()
     return ok(value)
 
-fn equality_propagate() Bool!TextError:
+fn equality_propagate() Bool!Error:
     let matches = (try failed()) == 0
     return ok(matches)
 
-fn bool_failed() Bool!TextError: error(TextError("expected"))
+fn bool_failed() Bool!Error: error(Error("expected"))
 
-fn nested_results(marker: String) Int!TextError:
-    let child = fn() Bool!TextError:
+fn nested_results(marker: String) Int!Error:
+    let child = fn() Bool!Error:
         var _resource = Resource(marker.clone())
         let value = try bool_failed()
         return ok(value)
@@ -116,7 +115,7 @@ fn nested_results(marker: String) Int!TextError:
     let value = try failed()
     return ok(value)
 
-fn statement_match_try(marker: String) Int!TextError:
+fn statement_match_try(marker: String) Int!Error:
     match present(1):
         _value:
             let _resource = Resource(marker.clone())
@@ -126,7 +125,7 @@ fn statement_match_try(marker: String) Int!TextError:
 
     return ok(-1)
 
-fn value_match_loop_try(marker: String) Int!TextError:
+fn value_match_loop_try(marker: String) Int!Error:
     var index = 0
 
     while index < 2:
@@ -145,7 +144,7 @@ fn value_match_loop_try(marker: String) Int!TextError:
 test "combined lowering retains callable state and try boundaries":
     let temporary = temporary("manuscript-scalar-") | try expect_ok
     let dir = temporary.path()
-    let expected = Result[Int, TextError].error(TextError("expected"))
+    let expected = Result[Int, Error].error(Error("expected"))
     try expect_equal(nested_results("{dir}/nested"), expected)
     try expect_true(closed("{dir}/nested"))
     try expect_equal(statement_match_try("{dir}/statement"), expected)
@@ -169,16 +168,11 @@ test "cleanup remains owned by its source callable":
     nested("{dir}/nested")
     try expect_true(closed("{dir}/nested"))
     try expect_equal(
-        propagate("{dir}/propagated"),
-        Result[Int, TextError].error(TextError("expected"))
+        propagate("{dir}/propagated"), Result[Int, Error].error(Error("expected"))
     )
     try expect_true(closed("{dir}/propagated"))
-    try expect_equal(
-        bare_propagate(), Result[Int, TextError].error(TextError("expected"))
-    )
-    try expect_equal(
-        equality_propagate(), Result[Bool, TextError].error(TextError("expected"))
-    )
+    try expect_equal(bare_propagate(), Result[Int, Error].error(Error("expected")))
+    try expect_equal(equality_propagate(), Result[Bool, Error].error(Error("expected")))
 
     var index = 0
 

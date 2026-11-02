@@ -7,7 +7,6 @@ import (
     HttpRequest,
     HttpResponse,
     HttpExchange,
-    HttpError,
     HttpClientOptions,
     HttpServerOptions
 ) from "@std/net/http.ms"
@@ -37,7 +36,7 @@ fn handle_headers(request: HttpRequest) HttpResponse:
 
     var fields = match repeated_headers():
         ok(found): found
-        error(cause): return header_failure(cause.message())
+        error(cause): return header_failure(cause.message)
 
     return HttpResponse(status: 200, headers: fields, body: "ok".to_bytes())
 
@@ -70,10 +69,10 @@ test "one header type preserves repeated values through buffered requests":
         )
     )
 
-fn echo_headers(exchange: HttpExchange) Unit!HttpError:
+fn echo_headers(exchange: HttpExchange) Unit!:
     let received = exchange.headers()
     if received.values("X-DUP") != ["first", "second"]: return error(
-        HttpError.InvalidData
+        Error("HTTP: invalid data", kind: ErrorCategory.InvalidData)
     )
 
     var output = received.clone()
@@ -122,7 +121,12 @@ test "string lookup leaves out values that are not UTF-8":
     match fields.append("bad name", "value"):
         ok(_): return fail("malformed name accepted")
         error(cause):
-            try expect_equal(cause, HttpError.InvalidInput)
+            try expect_equal(
+                cause,
+                Error(
+                    "HTTP: invalid input", kind: ErrorCategory.InvalidInput
+                )
+            )
 
 test "empty options and an omitted request body use checked defaults":
     let client_options = HttpClientOptions()

@@ -1,7 +1,6 @@
 # conform: tags=closures,control-flow,formatter,interpolation,match,modules,mutation,optional,parser,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/typed-alternative-lets-keep-semantics.ms
-import TextError from "@std/core.ms"
 import expect_true from "@std/test/test.ms"
 
 fn halve(n: Int) Int?:
@@ -10,9 +9,9 @@ fn halve(n: Int) Int?:
 
     return (n / 2)
 
-fn parse(n: Int) Int!TextError:
+fn parse(n: Int) Int!Error:
     if n < 0:
-        return error(cause: TextError("negative"))
+        return error(cause: Error("negative"))
 
     return ok(value: n)
 
@@ -50,7 +49,7 @@ fn results(n: Int) String:
         ok(v):
             return "ok {v}"
         error(cause):
-            return cause.message()
+            return cause.message
 
 fn formatted(n: Int) String:
     let found = halve(n: n)

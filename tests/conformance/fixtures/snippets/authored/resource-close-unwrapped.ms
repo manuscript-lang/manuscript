@@ -1,7 +1,7 @@
 # conform: tags=scope-cleanup,tier-core
 # conform: phase=run
 # conform: origin=a resource unwrapped or passed through a call closes at scope end
-import Closeable, TextError from "@std/core.ms"
+import Closeable from "@std/core.ms"
 import stdout from "@std/io/io.ms"
 
 type Res:
@@ -12,13 +12,13 @@ impl Closeable for Res:
         stdout().write("close {self.name}\n").get()
         return ok(unit)
 
-fn make(name: String) Res!TextError:
+fn make(name: String) Res!Error:
     return ok(Res(name))
 
 fn keep(r: Res) Res:
     return r
 
-fn via_try() Unit!TextError:
+fn via_try() Unit!Error:
     let r = try make("try")
     stdout().write("body {r.name}\n").get()
     return ok(unit)

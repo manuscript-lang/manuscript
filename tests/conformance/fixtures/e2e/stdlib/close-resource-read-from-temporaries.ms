@@ -40,7 +40,7 @@ export fn main() Int:
     let present = maybe("optional").is_some()
     stdout().write("--list\n").get()
 
-    let second = doors() [1].label()
+    let second = doors()[1].label()
     stdout().write("--field\n").get()
 
     let first = pair().a.label()
