@@ -1,21 +1,30 @@
 name: CI/CD
 
-# One workflow, three triggers:
-#   pull request  `Build checks`: format, clippy, a build of every target, the language checks and the
-#                 book, in one job on linux-amd64. No tests.
-#   merge queue   the heavy checks, once per group of PRs on the group's combined commit: all six
-#                 platforms in two parts each (see .github/actions/rust-checks), the language checks
-#                 and the book. `Platform checks` sums the platforms up.
-#   manual run    the same as the queue, plus Pages. cache-maintenance.yml starts one on main every
-#                 hour; only a manual run on main saves the sccache caches.
-# Require `Build checks` and `Platform checks`: each is skipped (and so passes) where it does not apply.
-# The account runs 20 jobs at once and every extra job waits in the queue, so a pull request is one job.
+# One workflow, four triggers:
+#   pull request  the Linux legs, each split into `tests` and `conformance` (four jobs); the language checks
+#                 and the book run inside linux-arm64 conformance. A green pull request auto-merges; there
+#                 is no merge queue, which built every stacked ref with the full matrix and restarted on
+#                 every outside merge.
+#   merge queue   the same as a pull request, in case a queue is configured again.
+#   push to main  all six platforms, one job each running both parts (see .github/actions/rust-checks),
+#                 so main holds six runners; linux-arm64 also builds the book for Pages and the jobs save
+#                 the sccache caches. A newer push cancels the running one. A failure is fixed or reverted.
+#   manual run    the same as a push; its `os` input runs one platform.
+# Require `Platform checks`.
 
 on:
   pull_request:
+  push:
+    branches: [main]
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
+    inputs:
+      os:
+        description: Platforms for the Rust jobs
+        type: choice
+        options: [all, linux, darwin, windows]
+        default: all
 
 permissions:
   contents: read
@@ -32,85 +41,75 @@ env:
   CARGO_INCREMENTAL: '0'
 
 concurrency:
-  # A new commit cancels the earlier run of the same pull request; queue and manual runs are never cancelled.
-  group: ci-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # A new commit cancels the earlier run of the same pull request, and a new push to main the earlier main
+  # run; queue and manual runs are never cancelled.
+  group: ci-${{ github.event.pull_request.number || (github.event_name == 'push' && github.ref) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  # A pull request: the cheap checks, in one job.
-  build:
-    name: Build checks
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      # A commit pushed within a minute cancels this run before any build starts.
-      - name: Wait for a newer push
-        run: sleep 60
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-      - id: sccache
-        uses: ./.github/actions/sccache
-        with:
-          prefix: cargo-sccache-linux-amd64-a-
-      - uses: ./.github/actions/rust-env
-        with:
-          os: linux
-          arch: amd64
-      # Language and book checks run for every change, documentation included.
-      - uses: ./.github/actions/language-checks
-      - uses: ./.github/actions/book-checks
-      # Documentation-only changes skip the Rust checks.
-      - id: scope
-        uses: ./.github/actions/rust-scope
-      - uses: ./.github/actions/build-checks
-        if: steps.scope.outputs.rust == 'true'
-      - uses: ./.github/actions/sccache-save
-        if: ${{ !cancelled() }}
-        with:
-          cache-hit: ${{ steps.sccache.outputs.cache-hit }}
-          primary-key: ${{ steps.sccache.outputs.primary-key }}
-
-  # The merge queue and manual runs: the heavy checks.
+  # One job per platform leg and part. Pull requests run the Linux legs; a manual run's `os` input picks
+  # one platform; a push runs all six. The matrix is picked in an expression because a job `if`
+  # cannot read it, and a separate job to pick it would cost one more job per run.
+  # `lint`: also format and clippy. `cranelift`: also the corpus and fixtures with
+  # `MS_BACKEND=cranelift`, so release builds use the Cranelift backend that Debug builds use.
+  # `docs`: also the language checks and the book (in the conformance part on pull requests); on main
+  # the book is uploaded for Pages.
+  # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
+  # in tests/conformance/expect-fail.<os>.txt with a reason.
   rust:
-    name: ${{ matrix.leg.os }}-${{ matrix.leg.arch }} · ${{ matrix.part == 'a' && 'tests' || 'conformance' }}
-    if: github.event_name != 'pull_request'
+    name: ${{ matrix.leg.os }}-${{ matrix.leg.arch }}${{ matrix.part == 'a' && ' · tests' || matrix.part == 'b' && ' · conformance' || '' }}
     runs-on: ${{ matrix.leg.runner }}
     timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
-        part: [a, b]
-        # `lint`: also format and clippy. `cranelift`: also the corpus and fixtures with
-        # `MS_BACKEND=cranelift`, so release builds use the Cranelift backend that Debug builds use.
-        # Failures shared with Linux are in tests/conformance/expect-fail.txt; platform-only ones go
-        # in tests/conformance/expect-fail.<os>.txt with a reason.
-        leg:
-          - {os: linux, arch: amd64, runner: ubuntu-24.04, lint: true, cranelift: true}
-          - {os: linux, arch: arm64, runner: ubuntu-24.04-arm}
-          - {os: darwin, arch: amd64, runner: macos-15-intel}
-          - {os: darwin, arch: arm64, runner: macos-15, cranelift: true}
-          - {os: windows, arch: amd64, runner: windows-2025, cranelift: true}
-          - {os: windows, arch: arm64, runner: windows-11-arm}
+        # Pull requests split each leg into `tests` (a) and `conformance` (b) on two runners for wall time;
+        # main is not waited on, so each leg runs both parts in one job: six jobs, not twelve.
+        part: ${{ fromJSON((github.event_name == 'pull_request' || github.event_name == 'merge_group') && '["a", "b"]' || '["ab"]') }}
+        leg: >-
+          ${{ fromJSON(
+          (github.event_name == 'pull_request' || github.event_name == 'merge_group' || inputs.os == 'linux') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": true}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}]' ||
+          inputs.os == 'darwin' && '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": true}]' ||
+          inputs.os == 'windows' && '[{"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": true}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]' ||
+          '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": true}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}, {"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": true}, {"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": true}, {"os": "windows", "arch": "arm64", "runner": "windows-11-arm"}]'
+          ) }}
+    env:
+      PR: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
     steps:
+      # A commit pushed within a minute cancels this run before any build starts.
+      - name: Wait for a newer push
+        if: github.event_name == 'pull_request'
+        run: sleep 60
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+      # Documentation-only pull requests skip the Rust steps.
+      - id: scope
+        uses: ./.github/actions/rust-scope
       - id: sccache
         uses: ./.github/actions/sccache
         with:
-          prefix: cargo-sccache-${{ matrix.leg.os }}-${{ matrix.leg.arch }}-${{ matrix.part }}-
+          # One cache per leg, saved by main's single job and restored by both pull request parts.
+          prefix: cargo-sccache-${{ matrix.leg.os }}-${{ matrix.leg.arch }}-
       - uses: ./.github/actions/rust-env
         with:
           os: ${{ matrix.leg.os }}
           arch: ${{ matrix.leg.arch }}
-          llvm-consumers: ${{ matrix.part == 'a' && 'true' || 'false' }}
+          llvm-consumers: ${{ matrix.part != 'b' && 'true' || 'false' }}
+      - uses: ./.github/actions/language-checks
+        if: matrix.leg.docs && matrix.part != 'a'
+      - uses: ./.github/actions/book-checks
+        if: matrix.leg.docs && matrix.part != 'a'
+      - uses: actions/upload-pages-artifact@v5
+        if: matrix.leg.docs && env.PR != 'true'
+        with:
+          path: .artifacts/book
       - uses: ./.github/actions/rust-checks
+        if: steps.scope.outputs.rust == 'true'
         with:
           os: ${{ matrix.leg.os }}
           arch: ${{ matrix.leg.arch }}
@@ -123,53 +122,23 @@ jobs:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
 
-  # The sum of the Rust jobs above, one name for the queue to require.
+  # The sum of the jobs above, one name for a ruleset to require.
   platforms:
     name: Platform checks
-    if: github.event_name == 'merge_group' && always()
+    if: always()
     needs: rust
     runs-on: ubuntu-latest
     steps:
-      - name: Require every platform
+      - name: Require every platform leg
         env:
           RESULT: ${{ needs.rust.result }}
         run: test "$RESULT" = success
 
-  language:
-    name: Language checks
-    if: github.event_name != 'pull_request'
-    uses: ./.github/workflows/test-language.yml
-
-  book:
-    name: Build design book
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    env:
-      RUSTC_WRAPPER: sccache
-      SCCACHE_CACHE_SIZE: 1G
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-      - id: sccache
-        uses: ./.github/actions/sccache
-        with:
-          prefix: cargo-sccache-docs-
-      - uses: ./.github/actions/book-checks
-      - uses: ./.github/actions/sccache-save
-        if: ${{ !cancelled() }}
-        with:
-          cache-hit: ${{ steps.sccache.outputs.cache-hit }}
-          primary-key: ${{ steps.sccache.outputs.primary-key }}
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: .artifacts/book
-
   pages:
     name: Publish Pages docs
-    needs: [book, language]
-    if: github.event_name == 'workflow_dispatch' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    needs: rust
+    # Deploys whenever the book built, even if another platform failed.
+    if: ${{ !cancelled() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
     runs-on: ubuntu-24.04
     permissions:
       pages: write

@@ -39,7 +39,8 @@ debug = 1
 panic = "abort"
 
 [profile.dev]
-panic = "abort"
+# No `panic = "abort"`: test harnesses always unwind, so an aborting dev profile built every crate twice
+# under `--all-targets` (once for the binaries, once for the tests).
 # Line tables are enough for backtraces and profiles; full variable info slows every build and link.
 debug = "line-tables-only"
 
