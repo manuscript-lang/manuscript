@@ -19,7 +19,7 @@ A diagnostic names the violated rule and the declaration or call site involved. 
 
 ## JSON diagnostics
 
-`ms check file.ms --json` emits `{"format": 1, "diagnostics": [...]}`. Each diagnostic has `code`, `phase`, `message`, and `position` with `file`, one-based `line`/UTF-8 byte `column`, and original-byte `offset`. Empty results use `[]`. CRLF normalization preserves original offsets.
+`ms check file.ms --json` emits `{"format": 1, "diagnostics": [...]}`. Each diagnostic has `code`, `phase`, `message`, and `position` with `file`, one-based `line`/UTF-8 byte `column`, and original-byte `offset`. Empty results use `[]`. CRLF normalization preserves original offsets. `--with-text` adds `text` with the `stdout` and `stderr` the command prints without `--json`, so one run yields both.
 
 Several inputs share one document; see [analysis selection](../implementation.md#selecting-independent-analysis-inputs).
 

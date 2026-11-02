@@ -137,6 +137,7 @@ fn run_source_command<L: Lower>(
                 watch: inv.watch,
                 fix: inv.fix,
                 deny_warnings: inv.deny_warnings,
+                with_text: inv.with_text,
             };
             engine::analysis(&request, io)
         }

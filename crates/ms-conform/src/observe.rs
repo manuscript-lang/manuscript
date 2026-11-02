@@ -209,9 +209,20 @@ fn diagnostics_of(report: &Json) -> Json {
 }
 
 fn check_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
-    let json_out = ctx.invoke(fx, &["check", entry, "--json"], work, b"");
+    // `--with-text` carries the terminal output in the same document, so one `ms check` (and one
+    // standard-library load) observes both. A run that wrote no document, such as a usage error,
+    // is repeated without `--json` for its terminal output.
+    let json_out = ctx.invoke(fx, &["check", entry, "--json", "--with-text"], work, b"");
     let report = parse_json_output(&json_out, work);
-    let text_out = ctx.invoke(fx, &["check", entry], work, b"");
+    let text_out = match report.get("text") {
+        Some(text) => Output {
+            code: json_out.code,
+            stdout: text_field(text, "stdout"),
+            stderr: text_field(text, "stderr"),
+            ..Output::default()
+        },
+        None => ctx.invoke(fx, &["check", entry], work, b""),
+    };
     let mut o = Json::object();
     process_fields(&mut o, &json_out, work);
     if let Some(v) = report.get("format") {
@@ -233,6 +244,12 @@ fn check_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
     );
     o.set("text", text);
     o
+}
+
+/// One stream of a `--with-text` document as bytes.
+fn text_field(text: &Json, stream: &str) -> Vec<u8> {
+    let value = text.get(stream).and_then(Json::as_str).unwrap_or("");
+    value.as_bytes().to_vec()
 }
 
 fn parse_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
