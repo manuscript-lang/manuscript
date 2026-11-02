@@ -225,14 +225,7 @@ export type JoinedError:
 impl Error for JoinedError:
     # Returns the messages of the joined errors, one per line.
     fn message() String:
-        var text = ""
-
-        for cause in self.errors:
-            if text != "":
-                text += "\n"
-            text += cause.message()
-
-        return text
+        return self.errors.map(fn cause: cause.message()).join("\n")
 
 # Combines `errors` into one error, or none when the list is empty.
 export fn join(errors: List[Error]) JoinedError?:
