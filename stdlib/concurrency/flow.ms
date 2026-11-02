@@ -3,7 +3,6 @@ import Deque from "@std/collections/deque.ms"
 import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
-import Channel from "@std/io/channels.ms"
 import Duration, Instant, milliseconds, monotonic, seconds, sleep from "@std/os/time.ms"
 import float from "@std/os/random.ms"
 
@@ -351,3 +350,129 @@ impl Cache[K, V]:
         let made = create()
         self.set(key.clone(), made.clone())
         return made
+
+# A minimum spacing between actions: at most one per `interval`, the first one at once. Use it to throttle a stream of events.
+#
+# ```manuscript
+# var spacing = Throttle(interval: milliseconds(200))
+# for event in events:
+#     if spacing.allow():
+#         redraw(event)
+# ```
+export type Throttle:
+    # The least time between two allowed actions.
+    interval: Duration
+    # Internal state: when the last action was allowed, or `none` before the first.
+    last: Instant? = none
+
+impl Throttle:
+    # Reports whether an action may happen now, and if so counts it. Never waits.
+    var fn allow() Bool:
+        let now = monotonic()
+        if let previous = self.last:
+            if now.difference(previous).compare(self.interval) < 0:
+                return false
+        self.last = now
+        return true
+
+    # Waits until an action may happen, then counts it. The wait ends when the task is cancelled.
+    var fn wait() Unit:
+        if let previous = self.last:
+            let remaining = self.interval.subtract(monotonic().difference(previous))
+            if remaining.nanos > 0:
+                sleep(remaining)
+
+        self.last = monotonic()
+
+# Collapses a burst of events into one: after the last `trigger` and a `quiet` time with no further one, the action is due.
+# Share one `Debounce` between tasks with `Shared` and `lock`.
+#
+# ```manuscript
+# var search = Debounce(quiet: milliseconds(300))
+# search.trigger()
+# search.wait_due()
+# run_search()
+# ```
+export type Debounce:
+    # How long without a `trigger` before the action is due.
+    quiet: Duration
+    # Internal state: when the latest trigger happened, or `none` when nothing is pending.
+    latest: Instant? = none
+
+impl Debounce:
+    # Records an event, restarting the quiet time.
+    var fn trigger() Unit:
+        self.latest = monotonic()
+
+    # Reports whether an event is pending and its quiet time has passed; if so, clears it. Never waits.
+    var fn is_due() Bool:
+        if let at = self.latest:
+            if monotonic().difference(at).compare(self.quiet) >= 0:
+                self.latest = none
+                return true
+
+        return false
+
+    # Waits until the pending event has been quiet for `quiet`, then clears it. Returns at once when nothing is pending.
+    # Triggers that arrive during the wait extend it. The wait ends when the task is cancelled.
+    var fn wait_due() Unit:
+        while self.latest.is_some():
+            if self.is_due():
+                return unit
+
+            if let at = self.latest:
+                sleep(
+                    self.quiet.subtract(
+                        monotonic().difference(at)
+                    ).max(Duration(nanos: 1))
+                )
+
+# Runs one computation per key at a time: while a call for a key is in flight, other calls for it wait and share its result
+# instead of repeating the work. Calls for different keys run independently. Share one value between tasks with `Shared`.
+#
+# ```manuscript
+# let flights = share(SingleFlight[String, String]())
+# let page = flights.get().run("/home", fn: render("/home"))
+# ```
+export type SingleFlight[K: Hashable & Clonable, V: Clonable]:
+    # Internal state: the in-flight calls; a call holds the lock of its cell while it computes and the result lands in the cell.
+    flights: Shared[Map[K, Shared[V?]]] = share(Map[K, Shared[V?]]())
+
+impl SingleFlight[K, V]:
+    # Returns the result of `work` for `key`. If another task is already computing `key`, waits for it and returns a copy of its result;
+    # if that task was cancelled or faulted, this call computes it instead. The wait ends when the task is cancelled.
+    fn run(key: K, work: fn() V) V:
+        while true:
+            var table = lock(self.flights)
+
+            if let slot = table.value.get(key.clone()):
+                let cell = slot
+                table.close().get(none)
+
+                var waited = lock(cell)
+                if let result = waited.value:
+                    return result.clone()
+
+                waited.close().get(none)
+                forget(self.flights, key.clone())
+            else:
+                let cell: Shared[V?] = share(none)
+                let mine = cell
+                table.value[key.clone()] = cell
+
+                var guard = lock(mine)
+                table.close().get(none)
+
+                let result = work()
+                guard.value = result.clone()
+                forget(self.flights, key.clone())
+                return result
+
+# Drops `key` from the table of finished or abandoned calls. A newer call for the same key can only be removed here after an
+# abandoned one, which costs at most one repeated computation.
+fn forget[K: Hashable & Clonable, V: Clonable](
+    flights: Shared[Map[K, Shared[V?]]],
+    key: K
+) Unit:
+    var table = lock(flights)
+    table.value.remove(key)

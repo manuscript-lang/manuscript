@@ -1,7 +1,7 @@
 //! Lambdas and calls through function values.
 
 use crate::Error;
-use crate::cx::{BoundNativeJob, Cx, Job, JobKind, LambdaJob, NativeThunkJob};
+use crate::cx::{BoundNativeJob, Cx, IfaceNativeJob, Job, JobKind, LambdaJob, NativeThunkJob};
 use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
@@ -1321,7 +1321,7 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
 impl FnLower<'_> {
     /// The arguments of a native called through a function value: a parameter the function type
     /// made optional is read as its supplied value or the declared default.
-    fn thunk_native_args(
+    pub(crate) fn thunk_native_args(
         &mut self,
         module: ct::Name,
         func: Option<&ms_syntax::ast::Func>,
@@ -1406,6 +1406,47 @@ pub(crate) fn build_bound_native(
     result?;
     f.compact_blocks();
     m.funcs[func.index()] = f;
+    Ok(())
+}
+
+/// Lowers the body of a native method behind an interface table entry.
+pub(crate) fn build_iface_native(
+    cx: &mut Cx,
+    m: &mut Module,
+    func: FuncId,
+    job: &IfaceNativeJob,
+) -> Result<(), Error> {
+    let proto = m.funcs[func.index()].clone();
+    let file = m.add_file(job.hir.data.file.as_str());
+    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
+    b.func_mut().kind = proto.kind.clone();
+    b.func_mut().linkage = proto.linkage;
+    let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
+    fl.scope_override = Some(job.scope);
+    let result = lower_iface_native(&mut fl, job);
+    let mut f = fl.b.into_func();
+    result?;
+    f.compact_blocks();
+    m.funcs[func.index()] = f;
+    Ok(())
+}
+
+fn lower_iface_native(fl: &mut FnLower<'_>, job: &IfaceNativeJob) -> Result<(), Error> {
+    let params = fl.b.params();
+    let func = job.method.decl.as_ref().and_then(|d| d.func());
+    let ret = fl.ret_ty;
+    let args =
+        fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
+    let out = if ms_check::effects::collection_mutation(&job.method) {
+        // The table entry receives the address of the value it changes.
+        fl.shared_native_call(&job.method, params[0], job.data, &args, ret)?
+    } else {
+        let v =
+            fl.b.emit(Op::Load, &[params[0]], Imm::Ty(job.data), Some(job.data))
+                .expect("load");
+        fl.bound_native_call(&job.method, Val { v, own: false }, &args, ret)?
+    };
+    fl.emit_return(Some(out));
     Ok(())
 }
 
@@ -1766,18 +1807,32 @@ impl FnLower<'_> {
             mode: Mode::Borrow,
         }));
         let mut f = ms_mir::ir::Func::new("<function adapter>", ps, wr);
+        // A held closure that points into this frame stays here: the adapter reads it through
+        // a pointer to a slot, and is itself scoped.
+        let scoped = self.b.is_scoped_closure(x.v);
         f.kind = FuncKind::Closure {
-            captures: vec![have],
+            captures: vec![if scoped { MTy::PTR } else { have }],
         };
+        f.scoped = scoped;
         let id = self.b.m.add_func(f);
         self.cx.queue.push(Job {
             func: id,
             kind: JobKind::FnAdapt(Rc::new(crate::cx::FnAdaptJob {
                 hir: self.hir.clone(),
                 have,
+                scoped,
             })),
         });
-        let held = self.owned(x);
+        let held = if scoped {
+            let slot = self
+                .b
+                .emit(Op::Slot, &[], Imm::Ty(have), Some(MTy::PTR))
+                .expect("slot");
+            self.b.emit(Op::Store, &[slot, x.v], Imm::None, None);
+            slot
+        } else {
+            self.owned(x)
+        };
         let v = self
             .b
             .emit(Op::ClosureNew, &[held], Imm::Func(id), Some(want))
@@ -1799,7 +1854,7 @@ pub(crate) fn build_fn_adapter(
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
-    let result = lower_fn_adapter(&mut fl, job.have);
+    let result = lower_fn_adapter(&mut fl, job.have, job.scoped);
     let mut f = fl.b.into_func();
     result?;
     f.compact_blocks();
@@ -1807,11 +1862,17 @@ pub(crate) fn build_fn_adapter(
     Ok(())
 }
 
-fn lower_fn_adapter(fl: &mut FnLower<'_>, have: MTy) -> Result<(), Error> {
+fn lower_fn_adapter(fl: &mut FnLower<'_>, have: MTy, scoped: bool) -> Result<(), Error> {
     let params = fl.b.params();
-    let held =
-        fl.b.emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(have))
+    let cap_ty = if scoped { MTy::PTR } else { have };
+    let mut held =
+        fl.b.emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(cap_ty))
             .expect("capture");
+    if scoped {
+        held =
+            fl.b.emit(Op::Load, &[held], Imm::Ty(have), Some(have))
+                .expect("load");
+    }
     let TyKind::Fn(hp, _) = fl.b.m.types.kind(have).clone() else {
         return Err(Error::new("function adapter without a function type"));
     };

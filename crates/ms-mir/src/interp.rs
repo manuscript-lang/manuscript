@@ -781,6 +781,21 @@ impl<'m> Interp<'m> {
                 set!(Val::List(Rc::new(Vec::with_capacity(cap))));
             }
             Op::ListLit => set!(Val::List(Rc::new(self.take_args(f, regs, a)))),
+            Op::ListConst => {
+                let elem = inst.res.and_then(|r| self.m.list_elem(f.ty(r)));
+                let kind = elem.map(|e| self.m.types.kind(e).clone());
+                let items = self.m.list_consts[imm_int(inst.imm) as usize]
+                    .iter()
+                    .map(|&r| match kind {
+                        Some(TyKind::Float | TyKind::Float32) => {
+                            Val::Float(f64::from_bits(r as u64))
+                        }
+                        Some(TyKind::Bool) => Val::Bool(r != 0),
+                        _ => Val::Int(r),
+                    })
+                    .collect();
+                set!(Val::List(Rc::new(items)))
+            }
             Op::ListLen => {
                 let Val::List(l) = &regs[a[0].index()] else {
                     return Err(Raw::internal("list.len on a non-list"));

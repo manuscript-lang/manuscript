@@ -45,9 +45,10 @@ fn embed_native(crates: &Path, file: &str, var: &str) {
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
     let embedded = out.join(format!("{file}.gz"));
     // Gzipped: raw, the archive is a third of `ms`. Written only when the content changed, so an
-    // unchanged archive keeps downstream builds cached.
+    // unchanged archive keeps downstream builds cached. The default level: level 9 took twice as long for
+    // under 1% smaller output.
     let mut packed = Vec::new();
-    let mut encoder = flate2::write::GzEncoder::new(&mut packed, flate2::Compression::new(9));
+    let mut encoder = flate2::write::GzEncoder::new(&mut packed, flate2::Compression::default());
     encoder.write_all(&bytes).expect("compress the archive");
     encoder.finish().expect("compress the archive");
     if std::fs::read(&embedded).ok().as_deref() != Some(&packed) {
