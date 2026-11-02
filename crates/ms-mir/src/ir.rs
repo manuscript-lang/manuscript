@@ -282,7 +282,7 @@ pub enum Op {
     // Records and alternatives.
     RecNew, RecGet, RecSet, RecFill, AltNew, AltView, AltTag, AltGet, AltUnbox, AltTake, AltRelease, RecRelease,
     // Lists.
-    ListNew, ListLit, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast,
+    ListNew, ListLit, ListConst, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast,
     // Optionals.
     OptSome, OptView, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
     // Strings.
@@ -403,7 +403,7 @@ impl Op {
         Op::ICmp, Op::UICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
         Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltView, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
-        Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
+        Op::ListNew, Op::ListLit, Op::ListConst, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
         Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
         Op::StrLen, Op::StrByte, Op::StrAscii, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
@@ -484,6 +484,7 @@ impl Op {
             Op::RecRelease => ("rec.release", K::RecMask, false, effects!(writes, rc)),
             Op::ListNew => ("list.new", K::None, true, effects!(alloc)),
             Op::ListLit => ("list.lit", K::None, true, effects!(alloc)),
+            Op::ListConst => ("list.const", K::Int, true, effects!(alloc)),
             Op::ListLen => ("list.len", K::None, true, effects!()),
             Op::ListGet => ("list.get", K::None, true, effects!(reads, faults)),
             Op::ListGetNn => ("list.get.nn", K::None, true, effects!(reads, faults)),
@@ -1069,6 +1070,9 @@ pub struct Module {
     pub vtables: Vec<VtableDef>,
     /// String literals (UTF-8).
     pub strings: Vec<String>,
+    /// Element data of constant lists (`list.const`): one entry per list, each element the raw
+    /// register value of its type (float bits for floats, 0 or 1 for booleans).
+    pub list_consts: Vec<Vec<i64>>,
     /// Index of [`Module::strings`] by content; only [`Module::add_string`] writes both.
     string_ids: HashMap<String, StrId>,
     /// Runtime functions called.
@@ -1105,6 +1109,7 @@ impl Module {
             ifaces: Vec::new(),
             vtables: Vec::new(),
             strings: Vec::new(),
+            list_consts: Vec::new(),
             string_ids: HashMap::new(),
             externs: Vec::new(),
             globals: Vec::new(),
@@ -1124,6 +1129,12 @@ impl Module {
         self.strings.push(s.to_string());
         self.string_ids.insert(s.to_string(), id);
         id
+    }
+
+    /// Registers the element data of a constant list and returns its index.
+    pub fn add_list_const(&mut self, data: Vec<i64>) -> i64 {
+        self.list_consts.push(data);
+        self.list_consts.len() as i64 - 1
     }
 
     /// Registers a source file and returns its index for [`Loc`].

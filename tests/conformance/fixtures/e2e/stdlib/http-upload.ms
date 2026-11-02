@@ -2,7 +2,14 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/http-upload.ms
 import expect_equal from "@std/test/test.ms"
-import headers, HttpClientOptions, HttpMethod, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
+import (
+    headers,
+    HttpClientOptions,
+    HttpMethod,
+    HttpRequest,
+    HttpResponse,
+    buffered
+) from "@std/net/http.ms"
 import ReadStream, read_all from "@std/io/io.ms"
 import body_stream from "@std/net/sse.ms"
 import http_client, serve from "@std/net/net.ms"
@@ -21,7 +28,11 @@ impl ReadStream for Chunks:
     var fn read(max_bytes: Int? = none) Bytes?!:
         if self.next == self.parts.length():
             match self.failure:
-                message: return error(Error(message.clone(), kind: ErrorCategory.Failed))
+                message: return error(
+                    Error(
+                        message.clone(), kind: ErrorCategory.Failed
+                    )
+                )
                 none: return ok(none)
 
         let chunk = self.parts[self.next]

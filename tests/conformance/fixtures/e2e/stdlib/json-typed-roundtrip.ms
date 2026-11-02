@@ -26,14 +26,15 @@ test "JSON payloadless cases are their names and round-trip":
     try expect_equal(try stringify(back), text)
 
 test "JSON rejects an unknown case name":
-    let invalid: Color! = error(Error("JSON: invalid data", kind: ErrorCategory.InvalidData))
+    let invalid: Color! = error(
+        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(parse[Color]("\"Blue\""), invalid)
     try expect_equal(parse[Color]("\"Color.Red\""), invalid)
 
 test "JSON writes and reads IpAddress and Cidr as strings":
     let endpoint = Endpoint(
-        try parse_ip("::1"), try parse_cidr("10.1.2.3/8"),
-        try parse_ip("192.0.2.7")
+        try parse_ip("::1"), try parse_cidr("10.1.2.3/8"), try parse_ip("192.0.2.7")
     )
     let text = try stringify(endpoint)
     try expect_equal(

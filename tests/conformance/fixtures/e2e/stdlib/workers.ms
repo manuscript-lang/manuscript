@@ -3,13 +3,24 @@
 import Channel from "@std/io/channels.ms"
 import panic from "@std/core.ms"
 import fetch from "@std/net/fetch.ms"
-import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/net/http.ms"
+import (
+    buffered,
+    headers,
+    HttpRequest,
+    HttpResponse,
+    HttpServerOptions
+) from "@std/net/http.ms"
 import stdin from "@std/io/io.ms"
 import serve from "@std/net/net.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
-import Worker, WorkerGroup, worker_bytes, worker_channel from "@std/concurrency/workers.ms"
+import (
+    Worker,
+    WorkerGroup,
+    worker_bytes,
+    worker_channel
+) from "@std/concurrency/workers.ms"
 
 type Job:
     id: Int
@@ -169,20 +180,26 @@ test "cancelling a worker stops it":
     var worker = group.spawn(announce_then_wait).get(none)
     try expect_equal(worker.channel.receive(), ok(1))
     worker.cancel()
-    try expect_equal(worker.wait(), error(Error("worker: cancelled", kind: ErrorCategory.Other)))
+    try expect_equal(
+        worker.wait(), error(Error("worker: cancelled", kind: ErrorCategory.Other))
+    )
 
 test "a worker cancelled while computing is cancelled at its next channel operation":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(spin_then_wait).get(none)
     try expect_equal(worker.channel.receive(), ok(1))
     worker.cancel()
-    try expect_equal(worker.wait(), error(Error("worker: cancelled", kind: ErrorCategory.Other)))
+    try expect_equal(
+        worker.wait(), error(Error("worker: cancelled", kind: ErrorCategory.Other))
+    )
 
 test "cancelling a worker right after spawn is not lost":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(sleep_long).get(none)
     worker.cancel()
-    try expect_equal(worker.wait(), error(Error("worker: cancelled", kind: ErrorCategory.Other)))
+    try expect_equal(
+        worker.wait(), error(Error("worker: cancelled", kind: ErrorCategory.Other))
+    )
 
 test "leaving the group stops workers that are still running":
     var group = WorkerGroup[Int, Int]()

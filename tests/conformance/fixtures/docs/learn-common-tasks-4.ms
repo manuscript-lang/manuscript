@@ -5,7 +5,9 @@ import arguments from "@std/os/process.ms"
 import write_file from "@std/os/fs.ms"
 
 fn run() Result[Unit, Error]:
-    let path = try arguments().first().ok_or(Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput))
+    let path = try arguments().first().ok_or(
+        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     return write_file(path, "saved notes\n", replace: false)
 
 export fn main() Int:

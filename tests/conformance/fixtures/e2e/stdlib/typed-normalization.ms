@@ -36,7 +36,19 @@ test "typed normalization keeps UTF-8 byte budgets and domain errors":
     let form = NormalizationForm.Nfc
     try expect_equal(form.normalize("é", 2).get(), "é")
     try expect_equal(form.normalize("", 0).get(), "")
-    try expect_equal(form.normalize("é", 1).err(), Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded))
-    try expect_equal(form.normalize("x", 0).err(), Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded))
-    try expect_equal(form.normalize("", -1).err(), Error("string: invalid input", kind: ErrorCategory.InvalidInput))
-    try expect_equal("x".normalize("nfc").err(), Error("string: invalid input", kind: ErrorCategory.InvalidInput))
+    try expect_equal(
+        form.normalize("é", 1).err(),
+        Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
+    try expect_equal(
+        form.normalize("x", 0).err(),
+        Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
+    try expect_equal(
+        form.normalize("", -1).err(),
+        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+    )
+    try expect_equal(
+        "x".normalize("nfc").err(),
+        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+    )

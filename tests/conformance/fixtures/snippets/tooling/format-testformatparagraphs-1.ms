@@ -7,6 +7,7 @@ fn work(enabled: Bool) Int:
         run(count)
     for item in [1, 2]:
         run(item)
+
     var resource = acquire()
     run(resource)
     resource.close()

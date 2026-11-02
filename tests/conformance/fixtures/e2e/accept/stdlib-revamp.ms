@@ -68,7 +68,9 @@ type EchoReader:
 impl ReadStream for EchoReader:
     var fn read(max_bytes: Int?) Bytes?!:
         let requested = max_bytes.get(0)
-        if requested == 1: return error(Error("I/O: invalid input", kind: ErrorCategory.InvalidInput))
+        if requested == 1: return error(
+            Error("I/O: invalid input", kind: ErrorCategory.InvalidInput)
+        )
 
         return ok(Bytes([requested.to_uint8().get(0)]))
 

@@ -4,7 +4,9 @@
 import canonicalize, remove, rename from "@std/os/fs.ms"
 
 export fn main() Int:
-    let invalid: Unit! = error(Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput))
+    let invalid: Unit! = error(
+        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     if remove(path: "", recursive: true) != invalid: return 1
     if remove(path: ".", recursive: true) != invalid: return 2
     if remove(path: "child/..", recursive: true) != invalid: return 3

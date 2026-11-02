@@ -1,7 +1,13 @@
 # conform: tags=closures,control-flow,faults,interpolation,lists,match,modules,mutation,records,stdlib-fs,stdlib-io,stdlib-json,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
 # conform: phase=run
 # conform: origin=scripts/conformance.ms
-import expect_equal, expect_false, expect_some, expect_true, fail from "@std/test/test.ms"
+import (
+    expect_equal,
+    expect_false,
+    expect_some,
+    expect_true,
+    fail
+) from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 import arguments from "@std/os/process.ms"
 import glob from "@std/os/fs.ms"
@@ -72,9 +78,7 @@ fn inventory(suite: String) Result[List[String], Error]:
         core.is_empty() | try expect_false
         for file in core: files.append("tests/e2e/testdata/accept/{file}")
 
-        let projects = try glob(
-            "tests/e2e/testdata/projects", "*/conformance_test.ms"
-        )
+        let projects = try glob("tests/e2e/testdata/projects", "*/conformance_test.ms")
         projects.is_empty() | try expect_false
         for file in projects: files.append("tests/e2e/testdata/projects/{file}")
         for file in [

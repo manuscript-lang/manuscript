@@ -167,17 +167,25 @@ test "expanded packages run through compiler":
     flipped | try expect_equal([2, 1])
 
 test "malformed and bounded inputs return errors":
-    let failure1: Bytes! = error(Error("encoding: invalid data", kind: ErrorCategory.InvalidData))
+    let failure1: Bytes! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     base64_decode(text: "Zh==", url_safe: false, max_bytes: 10) | try expect_equal(
         failure1
     )
 
-    let failure2: Bytes! = error(Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded))
+    let failure2: Bytes! = error(
+        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     hex_decode(text: "abcd", max_bytes: 1) | try expect_equal(failure2)
 
     let limits = JsonLimits(max_bytes: 100, max_depth: 2, max_values: 10)
-    let failure3: JsonValue! = error(Error("JSON: invalid data", kind: ErrorCategory.InvalidData))
+    let failure3: JsonValue! = error(
+        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
+    )
     parse(text: "\{\"a\":1,\"a\":2\}", limits: limits) | try expect_equal(failure3)
 
-    let failure4: JsonValue! = error(Error("JSON: limit exceeded", kind: ErrorCategory.LimitExceeded))
+    let failure4: JsonValue! = error(
+        Error("JSON: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     parse(text: "[[[]]]", limits: limits) | try expect_equal(failure4)

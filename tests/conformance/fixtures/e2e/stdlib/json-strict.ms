@@ -20,14 +20,18 @@ test "JSON stringify omits values without a JSON form unless strict":
     let handler = Handler("h", unit, none)
     try expect_equal(stringify(handler), ok("\{\"name\":\"h\"\}"))
 
-    let invalid: String! = error(Error("JSON: invalid data", kind: ErrorCategory.InvalidData))
+    let invalid: String! = error(
+        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(stringify(handler, strict: true), invalid)
 
 test "JSON strict stringify rejects no-form list elements":
     let holder = Holder([unit])
     try expect_equal(stringify(holder), ok("\{\"items\":[null]\}"))
 
-    let invalid: String! = error(Error("JSON: invalid data", kind: ErrorCategory.InvalidData))
+    let invalid: String! = error(
+        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(stringify(holder, strict: true), invalid)
 
 test "JSON strict stringify accepts none and nulls that are values":

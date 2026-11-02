@@ -150,7 +150,10 @@ test "invalid UTF-8 is InvalidData and final":
         try expect_false(not failure)
         try expect_false(
             not is_case(
-                created.feed("data: x\n\n".to_bytes()), Error("SSE line is not valid UTF-8", kind: ErrorCategory.InvalidData)
+                created.feed("data: x\n\n".to_bytes()),
+                Error(
+                    "SSE line is not valid UTF-8", kind: ErrorCategory.InvalidData
+                )
             )
         )
 
@@ -158,7 +161,8 @@ test "line and event budgets report LimitExceeded":
     var tight = try decoder(SseLimits(7))
     try expect_false(
         not is_case(
-            tight.feed("data: 12\n\n".to_bytes()), Error("SSE limit exceeded", kind: ErrorCategory.LimitExceeded)
+            tight.feed("data: 12\n\n".to_bytes()),
+            Error("SSE limit exceeded", kind: ErrorCategory.LimitExceeded)
         )
     )
 
@@ -168,7 +172,10 @@ test "line and event budgets report LimitExceeded":
     var event = try decoder(SseLimits(max_event_bytes: 10))
     let _event_batch = try event.feed("data: 1\n".to_bytes())
     try expect_false(
-        not is_case(event.feed("data: 2\n".to_bytes()), Error("SSE limit exceeded", kind: ErrorCategory.LimitExceeded))
+        not is_case(
+            event.feed("data: 2\n".to_bytes()),
+            Error("SSE limit exceeded", kind: ErrorCategory.LimitExceeded)
+        )
     )
 
     var comments = try decoder(SseLimits(max_event_bytes: 10))
@@ -193,7 +200,12 @@ test "truncated streams fail and clean ends succeed":
 
     var done = try decoder()
     try done.finish()
-    try expect_false(not is_case(done.feed("x".to_bytes()), Error("SSE invalid input", kind: ErrorCategory.InvalidInput)))
+    try expect_false(
+        not is_case(
+            done.feed("x".to_bytes()),
+            Error("SSE invalid input", kind: ErrorCategory.InvalidInput)
+        )
+    )
 
 test "reader decodes a borrowed stream and leaves it open":
     let source = stream(
@@ -213,15 +225,29 @@ test "reader decodes a borrowed stream and leaves it open":
 test "reader reports truncation limits and read failures":
     var cut = try reader(stream(["data: a\n".to_bytes()], none))
     let truncated = next_event(var cut)
-    try expect_false(truncated.is_ok() or truncated.err().kind != ErrorCategory.InvalidData)
+    try expect_false(
+        truncated.is_ok() or truncated.err().kind != ErrorCategory.InvalidData
+    )
 
     var big = try reader(stream(["data: abcdef\n\n".to_bytes()], none), SseLimits(4))
     let limited = next_event(var big)
-    try expect_false(limited.is_ok() or limited.err().kind != ErrorCategory.LimitExceeded)
+    try expect_false(
+        limited.is_ok() or limited.err().kind != ErrorCategory.LimitExceeded
+    )
 
-    var broken = try reader(stream(["data: a\n\n".to_bytes()], Error("I/O: resource is closed", kind: ErrorCategory.Closed)))
+    var broken = try reader(
+        stream(
+            ["data: a\n\n".to_bytes()],
+            Error("I/O: resource is closed", kind: ErrorCategory.Closed)
+        )
+    )
     let _event = try next_event(var broken)
     let failed = next_event(var broken)
     try expect_false(failed.is_ok())
-    try expect_equal(failed.err(), Error("SSE read failed: I/O: resource is closed", kind: ErrorCategory.Failed))
+    try expect_equal(
+        failed.err(),
+        Error(
+            "SSE read failed: I/O: resource is closed", kind: ErrorCategory.Failed
+        )
+    )
     try expect_false(reader(stream([], none), chunk_bytes: 0).is_ok())

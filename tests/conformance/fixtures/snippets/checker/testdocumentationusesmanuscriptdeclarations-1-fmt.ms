@@ -4,17 +4,6 @@
 interface DatagramSocket:
     fn address() String
     fn close() Unit
-    fn receive(
-        max_bytes: Int?,
-        timeout: Duration?
-    ) Datagram!
-    fn send(
-        data: String,
-        address: String,
-        timeout: Duration?
-    ) Unit!
-    fn send_bytes(
-        data: Bytes,
-        address: String,
-        timeout: Duration?
-    ) Unit!
+    fn receive(max_bytes: Int?, timeout: Duration?) Datagram!
+    fn send(data: String, address: String, timeout: Duration?) Unit!
+    fn send_bytes(data: Bytes, address: String, timeout: Duration?) Unit!

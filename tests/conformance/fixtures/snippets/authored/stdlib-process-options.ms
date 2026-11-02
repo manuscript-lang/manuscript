@@ -49,8 +49,12 @@ test "spawn accepts cwd and env and reports the peak resident set after wait":
     try expect_true(child.max_resident_bytes() > 0)
 
 test "bad cwd and variable names are rejected":
-    let invalid: CommandOutput! = error(Error("process: invalid input", kind: ErrorCategory.InvalidInput))
+    let invalid: CommandOutput! = error(
+        Error("process: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(run(shell(), print_cwd(), env: {"A=B": "x"}), invalid)
 
-    let missing: CommandOutput! = error(Error("process: service unavailable", kind: ErrorCategory.Unavailable))
+    let missing: CommandOutput! = error(
+        Error("process: service unavailable", kind: ErrorCategory.Unavailable)
+    )
     try expect_equal(run(shell(), print_cwd(), cwd: "/definitely/not/here"), missing)

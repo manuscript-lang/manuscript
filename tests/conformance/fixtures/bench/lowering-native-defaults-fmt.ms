@@ -32,13 +32,7 @@ fn command_explicit() CommandOutput!:
 fn command_omitted() CommandOutput!:
     return run(program: "", arguments: [])
 
-fn command_bind() fn(
-    String,
-    List[String],
-    Bytes,
-    Int?,
-    Duration?
-) CommandOutput!:
+fn command_bind() fn(String, List[String], Bytes, Int?, Duration?) CommandOutput!:
     return run
 
 fn filesystem_explicit(data: Bytes) Unit!:

@@ -81,8 +81,8 @@ fn exercise() Unit!:
         max_message_bytes: 1024, timeout: 2.seconds, tls: tls, compression: false
     )
     let socket = try web_socket(
-        url: "ws://{server.address()}/ws", headers: headers(),
-        subprotocols: ["echo"], options: websocket_options
+        url: "ws://{server.address()}/ws", headers: headers(), subprotocols: ["echo"],
+        options: websocket_options
     )
     socket.subprotocol() | try expect_equal("echo")
 

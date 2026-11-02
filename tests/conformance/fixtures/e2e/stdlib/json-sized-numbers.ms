@@ -35,7 +35,9 @@ test "JSON reads sized numbers back":
     try expect_equal(stringify(back).get(), text)
 
 test "JSON rejects sized numbers outside their range":
-    let invalid: Sized! = error(Error("JSON: invalid data", kind: ErrorCategory.InvalidData))
+    let invalid: Sized! = error(
+        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
+    )
     let head = "\{\"signed\":0,\"wide\":0,\"single\":0,\"items\":[]"
     try expect_equal(parse[Sized](head + ",\"small\":256\}"), invalid)
     try expect_equal(parse[Sized](head + ",\"small\":-1\}"), invalid)

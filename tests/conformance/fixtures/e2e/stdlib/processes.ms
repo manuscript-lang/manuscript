@@ -147,7 +147,10 @@ test "a child that faults is data, not a parent fault":
     let group = ProcessGroup[Unit]()
     var child = group.spawn(crash, stderr: Stdio.Null) | try expect_ok
     child.result() | try expect_error | try expect_equal(
-        Error("process: exited with status 67", kind: ErrorCategory.Failed, details: {"status": "67"})
+        Error(
+            "process: exited with status 67", kind: ErrorCategory.Failed,
+            details: {"status": "67"}
+        )
     )
 
     let _refused = child.channel.send(unit) | try expect_error
@@ -176,7 +179,9 @@ test "a stream that is not piped is closed":
 
 test "process errors describe themselves":
     try expect_equal(
-        Error("process: exited with status 67", kind: ErrorCategory.Failed).message,
+        Error(
+            "process: exited with status 67", kind: ErrorCategory.Failed
+        ).message,
         "process: exited with status 67"
     )
     try expect_equal(

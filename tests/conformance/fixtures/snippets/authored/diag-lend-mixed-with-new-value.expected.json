@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "this function returns a reference into its arguments at 9:14 but a new value here; return `.clone()` of the part there, or build a new value on every path",
+        "message": "this function returns a reference into its arguments at 10:14 but a new value here; return `.clone()` of the part there, or build a new value on every path",
         "position": {
           "file": "diag-lend-mixed-with-new-value.ms",
           "line": 8,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-lend-mixed-with-new-value.ms:8:26: type: this function returns a reference into its arguments at 9:14 but a new value here; return `.clone()` of the part there, or build a new value on every path\n   |\n 8 |     if anonymous: return \"anonymous\"\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-lend-mixed-with-new-value.ms:8:26: type: this function returns a reference into its arguments at 10:14 but a new value here; return `.clone()` of the part there, or build a new value on every path\n   |\n 8 |     if anonymous: return \"anonymous\"\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

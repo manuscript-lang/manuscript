@@ -7,5 +7,7 @@ import expect_equal, expect_ok, expect_error, expect_some from "@std/test/test.m
 test "typed JSON and Optional payloads":
     let number = try expect_ok(parse[Int]("3"))
     try expect_equal(number, 3)
-    try expect_error(parse[Int]("true")) | try expect_equal(Error("JSON: invalid data", kind: ErrorCategory.InvalidData))
+    try expect_error(parse[Int]("true")) | try expect_equal(
+        Error("JSON: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_some([number].first()) | try expect_equal(3)

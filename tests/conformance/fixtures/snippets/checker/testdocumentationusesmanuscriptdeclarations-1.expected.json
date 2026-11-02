@@ -12,9 +12,9 @@
         "message": "unknown type Duration; add: import Duration from \"@std/os/time.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
-          "line": 9,
-          "column": 18,
-          "offset": 327
+          "line": 7,
+          "column": 42,
+          "offset": 310
         },
         "fix": {
           "position": {
@@ -38,9 +38,9 @@
         "message": "unknown type Datagram; add: import Datagram from \"@std/net/net.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
-          "line": 10,
-          "column": 7,
-          "offset": 343
+          "line": 7,
+          "column": 53,
+          "offset": 321
         },
         "fix": {
           "position": {
@@ -64,9 +64,9 @@
         "message": "unknown type Duration; add: import Duration from \"@std/os/time.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
-          "line": 14,
-          "column": 18,
-          "offset": 430
+          "line": 8,
+          "column": 53,
+          "offset": 383
         },
         "fix": {
           "position": {
@@ -90,9 +90,9 @@
         "message": "unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
-          "line": 17,
-          "column": 15,
-          "offset": 485
+          "line": 9,
+          "column": 25,
+          "offset": 424
         },
         "fix": {
           "position": {
@@ -116,9 +116,9 @@
         "message": "unknown type Duration; add: import Duration from \"@std/os/time.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
-          "line": 19,
-          "column": 18,
-          "offset": 534
+          "line": 9,
+          "column": 58,
+          "offset": 457
         },
         "fix": {
           "position": {
@@ -140,7 +140,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:9:18: resolution: unknown type Duration; add: import Duration from \"@std/os/time.ms\"\n   |\n 9 |         timeout: Duration?\n   |                  ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:10:7: resolution: unknown type Datagram; add: import Datagram from \"@std/net/net.ms\"\n    |\n 10 |     ) Datagram!\n    |       ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:14:18: resolution: unknown type Duration; add: import Duration from \"@std/os/time.ms\"\n    |\n 14 |         timeout: Duration?\n    |                  ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:17:15: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n    |\n 17 |         data: Bytes,\n    |               ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:19:18: resolution: unknown type Duration; add: import Duration from \"@std/os/time.ms\"\n    |\n 19 |         timeout: Duration?\n    |                  ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:7:42: resolution: unknown type Duration; add: import Duration from \"@std/os/time.ms\"\n   |\n 7 |     fn receive(max_bytes: Int?, timeout: Duration?) Datagram!\n   |                                          ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:7:53: resolution: unknown type Datagram; add: import Datagram from \"@std/net/net.ms\"\n   |\n 7 |     fn receive(max_bytes: Int?, timeout: Duration?) Datagram!\n   |                                                     ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:8:53: resolution: unknown type Duration; add: import Duration from \"@std/os/time.ms\"\n   |\n 8 |     fn send(data: String, address: String, timeout: Duration?) Unit!\n   |                                                     ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:9:25: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 9 |     fn send_bytes(data: Bytes, address: String, timeout: Duration?) Unit!\n   |                         ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:9:58: resolution: unknown type Duration; add: import Duration from \"@std/os/time.ms\"\n   |\n 9 |     fn send_bytes(data: Bytes, address: String, timeout: Duration?) Unit!\n   |                                                          ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
