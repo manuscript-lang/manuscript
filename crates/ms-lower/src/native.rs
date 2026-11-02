@@ -161,6 +161,11 @@ impl<'a> FnLower<'a> {
                         | "shift_left"
                         | "shift_right"
                         | "shift_right_unsigned"
+                        | "rotate_left"
+                        | "rotate_right"
+                        | "count_ones"
+                        | "leading_zeros"
+                        | "trailing_zeros"
                         | "wrapping_add"
                         | "wrapping_subtract"
                         | "wrapping_multiply"
@@ -545,6 +550,19 @@ impl<'a> FnLower<'a> {
                 let ones = self.b.iconst(-1);
                 self.b.binop(Op::Xor, left, ones)
             }
+            "count_ones" => self.b.unop(Op::Popcnt, left),
+            "leading_zeros" => self.b.unop(Op::Clz, left),
+            "trailing_zeros" => self.b.unop(Op::Ctz, left),
+            // Any count is reduced modulo 64, as the instruction does.
+            "rotate_left" | "rotate_right" => {
+                let count = self.borrow(args[1].val);
+                let op = if name == "rotate_left" {
+                    Op::Rotl
+                } else {
+                    Op::Rotr
+                };
+                self.b.binop(op, left, count)
+            }
             "bit_and" | "bit_or" | "bit_xor" | "wrapping_add" | "wrapping_subtract"
             | "wrapping_multiply" => {
                 let right = self.borrow(args[1].val);
@@ -589,17 +607,7 @@ impl<'a> FnLower<'a> {
                 match name {
                     "shift_left" => self.b.binop(Op::Shl, left, count),
                     "shift_right" => self.b.binop(Op::Sshr, left, count),
-                    _ => {
-                        // Logical shift: clear the sign bit after one arithmetic step, then
-                        // shift the rest; a zero count leaves the value alone.
-                        let (one, max) = (self.b.iconst(1), self.b.iconst(i64::MAX));
-                        let half = self.b.binop(Op::Sshr, left, one);
-                        let half = self.b.binop(Op::And, half, max);
-                        let rest = self.b.binop(Op::ISub, count, one);
-                        let shifted = self.b.binop(Op::Sshr, half, rest);
-                        let is_zero = self.b.icmp(Cc::Eq, count, zero);
-                        self.b.select(is_zero, left, shifted)
-                    }
+                    _ => self.b.binop(Op::Ushr, left, count),
                 }
             }
         };

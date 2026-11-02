@@ -274,7 +274,7 @@ pub enum Op {
     // Conversions: `Conv` retypes a number to another type of its kind (rounding to binary32 for `Float32`); `INarrowOpt` yields some(value) when an int fits the smaller type.
     Conv, INarrowOpt,
     // Bit operations and booleans (`And`/`Or`/`Xor` accept Int or Bool).
-    And, Or, Xor, Shl, Sshr, Not,
+    And, Or, Xor, Shl, Sshr, Ushr, Rotl, Rotr, Clz, Ctz, Popcnt, Not,
     // Comparisons.
     ICmp, UICmp, FCmp,
     // Float arithmetic and conversions.
@@ -399,7 +399,7 @@ impl Op {
         Op::IConst, Op::FConst, Op::BConst, Op::UnitConst, Op::StrLit,
         Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddOverflow, Op::IMulOverflow, Op::IntOverflowIf, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::UAddChk, Op::USubChk, Op::UMulChk, Op::INegChk,
         Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem, Op::NarrowChk, Op::F32Round, Op::Conv, Op::INarrowOpt,
-        Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
+        Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Ushr, Op::Rotl, Op::Rotr, Op::Clz, Op::Ctz, Op::Popcnt, Op::Not,
         Op::ICmp, Op::UICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
         Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltView, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
@@ -452,6 +452,12 @@ impl Op {
             Op::Xor => ("xor", K::None, true, effects!()),
             Op::Shl => ("shl", K::None, true, effects!()),
             Op::Sshr => ("sshr", K::None, true, effects!()),
+            Op::Ushr => ("ushr", K::None, true, effects!()),
+            Op::Rotl => ("rotl", K::None, true, effects!()),
+            Op::Rotr => ("rotr", K::None, true, effects!()),
+            Op::Clz => ("clz", K::None, true, effects!()),
+            Op::Ctz => ("ctz", K::None, true, effects!()),
+            Op::Popcnt => ("popcnt", K::None, true, effects!()),
             Op::Not => ("not", K::None, true, effects!()),
             Op::ICmp => ("icmp", K::Cc, true, effects!()),
             Op::UICmp => ("uicmp", K::Cc, true, effects!()),
@@ -1089,6 +1095,9 @@ pub struct Module {
     /// Closers of `Shared` payloads holding resources: for the payload record type, a function
     /// `fn(ptr)` over the box's payload that closes the value the last holder's drop releases.
     pub shared_close: Vec<(Ty, FuncId)>,
+    /// Externs that are user `extern fn` shims (`ms_abi.h`): their sized numbers cross as the
+    /// same-width C types, extended per the platform ABI, instead of the runtime's 64-bit words.
+    pub c_externs: std::collections::BTreeSet<String>,
 }
 
 impl Default for Module {
@@ -1117,6 +1126,7 @@ impl Module {
             entry: None,
             desc_glue: Vec::new(),
             shared_close: Vec::new(),
+            c_externs: std::collections::BTreeSet::new(),
         }
     }
 

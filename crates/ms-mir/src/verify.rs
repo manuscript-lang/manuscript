@@ -576,7 +576,10 @@ impl Verifier<'_> {
             | Op::SDiv
             | Op::SRem
             | Op::Shl
-            | Op::Sshr => {
+            | Op::Sshr
+            | Op::Ushr
+            | Op::Rotl
+            | Op::Rotr => {
                 arity(2)?;
                 want(
                     m.types.is_int(t(0)) && t(1) == t(0) && res == Some(t(0)),
@@ -642,6 +645,13 @@ impl Verifier<'_> {
                 want(
                     (m.types.is_int(t(0)) || t(0) == Ty::BOOL) && t(0) == t(1) && res == Some(t(0)),
                     "operands and result must be both int or both bool",
+                )
+            }
+            Op::Clz | Op::Ctz | Op::Popcnt => {
+                arity(1)?;
+                want(
+                    t(0) == Ty::INT && res == Some(Ty::INT),
+                    "operand and result must be int",
                 )
             }
             Op::Not => {

@@ -8,7 +8,8 @@ import (
     read_file,
     remove,
     stat,
-    watch_native,
+    watch,
+    WatchOptions,
     write_file
 ) from "@std/os/fs.ms"
 import system_info from "@std/os/process.ms"
@@ -68,9 +69,12 @@ fn exercise(path: String) Unit!:
     try file.close()
 
     var watcher = try common_result(
-        result: watch_native(
-            path: path, recursive: false, max_entries: 4, max_events: 16,
-            overflow: "error"
+        result: watch(
+            path: path,
+            recursive: false,
+            options: WatchOptions(
+                max_entries: 4, max_events: 16, overflow: "error"
+            )
         )
     )
     let _appended = try common_result(result: append_file(path: path, data: "!"))

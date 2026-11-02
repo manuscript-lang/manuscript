@@ -41,12 +41,11 @@ A task has no time limit unless you give one. `spawn(entry, timeout: nanoseconds
 
 <!-- manuscript-example: test -->
 ```manuscript
-import Channel from "@std/io/channels.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
-fn wait_a_minute(ch: Channel[Unit, Unit]) Int:
+fn wait_a_minute(ch: TaskChannel[Unit, Unit]) Int:
     sleep(nanoseconds(60000000000))
     return 1
 
@@ -77,15 +76,14 @@ Values reach a task by being captured or sent on its channel, and come back as m
 
 ## Channels
 
-`TaskGroup[T, In, Out]` gives every task a channel that carries `In` values to the task and `Out` values back; both are `Unit` unless given. `Channel` comes from `@std/io/channels.ms`. The task's entry takes a `Channel[Out, In]`, and the `Task[T, In, Out]` that `spawn` returns holds the group's end, a `Channel[In, Out]`, in its `channel` field.
+`TaskGroup[T, In, Out]` gives every task a channel that carries `In` values to the task and `Out` values back; both are `Unit` unless given. `TaskChannel` comes from `@std/concurrency/tasks.ms`. The task's entry takes a `TaskChannel[Out, In]`, and the `Task[T, In, Out]` that `spawn` returns holds the group's end, a `TaskChannel[In, Out]`, in its `channel` field.
 
 <!-- manuscript-example: test -->
 ```manuscript
-import Channel from "@std/io/channels.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_ok from "@std/test/test.ms"
 
-fn square_all(ch: Channel[Int, Int]) Unit!:
+fn square_all(ch: TaskChannel[Int, Int]) Unit!:
     var c = ch
     while true:
         if let n = try c.receive():
@@ -103,7 +101,7 @@ test "a task answers messages on its channel":
     task.result() | try expect_ok | try expect_ok
 ```
 
-- `send(value)` moves `value` to the other end. It waits while the other end has 16 unread values.
+- `send(value)` moves `value` to the other end, so `In` and `Out` may be resources; a value still unread when its end closes is dropped, which closes it. It waits while the other end has 16 unread values.
 - `receive()` waits for the next value: `ok(value)`, or `ok(none)` once the other end closed and every value it sent was read.
 - `close()` closes this end. The other end reads what is left, then `ok(none)`; its sends give an `Error` of kind `Closed`. Using an end after closing it gives kind `Closed`, and unread values on it are dropped. Closing again does nothing.
 - A task's end closes when its entry returns, is cancelled, or never ran, so the group's `receive` ends with `ok(none)` instead of waiting forever. Closing the group closes every end.

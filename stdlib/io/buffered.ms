@@ -52,14 +52,25 @@ impl BufferedReader:
             Error("I/O: invalid input", kind: ErrorCategory.InvalidInput)
         )
 
-        let piece = try self.input.read(self.chunk)
+        # While unconsumed bytes wait for more input (a long token), request as much as is already held so the
+        # buffer doubles and the copies below total linear work instead of quadratic.
+        var wanted = self.chunk
+        if self.buffered() > wanted: wanted = self.buffered()
+
+        let piece = try self.input.read(wanted)
 
         if piece.is_none():
             self.done = true
             return ok(false)
 
-        let remaining = (self.buffer.slice(self.offset, self.buffer.length())).get()
-        self.buffer = remaining.concat(piece.get())
+        if self.buffered() == 0:
+            self.buffer = piece.get().clone()
+        else if self.offset == 0:
+            self.buffer = self.buffer.concat(piece.get())
+        else:
+            let remaining = (self.buffer.slice(self.offset, self.buffer.length())).get()
+            self.buffer = remaining.concat(piece.get())
+
         self.offset = 0
         return ok(true)
 
@@ -317,11 +328,23 @@ fn words_step(data: Bytes, start: Int, at_eof: Bool) ScanStep:
     return ScanStep(0)
 
 fn delimiter_step(data: Bytes, start: Int, mark: Bytes, at_eof: Bool) ScanStep:
-    let window = (data.slice(start, data.length())).get()
-    if let found = window.index_of(mark):
-        return ScanStep(found + mark.length(), (window.slice(0, found)).get())
-    if at_eof and window.length() > 0:
-        return ScanStep(window.length(), window)
+    # Match in place: only the token is copied, not the whole unconsumed buffer.
+    let width = mark.length()
+    let first = mark.get(0, 0)
+    var at = start
+
+    while true:
+        let found = data.index_of_byte(first, at)
+        if found.is_none() or found.get() + width > data.length(): break
+
+        let hit = found.get()
+        if (data.slice(hit, hit + width)).get() == mark:
+            return ScanStep(hit + width - start, (data.slice(start, hit)).get())
+
+        at = hit + 1
+
+    if at_eof and data.length() > start:
+        return ScanStep(data.length() - start, (data.slice(start, data.length())).get())
 
     return ScanStep(0)
 

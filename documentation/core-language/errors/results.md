@@ -145,6 +145,6 @@ fn discount_checked(price: Decimal, percent: Decimal) Decimal!:
     return discount(price, percent).map_error(discount_error)
 ```
 
-Add context with `wrap(context, cause)` from `@std/core.ms`: `error(wrap("read config", cause))` reports `read config: <cause message>`, keeps the kind and details, and stores the original message in `details["cause"]`. `join(errors)` combines several errors into one `Error` whose message holds theirs, one per line, with a `count` detail (none when the list is empty).
+Add context with `wrap_error(context, cause)` from `@std/core.ms`: `error(wrap_error("read config", cause))` reports `read config: <cause message>`, keeps the kind and details, and stores the original message in `details["cause"]`. `join_errors(errors)` combines several errors into one `Error` whose message holds theirs, one per line, with a `count` detail (none when the list is empty).
 
 Use [Optional](../types/optionals.md) for absence and [faults](faults.md) for broken invariants.

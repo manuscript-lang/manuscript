@@ -7,7 +7,7 @@
 # trials only, so a cheap wrong answer never improves a ranking. Tokens are input (cache reads included) plus
 # output. Turns are agent steps in the Harbor trajectory. Ranking: pass rate, then mean cost of passing trials.
 import JsonValue, parse from "@std/data/json.ms"
-import access, glob, stat from "@std/os/fs.ms"
+import access, glob, GlobOptions, stat from "@std/os/fs.ms"
 import stdout, stderr from "@std/io/io.ms"
 import arguments from "@std/os/process.ms"
 import parse_timestamp, now from "@std/os/time.ms"
@@ -215,7 +215,8 @@ fn collect(dirs: List[String]) Int:
     var rows = read_trials(trials_file())
 
     for jobs in dirs:
-        for path in glob(jobs, "**/*__*", none).get([]):
+        for entry in glob(jobs, GlobOptions(patterns: ["**/*__*"])).get([]):
+            let path = entry.path.clone()
             let dir = "{jobs}/{path}"
             let leaf = path.split("/").last().get("")
             let is_dir = stat(dir, true).to_optional().map(fn s: s.directory).get(false)
@@ -382,8 +383,11 @@ fn render(src_arg: String?) Int:
     var src = src_arg.get("")
 
     if src == "":
-        let found = glob("{root()}/results", "trials-*.jsonl", none).get([])
-        src = "{root()}/results/{found.sorted().last().get("")}"
+        let found = glob("{root()}/results", GlobOptions(patterns: ["trials-*.jsonl"])).get(
+            []
+        )
+        let names = found.map(fn e: e.path.clone())
+        src = "{root()}/results/{names.sorted().last().get("")}"
 
     let board = src.replace("trials-", "leaderboard-").replace(".jsonl", ".md")
     let trials = read_trials(src)

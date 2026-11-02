@@ -125,3 +125,13 @@ test "host tree walks the same way":
             "filesystem: invalid input", kind: ErrorCategory.InvalidInput
         )
     ): return panic("host escape")
+
+test "memory tree listing follows writes and removals":
+    var tree = memory_tree()
+    try tree.write_file("a/b/one.txt", "1".to_bytes())
+    try tree.write_file("a/two.txt", "2".to_bytes())
+    try tree.remove("a/b", true)
+
+    let names = (try tree.children("a", none)).map(fn e: e.name.clone())
+    if names != ["two.txt"]: return panic("children {names}")
+    if (try tree.children("", none)).length() != 1: return panic("root")

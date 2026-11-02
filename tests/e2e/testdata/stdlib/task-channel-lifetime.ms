@@ -1,22 +1,21 @@
-import Channel from "@std/io/channels.ms"
 import memory_usage from "@std/os/process.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
-fn send_one(ch: Channel[Int, Unit]) Unit!:
+fn send_one(ch: TaskChannel[Int, Unit]) Unit!:
     try ch.send(7)
     return ok(unit)
 
-fn send_nothing(ch: Channel[Int, Unit]) Unit!:
+fn send_nothing(ch: TaskChannel[Int, Unit]) Unit!:
     return ok(unit)
 
-fn retained_end(group: TaskGroup[Unit!, Unit, Int]) Channel[Unit, Int]!:
+fn retained_end(group: TaskGroup[Unit!, Unit, Int]) TaskChannel[Unit, Int]!:
     let task = group.spawn(send_one)
     task.result() | try expect_ok | try expect_ok
     return ok(task.channel.clone())
 
-fn send_payloads(ch: Channel[String, Unit]) Unit!:
+fn send_payloads(ch: TaskChannel[String, Unit]) Unit!:
     var end = ch
     for index in 0..16:
         try end.send("unread channel payload".repeat(16).get(""))
@@ -27,13 +26,13 @@ fn collect_and_drop(group: TaskGroup[Unit!, Unit, Int]) Unit!:
     task.result() | try expect_ok | try expect_ok
     return ok(unit)
 
-fn close_on_return() Channel[Unit, Int]!:
+fn close_on_return() TaskChannel[Unit, Int]!:
     let group = TaskGroup[Unit!, Unit, Int]()
     let task = group.spawn(send_one)
     task.result() | try expect_ok | try expect_ok
     return ok(task.channel.clone())
 
-fn close_on_cancel(ch: Channel[Channel[Unit, Int], Unit]) Unit:
+fn close_on_cancel(ch: TaskChannel[TaskChannel[Unit, Int], Unit]) Unit:
     let group = TaskGroup[Unit!, Unit, Int]()
     let task = group.spawn(send_one)
     let _sent = task.result()
@@ -166,7 +165,7 @@ test "return cleanup closes a collected channels retained end":
     )
 
 test "cancellation cleanup closes collected channels retained outside the task":
-    let outer = TaskGroup[Unit, Unit, Channel[Unit, Int]]()
+    let outer = TaskGroup[Unit, Unit, TaskChannel[Unit, Int]]()
     var task = outer.spawn(close_on_cancel, timeout: nanoseconds(20000000))
 
     if var end = task.channel.receive() | try expect_ok:
@@ -179,7 +178,7 @@ test "cancellation cleanup closes collected channels retained outside the task":
     else:
         try expect_true(false)
 
-fn double_all(ch: Channel[Int, Int]) Int:
+fn double_all(ch: TaskChannel[Int, Int]) Int:
     var count = 0
 
     while true:

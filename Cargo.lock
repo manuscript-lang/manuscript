@@ -1060,6 +1060,7 @@ dependencies = [
  "ms-check",
  "ms-mir",
  "ms-rt",
+ "ms-rt-abi",
  "ms-std-decimal",
  "ms-syntax",
 ]

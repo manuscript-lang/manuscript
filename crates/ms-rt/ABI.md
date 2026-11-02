@@ -11,7 +11,8 @@ the earlier Go runtime has been removed.
 _(Newest first. Anything that alters a layout, signature or ownership rule is
 recorded here before it is committed.)_
 
-- **extern (ABI_VERSION unchanged).** `extern def` declarations call a native symbol of the same name under the conventions below, for scalars, borrowed `String` arguments, and `Int`/`Float`/`Bool`/`String`/`Unit` results, or `Result[T, E]` as a `u8` status (`n` names the `n`th case of a payload-free `E`) plus `out` (`documentation/core-language/functions/native-functions.md`). `crates/ms-rt-abi/include/ms_abi.h` is the C view of `StrVal` for such natives; `msrt_string_from_bytes` is how they build owned string results.
+- **`ms_abi.h` v1 (ABI_VERSION unchanged).** User `extern fn` shims follow `crates/ms-rt-abi/include/ms_abi.h` instead of the runtime conventions: sized numbers cross as the same-width C types (`signext`/`zeroext`), `Bytes` as `const ms_bytes *`, `List[T]` as an `ms_list` (`ListRef`: the list's address and an `ELEM_*` element code), a user `extern type` as an object from `ms_object_new_v1` (payload at offset 32, the shim's drop at 16). Outputs (`out`, `code_out`, `message_out`) are filled with empty values before the call and dropped after it, unlike the uninitialised `out` below. `ms-rt` exports the header's functions as `ms_*_v1` (`cabi.rs`).
+- **extern (ABI_VERSION unchanged).** `extern fn` declarations call a native symbol of the same name under the conventions below, for scalars, borrowed `String` arguments, and `Int`/`Float`/`Bool`/`String`/`Unit` results, or `Result[T, E]` as a `u8` status (`n` names the `n`th case of a payload-free `E`) plus `out` (`documentation/core-language/functions/native-functions.md`). `crates/ms-rt-abi/include/ms_abi.h` is the C view of `StrVal` for such natives; `msrt_string_from_bytes` is how they build owned string results.
 - **v3 (collection creator evidence).** `MapVal` appends a static key descriptor pointer (56 bytes).
   `msrt_map_stamp` captures creator-module equality and hashing without replacing existing evidence;
   clone, clear, and derived Set operations retain it. Descriptor-neutral native maps keep a null
@@ -26,14 +27,14 @@ recorded here before it is committed.)_
   and returns a `List[FileEvent]` (`kind` is `rename` or `change`); a native watcher returns one event per call, a polling watcher
   every difference sorted by path. `STATUS_CLOSED` after `msstd_fs_watch_close`, `STATUS_LIMIT_EXCEEDED` on overflow with policy `error`.
   No worker thread: events are read from the kernel inside `next`, so the queue is bounded by the kernel buffer plus `max_events`.
-- **v2.6 (`ms-std-fs`).** File handles are the `@std/io` stream handle (`msstd_fs_file_open`; `reader()`/`writer()` reuse
+- **v2.6 (`ms-std-fs`).** File handles are the `@std/io` stream handle (`msstd_fs_open`; `reader()`/`writer()` reuse
   `msstd_io_*`), directory cursors and scoped temporary directories are their own refcounted handles (`msstd_fs_directory_*`,
-  `msstd_fs_temporary_*`; `close` is idempotent and a temporary's `close` reports removal failures). `msstd_fs_open_flags` maps a mode string
-  to host flags. `msstd_fs_glob` returns a `List[String]`; `msstd_fs_glob_entries` returns parallel `paths`/`names` string lists plus a flag
+  `msstd_fs_temporary_*`; `close` is idempotent and a temporary's `close` reports removal failures). `msstd_fs_open` takes a mode string.
+  `msstd_fs_glob_entries` returns parallel `paths`/`names` string lists plus a flag
   byte per entry. `msstd_fs_copy` takes option bits (1 recursive, 2 replace, 4 error_on_exists, 8 dereference, 16 preserve, 32 verbatim), a
   clone mode string and entry/byte budgets (`i64::MAX` = unlimited). Callbacks are `extern "C-unwind"` thunks with a captured `env`: strings
   passed to them are borrowed for the call (the runtime releases its copies afterwards), `copy`'s returns non-zero to keep an entry and
-  `glob_entries`' returns non-zero to exclude it. `msstd_fs_constants` returns the open-flag and mode constants as parallel name/value lists.
+  `glob_entries`' returns non-zero to exclude it.
   Glob matching lives in `ms-std-path::glob` (shared with `@std/fs`) (braces, extglobs, `**`, and dotfile rules).
 - **v2.5 (`ms-std-process`).** `msstd_process_*` covers process control and child processes. `STATUS_TIMEOUT` (13) and `STATUS_OUTPUT_LIMIT` (14)
   join the table for `CommandError`. `Map[String, String]` crosses as two parallel string lists (`environment`, `replace`). `command_run` takes

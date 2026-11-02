@@ -895,35 +895,35 @@ impl MapCloseValues[U] for Map[T, U]:
                 value.close().get(none)
             i -= 1
 
-interface MapRemoveIf[T: Hashable & Clonable, U]:
-    var fn remove_if(predicate: fn(T, U) Bool) Unit
+interface MapRetain[T: Hashable & Clonable, U]:
+    var fn retain(keep: fn(T, U) Bool) Unit
 
-impl MapRemoveIf[T, U] for Map[T, U]:
-    # Removes every entry for which `predicate(key, value)` is True, in place; the rest keep their insertion order.
-    # `predicate` is called once per entry in insertion order, before any removal.
-    # Example: `cache.remove_if(fn key, hits: hits == 0)` evicts unused entries.
-    var fn remove_if(predicate: fn(T, U) Bool) Unit:
+impl MapRetain[T, U] for Map[T, U]:
+    # Keeps only the entries for which `keep(key, value)` is True, in place, like `List.retain`; the rest keep their insertion order.
+    # `keep` is called once per entry in insertion order, before any removal.
+    # Example: `cache.retain(fn key, hits: hits > 0)` evicts unused entries.
+    var fn retain(keep: fn(T, U) Bool) Unit:
         var doomed = List[T]()
         self.for_each(
             fn key,
             value:
-                if predicate(key, value):
+                if not keep(key, value):
                     doomed.append(key.clone())
         )
         for key in doomed:
             self.remove(key)
 
-interface SetRemoveIf[T: Hashable & Clonable]:
-    var fn remove_if(predicate: fn(T) Bool) Unit
+interface SetRetain[T: Hashable & Clonable]:
+    var fn retain(keep: fn(T) Bool) Unit
 
-impl SetRemoveIf[T] for Set[T]:
-    # Removes every value for which `predicate` is True, in place; the rest keep their insertion order.
-    # Example: `seen.remove_if(fn n: n < 0)`.
-    var fn remove_if(predicate: fn(T) Bool) Unit:
+impl SetRetain[T] for Set[T]:
+    # Keeps only the values for which `keep` is True, in place, like `List.retain`; the rest keep their insertion order.
+    # Example: `seen.retain(fn n: n >= 0)`.
+    var fn retain(keep: fn(T) Bool) Unit:
         var doomed = List[T]()
         self.for_each(
             fn value:
-                if predicate(value):
+                if not keep(value):
                     doomed.append(value.clone())
         )
         for value in doomed:

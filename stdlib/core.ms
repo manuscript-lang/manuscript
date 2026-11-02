@@ -183,16 +183,16 @@ export interface Hashable:
     fn hash() Int
 
 # Returns a copy of `cause` with `context` in front of its message: `try read(path)` becomes
-# `error(wrap("read config", cause))`. The kind and details are kept, and the original message is
+# `error(wrap_error("read config", cause))`. The kind and details are kept, and the original message is
 # in `details["cause"]`.
-export fn wrap(context: String, cause: Error) Error:
+export fn wrap_error(context: String, cause: Error) Error:
     var details = cause.details.clone()
     details.add("cause", cause.message.clone())
     return Error(context + ": " + cause.message, cause.kind, details)
 
 # Combines `errors` into one error whose message holds theirs, one per line, and whose `count` detail is
 # how many there were. Returns none when the list is empty.
-export fn join(errors: List[Error]) Error?:
+export fn join_errors(errors: List[Error]) Error?:
     if errors.length() == 0:
         return none
 

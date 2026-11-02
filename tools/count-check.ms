@@ -7,7 +7,7 @@
 # MS names the ms that runs the programs (default target/release/ms).
 # Usage: ms run tools/count-check.ms [-- files]
 import tool_ms, use_stats_runtime from "./lib.ms"
-import glob, read_file, temporary from "@std/os/fs.ms"
+import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
 import arguments, change_directory, working_directory, run from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
 
@@ -28,9 +28,8 @@ export fn main() Int:
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
     if files.length() == 0:
-        for f in glob("tests/ownership-counts", "*.ms").get(List[String]()): files.append(
-            "tests/ownership-counts/{f}"
-        )
+        for f in glob("tests/ownership-counts", GlobOptions(patterns: ["*.ms"])).get([]):
+            files.append("tests/ownership-counts/{f.path}")
 
     let ms = tool_ms(root.clone())
     let scratch = temporary("ms-counts-").get()

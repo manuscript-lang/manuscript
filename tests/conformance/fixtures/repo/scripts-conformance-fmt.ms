@@ -10,7 +10,7 @@ import (
 ) from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 import arguments from "@std/os/process.ms"
-import glob from "@std/os/fs.ms"
+import glob, GlobOptions from "@std/os/fs.ms"
 import run from "@std/os/process.ms"
 import parse from "@std/data/json.ms"
 
@@ -74,13 +74,18 @@ fn inventory(suite: String) Result[List[String], Error]:
     var files: List[String] = []
 
     if suite == "all" or suite == "core":
-        let core = try glob("tests/e2e/testdata/accept", "*.ms")
+        let core = try glob(
+            "tests/e2e/testdata/accept", GlobOptions(patterns: ["*.ms"])
+        )
         core.is_empty() | try expect_false
-        for file in core: files.append("tests/e2e/testdata/accept/{file}")
+        for file in core: files.append("tests/e2e/testdata/accept/{file.path}")
 
-        let projects = try glob("tests/e2e/testdata/projects", "*/conformance_test.ms")
+        let projects = try glob(
+            "tests/e2e/testdata/projects",
+            GlobOptions(patterns: ["*/conformance_test.ms"])
+        )
         projects.is_empty() | try expect_false
-        for file in projects: files.append("tests/e2e/testdata/projects/{file}")
+        for file in projects: files.append("tests/e2e/testdata/projects/{file.path}")
         for file in [
             "examples/hello/test.ms", "examples/tooling-demo/src/math.ms",
             "pkg/tooling/format/testdata/compact.input.ms",
@@ -89,9 +94,11 @@ fn inventory(suite: String) Result[List[String], Error]:
             files.append(file)
 
     if suite == "all" or suite == "stdlib":
-        let library = try glob("tests/e2e/testdata/stdlib", "*.ms")
+        let library = try glob(
+            "tests/e2e/testdata/stdlib", GlobOptions(patterns: ["*.ms"])
+        )
         library.is_empty() | try expect_false
-        for file in library: files.append("tests/e2e/testdata/stdlib/{file}")
+        for file in library: files.append("tests/e2e/testdata/stdlib/{file.path}")
 
     files.is_empty() | try expect_false
     return ok(files.sorted(fn left, right: left.compare(right)))

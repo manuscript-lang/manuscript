@@ -1,4 +1,4 @@
-//! Tree operations: glob queries, `copy_tree` and `copy`.
+//! Tree operations: glob queries and `copy`.
 use crate::err::{Fail, Res};
 use crate::ops;
 use crate::path;
@@ -6,7 +6,7 @@ use crate::sys::{self, CPath};
 use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt::glue::poll_cancel;
-use ms_rt_abi::{STATUS_ALREADY_EXISTS, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
+use ms_rt_abi::{STATUS_ALREADY_EXISTS, STATUS_LIMIT_EXCEEDED};
 use ms_std_path::glob::Glob;
 
 pub const UNLIMITED: i64 = i64::MAX;
@@ -44,68 +44,8 @@ fn read_dir(p: &[u8]) -> Res<sys::DirEntries> {
     sys::read_dir(&cpath(p)?).map_err(|e| Fail::errno(e, "open", p))
 }
 
-/// `filepath.WalkDir` without following links: `visit(path, relative, is_dir)` runs on the root
-/// first, then each directory's children in name order. `relative` is `.` for the root.
-type Visit<'a> = dyn FnMut(&[u8], &[u8], bool) -> Res<()> + 'a;
-
-fn walk_dir(root: &[u8], visit: &mut Visit) -> Res<()> {
-    let st = lstat(root)?;
-    walk(root, b".", is_dir(&st), visit)
-}
-
-fn walk(p: &[u8], rel: &[u8], dir: bool, visit: &mut Visit) -> Res<()> {
-    poll_cancel();
-    visit(p, rel, dir)?;
-    if !dir {
-        return Ok(());
-    }
-    let mut entries = read_dir(p)?;
-    entries.sort_by(|a, b| a.0.cmp(&b.0));
-    for (name, kind) in entries {
-        let child = path::join(p, &name);
-        // Relative paths use `/` on every host, as glob patterns do.
-        let child_rel = if rel == b"." {
-            name.clone()
-        } else {
-            [rel, b"/", &name].concat()
-        };
-        let (directory, _) = ops::entry_kind(p, &name, kind);
-        walk(&child, &child_rel, directory, visit)?;
-    }
-    Ok(())
-}
-
-fn utf8(b: &[u8]) -> Res<&str> {
-    core::str::from_utf8(b).map_err(|_| Fail::status(STATUS_UNSUPPORTED))
-}
-
-/// `glob`: the sorted relative paths under `root` matching `pattern`.
-pub fn glob(root: &[u8], pattern: &[u8], max: i64) -> Res<Vec<Vec<u8>>> {
-    let compiled = core::str::from_utf8(pattern)
-        .ok()
-        .and_then(Glob::new)
-        .ok_or_else(Fail::invalid)?;
-    let mut items: Vec<Vec<u8>> = Vec::new();
-    walk_dir(root, &mut |_, rel, _| {
-        if rel == b"." {
-            return Ok(());
-        }
-        let rel = ops::lossy_name(rel);
-        let text = utf8(&rel)?;
-        if compiled.matches(text) {
-            if items.len() as i64 >= max {
-                return Err(limit_exceeded());
-            }
-            items.push(rel);
-        }
-        Ok(())
-    })?;
-    items.sort();
-    Ok(items)
-}
-
 // ---------------------------------------------------------------------------
-// copy_tree
+// copy support
 // ---------------------------------------------------------------------------
 
 /// Whether `target` is `source` or lies inside it (both absolute and cleaned).
@@ -180,103 +120,6 @@ fn copy_stream(input: sys::Fd, output: sys::Fd, dest: &[u8], bytes: &mut i64) ->
         }
         *bytes -= n as i64;
     }
-}
-
-/// `copy_tree`: copies a tree without following source links; refuses to copy into itself.
-pub fn copy_tree(
-    source: &[u8],
-    destination: &[u8],
-    replace: bool,
-    entries: i64,
-    bytes: i64,
-) -> Res<()> {
-    if entries < 0 || bytes < 0 {
-        return Err(Fail::invalid());
-    }
-    let real = ops::eval_symlinks(source).map_err(|e| Fail::errno(e, "lstat", source))?;
-    let resolved = resolve_destination(destination)?;
-    if within_path(&real, &resolved) {
-        return Err(Fail::invalid());
-    }
-    let (mut entries, mut bytes) = (entries, bytes);
-    copy_tree_at(source, destination, replace, &mut entries, &mut bytes)
-}
-
-fn copy_tree_at(
-    source: &[u8],
-    dest: &[u8],
-    replace: bool,
-    entries: &mut i64,
-    bytes: &mut i64,
-) -> Res<()> {
-    poll_cancel();
-    if *entries == 0 {
-        return Err(limit_exceeded());
-    }
-    *entries -= 1;
-    let info = lstat(source)?;
-    match sys::stat(&cpath(dest)?, false) {
-        Ok(old) => {
-            if same_file(&info, &old) {
-                return Err(Fail::failed("source and destination are the same file"));
-            }
-            if !replace {
-                return Err(Fail::status(STATUS_ALREADY_EXISTS));
-            }
-        }
-        Err(e) if sys::is_not_found(e) => {}
-        Err(e) => return Err(Fail::errno(e, "lstat", dest)),
-    }
-    let perm = info.mode & 0o777;
-    if is_link(&info) {
-        let target =
-            sys::readlink(&cpath(source)?).map_err(|e| Fail::errno(e, "readlink", source))?;
-        if replace {
-            remove_ignoring_missing(dest)?;
-        }
-        return sys::symlink(&cpath(&target)?, &cpath(dest)?)
-            .map_err(|e| Fail::errno_paths(e, "symlink", &[&target, dest]));
-    }
-    if is_dir(&info) {
-        if let Ok(old) = sys::stat(&cpath(dest)?, false)
-            && !is_dir(&old)
-        {
-            return Err(Fail::failed("destination is not a directory"));
-        }
-        match sys::mkdir(&cpath(dest)?, perm as u32) {
-            Ok(()) => {}
-            Err(e) if sys::is_exists(e) => {}
-            Err(e) => return Err(Fail::errno(e, "mkdir", dest)),
-        }
-        for (name, _) in read_dir(source)? {
-            copy_tree_at(
-                &path::join(source, &name),
-                &path::join(dest, &name),
-                replace,
-                entries,
-                bytes,
-            )?;
-        }
-        return Ok(());
-    }
-    if !is_regular(&info) {
-        return Err(Fail::failed(
-            "copy_tree requires regular files, directories, or symlinks",
-        ));
-    }
-    let input =
-        sys::open(&cpath(source)?, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", source))?;
-    let result = (|| {
-        if replace {
-            remove_ignoring_missing(dest)?;
-        }
-        let output = open_out(dest, perm as u32)?;
-        let copied = copy_stream(input, output, dest, bytes);
-        let closed = sys::close(output).map_err(|e| Fail::errno(e, "close", dest));
-        copied.and(closed)
-    })();
-    let _ = sys::close(input);
-    result
 }
 
 // ---------------------------------------------------------------------------
@@ -772,6 +615,46 @@ fn relative(root: &[u8], p: &[u8]) -> Vec<u8> {
         ups.extend_from_slice(&p[skip..]);
     }
     ups
+}
+
+/// Test helper: the sorted relative matches of one pattern, as `glob_entries` returns them.
+#[cfg(test)]
+pub(crate) fn glob(root: &[u8], pattern: &[u8], max: i64) -> Res<Vec<Vec<u8>>> {
+    let patterns: [&[u8]; 1] = [pattern];
+    let options = GlobOptions {
+        patterns: &patterns,
+        exclude: &[],
+        follow_links: false,
+        max_entries: i64::MAX,
+        max_results: max,
+    };
+    Ok(glob_entries(root, &options, None)?
+        .into_iter()
+        .map(|e| e.path)
+        .collect())
+}
+
+/// Test helper: a recursive copy with entry and byte budgets.
+#[cfg(test)]
+pub(crate) fn copy_tree(
+    source: &[u8],
+    destination: &[u8],
+    replace: bool,
+    entries: i64,
+    bytes: i64,
+) -> Res<()> {
+    let options = CopyOptions {
+        recursive: true,
+        replace,
+        error_on_exists: true,
+        dereference: false,
+        preserve: false,
+        verbatim: false,
+        clone: Clone::None,
+        entries,
+        bytes,
+    };
+    copy(source, destination, options, None)
 }
 
 #[cfg(test)]

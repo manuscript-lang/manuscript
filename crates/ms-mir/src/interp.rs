@@ -635,6 +635,18 @@ impl<'m> Interp<'m> {
             }
             Op::Shl => set!(Val::Int(int!(0).wrapping_shl(int!(1) as u32))),
             Op::Sshr => set!(Val::Int(int!(0).wrapping_shr(int!(1) as u32))),
+            Op::Ushr => set!(Val::Int(
+                ((int!(0) as u64).wrapping_shr(int!(1) as u32)) as i64
+            )),
+            Op::Rotl => set!(Val::Int(
+                (int!(0) as u64).rotate_left((int!(1) & 63) as u32) as i64
+            )),
+            Op::Rotr => set!(Val::Int(
+                (int!(0) as u64).rotate_right((int!(1) & 63) as u32) as i64
+            )),
+            Op::Clz => set!(Val::Int(i64::from(int!(0).leading_zeros()))),
+            Op::Ctz => set!(Val::Int(i64::from(int!(0).trailing_zeros()))),
+            Op::Popcnt => set!(Val::Int(i64::from(int!(0).count_ones()))),
             Op::Not => set!(Val::Bool(!boolean!(0))),
             Op::UICmp => {
                 let Imm::Cc(cc) = inst.imm else {

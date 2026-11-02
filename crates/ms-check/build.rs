@@ -31,20 +31,65 @@ fn main() {
         }
     }
     names.sort();
+    let texts: Vec<String> = names
+        .iter()
+        .map(|name| std::fs::read_to_string(dir.join(name)).expect("read stdlib module"))
+        .collect();
+    let eager = eager_modules(&names, &texts);
     let mut out = String::from(
-        "/// Bundled standard declarations in file-name order.\npub const SOURCES: &[(&str, &str)] = &[\n",
+        "/// Bundled standard declarations in file-name order, and whether each loads with the standard declarations.\npub const SOURCES: &[(&str, &str, bool)] = &[\n",
     );
-    for name in &names {
+    for (i, name) in names.iter().enumerate() {
         let path = dir.join(name);
         println!("cargo:rerun-if-changed={}", path.display());
         writeln!(
             out,
-            "    ({name:?}, include_str!({:?})),",
-            path.display().to_string()
+            "    ({name:?}, include_str!({:?}), {}),",
+            path.display().to_string(),
+            eager[i]
         )
         .unwrap();
     }
     out.push_str("];\n");
     let dest = PathBuf::from(std::env::var("OUT_DIR").expect("out dir")).join("std_sources.rs");
     std::fs::write(dest, out).expect("write");
+}
+
+#[path = "src/bundled.rs"]
+mod bundled;
+
+/// Modules the standard declarations need at load: every module that is not pure source, the extension
+/// modules every program uses, and everything they import. The rest load when a program first imports them.
+fn eager_modules(names: &[String], texts: &[String]) -> Vec<bool> {
+    let extension = |name: &str| {
+        bundled::EXTENSION_MODULES
+            .iter()
+            .any(|path| path.trim_end_matches("+source") == format!("@std/{name}"))
+    };
+    let parsed: Vec<ms_syntax::ast::Module> = names
+        .iter()
+        .zip(texts)
+        .map(|(name, text)| {
+            let file: std::sync::Arc<str> = std::sync::Arc::from(format!("@std/{name}").as_str());
+            ms_syntax::parser::parse(&file, text)
+                .unwrap_or_else(|d| panic!("parse stdlib/{name}: {d}"))
+        })
+        .collect();
+    let mut eager = vec![false; names.len()];
+    let mut stack: Vec<usize> = (0..names.len())
+        .filter(|&i| extension(&names[i]) || !bundled::is_pure_source(&parsed[i]))
+        .collect();
+    while let Some(i) = stack.pop() {
+        if eager[i] {
+            continue;
+        }
+        eager[i] = true;
+        for import in &parsed[i].imports {
+            let path = import.path.strip_prefix("@std/").unwrap_or(&import.path);
+            if let Some(j) = names.iter().position(|n| n == path) {
+                stack.push(j);
+            }
+        }
+    }
+    eager
 }

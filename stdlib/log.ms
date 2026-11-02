@@ -219,7 +219,7 @@ impl Logger:
         if let text = data: line = "{line},\"data\":{text}"
         line = "{line}\}\n"
         if let max = self.max_bytes:
-            if line.to_bytes().length() > max: return error(
+            if line.byte_length() > max: return error(
                 Error(
                     "logging: limit exceeded", kind: ErrorCategory.LimitExceeded
                 )

@@ -119,6 +119,31 @@ fn malformed_manifests() {
             "duplicate manifest key",
         ),
         (
+            "reserved embed name",
+            format!("{m}[embed]\n\"@std\" = \"src\"\n"),
+            "invalid or reserved embed name",
+        ),
+        (
+            "embed target is a file",
+            format!("{m}[embed]\n\"@assets\" = \"src/main.ms\"\n"),
+            "must name an existing directory",
+        ),
+        (
+            "embed target is missing",
+            format!("{m}[embed]\n\"@assets\" = \"missing\"\n"),
+            "cannot be resolved",
+        ),
+        (
+            "embed target outside the project",
+            format!("{m}[embed]\n\"@assets\" = \"../outside\"\n"),
+            "cannot be resolved",
+        ),
+        (
+            "embed and alias share a name",
+            format!("{m}[aliases]\n\"@both\" = \"src\"\n[embed]\n\"@both\" = \"src\"\n"),
+            "both [aliases] and [embed]",
+        ),
+        (
             "unterminated quoted key",
             "[project]\n\"nam = \"x\"\n".into(),
             "ms.toml:2:1: invalid manifest assignment",
@@ -289,4 +314,16 @@ fn reserved_std_alias_is_not_suggested() {
     let error = read_project(&manifest).expect_err("std alias").to_string();
     assert!(error.contains("invalid or reserved alias std"), "{error}");
     assert!(!error.contains("did you mean"), "{error}");
+}
+
+#[test]
+fn embed_names_resolve_to_generated_modules() {
+    let source = MANIFEST.to_string() + "[embed]\n\"@assets\" = \"src\"\n";
+    let (_dir, p) = fixture(&source);
+    let got = resolve_import(&p, &p.entry, "@assets", &Overlay::new()).unwrap();
+    assert_eq!(got, join(&join(&p.root, ".ms-embed"), "assets.ms"));
+    let error = resolve_import(&p, &p.entry, "@assets/x.ms", &Overlay::new())
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("import it as"), "{error}");
 }

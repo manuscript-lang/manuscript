@@ -1,5 +1,5 @@
 import expect_equal, expect_true, expect_false from "@std/test/test.ms"
-import wrap, join from "@std/core.ms"
+import wrap_error, join_errors from "@std/core.ms"
 import share from "@std/concurrency/shared.ms"
 import once, lock from "@std/concurrency/sync.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
@@ -30,19 +30,19 @@ test "once runs the action a single time across tasks":
     try expect_equal(hits.get(), 1)
     try expect_true(gate.is_done())
 
-test "wrap adds context and keeps the kind":
+test "wrap_error adds context and keeps the kind":
     let gone = Error("gone", kind: ErrorCategory.NotFound, details: {"path": "a.txt"})
-    let outer = wrap("load", wrap("read", gone))
+    let outer = wrap_error("load", wrap_error("read", gone))
     try expect_equal(outer.message, "load: read: gone")
     try expect_equal(outer.kind, ErrorCategory.NotFound)
     try expect_equal(outer.details["path"], "a.txt")
     try expect_equal(outer.details["cause"], "read: gone")
 
-test "join reports each error and none for empty":
-    let none_joined = join([])
+test "join_errors reports each error and none for empty":
+    let none_joined = join_errors([])
     try expect_true(none_joined.is_none())
 
-    let both = join([Error("a"), Error("b")])
+    let both = join_errors([Error("a"), Error("b")])
 
     if let joined = both:
         try expect_equal(joined.message, "a\nb")

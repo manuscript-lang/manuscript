@@ -4,7 +4,7 @@ import (
     chacha20poly1305_open,
     chacha20poly1305_seal,
     poly1305
-) from "@std/data/chacha20poly1305.ms"
+) from "@std/crypto/chacha20poly1305.ms"
 import Bytes from "@std/bytes.ms"
 import expect_equal, expect_true from "@std/test/test.ms"
 

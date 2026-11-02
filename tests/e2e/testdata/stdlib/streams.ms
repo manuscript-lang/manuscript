@@ -17,8 +17,7 @@ import HashAlgorithm, sha256 from "@std/crypto.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
 import open, read_file, temporary, write_file from "@std/os/fs.ms"
-import Channel from "@std/io/channels.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import TaskChannel, TaskGroup, as_channel from "@std/concurrency/tasks.ms"
 import expect_ok from "@std/test/test.ms"
 
 fn upper(chunk: Bytes) Bytes:
@@ -108,8 +107,8 @@ test "take rejects a negative limit and read_line counts the terminator":
         "final line at the limit"
     )
 
-fn produce(ch: Channel[Bytes, Unit]) Unit:
-    var sink = channel_writer(ch)
+fn produce(ch: TaskChannel[Bytes, Unit]) Unit:
+    var sink = channel_writer(as_channel(ch))
     sink.write("alpha ").get()
     sink.write_bytes("beta ".to_bytes()).get()
     sink.write("gamma").get()
@@ -118,7 +117,7 @@ fn produce(ch: Channel[Bytes, Unit]) Unit:
 test "channel pipe carries a task's writes to a reader":
     var group = TaskGroup[Unit, Unit, Bytes]()
     let task = group.spawn(produce)
-    var source = channel_reader(task.channel.clone())
+    var source = channel_reader(as_channel(task.channel.clone()))
     let first = (try source.read(3)).get()
     if first != "alp".to_bytes(): return panic("partial chunk")
 

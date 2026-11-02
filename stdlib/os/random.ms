@@ -114,7 +114,7 @@ export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?
     if not valid_weights(values.length(), weights):
         return error(Error("random: invalid input", kind: ErrorCategory.InvalidInput))
 
-    let point = try float() * weights.sum()
+    let point = try float() * weight_total(weights)
     return ok(values[weighted_position(weights, point)].clone())
 
 fn positions(count: Int) List[Int]:
@@ -124,6 +124,14 @@ fn positions(count: Int) List[Int]:
     return out
 
 # Reports whether `weights` has `count` finite, non-negative entries with a positive total.
+# Sums the weights. A loop rather than `List.sum`, because `@std/math/math.ms` imports this module and the
+# modules the collection extensions import cannot use those extensions.
+fn weight_total(weights: List[Float]) Float:
+    var total = 0.0
+    for weight in weights:
+        total += weight
+    return total
+
 fn valid_weights(count: Int, weights: List[Float]) Bool:
     if weights.length() != count:
         return false
@@ -252,7 +260,7 @@ impl SeededRandom:
                 "random weighted_choice: weights must match the values, be finite and non-negative, and not all be zero"
             )
 
-        let point = self.float() * weights.sum()
+        let point = self.float() * weight_total(weights)
         return values[weighted_position(weights, point)].clone()
 
     # Returns a standard normal Float (mean 0, standard deviation 1) using the Box-Muller transform.

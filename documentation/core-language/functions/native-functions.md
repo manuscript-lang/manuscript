@@ -24,27 +24,79 @@ An extern has no body and no trailing `:`. It may be exported. It cannot be gene
 
 ## Types that cross
 
-An extern follows the runtime's native conventions (`ms-rt/ABI.md`, section 1).
+An extern follows `crates/ms-rt-abi/include/ms_abi.h`, which a C shim includes.
 
-| Manuscript | Native |
-| --- | --- |
-| `Int` | `int64_t` |
-| `Float` | `double` (not C `float`) |
-| `Bool` | `uint8_t`, 0 or 1 |
-| `String` argument | `const ms_str *`, borrowed for the call |
-| `String` result | trailing `ms_str *out`, filled by `msrt_string_from_bytes` |
-| `Unit` result | `void` |
-| `Result[T, E]` result | `uint8_t` status, with `T` through a trailing `out` unless it is `Unit` |
+| Manuscript | C parameter | C result |
+| --- | --- | --- |
+| `Int`, `Int8` ... `Int32`, `UInt8` ... `UInt64` | `int64_t`, `int8_t` ... `uint64_t` | same |
+| `Float`, `Float32` | `double`, `float` | same |
+| `Bool` | `bool` | same |
+| `String` | `const ms_str *`, borrowed | trailing `ms_str *out` |
+| `Bytes` | `const ms_bytes *`, borrowed | trailing `ms_bytes *out` |
+| `List[T]`, `T` one of the types above or an extern type | `const ms_list *`, borrowed | trailing `ms_list *out` |
+| an `extern type` | `ms_object *`, borrowed | `ms_object *`, owned by the program |
+| `Unit` | not allowed | `void` |
+| `Result[T, E]` | not allowed | `uint8_t` status, `T` through `out`, then `code_out`, `message_out` |
 
-A `Result[T, E]` return takes `Int`, `Float`, `Bool`, `String`, or `Unit` for `T`. `E` is a `type` whose cases all carry no payload. The native returns `0` for success, and `1`, `2`, ... for the first, second, ... case of `E` in declaration order. Reordering the cases of `E` changes the numbers, so the native must change with it. A status past the last case is read as the last case. `out` is written only when the status is `0`.
+Any other type is rejected by `ms check`. A record, alternative, map, optional or callback is converted in an ordinary Manuscript function around the extern.
 
-Any other type is rejected by `ms check`. C types such as `int`, `float`, `char *`, and structs have no Manuscript counterpart, so a library using them needs a small shim written against `crates/ms-rt-abi/include/ms_abi.h`.
+Arguments are borrowed: a native reads them and does not keep a pointer after returning. It builds results with `ms_string_new`, `ms_bytes_new` and `ms_list_push`, never with its own allocator, so the program can free them. A list knows its element type: `ms_list_get` widens an element into an `ms_value`, and `ms_list_push` faults on a value of another kind or out of the element's range. Strings and bytes from `ms_list_get` are `malloc` copies that `ms_value_free` releases. A native must not block indefinitely, since a native call is not a cancellation point.
 
-Arguments are borrowed: a native reads them and does not keep the pointer after returning. A native builds string results only with `msrt_string_from_bytes`, never with its own allocator, so the program can free them. A native must not block indefinitely, since a native call is not a cancellation point.
+Every output arrives holding an empty value (0, `""`, an empty list, NULL), and the program drops every output after the call. A native that writes the wrong output, or none, therefore leaves nothing undefined. An object result that is still NULL faults.
+
+## Errors
+
+A `Result[T, E]` return names its error type `E`, an alternative whose cases carry nothing, `code: Int`, `message: String`, or both. The native returns `0` for success, and `1`, `2`, ... for the first, second, ... case of `E` in declaration order; reordering the cases changes the numbers. When any case has a `code` field, a trailing `int64_t *code_out` follows `out`; when any has a `message`, a trailing `ms_str *message_out` follows. The program reads the fields of the case the status names. A status that names no case faults.
+
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
+# A failed call, with the library's code and description.
+type LibraryError:
+    case Failed(code: Int, message: String)
+    case Busy
+
+extern fn lib_count(path: String) Int!LibraryError
+```
+
+```c
+#include "ms_abi.h"
+
+uint8_t lib_count(const ms_str *path, int64_t *out, int64_t *code_out, ms_str *message_out) {
+    int rc = count_entries(ms_str_data(path), ms_str_len(path), out);
+    if (rc == BUSY) return 2;                        /* LibraryError.Busy */
+    if (rc != 0) {
+        *code_out = rc;
+        const char *text = describe(rc);
+        size_t len = 0;
+        while (text[len]) len++;
+        ms_string_new((const uint8_t *)text, len, message_out);
+        return 1;                                    /* LibraryError.Failed */
+    }
+    return 0;
+}
+```
+
+`ms_fault(text, len)` ends the program like a Manuscript fault, running cleanups first.
 
 ## Extern types
 
-`extern type Name` declares an opaque value whose layout the runtime owns, such as `Decimal`. Only the standard library may declare one; user modules get a diagnostic. A bundled module pairs it with private `extern fn` declarations and ordinary wrapper methods in an `impl` block, so the public API is plain Manuscript over the native symbols.
+`extern type Name` declares an opaque handle that a native makes with `ms_object_new(size, drop)`: `size` zeroed payload bytes at a stable address (`ms_payload`), and a `drop` (or NULL) that runs once when the last reference goes. The program copies a handle by sharing it, and a native keeps one past a call with `ms_retain` and gives it back with `ms_release`. An extern type has no fields and cannot be generic. Pair it with private externs and an `impl` block so the public API is plain Manuscript.
+
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
+import Closeable from "@std/core.ms"
+
+# A connection the native library owns.
+export extern type Connection
+
+extern fn lib_connect(address: String) Connection
+extern fn lib_disconnect(connection: Connection) Unit
+
+impl Closeable for Connection:
+    var fn close() Unit!:
+        lib_disconnect(self)
+        return ok(unit)
+```
 
 ## Linking the native code
 

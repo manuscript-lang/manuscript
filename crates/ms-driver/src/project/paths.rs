@@ -30,6 +30,15 @@ pub fn resolve_import(
         target = pathops::join(&[&pathops::dir(importer), path]);
     } else if path.starts_with('@') {
         let (alias, remainder) = path.split_once('/').unwrap_or((path, ""));
+        if project.embed.contains_key(alias) {
+            if !remainder.is_empty() {
+                return Err(ProjectError::msg(format!(
+                    "embed {alias} names a generated module, so import it as \"{alias}\" alone"
+                )));
+            }
+            // Generated on load; no file exists, so there is nothing to canonicalize.
+            return Ok(crate::project::embed::module_path(&project.root, alias));
+        }
         let base = project.aliases.get(alias).map(String::as_str).unwrap_or("");
         if base.is_empty() {
             return Err(ProjectError::msg(format!(

@@ -5,7 +5,7 @@
 # MS names the ms that runs the programs (default target/release/ms).
 # Usage: ms run tools/leak-check.ms [-- files]
 import tool_ms, use_stats_runtime from "./lib.ms"
-import glob, read_file, temporary from "@std/os/fs.ms"
+import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
 import arguments, change_directory, working_directory, run from "@std/os/process.ms"
 import seconds from "@std/os/time.ms"
 import stdout from "@std/io/io.ms"
@@ -34,8 +34,8 @@ export fn main() Int:
             "tests/conformance/fixtures/fuzz/run", "tests/conformance/fixtures/e2e",
             "tests/conformance/fixtures/examples"
         ]:
-            for f in glob(dir, "**/*.ms").get(List[String]()):
-                let path = "{dir}/{f}"
+            for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get([]):
+                let path = "{dir}/{f.path}"
                 if read_file(path.clone()).get().decode_utf8().get(
                     ""
                 ).contains("fn main"): files.append(path.clone())

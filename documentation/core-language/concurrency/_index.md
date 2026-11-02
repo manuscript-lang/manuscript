@@ -13,7 +13,7 @@ Run several pieces of work at once with a `TaskGroup`, or spread CPU-bound work 
 
 | Choose | For | Entry |
 | --- | --- | --- |
-| `TaskGroup[T, In, Out]` | Cooperative work that waits for I/O or messages | A callable taking `Channel[Out, In]` and returning `T` |
+| `TaskGroup[T, In, Out]` | Cooperative work that waits for I/O or messages | A callable taking `TaskChannel[Out, In]` and returning `T` |
 | `WorkerGroup[In, Out]` | CPU work on isolated OS threads | A named zero-argument `fn` returning `Unit`; obtains `worker_channel()` |
 | `ProcessGroup[T, In, Out]` | Work in child processes, with separate standard streams when needed | A named `fn` taking `Channel[Out, In]` and returning `T` |
 

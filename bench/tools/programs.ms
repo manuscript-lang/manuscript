@@ -12,7 +12,7 @@ import (
     sample
 ) from "./lib.ms"
 import summarize from "./programs_table.ms"
-import copy_tree, create_directory, temporary, write_file from "@std/os/fs.ms"
+import copy, CopyOptions, create_directory, temporary, write_file from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"
 
 fn orders() List[List[String]]:
@@ -24,7 +24,9 @@ fn orders() List[List[String]]:
 fn run(work: String, n: Int) Result[String, Error]:
     let here = "bench/perf/programs"
     for dir in ["go", "ms", "rust"]:
-        try copy_tree("{here}/{dir}", "{work}/{dir}", replace: true)
+        try copy(
+            "{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
+        )
     try create_directory("{work}/rust-checked")
 
     var input = List[String]()

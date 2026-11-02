@@ -6,7 +6,6 @@ import Timestamp from "@std/os/time.ms"
 import WriteStream from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 import (
-    msstd_fs_constants,
     msstd_path_basename,
     msstd_path_dirname,
     msstd_path_extension,
@@ -120,11 +119,8 @@ export type FileInfo:
 
 # Filesystem operations and resource factories for the current host.
 interface FileSystem:
-    # Opens a path using host flag bits in 0..2147483647 and permission bits in 0..4095.
-    # Use fs.constants() on this host; unknown bits/combinations are left to the OS.
-    fn open_flags(path: String, flags: Int, mode: Int) FileHandle!
     # Returns entries matching the supplied include and exclude patterns.
-    fn glob_entries(
+    fn glob(
         path: String,
         options: GlobOptions,
         exclude: (fn(PathEntry) Bool)?
@@ -147,19 +143,12 @@ interface FileSystem:
     ) FileWatcher!
     # Resolves symlinks and returns the canonical absolute path.
     fn canonicalize(path: String) String!
-    # Copies one file; replace defaults to False, refusing an existing destination.
-    fn copy_file(
-        source: String,
-        destination: String,
-        replace: Bool = false,
-        max_bytes: Int?
-    ) Unit!
     # Creates one directory; recursive defaults to False, requiring its parent to exist.
     fn create_directory(path: String, recursive: Bool = false) Unit!
     # Creates a symbolic link at `path` pointing to `target`.
     fn create_link(path: String, target: String) Unit!
     # Lists a directory, optionally limiting the number of returned entries.
-    # A name that is not valid UTF-8 is listed with U+FFFD in place of each invalid byte, so it no longer addresses the entry. The same holds for `glob`, `glob_entries`, `stat` names and directory cursors.
+    # A name that is not valid UTF-8 is listed with U+FFFD in place of each invalid byte, so it no longer addresses the entry. The same holds for `glob`, `stat` names and directory cursors.
     fn list(path: String, max_entries: Int?) List[DirectoryEntry]!
     # Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
     fn read_file(path: String, max_bytes: Int?) Bytes!
@@ -214,18 +203,6 @@ interface FileSystem:
     # Opens `path` as a directory cursor that yields one child per `read` in native order; close it when done.
     # A path that is not a directory returns InvalidInput.
     fn open_directory(path: String) Directory!
-    # Copies a tree; replace defaults to False, refusing existing destinations.
-    # Entry and byte limits remain separate and apply cumulatively across the copy.
-    fn copy_tree(
-        source: String,
-        destination: String,
-        replace: Bool = false,
-        max_entries: Int?,
-        max_bytes: Int?
-    ) Unit!
-    # Returns the sorted relative paths under `path` matching `pattern`, without following directory symlinks.
-    # A malformed pattern, or one over 4096 bytes, or a negative `max_entries` returns InvalidInput. Matches beyond `max_entries` return LimitExceeded.
-    fn glob(path: String, pattern: String, max_entries: Int?) List[String]!
     # Returns a polling watcher that compares snapshots of `path` every `interval`, which must be positive.
     # `max_entries` bounds the tracked paths; exceeding it returns LimitExceeded. Transient changes between polls can be missed.
     fn watch(
@@ -475,36 +452,44 @@ export type FileSystemInfo:
     # Number of unused file nodes; 0 where unavailable.
     files_free: Int
 
-# Returns this host's filesystem flag, mode, and permission constants by name.
-# Names and values vary by host; absent entries are not supported constants or portable enum cases.
-export fn constants() Map[String, Int]:
-    return msstd_fs_constants()
-
 # Policies for recursive copies, including replacement, symlinks, and optional limits.
 export type CopyOptions:
     # When True, directories are copied with their contents; when False, a directory source returns InvalidInput.
-    recursive: Bool
+    recursive: Bool = false
     # When True, an existing destination file or link is replaced; when False, it is kept, or reported when `error_on_exists` is True.
-    replace: Bool
+    replace: Bool = false
     # When True and `replace` is False, an existing destination file returns AlreadyExists instead of being skipped silently.
-    error_on_exists: Bool
+    error_on_exists: Bool = true
     # When True, symbolic links are followed and their targets copied; when False, links are recreated as links.
-    dereference: Bool
+    dereference: Bool = false
     # When True, copied files and directories keep the source's access and modification times.
-    preserve_timestamps: Bool
+    preserve_timestamps: Bool = false
     # When True, a copied link keeps its target text unchanged. When False, a relative target is rewritten relative to the source directory so it still reaches the original file.
-    verbatim_symlinks: Bool
+    verbatim_symlinks: Bool = false
     # Exactly `none`, `try`, or `force`; other strings return InvalidInput.
     # try falls back to byte copying; force requires a native clone operation.
-    clone: String
+    clone: String = "none"
     # Most files, directories, and links visited, counting the root. Exceeding it returns LimitExceeded. none sets no limit.
-    max_entries: Int?
+    max_entries: Int? = none
     # Most file bytes copied in total. Exceeding it returns LimitExceeded. none sets no limit.
-    max_bytes: Int?
+    max_bytes: Int? = none
+
+# How `watch` observes a path: with native OS events by default, or by polling snapshots when `interval` is set.
+# Every field has a default, so `WatchOptions()` watches natively with no limits and `WatchOptions(interval: seconds(1))` polls.
+# `max_events` and `overflow` apply only to native watching; combining them with `interval` returns `InvalidInput`.
+export type WatchOptions:
+    # Polling period, which must be positive. none watches with native OS events.
+    interval: Duration? = none
+    # Most paths under the root, counted when the watcher starts. Exceeding it returns LimitExceeded. none sets no limit.
+    max_entries: Int? = none
+    # Most queued native events. Native watchers only. none sets no limit.
+    max_events: Int? = none
+    # What a native watcher does when its queue overflows: exactly `error` (default) or `ignore`. Native watchers only.
+    overflow: String? = none
 
 # A matched path together with its filesystem entry metadata.
 export type PathEntry:
-    # The matched path relative to the glob root, using the host's separators.
+    # The matched path relative to the glob root, always `/`-separated.
     path: String
     # The directory entry record for the match: name, directory flag, and symlink flag.
     entry: DirectoryEntry
@@ -514,63 +499,51 @@ export type GlobOptions:
     # Glob patterns to include; an entry that matches any of them is returned.
     patterns: List[String]
     # Glob patterns for entries to skip; a match is neither returned nor searched further.
-    exclude: List[String]
+    exclude: List[String] = []
     # When True, symbolic links to directories are traversed, with cycles detected; when False, links are reported but not entered.
-    follow_links: Bool
+    follow_links: Bool = false
     # Most filesystem entries visited while searching. Exceeding it returns LimitExceeded. none sets no limit.
-    max_entries: Int?
+    max_entries: Int? = none
     # Most distinct matches returned. Exceeding it returns LimitExceeded. none sets no limit.
-    max_results: Int?
+    max_results: Int? = none
 
 # The filesystem of the current host.
 fn host() FileSystem:
     return msstd_fs_filesystem()
 
-# Opens a path using host flag bits in 0..2147483647 and permission bits in 0..4095.
-# Use fs.constants() on this host; unknown bits/combinations are left to the OS.
-export fn open_flags(path: String, flags: Int, mode: Int) FileHandle!:
-    return host().open_flags(path, flags, mode)
-
-# Returns entries matching the supplied include and exclude patterns.
-export fn glob_entries(
+# Returns entries matching the include patterns of `options`, sorted by path. `path` is the root; each result's
+# `path` is relative to it and always `/`-separated. `exclude` skips an entry (and does not enter a skipped directory) when it
+# returns True. A malformed pattern, one over 4096 bytes, or a negative limit returns InvalidInput.
+#
+# ```manuscript
+# let sources = glob(".", GlobOptions(patterns: ["**/*.ms"]))
+# ```
+export fn glob(
     path: String,
     options: GlobOptions,
-    exclude: (fn(PathEntry) Bool)?
+    exclude: (fn(PathEntry) Bool)? = none
 ) List[PathEntry]!:
-    return host().glob_entries(path, options, exclude)
+    return host().glob(path, options, exclude)
 
-# Copies a file or tree according to the supplied replacement and size policies.
+# Copies a file or, with `options.recursive`, a directory tree.
+# By default an existing destination returns AlreadyExists; set `replace` to overwrite it. `filter` is called with each
+# source and destination path and skips the entry when it returns False.
+# Entry and byte limits apply cumulatively across the whole copy.
+#
+# ```manuscript
+# copy("a.txt", "b.txt", CopyOptions(replace: true))
+# ```
 export fn copy(
     source: String,
     destination: String,
-    options: CopyOptions,
-    filter: (fn(String, String) Bool)?
+    options: CopyOptions = CopyOptions(),
+    filter: (fn(String, String) Bool)? = none
 ) Unit!:
     return host().copy(source, destination, options, filter)
-
-# Watches native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows); overflow is exactly `error` or `ignore` (case-sensitive).
-# Other policies return InvalidInput. `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts and failing with LimitExceeded, the same on every platform; `max_events` bounds queued events.
-export fn watch_native(
-    path: String,
-    recursive: Bool,
-    max_entries: Int?,
-    max_events: Int?,
-    overflow: String
-) FileWatcher!:
-    return host().watch_native(path, recursive, max_entries, max_events, overflow)
 
 # Resolves symlinks and returns the canonical absolute path.
 export fn canonicalize(path: String) String!:
     return host().canonicalize(path)
-
-# Copies one file; replace defaults to False, refusing an existing destination.
-export fn copy_file(
-    source: String,
-    destination: String,
-    replace: Bool = false,
-    max_bytes: Int?
-) Unit!:
-    return host().copy_file(source, destination, replace, max_bytes)
 
 # Creates one directory; recursive defaults to False, requiring its parent to exist.
 export fn create_directory(path: String, recursive: Bool = false) Unit!:
@@ -581,7 +554,7 @@ export fn create_link(path: String, target: String) Unit!:
     return host().create_link(path, target)
 
 # Lists a directory, optionally limiting the number of returned entries.
-# A name that is not valid UTF-8 is listed with U+FFFD in place of each invalid byte, so it no longer addresses the entry. The same holds for `glob`, `glob_entries`, `stat` names and directory cursors.
+# A name that is not valid UTF-8 is listed with U+FFFD in place of each invalid byte, so it no longer addresses the entry. The same holds for `glob`, `stat` names and directory cursors.
 export fn list(path: String, max_entries: Int?) List[DirectoryEntry]!:
     return host().list(path, max_entries)
 
@@ -738,9 +711,7 @@ fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
         Error("filesystem: already exists", kind: ErrorCategory.AlreadyExists)
     )
 
-    let copied = if info.get().directory: copy_tree(
-        source, destination, false, none, none
-    ) else: copy_file(source, destination, false, none)
+    let copied = copy(source, destination, CopyOptions(recursive: info.get().directory))
 
     if copied.is_error():
         let _partial = remove(destination, true)
@@ -748,31 +719,34 @@ fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
 
     return remove(source, true)
 
-# Copies a tree; replace defaults to False, refusing existing destinations.
-# Entry and byte limits remain separate and apply cumulatively across the copy.
-export fn copy_tree(
-    source: String,
-    destination: String,
-    replace: Bool = false,
-    max_entries: Int?,
-    max_bytes: Int?
-) Unit!:
-    return host().copy_tree(source, destination, replace, max_entries, max_bytes)
-
-# Returns the sorted relative paths under `path` matching `pattern`, without following directory symlinks.
-# A malformed pattern, or one over 4096 bytes, or a negative `max_entries` returns InvalidInput. Matches beyond `max_entries` return LimitExceeded.
-export fn glob(path: String, pattern: String, max_entries: Int?) List[String]!:
-    return host().glob(path, pattern, max_entries)
-
-# Returns a polling watcher that compares snapshots of `path` every `interval`, which must be positive.
-# `max_entries` bounds the tracked paths; exceeding it returns LimitExceeded. Transient changes between polls can be missed.
+# Watches `path` for changes and returns a `FileWatcher`.
+# Without `options.interval` it uses native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows).
+# With an interval it compares snapshots of the tree every `interval`, which must be positive, and can miss transient changes;
+# `max_events` and `overflow` apply only to native events and return InvalidInput together with an interval.
+# `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts, and
+# fails with LimitExceeded the same way on every platform.
+#
+# ```manuscript
+# var watcher = watch("src", true, WatchOptions(interval: some(seconds(1))))
+# ```
 export fn watch(
     path: String,
-    recursive: Bool,
-    interval: Duration,
-    max_entries: Int?
+    recursive: Bool = false,
+    options: WatchOptions = WatchOptions()
 ) FileWatcher!:
-    return host().watch(path, recursive, interval, max_entries)
+    if let interval = options.interval:
+        if options.max_events.is_some() or options.overflow.is_some(): return error(
+            Error(
+                "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+            )
+        )
+
+        return host().watch(path, recursive, interval, options.max_entries)
+
+    return host().watch_native(
+        path, recursive, options.max_entries, options.max_events,
+        options.overflow.get("error")
+    )
 
 # Creates a new temp directory whose contents are removed by scoped close.
 # Prefix has the same validation as temporary_directory; this does not query the temp root.

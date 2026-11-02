@@ -142,3 +142,23 @@ test "scanner reports limits and bad data":
     if empty.error() != Error("I/O: invalid input", kind: ErrorCategory.InvalidInput): return panic(
         "delimiter error"
     )
+
+test "scanner handles a long line and a split delimiter":
+    var text = ""
+    for i in 0..5000:
+        text += "ab"
+
+    let long = text.clone()
+    var lines = scan(from_bytes("{long}\nz\n".to_bytes(), 7))
+    var seen = List[String]()
+    for line in lines:
+        seen.append(line.clone())
+    if seen != [long, "z"]: return panic("long line")
+
+    var parts = scan(
+        from_bytes("a--b-c----d--".to_bytes(), 1), ScanMode.Delimiter("--")
+    )
+    var tokens = List[String]()
+    for part in parts:
+        tokens.append(part.clone())
+    if tokens != ["a", "b-c", "", "d"]: return panic("delimiter {tokens}")

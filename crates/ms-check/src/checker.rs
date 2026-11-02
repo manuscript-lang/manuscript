@@ -758,6 +758,34 @@ impl Checker {
         }
     }
 
+    /// A user `extern type`: an opaque handle a native shim makes with `ms_object_new`.
+    fn declare_extern_type(&mut self, module: &ModRef, d: &DeclRef) {
+        let name = d.name();
+        if !d.type_params().is_empty() {
+            self.type_error(
+                d.pos(),
+                format!("extern type {name} cannot be generic; declare one extern type per native handle"),
+            );
+        }
+        let id = n(&format!("extern:{}/{name}", module.file));
+        let s = Rc::new(Sym {
+            name,
+            id,
+            kind: SymKind::Type,
+            module: module.file,
+            native: n(""),
+            export: d.decl().export,
+            ty: RefCell::new(None),
+            variables: RefCell::new(Vec::new()),
+            decl: Some(d.clone()),
+        });
+        let def = Definition::new(&s, Kind::Native);
+        let mut t = Type::new(name, id, Kind::Native);
+        t.def = Some(def);
+        *s.ty.borrow_mut() = Some(Rc::new(t));
+        self.add_symbol(name, s, d.pos());
+    }
+
     fn declare_symbols(&mut self, module: &ModRef) {
         for d in &module.decls {
             if matches!(d.decl().kind, DeclKind::Impl(_) | DeclKind::Test(_)) {
@@ -772,10 +800,7 @@ impl Checker {
                     .filter(|s| s.decl.as_ref().is_some_and(|sd| sd.same(d)));
                 match canonical {
                     Some(s) => self.add_symbol(name, s, d.pos()),
-                    None => self.type_error(
-                        d.pos(),
-                        "extern type is available only in bundled standard modules; declare a record or alternative instead",
-                    ),
+                    None => self.declare_extern_type(module, d),
                 }
                 continue;
             }
@@ -1334,8 +1359,8 @@ impl Checker {
         }
     }
 
-    /// An `extern fn` crosses the native ABI: scalars and borrowed strings in, a scalar,
-    /// `Unit`, or an owned string out (`ms-rt/ABI.md`, section 1).
+    /// An `extern fn` crosses the native ABI of `ms_abi.h`: the types [`crosses_native`]
+    /// accepts, `Unit` results, and `Result`s whose error cases carry a code and a message.
     fn check_extern_signature(&mut self, name: &str, f: &ms_syntax::ast::Func, t: &Ty, pos: Pos) {
         // Bundled modules cross any type the runtime defines a convention for; lowering rejects the rest.
         if self.module.as_ref().is_some_and(stdlib::is_source_module) {
@@ -1353,8 +1378,7 @@ impl Checker {
                 "an extern fn cannot be generic; declare the concrete types the native symbol takes",
             );
         }
-        const ARGUMENTS: [&str; 4] = ["Int", "Float", "Bool", "String"];
-        const RESULTS: [&str; 5] = ["Int", "Float", "Bool", "String", "Unit"];
+        const CROSSES: &str = "sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them";
         for (p, ty) in f.params.iter().zip(&t.params) {
             if p.mutable {
                 self.type_error(
@@ -1369,10 +1393,10 @@ impl Checker {
                     p.pos,
                     format!("extern parameter {} cannot have a default; the native symbol takes every argument", p.name),
                 );
-            } else if ty.ty.id != "<invalid>" && !ARGUMENTS.contains(&ty.ty.id.as_str()) {
+            } else if ty.ty.id != "<invalid>" && !crosses_native(&ty.ty) {
                 self.type_error(
                     p.pos,
-                    format!("extern parameter {} has type {}, which cannot cross the native boundary; use Int, Float, Bool, or String", p.name, ty.ty.name),
+                    format!("extern parameter {} has type {}, which cannot cross the native boundary; an extern takes {CROSSES}", p.name, ty.ty.name),
                 );
             }
         }
@@ -1383,21 +1407,27 @@ impl Checker {
         if result.is_std("Result") && result.args.len() == 2 {
             let (ok, error) = (&result.args[0], &result.args[1]);
             let cases = cases(error);
-            if !RESULTS.contains(&ok.id.as_str()) {
+            let reported = |c: &Case| {
+                c.fields.iter().all(|f| {
+                    (f.name.as_str() == "code" && f.ty.id == "Int")
+                        || (f.name.as_str() == "message" && f.ty.id == "String")
+                })
+            };
+            if ok.id != "Unit" && !crosses_native(ok) {
                 self.type_error(
                     f.result.pos,
-                    format!("extern Result value has type {}, which cannot cross the native boundary; use Int, Float, Bool, String, or Unit", ok.name),
+                    format!("extern Result value has type {}, which cannot cross the native boundary; an extern Result holds {CROSSES}, or Unit", ok.name),
                 );
-            } else if cases.is_empty() || cases.iter().any(|c| !c.fields.is_empty()) {
+            } else if cases.is_empty() || !cases.iter().all(reported) {
                 self.type_error(
                     f.result.pos,
-                    format!("extern error type {} must be an alternative whose cases carry no payload; the native returns the status 1 + the case index", error.name),
+                    format!("extern error type {} must be an alternative whose cases carry nothing, `code: Int`, `message: String`, or both; the native returns the status 1 + the case index and fills code_out and message_out", error.name),
                 );
             }
-        } else if !RESULTS.contains(&result.id.as_str()) {
+        } else if result.id != "Unit" && !crosses_native(&result) {
             self.type_error(
                 f.result.pos,
-                format!("extern result has type {}, which cannot cross the native boundary; return Int, Float, Bool, String, Unit, or a Result of them", result.name),
+                format!("extern result has type {}, which cannot cross the native boundary; an extern returns {CROSSES}, Unit, or a Result of one", result.name),
             );
         }
     }
@@ -1720,3 +1750,25 @@ pub fn self_variable(owner: Name) -> Ty {
 #[cfg(test)]
 #[path = "operation_bounds_tests.rs"]
 mod operation_bounds_tests;
+
+/// Whether a value of `t` crosses to a user `extern fn` shim (`ms_abi.h`): sized numbers,
+/// `Bool`, `String`, `Bytes`, an `extern type` the program declares, or a `List` of those.
+pub(crate) fn crosses_native(t: &Ty) -> bool {
+    if t.is_std("List") && t.args.len() == 1 {
+        return crosses_element(&t.args[0]);
+    }
+    crosses_element(t)
+}
+
+fn crosses_element(t: &Ty) -> bool {
+    const SCALARS: [&str; 13] = [
+        "Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "Float",
+        "Float32", "Bool", "String",
+    ];
+    SCALARS.contains(&t.id.as_str()) || t.is_std("Bytes") || is_user_extern_type(t)
+}
+
+/// Whether `t` is an `extern type` declared outside the standard library.
+pub(crate) fn is_user_extern_type(t: &Ty) -> bool {
+    t.kind == Kind::Native && t.args.is_empty() && t.id.as_str().starts_with("extern:")
+}

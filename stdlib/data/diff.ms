@@ -109,7 +109,7 @@ type Step:
     new_at: Int
 
 # Walks the longest common subsequence table to list the steps that turn `old` into `new`, deletions before insertions within a change.
-fn line_steps(old: List[String], new: List[String]) List[Step]:
+fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
     var table: List[List[Int]] = []
 
     for unused2 in 0..old.length() + 1:
@@ -139,22 +139,68 @@ fn line_steps(old: List[String], new: List[String]) List[Step]:
 
     while a < old.length() or b < new.length():
         if a < old.length() and b < new.length() and old[a] == new[b]:
-            steps.append(Step(kind: 0, text: old[a].clone(), old_at: a, new_at: b))
+            steps.append(
+                Step(
+                    kind: 0, text: old[a].clone(), old_at: a + shift, new_at: b + shift
+                )
+            )
             a += 1
             b += 1
         else if (
             a < old.length()
             and (b == new.length() or table[a + 1][b] >= table[a][b + 1])
         ):
-            steps.append(Step(kind: 1, text: old[a].clone(), old_at: a, new_at: b))
+            steps.append(
+                Step(
+                    kind: 1, text: old[a].clone(), old_at: a + shift, new_at: b + shift
+                )
+            )
             a += 1
         else:
-            steps.append(Step(kind: 2, text: new[b].clone(), old_at: a, new_at: b))
+            steps.append(
+                Step(
+                    kind: 2, text: new[b].clone(), old_at: a + shift, new_at: b + shift
+                )
+            )
             b += 1
 
     return steps
 
 # Formats a hunk range like unified diff: the 1-based start and length, with an empty range counted from the line before it.
+# Matches common leading and trailing lines directly, so only the differing middle pays for the quadratic table.
+fn line_steps(old: List[String], new: List[String]) List[Step]:
+    var head = 0
+    while head < old.length() and head < new.length() and old[head] == new[head]:
+        head += 1
+
+    var tail = 0
+    while (
+        tail < old.length() - head
+        and tail < new.length() - head
+        and old[old.length() - 1 - tail] == new[new.length() - 1 - tail]
+    ):
+        tail += 1
+
+    var steps: List[Step] = []
+    for i in 0..head:
+        steps.append(Step(kind: 0, text: old[i].clone(), old_at: i, new_at: i))
+
+    var old_middle: List[String] = []
+    var new_middle: List[String] = []
+    for i in head..old.length() - tail:
+        old_middle.append(old[i].clone())
+    for i in head..new.length() - tail:
+        new_middle.append(new[i].clone())
+    for step in middle_steps(old_middle, new_middle, head):
+        steps.append(step)
+
+    for i in 0..tail:
+        let at = old.length() - tail + i
+        let other = new.length() - tail + i
+        steps.append(Step(kind: 0, text: old[at].clone(), old_at: at, new_at: other))
+
+    return steps
+
 fn hunk_range(start: Int, length: Int) String:
     if length == 1:
         return "{start + 1}"

@@ -213,35 +213,46 @@ fn count_lines(text: String) Int:
 
 fn tokenize(source: String) List[Token]!Error:
     var tokens = List[Token]()
-    var rest = source.clone()
+
+    # Splitting once keeps lexing linear: each piece starts right after an opening delimiter.
+    let pieces = source.split("\{\{")
+    var literal = pieces[0].clone()
+    var index = 1
     var line = 1
     var trim_next = false
 
-    while true:
-        let open = rest.index_of("\{\{")
-
-        if not open.is_some():
-            tokens.append(
-                Token(
-                    action: false,
-                    body: if trim_next: rest.trim_start() else: rest.clone(), line: line
-                )
-            )
-            break
-
-        var text = rest.take(open.get(0))
+    while index < pieces.length():
+        var text = literal.clone()
         if trim_next: text = text.trim_start()
 
-        let after = rest.drop(open.get(0) + 2)
-        let close = after.index_of("\}\}")
-        if not close.is_some(): return error(
+        # An action ends at the first closing delimiter, even when its body holds a literal opener.
+        var chunks = List[String]()
+        var tail = ""
+        var closed = false
+
+        while index < pieces.length():
+            let piece = pieces[index]
+            index += 1
+
+            let close = piece.index_of("\}\}")
+
+            if close.is_some():
+                chunks.append(piece.take(close.get(0)))
+                tail = piece.drop(close.get(0) + 2)
+                closed = true
+                break
+
+            chunks.append(piece.clone())
+
+        if not closed: return error(
             syntax_error(
                 line: line + count_lines(text), reason: "unterminated action"
             )
         )
 
-        var body = after.take(close.get(0))
-        let action_line = line + count_lines(rest.take(open.get(0)))
+        let raw = chunks.join("\{\{")
+        var body = raw.clone()
+        let action_line = line + count_lines(literal)
         trim_next = false
 
         if body.starts_with("-") and (body.length() == 1 or is_blank(body.get(1))):
@@ -263,9 +274,15 @@ fn tokenize(source: String) List[Token]!Error:
         )
         if not body.trim().starts_with("#"):
             tokens.append(Token(action: true, body: body.trim(), line: action_line))
-        line = action_line + count_lines(after.take(close.get(0)))
-        rest = after.drop(close.get(0) + 2)
+        line = action_line + count_lines(raw)
+        literal = tail
 
+    tokens.append(
+        Token(
+            action: false,
+            body: if trim_next: literal.trim_start() else: literal.clone(), line: line
+        )
+    )
     return ok(tokens)
 
 fn is_blank(c: String) Bool:

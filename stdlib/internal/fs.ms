@@ -15,8 +15,6 @@ import (
 ) from "@std/os/fs.ms"
 import Timestamp from "@std/os/time.ms"
 
-export extern fn msstd_fs_constants() Map[String, Int]
-
 export extern fn msstd_path_basename(path: String) String
 
 export extern fn msstd_path_dirname(path: String) String

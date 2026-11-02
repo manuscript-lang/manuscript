@@ -192,3 +192,30 @@ fn directories_without_sources_report_none() {
         assert!(stderr.contains("no .ms files found"), "{command}: {stderr}");
     }
 }
+
+#[test]
+fn check_json_with_text_carries_the_terminal_output() {
+    let dir = scratch("check-with-text");
+    std::fs::write(dir.join("bad.ms"), "fn invalid() Int:\n    return false\n").unwrap();
+    std::fs::write(dir.join("ok.ms"), "fn main() Unit:\n    let _x = 1\n").unwrap();
+    for file in ["bad.ms", "ok.ms"] {
+        let text = ms(&dir, &["check", file]);
+        let json = ms(&dir, &["check", file, "--json", "--with-text"]);
+        assert_eq!(json.status.code(), text.status.code(), "{file}");
+        assert!(json.stderr.is_empty(), "{file}");
+        let document = ms_json::parse(std::str::from_utf8(&json.stdout).unwrap()).unwrap();
+        let carried = document.get("text").unwrap();
+        for (stream, bytes) in [("stdout", &text.stdout), ("stderr", &text.stderr)] {
+            assert_eq!(
+                carried.get(stream).unwrap().as_str().unwrap(),
+                String::from_utf8_lossy(bytes),
+                "{file} {stream}"
+            );
+        }
+    }
+    let plain = ms(&dir, &["check", "bad.ms", "--json"]);
+    let document = ms_json::parse(std::str::from_utf8(&plain.stdout).unwrap()).unwrap();
+    assert!(document.get("text").is_none());
+    let misuse = ms(&dir, &["check", "bad.ms", "--with-text"]);
+    assert_eq!(misuse.status.code(), Some(2));
+}

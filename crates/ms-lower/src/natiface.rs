@@ -256,7 +256,6 @@ const METHODS: &[MethodRow] = &[
     ),
     ("io", "WriteStream", "flush", "msstd_io_flush", &[]),
     ("io", "WriteStream", "close", "msstd_io_close", &[]),
-    ("fs", "FileSystem", "open_flags", "msstd_fs_file_open", &[]),
     (
         "fs",
         "FileSystem",
@@ -264,7 +263,6 @@ const METHODS: &[MethodRow] = &[
         "msstd_fs_canonicalize",
         &[],
     ),
-    ("fs", "FileSystem", "copy_file", "msstd_fs_copy_file", &[]),
     (
         "fs",
         "FileSystem",
@@ -337,8 +335,6 @@ const METHODS: &[MethodRow] = &[
     ("fs", "FileSystem", "chown", "msstd_fs_chown", &[]),
     ("fs", "FileSystem", "truncate", "msstd_fs_truncate", &[]),
     ("fs", "FileSystem", "hard_link", "msstd_fs_hard_link", &[]),
-    ("fs", "FileSystem", "copy_tree", "msstd_fs_copy_tree", &[]),
-    ("fs", "FileSystem", "glob", "msstd_fs_glob", &[]),
     (
         "fs",
         "FileSystem",
@@ -355,13 +351,7 @@ const METHODS: &[MethodRow] = &[
     ),
     ("fs", "FileSystem", "open", "msstd_fs_open", &[]),
     ("fs", "FileSystem", "stat", "msstd_fs_stat", &[]),
-    (
-        "fs",
-        "FileSystem",
-        "glob_entries",
-        "msstd_fs_glob_entries",
-        &[],
-    ),
+    ("fs", "FileSystem", "glob", "msstd_fs_glob_entries", &[]),
     ("fs", "FileSystem", "copy", "msstd_fs_copy", &[]),
     ("fs", "FileSystem", "list", "msstd_fs_list", &[]),
     ("fs", "FileSystem", "set_times", "msstd_fs_set_times", &[]),

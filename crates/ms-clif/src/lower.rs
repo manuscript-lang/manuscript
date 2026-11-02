@@ -222,6 +222,49 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
     }
 
+    /// A call of a user shim: 64-bit registers narrow to the C parameter types, and narrow C
+    /// results widen back. A result that does not pass directly goes through the trailing
+    /// `out` the lowering added, so the call returns at most one scalar.
+    fn call_c_extern(&mut self, id: FuncId, args: &[Value], ret: Ty) -> Vs {
+        let r = self.fref(id);
+        let sig = self.b.func.dfg.ext_funcs[r].signature;
+        let want = self.b.func.dfg.signatures[sig].params.clone();
+        let rets = self.b.func.dfg.signatures[sig].returns.clone();
+        let args: Vec<Value> = args
+            .iter()
+            .zip(&want)
+            .map(|(a, p)| {
+                let from = self.b.func.dfg.value_type(*a);
+                if from == types::I64 && p.value_type.is_int() && p.value_type.bits() < 64 {
+                    self.b.ins().ireduce(p.value_type, *a)
+                } else {
+                    self.float_as(*a, p.value_type)
+                }
+            })
+            .collect();
+        let i = self.b.ins().call(r, &args);
+        let out = self.b.inst_results(i).to_vec();
+        let leaves = if Self::passes_directly(&self.g.lay, ret) {
+            self.g.lay.leaves(ret)
+        } else {
+            Vec::new()
+        };
+        out.iter()
+            .zip(&rets)
+            .zip(leaves)
+            .map(|((v, p), l)| {
+                let want = leaf_type(l);
+                if want == p.value_type {
+                    return *v;
+                }
+                match c_param(l).extension {
+                    ir::ArgumentExtension::Sext => self.b.ins().sextend(want, *v),
+                    _ => self.b.ins().uextend(want, *v),
+                }
+            })
+            .collect()
+    }
+
     fn call_id(&mut self, id: FuncId, args: &[Value]) -> Vs {
         let r = self.fref(id);
         let sig = self.b.func.dfg.ext_funcs[r].signature;
@@ -1870,6 +1913,30 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 self.b.ins().sshr(x, y)
             }],
+            Op::Ushr => vec![{
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                self.b.ins().ushr(x, y)
+            }],
+            Op::Rotl => vec![{
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                self.b.ins().rotl(x, y)
+            }],
+            Op::Rotr => vec![{
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                self.b.ins().rotr(x, y)
+            }],
+            Op::Clz => vec![{
+                let x = self.a(inst, 0)[0];
+                self.b.ins().clz(x)
+            }],
+            Op::Ctz => vec![{
+                let x = self.a(inst, 0)[0];
+                self.b.ins().ctz(x)
+            }],
+            Op::Popcnt => vec![{
+                let x = self.a(inst, 0)[0];
+                self.b.ins().popcnt(x)
+            }],
             Op::Not => vec![{
                 let x = self.a(inst, 0)[0];
                 self.b.ins().bxor_imm_s(x, 1)
@@ -3113,16 +3180,30 @@ impl<'a, 'm> Lower<'a, 'm> {
                     params.push(Leaf::I64);
                     Vec::new()
                 };
-                // Native code takes and returns a `Float32` as `f64`.
-                let wide = |ls: &mut Vec<Leaf>| {
-                    for l in ls.iter_mut().filter(|l| **l == Leaf::F32) {
-                        *l = Leaf::F64;
-                    }
+                let sig = if self.g.m.c_externs.contains(&def.name) {
+                    // A user shim takes and returns sized numbers as their C types.
+                    let mut sig = self.g.module.make_signature();
+                    sig.params.extend(params.iter().map(|l| c_param(*l)));
+                    // Results carry no extension attribute: AAPCS64 leaves the upper bits of a
+                    // narrow result undefined, and LLVM would trust a `signext` result. The
+                    // caller extends it (`call_c_extern`).
+                    sig.returns.extend(
+                        rets.iter()
+                            .map(|l| ir::AbiParam::new(c_param(*l).value_type)),
+                    );
+                    sig
+                } else {
+                    // Runtime natives take and return a `Float32` as `f64`.
+                    let wide = |ls: &mut Vec<Leaf>| {
+                        for l in ls.iter_mut().filter(|l| **l == Leaf::F32) {
+                            *l = Leaf::F64;
+                        }
+                    };
+                    wide(&mut params);
+                    let mut rets = rets;
+                    wide(&mut rets);
+                    self.g.sig(&params, &rets)
                 };
-                wide(&mut params);
-                let mut rets = rets;
-                wide(&mut rets);
-                let sig = self.g.sig(&params, &rets);
                 let id = self
                     .g
                     .module
@@ -3163,6 +3244,9 @@ impl<'a, 'm> Lower<'a, 'm> {
             && self.g.lay.leaves(ret_ty).is_empty()
         {
             return self.bytes_append(id, args[0], args[1]);
+        }
+        if self.g.m.c_externs.contains(&def.name) {
+            return self.call_c_extern(id, &args, ret_ty);
         }
         if Self::passes_directly(&self.g.lay, ret_ty) {
             self.call_id(id, &args)
@@ -3409,4 +3493,24 @@ fn reaches(f: &Func, from: usize, to: usize) -> bool {
             .for_each_target(|t| stack.push(t.block.index()));
     }
     false
+}
+
+/// The C parameter of a leaf crossing to a user shim: sized integers at their own width,
+/// sign- or zero-extended as the platform ABI expects, `Bool` as a zero-extended byte.
+fn c_param(l: Leaf) -> ir::AbiParam {
+    let (ty, ext) = match l {
+        Leaf::N8 => (types::I8, ir::ArgumentExtension::Sext),
+        Leaf::N16 => (types::I16, ir::ArgumentExtension::Sext),
+        Leaf::N32 => (types::I32, ir::ArgumentExtension::Sext),
+        Leaf::U8 | Leaf::I8 => (types::I8, ir::ArgumentExtension::Uext),
+        Leaf::U16 => (types::I16, ir::ArgumentExtension::Uext),
+        Leaf::U32 => (types::I32, ir::ArgumentExtension::Uext),
+        _ => (leaf_type(l), ir::ArgumentExtension::None),
+    };
+    let p = ir::AbiParam::new(ty);
+    match ext {
+        ir::ArgumentExtension::Sext => p.sext(),
+        ir::ArgumentExtension::Uext => p.uext(),
+        ir::ArgumentExtension::None => p,
+    }
 }

@@ -1,4 +1,4 @@
-import blake2b, blake2s from "@std/data/blake2.ms"
+import blake2b, blake2s from "@std/crypto/blake2.ms"
 import Bytes from "@std/bytes.ms"
 import hex_encode from "@std/data/encoding.ms"
 import expect_equal from "@std/test/test.ms"

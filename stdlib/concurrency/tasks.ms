@@ -26,7 +26,7 @@ import (
 export extern type TaskChannels
 
 # Internal reference-counted lease; its final holder removes it from the group's tracker.
-extern type TaskChannelLease
+export extern type TaskChannelLease
 
 impl TaskChannelLease:
     # Another holder of the same lease: the channel closes when the last holder is released.
@@ -42,17 +42,17 @@ export fn cancelled() Bool:
 # Maps a runtime outcome (0 returned, 1 timed out, 2 cancelled, 3 closed or collected, 4 faulted) to a result.
 fn outcome(code: Int) Unit!:
     if code == 1:
-        return error(Error("task: timed out", kind: Timeout))
+        return error(Error("task: timed out", kind: ErrorCategory.Timeout))
     if code == 2:
-        return error(Error("task: cancelled", kind: Other))
+        return error(Error("task: cancelled", kind: ErrorCategory.Other))
     if code == 3:
-        return error(Error("task: closed", kind: Closed))
+        return error(Error("task: closed", kind: ErrorCategory.Closed))
 
     if code == 4:
         let report = msrt_scope_fault_message()
         return error(
             Error(
-                "task: fault: " + report, kind: Failed,
+                "task: fault: " + report, kind: ErrorCategory.Failed,
                 details: {"report": report.clone()}
             )
         )
@@ -80,7 +80,7 @@ fn room() Int:
     return 16
 
 # One direction of a task channel: the values sent and not yet received, and who waits on them.
-type Lane[T]:
+export type Lane[T]:
     # Values to receive next, newest first.
     front: List[T] = []
     # Values sent after `front` was filled, oldest first.
@@ -151,15 +151,38 @@ impl Closeable for WaitTicket[T]:
             lane.value.waiting = List[Int]()
         return ok(unit)
 
-# One end of a channel between tasks on the runtime thread. Values move from one end to the other;
-# a task that must wait parks until the other end posts its token.
-type TaskTransport[In, Out]:
+# One end of a two-way channel between tasks on the runtime thread: sends `In`, receives `Out`. Values move
+# from one end to the other, so they may be resources; a task that must wait parks until the other end posts
+# its token. An end is a handle on shared state: `.clone()` shares it, and every holder closes explicitly.
+export type TaskChannel[In, Out]:
     # Values this end sends.
     outgoing: Shared[Lane[In]]
     # Values this end receives.
     incoming: Shared[Lane[Out]]
     # Only group ends hold a lease; copies share its lifetime without the group retaining them.
     lifetime: TaskChannelLease?
+
+# A task channel end seen through the `Transport` interface, which only lends its values, so `In` is copied.
+type TaskTransport[In: Clonable, Out: Clonable]:
+    # The end this transport sends and receives on.
+    end: TaskChannel[In, Out]
+
+impl Transport[In, Out] for TaskTransport[In, Out]:
+    fn send(value: In) Unit!:
+        return self.end.send(value.clone())
+
+    fn receive() Out?!:
+        return self.end.receive()
+
+    var fn close() Unit:
+        self.end.close()
+
+# Views a task channel end as a `Channel`, for APIs such as `channel_reader` and `channel_writer` that take
+# one. The view shares the end and copies each value it sends, so both payloads must be `Clonable`.
+export fn as_channel[In: Clonable, Out: Clonable](
+    end: TaskChannel[In, Out]
+) Channel[In, Out]:
+    return Channel[In, Out](transport: TaskTransport[In, Out](end.clone()))
 
 # What one look at `outgoing` found: room to send, a closed lane, or the token to park on.
 type Reserved:
@@ -179,7 +202,7 @@ fn claim_room[T](lane: Shared[Lane[T]]) Reserved:
     guard.value.waiting.append(token)
     return Reserved.Wait(token)
 
-impl TaskTransport[In, Out]:
+impl TaskChannel[In, Out]:
     # Waits until `outgoing` has room. Nothing runs between this returning and the caller's send.
     fn wait_for_room() Unit!:
         while true:
@@ -187,14 +210,16 @@ impl TaskTransport[In, Out]:
                 Reserved.Ready:
                     return ok(unit)
                 Reserved.Shut:
-                    return error(Error("channel: closed", kind: Closed))
+                    return error(Error("channel: closed", kind: ErrorCategory.Closed))
                 Reserved.Wait(token):
                     let ticket = WaitTicket[In](lane: self.outgoing, token: token)
                     msrt_channel_park(token)
 
         return ok(unit)
 
-impl Transport[In, Out] for TaskTransport[In, Out]:
+impl TaskChannel[In, Out]:
+    # Sends `value` to the other end, waiting while it has many unread values. The value moves into the
+    # channel, so `In` may be a resource. Gives `Closed` once either end is closed.
     fn send(value: In) Unit!:
         try self.wait_for_room()
 
@@ -204,11 +229,13 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
         lane.close().get(none)
         return ok(unit)
 
+    # Waits for the next value from the other end. Gives `ok(none)` once the other end closed and every
+    # value it sent was read, and `Closed` once this end is closed.
     fn receive() Out?!:
         while true:
             var lane = lock(self.incoming)
             if lane.value.receiver_closed:
-                return error(Error("channel: closed", kind: Closed))
+                return error(Error("channel: closed", kind: ErrorCategory.Closed))
 
             if let value = lane.value.pop():
                 lane.value.wake()
@@ -226,60 +253,57 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
 
         return ok(none)
 
+    # Closes this end: the other end reads what is left, then `ok(none)`. Safe to call again.
     var fn close() Unit:
         close_end(self.outgoing, self.incoming)
 
-impl Closeable for TaskTransport[In, Out]:
-    # Closes this end. Safe to call again.
+# Closes the task's end of its channel when the task ends, however it ends.
+type EndGuard[In, Out]:
+    # Values the end sends.
+    outgoing: Shared[Lane[In]]
+    # Values the end receives.
+    incoming: Shared[Lane[Out]]
+
+impl Closeable for EndGuard[In, Out]:
+    # Closes the end. Safe to call again.
     var fn close() Unit!:
         close_end(self.outgoing, self.incoming)
         return ok(unit)
 
 # The body of a task: runs `entry` on the task's end of its channel and stores its one result in
 # `slot`. The end closes when the task ends, however it ends.
-fn run[T, In: Clonable, Out: Clonable](
-    entry: fn(Channel[Out, In]) T,
+fn run[T, In, Out](
+    entry: fn(TaskChannel[Out, In]) T,
     up: Shared[Lane[Out]],
     down: Shared[Lane[In]],
     slot: Shared[List[T]]
 ) Unit:
-    let end = TaskTransport[Out, In](outgoing: up, incoming: down)
+    let end = EndGuard[Out, In](outgoing: up, incoming: down)
     msrt_scope_started()
 
-    let value = entry(
-        Channel[Out, In](
-            transport: TaskTransport[Out, In](outgoing: up, incoming: down)
-        )
-    )
+    let value = entry(TaskChannel[Out, In](outgoing: up, incoming: down))
     var held = lock(slot)
     held.value.append(value)
 
 # The group's end of a task channel.
-fn group_end[In: Clonable, Out: Clonable](
+fn group_end[In, Out](
     down: Shared[Lane[In]],
     up: Shared[Lane[Out]],
     lifetime: TaskChannelLease
-) Channel[In, Out]:
-    return Channel[In, Out](
-        transport: TaskTransport[In, Out](
-            outgoing: down, incoming: up, lifetime: lifetime
-        )
-    )
+) TaskChannel[In, Out]:
+    return TaskChannel[In, Out](outgoing: down, incoming: up, lifetime: lifetime)
 
 # What a group keeps of a task until it is collected: enough to wait for it and close its channel.
-export type Entry[T, In: Clonable, Out: Clonable]:
+export type Entry[T, In, Out]:
     # Internal state: the runtime handle of the task.
     handle: Int
     # Internal state: empty until the task returns, then its one result.
     values: Shared[List[T]]
     # Internal state: the group's end of the task's channel.
-    channel: Channel[In, Out]
+    channel: TaskChannel[In, Out]
 
 # Drops the entry of the collected task `handle`, so the group holds nothing for it.
-fn forget[T, In: Clonable, Out: Clonable](
-    registry: Shared[Map[Int, Entry[T, In, Out]]],
-    handle: Int
-) Unit:
+fn forget[T, In, Out](registry: Shared[Map[Int, Entry[T, In, Out]]], handle: Int) Unit:
     var entries = lock(registry)
     entries.value.remove(handle)
 
@@ -296,7 +320,7 @@ fn collect[T](scope: Int, handle: Int, values: Shared[List[T]]) T!:
     panic("Task: the result was already taken")
 
 # A started task that returns a `T`, with the group's end of its channel.
-export type Task[T, In: Clonable = Unit, Out: Clonable = Unit]:
+export type Task[T, In = Unit, Out = Unit]:
     # Internal state: the runtime scope of the task.
     scope: Int
     # Internal state: the runtime handle of the task.
@@ -306,7 +330,7 @@ export type Task[T, In: Clonable = Unit, Out: Clonable = Unit]:
     # Internal state: empty until the task returns, then its one result.
     values: Shared[List[T]]
     # The group's end of the task's channel: sends `In` to the task and receives the `Out` it sends.
-    channel: Channel[In, Out]
+    channel: TaskChannel[In, Out]
 
 impl Task[T, In, Out]:
     # Waits for the task and returns its result, or why it has none. Takes the result, so call it once.
@@ -326,7 +350,7 @@ impl Task[T, In, Out]:
 # A task that passes its limit is cancelled and has the result `TimedOut`. There is no limit unless one is given. A cancelled task releases the values its functions own.
 # Tasks run on the one runtime thread and switch only when one waits (`result`, `wait`, a channel, sleeping, I/O).
 # A fault in a task ends the program, unless `contain_faults` is set: then the task ends with the result `Faulted(report)`, its siblings keep running, and values its frames owned are not released. A task owns the values its closure captures; return results instead of sharing them.
-export type TaskGroup[T, In: Clonable = Unit, Out: Clonable = Unit]:
+export type TaskGroup[T, In = Unit, Out = Unit]:
     # Limit for every task started in the group, counted from the group's creation; none for no limit.
     timeout: Duration?
     # Whether a fault in a task ends only that task (`Faulted`) instead of the program. A fault never collected is dropped by `close`.
@@ -343,7 +367,7 @@ impl TaskGroup[T, In, Out]:
     # handle's `channel` is the group's end. The task's end closes when `entry` returns.
     # The task first runs when the caller waits.
     # `timeout` limits this task; the group's own limit still applies if it ends sooner.
-    fn spawn(entry: fn(Channel[Out, In]) T, timeout: Duration?) Task[T, In, Out]:
+    fn spawn(entry: fn(TaskChannel[Out, In]) T, timeout: Duration?) Task[T, In, Out]:
         let down: Shared[Lane[In]] = share(Lane[In]())
         let up: Shared[Lane[Out]] = share(Lane[Out]())
         let values: Shared[List[T]] = share([])
@@ -380,7 +404,7 @@ impl TaskGroup[T, In, Out]:
     # Tasks already collected with `result` are not included; the ones returned are collected.
     fn results() List[T]!:
         if msrt_scope_wait(self.scope) == 3:
-            return error(Error("task: closed", kind: Closed))
+            return error(Error("task: closed", kind: ErrorCategory.Closed))
 
         var values = List[T]()
 

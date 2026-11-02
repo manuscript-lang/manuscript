@@ -1,9 +1,8 @@
 # conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
-import Channel from "@std/io/channels.ms"
 import stdout from "@std/io/io.ms"
 import memory_usage from "@std/os/process.ms"
-import TaskGroup from "@std/concurrency/tasks.ms"
+import TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 # A task cancelled while parked in a channel receive must release the channel end it holds in a
@@ -11,21 +10,21 @@ import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 # cover it: the heap must not grow across cancellations (#1513), and `make leak-check` finds no
 # live block at exit.
 
-fn echo(ch: Channel[Int, Int]) Unit:
+fn echo(ch: TaskChannel[Int, Int]) Unit:
     var end = ch
 
     while true:
         let value = end.receive().get().get(-1)
         end.send(value).get()
 
-fn waiting(ready: Channel[Unit, Unit], ch: Channel[Int, Int]) Unit:
+fn waiting(ready: TaskChannel[Unit, Unit], ch: TaskChannel[Int, Int]) Unit:
     var started = ready
     started.send(unit).get()
 
     var end = ch
     let _ignored = end.receive()
 
-fn cancel_one(ch: Channel[Int, Int]) Unit!:
+fn cancel_one(ch: TaskChannel[Int, Int]) Unit!:
     var group = TaskGroup[Unit]()
     let end = ch.clone()
     var task = group.spawn(fn ready: waiting(ready, end.clone()))

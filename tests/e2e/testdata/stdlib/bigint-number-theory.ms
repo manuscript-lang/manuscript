@@ -7,6 +7,8 @@ test "factorial and binomial are exact":
     try expect_equal(
         (try factorial(25)).to_string_radix(10), "15511210043330985984000000"
     )
+    try expect_equal((try factorial(100)).to_string_radix(10).length(), 158)
+    try expect_equal((try factorial(100)) / (try factorial(99)), from_int(100))
     try expect_equal((try binomial(5, 2)).to_string_radix(10), "10")
     try expect_equal((try binomial(60, 30)).to_string_radix(10), "118264581564861424")
     try expect_equal((try binomial(5, 0)).to_string_radix(10), "1")
@@ -32,6 +34,12 @@ test "probable primes":
     let mersenne = (try from_int(2).pow(127)) - from_int(1)
     try expect_true(mersenne.is_probable_prime())
     try expect_false((mersenne - from_int(2)).is_probable_prime())
+
+    # Above 3.3e24 the rounds also use random bases, and counts above 25 are honoured.
+    try expect_true(mersenne.is_probable_prime(40))
+
+    let other = (try from_int(2).pow(89)) - from_int(1)
+    try expect_false((mersenne * other).is_probable_prime(40))
 
     let pseudoprime = try parse("3825123056546413051", 10)
 

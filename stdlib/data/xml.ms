@@ -302,25 +302,23 @@ fn decode(text: String) String!:
     if not text.contains("&"): return ok(text.clone())
 
     var out = StringBuilder()
-    var rest = text.clone()
 
-    while true:
-        let at = rest.index_of("&")
+    # Every piece after the first starts right after an `&`, so each is scanned once.
+    let pieces = text.split("&")
+    out.append(pieces[0])
 
-        if not at.is_some():
-            out.append(rest)
-            break
+    var index = 1
 
-        out.append(rest.take(at.get(0)))
+    while index < pieces.length():
+        let tail = pieces[index]
+        index += 1
 
-        let tail = rest.drop(at.get(0) + 1)
         let end = tail.index_of(";")
         if not end.is_some(): return error(
             Error("XML: invalid data", kind: ErrorCategory.InvalidData)
         )
 
         let entity = tail.take(end.get(0))
-        rest = tail.drop(end.get(0) + 1)
 
         if entity == "lt": out.append("<")
         else if entity == "gt": out.append(">")
@@ -333,6 +331,8 @@ fn decode(text: String) String!:
             out.append(try scalar(parse_int_radix(entity.drop(1), 10)))
         else:
             return error(Error("XML: invalid data", kind: ErrorCategory.InvalidData))
+
+        out.append(tail.drop(end.get(0) + 1))
 
     return ok(out.build())
 

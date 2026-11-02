@@ -1,7 +1,6 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-tasks,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import Channel from "@std/io/channels.ms"
-import Task, TaskGroup from "@std/concurrency/tasks.ms"
+import Task, TaskChannel, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_true from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
@@ -16,11 +15,11 @@ fn slow() Int:
     sleep(nanoseconds(10000000000))
     return 1
 
-fn deaf(ch: Channel[Unit, Int]) Int:
+fn deaf(ch: TaskChannel[Unit, Int]) Int:
     sleep(nanoseconds(10000000000))
     return 1
 
-fn mute(ch: Channel[Int, Unit]) Int:
+fn mute(ch: TaskChannel[Int, Unit]) Int:
     sleep(nanoseconds(10000000000))
     return 1
 
@@ -35,7 +34,7 @@ fn waiter(t: Task[Int]) Int:
 
     return r.err().message.length()
 
-fn echo(ch: Channel[Int, Int]) Int!:
+fn echo(ch: TaskChannel[Int, Int]) Int!:
     var c = ch
     var n = 0
 

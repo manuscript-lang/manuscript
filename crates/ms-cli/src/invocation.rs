@@ -77,6 +77,8 @@ pub struct Invocation {
     pub fix: bool,
     /// `--deny-warnings`: lint warnings fail the command.
     pub deny_warnings: bool,
+    /// `check --json --with-text`: the document also carries the terminal output.
+    pub with_text: bool,
     pub build_type_name: String,
     pub test_timeout: String,
     pub test_filter: String,
@@ -191,6 +193,7 @@ fn parse_options(
             "--fix" => inv.fix = true,
             "--static" => inv.static_libc = true,
             "--deny-warnings" => inv.deny_warnings = true,
+            "--with-text" => inv.with_text = true,
             "--check" => inv.format_check = true,
             "--json" => inv.structured = true,
             "--build-type" => {
@@ -598,6 +601,14 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             io,
             format!(
                 "--fix requires check or lint without --watch, not {command}; use ms check <file> --fix"
+            ),
+        ));
+    }
+    if inv.with_text && (command != "check" || !inv.structured) {
+        return Err(usage_error(
+            io,
+            format!(
+                "--with-text requires check --json, not {command}; use ms check <file> --json --with-text"
             ),
         ));
     }
