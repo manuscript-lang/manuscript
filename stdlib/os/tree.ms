@@ -97,6 +97,8 @@ export type MemoryTree:
     files: Map[String, Bytes]
     # Clean paths of directories; the root is the empty string and always present.
     directories: Set[String]
+    # Internal state: clean paths of the entries directly under each directory, so listing is not a scan of the tree.
+    kids: Map[String, Set[String]] = Map[String, Set[String]]()
 
 # Returns an empty in-memory tree holding only its root directory.
 export fn memory_tree() MemoryTree:
@@ -105,6 +107,25 @@ export fn memory_tree() MemoryTree:
     return MemoryTree(Map[String, Bytes](), directories)
 
 impl MemoryTree:
+    # Records `path` as a child of its parent directory.
+    var fn link(path: String) Unit:
+        let parent = parent_of(path)
+
+        if var set = self.kids[parent]?:
+            set.add(path.clone())
+            return unit
+
+        var fresh = Set[String]()
+        fresh.add(path.clone())
+        self.kids[parent] = fresh
+        return unit
+
+    # Forgets `path` as a child of its parent directory.
+    var fn unlink(path: String) Unit:
+        if var set = self.kids[parent_of(path)]?:
+            set.remove(path)
+        return unit
+
     # True when `path` names a file or directory.
     fn exists(path: String) Bool:
         let inside = clean(path)
@@ -122,6 +143,7 @@ impl MemoryTree:
 
         while not self.directories.contains(at):
             self.directories.add(at.clone())
+            if at != "": self.link(at)
             at = parent_of(at)
 
         return ok(unit)
@@ -139,6 +161,7 @@ impl MemoryTree:
 
         try self.create_directory(parent)
         self.files.add(inside.clone(), data)
+        self.link(inside.clone())
         return ok(unit)
 
     # Removes a file or an empty directory; `recursive` removes a directory with everything under it.
@@ -148,7 +171,8 @@ impl MemoryTree:
         if inside == "": return error(FileSystemError.InvalidInput)
 
         if self.files.contains(inside):
-            self.files.remove(inside)
+            self.files.remove(inside.clone())
+            self.unlink(inside.clone())
             return ok(unit)
 
         if not self.directories.contains(inside): return error(FileSystemError.NotFound)
@@ -161,10 +185,15 @@ impl MemoryTree:
         )
 
         for key in below_files:
-            self.files.remove(key)
+            self.files.remove(key.clone())
+
         for key in below_dirs:
-            self.directories.remove(key)
-        self.directories.remove(inside)
+            self.directories.remove(key.clone())
+            self.kids.remove(key.clone())
+
+        self.directories.remove(inside.clone())
+        self.kids.remove(inside.clone())
+        self.unlink(inside.clone())
         return ok(unit)
 
 impl FileTree for MemoryTree:
@@ -188,12 +217,13 @@ impl FileTree for MemoryTree:
         if not self.directories.contains(inside): return error(FileSystemError.NotFound)
 
         var entries = List[DirectoryEntry]()
-        for key in self.files.keys():
-            if key != "" and parent_of(key) == inside:
-                entries.append(DirectoryEntry(name_of(key), false, false))
-        for key in self.directories.values():
-            if key != "" and parent_of(key) == inside:
-                entries.append(DirectoryEntry(name_of(key), true, false))
+        if let names = self.kids.get(inside):
+            for key in names.values():
+                entries.append(
+                    DirectoryEntry(
+                        name_of(key), self.directories.contains(key), false
+                    )
+                )
         return limited(entries.sorted(by_name), max_entries)
 
 # One file or directory found by `walk`.
