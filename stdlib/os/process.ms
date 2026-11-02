@@ -1,6 +1,7 @@
 import Closeable from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
+import access, join, stat from "@std/os/fs.ms"
 import IpFamily from "@std/net/net.ms"
 import ReadStream from "@std/io/io.ms"
 import WriteStream from "@std/io/io.ms"
@@ -610,6 +611,50 @@ export fn cpu_usage() CpuUsage!ControlError:
 # Returns elapsed Duration since runtime initialization, rather than host boot.
 export fn uptime() Duration!ControlError:
     return host_control().uptime()
+
+# Finds the executable that running `name` would start, or none.
+# A name containing a path separator is checked as given. Otherwise each directory of `PATH` is searched in order, skipping empty entries. On Windows the variable is found without regard to case, and each directory is also tried with every `PATHEXT` extension (`.COM;.EXE;.BAT;.CMD` when unset). The result is a regular file the process may execute (any regular file on Windows) and is not made absolute or canonical.
+# Example: `which("git")` is `/usr/bin/git`.
+export fn which(name: String) String?:
+    if name == "": return none
+
+    let windows = os_type() == "windows"
+    var extensions = [""]
+    var separator = ":"
+    var directories = List[String]()
+
+    if windows:
+        separator = ";"
+        extensions = [".COM", ".EXE", ".BAT", ".CMD"]
+
+    let env = environment()
+
+    if env.is_ok():
+        for entry in env.get(Map[String, String]()).entries():
+            let key = if windows: entry.key.upper() else: entry.key
+            if key == "PATH": directories = entry.value.split(separator)
+            if key == "PATHEXT" and windows: extensions = entry.value.split(";")
+
+    if name.contains("/") or (windows and name.contains("\\")):
+        directories = [""]
+
+    for directory in directories:
+        if directory == "" and not name.contains("/"): continue
+
+        for extension in extensions:
+            let candidate = if directory == "": name.clone() else: join(
+                [directory.clone(), name.clone()]
+            )
+            if runnable("{candidate}{extension}", windows): return "{candidate}{extension}"
+
+    return none
+
+fn runnable(path: String, windows: Bool) Bool:
+    let info = stat(path, true)
+    if info.is_error() or not info.get().regular: return false
+    if windows: return true
+
+    return access(path, 1).is_ok()
 
 # Reads a fresh live process environment map; non-UTF-8 entries return Unsupported.
 export fn environment() Map[String, String]!ControlError:
