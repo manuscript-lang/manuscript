@@ -1,4 +1,4 @@
-//! Release pins: the extension version and the required workflows' triggers.
+//! Release pins: the extension version and the required workflow's triggers.
 
 pub fn extension_version() -> Vec<String> {
     let (Ok(release), Ok(manifest)) = (
@@ -22,8 +22,8 @@ pub fn extension_version() -> Vec<String> {
     )]
 }
 
-/// Required workflows must report on every PR and on the queue's combined commit. The ruleset on
-/// `main` requires checks from cicd.yml only; release.yml runs on tags and merge groups.
+/// The CI workflow must run on every PR, whatever files it changes, and on the merge queue's combined
+/// commit: the ruleset on `main` requires its `Build checks` and `Platform checks` jobs.
 pub fn workflow_triggers() -> Vec<String> {
     let path = ".github/workflows/cicd.yml";
     match std::fs::read_to_string(path) {

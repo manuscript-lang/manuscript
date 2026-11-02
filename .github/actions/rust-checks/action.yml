@@ -1,0 +1,221 @@
+name: Rust checks
+description: The full Rust checks for one platform (the merge queue and manual runs). Run after checkout, the sccache restore and rust-env.
+
+# One job runs one part (`a` or `b`), so the two parts run on separate runners; `ab` runs both in one job.
+#   part a  unit: build the workspace once, nextest, doc tests, and on Linux amd64 format and clippy
+#           (a pull request runs only format, clippy and the build: see build-checks);
+#           the Cranelift corpus and fixtures on platforms that run them.
+#   part b  conformance: the LLVM corpus and fixtures, plus the gates (below).
+#   gates   bundled-LLVM release build, source conformance, cancellation and ownership checks, the
+#           packaged ms on a hello project, glibc 2.28 on Linux. They run in part b on platforms
+#           with Cranelift and in part a elsewhere, which balances the two.
+
+inputs:
+  os:
+    description: linux, darwin or windows.
+    required: true
+  arch:
+    description: amd64 or arm64.
+    required: true
+  part:
+    description: a, b, or ab.
+    required: true
+  lint:
+    description: "'true' also runs format and clippy."
+    default: 'false'
+  cranelift:
+    description: "'true' also runs the corpus and fixtures with MS_BACKEND=cranelift."
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Plan the parts
+      shell: bash
+      run: |
+        part='${{ inputs.part }}'
+        gates_part=a
+        if [ '${{ inputs.cranelift }}' = true ]; then gates_part=b; fi
+        {
+          echo "UNIT=$([[ $part == *a* ]] && echo true || echo false)"
+          echo "CONFORM=$([[ $part == *b* ]] && echo true || echo false)"
+          echo "GATES=$([[ $part == *$gates_part* ]] && echo true || echo false)"
+        } >> "$GITHUB_ENV"
+    - name: Keep native test artifacts in runner storage
+      shell: bash
+      run: |
+        printf '%s\n' "TMPDIR=$RUNNER_TEMP" "TMP=$RUNNER_TEMP" "TEMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
+    - uses: taiki-e/install-action@v2
+      if: env.UNIT == 'true'
+      with:
+        tool: nextest
+    - name: Build the native runtime
+      shell: bash
+      run: cargo xtask runtime
+    - name: Format and clippy
+      if: env.UNIT == 'true' && inputs.lint == 'true'
+      shell: bash
+      run: |
+        cargo fmt --all --check
+        cargo clippy --workspace --all-targets -- -D warnings
+    # nextest runs each test in its own process, so tests that share process-global
+    # state (the runtime allocator, the environment) cannot interfere.
+    # MSVC rejects a test binary whose crates reference msrt_* runtime symbols that only ms-rt
+    # defines, even when nothing calls them; ELF and Mach-O drop the unused code first. Crates
+    # that ms-rt itself depends on cannot link it back in, so test builds on Windows let the
+    # linker leave those references unresolved. Distribution builds never use this flag.
+    - name: Tests and doc tests
+      if: env.UNIT == 'true'
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" = Windows ]; then
+          export RUSTFLAGS='-C link-arg=/FORCE:UNRESOLVED'
+        fi
+        # One build with every target: the later steps (nextest, the CLI, the native tests, the
+        # corpus runner) then reuse it instead of rebuilding dependencies with other features.
+        cargo build --workspace --all-targets --locked --keep-going
+        cargo nextest run --workspace --locked --no-fail-fast
+        cargo test --workspace --doc --locked
+    - name: Build CLI for native source conformance
+      shell: bash
+      run: |
+        set -euo pipefail
+        reports="$RUNNER_TEMP/ms-native-conformance"
+        if [ "$RUNNER_OS" = Windows ]; then reports="$(cygpath -u "$RUNNER_TEMP")/ms-native-conformance"; fi
+        mkdir -p "$reports"
+        printf 'NATIVE_REPORTS=%s\n' "$reports" >> "$GITHUB_ENV"
+        git rev-parse HEAD > "$reports/commit.txt"
+        rustc -vV > "$reports/host.txt"
+        # `-p ms-cli` unifies features differently from the workspace build and recompiles the
+        # cranelift crates, ms-clif, ms-build and ms-cli (about 40 s). Parts that ran the workspace
+        # build above reuse it: the same command is a no-op and relinks target/debug/ms. Windows
+        # keeps the separate build: its test build links with /FORCE:UNRESOLVED, which a shipped
+        # `ms` must not use.
+        if [ "$UNIT" = true ] && [ "$RUNNER_OS" != Windows ]; then
+          cargo build --workspace --all-targets --locked 2>&1 | tee "$reports/build.log"
+        else
+          cargo build --locked -p ms-cli 2>&1 | tee "$reports/build.log"
+        fi
+    - name: Native Windows project paths
+      if: env.UNIT == 'true' && runner.os == 'Windows'
+      shell: bash
+      run: cargo test --locked -p ms-driver --test project_windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
+    - name: Release builds use the bundled LLVM tools
+      if: env.GATES == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        # MS_KEEP_LL copies the LLVM IR next to the build, so it exists only when LLVM compiled the program.
+        dir="$RUNNER_TEMP/llvm-release"
+        mkdir -p "$dir"
+        (cd "$dir" && MS_KEEP_LL=1 "$GITHUB_WORKSPACE/target/debug/ms" build "$GITHUB_WORKSPACE/examples/hello/ms.toml" -o hello --build-type Release && test -s ms-keep.ll && ./hello)
+    - name: Native standard-library source conformance
+      if: env.GATES == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        ms=target/debug/ms
+        if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
+        for build_type in Release Debug; do
+          report="$NATIVE_REPORTS/rsa-$build_type.json"
+          stderr="$NATIVE_REPORTS/rsa-$build_type.stderr"
+          status=0
+          "$ms" test tests/e2e/testdata/stdlib/crypto-rsa.ms --build-type "$build_type" --json > "$report" 2> "$stderr" || status=$?
+          cat "$report"
+          cat "$stderr" >&2
+          if [ "$status" -ne 0 ]; then exit "$status"; fi
+          json="$report"
+          if [ "$RUNNER_OS" = Windows ]; then json="$(cygpath -w "$report")"; fi
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+            if (!r.completed || r.exit_code !== 0 || r.summary.available !== 4 ||
+                r.summary.selected !== 4 || r.summary.passed !== 4 ||
+                r.summary.failed !== 0 || r.summary.skipped !== 0 ||
+                r.summary.not_run !== 0 || r.tests.length !== 4 ||
+                r.tests.some(t => t.status !== "passed")) process.exit(1);
+          ' "$json"
+        done
+    - name: Conformance corpus (LLVM)
+      if: env.CONFORM == 'true'
+      shell: bash
+      run: target/debug/ms run tools/conform.ms
+    - name: End-to-end fixtures (LLVM)
+      if: env.CONFORM == 'true'
+      shell: bash
+      run: target/debug/ms run tools/e2e.ms
+    - name: Conformance corpus (Cranelift)
+      if: env.UNIT == 'true' && inputs.cranelift == 'true'
+      env:
+        MS_BACKEND: cranelift
+      shell: bash
+      run: target/debug/ms run tools/conform.ms
+    - name: End-to-end fixtures (Cranelift)
+      if: env.UNIT == 'true' && inputs.cranelift == 'true'
+      env:
+        MS_BACKEND: cranelift
+      shell: bash
+      run: target/debug/ms run tools/e2e.ms
+    - name: Cancelled tasks release what they own
+      if: env.GATES == 'true'
+      shell: bash
+      run: |
+        MS=target/debug/ms target/debug/ms run tools/leak-check.ms -- tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release.ms \
+          tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release-shapes.ms \
+          tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release-vars.ms \
+          tests/conformance/fixtures/e2e/stdlib/tasks-cancel-channel-wait-memory.ms
+    - name: Ownership counts and cleanup order hold
+      if: env.GATES == 'true'
+      shell: bash
+      run: MS=target/debug/ms target/debug/ms run tools/count-check.ms
+    - name: Package and run the distribution on a hello project
+      if: env.GATES == 'true'
+      shell: bash
+      run: |
+        target/debug/ms run tools/package.ms -- "${{ inputs.os }}" "${{ inputs.arch }}"
+        name="manuscript-rust-${{ inputs.os }}-${{ inputs.arch }}"
+        mkdir -p "extracted distribution"
+        if [ '${{ inputs.os }}' = windows ]; then
+          7z x -bso0 -o"extracted distribution" "dist/$name.zip"
+          ms="extracted distribution/$name/ms.exe"
+        else
+          tar -xzf "dist/$name.tar.gz" -C "extracted distribution"
+          ms="extracted distribution/$name/ms"
+        fi
+        "$ms" --version
+        cd "extracted distribution/$name/examples/hello"
+        if [ "$RUNNER_OS" != Windows ]; then
+          # Linux and macOS link with the bundled lld: nothing on PATH, no C toolchain.
+          env -i HOME="$HOME" PATH=/nonexistent "../../$(basename "$ms")" run ms.toml
+        else
+          "../../$(basename "$ms")" run ms.toml
+        fi
+    - name: Programs run on glibc 2.28
+      if: env.GATES == 'true' && inputs.os == 'linux'
+      shell: bash
+      run: |
+        target/debug/ms build tests/glibc-floor/floor.ms -o floor
+        # The link-time stubs bind nothing newer than glibc 2.28 (weak references aside).
+        if objdump -T floor | grep -v '^[0-9a-f]* *w ' | grep -E 'GLIBC_2\.(29|3[0-9])'; then
+          echo "floor binds a glibc symbol newer than 2.28" >&2
+          exit 1
+        fi
+        # AlmaLinux 8 ships glibc 2.28, the oldest that Linux programs support.
+        got=$(docker run --rm -v "$PWD:/w" -w /w almalinux:8 ./floor)
+        test "$got" = "144 true true true true 1030"
+
+    - name: sccache statistics
+      if: always()
+      shell: bash
+      run: sccache --show-stats
+    - name: Preserve test artifacts
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: rust-${{ inputs.os }}-${{ inputs.arch }}-${{ inputs.part }}
+        path: |
+          .artifacts/conform.md
+          ${{ runner.temp }}/ms-clif-tests-*
+          ${{ runner.temp }}/ms-native-conformance/
+          ${{ runner.temp }}/ms-dwarf-*
+          ${{ runner.temp }}/ms-build-debug-*
+        if-no-files-found: ignore

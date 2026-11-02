@@ -1,0 +1,33 @@
+name: Build checks
+description: "The pull request Rust checks: format, clippy, a build of every target, and a smoke test of the ms commands. No test suites; the merge queue runs them."
+
+runs:
+  using: composite
+  steps:
+    - name: Build the native runtime
+      shell: bash
+      run: cargo xtask runtime
+    - name: Format and clippy
+      shell: bash
+      run: |
+        cargo fmt --all --check
+        cargo clippy --workspace --all-targets -- -D warnings
+    - name: Build every target
+      shell: bash
+      run: cargo build --workspace --all-targets --locked --keep-going
+    # Dead-on-arrival check: the built `ms` starts, creates a project, and checks, formats, lints,
+    # tests, builds and runs it and the hello example. Debug builds use Cranelift, so this is quick.
+    - name: Smoke test the ms commands
+      shell: bash
+      run: |
+        ms="$PWD/target/debug/ms"
+        "$ms" --version
+        "$ms" guide > /dev/null
+        "$ms" search_symbol List > /dev/null
+        for project in examples/hello "$(mktemp -d)/smoke"; do
+          if [ ! -d "$project" ]; then (cd "$(dirname "$project")" && "$ms" init smoke > /dev/null); fi
+          "$ms" verify "$project/ms.toml"
+          "$ms" build "$project/ms.toml" --build-type Debug -o "$RUNNER_TEMP/smoke-app"
+          "$RUNNER_TEMP/smoke-app" > /dev/null
+          "$ms" run "$project/ms.toml" --build-type Debug > /dev/null
+        done
