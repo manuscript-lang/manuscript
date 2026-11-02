@@ -1,4 +1,4 @@
-//! Park and wake for the task channels of `@std/tasks.ms`. The queues live in Manuscript; a task
+//! Park and wake for the task channels of `@std/concurrency/tasks.ms`. The queues live in Manuscript; a task
 //! that finds its queue empty (or full) makes a token, records it beside the queue, and parks on
 //! it until the other end posts it. A token lasts for one wait, so a post that arrives after the
 //! wait ended, or a second post, finds no token and is dropped.
@@ -235,8 +235,16 @@ pub extern "C-unwind" fn msrt_channel_token() -> i64 {
 /// cancellation unwinds the task.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_channel_park(token: i64) {
-    // SAFETY: single threaded scheduler; a null `value_out` is allowed.
-    let woke = unsafe { task::msrt_token_park(token as u64, -1, core::ptr::null_mut()) };
+    // A deadlock faults out of the park without returning. Retire its single-use token
+    // through the runtime cleanup stack too; Rust destructors do not run on that jump.
+    let mut release = || {
+        // SAFETY: faulting parks abandon their wait before cleanup runs.
+        unsafe { task::msrt_token_free(token as u64) };
+    };
+    let woke = crate::fault::with_cleanup(&mut release, || {
+        // SAFETY: single threaded scheduler; a null `value_out` is allowed.
+        unsafe { task::msrt_token_park(token as u64, -1, core::ptr::null_mut()) }
+    });
     // SAFETY: the park ended, so no task waits on the token.
     unsafe { task::msrt_token_free(token as u64) };
     if woke != 0 {
