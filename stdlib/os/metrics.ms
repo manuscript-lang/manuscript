@@ -31,10 +31,7 @@ fn bucket_top(index: Int) Int:
 # answers count, extremes, mean and percentiles. Values below 64 are exact and larger ones fall in
 # buckets about 3% wide, so a percentile is an upper bound within that error. One histogram belongs to
 # one task; share it between tasks behind a `Shared`.
-#
-#     var latency = histogram()
-#     let answer = latency.time(fn: handle(request))
-#     let slowest = latency.percentile(99.0)
+# Example: `latency.time(fn: handle(request))` records one span, and `latency.percentile(99.0)` reads the slowest 1%.
 export opaque type Histogram:
     # Observation count per bucket.
     counts: List[Int]
