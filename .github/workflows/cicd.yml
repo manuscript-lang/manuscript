@@ -29,58 +29,44 @@ concurrency:
 jobs:
   language:
     name: Language checks
+    if: github.event_name != 'pull_request'
     uses: ./.github/workflows/test-language.yml
 
-  # Docs-only changes skip the Rust jobs.
+  # Builds the matrix for pushes, merge groups and manual runs. A pull request has no such job: its
+  # two Linux jobs hold the matrix and skip their own Rust steps for documentation-only changes.
   changes:
     name: Detect code changes
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       rust: ${{ steps.diff.outputs.rust }}
       matrix: ${{ steps.diff.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
       - id: diff
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          rust=true
-          if [ "$EVENT" = pull_request ]; then
-            if ! git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qvE '^(documentation/|website/|blog/|proposals/|skills/|extensions/|.*\.md$)'; then
-              rust=false
-            fi
-          fi
-          echo "rust=$rust" >> "$GITHUB_OUTPUT"
-          # Windows and macOS runners are scarce and queue for tens of minutes, so pull requests run
-          # Linux only (both architectures); pushes to main, merge groups and manual runs cover all six platforms. Run
-          # the workflow by hand on a branch to test a platform-specific change before merging.
+          # Pushes to main, merge groups and manual runs cover all six platforms. Pull requests run
+          # two Linux jobs written in the `rust` matrix; run the workflow by hand on a branch to test a
+          # platform-specific change before merging.
+          echo "rust=true" >> "$GITHUB_OUTPUT"
           include='{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","full":true,"corpus":true,"cranelift":true},
-            {"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","tests":true,"corpus":true}'
-          if [ "$EVENT" != pull_request ]; then
-            include="$include,
-            {\"os\":\"darwin\",\"arch\":\"amd64\",\"runner\":\"macos-15-intel\",\"tests\":true,\"corpus\":true},
-            {\"os\":\"darwin\",\"arch\":\"arm64\",\"runner\":\"macos-15\",\"tests\":true,\"corpus\":true,\"cranelift\":true},
-            {\"os\":\"windows\",\"arch\":\"amd64\",\"runner\":\"windows-2025\",\"tests\":true,\"corpus\":true,\"cranelift\":true},
-            {\"os\":\"windows\",\"arch\":\"arm64\",\"runner\":\"windows-11-arm\",\"tests\":true,\"corpus\":true}"
-          fi
-          # A push or merge group runs each platform as two parts on separate runners (twelve Rust jobs;
-          # the account allows 20 at once). A pull request runs both parts in one job per architecture
-          # (part `ab`), so it holds two slots, not four, and builds the workspace once per runner. Part `a` runs `unit`
+            {"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","tests":true,"corpus":true},
+            {"os":"darwin","arch":"amd64","runner":"macos-15-intel","tests":true,"corpus":true},
+            {"os":"darwin","arch":"arm64","runner":"macos-15","tests":true,"corpus":true,"cranelift":true},
+            {"os":"windows","arch":"amd64","runner":"windows-2025","tests":true,"corpus":true,"cranelift":true},
+            {"os":"windows","arch":"arm64","runner":"windows-11-arm","tests":true,"corpus":true}'
+          # Each platform runs as two parts on separate runners (twelve Rust jobs; the account allows
+          # 20 at once). A pull request runs both parts in one job per Linux architecture (part `ab`,
+          # in the `rust` matrix). Part `a` runs `unit`
           # (format, clippy, nextest, doc tests) and the Cranelift corpus and fixtures; part `b` runs the
           # LLVM corpus and fixtures and the `misc` gates (release build, source conformance, ownership
           # counts, packaging). Legs without Cranelift move `misc` into part `a` to balance the two.
-          # Every step still runs on every platform it ran on before; only wall time shrinks.
           # `cache_part` names the sccache entry a job restores; `ab` jobs share part `a`'s, which holds
           # the workspace build that part `b` reuses.
-          matrix=$(echo "{\"include\":[$include]}" | jq -c --arg event "$EVENT" '{include: [.include[] | . as $leg
-            | (if $event == "pull_request" then ["ab"] else ["a","b"] end)[] as $part
-            | $leg + {part: $part, cache_part: ($part | .[0:1]),
-                      part_name: (if $part == "a" then "tests" elif $part == "b" then "conformance" else "tests and conformance" end),
+          matrix=$(echo "{\"include\":[$include]}" | jq -c '{include: [.include[] | . as $leg
+            | ["a","b"][] as $part
+            | $leg + {part: $part, cache_part: $part,
+                      part_name: (if $part == "a" then "tests" else "conformance" end),
                       misc_part: (if $leg.cranelift then "b" else "a" end)}]}')
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
@@ -90,7 +76,9 @@ jobs:
   rust:
     name: ${{ matrix.os }}-${{ matrix.arch }} · ${{ matrix.part_name }}
     needs: changes
-    if: needs.changes.outputs.rust == 'true'
+    # A pull request runs two jobs in all, one per Linux architecture, and each decides itself
+    # whether the change touches Rust; `changes` runs only for the other events.
+    if: ${{ !cancelled() && (github.event_name == 'pull_request' || needs.changes.outputs.rust == 'true') }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 75
     strategy:
@@ -102,8 +90,9 @@ jobs:
         # `MS_BACKEND=cranelift`, so release builds use the Cranelift backend that Debug builds use.
         # Failures shared with Linux are in tests/conformance/expect-fail.txt;
         # platform-only ones go in tests/conformance/expect-fail.<os>.txt with a reason. The legs
-        # come from the `changes` job, which leaves out darwin on pull requests.
-        include: ${{ fromJSON(needs.changes.outputs.matrix).include }}
+        # come from the `changes` job; pull requests use the two Linux legs written here, with `docs`
+        # marking the one that also runs the language and book checks.
+        include: ${{ fromJSON(github.event_name == 'pull_request' && '{"include":[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","full":true,"corpus":true,"cranelift":true,"docs":true,"part":"ab","cache_part":"a","part_name":"checks","misc_part":"b"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","tests":true,"corpus":true,"part":"ab","cache_part":"a","part_name":"checks","misc_part":"a"}]}' || needs.changes.outputs.matrix).include }}
     defaults:
       run:
         shell: bash
@@ -116,26 +105,46 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+      # Documentation-only pull requests skip every Rust step below; the language and book checks
+      # still run. SKIP is read by each step's `if`.
+      - name: Detect Rust-relevant changes
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE"
+          if ! git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qvE '^(documentation/|website/|blog/|proposals/|skills/|extensions/|.*\.md$)'; then
+            echo "SKIP=true" >> "$GITHUB_ENV"
+          fi
       - id: sccache
+        if: env.SKIP != 'true' || matrix.docs
         uses: ./.github/actions/sccache
         with:
           prefix: cargo-sccache-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.cache_part }}-
       - name: Keep native test artifacts in runner storage
+        if: env.SKIP != 'true'
         run: |
           printf '%s\n' "TMPDIR=$RUNNER_TEMP" "TMP=$RUNNER_TEMP" "TEMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: taiki-e/install-action@v2
-        if: contains(matrix.part, 'a') && (matrix.full || matrix.tests)
+        if: env.SKIP != 'true' && (contains(matrix.part, 'a') && (matrix.full || matrix.tests))
         with:
           tool: nextest
       - uses: ./.github/actions/rust-env
+        if: env.SKIP != 'true' || matrix.docs
         with:
           os: ${{ matrix.os }}
           arch: ${{ matrix.arch }}
-          llvm-consumers: ${{ contains(matrix.part, 'a') && 'true' || 'false' }}
+          llvm-consumers: ${{ contains(matrix.part, 'a') && env.SKIP != 'true' && 'true' || 'false' }}
+      # Pull requests run these in the amd64 job, so they take no slot of their own.
+      - uses: ./.github/actions/language-checks
+        if: matrix.docs
+      - uses: ./.github/actions/book-checks
+        if: matrix.docs
       - name: Build the native runtime
+        if: env.SKIP != 'true'
         run: cargo xtask runtime
       - name: Format and clippy
-        if: contains(matrix.part, 'a') && matrix.full
+        if: env.SKIP != 'true' && (contains(matrix.part, 'a') && matrix.full)
         run: |
           cargo fmt --all --check
           cargo clippy --workspace --all-targets -- -D warnings
@@ -146,7 +155,7 @@ jobs:
       # that ms-rt itself depends on cannot link it back in, so test builds on Windows let the
       # linker leave those references unresolved. Distribution builds never use this flag.
       - name: Tests and doc tests
-        if: contains(matrix.part, 'a') && (matrix.full || matrix.tests)
+        if: env.SKIP != 'true' && (contains(matrix.part, 'a') && (matrix.full || matrix.tests))
         run: |
           if [ "$RUNNER_OS" = Windows ]; then
             export RUSTFLAGS='-C link-arg=/FORCE:UNRESOLVED'
@@ -157,6 +166,7 @@ jobs:
           cargo nextest run --workspace --locked --no-fail-fast
           cargo test --workspace --doc --locked
       - name: Build CLI for native source conformance
+        if: env.SKIP != 'true'
         run: |
           set -euo pipefail
           reports="$RUNNER_TEMP/ms-native-conformance"
@@ -176,10 +186,10 @@ jobs:
             cargo build --locked -p ms-cli 2>&1 | tee "$reports/build.log"
           fi
       - name: Native Windows project paths
-        if: contains(matrix.part, 'a') && runner.os == 'Windows'
+        if: env.SKIP != 'true' && (contains(matrix.part, 'a') && runner.os == 'Windows')
         run: cargo test --locked -p ms-driver --test project_windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
       - name: Release builds use the bundled LLVM tools
-        if: contains(matrix.part, matrix.misc_part)
+        if: env.SKIP != 'true' && (contains(matrix.part, matrix.misc_part))
         run: |
           set -euo pipefail
           # MS_KEEP_LL copies the LLVM IR next to the build, so it exists only when LLVM compiled the program.
@@ -187,7 +197,7 @@ jobs:
           mkdir -p "$dir"
           (cd "$dir" && MS_KEEP_LL=1 "$GITHUB_WORKSPACE/target/debug/ms" build "$GITHUB_WORKSPACE/examples/hello/ms.toml" -o hello --build-type Release && test -s ms-keep.ll && ./hello)
       - name: Native standard-library source conformance
-        if: contains(matrix.part, matrix.misc_part)
+        if: env.SKIP != 'true' && (contains(matrix.part, matrix.misc_part))
         run: |
           set -euo pipefail
           ms=target/debug/ms
@@ -212,33 +222,33 @@ jobs:
             ' "$json"
           done
       - name: Conformance corpus (LLVM)
-        if: contains(matrix.part, 'b') && matrix.corpus
+        if: env.SKIP != 'true' && (contains(matrix.part, 'b') && matrix.corpus)
         run: target/debug/ms run tools/conform.ms
       - name: End-to-end fixtures (LLVM)
-        if: contains(matrix.part, 'b') && matrix.corpus
+        if: env.SKIP != 'true' && (contains(matrix.part, 'b') && matrix.corpus)
         run: target/debug/ms run tools/e2e.ms
       - name: Conformance corpus (Cranelift)
-        if: contains(matrix.part, 'a') && matrix.cranelift
+        if: env.SKIP != 'true' && (contains(matrix.part, 'a') && matrix.cranelift)
         env:
           MS_BACKEND: cranelift
         run: target/debug/ms run tools/conform.ms
       - name: End-to-end fixtures (Cranelift)
-        if: contains(matrix.part, 'a') && matrix.cranelift
+        if: env.SKIP != 'true' && (contains(matrix.part, 'a') && matrix.cranelift)
         env:
           MS_BACKEND: cranelift
         run: target/debug/ms run tools/e2e.ms
       - name: Cancelled tasks release what they own
-        if: contains(matrix.part, matrix.misc_part) && matrix.corpus
+        if: env.SKIP != 'true' && (contains(matrix.part, matrix.misc_part) && matrix.corpus)
         run: |
           MS=target/debug/ms target/debug/ms run tools/leak-check.ms -- tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release-shapes.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release-vars.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-channel-wait-memory.ms
       - name: Ownership counts and cleanup order hold
-        if: contains(matrix.part, matrix.misc_part) && matrix.corpus
+        if: env.SKIP != 'true' && (contains(matrix.part, matrix.misc_part) && matrix.corpus)
         run: MS=target/debug/ms target/debug/ms run tools/count-check.ms
       - name: Package and run the distribution on a hello project
-        if: contains(matrix.part, matrix.misc_part)
+        if: env.SKIP != 'true' && (contains(matrix.part, matrix.misc_part))
         run: |
           target/debug/ms run tools/package.ms -- "${{ matrix.os }}" "${{ matrix.arch }}"
           name="manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}"
@@ -259,7 +269,7 @@ jobs:
             "../../$(basename "$ms")" run ms.toml
           fi
       - name: Programs run on glibc 2.28
-        if: contains(matrix.part, matrix.misc_part) && matrix.os == 'linux'
+        if: env.SKIP != 'true' && (contains(matrix.part, matrix.misc_part) && matrix.os == 'linux')
         run: |
           target/debug/ms build tests/glibc-floor/floor.ms -o floor
           # The link-time stubs bind nothing newer than glibc 2.28 (weak references aside).
@@ -271,15 +281,15 @@ jobs:
           got=$(docker run --rm -v "$PWD:/w" -w /w almalinux:8 ./floor)
           test "$got" = "144 true true true true 1030"
       - name: sccache statistics
-        if: always()
+        if: always() && env.SKIP != 'true'
         run: sccache --show-stats
       - uses: ./.github/actions/sccache-save
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && (env.SKIP != 'true' || matrix.docs) }}
         with:
           cache-hit: ${{ steps.sccache.outputs.cache-hit }}
           primary-key: ${{ steps.sccache.outputs.primary-key }}
       - name: Preserve test artifacts
-        if: always()
+        if: always() && env.SKIP != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: rust-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.part }}
@@ -291,11 +301,12 @@ jobs:
             ${{ runner.temp }}/ms-build-debug-*
           if-no-files-found: ignore
 
+
   # Keep one stable required check; every Rust job must pass before merging.
   rust-ok:
     name: Rust checks
     needs: [changes, rust]
-    if: always()
+    if: github.event_name != 'pull_request' && always()
     runs-on: ubuntu-latest
     steps:
       - name: Require all Rust checks
@@ -313,6 +324,7 @@ jobs:
 
   build:
     name: Build design book
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
