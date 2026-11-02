@@ -697,14 +697,16 @@ impl<'a> FnLower<'a> {
                             | Op::ListGet
                             | Op::ListGetNn
                             | Op::ListGetU
+                            | Op::Load
                     )
                 )
                 // Its parent must outlive the binding: an owned scrutinee is dropped as soon as
-                // its payload has been copied out.
+                // its payload has been copied out. A payload loaded out of an interface value
+                // (`iface.data`) is held by the interface value itself, so that must be borrowed.
                 && self
                     .b
                     .defining_operand(x.v)
-                    .is_some_and(|parent| self.b.is_borrowed(parent)));
+                    .is_some_and(|parent| self.b.is_borrowed(parent) && self.holder_borrowed(x.v, parent)));
         // A `let` of a lending call's result the checker holds as a borrow of the arguments.
         let lent = lent
             || (self.cx.shared(binding.uid)
@@ -740,6 +742,18 @@ impl<'a> FnLower<'a> {
         self.slotify(binding.uid);
         if owned {
             self.scopes.last_mut().expect("scope").push(binding.uid);
+        }
+    }
+
+    /// Whether the value `parent` that `v` was read from is itself borrowed, looking through the
+    /// `iface.data` pointer a type pattern loads its payload from.
+    fn holder_borrowed(&self, v: Value, parent: Value) -> bool {
+        if self.b.defining_op(v) != Some(Op::Load) {
+            return true;
+        }
+        match self.b.defining_operand(parent) {
+            Some(iface) => self.b.is_borrowed(iface),
+            None => false,
         }
     }
 
