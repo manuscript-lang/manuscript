@@ -165,32 +165,17 @@ pub fn module_names() -> Vec<String> {
         .collect()
 }
 
-/// The index stays under this many bytes (the guide-pages test budget is 3500): agents read it
-/// whole, so it narrows its lines as modules are added instead of growing past the budget.
-const INDEX_BUDGET: usize = 3400;
-
 /// Lists each module with a few of its names.
 pub fn index() -> String {
-    let header = "Standard modules (prelude needs no import).\n`ms search_symbol <module>` lists one, `ms search_symbol <module>.<Name>` shows a declaration, `ms search_symbol <words>` searches.\n\n";
-    let mut width = 84;
-    loop {
-        let body = index_lines(width);
-        if header.len() + body.len() <= INDEX_BUDGET || width <= 24 {
-            return format!("{header}{body}");
-        }
-        width -= 4;
-    }
-}
-
-/// One line per module: the name, then declarations while the line stays within `width`.
-fn index_lines(width: usize) -> String {
-    let mut b = String::new();
+    let mut b = String::from(
+        "Standard modules (prelude needs no import).\n`ms search_symbol <module>` lists one, `ms search_symbol <module>.<Name>` shows a declaration, `ms search_symbol <words>` searches.\n\n",
+    );
     for m in modules() {
         let mut line = format!("{:<12}", short_name(&m.path));
         let mut shown = 0;
         for d in &m.declarations {
             let next = format!("{line} {},", d.name);
-            if next.len() > width && shown > 0 {
+            if next.len() > 62 && shown > 0 {
                 break;
             }
             line = next;
