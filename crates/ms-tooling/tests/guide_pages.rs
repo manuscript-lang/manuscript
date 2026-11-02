@@ -103,7 +103,7 @@ fn bare(name: &str) -> &str {
 // Agents read these pages whole, so every page of the real library must fit its budget.
 #[test]
 fn std_pages_stay_bounded() {
-    assert!(index().len() <= 4000, "index is {} bytes", index().len());
+    assert!(index().len() <= 3500, "index is {} bytes", index().len());
     for module in standard_library() {
         let name = module
             .path

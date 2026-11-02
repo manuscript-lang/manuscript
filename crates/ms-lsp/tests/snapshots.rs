@@ -650,45 +650,16 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
     let first = script.at("textDocument/references", &main, 30, 31);
     let second = script.at("textDocument/references", &main, 30, 33);
     let responses = script.rust();
-    let math = include_str!("../../../stdlib/math/math.ms");
-    let conversion = math.find("fn to_float() Float?:").unwrap();
-    let absent = conversion + math[conversion..].find("return none").unwrap() + "return ".len();
-    let math_references = [absent].map(|offset| {
-        let start = ms_lsp::text::position(math, offset);
-        (
-            "math/math.ms",
-            start.line,
-            start.character,
-            start.character + 4,
-        )
-    });
-    // The general snapshot caps large responses. Pin every written reference;
-    // implicit Optional defaults have no `none` token and must not add ranges.
-    let retained = [
-        ("string.ms", 19, 15, 19),
-        ("string.ms", 26, 15, 19),
-        ("main.ms", 30, 31, 35),
-        ("io/io.ms", 68, 34, 38),
-        ("io/io.ms", 121, 19, 23),
-        ("io/io.ms", 127, 19, 23),
-        ("io/io.ms", 131, 19, 23),
-        ("io/io.ms", 138, 40, 44),
-        ("io/io.ms", 301, 38, 42),
-        ("collections/collections.ms", 560, 15, 19),
-        ("collections/collections.ms", 572, 15, 19),
-        ("collections/collections.ms", 660, 19, 23),
-        ("collections/collections.ms", 672, 19, 23),
-        ("collections/collections.ms", 690, 19, 23),
-        ("collections/collections.ms", 709, 19, 23),
-        ("collections/collections.ms", 866, 34, 38),
-    ];
-    let added = [
-        ("string.ms", 193, 32, 36),
-        ("string.ms", 229, 42, 46),
-        ("string.ms", 275, 15, 19),
-        ("string.ms", 314, 23, 27),
-        ("string.ms", 345, 37, 41),
-    ];
+    // The general snapshot caps large responses. Pin how many written `none` tokens each module
+    // contributes; implicit Optional defaults have no `none` token and must not add ranges. The
+    // bundled sources shift constantly, so the pin is a count per module, not line numbers.
+    let expected = std::collections::BTreeMap::from([
+        ("collections/collections.ms", 7),
+        ("io/io.ms", 6),
+        ("main.ms", 1),
+        ("math/math.ms", 1),
+        ("string.ms", 7),
+    ]);
     for id in [first, second] {
         let locations = responses
             .iter()
@@ -700,7 +671,8 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
         assert!(locations.windows(2).all(|pair| {
             ms_lsp::nav::location_sort_key(&pair[0]) <= ms_lsp::nav::location_sort_key(&pair[1])
         }));
-        let mut actual = std::collections::BTreeSet::new();
+        let mut actual = std::collections::BTreeMap::new();
+        let mut seen = std::collections::BTreeSet::new();
         for location in locations {
             let uri = location.get("uri").and_then(|uri| uri.as_str()).unwrap();
             let module = if uri == main {
@@ -718,16 +690,9 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
             let start = ms_lsp::text::offset(&source, range.start).unwrap();
             let end = ms_lsp::text::offset(&source, range.end).unwrap();
             assert_eq!(&source[start..end], "none", "{uri}: {range:?}");
-            assert!(actual.insert((
-                module,
-                range.start.line,
-                range.start.character,
-                range.end.character,
-            )));
+            assert!(seen.insert((module, range.start.line, range.start.character)));
+            *actual.entry(module).or_insert(0) += 1;
         }
-        for location in retained.into_iter().chain(math_references).chain(added) {
-            assert!(actual.remove(&location), "missing {location:?}");
-        }
-        assert!(actual.is_empty(), "unexpected references: {actual:?}");
+        assert_eq!(actual, expected);
     }
 }

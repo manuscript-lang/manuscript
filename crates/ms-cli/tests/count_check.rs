@@ -2,16 +2,26 @@
 
 mod common;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-fn count_check(fixture: &str, compiler: &Path) -> Output {
+/// The repo root without Windows' `\\?\` verbatim prefix: it becomes cargo's cwd and target
+/// directory, and the `ar` that `ring`'s build script runs cannot open verbatim paths.
+fn repo_root() -> PathBuf {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .canonicalize()
         .unwrap();
+    match root.to_str().and_then(|s| s.strip_prefix(r"\\?\")) {
+        Some(plain) if !plain.starts_with("UNC") => PathBuf::from(plain),
+        _ => root,
+    }
+}
+
+fn count_check(fixture: &str, compiler: &Path) -> Output {
+    let root = repo_root();
     let stats = std::env::var_os("LEAK_TARGET_DIR")
-        .map(std::path::PathBuf::from)
+        .map(PathBuf::from)
         .unwrap_or_else(|| root.join("target/leak-stats"));
     Command::new(env!("CARGO_BIN_EXE_ms"))
         .current_dir(root)
