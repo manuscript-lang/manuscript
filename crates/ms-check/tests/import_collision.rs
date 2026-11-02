@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 #[test]
 fn same_named_std_imports_explain_the_wrapper_module() {
-    let source = "import parse from \"@std/data/csv.ms\"\nimport parse from \"@std/data/toml.ms\"\nexport fn main() Int:\n    return 0\n";
+    let source = include_str!("import_collision/same_named_std.ms");
     let file: Arc<str> = Arc::from("main.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("parses");
     let got: Vec<String> = ms_check::check(
