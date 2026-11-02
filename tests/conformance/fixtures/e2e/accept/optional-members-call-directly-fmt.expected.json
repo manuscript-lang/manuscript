@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import expect_equal, expect_true from \"@std/test/test.ms\"\n\nfn fallback() Int: 9\n\ntest \"optional members\":\n    let present: Int? = 3\n    let absent: Int? = none\n    try expect_true((present.is_some() and not present.is_none()))\n    try expect_true((absent.is_none() and not absent.is_some()))\n    try expect_true((present.get(default: 7) == 3))\n    try expect_true((absent.get(default: 7) == 7))\n    try expect_true((absent.or_else(create: fn() Int?: fallback()).get() == 9))\n    try expect_true((present.map(fn(value: Int) Int: value + 1).get() == 4))\n\n    var items = List[Int]()\n    try expect_equal(items.get(index: 0, default: -1), -1)\n    items.append(value: 5)\n    try expect_true(\n        (\n            items.get(index: 0, default: -1) == 5\n            and items.first().get(default: 0) == 5\n        )\n    )\n"
-  }
-}

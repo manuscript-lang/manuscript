@@ -5,7 +5,10 @@ import (
     shift_right_unsigned,
     wrapping_add,
     wrapping_multiply,
-    max_int
+    cos,
+    log,
+    max_int,
+    sqrt
 ) from "@std/math/math.ms"
 import (
     msstd_random_draw_int,
@@ -134,3 +137,22 @@ impl SeededRandom:
             return none
 
         return values.get(self.int(0, values.length()))
+
+    # Returns a standard normal Float (mean 0, standard deviation 1) using the Box-Muller transform.
+    var fn normal() Float:
+        let radius = sqrt(-2.0 * log(1.0 - self.float()))
+        return radius * cos(6.283185307179586 * self.float())
+
+    # Returns an exponentially distributed Float with rate 1 (mean 1), always positive or zero.
+    var fn exponential() Float:
+        return -log(1.0 - self.float())
+
+    # Returns a shuffled list of the Ints 0 through `count - 1`. A negative `count` faults.
+    var fn permutation(count: Int) List[Int]:
+        if count < 0:
+            panic("random permutation: count must not be negative")
+
+        var items: List[Int] = []
+        for index in 0..count:
+            items.append(index)
+        return self.shuffle(items)

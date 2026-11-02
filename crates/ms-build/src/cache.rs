@@ -3,8 +3,9 @@
 //! An entry is keyed by the cheap facts of a build (profile, output, working directory, codegen
 //! environment variables, the `ms` executable's and runtime's size and modification time). Its
 //! manifest lists every source file with the size and modification time it had; the entry is
-//! valid while all of them still match. Nothing is read or hashed, so a hit skips the whole
-//! front end. `MS_CACHE=off` skips the cache; `MS_CACHE=verify` rebuilds and compares.
+//! valid while all of them still match. Source contents are not read or hashed; project requests
+//! resolve the manifest's entry before lookup. A hit skips the source front end.
+//! `MS_CACHE=off` skips the cache; `MS_CACHE=verify` rebuilds and compares.
 //!
 //! A new file that would shadow an imported one (a different resolution of the same import) is
 //! not noticed until some listed file changes; `MS_CACHE=off` or deleting `.ms-cache` covers it.

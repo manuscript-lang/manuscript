@@ -6,7 +6,7 @@
 //! neither diagnostics nor edits are derived from the fabricated text.
 
 use crate::analysis::{self, Analysis, Document, Documents, Options};
-use crate::index::expr_text;
+use crate::index::{expr_text, hidden_structure};
 use crate::text::{self, EditorKind, EditorToken, Position};
 use crate::uri;
 use ms_check::syntax::{ModRef, ScopeState};
@@ -132,7 +132,12 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
                 segment = v.end;
             }
         }
-        c.argument = !text_between(&d.text, segment, c.start).contains(':');
+        // `var` already starts a positional operand; complete its binding,
+        // rather than replacing it with another argument label.
+        c.argument = !text_between(&d.text, segment, c.start).contains(':')
+            && !before[at + 1..]
+                .iter()
+                .any(|t| t.start >= segment && t.is_name("var"));
         break;
     }
     let line_start = bytes[..c.start]
@@ -597,6 +602,7 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
         module: &'a ModRef,
         found: Option<(Expr, Ty)>,
         scope: &'a ScopeState,
+        hidden: std::collections::HashMap<NodeId, bool>,
     }
     impl Visitor for Calls<'_> {
         fn expr(&mut self, e: &Expr) {
@@ -614,6 +620,12 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
                 return;
             }
             let facts = self.module.facts();
+            if facts
+                .info(e.id)
+                .is_some_and(|info| hidden_structure(self.module, e, info, &mut self.hidden))
+            {
+                return;
+            }
             if let Some(info) = facts.info(callee.id)
                 && let Some(ty) = &info.ty
                 && ty.kind == Kind::Function
@@ -641,6 +653,12 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
                 }
             }
             if let Some(ty) = type_expression(callee, self.scope) {
+                if ty
+                    .opaque_module()
+                    .is_some_and(|file| file != self.module.file)
+                {
+                    return;
+                }
                 let sig = ms_check::types::constructor_signature(&ty);
                 self.found = Some((e.clone(), sig));
             }
@@ -651,6 +669,7 @@ pub fn query_call(a: &EditorAnalysis) -> Option<(Expr, Ty)> {
         module: &module,
         found: None,
         scope: &a.scope,
+        hidden: std::collections::HashMap::new(),
     };
     for d in &module.decls {
         visit::walk_decl(&mut calls, d.decl());
