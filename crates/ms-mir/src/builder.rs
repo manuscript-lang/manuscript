@@ -336,6 +336,12 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.list(elem);
         self.val(Op::ListLit, items, Imm::None, t)
     }
+    /// `list.const`: a list of single-register scalars copied from static data.
+    pub fn list_const(&mut self, elem: Ty, data: Vec<i64>) -> Value {
+        let t = self.m.types.list(elem);
+        let id = self.m.add_list_const(data);
+        self.val(Op::ListConst, &[], Imm::Int(id), t)
+    }
     /// `list.len`.
     pub fn list_len(&mut self, l: Value) -> Value {
         self.val(Op::ListLen, &[l], Imm::None, Ty::INT)

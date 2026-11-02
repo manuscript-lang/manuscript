@@ -873,6 +873,30 @@ impl Verifier<'_> {
                 }
                 Ok(())
             }
+            Op::ListConst => {
+                arity(0)?;
+                let elem = res
+                    .and_then(|r| m.list_elem(r))
+                    .ok_or("list.const yields a list")?;
+                let scalar = matches!(
+                    m.types.kind(elem),
+                    TyKind::Bool
+                        | TyKind::Int
+                        | TyKind::Int8
+                        | TyKind::Int16
+                        | TyKind::Int32
+                        | TyKind::UInt8
+                        | TyKind::UInt16
+                        | TyKind::UInt32
+                        | TyKind::UInt64
+                        | TyKind::Float
+                        | TyKind::Float32
+                );
+                match inst.imm {
+                    Imm::Int(i) if scalar && (i as usize) < m.list_consts.len() => Ok(()),
+                    _ => Err("list.const names constant data of a scalar element type".into()),
+                }
+            }
             Op::ListLen => {
                 arity(1)?;
                 want(

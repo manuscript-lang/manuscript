@@ -8,10 +8,8 @@ use ms_mir::ir::{Cc, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
-/// Element count above which a list literal of plain values is built in chunks.
-const LONG_LIST_LITERAL: usize = 512;
-/// Elements per chunk of a long list literal.
-const LONG_LIST_CHUNK: usize = 256;
+/// Element count above which a list literal of constants is emitted as static data.
+const CONST_LIST_LITERAL: usize = 64;
 
 impl<'a> FnLower<'a> {
     /// A placeholder for the value of code that cannot run.
@@ -251,11 +249,11 @@ impl<'a> FnLower<'a> {
         let TyKind::List(elem) = self.b.m.types.kind(lt).clone() else {
             return Err(Error::new("list literal of a non-list type"));
         };
-        if items.len() > LONG_LIST_LITERAL
+        if items.len() > CONST_LIST_LITERAL
             && !self.needs_drop(elem)
-            && !items.iter().any(crate::mutation::has_try)
+            && let Some(v) = self.const_list_literal(elem, items)
         {
-            return self.long_list_literal(lt, elem, items);
+            return Ok(v);
         }
         let mut vals = Vec::new();
         let mut pending = Vec::new();
@@ -284,36 +282,52 @@ impl<'a> FnLower<'a> {
         Ok(Val { v, own: true })
     }
 
-    /// A long literal of plain values is built from `list.lit` chunks joined by `list.concat`. One
-    /// `list.lit` over every element keeps all of them live until it runs, and the register
-    /// allocator is quadratic in that (40000 elements took 20s in a Debug build). Pushing each
-    /// element instead bloats the code (a Release build got 5x slower). Values that need no drop
-    /// are copied by the join exactly as they would be moved, and none of the items returns early.
-    fn long_list_literal(&mut self, lt: MTy, elem: MTy, items: &[Expr]) -> Result<Val, Error> {
-        let d = self.type_desc(elem);
-        let mut list: Option<Value> = None;
-        for chunk in items.chunks(LONG_LIST_CHUNK) {
-            let mut vals = Vec::with_capacity(chunk.len());
-            for it in chunk {
-                let x = self.expr(it)?;
-                if self.dead {
-                    return Ok(self.dummy(lt));
-                }
-                vals.push(self.owned(x));
+    /// The raw register value of a constant scalar element (an integer, float, or boolean
+    /// literal, optionally negated), or `None` when `e` is anything else.
+    fn const_scalar(&self, e: &Expr) -> Option<i64> {
+        let (text, negate) = match &e.kind {
+            ExprKind::Bool(b) => return Some(i64::from(*b)),
+            ExprKind::Number(text) => (text.as_str(), false),
+            ExprKind::Unary {
+                op: UnaryOp::Neg,
+                operand,
+            } => match &operand.kind {
+                ExprKind::Number(text) => (text.as_str(), true),
+                _ => return None,
+            },
+            _ => return None,
+        };
+        let t = self.ety(e);
+        match t.id.as_str() {
+            "Int" | "Int8" | "Int16" | "Int32" | "Int64" | "UInt8" | "UInt16" | "UInt32" => {
+                let n = parse_int(text)?;
+                i64::try_from(if negate { -n } else { n }).ok()
             }
-            let part = self.b.list_lit(elem, &vals);
-            list = Some(match list {
-                None => part,
-                Some(head) => {
-                    let joined = self.call_runtime("msrt_list_concat", &[head, part, d], lt)?;
-                    self.drop_value(head);
-                    self.drop_value(part);
-                    joined
-                }
-            });
+            "UInt64" => Some(u64::try_from(parse_int(text)?).ok()? as i64),
+            "Float" | "Float32" | "Float64" => {
+                let f: f64 = ms_syntax::number::canonical(text).parse().ok()?;
+                let f = if negate { -f } else { f };
+                let f = if ct::float_bits(&t) == Some(32) {
+                    f64::from(f as f32)
+                } else {
+                    f
+                };
+                Some(f.to_bits() as i64)
+            }
+            _ => None,
         }
-        let v = list.expect("a long literal has items");
-        Ok(Val { v, own: true })
+    }
+
+    /// A long literal of constants is static data copied into a fresh list. Building it element
+    /// by element makes one function as long as the literal, and register allocation, the SLP
+    /// vectorizer and the instruction scheduler are all quadratic in that.
+    fn const_list_literal(&mut self, elem: MTy, items: &[Expr]) -> Option<Val> {
+        let data = items
+            .iter()
+            .map(|it| self.const_scalar(it))
+            .collect::<Option<Vec<i64>>>()?;
+        let v = self.b.list_const(elem, data);
+        Some(Val { v, own: true })
     }
 
     // ----------------------------------------------------------------- names
