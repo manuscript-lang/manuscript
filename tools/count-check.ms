@@ -2,6 +2,7 @@
 # a runtime built with counters (`ms-rt` feature `stats`) and compares what they report with the `# expect-debug:` and
 # `# expect-release:` headers (`key=value` pairs from the runtime's "ms-rt counts:" line; absent keys are not checked)
 # and `# expect-stdout:` lines (the program's stdout, in order, on both). Cleanup order is the stdout lines.
+# A fixture must exit successfully before its counts or output can satisfy the gate.
 # A change may not raise a count without a stated reason; update the header in the same change.
 # MS names the ms that runs the programs (default target/release/ms).
 # Usage: ms run tools/count-check.ms [-- files]
@@ -43,18 +44,41 @@ export fn main() Int:
         let expected_out = after(source, "# expect-stdout: ")
 
         for build in ["debug", "release"]:
-            var out = ""
-            var err = ""
-
-            if let ran = run(
+            let ran = run(
                 ms.clone(), ["run", "{root}/{f}", "--build-type", build.clone()]
-            ):
-                out = ran.stdout.decode_utf8().get("")
-                err = ran.stderr.decode_utf8().get("")
+            )
+            checked += 1
+
+            if ran.is_error():
+                failures += 1
+
+                let cause = ran.err().message()
+                (
+                    stdout()
+                    .write(
+                        "run: {f} ({build}) could not run {ms}: {cause}; check MS and the fixture's process/output limits\n"
+                    )
+                    .get()
+                )
+                continue
+
+            let child = ran.get()
+            let out = child.stdout.decode_utf8().get("")
+            let err = child.stderr.decode_utf8().get("")
+
+            if child.exit_code != 0:
+                failures += 1
+                (
+                    stdout()
+                    .write(
+                        "exit: {f} ({build}) exited {child.exit_code}; fix the fixture failure\n{err}"
+                    )
+                    .get()
+                )
+                continue
 
             let counts = after(err, "ms-rt counts: ")
             let live = after(err, "ms-rt live blocks at exit: ")
-            checked += 1
 
             if live.length() == 0 or live[0] != "0":
                 failures += 1

@@ -9,3 +9,5 @@ Verified: interface operations and implementation methods need the same bound va
 Apply when: resolving generic bounds, copying implementation variables, or traversing recovered types for diagnostics and editor queries.
 Evidence: [recursive interface bound fixture](../../tests/conformance/fixtures/e2e/accept/recursive-interface-bound.ms).
 Verify: a program with `T: T` reports a diagnostic and the checker and language server both terminate.
+
+Default type arguments also need bound checks on their nested applications, even when the parameter has no explicit bound. Resolve them with earlier parameters and the enclosing receiver scope; validate after record fields and local implementations are complete. Substitute the default into recursive bounds and receiver bindings into method defaults without mutating shared variables. The [type-default regressions](../../crates/ms-check/src/type_argument_defaults_tests.rs) cover these paths and rejection controls.
