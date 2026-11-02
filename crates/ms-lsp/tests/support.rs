@@ -266,7 +266,77 @@ fn mask_workspace_ids(text: &str) -> String {
     out
 }
 
+/// The source text a standard-library location's `range` covers.
+fn stdlib_range_text(uri: &str, range: &Json) -> String {
+    let source = ms_lsp::analysis::standard_library_source(uri).expect("bundled stdlib module");
+    let position = |key: &str| {
+        let at = range.get(key).expect("range end");
+        let n = |k: &str| at.get(k).and_then(Json::as_i64).expect("position") as usize;
+        (n("line"), n("character"))
+    };
+    let (start, end) = (position("start"), position("end"));
+    let lines: Vec<Vec<u16>> = source
+        .split('\n')
+        .map(|l| l.trim_end_matches('\r').encode_utf16().collect())
+        .collect();
+    let mut text: Vec<u16> = Vec::new();
+    for (line, units) in lines.iter().enumerate().take(end.0 + 1).skip(start.0) {
+        let from = if line == start.0 { start.1 } else { 0 };
+        let to = if line == end.0 { end.1 } else { units.len() };
+        text.extend_from_slice(&units[from..to]);
+        if line < end.0 {
+            text.push(u16::from(b'\n'));
+        }
+    }
+    String::from_utf16_lossy(&text)
+}
+
+/// Replaces the `range` of every standard-library location with the text it covers. The bundled
+/// sources grow constantly and shift every line number; the file and the covered text still show
+/// that navigation resolves to the right declaration or use. Their order among themselves is
+/// not recorded for the same reason.
+fn mask_stdlib_ranges(value: &Json) -> Json {
+    match value {
+        Json::Arr(items) => {
+            let mut items: Vec<Json> = items.iter().map(mask_stdlib_ranges).collect();
+            // Locations in different files are ordered by line, so a shift can reorder them.
+            // Keep the standard-library entries in their slots, sorted among themselves.
+            let is_stdlib = |item: &Json| {
+                item.get("uri")
+                    .and_then(Json::as_str)
+                    .is_some_and(|u| u.starts_with("manuscript-stdlib:///"))
+            };
+            let slots: Vec<usize> = (0..items.len()).filter(|&i| is_stdlib(&items[i])).collect();
+            let mut sorted: Vec<Json> = slots.iter().map(|&i| items[i].clone()).collect();
+            sorted.sort_by_cached_key(canonical);
+            for (slot, item) in slots.into_iter().zip(sorted) {
+                items[slot] = item;
+            }
+            Json::Arr(items)
+        }
+        Json::Obj(fields) => {
+            let uri = value
+                .get("uri")
+                .and_then(Json::as_str)
+                .filter(|u| u.starts_with("manuscript-stdlib:///"));
+            Json::Obj(
+                fields
+                    .iter()
+                    .map(|(k, v)| match (k.as_str(), uri) {
+                        ("range", Some(uri)) if v.get("start").is_some() => {
+                            (k.clone(), Json::Str(stdlib_range_text(uri, v)))
+                        }
+                        _ => (k.clone(), mask_stdlib_ranges(v)),
+                    })
+                    .collect(),
+            )
+        }
+        other => other.clone(),
+    }
+}
+
 fn snapshot_line(message: &Json) -> String {
+    let message = &mask_stdlib_ranges(message);
     // Snapshots hold the URI spelling: forward slashes and a leading slash before a drive letter.
     let mut temp = std::env::temp_dir()
         .to_string_lossy()
