@@ -416,6 +416,13 @@ pub unsafe fn set_ctrl_handler(handler: unsafe extern "system" fn(u32) -> i32) {
     unsafe { SetConsoleCtrlHandler(Some(handler), 1) };
 }
 
+/// Whether `pc` lies in code with native unwind metadata, which generated code and its glue lack.
+pub fn has_unwind_info(pc: usize) -> bool {
+    let mut image = 0;
+    // SAFETY: a pure lookup in the loaded images' unwind tables.
+    !unsafe { RtlLookupFunctionEntry(pc, &mut image, core::ptr::null_mut()) }.is_null()
+}
+
 /// Bounds of the current thread's (or fiber's) stack: `(lowest address, one past the highest)`.
 pub fn stack_limits() -> (usize, usize) {
     let (mut lo, mut hi) = (0usize, 0usize);

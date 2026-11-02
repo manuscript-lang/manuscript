@@ -947,11 +947,15 @@ fn cached_file_build_notices_new_ancestor_and_nearer_manifests() {
     };
     let (status, stdout, stderr) = build();
     assert_eq!(status, 0, "{stdout}{stderr}");
-    let previous = (
-        std::fs::read(&output).unwrap(),
-        std::fs::read(&metadata).unwrap(),
-    );
+    let snapshot = || {
+        (
+            std::fs::read(&output).unwrap(),
+            std::fs::read(&metadata).unwrap(),
+        )
+    };
     for manifest in [dir.join("ms.toml"), src.join("ms.toml")] {
+        // The previous rebuild relinked the program, and the linker stamps the time into it.
+        let previous = snapshot();
         std::fs::write(&manifest, "[project\n").unwrap();
         let (status, stdout, stderr) = build();
         assert_eq!(status, 1, "{stdout}{stderr}");
@@ -960,13 +964,7 @@ fn cached_file_build_notices_new_ancestor_and_nearer_manifests() {
             document.get("reason").unwrap().as_str(),
             Some("compile_error")
         );
-        assert_eq!(
-            (
-                std::fs::read(&output).unwrap(),
-                std::fs::read(&metadata).unwrap()
-            ),
-            previous
-        );
+        assert_eq!(snapshot(), previous);
         std::fs::write(&manifest, "[project]\nname = \"p\"\nsource = \".\"\n").unwrap();
         let (status, stdout, stderr) = build();
         assert_eq!(status, 0, "{stdout}{stderr}");

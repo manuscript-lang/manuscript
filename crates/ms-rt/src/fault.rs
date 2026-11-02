@@ -643,8 +643,15 @@ unsafe fn walk_scanned_frames(
             break;
         }
         // SAFETY: forwarded; a found record lies below `hi`.
-        let Some(at) = (unsafe { frame_record(sp, lo, hi, |pc| find_func(t, pc).is_some()) })
-        else {
+        let Some(at) = (unsafe {
+            frame_record(
+                sp,
+                lo,
+                hi,
+                |pc| find_func(t, pc).is_some(),
+                sys::has_unwind_info,
+            )
+        }) else {
             break;
         };
         // SAFETY: `frame_record` checked `at + 16 <= hi`.
@@ -654,7 +661,9 @@ unsafe fn walk_scanned_frames(
 }
 
 /// The address of the first frame record `[saved fp, return address]` at or above `sp` whose
-/// return address `is_source` accepts and whose saved fp lies further up the stack.
+/// return address `is_source` accepts and whose saved fp lies further up the stack. A record whose
+/// return address `is_native` accepts instead is the frame's own record leading into native code,
+/// the edge of generated code: the scan ends there rather than reading a stale record beyond it.
 ///
 /// # Safety
 /// `sp..hi` is live stack memory.
@@ -664,6 +673,7 @@ unsafe fn frame_record(
     lo: usize,
     hi: usize,
     mut is_source: impl FnMut(usize) -> bool,
+    mut is_native: impl FnMut(usize) -> bool,
 ) -> Option<usize> {
     let first = sp.checked_add(7)? & !7;
     let last = first
@@ -674,8 +684,13 @@ unsafe fn frame_record(
         if at >= lo {
             // SAFETY: `at + 16 <= hi` within the live stack.
             let (next, ret) = unsafe { (*(at as *const usize), *((at + 8) as *const usize)) };
-            if next > at && next.is_multiple_of(8) && next < hi && is_source(ret) {
-                return Some(at);
+            if next > at && next.is_multiple_of(8) && next < hi {
+                if is_source(ret) {
+                    return Some(at);
+                }
+                if is_native(ret) {
+                    return None;
+                }
             }
         }
         at += 8;
@@ -1859,10 +1874,32 @@ mod tests {
         }
         let hi = base + 8 * 8;
         // SAFETY: the array outlives the scan and covers `base..hi`.
-        let found = unsafe { frame_record(base, base, hi, |pc| pc == 0x1010) };
+        let found = unsafe { frame_record(base, base, hi, |pc| pc == 0x1010, |_| false) };
         assert_eq!(found, Some(base + 2 * 8));
         // SAFETY: as above.
-        assert_eq!(unsafe { frame_record(base, base, hi, |_| false) }, None);
+        assert_eq!(
+            unsafe { frame_record(base, base, hi, |_| false, |_| false) },
+            None
+        );
+    }
+
+    #[test]
+    fn frame_record_stops_at_a_native_return_address() {
+        let mut slots = [0usize; 8];
+        let base = slots.as_mut_ptr().expose_provenance();
+        let ptr = slots.as_mut_ptr();
+        // SAFETY: both records lie inside `slots`.
+        unsafe {
+            // The frame's own record returns into native code; a stale source record lies beyond.
+            *ptr = base + 7 * 8;
+            *ptr.add(1) = 0x2020;
+            *ptr.add(4) = base + 7 * 8;
+            *ptr.add(5) = 0x1010;
+        }
+        let hi = base + 8 * 8;
+        // SAFETY: the array outlives the scan and covers `base..hi`.
+        let found = unsafe { frame_record(base, base, hi, |pc| pc == 0x1010, |pc| pc == 0x2020) };
+        assert_eq!(found, None);
     }
 
     #[test]
