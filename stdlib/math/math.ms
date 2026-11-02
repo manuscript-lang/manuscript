@@ -1,4 +1,5 @@
 import Data, panic from "@std/core.ms"
+import random_bytes from "@std/os/random.ms"
 import (
     msstd_math_acos,
     msstd_math_asin,
@@ -632,8 +633,9 @@ impl BigInt:
         return msstd_bigint_to_string_radix(self, radix)
 
     # Reports whether this value is probably prime: trial division by the primes below 100, then Miller-Rabin
-    # with the first `rounds` primes as bases (at most 25; larger counts use 25). The default 13 rounds is exact below
-    # 3.3e24; above that, a composite value built to fool fixed bases can pass, and the odds for any other input are negligible.
+    # with the first `rounds` primes as bases (at most 25). The default 13 rounds is exact below 3.3e24. Above that,
+    # `rounds` more bases are drawn from operating-system entropy, so a composite passes with odds at most 4^-rounds
+    # even when it was built to fool fixed bases; an entropy failure is a fault.
     # Values below 2, including negatives, are not prime. A `rounds` below 1 is a programming fault.
     fn is_probable_prime(rounds: Int = 13) Bool:
         if rounds < 1:
@@ -667,10 +669,21 @@ export fn factorial(n: Int) BigInt!BigIntError:
     if n < 0:
         return error(BigIntError.InvalidInput)
 
-    var product = msstd_bigint_from_int(1)
-    for factor in 2..n + 1:
-        product = product * msstd_bigint_from_int(factor)
-    return ok(product)
+    if n < 2:
+        return ok(msstd_bigint_from_int(1))
+
+    return ok(range_product(2, n))
+
+# The product of low through high inclusive, split in halves so each multiplication pairs similar sizes.
+fn range_product(low: Int, high: Int) BigInt:
+    if high - low < 16:
+        var product = msstd_bigint_from_int(low)
+        for factor in low + 1..high + 1:
+            product = product * msstd_bigint_from_int(factor)
+        return product
+
+    let middle = low + (high - low) / 2
+    return range_product(low, middle) * range_product(middle + 1, high)
 
 # Returns the binomial coefficient "n choose k", which is 0 when k exceeds n; a negative n or k returns InvalidInput.
 export fn binomial(n: Int, k: Int) BigInt!BigIntError:
@@ -714,43 +727,64 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
         if (n % divisor).sign() == 0:
             return false
 
-    let one = msstd_bigint_from_int(1)
-    let minus_one = n - one
+    let minus_one = n - msstd_bigint_from_int(1)
     var odd_part = minus_one.clone()
     var twos = 0
 
     while bigint_is_even(odd_part):
-        odd_part = odd_part / msstd_bigint_from_int(2)
+        odd_part = odd_part.shift_right(1).get(bigint_zero())
         twos += 1
 
-    var bases = rounds
-    if bases > primes.length():
-        bases = primes.length()
+    var fixed = rounds
+    if fixed > primes.length():
+        fixed = primes.length()
 
-    for index in 0..bases:
-        let base = msstd_bigint_from_int(primes[index])
-        var x = base.pow_mod(odd_part, n).get(bigint_zero())
-        if x.compare(one) == 0 or x.compare(minus_one) == 0:
-            continue
+    for index in 0..fixed:
+        if not bigint_strong_probable(n, msstd_bigint_from_int(primes[index]), odd_part, twos):
+            return false
 
-        var passed = false
-        var step = 1
+    # The first 13 prime bases decide every value below this bound exactly. Above it, fixed bases can be
+    # fooled by a composite built for them, so the requested rounds are repeated with secret random bases.
+    let bound = msstd_bigint_parse("3317044064679887385961981", 10, none).get(bigint_zero())
+    if n.compare(bound) < 0:
+        return true
 
-        while step < twos:
-            x = x * x % n
-
-            if x.compare(minus_one) == 0:
-                passed = true
-                break
-
-            step += 1
-
-        if not passed:
+    for _round in 0..rounds:
+        if not bigint_strong_probable(n, bigint_random_base(n), odd_part, twos):
             return false
 
     return true
 
-# Squares `value` modulo `modulus` `times` times.
+# One Miller-Rabin round: whether `n` (odd, with n - 1 = odd_part * 2^twos) is a strong probable prime to `base`.
+fn bigint_strong_probable(n: BigInt, base: BigInt, odd_part: BigInt, twos: Int) Bool:
+    let one = msstd_bigint_from_int(1)
+    let minus_one = n - one
+    var x = base.pow_mod(odd_part, n).get(bigint_zero())
+    if x.compare(one) == 0 or x.compare(minus_one) == 0:
+        return true
+
+    for _step in 1..twos:
+        x = x * x % n
+        if x.compare(minus_one) == 0:
+            return true
+
+    return false
+
+# A base drawn from operating-system entropy in 2 through n - 2, for n above the deterministic bound.
+fn bigint_random_base(n: BigInt) BigInt:
+    let size = n.to_string_radix(16).length() / 2 + 8
+    let data = random_bytes(size)
+    if data.is_error():
+        panic("is_probable_prime: the operating system entropy source failed")
+
+    var value = bigint_zero()
+    let base = msstd_bigint_from_int(256)
+    for byte in data.get().values():
+        value = value * base + msstd_bigint_from_int(byte.to_int())
+
+    let span = n - msstd_bigint_from_int(3)
+    return value % span + msstd_bigint_from_int(2)
+
 fn bigint_square_times(value: BigInt, times: Int, modulus: BigInt) BigInt:
     var result = value % modulus
     for _round in 0..times:
