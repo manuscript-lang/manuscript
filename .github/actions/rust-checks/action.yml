@@ -23,8 +23,11 @@ inputs:
     description: "'true' also runs format and clippy."
     default: 'false'
   cranelift:
-    description: "'true' also runs the corpus and fixtures with MS_BACKEND=cranelift."
-    default: 'false'
+    description: "'a' or 'b' also runs the corpus and fixtures with MS_BACKEND=cranelift in that part; the gates then run in the other part."
+    default: ''
+  gates:
+    description: "'false' skips the gates, when another job of the same run covers them."
+    default: 'true'
 
 runs:
   using: composite
@@ -33,12 +36,15 @@ runs:
       shell: bash
       run: |
         part='${{ inputs.part }}'
+        cranelift='${{ inputs.cranelift }}'
         gates_part=a
-        if [ '${{ inputs.cranelift }}' = true ]; then gates_part=b; fi
+        if [ "$cranelift" = a ]; then gates_part=b; fi
+        if [ '${{ inputs.gates }}' = false ]; then gates_part=none; fi
         {
           echo "UNIT=$([[ $part == *a* ]] && echo true || echo false)"
           echo "CONFORM=$([[ $part == *b* ]] && echo true || echo false)"
           echo "GATES=$([[ $part == *$gates_part* ]] && echo true || echo false)"
+          echo "CRANELIFT=$([[ -n $cranelift && $part == *$cranelift* ]] && echo true || echo false)"
         } >> "$GITHUB_ENV"
     - name: Keep native test artifacts in runner storage
       shell: bash
@@ -143,13 +149,13 @@ runs:
       shell: bash
       run: target/debug/ms run tools/e2e.ms
     - name: Conformance corpus (Cranelift)
-      if: env.UNIT == 'true' && inputs.cranelift == 'true'
+      if: env.CRANELIFT == 'true'
       env:
         MS_BACKEND: cranelift
       shell: bash
       run: target/debug/ms run tools/conform.ms
     - name: End-to-end fixtures (Cranelift)
-      if: env.UNIT == 'true' && inputs.cranelift == 'true'
+      if: env.CRANELIFT == 'true'
       env:
         MS_BACKEND: cranelift
       shell: bash

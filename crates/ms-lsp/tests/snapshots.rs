@@ -657,7 +657,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
         ("collections/collections.ms", 7),
         ("io/io.ms", 6),
         ("main.ms", 1),
-        ("math/math.ms", 1),
+        ("math/math.ms", 2),
         ("string.ms", 7),
     ]);
     for id in [first, second] {

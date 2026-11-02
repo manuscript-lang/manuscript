@@ -3945,7 +3945,7 @@ fn ty_holds(src: &Ty, part: &Ty) -> bool {
 
 /// Whether `t` mentions a type parameter.
 fn holds_variable(t: &Ty) -> bool {
-    t.kind == Kind::Variable || t.args.iter().any(holds_variable)
+    type_any::<false>(t, |t| t.kind == Kind::Variable)
 }
 
 /// Whether the binding is a parameter, whose caller loses it when a part of it moves.

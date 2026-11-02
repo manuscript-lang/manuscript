@@ -176,11 +176,10 @@ pub fn link(
     windows_arguments(&mut command, &dir, object, inputs, out, strip);
     #[cfg(target_os = "macos")]
     let stubs = macos_arguments(&mut command, &dir, object, inputs, out, strip)?;
-    let o = command
-        .output()
-        .map_err(|e| Error(format!("cannot run the bundled linker: {e}")))?;
+    let result = command.output();
     #[cfg(target_os = "macos")]
     let _ = std::fs::remove_dir_all(stubs);
+    let o = result.map_err(|e| Error(format!("cannot run the bundled linker: {e}")))?;
     if o.status.success() {
         return Ok(());
     }
@@ -350,10 +349,7 @@ fn macos_arguments(
     } else {
         "x86_64"
     };
-    let sdk = dir.join(format!(".sdk-{}", std::process::id()));
-    macos_stubs::write(&sdk, arch, object, inputs).inspect_err(|_| {
-        let _ = std::fs::remove_dir_all(&sdk);
-    })?;
+    let sdk = sdk_stubs(dir, arch, object, inputs)?;
     command
         .args(["-flavor", "darwin", "-arch", arch])
         .args(["-platform_version", "macos", "12.0", "12.0"])
@@ -379,14 +375,28 @@ fn macos_arguments(
     Ok(sdk)
 }
 
+#[cfg(any(target_os = "macos", test))]
+fn sdk_stubs(dir: &Path, arch: &str, object: &Path, inputs: &[&Path]) -> Result<PathBuf, Error> {
+    let sdk = staging(dir, "sdk").map_err(|e| Error(format!("cannot stage the SDK stubs: {e}")))?;
+    macos_stubs::write(&sdk, arch, object, inputs).inspect_err(|_| {
+        let _ = std::fs::remove_dir_all(&sdk);
+    })?;
+    Ok(sdk)
+}
+
 /// Writes the bundled linker and its support files to a per-build cache entry, once.
 fn extract() -> Result<PathBuf, Error> {
     let dir = cache_root().join("ms").join("linker").join(LINKER_ID);
+    extract_at(&dir, FILES)?;
+    Ok(dir)
+}
+
+fn extract_at(dir: &Path, files: &[(&str, &[u8])]) -> Result<(), Error> {
     let present = |name: &str, bytes: &[u8]| {
         std::fs::metadata(dir.join(name)).is_ok_and(|m| m.len() == bytes.len() as u64)
     };
-    if FILES.iter().all(|(name, bytes)| present(name, bytes)) {
-        return Ok(dir);
+    if files.iter().all(|(name, bytes)| present(name, bytes)) {
+        return Ok(());
     }
     let failed = |e: std::io::Error| {
         Error(format!(
@@ -394,29 +404,27 @@ fn extract() -> Result<PathBuf, Error> {
             dir.display()
         ))
     };
-    std::fs::create_dir_all(&dir).map_err(failed)?;
-    // Staged beside the destination so concurrent builds never see a partial file; the counter
-    // keeps threads of one process from sharing a staged file.
-    static STAGED: AtomicUsize = AtomicUsize::new(0);
-    for (name, bytes) in FILES.iter().filter(|(name, bytes)| !present(name, bytes)) {
-        let staged = dir.join(format!(
-            ".{name}-{}-{}",
-            std::process::id(),
-            STAGED.fetch_add(1, Ordering::Relaxed)
-        ));
-        let written = std::fs::write(&staged, bytes)
-            .and_then(|()| set_mode(&staged, false))
-            .and_then(|()| std::fs::rename(&staged, dir.join(name)));
-        // Another build may have installed (and be running) the same file; Windows refuses to
-        // replace a file in use, so a complete copy already in place is as good as ours.
-        if let Err(e) = written {
-            let _ = std::fs::remove_file(&staged);
-            if !present(name, bytes) {
+    // The exclusively created directory owns every file we write and clean up. Stale
+    // neighboring files or links must never be opened as this attempt's staging files.
+    let stage = staging(dir, "embedded").map_err(failed)?;
+    let result = (|| {
+        for (name, bytes) in files.iter().filter(|(name, bytes)| !present(name, bytes)) {
+            let staged = stage.join(name);
+            let written = std::fs::write(&staged, bytes)
+                .and_then(|()| set_mode(&staged, false))
+                .and_then(|()| std::fs::rename(&staged, dir.join(name)));
+            // Another build may have installed (and be running) the same file; Windows refuses to
+            // replace a file in use, so a complete copy already in place is as good as ours.
+            if let Err(e) = written
+                && !present(name, bytes)
+            {
                 return Err(failed(e));
             }
         }
-    }
-    Ok(dir)
+        Ok(())
+    })();
+    let _ = std::fs::remove_dir_all(stage);
+    result
 }
 
 #[cfg(windows)]
@@ -447,7 +455,7 @@ fn cache_root() -> PathBuf {
 
 #[cfg(target_os = "linux")]
 mod glibc_stubs;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", test))]
 mod macos_stubs;
 
 #[cfg(test)]

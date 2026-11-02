@@ -10,5 +10,6 @@ Verified: Go text-parity sweep (workstream 1); tests `tests/e2e/testdata/stdlib/
 - `replace_each(Map[String, String])`: first key in map order wins at each position, replacements are not rescanned.
 - `@std/string.ms` cannot import `@std/unicode.ms` (cycle); use `@std/internal/unicode.ms`.
 - In string literals `\\u{` still starts an interpolation; write `\\u\{` and `\}`.
+- `quote` and `quote_ascii` must escape both braces and literal-forbidden bidi controls; verify their output can be parsed as source, as well as round-tripped through `unquote`. Unicode escape payloads require 1 to 6 ASCII hexadecimal digits: the signed integer parser alone also accepts invalid `+41` and `-0` payloads.
 
 Apply when: adding text or scalar helpers. Verify: `ms test tests/e2e/testdata/stdlib/text.ms`.

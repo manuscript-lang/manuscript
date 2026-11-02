@@ -255,8 +255,11 @@ impl Completer<'_> {
 
     /// An opaque type's representation is visible only in its declaring file.
     fn structure_visible(&self, ty: &Ty) -> bool {
+        let Some(owner) = ty.opaque_module() else {
+            return true;
+        };
         let file = self.a.result.module(&self.a.document).map(|m| m.file);
-        ty.opaque_module().is_none_or(|m| Some(m) == file)
+        Some(owner) == file
     }
 
     fn member_items(&mut self) {

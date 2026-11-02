@@ -581,6 +581,28 @@ pub fn fdatasync(fd: Fd) -> Result<(), Errno> {
     with(fd, File::sync_data)
 }
 
+/// Takes an advisory whole-file lock (`flock`, `LockFileEx`) without waiting: `Ok(false)` when
+/// another handle holds a conflicting lock.
+pub fn try_lock(fd: Fd, exclusive: bool) -> Result<bool, Errno> {
+    use std::fs::TryLockError;
+    with(fd, |f| {
+        let taken = if exclusive {
+            f.try_lock()
+        } else {
+            f.try_lock_shared()
+        };
+        match taken {
+            Ok(()) => Ok(true),
+            Err(TryLockError::WouldBlock) => Ok(false),
+            Err(TryLockError::Error(e)) => Err(e),
+        }
+    })
+}
+
+pub fn unlock(fd: Fd) -> Result<(), Errno> {
+    with(fd, File::unlock)
+}
+
 /// Sets the permission bits (Windows: the read-only attribute from the owner write bit).
 pub fn fchmod(fd: Fd, mode: u32) -> Result<(), Errno> {
     with(fd, |f| {
