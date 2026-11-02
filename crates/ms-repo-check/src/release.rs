@@ -25,14 +25,14 @@ pub fn extension_version() -> Vec<String> {
 /// Required workflows must report on every PR and on the queue's combined commit. The ruleset on
 /// `main` requires checks from cicd.yml only; release.yml runs on tags and merge groups.
 pub fn workflow_triggers() -> Vec<String> {
-    let mut issues = Vec::new();
-    for path in [".github/workflows/cicd.yml"] {
-        match std::fs::read_to_string(path) {
-            Ok(text) => issues.extend(triggers(&text).map(|e| format!("{path}: {e}"))),
-            Err(e) => issues.push(format!("{path}: {e}")),
-        }
+    let path = ".github/workflows/cicd.yml";
+    match std::fs::read_to_string(path) {
+        Ok(text) => triggers(&text)
+            .map(|e| format!("{path}: {e}"))
+            .into_iter()
+            .collect(),
+        Err(e) => vec![format!("{path}: {e}")],
     }
-    issues
 }
 
 /// Lines of the child block of `key:` at `indent`, stopping at the next sibling.
