@@ -255,6 +255,21 @@ test "source transports receive complete records and close through their contrac
     logger.close()
     try expect_true(read_file("{path}.closed").is_ok())
 
+fn log_from_child(logger: Logger) Unit!LogError:
+    let child = try logger.child("worker")
+    return child.info("from child")
+
+fn log_in_scope(path: String) Unit!LogError:
+    let logger = try create(CaptureTransport(path.clone()), timestamp: false)
+    try log_from_child(logger)
+    return logger.info("parent after child")
+
+test "a logger scope closes its transport and a dropped child does not":
+    let temporary = temporary("manuscript-log-scope-") | try expect_ok
+    let path = "{temporary.path()}/records.ndjson"
+    try expect_ok(log_in_scope(path.clone()))
+    try expect_true(read_file("{path}.closed").is_ok())
+
 test "unencodable fields are rejected and fields keep their shape under data":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"

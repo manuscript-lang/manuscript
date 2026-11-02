@@ -1,4 +1,4 @@
-import Data from "@std/core.ms"
+import Closeable, Data from "@std/core.ms"
 import IoError from "@std/io/io.ms"
 import WriteStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
@@ -188,9 +188,21 @@ impl Transport for FileTransport:
             var file = lock(self.file)
             file.value.close().get(none)
 
+# The transport behind a logger and its children. The last holder to drop closes it, so a scope that owns a
+# logger closes the transport on every exit; an earlier `close()` makes that close a no-op.
+export type OwnedTransport:
+    # The transport records are written to.
+    inner: Transport
+
+impl Closeable for OwnedTransport:
+    # Closes the transport. Safe to call again, as `Transport.close` is.
+    var fn close() Unit!:
+        self.inner.close()
+        return ok(unit)
+
 # A structured logger: level filtering, bound fields, and a pluggable `Transport`. The level methods
 # take optional fields of any `Data` type and encode them with `stringify`. Child loggers share the
-# transport; closing any of them closes it for all.
+# transport; closing any of them closes it for all, and the last one dropped closes it if none did.
 export type Logger:
     # Internal state: the lowest level number that is written.
     threshold: Int
@@ -201,7 +213,7 @@ export type Logger:
     # Internal state: JSON text of the fields bound by `child`, written as `context`; none if unbound.
     context: String?
     # Internal state: the transport this logger and its children write to.
-    transport: Shared[Transport]
+    transport: Shared[OwnedTransport]
 
 impl Logger:
     # Internal: writes one record at a level number. `data` is JSON text attached as is.
@@ -216,7 +228,7 @@ impl Logger:
         line = "{line}\}\n"
         if let max = self.max_bytes:
             if line.to_bytes().length() > max: return error(LogError.LimitExceeded)
-        return self.transport.get().write(line)
+        return self.transport.get().inner.write(line)
 
     # Writes a record at the selected level. `fields` is any `Data` value `stringify` accepts.
     #
@@ -290,12 +302,12 @@ impl Logger:
 
     # Flushes the logger's transport.
     fn flush() Unit!LogError:
-        return self.transport.get().flush()
+        return self.transport.get().inner.flush()
 
     # Closes the transport this logger shares with its children, so every one of them reports `Closed`
-    # afterwards. A scope that owns the logger calls it on every exit.
+    # afterwards. Without it, the transport closes when the last logger holding it is dropped.
     var fn close() Unit:
-        self.transport.get().close()
+        self.transport.get().inner.close()
 
 # Creates a logger that owns `transport`. Defaults to `Info`, timestamps enabled, and no record-size limit.
 export fn create(
@@ -310,7 +322,12 @@ export fn create(
     var threshold = 30
     if let chosen = level:
         threshold = level_value(chosen)
-    return ok(Logger(threshold, timestamp.get(true), max_bytes, none, share(transport)))
+    return ok(
+        Logger(
+            threshold, timestamp.get(true), max_bytes, none,
+            share(OwnedTransport(transport))
+        )
+    )
 
 # Writes log records to an existing byte stream.
 export fn stream_transport(output: WriteStream) Transport:
