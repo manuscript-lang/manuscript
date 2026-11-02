@@ -1,4 +1,4 @@
-import Data, panic from "@std/core.ms"
+import Data, Iterator, panic from "@std/core.ms"
 import (
     msstd_time_duration_add,
     msstd_time_duration_subtract,
@@ -532,3 +532,50 @@ export fn monotonic() Instant:
 # It can jump when the system clock is adjusted, so use `monotonic` for elapsed time.
 export fn now() Timestamp:
     return msstd_time_wall_clock().now()
+
+# A point on the monotonic clock to wait for or check against, such as a request's time budget.
+export type Deadline:
+    # The instant the deadline expires.
+    at: Instant
+
+# Returns a deadline `duration` from now.
+export fn deadline_after(duration: Duration) Deadline:
+    return Deadline(at: monotonic().shift(duration))
+
+impl Deadline:
+    # Returns the time left, or zero once the deadline has passed.
+    fn remaining() Duration:
+        return self.at.difference(monotonic()).max(nanoseconds(0))
+
+    # Whether the deadline has passed.
+    fn expired() Bool:
+        return self.at.compare(monotonic()) <= 0
+
+    # Suspends the current task until the deadline passes. Returns at once if it already has.
+    fn wait() Unit:
+        sleep(self.remaining())
+
+# A source of evenly spaced instants, for `for tick in ticker(period):` loops that run work on a schedule.
+# Each `next` suspends the task until the next tick; leave the loop with `break` to stop. Ticks do not drift
+# with the loop body: a body slower than the period gets the next tick at once, and the ticks it missed are dropped.
+export type Ticker:
+    # The time between ticks.
+    period: Duration
+    # The instant of the next tick.
+    due: Instant
+
+# Returns a ticker whose first tick comes one `period` from now. A period of zero or less is a programming fault.
+export fn ticker(period: Duration) Ticker:
+    if period.compare(nanoseconds(0)) <= 0:
+        panic("ticker: period must be positive")
+
+    let due = monotonic().shift(period.clone())
+    return Ticker(period: period, due: due)
+
+impl Iterator[Instant] for Ticker:
+    # Waits for the next tick and returns the instant it was due; never returns none.
+    var fn next() Instant?:
+        let tick = self.due.clone()
+        sleep(tick.difference(monotonic()).max(nanoseconds(0)))
+        self.due = tick.shift(self.period.clone()).max(monotonic())
+        return tick
