@@ -1,10 +1,24 @@
-import from_bytes, map, take, concat, tee, map_writer, digest from "@std/io/streams.ms"
+import (
+    from_bytes,
+    map,
+    take,
+    concat,
+    tee,
+    map_writer,
+    digest,
+    multi_writer,
+    section,
+    channel_reader,
+    channel_writer
+) from "@std/io/streams.ms"
 import read_all, copy, IoError, read_line from "@std/io/io.ms"
 import CompressionFormat from "@std/io/archive.ms"
 import HashAlgorithm, sha256 from "@std/crypto.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
-import open, read_file, temporary from "@std/os/fs.ms"
+import open, read_file, temporary, write_file from "@std/os/fs.ms"
+import Channel from "@std/io/channels.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_ok from "@std/test/test.ms"
 
 fn upper(chunk: Bytes) Bytes:
@@ -92,4 +106,59 @@ test "take rejects a negative limit and read_line counts the terminator":
     var unterminated = from_bytes("abc".to_bytes())
     if (read_line(unterminated, 3) | try expect_ok) != "abc": return panic(
         "final line at the limit"
+    )
+
+fn produce(ch: Channel[Bytes, Unit]) Unit:
+    var sink = channel_writer(ch)
+    sink.write("alpha ").get()
+    sink.write_bytes("beta ".to_bytes()).get()
+    sink.write("gamma").get()
+    sink.close()
+
+test "channel pipe carries a task's writes to a reader":
+    var group = TaskGroup[Unit, Unit, Bytes]()
+    let task = group.spawn(produce)
+    var source = channel_reader(task.channel.clone())
+    let first = (try source.read(3)).get()
+    if first != "alp".to_bytes(): return panic("partial chunk")
+
+    let rest = try read_all(source)
+    if rest != "ha beta gamma".to_bytes(): return panic("rest")
+
+    try group.close()
+
+test "multi_writer duplicates writes":
+    let temporary = temporary("manuscript-streams-") | try expect_ok
+    let first = "{temporary.path()}/first.bin"
+    let second = "{temporary.path()}/second.bin"
+    var one = open(path: first, flags: "w", mode: 420) | try expect_ok
+    var two = open(path: second, flags: "w", mode: 420) | try expect_ok
+    var both = multi_writer([one.writer(), two.writer()])
+    try both.write("left")
+    try both.write_bytes(" right".to_bytes())
+    try both.flush()
+    try one.close()
+    try two.close()
+    if (read_file(path: first) | try expect_ok) != "left right".to_bytes(): return panic(
+        "first"
+    )
+    if (read_file(path: second) | try expect_ok) != "left right".to_bytes(): return panic(
+        "second"
+    )
+
+test "sections read independent ranges of one file":
+    let temporary = temporary("manuscript-streams-") | try expect_ok
+    let path = "{temporary.path()}/data.bin"
+    write_file(path: path, data: "0123456789abcdef") | try expect_ok
+
+    var file = open(path: path, flags: "r", mode: 0) | try expect_ok
+    let middle = section(file, 4, 6) | try expect_ok
+    let tail = section(file, 12, 100) | try expect_ok
+    if (try read_all(middle)) != "456789".to_bytes(): return panic("middle")
+    if (try read_all(tail)) != "cdef".to_bytes(): return panic("tail")
+
+    let bad = section(file, -1, 3)
+    if not bad.is_error(): return panic("negative offset")
+    if (file.read(2) | try expect_ok).get() != "01".to_bytes(): return panic(
+        "position moved"
     )

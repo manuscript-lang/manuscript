@@ -96,6 +96,19 @@ pub fn base64_decode_unpadded(
     url_safe: bool,
     max_bytes: Option<i64>,
 ) -> Result<Vec<u8>, Fail> {
+    // The unpadded Base64 contract checks encoded length and its potential decoded size
+    // before alphabet/padding errors.
+    let max = limit(max_bytes)?;
+    let length = text.len();
+    if length > usize::MAX / 8 {
+        return Err(Fail::LimitExceeded);
+    }
+    if length % 4 == 1 {
+        return Err(Fail::InvalidData);
+    }
+    if length / 4 * 3 + length % 4 * 6 / 8 > max {
+        return Err(Fail::LimitExceeded);
+    }
     let rev = if url_safe { &URL_REVERSE } else { &STD_REVERSE };
     decode(text, rev, 6, 4, false, max_bytes)
 }
@@ -202,6 +215,46 @@ mod tests {
                 let e = base64_encode_unpadded(&raw, url);
                 assert_eq!(base64_decode_unpadded(&e, url, None).unwrap(), raw);
             }
+        }
+    }
+
+    #[test]
+    fn unpadded_base64_budget_precedes_padding_errors() {
+        for url in [false, true] {
+            for text in ["AA==", "AAA=", "===="] {
+                for max in 0..3 {
+                    assert_eq!(
+                        base64_decode_unpadded(text, url, Some(max)),
+                        Err(Fail::LimitExceeded)
+                    );
+                }
+                assert_eq!(
+                    base64_decode_unpadded(text, url, Some(3)),
+                    Err(Fail::InvalidData)
+                );
+                assert_eq!(
+                    base64_decode_unpadded(text, url, Some(-1)),
+                    Err(Fail::InvalidInput)
+                );
+            }
+        }
+        for url in [false, true] {
+            assert_eq!(
+                base64_decode_unpadded("A", url, Some(0)),
+                Err(Fail::InvalidData)
+            );
+            assert_eq!(
+                base64_decode_unpadded("!!!!", url, Some(0)),
+                Err(Fail::LimitExceeded)
+            );
+            assert_eq!(
+                base64_decode_unpadded("!!!!", url, Some(3)),
+                Err(Fail::InvalidData)
+            );
+            assert_eq!(
+                base64_decode_unpadded("Zg", url, Some(1)),
+                Ok(b"f".to_vec())
+            );
         }
     }
 }

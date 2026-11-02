@@ -1,10 +1,4 @@
-import Alignment, TableError from "@std/io/table.ms"
+import TableError from "@std/io/table.ms"
 
-export extern fn msstd_table_format(
-    rows: List[List[String]],
-    alignments: List[Alignment],
-    padding: Int,
-    max_rows: Int?,
-    max_cells: Int?,
-    max_bytes: Int?
-) String!TableError
+# Display width of one cell (ambiguous characters narrow); controls, U+2028 and U+2029 are InvalidData.
+export extern fn msstd_table_cell_width(text: String) Int!TableError

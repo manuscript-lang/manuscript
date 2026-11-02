@@ -80,7 +80,8 @@ export fn parse_int_radix(text: String, base: Int) Int?:
     return 0 - value
 
 # Quotes text as a double-quoted literal using the escapes of Manuscript string literals.
-# Printable Unicode stays as is; control characters and U+2028/U+2029 become `\u{..}`.
+# Printable Unicode stays as is; controls, bidi controls and U+2028/U+2029 become `\u{..}`.
+# Braces are escaped so the result stays literal instead of starting interpolation.
 export fn quote(text: String) String:
     return quote_with(text, false)
 
@@ -97,6 +98,9 @@ fn quote_with(text: String, ascii_only: Bool) String:
             out.append("\\\"")
         else if c == 92:
             out.append("\\\\")
+        else if c == 123 or c == 125:
+            out.append("\\")
+            out.append(from_scalars([c]).get(""))
         else if c == 10:
             out.append("\\n")
         else if c == 13:
@@ -105,9 +109,11 @@ fn quote_with(text: String, ascii_only: Bool) String:
             out.append("\\t")
         else if (
             c < 32
-            or c == 127
+            or (c >= 127 and c <= 159)
             or c == 8232
             or c == 8233
+            or (c >= 8234 and c <= 8238)
+            or (c >= 8294 and c <= 8297)
             or (ascii_only and c > 127)
         ):
             out.append("\\u\{" + c.to_string_radix(16) + "\}")
@@ -118,7 +124,8 @@ fn quote_with(text: String, ascii_only: Bool) String:
     return out.build()
 
 # Reverses quote: reads a double-quoted literal and returns its text. Supports `\"`, `\\`, `\n`,
-# `\r`, `\t`, `\0` and `\u{hex}`; anything else, or text that is not fully quoted, is InvalidInput.
+# `\r`, `\t`, `\0`, escaped braces and `\u{hex}` with 1 to 6 hexadecimal digits;
+# anything else, or text that is not fully quoted, is InvalidInput.
 export fn unquote(text: String) String!StringError:
     let cs = text.scalar_values()
     if cs.length() < 2 or cs[0] != 34 or cs[cs.length() - 1] != 34:
@@ -150,17 +157,31 @@ export fn unquote(text: String) String!StringError:
                 out.append(9)
             else if e == 48:
                 out.append(0)
-            else if e == 34 or e == 92:
+            else if e == 34 or e == 92 or e == 123 or e == 125:
                 out.append(e)
             else if e == 117 and i < end and cs[i] == 123:
                 var j = i + 1
                 var hex = List[Int]()
 
                 while j < end and cs[j] != 125:
-                    hex.append(cs[j])
+                    let digit = cs[j]
+                    if (
+                        hex.length() == 6
+                        or not (
+                            (digit >= 48 and digit <= 57)
+                            or (digit >= 65 and digit <= 70)
+                            or (
+                                digit >= 97
+                                and digit <= 102
+                            )
+                        )
+                    ):
+                        return error(StringError.InvalidInput)
+
+                    hex.append(digit)
                     j += 1
 
-                if j >= end:
+                if j >= end or hex.is_empty():
                     return error(StringError.InvalidInput)
 
                 let digits = try from_scalars(hex)

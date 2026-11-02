@@ -190,3 +190,98 @@ fn debug_builds_a_long_list_literal_in_bounded_time() {
         "build took {elapsed:?}"
     );
 }
+
+/// A long literal of constants is static data whatever the element type: each type stores its
+/// own width, and negative, float and boolean constants read back unchanged.
+#[test]
+fn long_constant_literals_keep_their_element_types() {
+    let dir = std::env::temp_dir().join(format!("ms-const-lists-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let list = |f: &dyn Fn(i64) -> String| (0..100i64).map(f).collect::<Vec<_>>().join(", ");
+    let source = include_str!("llvm/const_lists.ms")
+        .replace(
+            "[100]",
+            &format!("[{}]", list(&|i| (i * 1_000_000_007 - 5).to_string())),
+        )
+        .replace(
+            "[101]",
+            &format!("[{}]", list(&|i| format!("-{}", i % 100))),
+        )
+        .replace("[102]", &format!("[{}]", list(&|i| (i * 2).to_string())))
+        .replace("[3.5]", &format!("[{}]", list(&|i| format!("-{i}.5"))))
+        .replace("[4.5]", &format!("[{}]", list(&|i| format!("{i}.25"))))
+        .replace(
+            "[true]",
+            &format!("[{}]", list(&|i| (i % 3 == 0).to_string())),
+        );
+    std::fs::write(dir.join("c.ms"), source).unwrap();
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .current_dir(&dir)
+        .args(["build", "c.ms", "-o", "c"])
+        .output()
+        .unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let run = Command::new(dir.join("c")).output().unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    let ti: i64 = (0..100i64).map(|i| i * 1_000_000_007 - 5).sum();
+    let tb: i64 = (0..100i64).map(|i| -(i % 100)).sum();
+    let tc: i64 = (0..100i64).map(|i| i * 2).sum();
+    assert_eq!(
+        String::from_utf8_lossy(&run.stdout),
+        format!(
+            "{ti} {tb} {tc} -5000 {} 34 {} -1 true\n",
+            (0..100i64).map(|i| i as f64 + 0.25).sum::<f64>(),
+            99i64 * 1_000_000_007 - 5
+        )
+    );
+}
+
+/// Constant literals of 20000 and 40000 elements are static data: both backends build them in
+/// bounded time.
+#[test]
+fn constant_literals_of_any_length_build_in_bounded_time() {
+    let dir = std::env::temp_dir().join(format!("ms-const-long-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let items: Vec<String> = (0..40_000).map(|i| (i * 7 % 1000).to_string()).collect();
+    let source = include_str!("llvm/long_literal.ms")
+        .replace("[n + 0]", &format!("[{}]", items.join(", ")))
+        .replace("    let n = arguments().length()\n", "")
+        .replace("import arguments from \"@std/os/process.ms\"\n", "");
+    std::fs::write(dir.join("k.ms"), source).unwrap();
+    for backend in ["cranelift", "llvm"] {
+        if backend == "llvm" && !cfg!(any(target_os = "linux", target_os = "macos")) {
+            continue;
+        }
+        if backend == "llvm" && !ms_clif::llvm_available() {
+            continue;
+        }
+        let started = std::time::Instant::now();
+        let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .env("MS_BACKEND", backend)
+            .current_dir(&dir)
+            .args(["build", "k.ms", "-o", "k"])
+            .output()
+            .unwrap();
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(20),
+            "{backend} build took {:?}",
+            started.elapsed()
+        );
+        let run = Command::new(dir.join("k")).output().unwrap();
+        let expected = (0..40_000i64).fold(0, |t, i| (t * 31 + i * 7 % 1000) % 1_000_003);
+        assert_eq!(
+            String::from_utf8_lossy(&run.stdout),
+            format!("{expected} 40000\n")
+        );
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
