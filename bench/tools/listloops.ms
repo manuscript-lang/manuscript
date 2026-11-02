@@ -3,11 +3,14 @@
 # -O3 with strict IEEE semantics (no -ffast-math, no FMA contraction), so neither side may reorder floating-point reductions.
 # Usage: ms run bench/tools/listloops.ms [-- repeats]; MS and CC pick the tools.
 import build_ms, capture, env, finish, must, repeats, sample, usage from "./lib.ms"
-import copy_tree, temporary from "@std/os/fs.ms"
+import copy, CopyOptions, temporary from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"
 
 fn run(work: String, n: Int) Result[String, Error]:
-    try copy_tree("bench/perf/listloops/ms", "{work}/ms", replace: true)
+    try copy(
+        "bench/perf/listloops/ms", "{work}/ms",
+        CopyOptions(recursive: true, replace: true)
+    )
     try build_ms("{work}/ms", "{work}/ms/bench")
 
     let cc = env("CC", "cc")

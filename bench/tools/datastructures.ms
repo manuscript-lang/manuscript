@@ -11,13 +11,15 @@ import (
     usage
 ) from "./lib.ms"
 import summarize from "./datastructures_table.ms"
-import copy_tree, temporary from "@std/os/fs.ms"
+import copy, CopyOptions, temporary from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"
 
 fn run(work: String, n: Int) Result[String, Error]:
     let here = "bench/perf/datastructures"
     for dir in ["go", "ms"]:
-        try copy_tree("{here}/{dir}", "{work}/{dir}", replace: true)
+        try copy(
+            "{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
+        )
     try build_ms("{work}/ms", "{work}/ms/bench")
     try build_go("{work}/go", "{work}/go/bench")
     try build_rust("{here}/rust/main.rs", "{work}/rs", [])

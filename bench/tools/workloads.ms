@@ -30,7 +30,7 @@ import Measured, header, measure, row, versions from "./workloads_measure.ms"
 import hex_encode from "@std/data/encoding.ms"
 import sha256 from "@std/crypto.ms"
 import JsonValue from "@std/data/json.ms"
-import copy_tree, create_directory, list, temporary from "@std/os/fs.ms"
+import copy, create_directory, list, temporary from "@std/os/fs.ms"
 import arguments from "@std/os/process.ms"
 import parse from "@std/data/json.ms"
 
@@ -88,10 +88,10 @@ fn run(work: String, n: Int) Result[String, Error]:
         let source = "{root}/{name}"
         for sub in ["ms/src", "go", "rs"]:
             try create_directory("{dir}/{sub}", recursive: true)
-        try copy_tree("bench/agent/templates/ms/ms.toml", "{dir}/ms/ms.toml")
-        try copy_tree("{source}/solutions/ms/main.ms.ref", "{dir}/ms/src/main.ms")
-        try copy_tree("{source}/solutions/go/main.go.ref", "{dir}/go/main.go")
-        try copy_tree("{source}/solutions/rust/main.rs.ref", "{dir}/rs/main.rs")
+        try copy("bench/agent/templates/ms/ms.toml", "{dir}/ms/ms.toml")
+        try copy("{source}/solutions/ms/main.ms.ref", "{dir}/ms/src/main.ms")
+        try copy("{source}/solutions/go/main.go.ref", "{dir}/go/main.go")
+        try copy("{source}/solutions/rust/main.rs.ref", "{dir}/rs/main.rs")
 
         let _mod = try must(
             "go mod init", run_in("{dir}/go", env("GO", "go"), ["mod", "init", "x"])

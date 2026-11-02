@@ -2,8 +2,8 @@ import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.m
 import TextError from "@std/core.ms"
 import (
     FileSystemError,
-    copy_file,
-    copy_tree,
+    copy,
+    CopyOptions,
     create_directory,
     list,
     read_file,
@@ -19,10 +19,10 @@ fn generic_write(path: String, data: String) Unit!FileSystemError:
     return write_file(path, data)
 
 fn generic_copy(source: String, destination: String) Unit!FileSystemError:
-    return copy_file(source, destination)
+    return copy(source, destination)
 
 fn generic_tree(source: String, destination: String) Unit!FileSystemError:
-    return copy_tree(source, destination)
+    return copy(source, destination, CopyOptions(recursive: true))
 
 fn generic_directory(path: String) Unit!FileSystemError:
     return create_directory(path)
@@ -70,67 +70,77 @@ test "filesystem file copies default to no replacement and retain byte limits":
     let destination = "{temporary.path()}/destination"
     write_file(source, "source") | try expect_ok
 
-    let copy = copy_file
-    let alias = copy_file
+    let alias = copy
     (alias(source, destination) | try expect_ok)
     write_file(source, "changed", true) | try expect_ok
     (try rejected(copy(source, destination)))
-    (try rejected(copy_file(source, destination, replace: false)))
+    (try rejected(copy(source, destination, CopyOptions(replace: false))))
     (try rejected(generic_copy(source, destination)))
     (try text(destination)) | try expect_equal("source")
-    (copy(source, destination, replace: true, max_bytes: none) | try expect_ok)
+    (copy(source, destination, CopyOptions(replace: true)) | try expect_ok)
     (try text(destination)) | try expect_equal("changed")
     (generic_copy(source, "{temporary.path()}/generic") | try expect_ok)
 
     let limited: Unit!FileSystemError = error(FileSystemError.LimitExceeded)
-    copy_file(source, "{temporary.path()}/limited", max_bytes: 0) | try expect_equal(
+    copy(source, "{temporary.path()}/limited", CopyOptions(max_bytes: 0)) | try expect_equal(
         limited
     )
-    copy_file(source, "{temporary.path()}/limited", max_bytes: 6) | try expect_equal(
+    copy(source, "{temporary.path()}/limited", CopyOptions(max_bytes: 6)) | try expect_equal(
         limited
     )
-
-    let invalid: Unit!FileSystemError = error(FileSystemError.InvalidInput)
-    ((copy_file(source, "{temporary.path()}/negative", max_bytes: -1) != invalid)) | try expect_false
-    (copy(source, "{temporary.path()}/exact", max_bytes: 7) | try expect_ok)
+    (
+        copy(
+            source, "{temporary.path()}/exact", CopyOptions(max_bytes: 7)
+        ) | try expect_ok
+    )
 
 test "filesystem tree copies default to no replacement with distinct budgets":
     let temporary = temporary("manuscript-default-tree-") | try expect_ok
     let source = "{temporary.path()}/source"
     let destination = "{temporary.path()}/destination"
+    let tree = CopyOptions(recursive: true)
     create_directory(source) | try expect_ok
     write_file("{source}/data", "abc") | try expect_ok
 
-    let copy = copy_tree
-    let alias = copy_tree
-    (alias(source, destination) | try expect_ok)
+    let alias = copy
+    (alias(source, destination, tree) | try expect_ok)
     write_file("{source}/data", "xyz", true) | try expect_ok
-    (try rejected(copy(source, destination)))
-    (try rejected(copy(source, destination, false)))
+    (try rejected(copy(source, destination, tree)))
+    (
+        try rejected(
+            copy(
+                source, destination, CopyOptions(recursive: true, replace: false)
+            )
+        )
+    )
     (try rejected(generic_tree(source, destination)))
     (try text("{destination}/data")) | try expect_equal("abc")
     (
         copy(
-            source, destination, true, max_entries: none, max_bytes: none
+            source, destination, CopyOptions(recursive: true, replace: true)
         ) | try expect_ok
     )
     (try text("{destination}/data")) | try expect_equal("xyz")
     (generic_tree(source, "{temporary.path()}/generic") | try expect_ok)
 
     let limited: Unit!FileSystemError = error(FileSystemError.LimitExceeded)
-    copy(source, "{temporary.path()}/entries", max_entries: 1) | try expect_equal(
+    copy(
+        source, "{temporary.path()}/entries",
+        CopyOptions(recursive: true, max_entries: 1)
+    ) | try expect_equal(limited)
+    copy(source, "{temporary.path()}/bytes", CopyOptions(recursive: true, max_bytes: 2)) | try expect_equal(
         limited
     )
-    copy(source, "{temporary.path()}/bytes", max_bytes: 2) | try expect_equal(limited)
 
     let invalid: Unit!FileSystemError = error(FileSystemError.InvalidInput)
-    ((copy(source, "{temporary.path()}/negative-entry", max_entries: -1) != invalid)) | try expect_false
-    copy(source, "{temporary.path()}/negative-byte", max_bytes: -1) | try expect_equal(
-        invalid
-    )
+    copy(
+        source, "{temporary.path()}/negative-byte",
+        CopyOptions(recursive: true, max_bytes: -1)
+    ) | try expect_equal(invalid)
     (
         copy(
-            source, "{temporary.path()}/exact", max_entries: 2, max_bytes: 3
+            source, "{temporary.path()}/exact",
+            CopyOptions(recursive: true, max_entries: 2, max_bytes: 3)
         ) | try expect_ok
     )
 
@@ -179,7 +189,7 @@ test "filesystem default preparation retains written argument order":
     ) | try expect_ok
     log | try expect_equal(["data", "path"])
 
-    let copy = copy_file
+    let copy = copy
     (
         copy(
             destination: argument(

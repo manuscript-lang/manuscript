@@ -3,7 +3,7 @@
 # Usage (from the repository root): ms run bench/agent/tokens.ms   # needs `pip install tiktoken`
 # The reference table shows how verbose each language is when the same program is written by hand;
 # agent-written sizes come from `llm_tokens` in results/runs.jsonl (see README).
-import glob from "@std/os/fs.ms"
+import glob, GlobOptions from "@std/os/fs.ms"
 import stdout, stderr from "@std/io/io.ms"
 import load_challenges from "./core/model.ms"
 import bash from "./lib/text.ms"
@@ -31,8 +31,12 @@ export fn main() Int:
         var row = List[String]()
 
         for lang in LANGS:
-            let refs = glob("{ch.dir}/solutions/{lang}", "*.ref", none).get([])
-            if not refs.is_empty(): row.append("{ch.dir}/solutions/{lang}/{refs[0]}")
+            let refs = glob(
+                "{ch.dir}/solutions/{lang}", GlobOptions(patterns: ["*.ref"])
+            ).get([])
+            if not refs.is_empty(): row.append(
+                "{ch.dir}/solutions/{lang}/{refs[0].path}"
+            )
 
         if row.length() == LANGS.length():
             names.append(ch.id.clone())

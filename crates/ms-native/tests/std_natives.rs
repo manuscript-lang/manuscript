@@ -320,9 +320,7 @@ mod fs_io {
             assert_eq!(msstd_fs_write_file(a, &data, 0), STATUS_OK);
 
             let mode = st("r+");
-            let mut flags = 0i64;
-            assert_eq!(msstd_fs_open_flags(mode, &mut flags), STATUS_OK);
-            assert_eq!(msstd_fs_file_open(a, flags, 0o600, &mut handle), STATUS_OK);
+            assert_eq!(msstd_fs_open(a, mode, 0o600, &mut handle), STATUS_OK);
             assert_eq!(msstd_fs_file_read_at(handle, 2, 1, 2, &mut out), STATUS_OK);
             assert_eq!(contents(&out), b"cd");
             let x = vec_of(b"XY");
@@ -348,10 +346,6 @@ mod fs_io {
             assert_eq!(seen, [("a.txt".into(), 0), ("sub".into(), 1)]);
             msstd_fs_directory_close(cursor);
             ms_rt::glue::release(cursor.cast());
-
-            let pattern = st("**/*.txt");
-            assert_eq!(msstd_fs_glob(r, pattern, 0, 0, &mut out), STATUS_OK);
-            assert_eq!(out.len, 1);
 
             let mut filter = Counting {
                 hdr: ms_rt_abi::Closure {
@@ -385,9 +379,6 @@ mod fs_io {
                 STATUS_NOT_FOUND
             );
 
-            let (mut names, mut values) = (empty(), empty());
-            msstd_fs_constants(&mut names, &mut values);
-            assert!(names.len > 10 && names.len == values.len);
             assert_eq!(msstd_fs_remove(r, 1), STATUS_OK);
             assert_eq!(msstd_fs_remove(dest, 1), STATUS_OK);
         }

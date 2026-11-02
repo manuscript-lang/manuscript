@@ -1,5 +1,5 @@
 # Build an agent workspace and score a finished one against hidden tests.
-import chmod, copy_tree, create_directory from "@std/os/fs.ms"
+import chmod, copy, CopyOptions, create_directory from "@std/os/fs.ms"
 import parse from "@std/data/json.ms"
 import Challenge, Lang, root, repo from "./model.ms"
 import count_workspace from "./codetokens.ms"
@@ -30,7 +30,10 @@ type LogRow:
 # Creates `dest` with the language template, spec, examples and `check.sh`. Returns the agent prompt.
 export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
     create_directory(dest, recursive: true).get()
-    copy_tree("{root()}/templates/{lang.template}", dest, replace: true).get()
+    copy(
+        "{root()}/templates/{lang.template}", dest,
+        CopyOptions(recursive: true, replace: true)
+    ).get()
 
     var n = 0
 
@@ -50,9 +53,9 @@ export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
     chmod("{dest}/check.sh", 493).get()
     for ctx in lang.context:
         if ctx.starts_with("@repo/"):
-            copy_tree(
+            copy(
                 "{repo()}/{ctx.slice(6, ctx.length()).get("")}", "{dest}/docs",
-                replace: true
+                CopyOptions(recursive: true, replace: true)
             ).get()
     return (
         "Implement the program described in TASK.md in {lang.name}. "
