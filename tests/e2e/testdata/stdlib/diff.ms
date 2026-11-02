@@ -42,3 +42,11 @@ test "unified_diff splits distant changes and names headers":
     let new = ["1", "X", "3", "4", "5", "6", "7", "Y"]
     let expected = "--- old.txt\n+++ new.txt\n@@ -1,3 +1,3 @@\n 1\n-2\n+X\n 3\n@@ -7,2 +7,2 @@\n 7\n-8\n+Y\n"
     try expect_equal(unified_diff(old, new, 1, "old.txt", "new.txt"), expected)
+
+test "unified_diff keeps offsets across shared leading and trailing lines":
+    try expect_equal(
+        unified_diff(["a", "b", "c", "d", "e"], ["a", "b", "x", "d", "e"], 1),
+        "--- a\n+++ b\n@@ -2,3 +2,3 @@\n b\n-c\n+x\n d\n"
+    )
+    try expect_equal(unified_diff(["a", "b"], ["a", "b"]), "")
+    try expect_equal(unified_diff([], ["a"], 0), "--- a\n+++ b\n@@ -0,0 +1 @@\n+a\n")
