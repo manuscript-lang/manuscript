@@ -163,7 +163,7 @@ pub unsafe fn eq_list(a: *const VecVal, b: *const VecVal, d: &TypeDesc) -> bool 
 }
 
 /// Moves `elem` (a slot of `d.size` bytes) onto the end.
-unsafe fn push(v: &mut VecVal, d: &TypeDesc, e: *const u8) {
+pub(crate) unsafe fn push(v: &mut VecVal, d: &TypeDesc, e: *const u8) {
     // SAFETY: the list owns `size`-byte slots; `e` is a distinct slot.
     unsafe {
         if v.len == v.cap {
@@ -1465,7 +1465,7 @@ unsafe fn bslice<'a>(b: *const VecVal) -> &'a [u8] {
     }
 }
 
-unsafe fn bytes_from(data: &[u8], out: *mut VecVal) {
+pub(crate) unsafe fn bytes_from(data: &[u8], out: *mut VecVal) {
     // SAFETY: `out` is writable.
     unsafe {
         if data.is_empty() {

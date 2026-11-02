@@ -4,13 +4,19 @@
 
 - Problem: a program cannot use a C library such as libuv. `ms_abi.h` today declares only a borrowed string view and one string constructor. A native cannot hand Manuscript a resource, call Manuscript back, run blocking work without stalling every task, or report error text.
 - Change: grow `ms_abi.h` into the complete, versioned contract for C shims. C code stays in C and Manuscript code stays in Manuscript: a binding is a shim written against this one header, plus typed `extern fn` declarations in `.ms`.
-- The header has eleven groups: version, status codes, strings and bytes, values, lists, native objects, errors and faults, calls into Manuscript (same thread and any thread), blocking work and sockets, stop requests, and per-isolate state. Together they cover the use cases of Node's N-API, Python's C API and Go's cgo; the doc maps each use case to its entries.
+- The header has eleven groups: version, status codes, strings and bytes, values, lists, native objects, errors and faults, calls into Manuscript (same thread and any thread), blocking work and sockets, stop requests, and per-isolate state. The doc maps each use case to its entries.
 - Manuscript code stays memory safe: no pointers, no raw memory, no new syntax. Records, optionals and other compound types are converted in Manuscript wrappers, not in C.
-- Decided: the three open questions take their recommended answers (see Decisions). The header awaits approval before implementation.
+- Decided: the three open questions take their recommended answers (see Decisions). Chinmay approved the header on 2026-11-02 ("go"); stage 1 is implemented.
 
 ## Status
 
-- Proposal, 2026-10-31, checked against `d4a94aa9`. Nothing implemented.
+- Proposal, 2026-10-31, checked against `d4a94aa9`.
+- Stage 1 (groups 1 to 7) implemented, 2026-11-02: `crates/ms-rt/src/cabi.rs`, the generated header, user `extern type`, and the signature table in the checker and lowering. Gate: `crates/ms-cli/tests/extern_link.rs` round-trips every signature type with gcc and clang shims on Cranelift and LLVM, and counts each object drop once. Differences from the header below, found while building it:
+  - `ms_list` is `{ VecVal *vec; uint64_t elem; }`, an element code, not a descriptor: the code also gives width and signedness, and the runtime picks the descriptor.
+  - `ms_bytes_len` and `ms_bytes_data` are inline, like `ms_str_len`.
+  - `Bool` crosses as C `bool`.
+  - `msrt_string_from_bytes` stays as declared, for existing shims.
+  - Stage 2 groups (functions, blocking work, sockets, stop hooks, isolate state) are not in the header yet.
 - Direction (Chinmay, 2026-10-31):
   - "design a process /ffi to enable integrating with other external software"
   - "use case could be to integrate with libuv for instance"
@@ -157,7 +163,7 @@ ms_status ms_call_wait(ms_fn *f, const ms_value *args, size_t count, ms_value *r
 ms_fn *ms_fn_retain(ms_fn *f);                     /* any thread                             */
 void   ms_fn_release(ms_fn *f);                    /* any thread; the closure goes on its isolate */
 /* any thread. While held, f keeps its isolate waiting for posts instead of reporting a
-   deadlock (N-API's ref/unref). A retained but unheld f does not keep the isolate alive. */
+   deadlock. A retained but unheld f does not keep the isolate alive. */
 void   ms_fn_hold(ms_fn *f, bool hold);
 
 /* ---- 9. Blocking work and sockets ---------------------------------------------------- */
@@ -227,7 +233,7 @@ void  ms_isolate_set(const void *key, void *value, void (*drop)(void *value));
 | Unrecoverable error in C | violated library invariant | 7 (`ms_fault`) |
 | Shim built against another runtime version | upgrade | 1 (versioned names) |
 
-The capabilities N-API, the CPython C API and cgo share are values, wrapped objects with finalizers, same-thread callbacks, queued and waiting calls from other threads with keep-alive control, blocking work with interruption, socket readiness, instance state and exception rules. Each has a row above. Dynamic loading and embedding are non-goals (below).
+Dynamic loading and embedding are non-goals (below).
 
 ### Manuscript signature types
 
@@ -420,7 +426,7 @@ void msuv_timer_close(ms_object *timer) { timer_drop(ms_payload(timer)); }
 - `msuv_loop_close` (not shown) does what `loop_drop` does and reports `uv_loop_close` errors.
 - To keep other tasks running while libuv waits, there are two options:
   - run the loop in a worker;
-  - run `uv_run` on a shim thread and deliver each event with `ms_post`, holding the callback with `ms_fn_hold`. The callbacks then run as tasks and may wait, which is how Node sits on libuv.
+  - run `uv_run` on a shim thread and deliver each event with `ms_post`, holding the callback with `ms_fn_hold`. The callbacks then run as tasks and may wait.
 
 ## Components touched
 

@@ -1,0 +1,71 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "extern parameter values has type Map, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them",
+        "position": {
+          "file": "extern-signature-rejected.ms",
+          "line": 12,
+          "column": 21,
+          "offset": 255
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "extern result has type Optional, which cannot cross the native boundary; an extern returns sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them, Unit, or a Result of one",
+        "position": {
+          "file": "extern-signature-rejected.ms",
+          "line": 13,
+          "column": 30,
+          "offset": 315
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "extern parameter values has type List, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them",
+        "position": {
+          "file": "extern-signature-rejected.ms",
+          "line": 14,
+          "column": 23,
+          "offset": 342
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "extern error type Wrong must be an alternative whose cases carry nothing, `code: Int`, `message: String`, or both; the native returns the status 1 + the case index and fills code_out and message_out",
+        "position": {
+          "file": "extern-signature-rejected.ms",
+          "line": 15,
+          "column": 25,
+          "offset": 396
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "extern parameter f has type fn, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them",
+        "position": {
+          "file": "extern-signature-rejected.ms",
+          "line": 16,
+          "column": 25,
+          "offset": 433
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/extern-signature-rejected.ms:12:21: type: extern parameter values has type Map, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them\n    |\n 12 | extern fn takes_map(values: Map[String, Int]) Unit\n    |                     ^\n<DIR>/extern-signature-rejected.ms:13:30: type: extern result has type Optional, which cannot cross the native boundary; an extern returns sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them, Unit, or a Result of one\n    |\n 13 | extern fn returns_optional() Int?\n    |                              ^\n<DIR>/extern-signature-rejected.ms:14:23: type: extern parameter values has type List, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them\n    |\n 14 | extern fn nested_list(values: List[List[Int]]) Unit\n    |                       ^\n<DIR>/extern-signature-rejected.ms:15:25: type: extern error type Wrong must be an alternative whose cases carry nothing, `code: Int`, `message: String`, or both; the native returns the status 1 + the case index and fills code_out and message_out\n    |\n 15 | extern fn wrong_error() Handle!Wrong\n    |                         ^\n<DIR>/extern-signature-rejected.ms:16:25: type: extern parameter f has type fn, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them\n    |\n 16 | extern fn takes_closure(f: fn() Int) Unit\n    |                         ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
