@@ -51,7 +51,8 @@ pub struct Stamp {
 
 pub fn stamp(path: &Path) -> Option<Stamp> {
     let meta = std::fs::metadata(path).ok()?;
-    if !meta.is_file() {
+    // Directories are stamped too: an embedded directory changes when entries are added or removed.
+    if !meta.is_file() && !meta.is_dir() {
         return None;
     }
     let mtime = meta

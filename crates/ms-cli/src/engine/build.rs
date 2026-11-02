@@ -297,6 +297,15 @@ impl BuildCache {
         // aliases), which lives in the source root even though `project_root` is empty.
         let manifest = Path::new(&compiled.source_root).join("ms.toml");
         if manifest.is_file() {
+            // Embedded directories and files are inputs too: the generated module has no file.
+            if let Ok(project) = ms_driver::project::read_project(&manifest.to_string_lossy()) {
+                for directory in project.embed.values() {
+                    match ms_driver::project::embed::inputs(directory) {
+                        Ok(inputs) => sources.extend(inputs),
+                        Err(_) => return Ok(()),
+                    }
+                }
+            }
             sources.push(manifest);
         }
         let companion = ms_clif_companion(output);

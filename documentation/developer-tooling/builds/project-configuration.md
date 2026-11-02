@@ -5,7 +5,7 @@ weight = 1
 
 # Project configuration
 
-A project has an `ms.toml` at its root that locates source and the entry file and defines import aliases. Each `.ms` file is one module; there is no `module` declaration.
+A project has an `ms.toml` at its root that locates source and the entry file, defines import aliases, and names directories to embed in the program. Each `.ms` file is one module; there is no `module` declaration.
 
 ## A project manifest
 
@@ -25,9 +25,33 @@ entry = "./src/main.ms"
 - `name` names the project; `source` is its source directory.
 - `entry` is the executable entry file. Omit it for a library; an empty or invalid entry is an error. There is no default.
 - All manifest paths resolve relative to the directory containing `ms.toml` (the entry is not relative to `source`).
-- Only `[project]` and `[aliases]` exist. Unknown or duplicate tables and keys are rejected, as are `[adapters]` tables. Values are double-quoted strings; `#` starts a comment.
+- Only `[project]`, `[aliases]` and `[embed]` exist. Unknown or duplicate tables and keys are rejected, as are `[adapters]` tables. Values are double-quoted strings; `#` starts a comment.
 - Application modules are found by following imports from the entry, not listed in the manifest.
 - The compiler supplies the prelude and `@std` modules. Third-party Manuscript packages are unsupported; native dependencies are pinned inside `ms` ([how it works](../how-it-works.md)).
+
+## Embedded files
+
+`[embed]` bakes a directory into the program. Each key is an import name written like an alias, and each value is a directory below the project root:
+
+```toml
+[embed]
+"@assets" = "./assets"
+```
+
+```ms
+import files from "@assets"
+
+export fn main() Int:
+    let tree = files()
+    return tree.read("index.html", none).get().length()
+```
+
+- `import files from "@assets"` imports a module that `ms` generates from the directory when the project loads. Write the name alone: `"@assets/x.ms"` is an error.
+- `files()` returns a `MemoryTree` from `@std/os/tree.ms`, so `read`, `children` and `walk` work as they do on a `host_tree`. Each call decodes the files into a new tree, so bind the result once.
+- Paths in the tree are relative to the directory and use `/` on every platform. Entries are listed in byte order. Hidden files are included.
+- Symbolic links, names that are not valid UTF-8, and names that differ only by letter case are errors. A file may be at most 16 MiB and a directory 64 MiB in total.
+- The files are stored in the program as base64 text, about a third larger than the files. An edited, added or removed file rebuilds the program.
+- A name cannot also be an alias.
 
 ## Commands and module discovery
 

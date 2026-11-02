@@ -10,7 +10,7 @@
 //!
 //! * [`find_manifest`] - the nearest containing `ms.toml`, even if invalid.
 //! * [`read_project`] / [`read_project_partial`] - validate the supported
-//!   `ms.toml` subset (`[project]`, `[aliases]`) and canonicalize its paths.
+//!   `ms.toml` subset (`[project]`, `[aliases]`, `[embed]`) and canonicalize its paths.
 //! * [`resolve_import`] / [`source_path`] - confined, symlink-canonical import
 //!   resolution with optional editor overlays.
 //! * [`canonical_overlay`] - canonicalize unsaved editor snapshots.
@@ -20,6 +20,7 @@
 //! `ms.lock` handling and build-cache file locks belong to the build driver, not here.
 
 pub mod discovery;
+pub mod embed;
 pub mod error;
 pub mod manifest;
 pub mod overlay;
