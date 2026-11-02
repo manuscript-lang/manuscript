@@ -218,7 +218,16 @@ pub fn unpack(data: &[u8], format: &str, limits: Option<Limits>) -> Result<Vec<E
                 let size = usize::try_from(item.header.size).unwrap_or(usize::MAX);
                 let (start, len) = item.data;
                 let truncated = item.truncated;
-                c.add(&item.header.name, flag == tar::TYPE_DIR, size, || {
+                let directory = flag == tar::TYPE_DIR;
+                // `tar -cf x.tar .` prefixes every member with `./` and adds a bare `./` entry.
+                let mut name = item.header.name.as_slice();
+                while let Some(rest) = name.strip_prefix(b"./") {
+                    name = rest;
+                }
+                if directory && (name.is_empty() || name == b".") {
+                    continue;
+                }
+                c.add(name, directory, size, || {
                     if truncated {
                         return Err(Fail::InvalidData);
                     }

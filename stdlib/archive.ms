@@ -56,7 +56,7 @@ export type ArchiveError:
 
 # One file or directory in an archive. Paths use forward slashes.
 export type ArchiveEntry:
-    # Relative forward-slash path; pack/unpack reject traversal, absolute paths and duplicate normalized names. Unpack returns directory paths without a trailing slash.
+    # Relative forward-slash path; pack/unpack reject traversal, absolute paths and duplicate normalized names. Tar unpack also skips a bare `./` entry and strips a leading `./` from member names (as in `tar -cf x.tar .`); pack stays strict. Unpack returns directory paths without a trailing slash.
     path: String
     # File contents as immutable bytes; directory entries must carry empty bytes.
     data: Bytes
