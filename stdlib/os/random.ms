@@ -62,6 +62,72 @@ export fn shuffle[T](values: List[T]) List[T]!RandomError:
 export fn choice[T](values: List[T]) T?!RandomError:
     return msstd_random_draw_choice(msstd_random_entropy(), values)
 
+# Returns `count` distinct positions' items chosen uniformly without replacement, in random order, as copies; the input is unchanged.
+# A `count` outside 0 through the list length returns InvalidInput.
+export fn sample[T: Clonable](values: List[T], count: Int) List[T]!RandomError:
+    if count < 0 or count > values.length():
+        return error(RandomError.InvalidInput)
+
+    var order = positions(values.length())
+    var out: List[T] = []
+
+    for i in 0..count:
+        let at = try secure_int(i, values.length())
+        order.swap(i, at)
+        out.append(values[order[i]].clone())
+
+    return ok(out)
+
+# Returns an item chosen with probability proportional to its weight, or none for an empty list.
+# `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this returns InvalidInput.
+export fn weighted_choice[T: Clonable](
+    values: List[T],
+    weights: List[Float]
+) T?!RandomError:
+    if values.is_empty() and weights.is_empty():
+        return ok(none)
+    if not valid_weights(values.length(), weights):
+        return error(RandomError.InvalidInput)
+
+    let point = try float() * weights.sum()
+    return ok(values[weighted_position(weights, point)].clone())
+
+fn positions(count: Int) List[Int]:
+    var out: List[Int] = []
+    for i in 0..count:
+        out.append(i)
+    return out
+
+# Reports whether `weights` has `count` finite, non-negative entries with a positive total.
+fn valid_weights(count: Int, weights: List[Float]) Bool:
+    if weights.length() != count:
+        return false
+
+    var total = 0.0
+
+    for weight in weights:
+        if not (weight >= 0.0) or not weight.is_finite():
+            return false
+
+        total += weight
+
+    return total > 0.0 and total.is_finite()
+
+# Returns the position whose share of the total weight contains `point`, which is at least 0.0 and below the total.
+# Zero-weight positions are never returned.
+fn weighted_position(weights: List[Float], point: Float) Int:
+    var running = 0.0
+    var last = 0
+
+    for i in 0..weights.length():
+        if weights[i] > 0.0:
+            running += weights[i]
+            last = i
+            if point < running:
+                return i
+
+    return last
+
 # Returns exactly `count` unpredictable bytes from the operating system, with `count` from 0 through 16 MiB (16777216).
 # A negative or larger count returns InvalidInput; a source failure returns Failed. The call observes task cancellation between 64 KiB chunks.
 export fn random_bytes(count: Int) Bytes!RandomError:
@@ -134,3 +200,32 @@ impl SeededRandom:
             return none
 
         return values.get(self.int(0, values.length()))
+
+    # Returns `count` items chosen uniformly without replacement, in random order, as copies; `values` is unchanged.
+    # A `count` outside 0 through the list length faults.
+    var fn sample[T: Clonable](values: List[T], count: Int) List[T]:
+        if count < 0 or count > values.length():
+            panic("random sample: count must be from 0 to the list length")
+
+        var order = positions(values.length())
+        var out: List[T] = []
+
+        for i in 0..count:
+            order.swap(i, self.int(i, values.length()))
+            out.append(values[order[i]].clone())
+
+        return out
+
+    # Returns an item chosen with probability proportional to its weight, or none for an empty list.
+    # `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this faults.
+    var fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?:
+        if values.is_empty() and weights.is_empty():
+            return none
+
+        if not valid_weights(values.length(), weights):
+            panic(
+                "random weighted_choice: weights must match the values, be finite and non-negative, and not all be zero"
+            )
+
+        let point = self.float() * weights.sum()
+        return values[weighted_position(weights, point)].clone()
