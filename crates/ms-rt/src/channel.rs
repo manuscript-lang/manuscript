@@ -176,6 +176,8 @@ struct Hold {
     state: usize,
     /// A read hold, which shares the box with other reads; otherwise a write hold.
     read: bool,
+    /// A read inside the task's own change, which leaves the state word to that change.
+    nested: bool,
     /// The depth of guarded calls the task was in when it took the hold.
     depth: usize,
 }
@@ -208,11 +210,16 @@ pub unsafe extern "C-unwind" fn msrt_shared_hold(
     let key = msrt_addr_id(addr);
     let read = read != 0;
     // SAFETY: the caller passes the state word of a live box.
-    unsafe { *state = if read { *state + 1 } else { -1 } };
+    let nested = read && unsafe { *state } < 0;
+    if !nested {
+        // SAFETY: as above.
+        unsafe { *state = if read { *state + 1 } else { -1 } };
+    }
     let hold = Hold {
         task: task::current_handle(),
         state: state as usize,
         read,
+        nested,
         depth: crate::fault::guard_depth(),
     };
     holders().push((key as usize, hold));
@@ -246,6 +253,9 @@ pub(crate) fn end_abandoned_holds(depth: usize) {
 /// Ends the hold at `at` in the holders, and wakes the tasks waiting for its box once it is free.
 fn end_hold(at: usize) {
     let (key, hold) = holders().remove(at);
+    if hold.nested {
+        return;
+    }
     let state = hold.state as *mut i64;
     // SAFETY: the box outlives its hold (`msrt_shared_hold`).
     let free = unsafe {
@@ -257,14 +267,18 @@ fn end_hold(at: usize) {
     }
 }
 
-/// Called when the box `key` is busy for the access the running task wants. A hold of another
-/// task: waits until the box is free (the caller checks again). A hold of the running task, or
-/// an update without a hold (which only the running task can be in), would wait on itself:
-/// faults.
+/// Called when the box `key` is busy for the access the running task wants (`read` 1 for a read).
+/// A read inside the running task's own call on the box goes ahead, since the value is in place:
+/// returns 1. A hold of another task: waits until the box is free and returns 0 (the caller
+/// checks again). A change inside the running task's own call, or an access during an update
+/// without a hold (which only the running task can be in), would wait on itself: faults.
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_shared_wait(key: i64) {
+pub extern "C-unwind" fn msrt_shared_wait(key: i64, read: i64) -> i64 {
     let me = task::current_handle();
     let mine = hold_of(key as usize, me).is_some();
+    if read != 0 && mine {
+        return 1;
+    }
     let others = holders()
         .iter()
         .any(|(k, h)| *k == key as usize && h.task != me);
@@ -281,6 +295,7 @@ pub extern "C-unwind" fn msrt_shared_wait(key: i64) {
         msrt_waitq_remove(key, token);
     };
     crate::fault::with_cleanup(&mut leave, || msrt_channel_park(token));
+    0
 }
 
 fn queues() -> &'static mut HashMap<usize, VecDeque<i64>> {

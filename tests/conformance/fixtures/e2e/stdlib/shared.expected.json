@@ -26,7 +26,7 @@
         },
         {
           "index": 3,
-          "name": "shared.ms::a read inside a call on the same payload faults",
+          "name": "shared.ms::a read inside a change of the same payload sees the value",
           "status": "passed"
         },
         {
@@ -36,7 +36,7 @@
         },
         {
           "index": 5,
-          "name": "shared.ms::a change inside a read call on the same payload faults",
+          "name": "shared.ms::a hidden change inside a call on the same payload faults",
           "status": "passed"
         },
         {
@@ -65,7 +65,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN shared.ms::copies of a shared value read the same payload\nPASS shared.ms::copies of a shared value read the same payload\nRUN shared.ms::the payload outlives the original holder\nPASS shared.ms::the payload outlives the original holder\nRUN shared.ms::a var handle changes the payload every holder sees\nPASS shared.ms::a var handle changes the payload every holder sees\nRUN shared.ms::a read inside a call on the same payload faults\nPASS shared.ms::a read inside a call on the same payload faults\nRUN shared.ms::a read inside a read call on the same payload sees the value\nPASS shared.ms::a read inside a read call on the same payload sees the value\nRUN shared.ms::a change inside a read call on the same payload faults\nPASS shared.ms::a change inside a read call on the same payload faults\nRUN shared.ms::a box dropped after a call does not free the payload twice\nPASS shared.ms::a box dropped after a call does not free the payload twice\nRUN shared.ms::an optional payload keeps its value when replaced\nPASS shared.ms::an optional payload keeps its value when replaced\nRUN shared.ms::a record payload with an optional field after a flag survives replacement\nPASS shared.ms::a record payload with an optional field after a flag survives replacement\n9 tests, 0 failed\n",
+      "stdout": "RUN shared.ms::copies of a shared value read the same payload\nPASS shared.ms::copies of a shared value read the same payload\nRUN shared.ms::the payload outlives the original holder\nPASS shared.ms::the payload outlives the original holder\nRUN shared.ms::a var handle changes the payload every holder sees\nPASS shared.ms::a var handle changes the payload every holder sees\nRUN shared.ms::a read inside a change of the same payload sees the value\nPASS shared.ms::a read inside a change of the same payload sees the value\nRUN shared.ms::a read inside a read call on the same payload sees the value\nPASS shared.ms::a read inside a read call on the same payload sees the value\nRUN shared.ms::a hidden change inside a call on the same payload faults\nPASS shared.ms::a hidden change inside a call on the same payload faults\nRUN shared.ms::a box dropped after a call does not free the payload twice\nPASS shared.ms::a box dropped after a call does not free the payload twice\nRUN shared.ms::an optional payload keeps its value when replaced\nPASS shared.ms::an optional payload keeps its value when replaced\nRUN shared.ms::a record payload with an optional field after a flag survives replacement\nPASS shared.ms::a record payload with an optional field after a flag survives replacement\n9 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

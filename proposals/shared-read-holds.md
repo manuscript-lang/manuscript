@@ -73,6 +73,6 @@ The box's in-use flag (field 1 of the `Shared#…` record, `sharedbuilder::handl
 - **Hold only when the callee can park.** This needs a "may park" effect that does not exist. It could be added later as an optimisation, without changing these semantics.
 - **Writer preference** (queued writers block new readers). Dropped: two readers waiting on each other with a writer queued deadlock, and it needs a count of waiting writers.
 
-## Open questions
+## Decisions
 
-- A change to the value inside a read call on it (`shared.count_after(fn: other.bump())`) faults, as a `var` borrow does while a `let` borrow is live. Recommend: fault. A payload with no heap memory (`Stats(hits: Int)`) takes no hold, so `stats.total(fn: w.hits = 7)` behaves as before.
+- Nested access (Chinmay, 2026-11-02: "Compile error, reads never fault"). A read inside the task's own call sees the live value. A closure argument that changes, through a capture, shared state holding a handle of the same type as one the call reads through is a compile error: "this callback changes `other`, which may be the shared value `shared` that `count_after` is using…". A callback the checker cannot see (stored in a record) still faults at run time.

@@ -65,14 +65,21 @@ impl Classifier {
     /// interface with a `var fn` operation, or a value holding either. Copying such a value out
     /// of a read-only place would make a writer of a read-only handle.
     pub fn shares_state(&self, t: &Ty) -> bool {
-        self.shares_in(t, &mut Vec::new())
+        self.shares_in(t, None, &mut Vec::new())
     }
 
-    fn shares_in(&self, t: &Ty, visiting: &mut Vec<String>) -> bool {
+    /// Whether a value of `t` holds the `Proxy` handle type `handle` (`Shared[Stats]`) in itself
+    /// or in its fields. An interface value is not followed: what it holds is not known here.
+    pub fn holds_handle(&self, t: &Ty, handle: &Ty) -> bool {
+        self.shares_in(t, Some(&handle.to_string()), &mut Vec::new())
+    }
+
+    fn shares_in(&self, t: &Ty, handle: Option<&str>, visiting: &mut Vec<String>) -> bool {
         if self.proxy(t) {
-            return true;
+            return handle.is_none_or(|h| t.to_string() == h);
         }
         match t.kind {
+            Kind::Contract if handle.is_some() => false,
             Kind::Contract => t.def.as_ref().is_some_and(|d| {
                 d.operations.borrow().iter().any(|o| {
                     o.decl
@@ -81,21 +88,23 @@ impl Classifier {
                         .is_some_and(|m| m.mutating)
                 })
             }),
-            Kind::Native => t.args.iter().any(|a| self.shares_in(a, visiting)),
+            Kind::Native => t.args.iter().any(|a| self.shares_in(a, handle, visiting)),
             Kind::Record | Kind::Alternative => {
                 let key = t.to_string();
                 if visiting.contains(&key) || visiting.len() > 64 {
                     return false;
                 }
                 visiting.push(key);
-                let mut shares = t.args.iter().any(|a| self.shares_in(a, visiting))
-                    || fields(t).iter().any(|f| self.shares_in(&f.ty, visiting));
+                let mut shares = t.args.iter().any(|a| self.shares_in(a, handle, visiting))
+                    || fields(t)
+                        .iter()
+                        .any(|f| self.shares_in(&f.ty, handle, visiting));
                 if !shares && let Some(def) = &t.def {
                     let s = substitution(t);
                     shares = def.cases.borrow().iter().any(|case| {
                         case.fields
                             .iter()
-                            .any(|f| self.shares_in(&sub(&f.ty, &s), visiting))
+                            .any(|f| self.shares_in(&sub(&f.ty, &s), handle, visiting))
                     });
                 }
                 visiting.pop();

@@ -69,23 +69,13 @@ test "a var handle changes the payload every holder sees":
     bump(var second)
     try expect_equal(first.values.length(), 2)
 
-test "a read inside a call on the same payload faults":
+test "a read inside a change of the same payload sees the value":
     var shared = Shared(Counter([]))
     let view = shared
-    let message = try expect_fault(
-        fn() Unit:
-            shared.bump_then(
-                fn() Unit:
-                    let _length = view.values.length()
-            )
-    )
-    try expect_equal(
-        message,
-        "a Shared value was used again inside a call on it from the same task; finish the call first, or change the value inside that call"
-    )
-
-    # The fault ran in a forked child, so this task still holds the value untouched and free.
-    try expect_equal(view.values.length(), 0)
+    var seen = 0
+    shared.bump_then(fn() Unit: seen = view.values.length())
+    try expect_equal(seen, 1)
+    try expect_equal(view.values.length(), 1)
 
 test "a read inside a read call on the same payload sees the value":
     var shared = Shared(Counter([4, 5]))
@@ -95,12 +85,18 @@ test "a read inside a read call on the same payload sees the value":
     try expect_equal(count, 2)
     try expect_equal(seen, 2)
 
-test "a change inside a read call on the same payload faults":
+type Hook:
+    run: fn() Unit
+
+# A callback the checker cannot see (stored in a record) that changes the value the call is
+# using faults rather than changing it under the call.
+test "a hidden change inside a call on the same payload faults":
     var shared = Shared(Counter([]))
     var other = shared
+    let hook = Hook(fn() Unit: other.bump())
     let message = try expect_fault(
         fn() Unit:
-            let _count = shared.count_after(fn() Unit: other.bump())
+            shared.bump_then(hook.run)
     )
     try expect_equal(
         message,

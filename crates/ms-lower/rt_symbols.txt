@@ -215,7 +215,7 @@ msrt_set_symmetric_difference(a: *const MapVal, b: *const MapVal, kd: *const Typ
 msrt_set_union(a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, out: *mut MapVal)
 msrt_shared_hold(addr: *const u8, state: *mut i64, read: i64) -> i64
 msrt_shared_release(key: i64)
-msrt_shared_wait(key: i64)
+msrt_shared_wait(key: i64, read: i64) -> i64
 msrt_shield_enter()
 msrt_shield_exit()
 msrt_slot_copy(d: *const TypeDesc, src: *const u8, dst: *mut u8)

@@ -156,6 +156,8 @@ pub fn analyze(cx: &Context) -> Outcome {
         positions: HashMap::new(),
         mutated: Vec::new(),
         captured: Vec::new(),
+        handle_writes: Vec::new(),
+        callback_writes: HashMap::new(),
         hidden: 0,
         let_pos: HashMap::new(),
         used: cx.live.uses.keys().map(|(_, uid)| *uid).collect(),
@@ -251,6 +253,11 @@ struct Walker<'a> {
     mutated: Vec<HashSet<usize>>,
     /// Variables each enclosing lambda captures, innermost last.
     captured: Vec<HashSet<usize>>,
+    /// Per closure being walked, the captured bindings it changes shared state through.
+    handle_writes: Vec<Vec<BindingRef>>,
+    /// For each closure that does not outlive its statement, the captured bindings it changes
+    /// shared state through.
+    callback_writes: HashMap<NodeId, Vec<BindingRef>>,
     hidden: usize,
     /// Where the `let` keyword of each `let` binding is, for the fix that makes it a `var`.
     let_pos: HashMap<usize, Pos>,
@@ -622,17 +629,57 @@ impl Walker<'_> {
         );
     }
 
+    /// A call that uses a `Shared` value (its receiver or an argument reads through a handle)
+    /// runs its callbacks while it holds that value. A callback that changes shared state
+    /// through a captured handle of the same type could change the value under the call, so it
+    /// is an error; the callback takes the value as a `var` parameter instead.
+    fn check_reentry(&mut self, name: &str, receiver: Option<&Expr>, args: &[Argument]) {
+        if self.callback_writes.is_empty() {
+            return;
+        }
+        let used: Vec<(Ty, String)> = receiver
+            .into_iter()
+            .chain(args.iter().map(|a| &a.value))
+            .filter_map(|x| self.handle_of(x).map(|t| (t, self.expr_text(x))))
+            .collect();
+        if used.is_empty() {
+            return;
+        }
+        for a in args {
+            let Some(writes) = self.callback_writes.get(&a.value.id).cloned() else {
+                continue;
+            };
+            for b in writes {
+                let Some((_, text)) = used
+                    .iter()
+                    .find(|(h, _)| self.cx.classes.holds_handle(&b.ty, h))
+                else {
+                    continue;
+                };
+                self.error(
+                    a.value.pos,
+                    format!("this callback changes `{0}`, which may be the shared value `{text}` that `{name}` is using while it runs the callback; have the callback take the value as a `var` parameter, or change `{0}` after the call", b.name),
+                );
+            }
+        }
+    }
+
     fn through_handle(&self, e: &Expr) -> bool {
+        self.handle_of(e).is_some()
+    }
+
+    /// The `Shared` handle type a place such as `stats.items[0]` reads through, if any.
+    fn handle_of(&self, e: &Expr) -> Option<Ty> {
         let mut cur = e;
         loop {
-            if self.cx.m.info(cur).through_shared.is_some() {
-                return true;
+            if let Some(t) = &self.cx.m.info(cur).through_shared {
+                return Some(t.clone());
             }
             cur = match &cur.kind {
                 ExprKind::Member { left, .. }
                 | ExprKind::Index { left, .. }
                 | ExprKind::Apply { left, .. } => left,
-                _ => return false,
+                _ => return None,
             };
         }
     }
@@ -2370,6 +2417,18 @@ impl Walker<'_> {
         if !info.through_shared && !captured_handle {
             self.mark_mutated(root.uid);
         }
+        // A closure that changes shared state through a binding it captured: a call it is passed
+        // to checks that the state is not the one the call is using.
+        if info.through_shared || self.cx.classes.shares_state(&root.ty) {
+            for (level, captured) in self.captured.iter().enumerate() {
+                if captured.contains(&root.uid)
+                    && let Some(writes) = self.handle_writes.get_mut(level)
+                    && !writes.iter().any(|b| b.uid == root.uid)
+                {
+                    writes.push(root.clone());
+                }
+            }
+        }
         self.record(info.root_node, &root, Access::Mutate);
     }
 
@@ -3397,6 +3456,7 @@ impl Walker<'_> {
             held.extend(self.argument(a, mode, &modes, i));
             operands.push((Operand::Argument(&a.value), held, Vec::new()));
         }
+        self.check_reentry(&name, receiver_expr, args);
         // An operand that already failed its own check is not reported twice. Only a held
         // place can clash, so the operands' inner changes are collected only when one is held.
         if self.diags.len() == reported && operands.iter().any(|(_, held, _)| !held.is_empty()) {
@@ -3849,6 +3909,7 @@ impl Walker<'_> {
         }
         self.mutated.push(HashSet::new());
         self.captured.push(captures.iter().map(|b| b.uid).collect());
+        self.handle_writes.push(Vec::new());
         let mark = self.declared.len();
         for (i, b) in params.iter().enumerate() {
             let var = l.params.get(i).is_some_and(|p| p.mutable);
@@ -3863,6 +3924,10 @@ impl Walker<'_> {
         self.block(&l.body);
         self.declared.truncate(mark);
         self.captured.pop();
+        let writes = self.handle_writes.pop().unwrap_or_default();
+        if !escaping && !writes.is_empty() {
+            self.callback_writes.insert(e.id, writes);
+        }
         let mutated = self.mutated.pop().unwrap_or_default();
         for (uid, perm) in saved_meta {
             if let Some(m) = self.meta.get_mut(&uid) {

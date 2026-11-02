@@ -196,12 +196,15 @@ impl<'a> FnLower<'a> {
         let flag = self.b.icmp(if read { Cc::Lt } else { Cc::Ne }, word, zero);
         self.b.br_if(flag, busy, &[], free, &[]);
         self.b.seal_block(busy);
-        self.b.seal_block(free);
         self.b.switch_to(busy);
         let id = self.call_runtime("msrt_addr_id", &[addr], MTy::INT)?;
-        self.call_runtime("msrt_shared_wait", &[id], MTy::UNIT)?;
-        self.b.br(check, &[]);
+        let mode = self.b.iconst(i64::from(read));
+        let go = self.call_runtime("msrt_shared_wait", &[id, mode], MTy::INT)?;
+        let zero = self.b.iconst(0);
+        let ahead = self.b.icmp(Cc::Ne, go, zero);
+        self.b.br_if(ahead, free, &[], check, &[]);
         self.b.seal_block(check);
+        self.b.seal_block(free);
         self.b.switch_to(free);
         Ok(())
     }

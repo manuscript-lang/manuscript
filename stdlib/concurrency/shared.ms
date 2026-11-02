@@ -15,8 +15,11 @@ import Proxy from "@std/core.ms"
 # A `var` handle can change the value and a `let` handle only reads it; a type's own methods can
 # change the values kept in its `Shared` fields. Calls that read the value run together, and a call
 # that changes it runs alone: while a call that waits is in progress, a change from another task
-# waits for every read to end, and a read waits for the change. A change from the same task inside a
-# call on the value (a callback, or a second handle) faults; a read inside a read is fine. Keep
+# waits for every read to end, and a read waits for the change. A read from the same task inside a
+# call on the value (a callback, or a second handle) sees the value as it is. A callback that
+# changes the value a call is using is a compile error; the callback takes it as a `var`
+# parameter instead. A change the checker cannot see, through a callback stored in a value,
+# faults. Keep
 # changes that must not interleave in one method of the value's type. A cancelled call keeps the
 # changes it made so far. A reference a call returns into the value is copied out, so it stays valid
 # after the value changes.
