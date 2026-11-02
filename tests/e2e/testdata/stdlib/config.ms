@@ -1,4 +1,4 @@
-import expect_equal, expect_ok, fail from "@std/test/test.ms"
+import expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms"
 import parse_dotenv, parse_ini, ConfigError from "@std/data/config.ms"
 
 test "dotenv reads names, quotes, comments and export":
@@ -63,3 +63,10 @@ test "ini rejects malformed lines":
     if let _ = result: return fail("accepted")
 
     result | try expect_equal(error(ConfigError.InvalidData(2, "expected key = value")))
+
+test "dotenv multi-line quotes stay linear":
+    let lines = "x\n".repeat(200000).get()
+    let values = (parse_dotenv("A=\"{lines}end\" # c\nB=1") | try expect_ok)
+    values.get("B").get("") | try expect_equal("1")
+    values.get("A").get("").scalar_length() | try expect_equal(400003)
+    try expect_true(parse_dotenv("A=\"{lines}").is_error())

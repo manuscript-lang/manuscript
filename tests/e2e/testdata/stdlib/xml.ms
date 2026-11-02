@@ -43,3 +43,13 @@ test "depth limit":
     try expect_true(parse("<a><b><c/></b></a>", max_depth: 2).is_error())
     try expect_true(parse("<a/>", max_depth: 0).is_error())
     try expect_equal(parse("<a><b/></a>", max_depth: 2).get().tag(), "a")
+
+test "entity decoding is linear in the text":
+    let node = parse("<a>&amp;&lt;&#65;&#x42;tail</a>").get()
+    try expect_equal(node.text(), "&<ABtail")
+    try expect_true(parse("<a>&amp</a>").is_error())
+    try expect_true(parse("<a>&nope;</a>").is_error())
+
+    # A quadratic decoder would take minutes on this many entities.
+    let big = parse("<a>{"&amp;".repeat(100000).get()}</a>").get()
+    try expect_equal(big.text().scalar_length(), 100000)
