@@ -78,7 +78,7 @@ fn extract_at(
             .open(&staged)
         {
             Ok(file) => break (staged, file),
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) if super::occupied_staging_file(&staged, &error) => continue,
             Err(error) => return Err(failed("write", error)),
         }
     };

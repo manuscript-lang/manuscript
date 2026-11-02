@@ -375,6 +375,15 @@ pub(crate) fn profile(kind: BuildType) -> ms_build::Profile {
 
 /// `<executable>.ms-build.json`: what built the executable.
 fn write_metadata(output: &Path, kind: BuildType) -> Result<(), String> {
+    static STAGED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    write_metadata_with(output, kind, &STAGED)
+}
+
+fn write_metadata_with(
+    output: &Path,
+    kind: BuildType,
+    next: &std::sync::atomic::AtomicUsize,
+) -> Result<(), String> {
     let mut name = output.as_os_str().to_owned();
     name.push(".ms-build.json");
     let document = format!(
@@ -391,12 +400,11 @@ fn write_metadata(output: &Path, kind: BuildType) -> Result<(), String> {
     };
     // Replace the directory entry, as executable publication does. Writing through an existing
     // metadata hard link or symlink could otherwise truncate a source file (also on cache hits).
-    static STAGED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let (staged, mut file) = loop {
         let staged = path.with_file_name(format!(
             ".ms-metadata-{}-{}.json",
             std::process::id(),
-            STAGED.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            next.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
         ));
         match std::fs::OpenOptions::new()
             .write(true)
@@ -404,7 +412,7 @@ fn write_metadata(output: &Path, kind: BuildType) -> Result<(), String> {
             .open(&staged)
         {
             Ok(file) => break (staged, file),
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) if occupied_staging_file(&staged, &error) => continue,
             Err(error) => return Err(failed(error)),
         }
     };
@@ -417,6 +425,14 @@ fn write_metadata(output: &Path, kind: BuildType) -> Result<(), String> {
         let _ = std::fs::remove_file(&staged);
         failed(error)
     })
+}
+
+/// Windows also reports access denied when exclusive file creation meets an existing directory.
+/// Inspect the entry without following links; an unoccupied path's real access error must escape.
+fn occupied_staging_file(path: &Path, error: &std::io::Error) -> bool {
+    error.kind() == std::io::ErrorKind::AlreadyExists
+        || (error.kind() == std::io::ErrorKind::PermissionDenied
+            && std::fs::symlink_metadata(path).is_ok())
 }
 
 /// A scratch directory removed when dropped.
@@ -436,5 +452,51 @@ impl TempDir {
 impl Drop for TempDir {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+#[cfg(test)]
+mod staging_file_tests {
+    use super::*;
+    use std::io::{Error, ErrorKind};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn staging_permission_errors_are_collisions_only_for_occupied_names() {
+        let root = TempDir::create("ms-stage-permission-").unwrap();
+        let candidate = root.0.join("candidate");
+        let denied = Error::from(ErrorKind::PermissionDenied);
+        assert!(!occupied_staging_file(&candidate, &denied));
+        std::fs::create_dir(&candidate).unwrap();
+        assert!(occupied_staging_file(&candidate, &denied));
+        assert!(!occupied_staging_file(
+            &candidate,
+            &Error::from(ErrorKind::Other)
+        ));
+        std::fs::remove_dir(&candidate).unwrap();
+        std::fs::write(&candidate, b"preserve this file").unwrap();
+        assert!(occupied_staging_file(&candidate, &denied));
+        assert_eq!(std::fs::read(&candidate).unwrap(), b"preserve this file");
+    }
+
+    #[test]
+    fn metadata_staging_skips_occupied_directories_without_changing_them() {
+        let root = TempDir::create("ms-metadata-directory-").unwrap();
+        let output = root.0.join("program");
+        let occupied = root
+            .0
+            .join(format!(".ms-metadata-{}-0.json", std::process::id()));
+        std::fs::create_dir(&occupied).unwrap();
+        std::fs::write(occupied.join("sentinel"), b"preserve this directory").unwrap();
+        let next = AtomicUsize::new(0);
+        write_metadata_with(&output, BuildType::Debug, &next).unwrap();
+        assert_eq!(next.load(Ordering::Relaxed), 2);
+        assert_eq!(
+            std::fs::read(occupied.join("sentinel")).unwrap(),
+            b"preserve this directory"
+        );
+        let metadata = std::fs::read_to_string(root.0.join("program.ms-build.json")).unwrap();
+        assert!(metadata.contains("\"format\": 1"), "{metadata}");
+        assert_eq!(std::fs::read_dir(&root.0).unwrap().count(), 2);
     }
 }
