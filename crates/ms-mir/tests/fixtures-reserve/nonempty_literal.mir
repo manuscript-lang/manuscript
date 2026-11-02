@@ -1,0 +1,10 @@
+module "reserve_nonempty_literal"
+entry @main
+fn @main() -> int {
+b0:
+  %n: int = iconst 7
+  %l: list<int> = list.lit %n
+  %len: int = list.len %l
+  drop %l
+  ret %len
+}

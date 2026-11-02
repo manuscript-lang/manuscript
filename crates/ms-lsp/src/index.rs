@@ -65,12 +65,27 @@ pub struct Occurrence {
     pub info: Option<Rc<OccInfo>>,
 }
 
+/// A module's identity across analyses with different source roots. Bundled
+/// declarations keep their virtual identity; project paths are already canonical
+/// in the loader and must not be compared as graph-relative names.
+fn source_key(root: &str, file: Name) -> String {
+    if file.as_str().starts_with("@std/") {
+        file.as_str().to_string()
+    } else {
+        ms_driver::project::pathops::join(&[root, file.as_str()])
+    }
+}
+
 /// The key of a module symbol.
-pub fn symbol_key(s: Option<&SymRef>) -> String {
+pub fn symbol_key(root: &str, s: Option<&SymRef>) -> String {
     match s {
         None => String::new(),
         Some(s) => match &s.decl {
-            Some(decl) => format!("symbol:{}:{}", s.module, decl.pos().offset),
+            Some(decl) => format!(
+                "symbol:{}:{}",
+                source_key(root, s.module),
+                decl.pos().offset
+            ),
             None => format!("native:{}", s.id),
         },
     }
@@ -78,14 +93,14 @@ pub fn symbol_key(s: Option<&SymRef>) -> String {
 
 /// The identity of a method: contract operations group a contract and all its
 /// implementations; other methods are keyed by declaration.
-pub fn method_key(files: &DeclFiles, m: &Method) -> String {
+pub fn method_key(root: &str, files: &DeclFiles, m: &Method) -> String {
     if let (Some(decl), Some(contract)) = (&m.decl, &m.contract)
         && let Some(symbol) = contract.symbol()
         && let Some(contract_decl) = &symbol.decl
     {
         return format!(
             "operation:{}:{}:{}",
-            symbol.module,
+            source_key(root, symbol.module),
             contract_decl.pos().offset,
             decl.name()
         );
@@ -93,7 +108,7 @@ pub fn method_key(files: &DeclFiles, m: &Method) -> String {
     match &m.decl {
         Some(decl) => format!(
             "method:{}:{}",
-            files.file(decl, m.module),
+            source_key(root, files.file(decl, m.module)),
             decl.pos().offset
         ),
         None => String::new(),
@@ -146,6 +161,7 @@ pub fn expr_text(e: &Expr) -> Option<&'static str> {
 }
 
 struct Builder {
+    root: String,
     files: DeclFiles,
     by_file: HashMap<Name, ModRef>,
     binding_keys: HashMap<usize, String>,
@@ -206,6 +222,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
     };
     let modules = analysis.source_modules();
     let mut b = Builder {
+        root: analysis.module_path(""),
         files: DeclFiles::new(&modules),
         by_file: modules.iter().map(|m| (m.file, m.clone())).collect(),
         binding_keys: HashMap::new(),
@@ -229,14 +246,23 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
                     continue;
                 };
                 for (index, binding) in decl_facts.parameters.iter().enumerate() {
-                    let mut key = format!("parameter:{}:{}:{}", m.file, func.pos().offset, index);
+                    let mut key = format!(
+                        "parameter:{}:{}:{}",
+                        source_key(&b.root, m.file),
+                        func.pos().offset,
+                        index
+                    );
                     if matches!(d.decl().kind, DeclKind::Record(_)) && func.index.is_none() {
                         let symbol = program
                             .symbols
                             .get(&m.file)
                             .and_then(|names| names.borrow().get(&d.name()).cloned());
                         if let Some(symbol) = symbol {
-                            key = format!("field:{}:{}", symbol_key(Some(&symbol)), binding.name);
+                            key = format!(
+                                "field:{}:{}",
+                                symbol_key(&b.root, Some(&symbol)),
+                                binding.name
+                            );
                         }
                     }
                     b.binding_keys.insert(binding_ptr(binding), key);
@@ -262,7 +288,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
                     symbol.name.as_str(),
                 );
                 b.add(
-                    symbol_key(Some(symbol)),
+                    symbol_key(&b.root, Some(symbol)),
                     symbol.name.as_str(),
                     m.file,
                     at,
@@ -286,7 +312,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
             }
             let Some(ty) = symbol.ty_opt() else { continue };
             let Some(def) = ty.def.clone() else { continue };
-            let skey = symbol_key(Some(symbol));
+            let skey = symbol_key(&b.root, Some(symbol));
             let typed_fields = fields(&ty);
             for field in d.record_fields() {
                 for typed in &typed_fields {
@@ -350,7 +376,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
                             method.pos.offset as usize,
                             method.func.name.as_str(),
                         );
-                        let key = method_key(&b.files, &checked);
+                        let key = method_key(&b.root, &b.files, &checked);
                         b.add(
                             key,
                             method.func.name.as_str(),
@@ -376,7 +402,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
             };
             if let Some(symbol) = imported.get(&n(imp.name.as_str())) {
                 b.add(
-                    symbol_key(Some(symbol)),
+                    symbol_key(&b.root, Some(symbol)),
                     imp.name.as_str(),
                     m.file,
                     imp.name_pos.offset as usize,
@@ -420,7 +446,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
             decl.pos().offset as usize,
             decl.name().as_str(),
         );
-        let key = method_key(&b.files, method);
+        let key = method_key(&b.root, &b.files, method);
         b.add(
             key,
             decl.name().as_str(),
@@ -447,7 +473,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
                 continue;
             };
             b.add(
-                symbol_key(Some(&symbol)),
+                symbol_key(&b.root, Some(&symbol)),
                 name.as_str(),
                 m.file,
                 site.pos.offset as usize,
@@ -689,7 +715,9 @@ impl UseWalker<'_> {
                 let key = if let Some(binding) = &info.binding {
                     Some(self.b.local_key(binding))
                 } else {
-                    info.symbol.as_ref().map(|s| symbol_key(Some(s)))
+                    info.symbol
+                        .as_ref()
+                        .map(|s| symbol_key(&self.b.root, Some(s)))
                 };
                 if let Some(key) = key {
                     self.add(
@@ -710,7 +738,11 @@ impl UseWalker<'_> {
                     {
                         let parent = def.symbol();
                         self.add(
-                            format!("field:{}:{}", symbol_key(parent.as_ref()), name),
+                            format!(
+                                "field:{}:{}",
+                                symbol_key(&self.b.root, parent.as_ref()),
+                                name
+                            ),
                             name.as_str(),
                             e.pos.offset as usize,
                             info.write,
@@ -719,7 +751,7 @@ impl UseWalker<'_> {
                     }
                 }
                 if let Some(method) = &info.method {
-                    let key = method_key(&self.b.files, method);
+                    let key = method_key(&self.b.root, &self.b.files, method);
                     self.add(
                         key,
                         name.as_str(),
@@ -739,7 +771,7 @@ impl UseWalker<'_> {
                 _ => e,
             };
             self.add(
-                format!("case:{}:{}", symbol_key(Some(&parent)), case),
+                format!("case:{}:{}", symbol_key(&self.b.root, Some(&parent)), case),
                 case.as_str(),
                 left.pos.offset as usize,
                 false,
@@ -749,7 +781,7 @@ impl UseWalker<'_> {
                 let root = peel_apply(receiver);
                 if let ExprKind::Name(root_name) = &root.kind {
                     self.add(
-                        symbol_key(Some(&parent)),
+                        symbol_key(&self.b.root, Some(&parent)),
                         root_name.as_str(),
                         root.pos.offset as usize,
                         false,
@@ -774,7 +806,11 @@ impl UseWalker<'_> {
                     for field in &typed_fields {
                         if field.name == label {
                             self.add(
-                                format!("field:{}:{}", symbol_key(parent.as_ref()), field.name),
+                                format!(
+                                    "field:{}:{}",
+                                    symbol_key(&self.b.root, parent.as_ref()),
+                                    field.name
+                                ),
                                 field.name.as_str(),
                                 arg.pos.offset as usize,
                                 false,
@@ -794,7 +830,7 @@ impl UseWalker<'_> {
                 if let ExprKind::Name(left_name) = &left.kind {
                     let symbol = def.symbol();
                     self.add(
-                        symbol_key(symbol.as_ref()),
+                        symbol_key(&self.b.root, symbol.as_ref()),
                         left_name.as_str(),
                         left.pos.offset as usize,
                         false,

@@ -37,8 +37,6 @@ pub struct LlvmModule {
     decls: BTreeMap<String, String>,
     /// External data symbols referenced.
     data: BTreeMap<String, ()>,
-    /// Symbols defined in this module.
-    defined: Vec<String>,
     /// Internal functions' parameters that are exclusive pointers, by symbol. They are passed as
     /// `ptr noalias`, so LLVM knows nothing else the function reaches overlaps them.
     exclusive: HashMap<String, Vec<usize>>,
@@ -249,7 +247,6 @@ impl LlvmModule {
             defs: Vec::new(),
             decls: BTreeMap::new(),
             data: BTreeMap::new(),
-            defined: Vec::new(),
             exclusive: HashMap::new(),
         };
         // Placeholder slots for the fixed ids and one `DIFile` per file.
@@ -470,7 +467,7 @@ struct Tr<'a> {
     calls: Vec<bool>,
     /// `(from, to)` layout positions of the branches that go back to an earlier or the same block.
     back_edges: Vec<(usize, usize)>,
-    /// `(from, to)` layout positions of every branch, and per block position: it ends the function
+    /// `(from, to)` layout positions of every branch in source-block order, and per block position: it ends the function
     /// (a return) or calls a fault.
     edges: Vec<(usize, usize)>,
     returns: Vec<bool>,
@@ -485,15 +482,21 @@ impl<'a> Tr<'a> {
     fn has_element_loop(&self) -> bool {
         self.back_edges.iter().any(|&(from, to)| {
             let range = to..=from;
-            let exits = self
-                .edges
+            if !self.elements[to..=from].iter().any(|&e| e)
+                || self.calls[to..=from].iter().any(|&c| c)
+            {
+                return false;
+            }
+            // Edges were appended as blocks were translated in layout order. Restrict the
+            // scan to this loop instead of visiting every other loop's edges again.
+            let first = self.edges.partition_point(|&(f, _)| f < to);
+            let last = self.edges.partition_point(|&(f, _)| f <= from);
+            let exits = self.edges[first..last]
                 .iter()
-                .filter(|&&(f, t)| range.contains(&f) && !range.contains(&t) && !self.faults[t])
+                .filter(|&&(_, t)| !range.contains(&t) && !self.faults[t])
                 .count()
                 + self.returns[to..=from].iter().filter(|&&r| r).count();
-            self.elements[to..=from].iter().any(|&e| e)
-                && !self.calls[to..=from].iter().any(|&c| c)
-                && exits <= 1
+            exits <= 1
         })
     }
 
@@ -1138,7 +1141,6 @@ impl LlvmModule {
             (h, b)
         });
         let copies = avx2.is_some();
-        self.defined.push(name.to_string());
         self.defs.push(Def {
             name: name.to_string(),
             public,
@@ -1411,14 +1413,21 @@ impl LlvmModule {
             };
             let _ = write!(s, "define {vis}{header}{}", d.body);
         }
+        // References can precede definitions. Index their borrowed names once instead of
+        // scanning every definition for each call or function address in the module.
+        let defined: HashSet<&str> = if self.decls.is_empty() && self.data.is_empty() {
+            HashSet::new()
+        } else {
+            self.defs.iter().map(|d| d.name.as_str()).collect()
+        };
         for (name, decl) in &self.decls {
-            if !self.defined.contains(name) {
+            if !defined.contains(name.as_str()) {
                 s.push_str(decl);
                 s.push('\n');
             }
         }
         for name in self.data.keys() {
-            if !self.defined.contains(name) {
+            if !defined.contains(name.as_str()) {
                 let _ = writeln!(s, "@\"{name}\" = external global i8");
             }
         }
@@ -1718,6 +1727,57 @@ mod tests {
         f
     }
 
+    #[test]
+    fn definitions_filter_call_and_address_declarations_without_losing_externals() {
+        // Calls and function addresses enter separate declaration maps, including forward
+        // references. Similar external names must survive, and emission stays sorted.
+        let mut m = LlvmModule::new(vec![Some("symbols.ms".into())], ".".into());
+        let f = returning(1);
+        for i in 0..256 {
+            let name = format!("function_{i:06}");
+            m.decls
+                .insert(name.clone(), format!("declare i64 @\"{name}\"()"));
+            m.data.insert(name.clone(), ());
+            m.add_function(&name, &name, (0, 1), &f, &TestSymbols, i == 0);
+        }
+        for name in ["function_000256", "function_000000_external"] {
+            m.decls
+                .insert(name.into(), format!("declare i64 @\"{name}\"()"));
+        }
+        m.data.insert("function_000000_address".into(), ());
+        let pinned = HashSet::from(["function_000001".into()]);
+        for anchored in [false, true] {
+            let text = m.finish("x86_64-unknown-linux-gnu", &pinned, anchored);
+            let declarations: Vec<_> = text
+                .lines()
+                .filter(|l| l.starts_with("declare i64 @\""))
+                .collect();
+            assert_eq!(
+                declarations,
+                [
+                    "declare i64 @\"function_000000_external\"()",
+                    "declare i64 @\"function_000256\"()",
+                ]
+            );
+            let data: Vec<_> = text.lines().filter(|l| l.starts_with("@\"")).collect();
+            assert_eq!(data, ["@\"function_000000_address\" = external global i8"]);
+            assert!(text.contains("define i64 @\"function_000000\""));
+            assert!(text.contains("define hidden i64 @\"function_000001\""));
+            let visibility = if anchored { "internal" } else { "hidden" };
+            assert!(text.contains(&format!("define {visibility} i64 @\"function_000002\"")));
+            assert_eq!(
+                text,
+                m.finish("x86_64-unknown-linux-gnu", &pinned, anchored)
+            );
+        }
+        // A previously external reference can acquire a definition before the next finish.
+        let name = "function_000256";
+        m.add_function(name, name, (0, 1), &f, &TestSymbols, false);
+        let text = m.finish("x86_64-unknown-linux-gnu", &pinned, false);
+        assert!(!text.contains("declare i64 @\"function_000256\"()"));
+        assert!(text.contains("define hidden i64 @\"function_000256\""));
+    }
+
     /// `fn(base, i) -> f32 { load(base + i * 4) }`.
     fn element_load() -> Function {
         let mut sig = Signature::new(CallConv::SystemV);
@@ -1810,6 +1870,127 @@ mod tests {
         assert!(text.contains("= inttoptr i64 %a0 to ptr"), "{text}");
         assert!(text.contains("getelementptr i8, ptr %t"), "{text}");
         assert!(!text.contains("inttoptr i64 %t"), "{text}");
+    }
+
+    fn scalar_loop_for_cpu_classification(b: &mut FunctionBuilder<'_>, n: Value, zero: Value) {
+        let header = b.create_block();
+        let body = b.create_block();
+        let done = b.create_block();
+        b.append_block_param(header, types::I64);
+        b.ins().jump(header, &[zero.into()]);
+        b.switch_to_block(header);
+        let i = b.block_params(header)[0];
+        let more = b.ins().icmp(IntCC::SignedLessThan, i, n);
+        b.ins().brif(more, body, &[], done, &[]);
+        b.switch_to_block(body);
+        let inc = b.ins().iadd_imm_s(i, 1);
+        b.ins().jump(header, &[inc.into()]);
+        b.switch_to_block(done);
+    }
+
+    fn loop_for_cpu_classification(
+        elements: bool,
+        calls: bool,
+        early_return: bool,
+        neighbors: bool,
+    ) -> Function {
+        let mut sig = Signature::new(CallConv::SystemV);
+        sig.params = vec![AbiParam::new(types::I64); 2];
+        sig.returns.push(AbiParam::new(types::I64));
+        let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+        let sigref = f.import_signature(Signature::new(CallConv::SystemV));
+        let name = f.declare_imported_user_function(ir::UserExternalName::new(0, 0));
+        let callee = f.import_function(ExtFuncData {
+            name: ExternalName::User(name),
+            signature: sigref,
+            colocated: false,
+            patchable: false,
+        });
+        let mut cx = FunctionBuilderContext::new();
+        let mut b = FunctionBuilder::new(&mut f, &mut cx);
+        let entry = b.create_block();
+        let header = b.create_block();
+        let body = b.create_block();
+        let done = b.create_block();
+        b.append_block_params_for_function_params(entry);
+        b.append_block_param(header, types::I64);
+        b.switch_to_block(entry);
+        let base = b.block_params(entry)[0];
+        let n = b.block_params(entry)[1];
+        let zero = b.ins().iconst(types::I64, 0);
+        if neighbors {
+            scalar_loop_for_cpu_classification(&mut b, n, zero);
+        }
+        b.ins().jump(header, &[zero.into()]);
+        b.switch_to_block(header);
+        let i = b.block_params(header)[0];
+        let more = b.ins().icmp(IntCC::SignedLessThan, i, n);
+        b.ins().brif(more, body, &[], done, &[]);
+        b.switch_to_block(body);
+        if elements {
+            let scaled = b.ins().imul_imm_s(i, 8);
+            let address = b.ins().iadd(base, scaled);
+            b.ins()
+                .load(types::F64, ir::MemFlagsData::trusted(), address, 0);
+        }
+        if calls {
+            b.ins().call(callee, &[]);
+        }
+        if early_return {
+            let stop = b.create_block();
+            let next = b.create_block();
+            let found = b.ins().icmp_imm_s(IntCC::Equal, i, 1);
+            b.ins().brif(found, stop, &[], next, &[]);
+            b.switch_to_block(stop);
+            b.ins().return_(&[i]);
+            b.switch_to_block(next);
+        }
+        let inc = b.ins().iadd_imm_s(i, 1);
+        b.ins().jump(header, &[inc.into()]);
+        b.switch_to_block(done);
+        if neighbors {
+            scalar_loop_for_cpu_classification(&mut b, n, zero);
+        }
+        b.ins().return_(&[n]);
+        b.seal_all_blocks();
+        b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
+            default_call_conv: CallConv::SystemV,
+            pointer_width: target_lexicon::PointerWidth::U64,
+            page_size_align_log2: 12,
+        });
+        f
+    }
+
+    #[test]
+    fn cpu_copies_require_elements_no_calls_and_one_exit() {
+        struct OpaqueCall;
+        impl Symbols for OpaqueCall {
+            fn symbol(&self, _: u32, _: u32) -> String {
+                "opaque_call".into()
+            }
+            fn loc(&self, _: u32) -> Option<(u32, u32, u32)> {
+                None
+            }
+            fn scope(&self, _: u32) -> Option<(String, u32, u32, u32)> {
+                None
+            }
+        }
+        for (elements, calls, early_return, copies) in [
+            (false, false, false, false),
+            (true, false, false, true),
+            (true, true, false, false),
+            (true, false, true, false),
+        ] {
+            for neighbors in [false, true] {
+                let mut m = LlvmModule::new(vec![Some("loops.ms".into())], ".".into());
+                let f = loop_for_cpu_classification(elements, calls, early_return, neighbors);
+                assert_eq!(
+                    m.add_function("loops", "loops", (0, 1), &f, &OpaqueCall, true),
+                    copies,
+                    "elements={elements}, calls={calls}, early_return={early_return}, neighbors={neighbors}"
+                );
+            }
+        }
     }
 
     #[test]

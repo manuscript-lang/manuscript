@@ -7,6 +7,9 @@ Decision: the user wants parsing, checking, and lowering to stay linear (or n lo
 Verified: type-suffix sugar must move the accumulated syntax tree into each wrapper. Cloning it for every `?` or `!` copies all preceding wrappers and makes construction quadratic; preserve node IDs and positions while removing the discarded copies.
 Evidence: [suffix parser](../../crates/ms-syntax/src/parser.rs), [shape and position regressions](../../crates/ms-syntax/tests/type_suffix.rs), [interleaved parser measurements](../../bench/perf/parser-suffix/README.md).
 
+Verified: interpolation positions must advance through each literal prefix once. Recomputing the line and byte position from the start of the text for every interpolation token makes both long expressions and many short interpolations quadratic, especially in multiline text. The lexer rejects physical newlines inside expressions, so their token positions are relative byte offsets from one computed origin. Preserve nested/error attribution and LF/CRLF behavior when changing that mapping.
+Evidence: [interpolation position regressions](../../crates/ms-syntax/tests/interpolation_positions.rs).
+
 Verified: replaying failed type-argument speculation must preserve the token cursor, final nesting depth, consumed node IDs and diagnostic; include starting depth in the key so a nesting-limit failure is not treated as an unconditional grammar failure. Record only nested, retry-eligible failures, and measure shallow indexing: unconditional cache work can erase gains on ordinary input.
 Evidence: [speculative parser](../../crates/ms-syntax/src/parser.rs), [metadata regressions](../../crates/ms-syntax/tests/bracket_speculation.rs), [accepted and rejected measurements](../../bench/perf/parser-speculation/README.md).
 
