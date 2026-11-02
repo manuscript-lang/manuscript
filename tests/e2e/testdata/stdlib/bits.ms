@@ -60,13 +60,23 @@ test "rotation and bit counts":
 
 test "rotation counts reduce modulo 64 for runtime counts":
     var count = 0
+
     while count < 200:
         let reduced = (count + 64) % 64
-        try expect_equal(rotate_left(min_int + 5, count), rotate_left(min_int + 5, reduced))
-        try expect_equal(rotate_right(min_int + 5, count), rotate_right(min_int + 5, reduced))
-        try expect_equal(rotate_left(min_int + 5, 0 - count), rotate_right(min_int + 5, reduced))
-        try expect_equal(rotate_right(min_int + 5, 0 - count), rotate_left(min_int + 5, reduced))
+        try expect_equal(
+            rotate_left(min_int + 5, count), rotate_left(min_int + 5, reduced)
+        )
+        try expect_equal(
+            rotate_right(min_int + 5, count), rotate_right(min_int + 5, reduced)
+        )
+        try expect_equal(
+            rotate_left(min_int + 5, 0 - count), rotate_right(min_int + 5, reduced)
+        )
+        try expect_equal(
+            rotate_right(min_int + 5, 0 - count), rotate_left(min_int + 5, reduced)
+        )
         count += 1
+
     try expect_equal(rotate_left(min_int + 5, 1), 11)
 
 test "wrapping arithmetic never faults":
