@@ -2,56 +2,45 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/try-result-payloads.ms
 import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
-import TextError from "@std/core.ms"
 import Closeable from "@std/core.ms"
 import read_file, temporary, write_file from "@std/os/fs.ms"
 
 type Failure:
     detail: String
 
-impl Error for Failure:
-    fn message() String: self.detail.clone()
-
-fn relay[T, E: Error](result: T!E, var visits: List[Int]) T!E:
+fn relay[T, E](result: T!E, var visits: List[Int]) T!E:
     let value = try result
     visits.append(1)
     return ok(value)
 
-fn text(result: Int!TextError) String!TextError:
+fn text(result: Int!Error) String!Error:
     let value = try result
     return ok(value.to_string())
 
-fn widened(result: Int!Failure) Int!:
-    let value = try result
-    return ok(value)
-
 test "try preserves empty errors and skips success effects":
     var visits: List[Int] = []
-    relay(Result[Int, TextError].error(TextError("")), var visits).is_error() | try expect_true
+    relay(Result[Int, Error].error(Error("")), var visits).is_error() | try expect_true
     visits.length() | try expect_equal(0)
-    relay(Result[Int, TextError].ok(0), var visits).get() | try expect_equal(0)
+    relay(Result[Int, Error].ok(0), var visits).get() | try expect_equal(0)
     visits.length() | try expect_equal(1)
 
 test "try can change the success type":
-    text(Result[Int, TextError].error(TextError("failed"))).err().text | try expect_equal(
+    text(Result[Int, Error].error(Error("failed"))).err().message | try expect_equal(
         "failed"
     )
-    text(Result[Int, TextError].ok(42)).get() | try expect_equal("42")
+    text(Result[Int, Error].ok(42)).get() | try expect_equal("42")
 
 test "try retains aliases and error views":
     var visits: List[Int] = []
     let original = Failure("before")
     let exact = relay(Result[Int, Failure].error(original.clone()), var visits)
-    let abstract = widened(Result[Int, Failure].error(original))
     exact.err().detail | try expect_equal("before")
-    abstract.err().message() | try expect_equal("before")
-    widened(Result[Int, Failure].ok(7)).get() | try expect_equal(7)
 
-fn visit[T, E: Error](result: T!E, var visits: List[Int]) T!E:
+fn visit[T, E](result: T!E, var visits: List[Int]) T!E:
     visits.append(1)
     return result
 
-fn tail[T, E: Error](result: T!E, var visits: List[Int]) T!E:
+fn tail[T, E](result: T!E, var visits: List[Int]) T!E:
     let value = try visit(result, var visits)
     return ok(value)
 
@@ -65,15 +54,15 @@ impl Closeable for TailCleanup:
         return ok(unit)
 
 fn tail_cleanup(
-    result: Int!TextError,
+    result: Int!Error,
     var visits: List[Int],
     marker: String
-) Int!TextError:
+) Int!Error:
     let _resource = TailCleanup(marker)
     let value = try visit(result, var visits)
     return ok(value)
 
-fn function_tail(result: (fn() Int)!TextError) (fn() Int)!TextError:
+fn function_tail(result: (fn() Int)!Error) (fn() Int)!Error:
     let value = try result
     return ok(value)
 
@@ -82,8 +71,8 @@ test "tail Results evaluate once and retain payload identity":
     let original = Failure("before")
     let exact = tail(Result[Int, Failure].error(original), var visits)
     exact.err().detail | try expect_equal("before")
-    tail(Result[Int, TextError].ok(42), var visits).get() | try expect_equal(42)
-    tail(Result[Int, TextError].error(TextError("")), var visits).is_error() | try expect_true
+    tail(Result[Int, Error].ok(42), var visits).get() | try expect_equal(42)
+    tail(Result[Int, Error].error(Error("")), var visits).is_error() | try expect_true
     visits | try expect_equal([1, 1, 1])
 
 test "tail Results preserve cleanup on success and failure":
@@ -91,20 +80,20 @@ test "tail Results preserve cleanup on success and failure":
     let temporary = temporary("manuscript-tail-") | try expect_ok
     let first = "{temporary.path()}/first"
     let second = "{temporary.path()}/second"
-    tail_cleanup(Result[Int, TextError].ok(42), var visits, first.clone()).get() | try expect_equal(
+    tail_cleanup(Result[Int, Error].ok(42), var visits, first.clone()).get() | try expect_equal(
         42
     )
     visits | try expect_equal([1])
     read_file(first).is_ok() | try expect_true
     read_file(second).is_ok() | try expect_false
     tail_cleanup(
-        Result[Int, TextError].error(TextError("")), var visits, second.clone()
+        Result[Int, Error].error(Error("")), var visits, second.clone()
     ).is_error() | try expect_true
     visits | try expect_equal([1, 1])
     read_file(second).is_ok() | try expect_true
 
 test "function Result payloads keep their calling convention":
     let original = fn() Int: 42
-    let result = function_tail(Result[fn() Int, TextError].ok(original))
+    let result = function_tail(Result[fn() Int, Error].ok(original))
     let value = result.get()
     value() | try expect_equal(42)

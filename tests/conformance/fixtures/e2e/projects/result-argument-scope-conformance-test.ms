@@ -10,9 +10,9 @@ fn describe(r: Int!) String:
     match r:
         ok(_): return "unexpected success"
         error(cause):
-            return cause.message()
+            return cause.message.clone()
 
-test "local implementations remain selected after inference and forwarding":
+test "each module's error conversion is kept through inference and forwarding":
     if describe(first()) != "first 7": return fail("lost first scope")
     if describe(second()) != "second 7": return fail("lost second scope")
     if describe(first_generic()) != "first 7": return fail(

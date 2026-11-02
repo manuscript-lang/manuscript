@@ -1,4 +1,4 @@
-import compile, RegexSpan, RegexError from "@std/string.ms"
+import compile, RegexSpan from "@std/string.ms"
 import (
     expect_equal,
     expect_ok,
@@ -59,8 +59,12 @@ test "capture spans distinguish no match absent groups and empty captures":
     plain.capture_spans(
         "aé", 1
     ) | try expect_ok | try expect_some | slots | try expect_equal(plain_expected)
-    plain.capture_spans("aé", 0) | try expect_error | try expect_equal(
-        RegexError.LimitExceeded
+    plain.capture_spans(
+        "aé", 0
+    ) | try expect_error | try expect_equal(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
     )
 
 test "capture rows clear absent groups and retain all group indices":
@@ -87,42 +91,74 @@ test "span budgets cover whole and unmatched capture slots":
     re.find_all_spans(
         "ab", 2
     ) | try expect_ok | pairs | try expect_equal([[0, 1], [1, 2]])
-    re.find_all_spans("ab", 1) | try expect_error | try expect_equal(
-        RegexError.LimitExceeded
+    re.find_all_spans(
+        "ab", 1
+    ) | try expect_error | try expect_equal(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
     )
     re.capture_spans(
         "ab", 3
     ) | try expect_ok | try expect_some | slots | try expect_equal(
         [[0, 1], [0, 1], none]
     )
-    re.capture_spans("ab", 2) | try expect_error | try expect_equal(
-        RegexError.LimitExceeded
+    re.capture_spans(
+        "ab", 2
+    ) | try expect_error | try expect_equal(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
     )
 
     let exact = re.capture_all_spans("ab", 2, 6) | try expect_ok
     exact.length() | try expect_equal(2)
-    re.capture_all_spans("ab", 2, 5) | try expect_error | try expect_equal(
-        RegexError.LimitExceeded
+    re.capture_all_spans(
+        "ab", 2, 5
+    ) | try expect_error | try expect_equal(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
     )
-    re.capture_all_spans("ab", 1, 6) | try expect_error | try expect_equal(
-        RegexError.LimitExceeded
+    re.capture_all_spans(
+        "ab", 1, 6
+    ) | try expect_error | try expect_equal(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
     )
     re.capture_all_spans("", 0, 0) | try expect_ok | try expect_equal(
         List[List[RegexSpan?]]()
     )
 
     for cap in [-1, -9223372036854775808]:
-        re.find_all_spans("", cap) | try expect_error | try expect_equal(
-            RegexError.InvalidInput
+        re.find_all_spans(
+            "", cap
+        ) | try expect_error | try expect_equal(
+            Error(
+                "regular expression: invalid input", kind: ErrorCategory.InvalidInput
+            )
         )
-        re.capture_spans("", cap) | try expect_error | try expect_equal(
-            RegexError.InvalidInput
+        re.capture_spans(
+            "", cap
+        ) | try expect_error | try expect_equal(
+            Error(
+                "regular expression: invalid input", kind: ErrorCategory.InvalidInput
+            )
         )
-        re.capture_all_spans("", cap, none) | try expect_error | try expect_equal(
-            RegexError.InvalidInput
+        re.capture_all_spans(
+            "", cap, none
+        ) | try expect_error | try expect_equal(
+            Error(
+                "regular expression: invalid input", kind: ErrorCategory.InvalidInput
+            )
         )
-        re.capture_all_spans("", none, cap) | try expect_error | try expect_equal(
-            RegexError.InvalidInput
+        re.capture_all_spans(
+            "", none, cap
+        ) | try expect_error | try expect_equal(
+            Error(
+                "regular expression: invalid input", kind: ErrorCategory.InvalidInput
+            )
         )
 
 test "span methods support bound calls and preserve anchor context":
@@ -144,11 +180,19 @@ test "span methods support bound calls and preserve anchor context":
 test "span results remain bounded for dense matches":
     let text = "é🙂".repeat(32768) | try expect_ok
     let re = compile("(é)|(🙂)") | try expect_ok
-    re.find_all_spans(text, 1) | try expect_error | try expect_equal(
-        RegexError.LimitExceeded
+    re.find_all_spans(
+        text, 1
+    ) | try expect_error | try expect_equal(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
     )
-    re.capture_all_spans(text, none, 3) | try expect_error | try expect_equal(
-        RegexError.LimitExceeded
+    re.capture_all_spans(
+        text, none, 3
+    ) | try expect_error | try expect_equal(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
     )
     re.capture_spans(
         text, 3

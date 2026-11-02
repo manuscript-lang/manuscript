@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/string-bytes.ms
 import expect_equal, expect_false from "@std/test/test.ms"
-import from_scalars, StringError, StringBuilder from "@std/string.ms"
+import from_scalars, StringBuilder from "@std/string.ms"
 import Bytes, BytesBuilder, values from "@std/bytes.ms"
 
 test "Unicode scalar indexing differs from byte length":
@@ -20,7 +20,9 @@ test "strings honor omitted none zero and explicit output limits":
     try expect_equal((try "ab".repeat(2)), "abab")
     try expect_equal((try "ab".repeat(0, 0)), "")
 
-    let limited: String!StringError = error(StringError.LimitExceeded)
+    let limited: String! = error(
+        Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     try expect_equal("é".repeat(2, 3), limited)
     try expect_equal("x".pad_start(3, "ab"), "abx")
     try expect_equal("x".pad_end(3, "ab"), "xab")
@@ -29,10 +31,14 @@ test "strings honor omitted none zero and explicit output limits":
     try expect_equal("a,,b".split(",", 2), ["a", ""])
     try expect_equal(" \té \n".trim(), "é")
 
-    let invalid: String!StringError = error(StringError.InvalidInput)
+    let invalid: String! = error(
+        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal("a".normalize("invalid"), invalid)
 
-    let scalar_error: String!StringError = error(StringError.InvalidInput)
+    let scalar_error: String! = error(
+        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(from_scalars([55296]), scalar_error)
 
 test "bytes copy slice search and UTF8 validation":
@@ -44,7 +50,9 @@ test "bytes copy slice search and UTF8 validation":
     try expect_equal(data.slice(1, 3).get(), Bytes([1, 255]))
     try expect_equal(data.slice(-3, -1).get(), Bytes([1, 255]))
 
-    let byte_range: Bytes!CollectionError = error(CollectionError.OutOfRange)
+    let byte_range: Bytes! = error(
+        Error("binary: value out of range", kind: ErrorCategory.OutOfRange)
+    )
     try expect_equal(data.slice(1, 10), byte_range)
     try expect_equal(data.slice(-10, 2), byte_range)
     try expect_equal(data.reversed(), Bytes([1, 255, 1, 0]))
@@ -77,7 +85,9 @@ test "Bytes values direct bound and free calls return independent lists":
 
 test "String slice uses Unicode scalars with relative bounds and OutOfRange errors":
     let text = "aé🙂z"
-    let out_of_range: String!StringError = error(StringError.OutOfRange)
+    let out_of_range: String! = error(
+        Error("string: value out of range", kind: ErrorCategory.OutOfRange)
+    )
     try expect_equal((try text.slice(-2, 4)), "🙂z")
     try expect_equal((try text.slice(0, -1)), "aé🙂")
     try expect_equal((try text.slice(4, 4)), "")
@@ -86,7 +96,9 @@ test "String slice uses Unicode scalars with relative bounds and OutOfRange erro
     try expect_equal(text.slice(3, 1), out_of_range)
     try expect_false(text.index_of("🙂") != 2 or text.last_index_of("") != 4)
 
-    let invalid: String!StringError = error(StringError.OutOfRange)
+    let invalid: String! = error(
+        Error("string: value out of range", kind: ErrorCategory.OutOfRange)
+    )
     try expect_equal(text.slice_scalars(-2, 4), invalid)
     try expect_equal(text.slice_scalars(1, 10), invalid)
     try expect_equal(text.slice_scalars(3, 1), invalid)
@@ -139,7 +151,9 @@ test "indexing and slicing long mixed-width text matches scalar positions":
     try expect_equal((try text.slice_scalars(1199, 1203)), "🙂aé€")
     try expect_equal((try text.slice_scalars(2399, 2400)), "🙂")
 
-    let out_of_range: String!StringError = error(StringError.OutOfRange)
+    let out_of_range: String! = error(
+        Error("string: value out of range", kind: ErrorCategory.OutOfRange)
+    )
     try expect_equal(text.slice_scalars(2400, 2401), out_of_range)
 
 test "builder appends literals of every short length across growth":

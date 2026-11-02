@@ -25,20 +25,6 @@ impl StringAffixCuts for String:
 
         return none
 
-# Errors returned by Unicode scalar conversions and bounded string operations.
-export type StringError:
-    # Scalar values, normalization form or a supplied repeat/padding/output budget is invalid.
-    case InvalidInput
-    # A strict scalar slice bound lies outside the string or its range is inverted.
-    case OutOfRange
-    # UTF-8 output exceeds a supplied byte budget or the native string allocation limit.
-    case LimitExceeded
-    # A string-domain failure with an explicit diagnostic supplied by an implementation.
-    case Failed(
-        # Original diagnostic text, returned unchanged by message().
-        message: String
-    )
-
 # The four Unicode normalization forms, selected without runtime string spelling errors.
 export type NormalizationForm:
     # Canonical decomposition followed by canonical recomposition where Unicode permits it.
@@ -51,17 +37,13 @@ export type NormalizationForm:
     case Nfkd
 
 impl NormalizationForm:
-    # Normalizes text with the existing String.normalize budgets and StringError cases.
+    # Normalizes text with the existing String.normalize budgets and error kinds.
     # Omission or none adds no output budget; a supplied budget counts UTF-8 bytes.
-    fn normalize(text: String, max_bytes: Int?) String!StringError: ...
+    fn normalize(text: String, max_bytes: Int?) String!: ...
 
 # Builds text from Unicode scalar values. Invalid scalars return `InvalidInput`.
-export fn from_scalars(values: List[Int]) String!StringError:
+export fn from_scalars(values: List[Int]) String!:
     return msrt_string_from_scalars(values)
-
-impl Error for StringError:
-    # Returns original Failed text, or a string-prefixed diagnostic for other cases.
-    fn message() String: ...
 
 # Mutable builder for constructing a string without repeated intermediate copies.
 export extern type StringBuilder
@@ -75,15 +57,6 @@ impl StringBuilder:
 
     # Returns the text appended so far and leaves the builder empty, for a builder held in a field.
     var fn drain() String: ...
-
-# Errors returned for invalid patterns or configured result limits.
-export type RegexError:
-    # A supplied match-count, capture-slot or output-byte budget is negative.
-    case InvalidInput
-    # Pattern syntax is invalid for the native regular-expression engine (Rust `regex` syntax).
-    case InvalidData
-    # A match-count, capture-slot or replacement output-byte budget is exceeded.
-    case LimitExceeded
 
 # A compiled regular expression that can be reused across input strings.
 export extern type Regex
@@ -103,17 +76,17 @@ impl Regex:
 
     # Returns nonoverlapping full-match text in occurrence order, excluding capture groups.
     # A supplied cap is a strict budget, not truncation; zero-width matches follow the engine's rules.
-    fn find_all(text: String, max_matches: Int?) List[String]!RegexError: ...
+    fn find_all(text: String, max_matches: Int?) List[String]!: ...
 
     # Replaces every nonoverlapping match with literal replacement text; $ and capture names are not expanded.
     # max_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded.
-    fn replace_all(text: String, replacement: String, max_bytes: Int?) String!RegexError: ...
+    fn replace_all(text: String, replacement: String, max_bytes: Int?) String!: ...
 
     # Returns the first match as [whole, group1, ...]; groups that did not participate are "". Empty list when nothing matches.
     fn captures(text: String) List[String]: ...
 
     # Like captures for every nonoverlapping match, under find_all's match-count budget.
-    fn captures_all(text: String, max_matches: Int?) List[List[String]]!RegexError: ...
+    fn captures_all(text: String, max_matches: Int?) List[List[String]]!: ...
 
     # Returns the first match's named groups that participated; empty map when nothing matches.
     fn named_captures(text: String) Map[String, String]: ...
@@ -122,22 +95,14 @@ impl Regex:
     fn find_span(text: String) List[Int]?: ...
 
     # Splits text around every match, always returning at least one piece. max_pieces is a strict budget like find_all's.
-    fn split(text: String, max_pieces: Int?) List[String]!RegexError: ...
+    fn split(text: String, max_pieces: Int?) List[String]!: ...
 
     # Like replace_all but expands $1, ${name}, and $$ in template from each match (Rust regex syntax: use ${1}x, not $1x).
-    fn replace_template(
-        text: String,
-        template: String,
-        max_bytes: Int?
-    ) String!RegexError: ...
+    fn replace_template(text: String, template: String, max_bytes: Int?) String!: ...
 
 # Compiles a regular expression. Invalid pattern syntax is returned as an error.
-export fn compile(pattern: String) Regex!RegexError:
+export fn compile(pattern: String) Regex!:
     return msstd_regex_compile(pattern)
-
-impl Error for RegexError:
-    # Returns a regular-expression-prefixed diagnostic without echoing pattern or input text.
-    fn message() String: ...
 
 impl String:
     # Splits on Unicode White_Space, omitting empty fields; empty or all-whitespace text gives an empty list.
@@ -159,18 +124,18 @@ fn capture_slots(raw: List[Int], start: Int, count: Int) List[RegexSpan?]:
     return out
 
 interface RegexSpanQueries:
-    fn find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!RegexError
-    fn capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!RegexError
+    fn find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!
+    fn capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!
     fn capture_all_spans(
         text: String,
         max_matches: Int?,
         max_captures: Int?
-    ) List[List[RegexSpan?]]!RegexError
+    ) List[List[RegexSpan?]]!
 
 impl RegexSpanQueries for Regex:
     # Returns all full-match byte ranges in find_all order, without copying matched text.
     # max_matches is a strict output budget: negatives return InvalidInput, excess returns LimitExceeded.
-    fn find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!RegexError:
+    fn find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!:
         let raw = try msstd_regex_find_all_spans(self, text, max_matches)
         var out = List[RegexSpan](reserve: raw.length() / 2)
         for index in 0..(raw.length() / 2):
@@ -181,7 +146,7 @@ impl RegexSpanQueries for Regex:
     # An unmatched group is inner none; a participating empty group has start == end.
     # max_captures bounds slots including the whole match and unmatched groups. Negative budgets return InvalidInput;
     # excess returns LimitExceeded. The budget bounds output, not input scanning or engine scratch space.
-    fn capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!RegexError:
+    fn capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!:
         let raw = try msstd_regex_capture_spans(self, text, max_captures)
         if raw.is_empty(): return ok(none)
 
@@ -194,7 +159,7 @@ impl RegexSpanQueries for Regex:
         text: String,
         max_matches: Int?,
         max_captures: Int?
-    ) List[List[RegexSpan?]]!RegexError:
+    ) List[List[RegexSpan?]]!:
         let raw = try msstd_regex_capture_all_spans(
             self, text, max_matches, max_captures
         )

@@ -57,7 +57,7 @@ domains:
       - "Makefile"
   - id: stdlib-design
     file: stdlib-design/index.md
-    topics: [stdlib API shape, failure modes, Result and Error, TextError, write and write_bytes, Set construction, module consolidation]
+    topics: [stdlib API shape, failure modes, Result and Error, write and write_bytes, Set construction, module consolidation]
     paths:
       - "stdlib/**"
       - "tests/e2e/testdata/stdlib/**"

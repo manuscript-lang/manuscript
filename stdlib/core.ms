@@ -1,31 +1,14 @@
-# An optional diagnostic contract for expected failures at a common reporting boundary.
-# A contract for expected failures that can provide a human-readable message.
-export interface Error:
-    # Returns a human-readable description of this expected error.
-    fn message() String
+# An expected failure as a plain value: a message, a portable kind callers can branch on, and string details.
+# Build one like any record: `Error("no such file", kind: NotFound, details: {"path": path})`. `T!` is `Result[T, Error]`.
+export type Error:
+    # Human-readable description of the failure.
+    message: String
+    # What went wrong, in portable terms; `Other` when no category fits.
+    kind: ErrorCategory = ErrorCategory.Other
+    # Extra facts about the failure, such as the path or operation, keyed by name.
+    details: Map[String, String] = Map[String, String]()
 
-# An error that carries only intentional text, for callers that have no domain error to return.
-export type TextError:
-    # Description returned verbatim by message().
-    text: String
-
-impl Error for TextError:
-    # Returns the wrapped text verbatim.
-    fn message() String: ...
-
-# The error `Optional.ok_or()` returns when no cause is given. Its message names the source file and line of the call.
-export type MissingValue:
-    # Records where the absent value was converted to an error.
-    case Missing(
-        # The calling source position, as `file:line`.
-        location: String
-    )
-
-impl Error for MissingValue:
-    # Returns "missing value at" followed by the recorded source position.
-    fn message() String: ...
-
-# Portable categories for shared standard error cases. Domain errors retain their types and payloads.
+# Portable kinds of failure. Callers branch on `error.kind`; the message carries the specifics.
 export type ErrorCategory:
     # Caller input is invalid.
     case InvalidInput
@@ -47,12 +30,12 @@ export type ErrorCategory:
     case Timeout
     # The service/resource is unavailable; this does not imply NotFound or PermissionDenied.
     case Unavailable
-
-# Queries a shared category without changing or invoking the error.
-# Recognized standard cases use their same-name category.
-# Custom errors and domain-specific cases (including Failed, Full, OutputLimit, OutOfRange,
-# AuthenticationFailed and wrapped LogError causes) return none. Messages are never parsed.
-export fn category(cause: Error) ErrorCategory?: ...
+    # A value or index is outside its range.
+    case OutOfRange
+    # A task, process or peer ended abnormally.
+    case Failed
+    # No other kind fits.
+    case Other
 
 # Raises a programming fault with the supplied message and stops the current operation.
 export fn panic(message: String) Never: ...
@@ -113,8 +96,8 @@ impl T?:
     fn or_else(create: fn() T?) T?: ...
 
     # Returns ok with the original payload, or error with the eager cause.
-    # Without a cause, E is MissingValue and the error names the calling source file and line.
-    fn ok_or[E = MissingValue](cause: E?) T!E: ...
+    # Without a cause, E is Error (kind NotFound) and the message names the calling source file and line.
+    fn ok_or[E = Error](cause: E?) T!E: ...
 
     # Constructs an error once only for none; present payloads remain unchanged.
     fn ok_or_else[E](create: fn() E) T!E: ...

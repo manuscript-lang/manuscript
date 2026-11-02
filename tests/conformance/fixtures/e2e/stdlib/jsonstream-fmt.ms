@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/stdlib/jsonstream.ms
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
 import decoder from "@std/data/jsonstream.ms"
-import stringify, JsonValue, JsonLimits, JsonError from "@std/data/json.ms"
+import stringify, JsonValue, JsonLimits from "@std/data/json.ms"
 import Bytes from "@std/bytes.ms"
 
 fn texts(values: List[JsonValue]) List[String]!:
@@ -40,7 +40,7 @@ test "JSON decoder preserves values split at every chunk size":
         if (try decode(input, size)) != expected: return fail("chunk size {size}")
 
 test "JSON decoder reports truncated and malformed input":
-    let invalid: List[JsonValue]!JsonError = error(JsonError.InvalidData)
+    let invalid: List[JsonValue]! = error(Error("JSON: invalid data", kind: ErrorCategory.InvalidData))
 
     for text in ["\{\"a\":[1", "\"open", "x", "[1]]", "truex y"]:
         var reader = try decoder()
@@ -53,8 +53,8 @@ test "JSON decoder reports truncated and malformed input":
         )
 
 test "JSON decoder rejects invalid UTF-8 and stays failed":
-    let invalid: List[JsonValue]!JsonError = error(JsonError.InvalidData)
-    let closed: List[JsonValue]!JsonError = error(JsonError.InvalidInput)
+    let invalid: List[JsonValue]! = error(Error("JSON: invalid data", kind: ErrorCategory.InvalidData))
+    let closed: List[JsonValue]! = error(Error("JSON: invalid input", kind: ErrorCategory.InvalidInput))
     var reader = try decoder()
     let bad = "\"a\"".to_bytes()
     try expect_equal(reader.feed(bad.with_value(1, 255)), invalid)
@@ -66,7 +66,7 @@ test "JSON decoder rejects invalid UTF-8 and stays failed":
     try expect_equal(ended.finish(), closed)
 
 test "JSON decoder applies per-value budgets":
-    let limited: List[JsonValue]!JsonError = error(JsonError.LimitExceeded)
+    let limited: List[JsonValue]! = error(Error("JSON: limit exceeded", kind: ErrorCategory.LimitExceeded))
     var bytes = try decoder(JsonLimits(5))
     try expect_not_equal(bytes.feed("[1,2]".to_bytes()), limited)
     try expect_equal(bytes.feed("[1,2,3]".to_bytes()), limited)
@@ -76,4 +76,4 @@ test "JSON decoder applies per-value budgets":
 
     let negative = decoder(JsonLimits(max_values: -1))
     try expect_false(not negative.is_error())
-    try expect_equal(negative.err(), JsonError.InvalidInput)
+    try expect_equal(negative.err(), Error("JSON: invalid input", kind: ErrorCategory.InvalidInput))

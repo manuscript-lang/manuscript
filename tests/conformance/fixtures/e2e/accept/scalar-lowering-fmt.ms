@@ -1,7 +1,6 @@
 # conform: tags=aliasing,closures,control-flow,formatter,generics,interfaces,interpolation,match,modules,mutation,optional,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/scalar-lowering.ms
-import TextError from "@std/core.ms"
 import expect_equal, expect_false, expect_not_equal from "@std/test/test.ms"
 import Closeable from "@std/core.ms"
 
@@ -80,26 +79,26 @@ fn nested(counter: Counter) Unit:
 
     callback()
 
-fn failed() Int!TextError: error(TextError("expected"))
+fn failed() Int!Error: error(Error("expected"))
 
-fn propagate(counter: Counter) Int!TextError:
+fn propagate(counter: Counter) Int!Error:
     var _resource = Resource(counter)
     let value = try failed()
     return ok(value)
     return ok(0)
 
-fn bare_propagate() Int!TextError:
+fn bare_propagate() Int!Error:
     let value = try failed()
     return ok(value)
 
-fn equality_propagate() Bool!TextError:
+fn equality_propagate() Bool!Error:
     let matches = (try failed()) == 0
     return ok(matches)
 
-fn bool_failed() Bool!TextError: error(TextError("expected"))
+fn bool_failed() Bool!Error: error(Error("expected"))
 
-fn nested_results(counter: Counter) Int!TextError:
-    let child = fn() Bool!TextError:
+fn nested_results(counter: Counter) Int!Error:
+    let child = fn() Bool!Error:
         var _resource = Resource(counter)
         let value = try bool_failed()
         return ok(value)
@@ -109,7 +108,7 @@ fn nested_results(counter: Counter) Int!TextError:
     let value = try failed()
     return ok(value)
 
-fn statement_match_try(counter: Counter) Int!TextError:
+fn statement_match_try(counter: Counter) Int!Error:
     match present(1):
         _value:
             let _resource = Resource(counter)
@@ -119,7 +118,7 @@ fn statement_match_try(counter: Counter) Int!TextError:
 
     return ok(-1)
 
-fn value_match_loop_try(counter: Counter) Int!TextError:
+fn value_match_loop_try(counter: Counter) Int!Error:
     var index = 0
 
     while index < 2:
@@ -139,24 +138,24 @@ test "combined lowering retains callable state and try boundaries":
     let counter = Counter()
     try expect_false(
         (
-            nested_results(counter) != Result[Int, TextError].error(
-                TextError("expected")
+            nested_results(counter) != Result[Int, Error].error(
+                Error("expected")
             )
             or counter.value != 1
         )
     )
     try expect_false(
         (
-            statement_match_try(counter) != Result[Int, TextError].error(
-                TextError("expected")
+            statement_match_try(counter) != Result[Int, Error].error(
+                Error("expected")
             )
             or counter.value != 2
         )
     )
     try expect_false(
         (
-            value_match_loop_try(counter) != Result[Int, TextError].error(
-                TextError("expected")
+            value_match_loop_try(counter) != Result[Int, Error].error(
+                Error("expected")
             )
             or counter.value != 3
         )
@@ -173,17 +172,17 @@ test "cleanup remains owned by its source callable":
     try expect_equal(counter.value, 4)
     try expect_false(
         (
-            propagate(counter) != Result[Int, TextError].error(
-                TextError("expected")
+            propagate(counter) != Result[Int, Error].error(
+                Error("expected")
             )
             or counter.value != 5
         )
     )
     try expect_equal(
-        bare_propagate(), Result[Int, TextError].error(TextError("expected"))
+        bare_propagate(), Result[Int, Error].error(Error("expected"))
     )
     try expect_equal(
-        equality_propagate(), Result[Bool, TextError].error(TextError("expected"))
+        equality_propagate(), Result[Bool, Error].error(Error("expected"))
     )
 
     var index = 0

@@ -1,5 +1,5 @@
 import expect_equal, expect_false from "@std/test/test.ms"
-import compile, RegexError from "@std/string.ms"
+import compile from "@std/string.ms"
 
 test "regex receivers execute matching replacement and empty results":
     let regex = try compile("[0-9]+")
@@ -12,13 +12,26 @@ test "regex receivers execute matching replacement and empty results":
 test "regex rejects invalid expressions and exhausted budgets":
     let invalid = compile("[")
     try expect_false(not invalid.is_error())
-    try expect_equal(invalid.err(), RegexError.InvalidData)
+    try expect_equal(
+        invalid.err(),
+        Error(
+            "regular expression: invalid data", kind: ErrorCategory.InvalidData
+        )
+    )
 
     let regex = try compile("[0-9]+")
-    let limited: List[String]!RegexError = error(RegexError.LimitExceeded)
+    let limited: List[String]! = error(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
+    )
     try expect_equal(regex.find_all("1 2", 1), limited)
 
-    let output_limit: String!RegexError = error(RegexError.LimitExceeded)
+    let output_limit: String! = error(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
+    )
     try expect_equal(regex.replace_all("1", "long", 3), output_limit)
 
 test "regex captures groups spans and splits":
@@ -43,7 +56,11 @@ test "regex captures groups spans and splits":
         (try swap.replace_template("me@home x@y", "$\{host\}:$1 $$")), "home:me $ y:x $"
     )
 
-    let limited: List[String]!RegexError = error(RegexError.LimitExceeded)
+    let limited: List[String]! = error(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
+    )
     try expect_equal(comma.split("a,b,c", 2), limited)
 
 test "regex repeated captures clear absent groups and preserve budgets":
@@ -53,7 +70,11 @@ test "regex repeated captures clear absent groups and preserve budgets":
         [["a", "a", ""], ["bbb", "", "bbb"], ["a", "a", ""]]
     )
 
-    let limited: List[List[String]]!RegexError = error(RegexError.LimitExceeded)
+    let limited: List[List[String]]! = error(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
+    )
     try expect_equal(re.captures_all("a bbb a", 2), limited)
     try expect_equal((try re.captures_all("xyz", 0)), [])
 
@@ -65,7 +86,11 @@ test "regex repeated template expansion preserves byte budgets":
     )
     try expect_equal((try re.replace_template("a b", "$$", 3)), "$ $")
 
-    let limited: String!RegexError = error(RegexError.LimitExceeded)
+    let limited: String! = error(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
+    )
     try expect_equal(re.replace_template("a b", "$$", 2), limited)
     try expect_equal((try re.replace_template("a b", "xy", 5)), "xy xy")
     try expect_equal(re.replace_template("a b", "xy", 4), limited)
@@ -88,7 +113,11 @@ test "regex capture methods preserve whole match only patterns":
     try expect_equal(unnamed.named_captures("word123").is_empty(), true)
     try expect_equal((try re.captures_all("sword word word", 2)), [["word"], ["word"]])
 
-    let limited: List[List[String]]!RegexError = error(RegexError.LimitExceeded)
+    let limited: List[List[String]]! = error(
+        Error(
+            "regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
+    )
     try expect_equal(re.captures_all("word word", 1), limited)
     try expect_equal((try re.captures_all("sword", 0)), [])
 

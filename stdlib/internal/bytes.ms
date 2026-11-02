@@ -1,4 +1,4 @@
-import BinaryError, Bytes from "@std/bytes.ms"
+import Bytes from "@std/bytes.ms"
 
 # Fixed-width number codecs for Bytes and BytesBuilder, written in Manuscript over one word reader and four float bit casts.
 # They apply wherever Bytes and BytesBuilder are used, without an import.
@@ -8,7 +8,7 @@ export extern fn msrt_bytes_read_word(
     at: Int,
     width: Int,
     little: Bool
-) Int!BinaryError
+) Int!
 
 export extern fn msrt_float_from_bits(bits: Int) Float
 

@@ -1,7 +1,7 @@
 # conform: tags=alternatives,optional,records,stdlib-json,stdlib-net,testing,tier-io,try-result
 # conform: phase=test
 import expect_equal from "@std/test/test.ms"
-import parse, stringify, JsonError from "@std/data/json.ms"
+import parse, stringify from "@std/data/json.ms"
 import IpAddress, Cidr, parse_ip, parse_cidr from "@std/net/net.ms"
 
 type Color:
@@ -26,7 +26,7 @@ test "JSON payloadless cases are their names and round-trip":
     try expect_equal(try stringify(back), text)
 
 test "JSON rejects an unknown case name":
-    let invalid: Color!JsonError = error(JsonError.InvalidData)
+    let invalid: Color! = error(Error("JSON: invalid data", kind: ErrorCategory.InvalidData))
     try expect_equal(parse[Color]("\"Blue\""), invalid)
     try expect_equal(parse[Color]("\"Color.Red\""), invalid)
 

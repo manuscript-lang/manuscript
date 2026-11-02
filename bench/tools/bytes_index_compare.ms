@@ -156,7 +156,7 @@ export fn main() Int:
     )
 
     let parsed = options(args.slice(4, args.length()).get([]), ["cpu"], [])
-    if parsed.is_error(): return fail(parsed.err().message())
+    if parsed.is_error(): return fail(parsed.err().message)
 
     var paths = Map[String, String]()
     paths.add("before", absolute(args[0].clone()))
@@ -166,6 +166,6 @@ export fn main() Int:
     let result = run(
         paths, args[3].clone(), parsed.get(Map[String, String]()).get("cpu").get("")
     )
-    if result.is_error(): return fail(result.err().message())
+    if result.is_error(): return fail(result.err().message)
 
     return 0

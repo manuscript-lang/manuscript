@@ -6,8 +6,8 @@ import http_result from "./support/http.ms"
 import headers, HttpMethod, buffered from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import http_client, request, serve, web_socket from "@std/net/net.ms"
-import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/net/http.ms"
-import WebSocketOptions, WebSocketError from "@std/net/net.ms"
+import HttpExchange, HttpServerOptions, HttpClientOptions from "@std/net/http.ms"
+import WebSocketOptions from "@std/net/net.ms"
 import TlsOptions from "@std/net/net.ms"
 
 fn tls_options() TlsOptions:
@@ -16,7 +16,7 @@ fn tls_options() TlsOptions:
         alpn: [], require_client_certificate: false
     )
 
-fn echo(exchange: HttpExchange) Unit!HttpError:
+fn echo(exchange: HttpExchange) Unit!:
     if exchange.path() == "/ws":
         var socket = (
             try http_result(
@@ -78,7 +78,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     ((body.read(5) | try expect_ok).is_none()) | try expect_true
     client.close()
 
-    let limited: Unit!HttpError = error(HttpError.LimitExceeded)
+    let limited: Unit! = error(Error("HTTP: limit exceeded", kind: ErrorCategory.LimitExceeded))
 
     match request(
         method: HttpMethod.Get, url: url,
@@ -87,7 +87,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     ):
         ok(_): return fail("HTTP output budget ignored")
         error(cause):
-            try expect_equal(cause, HttpError.LimitExceeded)
+            try expect_equal(cause, Error("HTTP: limit exceeded", kind: ErrorCategory.LimitExceeded))
 
 test "WebSocket negotiates a protocol and echoes a text frame":
     let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
@@ -109,7 +109,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     let message = (socket.receive() | try expect_ok).get()
     (not message.text or message.data != "é🙂".to_bytes()) | try expect_false
 
-fn report_host(exchange: HttpExchange) Unit!HttpError:
+fn report_host(exchange: HttpExchange) Unit!:
     let hosts = exchange.headers().values("Host")
     let started = try exchange.send_headers(status: 200, headers: headers())
     let written = (try http_result(exchange.write(hosts.join(","))))
@@ -136,4 +136,4 @@ test "HTTP requests reject an empty method":
     ):
         ok(_): return fail("empty method accepted")
         error(cause):
-            try expect_equal(cause, HttpError.InvalidInput)
+            try expect_equal(cause, Error("HTTP: invalid input", kind: ErrorCategory.InvalidInput))

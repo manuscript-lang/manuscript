@@ -1,6 +1,6 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import Channel, ChannelError from "@std/io/channels.ms"
+import Channel from "@std/io/channels.ms"
 import panic from "@std/core.ms"
 import fetch from "@std/net/fetch.ms"
 import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions from "@std/net/http.ms"
@@ -9,7 +9,7 @@ import serve from "@std/net/net.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
-import Worker, WorkerError, WorkerGroup, worker_bytes, worker_channel from "@std/concurrency/workers.ms"
+import Worker, WorkerGroup, worker_bytes, worker_channel from "@std/concurrency/workers.ms"
 
 type Job:
     id: Int
@@ -19,7 +19,7 @@ type Done:
     id: Int
     count: Int
 
-fn square_each(var ch: Channel[Int, Int]) Unit!ChannelError:
+fn square_each(var ch: Channel[Int, Int]) Unit!:
     while true:
         if let n = try ch.receive():
             try ch.send(n * n)
@@ -96,7 +96,7 @@ fn sum_until_closed() Unit:
             let _ = ch.send(total)
             return
 
-fn ask(group: WorkerGroup[Int, Int], value: Int) Int!WorkerError:
+fn ask(group: WorkerGroup[Int, Int], value: Int) Int!:
     var worker = try group.spawn(squares)
     let _ = worker.channel.send(value)
     var answer = -1
@@ -169,20 +169,20 @@ test "cancelling a worker stops it":
     var worker = group.spawn(announce_then_wait).get(none)
     try expect_equal(worker.channel.receive(), ok(1))
     worker.cancel()
-    try expect_equal(worker.wait(), error(WorkerError.Cancelled))
+    try expect_equal(worker.wait(), error(Error("worker: cancelled", kind: ErrorCategory.Other)))
 
 test "a worker cancelled while computing is cancelled at its next channel operation":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(spin_then_wait).get(none)
     try expect_equal(worker.channel.receive(), ok(1))
     worker.cancel()
-    try expect_equal(worker.wait(), error(WorkerError.Cancelled))
+    try expect_equal(worker.wait(), error(Error("worker: cancelled", kind: ErrorCategory.Other)))
 
 test "cancelling a worker right after spawn is not lost":
     let group = WorkerGroup[Int, Int]()
     var worker = group.spawn(sleep_long).get(none)
     worker.cancel()
-    try expect_equal(worker.wait(), error(WorkerError.Cancelled))
+    try expect_equal(worker.wait(), error(Error("worker: cancelled", kind: ErrorCategory.Other)))
 
 test "leaving the group stops workers that are still running":
     var group = WorkerGroup[Int, Int]()
@@ -208,7 +208,7 @@ test "standard input stays with the main thread":
     var worker = group.spawn(reads_stdin).get(none)
     let outcome = worker.wait()
     let _ignored = try expect_error(outcome)
-    try expect_true(outcome.err().message().contains("main thread"))
+    try expect_true(outcome.err().message.contains("main thread"))
 
 fn delayed_send() Unit:
     var ch = worker_channel[Int, Int]()
@@ -252,7 +252,7 @@ test "a fault in a task a worker started is the worker's fault":
     var worker = group.spawn(runs_faulting_task).get(none)
     let outcome = worker.wait()
     let cause = try expect_error(outcome)
-    try expect_true(cause.message().contains("task inside worker faults"))
+    try expect_true(cause.message.contains("task inside worker faults"))
 
 fn sleeps_long() Unit:
     var _ch = worker_channel[Int, Int]()
@@ -272,7 +272,7 @@ test "cancelling a worker that is joining another ends it as cancelled":
 
     let outcome = outer.wait()
     let cause = try expect_error(outcome)
-    try expect_equal(cause.message(), "worker: cancelled")
+    try expect_equal(cause.message, "worker: cancelled")
 
 fn touches_network() Unit:
     var ch = worker_channel[Int, Int]()

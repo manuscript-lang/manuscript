@@ -1,5 +1,5 @@
 import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
-import Closeable, TextError from "@std/core.ms"
+import Closeable from "@std/core.ms"
 import read_file, temporary, write_file from "@std/os/fs.ms"
 
 type Resource:
@@ -26,9 +26,9 @@ fn returns_early(dir: String, early: Bool) Int:
 
     return r.id
 
-fn propagates(dir: String) Int!TextError:
+fn propagates(dir: String) Int!Error:
     let r = Resource(dir, 3)
-    let failed: Int!TextError = error(TextError("boom"))
+    let failed: Int!Error = error(Error("boom"))
     let v = try failed
     return ok(v + r.id)
 

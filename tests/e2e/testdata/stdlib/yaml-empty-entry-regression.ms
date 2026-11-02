@@ -7,12 +7,10 @@ test "YAML flow mappings reject empty comma entries":
         "\{key,,\}"
     ]:
         let cause = parse(source) | try expect_error
+        if cause.kind != ErrorCategory.InvalidData:
+            return fail("expected malformed flow entry, got {cause}")
 
-        match cause:
-            InvalidData(_, _, reason): reason | try expect_equal(
-                "expected flow mapping key"
-            )
-            _: return fail("expected malformed flow entry, got {cause}")
+        cause.details["reason"] | try expect_equal("expected flow mapping key")
 
 test "YAML flow mappings retain legal trailing commas":
     var values = Map[String, YamlValue]()

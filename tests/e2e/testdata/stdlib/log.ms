@@ -9,26 +9,18 @@ import (
     Logger,
     Transport,
     LogLevel,
-    LogError,
     create,
     stream_transport,
     stdout_transport,
     file_transport
 ) from "@std/log.ms"
-import IoError, WriteStream from "@std/io/io.ms"
+import WriteStream from "@std/io/io.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
 import TaskGroup from "@std/concurrency/tasks.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 import JsonValue, parse from "@std/data/json.ms"
-import (
-    FileSystemError,
-    append_file_bytes,
-    open,
-    read_file,
-    temporary,
-    write_file
-) from "@std/os/fs.ms"
+import (append_file_bytes, open, read_file, temporary, write_file) from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 type Items:
@@ -106,7 +98,9 @@ test "levels filter methods and function values":
     try logger.fatal("filtered")
     try expect_equal((try written(path)), before)
 
-    let invalid: Unit!LogError = error(LogError.InvalidInput)
+    let invalid: Unit! = error(
+        Error("logging: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(logger.log(LogLevel.Silent, "invalid"), invalid)
 
 type Service:
@@ -143,7 +137,9 @@ test "limits and unencodable values reject before writing":
     try expect_equal((try written(path)), line)
 
     let before = try written(path)
-    let limited: Unit!LogError = error(LogError.LimitExceeded)
+    let limited: Unit! = error(
+        Error("logging: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     try expect_equal(logger.info("xx"), limited)
 
     let zero = try create(
@@ -158,13 +154,15 @@ test "limits and unencodable values reject before writing":
                         stream_transport(file.writer()), max_bytes: -1
                     )
                 )
-            ) != LogError.InvalidInput
+            ) != Error("logging: invalid input", kind: ErrorCategory.InvalidInput)
         )
     )
 
     let unlimited = try create(stream_transport(file.writer()), timestamp: false)
     let bad = JsonValue.NumberValue("NaN")
-    let invalid_data: Unit!LogError = error(LogError.InvalidData)
+    let invalid_data: Unit! = error(
+        Error("logging: invalid data", kind: ErrorCategory.InvalidData)
+    )
     try expect_equal(unlimited.info("bad", bad), invalid_data)
     try expect_equal((try written(path)), before)
 
@@ -174,13 +172,17 @@ test "transport closure and stream errors preserve identity":
     var logger = try create(stream_transport(file.writer()))
     try file.close()
 
-    let io_closed: Unit!LogError = error(LogError.Io(IoError.Closed))
+    let io_closed: Unit! = error(
+        Error("I/O: resource is closed", kind: ErrorCategory.Closed)
+    )
     try expect_equal(logger.info("closed"), io_closed)
     try expect_equal(logger.flush(), io_closed)
     logger.close()
     logger.close()
 
-    let closed: Unit!LogError = error(LogError.Closed)
+    let closed: Unit! = error(
+        Error("logging: resource is closed", kind: ErrorCategory.Closed)
+    )
     try expect_equal(logger.info("closed"), closed)
     try expect_equal(logger.flush(), closed)
 
@@ -210,7 +212,9 @@ test "file transport appends and flushes with scoped cleanup":
                         "{directory.path()}/missing/events.ndjson"
                     )
                 )
-            ) != LogError.FileSystem(FileSystemError.NotFound)
+            ) != Error(
+                "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+            )
         )
     )
 
@@ -223,18 +227,22 @@ type CaptureTransport:
     path: String
 
 impl Transport for CaptureTransport:
-    fn write(data: String) Unit!LogError:
+    fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
-    fn write_bytes(data: Bytes) Unit!LogError:
-        if read_file("{self.path}.closed").is_ok(): return error(LogError.Closed)
+    fn write_bytes(data: Bytes) Unit!:
+        if read_file("{self.path}.closed").is_ok(): return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
 
         match append_file_bytes(self.path, data):
             ok(_): return ok(unit)
-            error(cause): return error(LogError.FileSystem(cause))
+            error(cause): return error(cause)
 
-    fn flush() Unit!LogError:
-        if read_file("{self.path}.closed").is_ok(): return error(LogError.Closed)
+    fn flush() Unit!:
+        if read_file("{self.path}.closed").is_ok(): return error(
+            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+        )
 
         return ok(unit)
 
@@ -259,7 +267,9 @@ test "unencodable fields are rejected and fields keep their shape under data":
     let path = "{directory.path()}/out.ndjson"
     let file = try open(path: path, flags: "w", mode: 420)
     let logger = try create(stream_transport(file.writer()), timestamp: false)
-    let invalid: Unit!LogError = error(LogError.InvalidData)
+    let invalid: Unit! = error(
+        Error("logging: invalid data", kind: ErrorCategory.InvalidData)
+    )
     let nan = JsonValue.NumberValue("NaN")
     try expect_equal(logger.info("m", nan), invalid)
     try expect_false(logger.child(nan).is_ok())
@@ -278,10 +288,10 @@ impl WriteStream for SlowStream:
     var fn close() Unit:
         return unit
 
-    var fn flush() Unit!IoError:
+    var fn flush() Unit!:
         return ok(unit)
 
-    var fn write(data: String) Unit!IoError:
+    var fn write(data: String) Unit!:
         let half = data.length() / 2
         var first = lock(self.parts)
         first.value.append(data.slice(0, half).get(""))
@@ -293,7 +303,7 @@ impl WriteStream for SlowStream:
         second.close().get(none)
         return ok(unit)
 
-    var fn write_bytes(data: Bytes) Unit!IoError:
+    var fn write_bytes(data: Bytes) Unit!:
         return self.write(data.decode_utf8().get(""))
 
 fn chatter(logger: Logger, name: String) Unit!:
@@ -328,15 +338,15 @@ type Memory:
     out: Shared[List[String]]
 
 impl Transport for Memory:
-    fn write(data: String) Unit!LogError:
+    fn write(data: String) Unit!:
         var guard = lock(self.out)
         guard.value.append(data.clone())
         return ok(unit)
 
-    fn write_bytes(data: Bytes) Unit!LogError:
+    fn write_bytes(data: Bytes) Unit!:
         return self.write(data.decode_utf8().get(""))
 
-    fn flush() Unit!LogError:
+    fn flush() Unit!:
         return ok(unit)
 
     fn close() Unit:
@@ -393,6 +403,8 @@ test "the time field is a millisecond count and the size limit counts the newlin
     let tight = try create(
         Memory(quiet), timestamp: false, max_bytes: plain.to_bytes().length() - 1
     )
-    let limited: Unit!LogError = error(LogError.LimitExceeded)
+    let limited: Unit! = error(
+        Error("logging: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     try expect_equal(tight.info("ab"), limited)
     try expect_equal(recorded(quiet), plain)

@@ -91,9 +91,9 @@ test "a late bad sample produces no report":
     lines[lines.length() - 2] = "rs sorted_map_add_contains 600000 -1"
 
     let cause = try expect_error(summarize(lines, 1))
-    try expect_contains(cause.message(), "invalid count or timing")
+    try expect_contains(cause.message, "invalid count or timing")
 
 test "invalid repeats are refused before building":
     for text in ["0", "00", "abc", "-1"]:
         let cause = try expect_error(repeats(text))
-        try expect_contains(cause.message(), "repeats must be a positive integer")
+        try expect_contains(cause.message, "repeats must be a positive integer")

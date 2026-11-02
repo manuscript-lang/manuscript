@@ -1,11 +1,11 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import Channel, ChannelError from "@std/io/channels.ms"
-import TaskError, TaskGroup from "@std/concurrency/tasks.ms"
+import Channel from "@std/io/channels.ms"
+import TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
 
-fn square_all(ch: Channel[Int, Int]) Int!ChannelError:
+fn square_all(ch: Channel[Int, Int]) Int!:
     var c = ch
     var count = 0
 
@@ -75,7 +75,7 @@ fn drain(var ch: Channel[Unit, Int]) List[String]:
     return seen
 
 test "a task answers each message in order":
-    let group = TaskGroup[Int!ChannelError, Int, Int]()
+    let group = TaskGroup[Int!, Int, Int]()
     var task = group.spawn(square_all)
     var replies = List[Int]()
 
@@ -107,27 +107,27 @@ test "sending after the other end closed gives Closed":
     let group = TaskGroup[Int, Int, Unit]()
     var task = group.spawn(fn ch: 0)
     task.result() | try expect_ok | try expect_equal(0)
-    task.channel.send(1) | try expect_error | try expect_equal(ChannelError.Closed)
+    task.channel.send(1) | try expect_error | try expect_equal(Error("channel: closed", kind: ErrorCategory.Closed))
 
 test "an end used after closing it gives Closed":
-    let group = TaskGroup[Int!ChannelError, Int, Int]()
+    let group = TaskGroup[Int!, Int, Int]()
     var task = group.spawn(square_all)
     task.channel.close()
-    task.channel.send(1) | try expect_error | try expect_equal(ChannelError.Closed)
-    task.channel.receive() | try expect_error | try expect_equal(ChannelError.Closed)
+    task.channel.send(1) | try expect_error | try expect_equal(Error("channel: closed", kind: ErrorCategory.Closed))
+    task.channel.receive() | try expect_error | try expect_equal(Error("channel: closed", kind: ErrorCategory.Closed))
     task.channel.close()
 
 test "a task cancelled while it waits closes its end":
     let group = TaskGroup[Int, Unit, Int](timeout: nanoseconds(20000000))
     var task = group.spawn(wait_for_one)
     try expect_equal(drain(var task.channel), ["end"])
-    task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
+    task.result() | try expect_error | try expect_equal(Error("task: timed out", kind: ErrorCategory.Timeout))
 
 test "a task cancelled before it first ran closes its end":
     let group = TaskGroup[Int, Unit, Int]()
     var task = group.spawn(produce, timeout: nanoseconds(0))
     try expect_equal(drain(var task.channel), ["end"])
-    task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
+    task.result() | try expect_error | try expect_equal(Error("task: timed out", kind: ErrorCategory.Timeout))
 
 test "closing the group closes every channel":
     var group = TaskGroup[Int, Unit, Int]()
@@ -157,7 +157,8 @@ test "cloned ends share one channel":
     sink.result() | try expect_ok | try expect_equal(7450)
 
 test "channel errors describe themselves":
-    try expect_equal(ChannelError.Closed.message(), "channel: closed")
+    try expect_equal(Error("channel: closed", kind: ErrorCategory.Closed).message, "channel: closed")
     try expect_equal(
-        ChannelError.Broken("peer exited").message(), "channel: broken: peer exited"
+        Error("channel: broken: peer exited", kind: ErrorCategory.Failed).message,
+        "channel: broken: peer exited"
     )

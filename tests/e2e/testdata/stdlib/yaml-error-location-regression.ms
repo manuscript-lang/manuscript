@@ -3,13 +3,11 @@ import parse, YamlValue from "@std/data/yaml.ms"
 
 fn error_at(text: String, line: Int, column: Int) Unit!Error:
     let cause = parse(text) | try expect_error
+    if cause.kind != ErrorCategory.InvalidData:
+        return fail("expected InvalidData, got {cause}")
 
-    match cause:
-        InvalidData(found_line, found_column, _):
-            try expect_equal(found_line, line)
-            try expect_equal(found_column, column)
-        _: return fail("expected InvalidData, got {cause}")
-
+    try expect_equal(cause.details["line"], line.to_string())
+    try expect_equal(cause.details["column"], column.to_string())
     return ok(unit)
 
 test "YAML root EOF location control":
@@ -50,11 +48,10 @@ test "YAML compact tab rewrites retain original scalar columns":
 
 fn unsupported_at(text: String, line: Int) Unit!Error:
     let cause = parse(text) | try expect_error
+    if cause.kind != ErrorCategory.Unsupported:
+        return fail("expected UnsupportedFeature, got {cause}")
 
-    match cause:
-        UnsupportedFeature(found_line, _): try expect_equal(found_line, line)
-        _: return fail("expected UnsupportedFeature, got {cause}")
-
+    try expect_equal(cause.details["line"], line.to_string())
     return ok(unit)
 
 test "YAML flow merge failures retain their source origin":

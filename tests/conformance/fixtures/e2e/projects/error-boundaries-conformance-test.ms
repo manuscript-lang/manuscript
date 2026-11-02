@@ -6,20 +6,21 @@ import DomainFailure from "./domain.ms"
 import first_error, first_result, first_propagated, first_generic, first_box from "./first.ms"
 import second_error, relay from "./second.ms"
 
-test "Error boundaries retain selected local and generic implementations":
+test "Error boundaries convert a domain value into each module's own Error":
     var original = DomainFailure(7)
     let first = first_error(original)
     let second = second_error(original)
-    (first.message() != "first 7" or second.message() != "second 7") | try expect_false
+    (first.message != "first 7" or second.message != "second 7") | try expect_false
 
-    let others: List[Error] = [first_generic(original), first_box(original)]
-    for cause in others:
-        cause.message() | try expect_equal("first 7")
+    first_generic(original).message | try expect_equal("first 7")
+    first_box(original.clone()).message | try expect_equal("box: first 7")
     original.code = 8
 
-    for result in [first_result(original), first_propagated(original), relay(first)]:
-        match result:
+    let results = [first_result(original), first_propagated(original), relay(first.clone())]
+    let expected = ["first 8", "first 8", "first 7"]
+    for index in 0..3:
+        match results.get(index):
             ok(_):
                 return fail(message: "expected domain failure")
             error(cause):
-                try expect_equal(cause.message(), "first 8")
+                try expect_equal(cause.message, expected.get(index))

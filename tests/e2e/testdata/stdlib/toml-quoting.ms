@@ -1,4 +1,4 @@
-import stringify, parse, TomlValue, TomlError from "@std/data/toml.ms"
+import stringify, parse, TomlValue from "@std/data/toml.ms"
 import expect_equal from "@std/test/test.ms"
 import from_scalars from "@std/string.ms"
 
@@ -33,9 +33,11 @@ test "TOML quoting retains exact and invalid output budgets":
     let text = try stringify(root)
     stringify(root, max_bytes: text.byte_length()) | try expect_equal(ok(text.clone()))
     stringify(root, max_bytes: text.byte_length() - 1) | try expect_equal(
-        error(TomlError.LimitExceeded)
+        error(Error("TOML limit exceeded", kind: ErrorCategory.LimitExceeded))
     )
-    stringify(root, max_bytes: -1) | try expect_equal(error(TomlError.InvalidInput))
+    stringify(root, max_bytes: -1) | try expect_equal(
+        error(Error("invalid TOML input", kind: ErrorCategory.InvalidInput))
+    )
 
 test "TOML quoting preserves quoted keys and all ASCII control escapes":
     for key in ["", "é🙂", "quote\"", "slash\\", "line\n", "\u{7f}"]:

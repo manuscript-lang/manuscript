@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=issue 2165
 import expect_equal, expect_true, expect_contains from "@std/test/test.ms"
-import run, spawn, os_type, CommandError, CommandOutput from "@std/os/process.ms"
+import run, spawn, os_type, CommandOutput from "@std/os/process.ms"
 
 fn print_cwd() List[String]:
     if os_type() == "windows":
@@ -49,8 +49,8 @@ test "spawn accepts cwd and env and reports the peak resident set after wait":
     try expect_true(child.max_resident_bytes() > 0)
 
 test "bad cwd and variable names are rejected":
-    let invalid: CommandOutput!CommandError = error(CommandError.InvalidInput)
+    let invalid: CommandOutput! = error(Error("process: invalid input", kind: ErrorCategory.InvalidInput))
     try expect_equal(run(shell(), print_cwd(), env: {"A=B": "x"}), invalid)
 
-    let missing: CommandOutput!CommandError = error(CommandError.Unavailable)
+    let missing: CommandOutput! = error(Error("process: service unavailable", kind: ErrorCategory.Unavailable))
     try expect_equal(run(shell(), print_cwd(), cwd: "/definitely/not/here"), missing)

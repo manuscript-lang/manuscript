@@ -8,10 +8,9 @@ import monotonic from "@std/os/time.ms"
 type Boom:
     code: Int
 
-impl Error for Boom:
-    fn message() String: "boom {self.code}"
+fn boom_error(boom: Boom) Error: Error("boom {boom.code}")
 
-fn describe(e: Error) String: e.message()
+fn describe(e: Error) String: e.message
 
 test "repeated calls through one site":
     var i = 0
@@ -29,5 +28,5 @@ test "repeated calls through one site":
         try expect_true((out.write(data: "x").is_ok()))
         n = n + 1
 
-    try expect_true((describe(e: Boom(code: 1)) == "boom 1"))
-    try expect_true((describe(e: Boom(code: 2)) == "boom 2"))
+    try expect_true((describe(e: boom_error(Boom(code: 1))) == "boom 1"))
+    try expect_true((describe(e: boom_error(Boom(code: 2))) == "boom 2"))

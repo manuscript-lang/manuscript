@@ -1,6 +1,5 @@
 import stdout from "@std/io/io.ms"
 import monotonic from "@std/os/time.ms"
-import StringError from "@std/string.ms"
 
 type Pattern:
     name: String
@@ -24,7 +23,7 @@ fn iterations_for(size: Int) Int:
 
     return 4096
 
-fn consume(result: Result[String, StringError], expected: String, status: Int) Int:
+fn consume(result: Result[String, Error], expected: String, status: Int) Int:
     if status == 0:
         if result.is_error(): return -1
 
@@ -36,8 +35,18 @@ fn consume(result: Result[String, StringError], expected: String, status: Int) I
     if not result.is_error(): return -1
 
     let actual_error = result.err()
-    if status == 1 and actual_error != StringError.LimitExceeded: return -1
-    if status == 2 and actual_error != StringError.InvalidInput: return -1
+    if (
+        status == 1
+        and actual_error != Error(
+            "string: limit exceeded", kind: ErrorCategory.LimitExceeded
+        )
+    ): return (-1)
+    if (
+        status == 2
+        and actual_error != Error(
+            "string: invalid input", kind: ErrorCategory.InvalidInput
+        )
+    ): return (-1)
 
     return 17
 

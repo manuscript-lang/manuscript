@@ -1,6 +1,6 @@
 # Incremental JSON decoder implemented in Manuscript.
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import parse, JsonValue, JsonLimits, JsonError from "@std/data/json.ms"
+import parse, JsonValue, JsonLimits from "@std/data/json.ms"
 
 # Decodes a sequence of JSON values from byte chunks of any size.
 #
@@ -13,24 +13,24 @@ export interface JsonDecoder:
     # Adds a chunk and returns every value it completes, in order; the list is empty when
     # the chunk ends inside a value. An error discards values completed earlier in the same
     # chunk, and the decoder stays failed and returns that error again. Returns `InvalidInput` after `finish()`.
-    var fn feed(chunk: Bytes) List[JsonValue]!JsonError
+    var fn feed(chunk: Bytes) List[JsonValue]!
     # Signals end of input and returns a final unterminated scalar, if any. Input that
     # ends inside a string, array, or object returns `InvalidData`. The decoder rejects
     # later calls with `InvalidInput`.
-    var fn finish() List[JsonValue]!JsonError
+    var fn finish() List[JsonValue]!
 
 # Creates a decoder. `limits` applies to each value separately: `max_bytes` counts the
 # value's UTF-8 bytes, `max_depth` its nesting, and `max_values` its parsed values, and
 # an exceeded limit returns `LimitExceeded`. Omit limits only for trusted input, because
 # an unterminated value is otherwise buffered without bound. Negative limits return
 # `InvalidInput`.
-export fn decoder(limits: JsonLimits?) JsonDecoder!JsonError:
+export fn decoder(limits: JsonLimits?) JsonDecoder!:
     let bounds = limits.get(JsonLimits())
     if (
         bounds.max_bytes.get(0) < 0
         or bounds.max_depth.get(0) < 0
         or bounds.max_values.get(0) < 0
-    ): return error(JsonError.InvalidInput)
+    ): return error(Error("JSON: invalid input", kind: InvalidInput))
 
     return ok(
         Decoder(
@@ -50,7 +50,7 @@ type Decoder:
     in_string: Bool
     escaped: Bool
     finished: Bool
-    failure: JsonError?
+    failure: Error?
 
 fn is_space(byte: UInt8) Bool:
     return (byte == 32 or byte == 9 or byte == 10 or byte == 13)
@@ -77,26 +77,28 @@ impl Decoder:
         self.in_string = false
         self.escaped = false
 
-    var fn fail(cause: JsonError) List[JsonValue]!JsonError:
+    var fn fail(cause: Error) List[JsonValue]!:
         # Dropping the partial value releases its buffered bytes.
         self.reset()
-        self.failure = cause
+        self.failure = cause.clone()
         return error(cause)
 
     # Parses the buffered value and clears the scanner for the next one.
-    var fn complete() JsonValue!JsonError:
+    var fn complete() JsonValue!:
         let bytes = self.pending.drain()
         self.reset()
         if let text = bytes.decode_utf8():
             return parse(text, self.limits)
 
-        return error(JsonError.InvalidData)
+        return error(Error("JSON: invalid data", kind: InvalidData))
 
     # Consumes one byte and reports whether it finished a value.
-    var fn scan(byte: UInt8) Bool!JsonError:
+    var fn scan(byte: UInt8) Bool!:
         if self.mode == 0:
             if is_space(byte): return ok(false)
-            if not starts_value(byte): return error(JsonError.InvalidData)
+            if not starts_value(byte): return error(
+                Error("JSON: invalid data", kind: InvalidData)
+            )
 
             self.mode = 3
 
@@ -109,7 +111,9 @@ impl Decoder:
         if self.mode == 3 and is_space(byte): return ok(true)
 
         self.size += 1
-        if limit >= 0 and self.size > limit: return error(JsonError.LimitExceeded)
+        if limit >= 0 and self.size > limit: return error(
+            Error("JSON: limit exceeded", kind: LimitExceeded)
+        )
 
         self.pending.append(byte)
         if self.mode == 3: return ok(false)
@@ -131,7 +135,7 @@ impl Decoder:
         if byte == 123 or byte == 91:
             self.depth += 1
             if self.depth > self.limits.max_depth.get(self.depth): return error(
-                JsonError.LimitExceeded
+                Error("JSON: limit exceeded", kind: LimitExceeded)
             )
 
             return ok(false)
@@ -143,7 +147,7 @@ impl Decoder:
         return ok(false)
 
     # Consumes one byte and returns the value it completes, if any.
-    var fn step(byte: UInt8) JsonValue?!JsonError:
+    var fn step(byte: UInt8) JsonValue?!:
         let done = try self.scan(byte)
         if not done: return ok(none)
 
@@ -151,9 +155,9 @@ impl Decoder:
         return ok(value)
 
 impl JsonDecoder for Decoder:
-    var fn feed(chunk: Bytes) List[JsonValue]!JsonError:
-        if self.finished: return error(JsonError.InvalidInput)
-        if let failure = self.failure: return error(failure)
+    var fn feed(chunk: Bytes) List[JsonValue]!:
+        if self.finished: return error(Error("JSON: invalid input", kind: InvalidInput))
+        if let failure = self.failure: return error(failure.clone())
 
         var values: List[JsonValue] = []
 
@@ -165,15 +169,17 @@ impl JsonDecoder for Decoder:
 
         return ok(values)
 
-    var fn finish() List[JsonValue]!JsonError:
-        if self.finished: return error(JsonError.InvalidInput)
-        if let failure = self.failure: return error(failure)
+    var fn finish() List[JsonValue]!:
+        if self.finished: return error(Error("JSON: invalid input", kind: InvalidInput))
+        if let failure = self.failure: return error(failure.clone())
 
         self.finished = true
 
         var values: List[JsonValue] = []
         if self.mode == 0: return ok(values)
-        if self.mode != 3: return self.fail(JsonError.InvalidData)
+        if self.mode != 3: return self.fail(
+            Error("JSON: invalid data", kind: InvalidData)
+        )
 
         let completed = self.complete()
         if completed.is_error(): return self.fail(completed.err())

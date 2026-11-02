@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "Error is an interface, not an alternative; declare a concrete type and 'impl Error for <Type>:', then construct that concrete type",
+        "message": "unknown or non-nullary alternative case message of Error; cases:  (cases with payloads need call syntax)",
         "position": {
           "file": "testinterfaceandreceiverhints-9.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testinterfaceandreceiverhints-9.ms:5:24: resolution: Error is an interface, not an alternative; declare a concrete type and 'impl Error for <Type>:', then construct that concrete type\n   |\n 5 |     let method = Error.message\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testinterfaceandreceiverhints-9.ms:5:24: resolution: unknown or non-nullary alternative case message of Error; cases:  (cases with payloads need call syntax)\n   |\n 5 |     let method = Error.message\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

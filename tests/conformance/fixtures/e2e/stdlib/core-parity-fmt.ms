@@ -1,7 +1,6 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interfaces,lists,maps,match,modules,optional,parser,records,sets,stdlib-errors,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/core-parity.ms
-import TextError from "@std/core.ms"
 import panic from "@std/core.ms"
 import expect_equal, expect_false from "@std/test/test.ms"
 import JsonLimits from "@std/data/json.ms"
@@ -32,15 +31,15 @@ fn map_set[T: Hashable, U: Hashable](values: Set[T], transform: fn(T) U) Set[U]:
     return values.map[U](transform)
 
 test "core parity operations are callable":
-    let success: Int!TextError = ok(2)
-    let failure: Int!TextError = error(TextError("failed"))
+    let success: Int!Error = ok(2)
+    let failure: Int!Error = error(Error("failed"))
     try expect_false(not (success.is_ok()) or success.is_error())
-    try expect_false(success.get() != 2 or failure.err().message() != "failed")
+    try expect_false(success.get() != 2 or failure.err().message != "failed")
     try expect_equal(failure.get(7), 7)
-    try expect_equal(failure.get_or_else(fn cause: cause.message().scalar_length()), 6)
+    try expect_equal(failure.get_or_else(fn cause: cause.message.scalar_length()), 6)
     try expect_equal(success.map(fn n: n + 1).get(), 3)
 
-    let chained: String!TextError = success.and_then(fn n: ok(n.to_string()))
+    let chained: String!Error = success.and_then(fn n: ok(n.to_string()))
     try expect_equal(chained.get(), "2")
 
     let present: Int? = 2
@@ -106,7 +105,7 @@ test "Result preserves unconstrained payloads and success-only composition":
     try expect_equal(collection_error.err().values, [1])
 
     let limits = JsonLimits(-1)
-    let record: JsonLimits!TextError = ok(limits.clone())
+    let record: JsonLimits!Error = ok(limits.clone())
     var changed = record.clone().map(fn value: value).get().clone()
     changed.max_values = 7
     try expect_equal(changed.max_values.get(), 7)
@@ -115,10 +114,10 @@ test "Result preserves unconstrained payloads and success-only composition":
     let nested = success.clone().map(fn(n: Int) Int?: n)
     try expect_equal(nested.get().get(), 0)
 
-    let unit_result: Unit!TextError = ok(unit)
+    let unit_result: Unit!Error = ok(unit)
     try expect_false(not (unit_result.is_ok()))
 
-    let bool_result: Bool!TextError = ok(false)
+    let bool_result: Bool!Error = ok(false)
     try expect_false(bool_result.get(true))
 
 test "Result fallbacks are eager or lazy and bound methods keep receivers":

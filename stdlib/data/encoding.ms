@@ -9,15 +9,6 @@ import (
     msstd_encoding_base32_decode
 ) from "@std/internal/encoding.ms"
 
-# Errors returned when encoded text is invalid or exceeds a supplied byte limit.
-export type EncodingError:
-    # A supplied decoded-output byte budget is negative.
-    case InvalidInput
-    # Encoded characters, padding, unused bits or an overflowing numeric group are invalid.
-    case InvalidData
-    # The decoded byte count exceeds the supplied output budget.
-    case LimitExceeded
-
 # Encodes unframed ASCII85; complete groups of four zero bytes become `z`.
 # No Adobe `<~`/`~>` delimiters are added. Example: `ascii85_encode("hello".to_bytes())` is `"BOu!rDZ"`.
 export fn ascii85_encode(data: Bytes) String:
@@ -26,7 +17,7 @@ export fn ascii85_encode(data: Bytes) String:
 # Decodes unframed ASCII85, ignoring ASCII bytes 0 through 32; `z` is valid only between groups.
 # Rejects Adobe delimiters, one-digit tails, invalid characters and overflowing complete or partial 32-bit groups.
 # Negative `max_bytes` returns InvalidInput; decoded output above it returns LimitExceeded before allocating output.
-export fn ascii85_decode(text: String, max_bytes: Int?) Bytes!EncodingError:
+export fn ascii85_decode(text: String, max_bytes: Int?) Bytes!:
     return msstd_encoding_ascii85_decode(text, max_bytes)
 
 # Encodes standard Base64 without `=`; `url_safe` selects the URL-safe alphabet.
@@ -40,7 +31,7 @@ export fn base64_decode_unpadded(
     text: String,
     url_safe: Bool = false,
     max_bytes: Int?
-) Bytes!EncodingError:
+) Bytes!:
     return msstd_encoding_base64_decode_unpadded(text, url_safe, max_bytes)
 
 # Encodes uppercase RFC 4648 Base32. `hex_alphabet` selects 0-9/A-V; `padded: false` omits `=`.
@@ -60,17 +51,13 @@ export fn base32_decode(
     hex_alphabet: Bool = false,
     padded: Bool = true,
     max_bytes: Int?
-) Bytes!EncodingError:
+) Bytes!:
     return msstd_encoding_base32_decode(text, hex_alphabet, padded, max_bytes)
 
 # Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
-export fn base64_decode(
-    text: String,
-    url_safe: Bool = false,
-    max_bytes: Int?
-) Bytes!EncodingError:
+export fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Int?) Bytes!:
     let limit = budget(max_bytes)
-    if limit < 0: return error(EncodingError.InvalidInput)
+    if limit < 0: return error(Error("encoding: invalid input", kind: InvalidInput))
 
     let bytes = text.to_bytes().values()
     let length = bytes.length()
@@ -83,10 +70,14 @@ export fn base64_decode(
 
     for byte in bytes:
         if byte == 9 or byte == 10 or byte == 13 or byte == 32: return error(
-            EncodingError.InvalidData
+            Error("encoding: invalid data", kind: InvalidData)
         )
-    if padding > 2 or length % 4 != 0: return error(EncodingError.InvalidData)
-    if length / 4 * 3 - padding > limit: return error(EncodingError.LimitExceeded)
+    if padding > 2 or length % 4 != 0: return error(
+        Error("encoding: invalid data", kind: InvalidData)
+    )
+    if length / 4 * 3 - padding > limit: return error(
+        Error("encoding: limit exceeded", kind: LimitExceeded)
+    )
 
     var out = BytesBuilder()
     let quads = length / 4
@@ -102,15 +93,27 @@ export fn base64_decode(
             var digit = 0
 
             if offset >= 4 - pad:
-                if byte != 61: return error(EncodingError.InvalidData)
+                if byte != 61: return error(
+                    Error(
+                        "encoding: invalid data", kind: InvalidData
+                    )
+                )
             else:
                 digit = base64_digit(byte.to_int(), url_safe)
-                if digit < 0: return error(EncodingError.InvalidData)
+                if digit < 0: return error(
+                    Error(
+                        "encoding: invalid data", kind: InvalidData
+                    )
+                )
 
             value = value * 64 + digit
 
-        if pad == 1 and value % 256 != 0: return error(EncodingError.InvalidData)
-        if pad == 2 and value % 65536 != 0: return error(EncodingError.InvalidData)
+        if pad == 1 and value % 256 != 0: return error(
+            Error("encoding: invalid data", kind: InvalidData)
+        )
+        if pad == 2 and value % 65536 != 0: return error(
+            Error("encoding: invalid data", kind: InvalidData)
+        )
 
         out.append(byte_of(value / 65536 % 256))
         if pad < 2: out.append(byte_of(value / 256 % 256))
@@ -192,21 +195,25 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
     return out.build()
 
 # Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
-export fn hex_decode(text: String, max_bytes: Int?) Bytes!EncodingError:
+export fn hex_decode(text: String, max_bytes: Int?) Bytes!:
     let limit = budget(max_bytes)
-    if limit < 0: return error(EncodingError.InvalidInput)
+    if limit < 0: return error(Error("encoding: invalid input", kind: InvalidInput))
 
     let digits = text.to_bytes().values()
     let length = digits.length()
-    if length / 2 > limit: return error(EncodingError.LimitExceeded)
-    if length % 2 != 0: return error(EncodingError.InvalidData)
+    if length / 2 > limit: return error(
+        Error("encoding: limit exceeded", kind: LimitExceeded)
+    )
+    if length % 2 != 0: return error(Error("encoding: invalid data", kind: InvalidData))
 
     var out = BytesBuilder()
 
     for pair in 0..(length / 2):
         let high = hex_digit(digits[pair * 2].to_int())
         let low = hex_digit(digits[pair * 2 + 1].to_int())
-        if high < 0 or low < 0: return error(EncodingError.InvalidData)
+        if high < 0 or low < 0: return error(
+            Error("encoding: invalid data", kind: InvalidData)
+        )
 
         out.append(byte_of(high * 16 + low))
 
@@ -231,14 +238,6 @@ export fn hex_encode(data: Bytes) String:
         out.append(digits[n % 16])
 
     return out.build()
-
-impl Error for EncodingError:
-    # Returns an encoding-prefixed diagnostic without echoing the encoded input.
-    fn message() String:
-        match self:
-            InvalidInput: return "encoding: invalid input"
-            InvalidData: return "encoding: invalid data"
-            LimitExceeded: return "encoding: limit exceeded"
 
 # Encodes text as UTF-16 code units, little-endian unless `little_endian` is false (Node `utf16le`).
 # No byte order mark is written.
@@ -282,16 +281,14 @@ fn text_of(scalars: List[Int]) String:
 
 # Decodes UTF-16 bytes, little-endian unless `little_endian` is false.
 # An odd length or an unpaired surrogate returns InvalidData; a negative `max_bytes` returns InvalidInput, and decoded text longer than `max_bytes` UTF-8 bytes returns LimitExceeded.
-export fn utf16_decode(
-    data: Bytes,
-    little_endian: Bool = true,
-    max_bytes: Int?
-) String!EncodingError:
+export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?) String!:
     let limit = budget(max_bytes)
-    if limit < 0: return error(EncodingError.InvalidInput)
+    if limit < 0: return error(Error("encoding: invalid input", kind: InvalidInput))
 
     let bytes = data.values()
-    if bytes.length() % 2 != 0: return error(EncodingError.InvalidData)
+    if bytes.length() % 2 != 0: return error(
+        Error("encoding: invalid data", kind: InvalidData)
+    )
 
     var units = List[Int]()
 
@@ -310,33 +307,43 @@ export fn utf16_decode(
         let code = units[index]
         var scalar = code
         index += 1
-        if code >= 56320 and code < 57344: return error(EncodingError.InvalidData)
+        if code >= 56320 and code < 57344: return error(
+            Error("encoding: invalid data", kind: InvalidData)
+        )
 
         if code >= 55296 and code < 56320:
-            if index >= units.length(): return error(EncodingError.InvalidData)
+            if index >= units.length(): return error(
+                Error("encoding: invalid data", kind: InvalidData)
+            )
 
             let next = units[index]
-            if next < 56320 or next >= 57344: return error(EncodingError.InvalidData)
+            if next < 56320 or next >= 57344: return error(
+                Error("encoding: invalid data", kind: InvalidData)
+            )
 
             scalar = 65536 + (code - 55296) * 1024 + (next - 56320)
             index += 1
 
         size += utf8_length(scalar)
-        if size > limit: return error(EncodingError.LimitExceeded)
+        if size > limit: return error(
+            Error("encoding: limit exceeded", kind: LimitExceeded)
+        )
 
         scalars.append(scalar)
 
     return ok(text_of(scalars))
 
 # Encodes text as ISO-8859-1, one byte per scalar. A scalar above U+00FF returns InvalidData.
-export fn latin1_encode(text: String) Bytes!EncodingError:
+export fn latin1_encode(text: String) Bytes!:
     return narrow(text, 255)
 
-fn narrow(text: String, maximum: Int) Bytes!EncodingError:
+fn narrow(text: String, maximum: Int) Bytes!:
     var out = BytesBuilder()
 
     for scalar in text.scalar_values():
-        if scalar > maximum: return error(EncodingError.InvalidData)
+        if scalar > maximum: return error(
+            Error("encoding: invalid data", kind: InvalidData)
+        )
 
         out.append(byte_of(scalar))
 
@@ -347,12 +354,12 @@ export fn latin1_decode(data: Bytes) String:
     return text_of(data.values().map(fn b: b.to_int()))
 
 # Encodes text as 7-bit ASCII. A scalar above U+007F returns InvalidData.
-export fn ascii_encode(text: String) Bytes!EncodingError:
+export fn ascii_encode(text: String) Bytes!:
     return narrow(text, 127)
 
 # Decodes 7-bit ASCII bytes. A byte above 0x7F returns InvalidData.
-export fn ascii_decode(data: Bytes) String!EncodingError:
+export fn ascii_decode(data: Bytes) String!:
     let bytes = data.values()
     for byte in bytes:
-        if byte > 127: return error(EncodingError.InvalidData)
+        if byte > 127: return error(Error("encoding: invalid data", kind: InvalidData))
     return ok(data.decode_utf8().get(""))

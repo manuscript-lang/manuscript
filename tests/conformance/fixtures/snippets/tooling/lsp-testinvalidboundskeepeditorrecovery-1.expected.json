@@ -9,12 +9,12 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface",
+        "message": "a bound must be an interface, but Named resolves to a type parameter; rename the type parameter or name an interface",
         "position": {
           "file": "lsp-testinvalidboundskeepeditorrecovery-1.ms",
-          "line": 4,
+          "line": 7,
           "column": 17,
-          "offset": 212
+          "offset": 251
         }
       },
       {
@@ -23,38 +23,38 @@
         "message": "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
         "position": {
           "file": "lsp-testinvalidboundskeepeditorrecovery-1.ms",
-          "line": 7,
+          "line": 10,
           "column": 1,
-          "offset": 238
+          "offset": 277
         }
       },
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "extra operation message; Error declares:  (remove it or add it to the interface)",
+        "message": "extra operation name; Named declares:  (remove it or add it to the interface)",
         "position": {
           "file": "lsp-testinvalidboundskeepeditorrecovery-1.ms",
-          "line": 8,
+          "line": 11,
           "column": 8,
-          "offset": 272
+          "offset": 311
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member message on Error; this type has no fields or operations",
+        "message": "unknown or ambiguous member name on Named; this type has no fields or operations",
         "position": {
           "file": "lsp-testinvalidboundskeepeditorrecovery-1.ms",
-          "line": 8,
-          "column": 37,
-          "offset": 301
+          "line": 11,
+          "column": 34,
+          "offset": 337
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/lsp-testinvalidboundskeepeditorrecovery-1.ms:4:17: type: a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface\n   |\n 4 | type Box[Error: Error]:\n   |                 ^\n<DIR>/lsp-testinvalidboundskeepeditorrecovery-1.ms:7:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n   |\n 7 | impl Error for Box[Error]:\n   | ^\n<DIR>/lsp-testinvalidboundskeepeditorrecovery-1.ms:8:8: type: extra operation message; Error declares:  (remove it or add it to the interface)\n   |\n 8 |     fn message() String: self.cause.message()\n   |        ^\n<DIR>/lsp-testinvalidboundskeepeditorrecovery-1.ms:8:37: resolution: unknown or ambiguous member message on Error; this type has no fields or operations\n   |\n 8 |     fn message() String: self.cause.message()\n   |                                     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/lsp-testinvalidboundskeepeditorrecovery-1.ms:7:17: type: a bound must be an interface, but Named resolves to a type parameter; rename the type parameter or name an interface\n   |\n 7 | type Box[Named: Named]:\n   |                 ^\n<DIR>/lsp-testinvalidboundskeepeditorrecovery-1.ms:10:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n    |\n 10 | impl Named for Box[Named]:\n    | ^\n<DIR>/lsp-testinvalidboundskeepeditorrecovery-1.ms:11:8: type: extra operation name; Named declares:  (remove it or add it to the interface)\n    |\n 11 |     fn name() String: self.cause.name()\n    |        ^\n<DIR>/lsp-testinvalidboundskeepeditorrecovery-1.ms:11:34: resolution: unknown or ambiguous member name on Named; this type has no fields or operations\n    |\n 11 |     fn name() String: self.cause.name()\n    |                                  ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

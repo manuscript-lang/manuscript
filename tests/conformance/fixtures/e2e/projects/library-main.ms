@@ -14,7 +14,7 @@ import parse_timestamp from "@std/os/time.ms"
 import posix from "@std/os/fs.ms"
 import win32 from "@std/os/fs.ms"
 
-fn common_result[T, E: Error](result: T!E) T!:
+fn common_result[T](result: T!) T!:
     match result:
         ok(value):
             return ok(value)

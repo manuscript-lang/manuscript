@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/net.ms
 import expect_equal, expect_error, expect_false from "@std/test/test.ms"
-import parse_ip, parse_cidr, contains_ip, NetworkError, IpFamily, bind_datagram, connect, listen, restrict from "@std/net/net.ms"
+import parse_ip, parse_cidr, contains_ip, IpFamily, bind_datagram, connect, listen, restrict from "@std/net/net.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -52,7 +52,7 @@ test "network restriction denies admission and close rejects acquisitions":
         (
             (
                 try expect_error(restricted.listen("127.0.0.1:0"))
-            ) != NetworkError.PermissionDenied
+            ) != Error("network: permission denied", kind: ErrorCategory.PermissionDenied)
         )
     )
     restricted.close()
@@ -62,7 +62,7 @@ test "network restriction denies admission and close rejects acquisitions":
                 try expect_error(
                     restricted.connect("127.0.0.1:1", 1.seconds)
                 )
-            ) != NetworkError.Closed
+            ) != Error("network: resource is closed", kind: ErrorCategory.Closed)
         )
     )
 
@@ -74,5 +74,5 @@ test "typed addresses preserve normalization and reject zones":
     try expect_false((try contains_ip(try parse_cidr("::ffff:192.0.2.0/120"), ip)))
 
 fn expect_ip_error(input: String) Unit!:
-    try expect_equal((try expect_error(parse_ip(input))), NetworkError.InvalidData)
+    try expect_equal((try expect_error(parse_ip(input))), Error("network: invalid data", kind: ErrorCategory.InvalidData))
     return ok(unit)

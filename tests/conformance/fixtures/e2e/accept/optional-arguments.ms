@@ -1,7 +1,6 @@
 # conform: tags=alternatives,closures,control-flow,faults,generics,interfaces,lists,match,modules,optional,records,stdlib-errors,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/optional-arguments.ms
-import TextError from "@std/core.ms"
 import expect_equal, expect_false from "@std/test/test.ms"
 import Queue from "@std/collections/queue.ms"
 
@@ -15,7 +14,7 @@ fn list_size(value: List[Int]?) Int: value.get().length()
 
 fn flag(value: Bool?) Bool: value.get()
 
-fn success(value: Int!TextError?) Int:
+fn success(value: Int!Error?) Int:
     return value.get().get(-1)
 
 fn context[T](value: T?, fallback: T) T:
@@ -23,12 +22,6 @@ fn context[T](value: T?, fallback: T) T:
         return inner
 
     return fallback
-
-type Failure:
-    detail: String
-
-impl Error for Failure:
-    fn message() String: self.detail.clone()
 
 type Notice:
     failure: Error?
@@ -128,8 +121,8 @@ test "constructor fields and methods use optional arguments":
     try expect_equal(calls_of(counter.clone()), 9)
     try expect_equal(counter.calls, 9)
 
-    let notice = Notice(Failure("detail"))
-    try expect_equal(notice.failure.get().message(), "detail")
+    let notice = Notice(Error("detail"))
+    try expect_equal(notice.failure.get().message, "detail")
 
 test "wrapping evaluates arguments once in written order":
     var counter = Counter(0)

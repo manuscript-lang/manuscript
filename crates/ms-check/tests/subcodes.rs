@@ -59,6 +59,12 @@ fn every_sub_code_is_reached_by_a_real_diagnostic() {
             "cannot move `x` out of `y`: only a whole variable can move",
             "MS3000.11",
         ),
+        ("type", "Int does not satisfy Show", "MS3000.8"),
+        (
+            "type",
+            "Show is an interface and cannot be constructed; pass a value that implements it",
+            "MS3000.9",
+        ),
         (
             "type",
             "duplicate or overlapping implementation; Show is already implemented",

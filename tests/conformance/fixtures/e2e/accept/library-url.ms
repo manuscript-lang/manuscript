@@ -7,7 +7,6 @@ import format from "@std/net/net.ms"
 import encode_component from "@std/net/net.ms"
 import decode_component from "@std/net/net.ms"
 import resolve from "@std/net/net.ms"
-import UrlError from "@std/net/net.ms"
 
 fn verify_url() Unit!:
     let url = try parse(text: "https://EXAMPLE.COM/a%2Fb?q=x#frag")

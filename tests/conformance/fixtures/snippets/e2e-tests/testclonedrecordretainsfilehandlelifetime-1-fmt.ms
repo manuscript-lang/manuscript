@@ -3,7 +3,6 @@
 # conform: origin=tests/e2e/mutation_test.go:49 TestClonedRecordRetainsFileHandleLifetime
 import open_read from "@std/io/io.ms"
 import File from "@std/io/io.ms"
-import IoError from "@std/io/io.ms"
 
 type Holder:
     file: File
@@ -43,7 +42,7 @@ export fn main() Int:
     let cause = reread.err()
 
     match cause:
-        IoError.Closed:
+        Error("I/O: resource is closed", kind: ErrorCategory.Closed):
             return 0
         _:
             return 2

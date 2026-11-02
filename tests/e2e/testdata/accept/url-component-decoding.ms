@@ -1,4 +1,4 @@
-import decode_component, UrlError from "@std/net/net.ms"
+import decode_component from "@std/net/net.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "component decoding preserves plus Unicode and escaped percent":
@@ -10,7 +10,9 @@ test "component decoding preserves plus Unicode and escaped percent":
     try expect_equal((try decode_component("%252F")), "%2F")
 
 test "component decoding rejects malformed escapes and UTF8":
-    let invalid: String!UrlError = error(UrlError.InvalidData)
+    let invalid: String! = error(
+        Error("URL: invalid data", kind: ErrorCategory.InvalidData)
+    )
     for input in [
         "%", "%A", "%zz", "prefix%zz", "%FF", "%C0%AF", "%ED%A0%80", "%F4%90%80%80",
         "%E2%82", "prefix%FF", "%é", "%1é", "%FF%zz", "%FF%", "%41%zz", "%41%",

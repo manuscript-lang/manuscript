@@ -3,8 +3,7 @@ import (
     base64_encode_unpadded,
     base64_decode_unpadded,
     base32_encode,
-    base32_decode,
-    EncodingError
+    base32_decode
 ) from "@std/data/encoding.ms"
 import expect_equal from "@std/test/test.ms"
 
@@ -31,7 +30,9 @@ test "unpadded Base64 covers both alphabets and every tail":
     try expect_equal(try base64_decode_unpadded("-_8", true), bytes)
 
 test "unpadded Base64 rejects padding alphabet mixing whitespace and unused bits":
-    let invalid: Bytes!EncodingError = error(EncodingError.InvalidData)
+    let invalid: Bytes! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     for text in [
         "A", "AAAAA", "Zg=", "Zg==", "=Zg", "Zh", "Zm9", "Z g", "Zg\n", "Zg\r", "Zg\t",
         "é", "!!!!"
@@ -65,7 +66,9 @@ test "Base32 matches RFC 4648 padded and unpadded vectors":
         try expect_equal(try base32_decode(hex_raw[index], true, false), bytes)
 
 test "Base32 enforces exact terminal padding and uppercase alphabets":
-    let invalid: Bytes!EncodingError = error(EncodingError.InvalidData)
+    let invalid: Bytes! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     for text in [
         "M", "MY", "MY=", "MY=====", "MY=======", "M======", "MZX=====", "MZXW6Y==",
         "========", "MY======MY======", "M=AAAAAA", "my======", "M0======", "M1======",
@@ -80,7 +83,9 @@ test "Base32 enforces exact terminal padding and uppercase alphabets":
     try expect_equal(base32_decode("CO======"), invalid)
 
 test "Base32 rejects nonzero unused bits in each tail shape":
-    let invalid: Bytes!EncodingError = error(EncodingError.InvalidData)
+    let invalid: Bytes! = error(
+        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
+    )
     for text in ["MZ======", "MZX R===", "MZXR====", "MZXW7===", "MZXW6YR="]:
         try expect_equal(base32_decode(text), invalid)
     for text in ["MZ", "MZXR", "MZXW7", "MZXW6YR"]:
@@ -90,8 +95,12 @@ test "Base32 rejects nonzero unused bits in each tail shape":
 
 test "encoding variants honor zero exact exceeded absent and negative limits":
     let empty = Bytes([])
-    let invalid: Bytes!EncodingError = error(EncodingError.InvalidInput)
-    let limited: Bytes!EncodingError = error(EncodingError.LimitExceeded)
+    let invalid: Bytes! = error(
+        Error("encoding: invalid input", kind: ErrorCategory.InvalidInput)
+    )
+    let limited: Bytes! = error(
+        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     try expect_equal(try base32_decode("", max_bytes: 0), empty)
     try expect_equal(try base64_decode_unpadded("", max_bytes: 0), empty)
     try expect_equal(try base32_decode("MY======", max_bytes: 1), "f".to_bytes())

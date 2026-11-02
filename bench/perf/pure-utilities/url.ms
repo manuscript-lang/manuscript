@@ -1,7 +1,7 @@
 import arguments from "@std/os/process.ms"
 import monotonic from "@std/os/time.ms"
 import stdout from "@std/io/io.ms"
-import parse, encode_component, decode_component, UrlError from "@std/net/net.ms"
+import parse, encode_component, decode_component from "@std/net/net.ms"
 
 export fn main() Int:
     let args = arguments()
@@ -32,7 +32,7 @@ export fn main() Int:
             let result = decode_component(input)
 
             if result.is_error():
-                if result.err() != UrlError.InvalidData:
+                if result.err().kind != ErrorCategory.InvalidData:
                     return 1
 
                 status = "InvalidData"
@@ -42,7 +42,7 @@ export fn main() Int:
             let result = parse(input)
 
             if result.is_error():
-                if result.err() != UrlError.InvalidData:
+                if result.err().kind != ErrorCategory.InvalidData:
                     return 1
 
                 status = "InvalidData"

@@ -1,5 +1,5 @@
 import expect_equal, expect_error, expect_fault from "@std/test/test.ms"
-import Closeable, TextError from "@std/core.ms"
+import Closeable from "@std/core.ms"
 
 type Gate:
     name: String
@@ -8,7 +8,7 @@ type Gate:
 impl Closeable for Gate:
     var fn close() Unit!:
         if self.fails:
-            return error(TextError("close {self.name}"))
+            return error(Error("close {self.name}"))
 
         return ok(unit)
 
@@ -40,14 +40,14 @@ test "a clean close leaves the result alone":
 
 test "a failed scope-end close becomes the function's error":
     let failure = try expect_error(use_gate(true))
-    try expect_equal(failure.message(), "close a")
+    try expect_equal(failure.message, "close a")
 
 test "the later binding closes first and its error is the one returned":
     let both = try expect_error(nested(true, true))
-    try expect_equal(both.message(), "close second")
+    try expect_equal(both.message, "close second")
 
     let outer_only = try expect_error(nested(true, false))
-    try expect_equal(outer_only.message(), "close first")
+    try expect_equal(outer_only.message, "close first")
 
     let none = try nested(false, false)
     try expect_equal(none, 1)
@@ -57,11 +57,11 @@ test "an explicit close consumes the binding":
     try expect_equal(ok_value, 3)
 
     let failure = try expect_error(explicit(true))
-    try expect_equal(failure.message(), "close explicit")
+    try expect_equal(failure.message, "close explicit")
 
 test "leaving a loop with break closes and returns the error":
     let failure = try expect_error(loop_exit())
-    try expect_equal(failure.message(), "close loop")
+    try expect_equal(failure.message, "close loop")
 
 type Holder:
     gate: Gate

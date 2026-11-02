@@ -393,7 +393,6 @@ impl<'a> FnLower<'a> {
             "math/min"
                 | "math/max"
                 | "shared/share"
-                | "core/category"
                 | "math/bit_and"
                 | "math/bit_or"
                 | "math/bit_xor"
@@ -434,13 +433,6 @@ impl<'a> FnLower<'a> {
             )
         }) {
             return self.bit_operation(name, args);
-        }
-        if native == "core/category" {
-            let cause = self.borrow(args[0].val);
-            let cty = self.ty_of(cause);
-            let f = self.cx.category_fn(self.b.m, cty, result);
-            let v = self.b.call(f, &[cause]);
-            return Ok(Val { v, own: true });
         }
         if native == "shared/share" {
             // The payload moves into a refcounted box; copies of the handle retain it.
@@ -1007,16 +999,6 @@ impl<'a> FnLower<'a> {
             let out = self.call_runtime(sym, &vals, *ret)?;
             return Ok(self.val(out, *ret == MTy::STR));
         }
-        if native == "core/message" {
-            let concrete = self.ety(recv_expr);
-            let data = self.ty_of(recv.v);
-            let f = self
-                .cx
-                .native_method_fn(self.b.m, native, &concrete, data)?;
-            let r = self.borrow(recv);
-            let text = self.b.call(f, &[r]);
-            return Ok(Val { v: text, own: true });
-        }
         if native == "string/form_normalize" {
             // The form is a payload-free alternative: its case index selects the algorithm.
             let result = self.emty(e)?;
@@ -1501,15 +1483,6 @@ impl<'a> FnLower<'a> {
                 own: false,
             });
             return Ok(Val { v, own: true });
-        }
-        if m.native.as_str() == "core/message" {
-            let data = self.ty_of(recv.v);
-            let f = self
-                .cx
-                .native_method_fn(self.b.m, m.native.as_str(), &m.receiver, data)?;
-            let r = self.borrow(recv);
-            let text = self.b.call(f, &[r]);
-            return Ok(Val { v: text, own: true });
         }
         if let (TyKind::Alt(a), "is_ok" | "is_error") =
             (self.b.m.types.kind(rty).clone(), name.as_str())
@@ -2418,19 +2391,21 @@ impl<'a> FnLower<'a> {
         )
     }
 
-    /// Constructs the existing MissingValue default in the invoking source module.
+    /// Constructs the default `Error` (kind NotFound) naming the invoking source line.
     pub(crate) fn missing_value_at(&mut self, ty: MTy, at: ms_syntax::Pos) -> Result<Val, Error> {
-        let TyKind::Alt(missing) = self.b.m.types.kind(ty).clone() else {
-            return Err(Error::new("ok_or without a cause needs MissingValue"));
+        let TyKind::Rec(er) = self.b.m.types.kind(ty).clone() else {
+            return Err(Error::new("ok_or without a cause needs Error"));
         };
         let file = &self.b.m.files[self.file as usize];
         let base = file.rsplit('/').next().unwrap_or(file);
-        let site = self.b.str_lit(&format!("{base}:{}", at.line));
-        let site = self.owned(Val {
-            v: site,
+        let text = self
+            .b
+            .str_lit(&format!("missing value at {base}:{}", at.line));
+        let text = self.owned(Val {
+            v: text,
             own: false,
         });
-        let v = self.b.alt_new(missing, 0, &[site]);
+        let v = self.error_record(er, "NotFound", text)?;
         Ok(Val { v, own: true })
     }
 

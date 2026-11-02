@@ -1,6 +1,6 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-tasks,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-import Channel, ChannelError from "@std/io/channels.ms"
+import Channel from "@std/io/channels.ms"
 import Task, TaskGroup from "@std/concurrency/tasks.ms"
 import expect_equal, expect_true from "@std/test/test.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
@@ -33,9 +33,9 @@ fn waiter(t: Task[Int]) Int:
     if r.is_ok():
         return 0
 
-    return r.err().message().length()
+    return r.err().message.length()
 
-fn echo(ch: Channel[Int, Int]) Int!ChannelError:
+fn echo(ch: Channel[Int, Int]) Int!:
     var c = ch
     var n = 0
 
@@ -51,7 +51,7 @@ fn echo(ch: Channel[Int, Int]) Int!ChannelError:
 test "many tasks echo through their channels without losing a value":
     var total = 0
     var counts = 0
-    var group = TaskGroup[Int!ChannelError, Int, Int]()
+    var group = TaskGroup[Int!, Int, Int]()
 
     for t in 0..20:
         var task = group.spawn(echo)
@@ -90,7 +90,7 @@ test "spawning into a closed group never runs the task":
     var t = group.spawn(fn ch: quick())
     let r = t.result()
     try expect_equal(r.is_error(), true)
-    try expect_equal(r.err().message(), "task: closed")
+    try expect_equal(r.err().message, "task: closed")
     try expect_equal(t.channel.send(unit).is_ok(), false)
 
 test "a zero timeout cancels the task instead of running it":

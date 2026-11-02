@@ -4,7 +4,6 @@
 # parsing/string/map programs.
 # Usage: ms run bench/tools/workloads.ms [-- repeats]; MS picks the compiler; BENCH_OUTPUT keeps the evidence directory.
 import (
-    Invalid,
     absolute,
     capture,
     dump,
@@ -38,7 +37,7 @@ type Case:
     name: String
     stdin: String
 
-fn largest_input(path: String) Result[String, Invalid]:
+fn largest_input(path: String) String!:
     let cases = parse[List[Case]](read_text(path))
     if cases.is_error(): return invalid("cannot read {path}")
 

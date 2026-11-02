@@ -80,10 +80,10 @@ A closure that is returned or stored owns what it captures instead, so it cannot
 Open a resource inside the callback that uses it:
 
 ```manuscript
-import FileSystemError, open from "@std/os/fs.ms"
+import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
-fn notes_reader(path: String) fn() Result[Bytes, FileSystemError]:
+fn notes_reader(path: String) fn() Bytes!:
     return fn:
         let file = try open(path: path, flags: "r", mode: 0)
         return file.read_file(max_bytes: 1048576)
@@ -91,7 +91,7 @@ fn notes_reader(path: String) fn() Result[Bytes, FileSystemError]:
 
 `notes_reader("notes.txt")` returns a callback; each call opens, reads, and closes its own file.
 
-Capturing an already-open file keeps the same handle and does not delay its scope-end cleanup: `FileHandle.read_file` after the scope ends returns `FileSystemError.Closed`. Parameters and record fields follow the same lifetime rule.
+Capturing an already-open file keeps the same handle and does not delay its scope-end cleanup: `FileHandle.read_file` after the scope ends returns an `Error` of kind `Closed`. Parameters and record fields follow the same lifetime rule.
 
 ## Contextual callback inference
 

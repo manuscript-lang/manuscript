@@ -142,18 +142,18 @@ Through a `let` or an undeclared-`var` parameter, `counter?.bump()` is rejected 
 
 ## Converting absence to a Result
 
-- `ok_or[E = MissingValue](cause: E?) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` may be any value type.
+- `ok_or[E = Error](cause: E?) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` may be any value type.
 - `ok_or_else[E](create: fn() E) Result[T, E]`: calls `create` once, only on absence.
 
-Omitting the cause yields the prelude `MissingValue` (from `@std/core.ms`), the [default type argument](generics.md#default-type-arguments). It records the source file and line of the `ok_or()` call, and `message()` reports them, such as `missing value at src/main.ms:12`. Since `MissingValue` implements `Error`, `try` flattens it in any function whose error type is `Error`:
+Omitting the cause yields an `Error` of kind `NotFound` (the [default type argument](generics.md#default-type-arguments)). Its message records the source file and line of the `ok_or()` call, such as `missing value at src/main.ms:12`. Any function whose error type is `Error` can `try` it:
 
 ```manuscript
-fn port_number(text: String) Result[Int, Error]:
+fn port_number(text: String) Int!:
     let port = try text.parse_int().ok_or()
     return ok(port)
 ```
 
-When fixing another error type, such as `Result[Int, TextError]`, supply a cause explicitly.
+When fixing another error type, such as `Result[Int, ParseFailure]`, supply a cause explicitly.
 
 [Result.to_optional](../errors/results.md#converting-success-to-an-optional) to keep success while discarding an error.
 

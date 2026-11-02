@@ -71,7 +71,4 @@ test "YAML brackets inside block plain text stay ordinary characters":
 
 test "YAML plain closing brackets do not hide malformed nested values":
     let cause = parse("word] [text]: \{value: 1\}\}") | try expect_error
-
-    match cause:
-        InvalidData(_, _, _): unit
-        _: return fail("expected malformed YAML, got {cause}")
+    cause.kind | try expect_equal(ErrorCategory.InvalidData)

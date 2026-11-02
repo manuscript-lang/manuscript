@@ -1,7 +1,7 @@
 # Compares formatter binaries, retaining all output-checked paired samples (bench/perf/formatter-flow).
 # Usage: ms run bench/tools/formatter_flow_compare.ms -- BEFORE AFTER --out FILE.csv [--samples 10] [--cpu N]
 # Harness output is `count,rounds,shape,elapsed_ns,checksum,source_bytes,output_bytes,rss`.
-import Invalid, absolute, fail, invalid, median, options, write_text from "./lib.ms"
+import absolute, fail, invalid, median, options, write_text from "./lib.ms"
 import all_ints, rounds_for, run_pinned from "./study.ms"
 import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
@@ -26,7 +26,7 @@ fn cases() List[Case]:
     return out
 
 # elapsed_ns, checksum, source_bytes, output_bytes, rss
-fn run_one(binary: String, c: Case, rounds: Int, cpu: String) Result[List[Int], Invalid]:
+fn run_one(binary: String, c: Case, rounds: Int, cpu: String) List[Int]!:
     let out = try run_pinned(binary, ["{c.count}", "{rounds}", c.shape.clone()], cpu)
     let fields = out.trim().split(",")
     if (
@@ -109,7 +109,7 @@ export fn main() Int:
     let parsed = options(
         args.slice(2, args.length()).get([]), ["out", "samples", "cpu"], ["out"]
     )
-    if parsed.is_error(): return fail(parsed.err().message())
+    if parsed.is_error(): return fail(parsed.err().message)
 
     let opts = parsed.get(Map[String, String]())
     let samples = opts.get("samples").get("10").parse_int().get(0)
@@ -119,6 +119,6 @@ export fn main() Int:
         absolute(args[0].clone()), absolute(args[1].clone()), opts.get("out").get(""),
         samples, opts.get("cpu").get("")
     )
-    if result.is_error(): return fail(result.err().message())
+    if result.is_error(): return fail(result.err().message)
 
     return 0

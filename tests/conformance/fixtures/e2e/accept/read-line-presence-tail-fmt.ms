@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/read-line-presence-tail.ms
 import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
-import ReadStream, IoError, read_line from "@std/io/io.ms"
+import ReadStream, read_line from "@std/io/io.ms"
 import open, read_file, temporary, write_file from "@std/os/fs.ms"
 import Closeable from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
@@ -13,12 +13,12 @@ type MemoryStream:
     closed: Bool
 
 impl ReadStream for MemoryStream:
-    var fn read(max_bytes: Int?) Bytes?!IoError:
-        if self.closed: return error(IoError.Closed)
+    var fn read(max_bytes: Int?) Bytes?!:
+        if self.closed: return error(Error("I/O: resource is closed", kind: ErrorCategory.Closed))
         if self.offset == self.data.length(): return ok(none)
 
         let count = max_bytes.get(self.data.length() - self.offset)
-        if count <= 0: return error(IoError.InvalidInput)
+        if count <= 0: return error(Error("I/O: invalid input", kind: ErrorCategory.InvalidInput))
 
         var end = self.offset + count
         if end > self.data.length(): end = self.data.length()

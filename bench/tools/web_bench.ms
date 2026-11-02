@@ -17,7 +17,7 @@ import (
     usage,
     write_text
 ) from "./lib.ms"
-import Invalid, Ran, invalid from "./lib.ms"
+import Ran, invalid from "./lib.ms"
 import Stdio, arguments, Subprocess, spawn from "@std/os/process.ms"
 import copy_tree, create_directory, list, temporary from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
@@ -41,7 +41,7 @@ fn raised(argv: List[String]) Ran:
     return capture("sh", ["-c", script, "sh"].concat(argv))
 
 # Starts `argv` with standard output in `out` and the open-file limit raised.
-fn background(argv: List[String], out: String) Result[Subprocess, Invalid]:
+fn background(argv: List[String], out: String) Subprocess!:
     let script = "out=$1; shift; ulimit -n 20000 2>/dev/null; exec \"$@\" >\"$out\" 2>/dev/null"
     let args = ["-c", script, "sh", out.clone()].concat(argv)
     if let child = spawn(
@@ -113,7 +113,7 @@ fn measure_server(
     port: Int,
     seconds: Int,
     ms_threads: String
-) Result[Unit, Invalid]:
+) Unit!:
     let data = "{p.w}/data"
     var argv = pinned(
         p.server_cpus.clone(), ["{p.w}/{name}/server", "{port}", data.clone()]
@@ -201,7 +201,7 @@ fn measure_server(
     server.close().get(unit)
     return ok(unit)
 
-fn prepare_run(here: String, w: String) Result[List[String], Invalid]:
+fn prepare_run(here: String, w: String) List[String]!:
     for dir in ["go", "ms", "load"]:
         copy_tree("{here}/{dir}", "{w}/{dir}", replace: true).get()
     create_directory("{w}/rust", recursive: true).get()
@@ -229,7 +229,7 @@ fn prepare_run(here: String, w: String) Result[List[String], Invalid]:
     try build_ms("{w}/ms", "{w}/ms/server")
     return ok(names)
 
-fn run_all(here: String, seconds: Int) Result[Unit, Invalid]:
+fn run_all(here: String, seconds: Int) Unit!:
     var tmp = temporary("web-bench-").get()
     let w = tmp.path()
     let names = try prepare_run(here, w)
@@ -246,7 +246,7 @@ fn run_all(here: String, seconds: Int) Result[Unit, Invalid]:
 fn cell(p: Plan, argv: List[String]) String:
     return tail(raised(pinned(p.load_cpus.clone(), argv)).stdout)
 
-fn fetch_all(here: String, seconds: Int) Result[Unit, Invalid]:
+fn fetch_all(here: String, seconds: Int) Unit!:
     var tmp = temporary("web-fetch-").get()
     let w = tmp.path()
     copy_tree("{here}/fetch/go", "{w}/go", replace: true).get()
@@ -353,6 +353,6 @@ export fn main() Int:
     let result = if args[0] == "run": run_all(here, seconds) else: fetch_all(
         here, seconds
     )
-    if result.is_error(): return fail(result.err().message())
+    if result.is_error(): return fail(result.err().message)
 
     return 0

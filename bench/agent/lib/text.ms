@@ -2,7 +2,7 @@
 import read_file, write_file, create_directory, dirname from "@std/os/fs.ms"
 import compile from "@std/string.ms"
 import seconds from "@std/os/time.ms"
-import CommandError, environment, monotonic_time, run from "@std/os/process.ms"
+import environment, monotonic_time, run from "@std/os/process.ms"
 
 # The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
@@ -67,7 +67,9 @@ export fn run_in(
             done.exit_code, done.stdout.decode_utf8().get(""),
             done.stderr.decode_utf8().get(""), elapsed
         )
-    if result.err() == CommandError.Timeout: return Ran(124, "", "timeout", elapsed)
+    if result.err().kind == ErrorCategory.Timeout: return Ran(
+        124, "", "timeout", elapsed
+    )
 
     return Ran(127, "", "cannot start {program}", elapsed)
 

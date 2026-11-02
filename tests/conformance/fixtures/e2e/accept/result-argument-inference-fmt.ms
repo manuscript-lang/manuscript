@@ -6,31 +6,20 @@ import expect_equal, expect_false, fail from "@std/test/test.ms"
 type Failure:
     code: Int
 
-impl Error for Failure:
-    fn message() String: self.code.to_string()
-
-type Tagged[T]:
-    value: T
-
-impl Error for Tagged[T]:
-    fn message() String: "tagged {self.value}"
-
-fn erase[T](r: T!) T!: r
-
-fn forward[T, E: Error](r: T!E) T!: erase(r)
+fn erase[T, E](r: Result[T, E]) Result[T, E]: r
 
 fn optional[T](r: T!?) T!: r.get().clone()
 
-fn same[T, E: Error](r: T!E) T!E: r
+fn same[T, E](r: T!E) T!E: r
 
-fn both[T, E: Error](cause: E, r: T!E) T!E: r
+fn both[T, E](cause: E, r: T!E) T!E: r
 
 fn number() Int!Failure: ok(7)
 
 type Events:
     values: List[Int]
 
-fn record(var events: Events, value: Int) Int!Failure:
+fn record(var events: Events, value: Int) Int!:
     events.values.append(value)
     return ok(value)
 
@@ -47,42 +36,29 @@ fn ordered[T](
     events.values.append(4)
     return first
 
-test "infer success and preserve concrete error identity":
-    let cause = Failure(11)
-    let r: Int!Failure = error(cause)
+test "infer success and error types from Result arguments":
+    let r: Int! = error(Error("eleven", kind: ErrorCategory.InvalidData))
     let inferred = erase(r)
-    let explicit = erase[Int](r)
+    let explicit = erase[Int, Error](r)
     let wrapped = optional(r)
-    let forwarded = forward(r)
-    let known: Error = Failure(5)
+    let known = Error("five")
     let inferred_from_known = both(known, r)
 
-    for value in [inferred, explicit, wrapped, forwarded, inferred_from_known]:
+    for value in [
+        inferred.clone(), explicit.clone(), wrapped, inferred_from_known.clone()
+    ]:
         try expect_false(not value.is_error())
+        try expect_equal(value.err().message, "eleven")
+        try expect_equal(value.err().kind, ErrorCategory.InvalidData)
 
-        let view = value.err()
-        try expect_equal(view.message(), "11")
-
-        match view:
-            Failure(original):
-                try expect_equal(original.code, 11)
-            _: return fail("lost concrete error identity")
-
-    let generic: Result[Int, Tagged[Int]] = error(Tagged(31))
+    let generic: Result[Int, Failure] = error(Failure(31))
     let failed = erase(generic)
     try expect_false(not failed.is_error())
-
-    let view = failed.err()
-    try expect_equal(view.message(), "tagged 31")
-
-    match view:
-        Tagged[Int](original):
-            try expect_equal(original.value, 31)
-        _: return fail("lost generic identity")
+    try expect_equal(failed.err().code, 31)
 
 test "nested success preserves its domain and inferred errors remain exact":
     let inner: Int!Failure = error(Failure(41))
-    let outer: Result[Int!Failure, Tagged[Int]] = ok(inner)
+    let outer: Result[Int!Failure, Failure] = ok(inner)
     let value = erase(outer).get()
     try expect_false(not value.is_error())
     try expect_equal(value.err().code, 41)
@@ -96,7 +72,7 @@ test "nested success preserves its domain and inferred errors remain exact":
     else:
         return fail("changed success case")
 
-test "inference and widening evaluate once in written order before defaults":
+test "inference evaluates once in written order before defaults":
     var events = Events([])
     let result = ordered(
         second: record(var events, 2), first: record(var events, 1), var events

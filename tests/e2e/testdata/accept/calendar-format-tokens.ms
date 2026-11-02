@@ -1,4 +1,4 @@
-import timestamp, TimeError from "@std/os/time.ms"
+import timestamp from "@std/os/time.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "calendar format keeps token boundaries and literal text":
@@ -19,7 +19,9 @@ test "calendar format keeps token boundaries and literal text":
         "日付 2024 年 03 月 10 日 🕰 12:30:15"
     )
 
-    let bad_zone: String!TimeError = error(TimeError.InvalidInput)
+    let bad_zone: String! = error(
+        Error("time: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     try expect_equal(moment.format("", "Nowhere/City"), bad_zone)
     try expect_equal(moment.format("literal", "Nowhere/City"), bad_zone)
 

@@ -1,11 +1,10 @@
 import expect_equal, expect_error, expect_false from "@std/test/test.ms"
-import FileSystemError, open, temporary, write_file from "@std/os/fs.ms"
-import IoError, open_read from "@std/io/io.ms"
+import open, temporary, write_file from "@std/os/fs.ms"
+import open_read from "@std/io/io.ms"
 import monotonic_time, uptime from "@std/os/process.ms"
 import nanoseconds from "@std/os/time.ms"
-import compress, decompress, CompressionError from "@std/io/archive.ms"
-import pack, unpack, ArchiveEntry, ArchiveError from "@std/io/archive.ms"
-import StringError from "@std/string.ms"
+import compress, decompress from "@std/io/archive.ms"
+import pack, unpack, ArchiveEntry from "@std/io/archive.ms"
 import Bytes from "@std/bytes.ms"
 
 test "raw monotonic nanoseconds share the typed process uptime origin":
@@ -16,13 +15,19 @@ test "raw monotonic nanoseconds share the typed process uptime origin":
 
 test "closed codec strings reject spelling changes with their domain errors":
     let data = "text".to_bytes()
-    let normalization_error: String!StringError = error(StringError.InvalidInput)
+    let normalization_error: String! = error(
+        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     for form in ["nfc", "NFC ", ""]:
         try expect_equal("text".normalize(form), normalization_error)
     for form in ["NFC", "NFD", "NFKC", "NFKD"]:
         try expect_equal((try "text".normalize(form)), "text")
 
-    let compression_error: Bytes!CompressionError = error(CompressionError.Unsupported)
+    let compression_error: Bytes! = error(
+        Error(
+            "compression: operation not supported", kind: ErrorCategory.Unsupported
+        )
+    )
 
     for format in ["GZIP", "ZLIB", "DEFLATE", ""]:
         try expect_equal(compress(data, format, 0), compression_error)
@@ -39,12 +44,22 @@ test "closed codec strings reject spelling changes with their domain errors":
                 data
             )
 
-    let level_error: Bytes!CompressionError = error(CompressionError.InvalidInput)
+    let level_error: Bytes! = error(
+        Error("compression: invalid input", kind: ErrorCategory.InvalidInput)
+    )
     for level in [-1, 10]:
         try expect_equal(compress(data, "gzip", level), level_error)
 
-    let pack_error: Bytes!ArchiveError = error(ArchiveError.Unsupported)
-    let unpack_error: List[ArchiveEntry]!ArchiveError = error(ArchiveError.Unsupported)
+    let pack_error: Bytes! = error(
+        Error(
+            "archive: operation not supported", kind: ErrorCategory.Unsupported
+        )
+    )
+    let unpack_error: List[ArchiveEntry]! = error(
+        Error(
+            "archive: operation not supported", kind: ErrorCategory.Unsupported
+        )
+    )
 
     for format in ["ZIP", "TAR", ""]:
         try expect_equal(pack([], format), pack_error)
@@ -70,7 +85,9 @@ test "all ten string open modes are accepted and changed spellings are invalid":
                             "{temporary.path()}/invalid", mode, 384
                         )
                     )
-                ) != FileSystemError.InvalidInput
+                ) != Error(
+                    "filesystem: invalid input", kind: ErrorCategory.InvalidInput
+                )
             )
         )
 
@@ -104,13 +121,24 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
     var reader = handle.reader()
     writer.close()
 
-    let closed_read: Bytes!FileSystemError = error(FileSystemError.Closed)
+    let closed_read: Bytes! = error(
+        Error("filesystem: resource is closed", kind: ErrorCategory.Closed)
+    )
     try expect_equal(handle.read_at(0), closed_read)
-    try expect_equal((try expect_error(reader.read())), IoError.Closed)
+    try expect_equal(
+        (try expect_error(reader.read())),
+        Error("I/O: resource is closed", kind: ErrorCategory.Closed)
+    )
     try handle.close()
 
     let missing = "{temporary.path()}/missing"
     try expect_equal(
-        (try expect_error(open(missing, "r", 384))), FileSystemError.NotFound
+        (try expect_error(open(missing, "r", 384))),
+        Error(
+            "filesystem: file or directory not found", kind: ErrorCategory.NotFound
+        )
     )
-    try expect_equal((try expect_error(open_read(missing))), IoError.Unavailable)
+    try expect_equal(
+        (try expect_error(open_read(missing))),
+        Error("I/O: service unavailable", kind: ErrorCategory.Unavailable)
+    )

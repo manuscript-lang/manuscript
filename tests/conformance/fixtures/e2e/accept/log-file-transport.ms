@@ -2,8 +2,8 @@
 # conform: phase=test
 # conform: origin=perf thread: @std/log on the native backend
 import expect_equal, expect_error from "@std/test/test.ms"
-import LogError, LogLevel, create, file_transport from "@std/log.ms"
-import FileSystemError, read_file, temporary from "@std/os/fs.ms"
+import LogLevel, create, file_transport from "@std/log.ms"
+import read_file, temporary from "@std/os/fs.ms"
 
 type Service:
     service: String
@@ -46,19 +46,19 @@ test "limits, invalid levels, and closed transports are errors":
     )
     try logger.info("x")
 
-    let limited: Unit!LogError = error(LogError.LimitExceeded)
+    let limited: Unit! = error(Error("logging: limit exceeded", kind: ErrorCategory.LimitExceeded))
     try expect_equal(logger.info("xx"), limited)
 
-    let invalid: Unit!LogError = error(LogError.InvalidInput)
+    let invalid: Unit! = error(Error("logging: invalid input", kind: ErrorCategory.InvalidInput))
     try expect_equal(logger.log(LogLevel.Silent, "bad"), invalid)
     try expect_equal(
         try expect_error(create(try file_transport(path), max_bytes: -1)),
-        LogError.InvalidInput
+        Error("logging: invalid input", kind: ErrorCategory.InvalidInput)
     )
     logger.close()
     logger.close()
 
-    let closed: Unit!LogError = error(LogError.Closed)
+    let closed: Unit! = error(Error("logging: resource is closed", kind: ErrorCategory.Closed))
     try expect_equal(logger.info("x"), closed)
     try expect_equal(logger.flush(), closed)
     try expect_equal(try lines(path), line)
@@ -68,4 +68,4 @@ test "a missing directory is a filesystem error":
     let missing = try expect_error(
         file_transport("{directory.path()}/missing/events.ndjson")
     )
-    try expect_equal(missing, LogError.FileSystem(FileSystemError.NotFound))
+    try expect_equal(missing, Error("filesystem: file or directory not found", kind: ErrorCategory.NotFound))

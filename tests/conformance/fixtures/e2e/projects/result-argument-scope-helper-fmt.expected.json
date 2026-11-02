@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn erase[T](r: T!) T!: r\n\nexport fn forward[T, E: Error](r: T!E) T!: erase(r)\n"
+    "fmt": "export fn erase[T](r: T!) T!: r\n\nexport fn forward[T](r: T!) T!: erase(r)\n"
   }
 }

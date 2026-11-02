@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Request:\n    model: String\n\nfn f(text: String) Request!JsonError:\n    let request = try parse[Request](text)\n    return ok(request)\n"
+    "fmt": "type Request:\n    model: String\n\nfn f(text: String) Request!:\n    let request = try parse[Request](text)\n    return ok(request)\n"
   }
 }

@@ -1,5 +1,5 @@
 import expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test/test.ms"
-import parse, YamlValue, YamlError from "@std/data/yaml.ms"
+import parse, YamlValue from "@std/data/yaml.ms"
 
 fn object(keys: List[String], values: List[YamlValue]) YamlValue:
     var result = Map[String, YamlValue]()
@@ -38,12 +38,11 @@ test "YAML flow colon separators retain quoted and empty values":
 
 fn invalid(source: String) Unit!:
     let cause = parse(source) | try expect_error
+    if cause.kind != ErrorCategory.InvalidData:
+        return fail("expected malformed YAML, got {cause}")
 
-    match cause:
-        InvalidData(_, _, reason):
-            reason | try expect_equal("unexpected mapping colon")
-            return ok(unit)
-        _: return fail("expected malformed YAML, got {cause}")
+    cause.details["reason"] | try expect_equal("unexpected mapping colon")
+    return ok(unit)
 
 test "YAML flow scalar rejects a colon before tab":
     try invalid("\{a: x:\tb\}")

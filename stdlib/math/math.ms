@@ -325,30 +325,13 @@ export let sqrt2: Float = 1.4142135623730951
 # The square root of 1/2.
 export let sqrt_half: Float = 0.7071067811865476
 
-# Errors returned for invalid numeric requests, malformed text, or out-of-range values.
-export type NumberError:
-    # A radix or digit-count argument is outside its documented range, or divide_wide/remainder_wide has a zero divisor.
-    case InvalidInput
-    # The text does not match the numeric syntax, such as an empty string, stray characters, or digits invalid for the radix.
-    case InvalidData
-    # A well-formed value does not fit, such as a parsed number beyond its range or a divide_wide quotient beyond UInt64.
-    case OutOfRange
-
 # Parses a decimal floating-point number using Manuscript's numeric syntax.
-export fn parse_float(text: String) Float!NumberError:
+export fn parse_float(text: String) Float!:
     return msrt_numbers_parse_float(text)
 
 # Parses an integer in a radix from 2 through 36.
-export fn parse_int(text: String, radix: Int) Int!NumberError:
+export fn parse_int(text: String, radix: Int) Int!:
     return msrt_numbers_parse_int(text, radix)
-
-impl Error for NumberError:
-    # Returns the fixed diagnostic `number: <reason>`, such as `number: invalid data`, without echoing the input text.
-    fn message() String:
-        match self:
-            InvalidInput: return "number: invalid input"
-            InvalidData: return "number: invalid data"
-            OutOfRange: return "number: value out of range"
 
 # Returns the bitwise AND of two integers.
 export fn bit_and(left: Int, right: Int) Int:
@@ -452,16 +435,12 @@ export fn multiply_wide(left: UInt64, right: UInt64) WideProduct:
 
 # Divides the unsigned 128-bit value high * 2^64 + low by divisor, returning a 64-bit quotient and remainder.
 # A zero divisor returns InvalidInput; otherwise high >= divisor returns OutOfRange because the quotient cannot fit.
-export fn divide_wide(
-    high: UInt64,
-    low: UInt64,
-    divisor: UInt64
-) WordDivision!NumberError:
+export fn divide_wide(high: UInt64, low: UInt64, divisor: UInt64) WordDivision!:
     return msstd_math_divide_wide(high, low, divisor)
 
 # Returns the remainder of the unsigned 128-bit value high * 2^64 + low divided by divisor.
 # A zero divisor returns InvalidInput; any nonzero divisor is valid, even when the quotient would not fit in 64 bits.
-export fn remainder_wide(high: UInt64, low: UInt64, divisor: UInt64) UInt64!NumberError:
+export fn remainder_wide(high: UInt64, low: UInt64, divisor: UInt64) UInt64!:
     return msstd_math_remainder_wide(high, low, divisor)
 
 # Adds with two's-complement wraparound instead of faulting on overflow.
@@ -475,15 +454,6 @@ export fn wrapping_subtract(left: Int, right: Int) Int:
 # Multiplies with two's-complement wraparound instead of faulting on overflow (JavaScript `Math.imul` at 64 bits).
 export fn wrapping_multiply(left: Int, right: Int) Int:
     return msrt_bits_wrapping_multiply(left, right)
-
-# Errors returned while parsing or converting arbitrary-precision integers.
-export type BigIntError:
-    # A radix is outside 2 through 36, a digit limit, shift count, exponent, or square-root operand is negative, a divisor is zero, or a modular modulus is not positive.
-    case InvalidInput
-    # The text is not an optionally signed integer made only of digits valid in the radix.
-    case InvalidData
-    # The text exceeds `max_digits` after excluding at most one leading sign; this check precedes syntax validation.
-    case LimitExceeded
 
 # An arbitrary-precision signed integer. Use the operators + - * / % and unary - for arithmetic and < <= > >= == != for comparison;
 # both operands must be BigInt (convert an Int with from_int), and / or % by zero is a fault. The named methods below are the same operations;
@@ -519,30 +489,32 @@ impl BigInt:
         return msstd_bigint_lcm(self, other)
 
     # Returns the floor of the exact integer square root; a negative receiver returns InvalidInput.
-    fn sqrt() BigInt!BigIntError:
+    fn sqrt() BigInt!:
         return msstd_bigint_sqrt(self)
 
     # Returns `self` raised to a non-negative BigInt exponent modulo a positive modulus, in 0 through modulus - 1.
     # A negative exponent or non-positive modulus returns InvalidInput. A zero exponent gives 1 modulo modulus, including 0^0.
     # Reduces during exponentiation instead of constructing the full power. Variable-time; unsuitable for secret exponents.
-    fn pow_mod(exponent: BigInt, modulus: BigInt) BigInt!BigIntError:
+    fn pow_mod(exponent: BigInt, modulus: BigInt) BigInt!:
         return msstd_bigint_pow_mod(self, exponent, modulus)
 
     # Returns the multiplicative inverse modulo a positive modulus, in 0 through modulus - 1; a non-positive modulus returns InvalidInput.
     # No inverse gives ok(none); modulus 1 gives zero. Variable-time; unsuitable for secret operands.
-    fn inverse_mod(modulus: BigInt) BigInt?!BigIntError:
-        if modulus.sign() <= 0: return error(BigIntError.InvalidInput)
+    fn inverse_mod(modulus: BigInt) BigInt?!:
+        if modulus.sign() <= 0: return error(
+            Error("big integer: invalid input", kind: InvalidInput)
+        )
 
         return ok(msstd_bigint_inverse_mod(self, modulus))
 
     # Returns the quotient truncated toward zero, so -7 divided by 2 is -3.
     # A zero divisor returns InvalidInput.
-    fn divide(other: BigInt) BigInt!BigIntError:
+    fn divide(other: BigInt) BigInt!:
         return msstd_bigint_divide(self, other)
 
     # Returns the remainder whose sign follows the dividend, so -7 remainder 2 is -1.
     # A zero divisor returns InvalidInput.
-    fn remainder(other: BigInt) BigInt!BigIntError:
+    fn remainder(other: BigInt) BigInt!:
         return msstd_bigint_remainder(self, other)
 
     # Returns -1 when this value is less than `other`, 0 when equal, and 1 when greater.
@@ -603,15 +575,15 @@ impl BigInt:
         return msstd_bigint_sign(self)
 
     # Raises to a nonnegative `exponent`. A negative exponent returns InvalidInput, and a result above 16777216 bits returns LimitExceeded.
-    fn pow(exponent: Int) BigInt!BigIntError:
+    fn pow(exponent: Int) BigInt!:
         return msstd_bigint_pow(self, exponent)
 
     # Shifts left by `count` bits, multiplying by two to that power. A negative count returns InvalidInput, and a result above 16777216 bits returns LimitExceeded.
-    fn shift_left(count: Int) BigInt!BigIntError:
+    fn shift_left(count: Int) BigInt!:
         return msstd_bigint_shift_left(self, count)
 
     # Shifts right by `count` bits with floor semantics for negatives, so -5 shifted by 1 is -3. A negative count returns InvalidInput.
-    fn shift_right(count: Int) BigInt!BigIntError:
+    fn shift_right(count: Int) BigInt!:
         return msstd_bigint_shift_right(self, count)
 
     # Converts to the nearest Float, or returns none when the magnitude exceeds the Float range.
@@ -636,13 +608,5 @@ export fn from_int(value: Int) BigInt:
     return msstd_bigint_from_int(value)
 
 # Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied.
-export fn parse(text: String, radix: Int, max_digits: Int?) BigInt!BigIntError:
+export fn parse(text: String, radix: Int, max_digits: Int?) BigInt!:
     return msstd_bigint_parse(text, radix, max_digits)
-
-impl Error for BigIntError:
-    # Returns the fixed diagnostic `big integer: <reason>`, such as `big integer: invalid input`, without echoing the input text.
-    fn message() String:
-        match self:
-            InvalidInput: return "big integer: invalid input"
-            InvalidData: return "big integer: invalid data"
-            LimitExceeded: return "big integer: limit exceeded"

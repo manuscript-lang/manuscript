@@ -1,10 +1,10 @@
 # conform: tags=control-flow,formatter,modules,parser,stdlib-fs,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/fs_remove_test.go:17 TestFileSystemRemoveProtectsWorkingDirectory
-import FileSystemError, canonicalize, remove, rename from "@std/os/fs.ms"
+import canonicalize, remove, rename from "@std/os/fs.ms"
 
 export fn main() Int:
-    let invalid: Unit!FileSystemError = error(FileSystemError.InvalidInput)
+    let invalid: Unit! = error(Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput))
     if remove(path: "", recursive: true) != invalid: return 1
     if remove(path: ".", recursive: true) != invalid: return 2
     if remove(path: "child/..", recursive: true) != invalid: return 3

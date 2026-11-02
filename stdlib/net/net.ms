@@ -4,13 +4,11 @@ import ClientResponse from "@std/net/http.ms"
 import Duration from "@std/os/time.ms"
 import HttpClient from "@std/net/http.ms"
 import HttpClientOptions from "@std/net/http.ms"
-import HttpError from "@std/net/http.ms"
 import HttpExchange from "@std/net/http.ms"
 import HttpHeaders from "@std/net/http.ms"
 import HttpMethod from "@std/net/http.ms"
 import HttpServer from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
-import IoError from "@std/io/io.ms"
 import Timestamp from "@std/os/time.ms"
 import Worker, WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 import (
@@ -59,28 +57,6 @@ import (
     msstd_websocket_subprotocol
 ) from "@std/internal/net.ms"
 
-# Errors returned by socket, DNS, and network connection operations.
-export type NetworkError:
-    # An address, CIDR, name, record kind, or option is malformed, or a limit or timeout is negative.
-    case InvalidInput
-    # Text is not a valid IP address or CIDR range, or a DNS answer is not valid UTF-8.
-    case InvalidData
-    # A DNS lookup returned more records than `max_records`, or a received datagram is larger than `max_bytes`.
-    case LimitExceeded
-    # The restricted network does not allow the host, resolved address, Unix socket, or listening address.
-    case PermissionDenied
-    # The operation is unavailable for this kind of connection, such as `shutdown_write` on a stream that cannot half-close.
-    case Unsupported
-    # The network, listener, or socket was closed before or during the call.
-    case Closed
-    # The supplied timeout elapsed before the operation completed.
-    case Timeout
-    # Connection, bind, handshake, or DNS failure reported by the host, such as a refused connection or an unresolvable name.
-    case Failed(
-        # Host-provided failure text; `message()` returns it verbatim, so it can name addresses.
-        message: String
-    )
-
 # The runtime handle behind a `Connection`.
 export extern type NativeConnection
 
@@ -106,33 +82,33 @@ impl Connection:
     fn peer_address() String:
         return msstd_net_connection_peer_address(self.native)
 
-    # Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout.
-    fn read(max_bytes: Int?, timeout: Duration?) Bytes?!IoError:
+    # Returns a positive chunk or none at EOF; a local timeout has kind `Failed`, not `Timeout`.
+    fn read(max_bytes: Int?, timeout: Duration?) Bytes?!:
         return msstd_net_connection_read(self.native, max_bytes, timeout)
 
     # Returns a second connection over a duplicate of the socket, which closes on its own, so one task
     # can read while another writes. Both share the stream: bytes read through one are not seen by the other.
     # While a clone is open, closing a copy closes only its descriptor: the peer sees no end of stream, and a call parked on the closed copy ends at its timeout or the next data.
     # Returns Unsupported for a TLS connection, whose session state cannot be shared, and Closed on a closed connection.
-    fn clone() Connection!NetworkError:
+    fn clone() Connection!:
         return msstd_net_connection_clone(self.native)
 
     # Half-closes the connection so the peer sees end of stream, while this side can keep reading.
     # Returns Unsupported for stream kinds that cannot half-close, and Closed on a closed connection.
-    fn shutdown_write() Unit!NetworkError:
+    fn shutdown_write() Unit!:
         return msstd_net_connection_shutdown_write(self.native)
 
     # Returns the negotiated TLS version, cipher suite, protocol, and peer certificates.
     # A connection that is not TLS returns InvalidInput.
-    fn tls_info() TlsInfo!TlsError:
+    fn tls_info() TlsInfo!:
         return msstd_net_connection_tls_info(self.native)
 
-    # Writes all bytes on success; failure can leave a prefix. Local timeout uses IoError.Failed.
-    fn write(data: String, timeout: Duration?) Unit!IoError:
+    # Writes all bytes on success; failure can leave a prefix. A local timeout has kind `Failed`.
+    fn write(data: String, timeout: Duration?) Unit!:
         return msstd_net_connection_write(self.native, data, timeout)
 
     # Writes raw bytes with the same rules as write.
-    fn write_bytes(data: Bytes, timeout: Duration?) Unit!IoError:
+    fn write_bytes(data: Bytes, timeout: Duration?) Unit!:
         return msstd_net_connection_write_bytes(self.native, data, timeout)
 
 # One datagram and the address from which it was received.
@@ -164,16 +140,16 @@ impl DatagramSocket:
 
     # Waits for one datagram and returns its bytes with the sender's address. `max_bytes` is 1 through 65535 and defaults to 65535.
     # A larger datagram returns LimitExceeded and is discarded. A timeout returns Timeout and a closed socket returns Closed.
-    fn receive(max_bytes: Int?, timeout: Duration?) Datagram!NetworkError:
+    fn receive(max_bytes: Int?, timeout: Duration?) Datagram!:
         return msstd_net_datagram_receive(self.native, max_bytes, timeout)
 
     # Sends `data` as a single datagram to `address` (`host:port`), resolving a host name with the network's resolver.
     # The network's restrictions apply to both the name and the resolved address. A short send returns Failed; a timeout returns Timeout.
-    fn send(data: String, address: String, timeout: Duration?) Unit!NetworkError:
+    fn send(data: String, address: String, timeout: Duration?) Unit!:
         return msstd_net_datagram_send(self.native, data, address, timeout)
 
     # Sends raw bytes as a single datagram with the same rules as send.
-    fn send_bytes(data: Bytes, address: String, timeout: Duration?) Unit!NetworkError:
+    fn send_bytes(data: Bytes, address: String, timeout: Duration?) Unit!:
         return msstd_net_datagram_send_bytes(self.native, data, address, timeout)
 
 # Supported DNS query categories; unknown spellings are rejected by checking.
@@ -281,12 +257,12 @@ impl Closeable for Listener:
 impl Listener:
     # Waits for the next incoming connection and returns it. A timeout returns Timeout and a closed listener returns Closed.
     # On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and returns Failed.
-    fn accept(timeout: Duration?) Connection!NetworkError:
+    fn accept(timeout: Duration?) Connection!:
         return msstd_net_listener_accept(self.native, timeout)
 
     # Waits for the next incoming connection and returns its socket handle without wrapping it, to give to `HttpServer.adopt` (on this or another thread). The caller owns the handle until then; one that is never adopted leaks its socket.
     # A timeout returns Timeout and a closed listener returns Closed. A TLS listener returns InvalidInput: the adopting server performs the handshake.
-    fn accept_raw(timeout: Duration?) Int!NetworkError:
+    fn accept_raw(timeout: Duration?) Int!:
         return msstd_net_listener_accept_raw(self.native, timeout)
 
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
@@ -294,82 +270,61 @@ impl Listener:
         return msstd_net_listener_address(self.native)
 
 # Reports whether an IP address belongs to a CIDR range.
-export fn contains_ip(cidr: Cidr, address: IpAddress) Bool!NetworkError:
+export fn contains_ip(cidr: Cidr, address: IpAddress) Bool!:
     return msstd_net_contains_ip(cidr, address)
 
 # Validates and canonicalizes an IPv4 or IPv6 CIDR range.
-export fn parse_cidr(text: String) Cidr!NetworkError:
+export fn parse_cidr(text: String) Cidr!:
     return msstd_net_parse_cidr(text)
 
 # Validates and canonicalizes an IPv4 or IPv6 address.
-export fn parse_ip(text: String) IpAddress!NetworkError:
+export fn parse_ip(text: String) IpAddress!:
     return msstd_net_parse_ip(text)
-
-impl Error for NetworkError:
-    # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `network: <reason>`.
-    fn message() String:
-        match self:
-            InvalidInput: return "network: invalid input"
-            InvalidData: return "network: invalid data"
-            LimitExceeded: return "network: limit exceeded"
-            PermissionDenied: return "network: permission denied"
-            Unsupported: return "network: operation not supported"
-            Closed: return "network: resource is closed"
-            Timeout: return "network: operation timed out"
-            Failed(message): return message.clone()
 
 # Network, DNS, HTTP, and WebSocket operations for the current host.
 export interface Network:
     # Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
     # A restricted network without listening permission, or an address outside its CIDRs, returns PermissionDenied.
-    fn bind_datagram(address: String) DatagramSocket!NetworkError
+    fn bind_datagram(address: String) DatagramSocket!
     # Cancels in-flight calls and closes every connection, listener, socket, HTTP client, and server this network opened, including those of derived networks.
     # Safe to call repeatedly. A request handler of a server on this network cannot close it and faults.
     fn close() Unit
     # Resolves `address` (`host:port`) and opens a TCP connection to the first reachable permitted address.
     # Returns PermissionDenied for names or addresses a restricted network disallows, Timeout when `timeout` elapses, and Failed when every address refuses.
-    fn connect(address: String, timeout: Duration?) Connection!NetworkError
+    fn connect(address: String, timeout: Duration?) Connection!
     # Connects over TCP to `address` and completes a TLS handshake verifying the server certificate against the system roots for `server_name`, with at least TLS 1.2.
     # An empty `server_name` returns InvalidInput, and `timeout` bounds the whole attempt.
-    fn connect_tls(
-        address: String,
-        server_name: String,
-        timeout: Duration?
-    ) Connection!NetworkError
+    fn connect_tls(address: String, server_name: String, timeout: Duration?) Connection!
     # Connects over TCP to `address` and completes a TLS handshake using `options`, with at least TLS 1.2.
     # Invalid options return InvalidInput, handshake and verification failures return Failed, and `timeout` bounds the whole attempt.
     fn connect_tls_config(
         address: String,
         options: TlsOptions,
         timeout: Duration?
-    ) Connection!NetworkError
+    ) Connection!
     # Connects to the Unix domain socket at `path`.
     # Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path returns InvalidInput. `timeout` bounds the attempt.
-    fn connect_unix(path: String, timeout: Duration?) Connection!NetworkError
+    fn connect_unix(path: String, timeout: Duration?) Connection!
     # Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
     # Invalid or negative options return InvalidInput. Closing the network closes the client.
-    fn http_client(options: HttpClientOptions) HttpClient!HttpError
+    fn http_client(options: HttpClientOptions) HttpClient!
     # Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
     # A restricted network needs `allow_listen` and an IP-literal address inside its CIDRs, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
-    fn listen(address: String) Listener!NetworkError
+    fn listen(address: String) Listener!
     # Listens for TCP connections on `address` and completes a TLS handshake for each accepted connection, within `handshake_timeout` when supplied.
     # `options` must hold a certificate and key, otherwise InvalidInput is returned.
     fn listen_tls(
         address: String,
         options: TlsOptions,
         handshake_timeout: Duration?
-    ) Listener!NetworkError
+    ) Listener!
     # Listens on a Unix domain socket at `path`.
     # Any restricted network returns PermissionDenied, and an empty path returns InvalidInput.
-    fn listen_unix(path: String) Listener!NetworkError
+    fn listen_unix(path: String) Listener!
     # Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
     # More than `max_records` addresses returns LimitExceeded, `timeout` bounds the lookup, and a failed lookup returns Failed.
     # System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
-    fn lookup(
-        name: String,
-        max_records: Int?,
-        timeout: Duration?
-    ) List[String]!NetworkError
+    fn lookup(name: String, max_records: Int?, timeout: Duration?) List[String]!
     # Performs one buffered HTTP request and returns the status, headers, and complete body.
     # Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `max_response_bytes` returns LimitExceeded; error statuses are ordinary responses.
     fn request(
@@ -379,7 +334,7 @@ export interface Network:
         body: String = "",
         max_response_bytes: Int?,
         timeout: Duration?
-    ) ClientResponse!HttpError
+    ) ClientResponse!
     # Performs the same buffered request with a raw bytes body.
     fn request_bytes(
         method: HttpMethod,
@@ -388,21 +343,17 @@ export interface Network:
         body: Bytes = "".to_bytes(),
         max_response_bytes: Int?,
         timeout: Duration?
-    ) ClientResponse!HttpError
+    ) ClientResponse!
     # Resolves the selected supported category, retaining it in each record.
     fn resolve(
         name: String,
         kind: DnsKind,
         max_records: Int?,
         timeout: Duration?
-    ) List[DnsRecord]!NetworkError
+    ) List[DnsRecord]!
     # Returns a derived network limited to the given host names and CIDR ranges.
     # Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns InvalidInput.
-    fn restrict(
-        hosts: List[String],
-        cidrs: List[String],
-        allow_listen: Bool
-    ) Network!NetworkError
+    fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) Network!
     # Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
     # A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
     # Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
@@ -410,41 +361,30 @@ export interface Network:
     # A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
     fn serve(
         address: String,
-        handler: fn(HttpExchange) Unit!HttpError,
+        handler: fn(HttpExchange) Unit!,
         options: HttpServerOptions = HttpServerOptions()
-    ) HttpServer!HttpError
+    ) HttpServer!
     # Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.
-    # Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not offered fails the handshake. Failures use WebSocketError.
+    # Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not offered fails the handshake. Failures are `Error` values.
     fn web_socket(
         url: String,
         headers: HttpHeaders,
         subprotocols: List[String],
         options: WebSocketOptions
-    ) WebSocket!WebSocketError
+    ) WebSocket!
     # Starts an HTTP server that has no listener: it serves the connections handed to `HttpServer.adopt`, with the handler, limits, timeouts, and TLS of `serve`. Close the server to stop it.
     # Returns InvalidInput for invalid options.
     fn serve_connections(
-        handler: fn(HttpExchange) Unit!HttpError,
+        handler: fn(HttpExchange) Unit!,
         options: HttpServerOptions = HttpServerOptions()
-    ) HttpServer!HttpError
+    ) HttpServer!
     # Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
     # The address must be allowed by this network's restrictions, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
-    fn with_resolver(address: String) Network!NetworkError
+    fn with_resolver(address: String) Network!
 
 # The network of the current host.
 fn host_network() Network:
     return msstd_net_network()
-
-# Errors returned when TLS configuration, certificates, or peer authentication fail.
-export type TlsError:
-    # A certificate limit is negative, a `server_name` is empty, or `tls_info` was requested on a connection that is not TLS.
-    case InvalidInput
-    # The PEM text is not a sequence of well-formed CERTIFICATE blocks, or a chain or roots argument holds no certificate.
-    case InvalidData
-    # The PEM text holds more certificates than `max_certificates`.
-    case LimitExceeded
-    # Chain verification failed: the chain does not lead to a supplied root, a certificate is expired or not yet valid at the supplied time, or the name does not match.
-    case AuthenticationFailed
 
 # Parsed certificate identity, validity range, and original DER bytes.
 export type CertificateInfo:
@@ -491,10 +431,7 @@ export type TlsOptions:
     require_client_certificate: Bool
 
 # Parses PEM certificates and optionally limits the number returned.
-export fn parse_certificates(
-    pem: String,
-    max_certificates: Int?
-) List[CertificateInfo]!TlsError:
+export fn parse_certificates(pem: String, max_certificates: Int?) List[CertificateInfo]!:
     return msstd_tls_parse_certificates(pem, max_certificates)
 
 # Verifies a PEM certificate chain against roots, name constraints, and the supplied time.
@@ -503,26 +440,8 @@ export fn verify_certificates(
     roots_pem: String,
     server_name: String,
     now: Timestamp
-) Unit!TlsError:
+) Unit!:
     return msstd_tls_verify_certificates(chain_pem, roots_pem, server_name, now)
-
-impl Error for TlsError:
-    # Returns the fixed diagnostic `TLS: <reason>`, such as `TLS: authentication failed`, without echoing certificate text.
-    fn message() String:
-        match self:
-            InvalidInput: return "TLS: invalid input"
-            InvalidData: return "TLS: invalid data"
-            LimitExceeded: return "TLS: limit exceeded"
-            AuthenticationFailed: return "TLS: authentication failed"
-
-# Errors returned for malformed URL text, components, or query limits.
-export type UrlError:
-    # Constructed URL components or a supplied query-entry budget are invalid.
-    case InvalidInput
-    # URL text, escaped bytes, port syntax or a relative reference is invalid or unsupported.
-    case InvalidData
-    # The decoded query has more entries than its supplied budget permits.
-    case LimitExceeded
 
 # One decoded key and value in a URL query string.
 export type QueryEntry:
@@ -547,7 +466,7 @@ export type Url:
     fragment: String
 
 # Decodes one percent-encoded URL component. `+` is not treated as a space.
-export fn decode_component(text: String) String!UrlError:
+export fn decode_component(text: String) String!:
     return msstd_url_decode_component(text)
 
 # Percent-encodes one URL component using UTF-8 bytes.
@@ -556,7 +475,7 @@ export fn encode_component(text: String) String:
 
 # Formats URL components as an absolute hierarchical URL.
 # Missing or malformed schemes and hostless relative paths return InvalidInput, as do other invalid components.
-export fn format(value: Url) String!UrlError:
+export fn format(value: Url) String!:
     return msstd_url_format(value)
 
 # Encodes query entries as a query string.
@@ -564,44 +483,16 @@ export fn format_query(entries: List[QueryEntry]) String:
     return msstd_url_format_query(entries)
 
 # Parses an absolute URL into its components.
-export fn parse(text: String) Url!UrlError:
+export fn parse(text: String) Url!:
     return msstd_url_parse(text)
 
 # Parses a query string, preserving duplicate keys and their input order.
-export fn parse_query(text: String, max_entries: Int?) List[QueryEntry]!UrlError:
+export fn parse_query(text: String, max_entries: Int?) List[QueryEntry]!:
     return msstd_url_parse_query(text, max_entries)
 
 # Resolves a relative reference against a base URL.
-export fn resolve(base: Url, reference: String) Url!UrlError:
+export fn resolve(base: Url, reference: String) Url!:
     return msstd_url_resolve(base, reference)
-
-impl Error for UrlError:
-    # Returns a URL-prefixed diagnostic without echoing addresses, query values or credentials.
-    fn message() String:
-        match self:
-            InvalidInput: return "URL: invalid input"
-            InvalidData: return "URL: invalid data"
-            LimitExceeded: return "URL: limit exceeded"
-
-# Errors returned by WebSocket handshakes, message limits, timeouts, or closed sockets.
-export type WebSocketError:
-    # A URL is not a `ws` or `wss` URL with a host and no user info, `max_message_bytes` is not positive, a header, subprotocol, or option is malformed, or a ping payload exceeds 125 bytes.
-    case InvalidInput
-    # A text message is not valid UTF-8, whether being sent or received.
-    case InvalidData
-    # A message is larger than `max_message_bytes`.
-    case LimitExceeded
-    # The network handle's restriction policy does not allow the host.
-    case PermissionDenied
-    # The socket or its network handle was closed, or an earlier read failure already ended the connection.
-    case Closed
-    # The connection attempt did not finish within `timeout`.
-    case Timeout
-    # Handshake, transport, or protocol failure, such as a refused connection or a rejected upgrade.
-    case Failed(
-        # Host-provided failure text; `message()` returns it verbatim, so it can name addresses.
-        message: String
-    )
 
 # The runtime handle behind a `WebSocket`.
 export extern type NativeWebSocket
@@ -621,25 +512,25 @@ impl Closeable for WebSocket:
 impl WebSocket:
     # Sends a ping frame carrying `data`, which must be at most 125 bytes, with a one-second write deadline.
     # It does not wait for the pong. Returns Closed on a closed socket.
-    fn ping(data: String) Unit!WebSocketError:
+    fn ping(data: String) Unit!:
         return msstd_websocket_ping(self.native, data)
 
     # Sends a ping frame carrying raw bytes, with the same limits and deadline as ping.
-    fn ping_bytes(data: Bytes) Unit!WebSocketError:
+    fn ping_bytes(data: Bytes) Unit!:
         return msstd_websocket_ping_bytes(self.native, data)
 
     # Waits for the next complete message and returns it, or none once the peer closes normally.
     # A larger message returns LimitExceeded and a malformed text message InvalidData; after any receive failure the connection is closed. One receive runs at a time, and others wait their turn.
-    fn receive() WebSocketMessage?!WebSocketError:
+    fn receive() WebSocketMessage?!:
         return msstd_websocket_receive(self.native)
 
     # Sends `data` as one text message; a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
-    fn send(data: String) Unit!WebSocketError:
+    fn send(data: String) Unit!:
         return msstd_websocket_send(self.native, data)
 
     # Sends `data` as one message, a text frame when `text` is True and a binary frame (the default) otherwise.
     # Text must be valid UTF-8 or the call returns InvalidData, and a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
-    fn send_bytes(data: Bytes, text: Bool = false) Unit!WebSocketError:
+    fn send_bytes(data: Bytes, text: Bool = false) Unit!:
         return msstd_websocket_send_bytes(self.native, data, text)
 
     # Returns the subprotocol the server selected during the handshake, or an empty string when none was negotiated.
@@ -664,28 +555,12 @@ export type WebSocketOptions:
     # When True, offers per-message compression during the handshake; it applies only if the peer agrees.
     compression: Bool
 
-impl Error for WebSocketError:
-    # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `WebSocket: <reason>`.
-    fn message() String:
-        match self:
-            InvalidInput: return "WebSocket: invalid input"
-            InvalidData: return "WebSocket: invalid data"
-            LimitExceeded: return "WebSocket: limit exceeded"
-            PermissionDenied: return "WebSocket: permission denied"
-            Closed: return "WebSocket: resource is closed"
-            Timeout: return "WebSocket: operation timed out"
-            Failed(message): return message.clone()
-
 # Serves on `cores` threads: this thread accepts from `listener` and deals each connection, round robin, to one of `cores` workers that run `entry`, a named top-level fn that ends in `serve_core(handler, options)`. A connection, and every request on it, stays on its worker, and each worker builds its own handler, so no closure or other memory crosses threads.
 # Runs until accepting fails, returning that error (`Closed` after the listener was closed), or a worker's channel closes (returns `Failed`). Workers still running afterwards are cancelled.
 # Returns InvalidInput when `cores` is below 1, and `Failed` when a worker cannot start.
-export fn serve_cores(
-    listener: Listener,
-    entry: fn() Unit,
-    cores: Int
-) Unit!NetworkError:
+export fn serve_cores(listener: Listener, entry: fn() Unit, cores: Int) Unit!:
     if cores < 1:
-        return error(NetworkError.InvalidInput)
+        return error(Error("network: invalid input", kind: InvalidInput))
 
     var serving = Serving(
         group: WorkerGroup[Int, Int](),
@@ -693,7 +568,7 @@ export fn serve_cores(
     )
     let started = serving.group.spawn_many(entry, cores)
     if started.is_error():
-        return error(NetworkError.Failed("could not start a serving worker"))
+        return error(Error("network: could not start a serving worker", kind: Failed))
 
     return deal(listener, started.get())
 
@@ -711,7 +586,7 @@ impl Closeable for Serving:
         return ok(unit)
 
 # Deals accepted connections round robin to `workers` until accepting or a send fails.
-fn deal(listener: Listener, workers: List[Worker[Int, Int]]) Unit!NetworkError:
+fn deal(listener: Listener, workers: List[Worker[Int, Int]]) Unit!:
     var next = 0
 
     while true:
@@ -719,7 +594,7 @@ fn deal(listener: Listener, workers: List[Worker[Int, Int]]) Unit!NetworkError:
         if accepted.is_error():
             return error(accepted.err().clone())
         if workers[next % workers.length()].channel.send(accepted.get()).is_error():
-            return error(NetworkError.Failed("a serving worker ended"))
+            return error(Error("network: a serving worker ended", kind: Failed))
 
         next += 1
 
@@ -728,9 +603,9 @@ fn deal(listener: Listener, workers: List[Worker[Int, Int]]) Unit!NetworkError:
 # Worker side of `serve_cores`: serves the connections dealt to this worker with
 # `handler` and `options`, until the acceptor ends. Returns InvalidInput for invalid options.
 export fn serve_core(
-    handler: fn(HttpExchange) Unit!HttpError,
+    handler: fn(HttpExchange) Unit!,
     options: HttpServerOptions = HttpServerOptions()
-) Unit!HttpError:
+) Unit!:
     var ch = worker_channel[Int, Int]()
     var server = try serve_connections(handler: handler, options: options)
 
@@ -746,12 +621,12 @@ export fn serve_core(
 
 # Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
 # A restricted network without listening permission, or an address outside its CIDRs, returns PermissionDenied.
-export fn bind_datagram(address: String) DatagramSocket!NetworkError:
+export fn bind_datagram(address: String) DatagramSocket!:
     return host_network().bind_datagram(address)
 
 # Resolves `address` (`host:port`) and opens a TCP connection to the first reachable permitted address.
 # Returns PermissionDenied for names or addresses a restricted network disallows, Timeout when `timeout` elapses, and Failed when every address refuses.
-export fn connect(address: String, timeout: Duration?) Connection!NetworkError:
+export fn connect(address: String, timeout: Duration?) Connection!:
     return host_network().connect(address, timeout)
 
 # Connects over TCP to `address` and completes a TLS handshake verifying the server certificate against the system roots for `server_name`, with at least TLS 1.2.
@@ -760,7 +635,7 @@ export fn connect_tls(
     address: String,
     server_name: String,
     timeout: Duration?
-) Connection!NetworkError:
+) Connection!:
     return host_network().connect_tls(address, server_name, timeout)
 
 # Connects over TCP to `address` and completes a TLS handshake using `options`, with at least TLS 1.2.
@@ -769,22 +644,22 @@ export fn connect_tls_config(
     address: String,
     options: TlsOptions,
     timeout: Duration?
-) Connection!NetworkError:
+) Connection!:
     return host_network().connect_tls_config(address, options, timeout)
 
 # Connects to the Unix domain socket at `path`.
 # Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path returns InvalidInput. `timeout` bounds the attempt.
-export fn connect_unix(path: String, timeout: Duration?) Connection!NetworkError:
+export fn connect_unix(path: String, timeout: Duration?) Connection!:
     return host_network().connect_unix(path, timeout)
 
 # Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
 # Invalid or negative options return InvalidInput. Closing the network closes the client.
-export fn http_client(options: HttpClientOptions) HttpClient!HttpError:
+export fn http_client(options: HttpClientOptions) HttpClient!:
     return host_network().http_client(options)
 
 # Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
 # A restricted network needs `allow_listen` and an IP-literal address inside its CIDRs, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
-export fn listen(address: String) Listener!NetworkError:
+export fn listen(address: String) Listener!:
     return host_network().listen(address)
 
 # Listens for TCP connections on `address` and completes a TLS handshake for each accepted connection, within `handshake_timeout` when supplied.
@@ -793,22 +668,18 @@ export fn listen_tls(
     address: String,
     options: TlsOptions,
     handshake_timeout: Duration?
-) Listener!NetworkError:
+) Listener!:
     return host_network().listen_tls(address, options, handshake_timeout)
 
 # Listens on a Unix domain socket at `path`.
 # Any restricted network returns PermissionDenied, and an empty path returns InvalidInput.
-export fn listen_unix(path: String) Listener!NetworkError:
+export fn listen_unix(path: String) Listener!:
     return host_network().listen_unix(path)
 
 # Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
 # More than `max_records` addresses returns LimitExceeded, `timeout` bounds the lookup, and a failed lookup returns Failed.
 # System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
-export fn lookup(
-    name: String,
-    max_records: Int?,
-    timeout: Duration?
-) List[String]!NetworkError:
+export fn lookup(name: String, max_records: Int?, timeout: Duration?) List[String]!:
     return host_network().lookup(name, max_records, timeout)
 
 # Performs one buffered HTTP request and returns the status, headers, and complete body.
@@ -820,7 +691,7 @@ export fn request(
     body: String = "",
     max_response_bytes: Int?,
     timeout: Duration?
-) ClientResponse!HttpError:
+) ClientResponse!:
     return host_network().request(
         method, url, headers, body, max_response_bytes, timeout
     )
@@ -833,7 +704,7 @@ export fn request_bytes(
     body: Bytes = "".to_bytes(),
     max_response_bytes: Int?,
     timeout: Duration?
-) ClientResponse!HttpError:
+) ClientResponse!:
     return host_network().request_bytes(
         method, url, headers, body, max_response_bytes, timeout
     )
@@ -844,7 +715,7 @@ export fn resolve_dns(
     kind: DnsKind,
     max_records: Int?,
     timeout: Duration?
-) List[DnsRecord]!NetworkError:
+) List[DnsRecord]!:
     return host_network().resolve(name, kind, max_records, timeout)
 
 # Returns a derived network limited to the given host names and CIDR ranges.
@@ -853,7 +724,7 @@ export fn restrict(
     hosts: List[String],
     cidrs: List[String],
     allow_listen: Bool
-) Network!NetworkError:
+) Network!:
     return host_network().restrict(hosts, cidrs, allow_listen)
 
 # Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
@@ -863,30 +734,30 @@ export fn restrict(
 # A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
 export fn serve(
     address: String,
-    handler: fn(HttpExchange) Unit!HttpError,
+    handler: fn(HttpExchange) Unit!,
     options: HttpServerOptions = HttpServerOptions()
-) HttpServer!HttpError:
+) HttpServer!:
     return host_network().serve(address, handler, options)
 
 # Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.
-# Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not offered fails the handshake. Failures use WebSocketError.
+# Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not offered fails the handshake. Failures are `Error` values.
 export fn web_socket(
     url: String,
     headers: HttpHeaders,
     subprotocols: List[String],
     options: WebSocketOptions
-) WebSocket!WebSocketError:
+) WebSocket!:
     return host_network().web_socket(url, headers, subprotocols, options)
 
 # Starts an HTTP server that has no listener: it serves the connections handed to `HttpServer.adopt`, with the handler, limits, timeouts, and TLS of `serve`. Close the server to stop it.
 # Returns InvalidInput for invalid options.
 export fn serve_connections(
-    handler: fn(HttpExchange) Unit!HttpError,
+    handler: fn(HttpExchange) Unit!,
     options: HttpServerOptions = HttpServerOptions()
-) HttpServer!HttpError:
+) HttpServer!:
     return host_network().serve_connections(handler, options)
 
 # Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
 # The address must be allowed by this network's restrictions, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
-export fn with_resolver(address: String) Network!NetworkError:
+export fn with_resolver(address: String) Network!:
     return host_network().with_resolver(address)

@@ -2,11 +2,10 @@
 # expect-mir: "call.ind"
 
 import stdout from "@std/io/io.ms"
-import TextError from "@std/core.ms"
 
-fn fail() Result[Int, TextError]: return error(TextError("no"))
+fn fail() Result[Int, Error]: return error(Error("no"))
 
-fn get(value: Int = try fail()) Result[Int, TextError]: return ok(value)
+fn get(value: Int = try fail()) Result[Int, Error]: return ok(value)
 
 export fn main() Int:
     let _r = stdout().write("{get(2).is_ok()} {get().is_ok()}\n")

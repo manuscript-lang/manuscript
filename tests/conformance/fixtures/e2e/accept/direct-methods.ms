@@ -1,7 +1,6 @@
 # conform: tags=alternatives,control-flow,faults,interfaces,lists,match,modules,mutation,optional,records,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/direct-methods.ms
-import TextError from "@std/core.ms"
 import expect_equal from "@std/test/test.ms"
 
 type Counter:
@@ -65,12 +64,12 @@ type Parser:
     base: Int
 
 interface Parse:
-    fn parse(n: Int) Int!TextError
+    fn parse(n: Int) Int!Error
 
 impl Parse for Parser:
-    fn parse(n: Int) Int!TextError:
+    fn parse(n: Int) Int!Error:
         if n < 0:
-            return error(TextError("negative"))
+            return error(Error("negative"))
 
         return ok(self.base + n)
 
@@ -78,13 +77,13 @@ type Chain:
     parser: Parser
 
 interface Step:
-    fn step(n: Int) Int!TextError
+    fn step(n: Int) Int!Error
 
 impl Step for Chain:
-    fn step(n: Int) Int!TextError:
+    fn step(n: Int) Int!Error:
         return ok((try self.parser.parse(n)) + 1)
 
-fn code(r: Int!TextError) Int:
+fn code(r: Int!Error) Int:
     return r.get(-1)
 
 fn run_direct(chain: Chain, n: Int) Int:

@@ -924,12 +924,11 @@ impl Walker<'_> {
         if self.cx.classes.class(&declared) == Class::Copy {
             return;
         }
-        let converted = self.cx.m.info(e).propagated_error.is_some();
         if self.class_of(operand) == Class::Move
             && let Some(src) = self.lend_source(operand)
         {
             self.lent_return.get_or_insert(e.pos);
-            if converted || src.view {
+            if src.view {
                 // The error leaves as an interface view (converted on the way out, or a view
                 // already): an owned value whose payload stays in the operand's sources.
                 self.view_return = true;

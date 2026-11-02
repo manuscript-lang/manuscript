@@ -9,38 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type JsonError; add: import JsonError from \"@std/data/json.ms\"",
-        "position": {
-          "file": "testparsetypeargument-7.ms",
-          "line": 7,
-          "column": 28,
-          "offset": 236
-        },
-        "fix": {
-          "position": {
-            "file": "testparsetypeargument-7.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "end": {
-            "file": "testparsetypeargument-7.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "replacement": "import JsonError from \"@std/data/json.ms\"\n"
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
         "message": "unknown binding parse; add: import parse from \"@std/data/csv.ms\"",
         "position": {
           "file": "testparsetypeargument-7.ms",
           "line": 8,
           "column": 12,
-          "offset": 258
+          "offset": 249
         },
         "fix": {
           "position": {
@@ -62,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testparsetypeargument-7.ms:7:28: resolution: unknown type JsonError; add: import JsonError from \"@std/data/json.ms\"\n   |\n 7 | fn f(text: String) Request!JsonError:\n   |                            ^\n<DIR>/testparsetypeargument-7.ms:8:12: resolution: unknown binding parse; add: import parse from \"@std/data/csv.ms\"\n   |\n 8 |     return parse[Request](text)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testparsetypeargument-7.ms:8:12: resolution: unknown binding parse; add: import parse from \"@std/data/csv.ms\"\n   |\n 8 |     return parse[Request](text)\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

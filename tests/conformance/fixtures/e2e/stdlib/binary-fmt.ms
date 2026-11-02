@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/binary.ms
 import expect_equal, expect_contains, expect_fault from "@std/test/test.ms"
-import Bytes, BytesBuilder, BinaryError from "@std/bytes.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
 
 test "integers round-trip in both byte orders":
     var out = BytesBuilder()
@@ -63,8 +63,12 @@ test "append_bytes appends many and append one":
     try expect_equal(out.build(), Bytes([7, 1, 2, 3, 4]))
 
 test "reads past the end or before the start are out of range":
-    let range_error8: UInt8!BinaryError = error(BinaryError.OutOfRange)
-    let range_error32: UInt32!BinaryError = error(BinaryError.OutOfRange)
+    let range_error8: UInt8! = error(
+        Error("binary: value out of range", kind: ErrorCategory.OutOfRange)
+    )
+    let range_error32: UInt32! = error(
+        Error("binary: value out of range", kind: ErrorCategory.OutOfRange)
+    )
     try expect_equal(Bytes([0]).uint8(-1), range_error8)
     try expect_equal(Bytes([0]).uint8(1), range_error8)
     try expect_equal(Bytes([0, 0, 0]).uint32_le(0), range_error32)

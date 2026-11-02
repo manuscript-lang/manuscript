@@ -6,9 +6,6 @@ import expect_equal from "@std/test/test.ms"
 type Problem:
     case Missing(reason: String)
 
-impl Error for Problem:
-    fn message() String: "Problem"
-
 type OtherProblem:
     case Invalid(reason: String)
 

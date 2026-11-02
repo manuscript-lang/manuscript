@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/regex.ms
 import expect_equal, expect_false from "@std/test/test.ms"
-import compile, RegexError from "@std/string.ms"
+import compile from "@std/string.ms"
 
 test "regex receivers execute matching replacement and empty results":
     let regex = try compile("[0-9]+")
@@ -15,11 +15,11 @@ test "regex receivers execute matching replacement and empty results":
 test "regex rejects invalid expressions and exhausted budgets":
     let invalid = compile("[")
     try expect_false(not invalid.is_error())
-    try expect_equal(invalid.err(), RegexError.InvalidData)
+    try expect_equal(invalid.err(), Error("regular expression: invalid data", kind: ErrorCategory.InvalidData))
 
     let regex = try compile("[0-9]+")
-    let limited: List[String]!RegexError = error(RegexError.LimitExceeded)
+    let limited: List[String]! = error(Error("regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded))
     try expect_equal(regex.find_all("1 2", 1), limited)
 
-    let output_limit: String!RegexError = error(RegexError.LimitExceeded)
+    let output_limit: String! = error(Error("regular expression: limit exceeded", kind: ErrorCategory.LimitExceeded))
     try expect_equal(regex.replace_all("1", "long", 3), output_limit)

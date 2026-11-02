@@ -3,12 +3,12 @@ import parse, YamlValue from "@std/data/yaml.ms"
 
 fn rejects_continuation(text: String) Unit!Error:
     let cause = parse(text) | try expect_error
+    if cause.kind != ErrorCategory.InvalidData:
+        return fail("expected InvalidData, got {cause}")
 
-    match cause:
-        InvalidData(_, _, reason): return expect_equal(
-            reason, "unexpected indentation or additional document"
-        )
-        _: return fail("expected InvalidData, got {cause}")
+    return expect_equal(
+        cause.details["reason"], "unexpected indentation or additional document"
+    )
 
 test "YAML inline comments end root and mapping plain scalars":
     try rejects_continuation("first # comment\nnext")
@@ -83,10 +83,10 @@ test "YAML quoted and flow hashes retain their scalar behavior":
 
 fn rejects_flow_continuation(text: String, reason: String) Unit!Error:
     let cause = parse(text) | try expect_error
+    if cause.kind != ErrorCategory.InvalidData:
+        return fail("expected InvalidData, got {cause}")
 
-    match cause:
-        InvalidData(_, _, found): return expect_equal(found, reason)
-        _: return fail("expected InvalidData, got {cause}")
+    return expect_equal(cause.details["reason"], reason)
 
 test "YAML flow sequence comments terminate plain scalar text":
     for source in [

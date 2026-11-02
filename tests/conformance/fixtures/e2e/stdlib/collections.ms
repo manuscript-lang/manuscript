@@ -96,13 +96,13 @@ test "collection constructors validate bounds and exact limits":
     try expect_equal((try range_by(3, -1, -1, 4)), [3, 2, 1, 0])
     try expect_equal((try filled("x", 2)), ["x", "x"])
 
-    let invalid: List[Int]!CollectionError = error(
-        CollectionError.InvalidInput
+    let invalid: List[Int]! = error(
+        Error("collection: invalid input", kind: ErrorCategory.InvalidInput)
     )
     try expect_equal(range_by(0, 1, 0), invalid)
 
-    let limited: List[Int]!CollectionError = error(
-        CollectionError.LimitExceeded
+    let limited: List[Int]! = error(
+        Error("collection: limit exceeded", kind: ErrorCategory.LimitExceeded)
     )
     try expect_equal(range_by(0, 3, 1, 2), limited)
 
@@ -115,8 +115,8 @@ test "stepped ranges handle full-width spans and minimum negative steps":
     try expect_equal((try range_by(maximum, minimum, minimum, 2)), [maximum, -1])
     try expect_equal((try range_by(0, minimum, minimum, 1)), [0])
 
-    let limited: List[Int]!CollectionError = error(
-        CollectionError.LimitExceeded
+    let limited: List[Int]! = error(
+        Error("collection: limit exceeded", kind: ErrorCategory.LimitExceeded)
     )
     try expect_equal(range_by(minimum, maximum, maximum, 2), limited)
 
@@ -169,8 +169,8 @@ test "for over range counts without a list":
     try expect_equal(callbacks.map(fn call: call()), [0, 1, 2])
 
 test "huge sizes return LimitExceeded instead of exhausting memory":
-    let limited: List[Int]!CollectionError = error(
-        CollectionError.LimitExceeded
+    let limited: List[Int]! = error(
+        Error("collection: limit exceeded", kind: ErrorCategory.LimitExceeded)
     )
     try expect_equal(filled(1, 9223372036854775807), limited)
     try expect_equal(filled(1, 4611686018427387904, 9223372036854775807), limited)

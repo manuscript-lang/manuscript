@@ -2,16 +2,7 @@
 # Usage: ms run bench/tools/lsp_compare.ms -- <hover|outline|semantic> BEFORE AFTER --out FILE.csv [--samples 9] [--cpu N]
 # Suites are the case lists of the three studies: `hover` (bench/perf/lsp), `outline` (lsp-outline), `semantic` (lsp-semantic).
 # Harness output is `mode,count,rounds,shape,elapsed_ns,checksum,size,rss`. The CSV has a cpu column (empty without --cpu).
-import (
-    Invalid,
-    absolute,
-    fail,
-    invalid,
-    median,
-    options,
-    sample,
-    write_text
-) from "./lib.ms"
+import (absolute, fail, invalid, median, options, sample, write_text) from "./lib.ms"
 import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
 
@@ -93,7 +84,7 @@ type Run:
     size: Int
     rss: Int
 
-fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Result[Run, Invalid]:
+fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Run!:
     var program = binary.clone()
     var args = [c.mode.clone(), "{c.count}", "{rounds}", c.shape.clone()]
 
@@ -205,7 +196,7 @@ export fn main() Int:
     let parsed = options(
         args.slice(3, args.length()).get([]), ["out", "samples", "cpu"], ["out"]
     )
-    if parsed.is_error(): return fail(parsed.err().message())
+    if parsed.is_error(): return fail(parsed.err().message)
 
     let opts = parsed.get(Map[String, String]())
     let default_samples = if args[0] == "hover": 9 else: 10
@@ -216,6 +207,6 @@ export fn main() Int:
         args[0], absolute(args[1].clone()), absolute(args[2].clone()),
         opts.get("out").get(""), samples, opts.get("cpu").get("")
     )
-    if result.is_error(): return fail(result.err().message())
+    if result.is_error(): return fail(result.err().message)
 
     return 0

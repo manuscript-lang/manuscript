@@ -7,14 +7,14 @@ interface DatagramSocket:
     fn receive(
         max_bytes: Int?,
         timeout: Duration?
-    ) Datagram!NetworkError
+    ) Datagram!
     fn send(
         data: String,
         address: String,
         timeout: Duration?
-    ) Unit!NetworkError
+    ) Unit!
     fn send_bytes(
         data: Bytes,
         address: String,
         timeout: Duration?
-    ) Unit!NetworkError
+    ) Unit!

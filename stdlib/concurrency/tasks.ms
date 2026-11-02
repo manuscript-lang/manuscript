@@ -1,4 +1,4 @@
-import Channel, ChannelError, Transport from "@std/io/channels.ms"
+import Channel, Transport from "@std/io/channels.ms"
 import Closeable, panic from "@std/core.ms"
 import Shared, share from "@std/concurrency/shared.ms"
 import lock from "@std/concurrency/sync.ms"
@@ -33,29 +33,6 @@ impl TaskChannelLease:
     fn clone() TaskChannelLease:
         return msrt_obj_share(self)
 
-# Why a task produced no result.
-export type TaskError:
-    # The task's timeout (or its group's) passed before it finished, and it was cancelled.
-    case TimedOut
-    # The task was cancelled before it finished.
-    case Cancelled
-    # The task's group was closed, or its result was already collected.
-    case Closed
-    # The task faulted in a group that contains faults. Carries the fault report.
-    case Faulted(
-        # The fault report from the task: its message and stack.
-        report: String
-    )
-
-impl Error for TaskError:
-    # Returns the fixed diagnostic `task: <reason>`.
-    fn message() String:
-        match self:
-            TimedOut: return "task: timed out"
-            Cancelled: return "task: cancelled"
-            Closed: return "task: closed"
-            Faulted(report): return "task: fault: " + report
-
 # Whether the running task was cancelled: its group was closed, its timeout passed, or the program was asked to stop.
 # A plain query: it neither waits nor unwinds, so a task can poll it between steps and finish early.
 # It stays true inside cleanups (scope-end closes), where a cancelled task should do minimal work.
@@ -63,15 +40,22 @@ export fn cancelled() Bool:
     return msrt_task_cancel_requested() != 0
 
 # Maps a runtime outcome (0 returned, 1 timed out, 2 cancelled, 3 closed or collected, 4 faulted) to a result.
-fn outcome(code: Int) Unit!TaskError:
+fn outcome(code: Int) Unit!:
     if code == 1:
-        return error(TaskError.TimedOut)
+        return error(Error("task: timed out", kind: Timeout))
     if code == 2:
-        return error(TaskError.Cancelled)
+        return error(Error("task: cancelled", kind: Other))
     if code == 3:
-        return error(TaskError.Closed)
+        return error(Error("task: closed", kind: Closed))
+
     if code == 4:
-        return error(TaskError.Faulted(msrt_scope_fault_message()))
+        let report = msrt_scope_fault_message()
+        return error(
+            Error(
+                "task: fault: " + report, kind: Failed,
+                details: {"report": report.clone()}
+            )
+        )
 
     return ok(unit)
 
@@ -197,13 +181,13 @@ fn claim_room[T](lane: Shared[Lane[T]]) Reserved:
 
 impl TaskTransport[In, Out]:
     # Waits until `outgoing` has room. Nothing runs between this returning and the caller's send.
-    fn wait_for_room() Unit!ChannelError:
+    fn wait_for_room() Unit!:
         while true:
             match claim_room(self.outgoing):
                 Reserved.Ready:
                     return ok(unit)
                 Reserved.Shut:
-                    return error(ChannelError.Closed)
+                    return error(Error("channel: closed", kind: Closed))
                 Reserved.Wait(token):
                     let ticket = WaitTicket[In](lane: self.outgoing, token: token)
                     msrt_channel_park(token)
@@ -211,7 +195,7 @@ impl TaskTransport[In, Out]:
         return ok(unit)
 
 impl Transport[In, Out] for TaskTransport[In, Out]:
-    fn send(value: In) Unit!ChannelError:
+    fn send(value: In) Unit!:
         try self.wait_for_room()
 
         var lane = lock(self.outgoing)
@@ -220,11 +204,11 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
         lane.close().get(none)
         return ok(unit)
 
-    fn receive() Out?!ChannelError:
+    fn receive() Out?!:
         while true:
             var lane = lock(self.incoming)
             if lane.value.receiver_closed:
-                return error(ChannelError.Closed)
+                return error(Error("channel: closed", kind: Closed))
 
             if let value = lane.value.pop():
                 lane.value.wake()
@@ -301,7 +285,7 @@ fn forget[T, In: Clonable, Out: Clonable](
 
 # Waits for the task `handle` of `scope` and takes its result from `values`. The task is collected
 # even when it has no result, so the runtime and the group let go of it.
-fn collect[T](scope: Int, handle: Int, values: Shared[List[T]]) T!TaskError:
+fn collect[T](scope: Int, handle: Int, values: Shared[List[T]]) T!:
     try outcome(msrt_scope_join(scope, handle, 0))
 
     var finished = lock(values)
@@ -326,7 +310,7 @@ export type Task[T, In: Clonable = Unit, Out: Clonable = Unit]:
 
 impl Task[T, In, Out]:
     # Waits for the task and returns its result, or why it has none. Takes the result, so call it once.
-    fn result() T!TaskError:
+    fn result() T!:
         let collected = collect(self.scope, self.handle, self.values)
         forget(self.registry, self.handle)
         return collected
@@ -394,9 +378,9 @@ impl TaskGroup[T, In, Out]:
 
     # Waits for every uncollected task and returns their results in start order, or the first task's error.
     # Tasks already collected with `result` are not included; the ones returned are collected.
-    fn results() List[T]!TaskError:
+    fn results() List[T]!:
         if msrt_scope_wait(self.scope) == 3:
-            return error(TaskError.Closed)
+            return error(Error("task: closed", kind: Closed))
 
         var values = List[T]()
 
@@ -409,7 +393,7 @@ impl TaskGroup[T, In, Out]:
         return ok(values)
 
     # Waits for every started task to end. Returns `TimedOut`, `Cancelled`, `Closed` or `Faulted` if any task ended without a result.
-    fn wait() Unit!TaskError:
+    fn wait() Unit!:
         return outcome(msrt_scope_wait(self.scope))
 
 impl Closeable for TaskGroup[T, In, Out]:

@@ -239,7 +239,7 @@ export fn main() Int:
         )
 
     let parsed = options(args.slice(4, args.length()).get([]), ["pairs"], [])
-    if parsed.is_error(): return fail(parsed.err().message())
+    if parsed.is_error(): return fail(parsed.err().message)
 
     let pairs = parsed.get(
         Map[String, String]()
@@ -251,6 +251,6 @@ export fn main() Int:
     let result = if args[0] == "decode": decode(before, after, args[3].clone(), pairs) else: json_failure(
         before, after, args[3].clone(), pairs
     )
-    if result.is_error(): return fail(result.err().message())
+    if result.is_error(): return fail(result.err().message)
 
     return 0

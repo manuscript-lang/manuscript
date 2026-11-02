@@ -1,4 +1,4 @@
-import Closeable, TextError from "@std/core.ms"
+import Closeable from "@std/core.ms"
 
 type Journal:
     lines: Int
@@ -9,14 +9,14 @@ impl Closeable for Journal:
         return ok(unit)
 
 impl Journal:
-    var fn flush() Result[Unit, TextError]:
+    var fn flush() Result[Unit, Error]:
         return ok(unit)
 
 export fn forgets() Int:
     let journal = Journal(1)
     return journal.lines
 
-export fn flushes() Result[Int, TextError]:
+export fn flushes() Result[Int, Error]:
     var journal = Journal(2)
     try journal.flush()
     return ok(journal.lines)

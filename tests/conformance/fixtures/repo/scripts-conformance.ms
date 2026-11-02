@@ -124,7 +124,7 @@ fn run_conformance(args: List[String]) Result[Unit, Error]:
             match result:
                 ok(_): try emit("PASS {file}")
                 error(cause):
-                    try emit("FAIL {file}: {cause.message()}")
+                    try emit("FAIL {file}: {cause.message}")
                     failed = failed + 1
 
         index = index + 1
@@ -157,7 +157,7 @@ export fn main() Int:
     match run_conformance(arguments()):
         ok(_): return 0
         error(cause):
-            let _written = stdout().write("{cause.message()}\n")
+            let _written = stdout().write("{cause.message}\n")
             return 1
 
 test "reports require complete nonempty executions and count explicit skips":

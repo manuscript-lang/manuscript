@@ -10,15 +10,6 @@ export type Alignment:
     # Splits unused space, putting an odd extra space after the cell.
     case Center
 
-# Errors from pure table formatting; no terminal or other host service is accessed.
-export type TableError:
-    # Negative padding/budget, or a nonempty alignment list with the wrong column count.
-    case InvalidInput
-    # Rows differ in cell count, or a cell contains a control, tab, line break or ANSI escape.
-    case InvalidData
-    # A row/cell/output budget or the native string byte limit would be exceeded.
-    case LimitExceeded
-
 # Borrows rectangular rows of complete strings without wrapping, truncating, or normalizing cells.
 # Callers may format and inspect the same rows afterward without cloning them.
 # Example: `format([["name", "count"], ["tea", "2"]], [Alignment.Left, Alignment.Right])`.
@@ -39,13 +30,5 @@ export fn format(
     max_rows: Int?,
     max_cells: Int?,
     max_bytes: Int?
-) String!TableError:
+) String!:
     return msstd_table_format(rows, alignments, padding, max_rows, max_cells, max_bytes)
-
-impl Error for TableError:
-    # Returns a table-prefixed diagnostic for the validation or budget failure.
-    fn message() String:
-        match self:
-            InvalidInput: return "table: invalid input"
-            InvalidData: return "table: invalid data"
-            LimitExceeded: return "table: limit exceeded"

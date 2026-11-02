@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/numbers.ms
 import expect_equal from "@std/test/test.ms"
-import parse_int, parse_float, NumberError from "@std/math/math.ms"
+import parse_int, parse_float from "@std/math/math.ms"
 
 test "numbers radix and signed boundaries":
     try expect_equal((try parse_int("7fffffffffffffff", 16)), 9223372036854775807)
@@ -13,16 +13,16 @@ test "numbers radix and signed boundaries":
     try expect_equal(1.9.truncate_to_int(), 1)
 
 test "numbers reject whitespace separators overflow and invalid radix":
-    let invalid: Int!NumberError = error(NumberError.InvalidData)
+    let invalid: Int! = error(Error("number: invalid data", kind: ErrorCategory.InvalidData))
     for text in [" 1", "1_0", "0x10", "+", "١"]:
         try expect_equal(parse_int(text, 10), invalid)
 
-    let overflow: Int!NumberError = error(NumberError.OutOfRange)
+    let overflow: Int! = error(Error("number: value out of range", kind: ErrorCategory.OutOfRange))
     try expect_equal(parse_int("9223372036854775808", 10), overflow)
 
-    let radix_error: Int!NumberError = error(NumberError.InvalidInput)
+    let radix_error: Int! = error(Error("number: invalid input", kind: ErrorCategory.InvalidInput))
     try expect_equal(parse_int("1", 1), radix_error)
 
-    let float_error: Float!NumberError = error(NumberError.InvalidData)
+    let float_error: Float! = error(Error("number: invalid data", kind: ErrorCategory.InvalidData))
     for text in [" 1.0", "1_0", "1.", "0x1p2"]:
         try expect_equal(parse_float(text), float_error)

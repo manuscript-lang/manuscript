@@ -8,14 +8,14 @@ import secure_int from "@std/os/random.ms"
 import exp, hypot, log, pow from "@std/math/math.ms"
 import lookup from "@std/net/net.ms"
 import nanoseconds, sleep from "@std/os/time.ms"
-import WorkerGroup, WorkerError, worker_channel from "@std/concurrency/workers.ms"
+import WorkerGroup, worker_channel from "@std/concurrency/workers.ms"
 
 fn squares() Unit:
     var ch = worker_channel[Int, Int]()
     if let n = ch.receive().get(none):
         let _ = ch.send(n * n)
 
-fn ask(group: WorkerGroup[Int, Int], value: Int) Int!WorkerError:
+fn ask(group: WorkerGroup[Int, Int], value: Int) Int!:
     var worker = try group.spawn(squares)
     let _ = worker.channel.send(value)
     var answer = -1

@@ -1,12 +1,3 @@
-# Errors returned when a collection factory exceeds its supplied item limit.
-export type CollectionError:
-    # A count, item budget, or step is invalid: `count` or `max_items` is negative, or `range_by` has a zero `step`.
-    case InvalidInput
-    # The result would hold more items than `max_items`, or more than the runtime's ceiling of 268435456 (2^28) items when `max_items` is omitted.
-    case LimitExceeded
-    # A slice bound lies outside 0 <= start <= end <= length() after negative bounds are resolved from the end.
-    case OutOfRange
-
 # An ordered mutable collection with indexing, iteration, and transformations.
 # Primitive backing stores Int values at the platform's Int width and Float values at 64 bits, Bool values as bytes, and String references without an element box.
 # Lists are owned values; clone makes a deep copy and accessors can borrow elements.
@@ -277,27 +268,18 @@ export type SearchResult:
     found: Bool
 
 # Creates a list containing `value` repeated `count` times.
-export fn filled[T](value: T, count: Int, max_items: Int?) List[T]!CollectionError:
+export fn filled[T](value: T, count: Int, max_items: Int?) List[T]!:
     return msrt_list_filled(value, count, max_items)
 
 # Creates the integers from `start` up to but excluding `end`, counting by one. Written `start..end`; the name `range` is not importable. The list is empty when `end <= start`. `for index in 0..count:` runs as a counter loop without allocating the list. As a stored list, more than about 268 million items is a fault; use `range_by` to bound the size with an error value.
 fn range(start: Int, end: Int) List[Int]: ...
 
 # Creates integers from `start` up to but excluding `end` using a nonzero `step`; a negative step counts down. Returns `InvalidInput` for a zero step and `LimitExceeded` when the list would exceed `max_items`.
-export fn range_by(
-    start: Int,
-    end: Int,
-    step: Int,
-    max_items: Int?
-) List[Int]!CollectionError:
+export fn range_by(start: Int, end: Int, step: Int, max_items: Int?) List[Int]!:
     return msrt_list_range_by(start, end, step, max_items)
 
 # Builds a map from entries. Later entries replace earlier values for duplicate keys.
 export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) Map[K, V]: ...
-
-impl Error for CollectionError:
-    # Returns the fixed diagnostic `collection: <reason>`, such as `collection: limit exceeded`, without echoing values.
-    fn message() String: ...
 
 # Concatenates the inner lists in order into one new list (JavaScript `Array.prototype.flat`).
 export fn flatten[T](lists: List[List[T]]) List[T]:
@@ -409,7 +391,7 @@ impl ListFloat32Sum for List[Float32]:
 # Operations that copy elements. A copy of a resource would be closed twice, so the elements must be Clonable.
 interface ListCopies[T: Clonable]:
     fn clone() List[T]
-    fn slice(start: Int, end: Int) List[T]!CollectionError
+    fn slice(start: Int, end: Int) List[T]!
     fn take(count: Int) List[T]
     fn drop(count: Int) List[T]
     fn chunks(size: Int) List[List[T]]
@@ -430,8 +412,8 @@ impl ListCopies[T] for List[T]:
     fn clone() List[T]: ...
 
     # Returns a new owned List containing copies of the elements in [start, end).
-    # Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
-    fn slice(start: Int, end: Int) List[T]!CollectionError: ...
+    # Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return an `Error` of kind `OutOfRange`.
+    fn slice(start: Int, end: Int) List[T]!: ...
 
     # Copies the first min(count, length) elements into fresh owned List storage.
     # Leaves the receiver unchanged; negative count is a programming fault.

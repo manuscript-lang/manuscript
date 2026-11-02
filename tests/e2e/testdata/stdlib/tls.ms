@@ -6,15 +6,9 @@ import (
     parse_certificates,
     verify_certificates,
     CertificateInfo,
-    TlsError,
     TlsOptions
 ) from "@std/net/net.ms"
-import (
-    HttpExchange,
-    HttpError,
-    HttpServerOptions,
-    HttpClientOptions
-) from "@std/net/http.ms"
+import (HttpExchange, HttpServerOptions, HttpClientOptions) from "@std/net/http.ms"
 import Bytes from "@std/bytes.ms"
 import (
     connect,
@@ -31,7 +25,7 @@ import TaskGroup from "@std/concurrency/tasks.ms"
 import Listener, Connection from "@std/net/net.ms"
 import certificate, private_key from "./support/certificates.ms"
 
-fn hello(exchange: HttpExchange) Unit!HttpError:
+fn hello(exchange: HttpExchange) Unit!:
     let _started = try exchange.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
@@ -58,7 +52,9 @@ test "TLS certificate parsing verification hostname and expiration":
             server_name: "stdlib.test", now: now
         ) | try expect_ok
     )
-    let failed: Unit!TlsError = error(TlsError.AuthenticationFailed)
+    let failed: Unit! = error(
+        Error("TLS: authentication failed", kind: ErrorCategory.Other)
+    )
     try expect_false(
         (
             verify_certificates(
@@ -79,10 +75,14 @@ test "TLS certificate parsing verification hostname and expiration":
     )
 
 test "TLS rejects malformed PEM and certificate budgets":
-    let invalid: List[CertificateInfo]!TlsError = error(TlsError.InvalidData)
+    let invalid: List[CertificateInfo]! = error(
+        Error("TLS: invalid data", kind: ErrorCategory.InvalidData)
+    )
     parse_certificates(pem: "not PEM") | try expect_equal(invalid)
 
-    let limited: List[CertificateInfo]!TlsError = error(TlsError.LimitExceeded)
+    let limited: List[CertificateInfo]! = error(
+        Error("TLS: limit exceeded", kind: ErrorCategory.LimitExceeded)
+    )
     parse_certificates(pem: certificate(), max_certificates: 0) | try expect_equal(
         limited
     )
@@ -117,7 +117,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
         )
     )
 
-fn report_protocol(exchange: HttpExchange) Unit!HttpError:
+fn report_protocol(exchange: HttpExchange) Unit!:
     let _started = try exchange.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )

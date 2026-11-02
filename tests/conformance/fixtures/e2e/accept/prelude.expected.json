@@ -16,21 +16,26 @@
         },
         {
           "index": 1,
-          "name": "prelude.ms::prelude Error preserves concrete failures through try",
+          "name": "prelude.ms::try forwards an error of the same type unchanged",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "prelude.ms::Error is a record with a message, a kind and details",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 2,
-        "selected": 2,
-        "passed": 2,
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN prelude.ms::prelude cases and optional methods need no imports\nPASS prelude.ms::prelude cases and optional methods need no imports\nRUN prelude.ms::prelude Error preserves concrete failures through try\nPASS prelude.ms::prelude Error preserves concrete failures through try\n2 tests, 0 failed\n",
+      "stdout": "RUN prelude.ms::prelude cases and optional methods need no imports\nPASS prelude.ms::prelude cases and optional methods need no imports\nRUN prelude.ms::try forwards an error of the same type unchanged\nPASS prelude.ms::try forwards an error of the same type unchanged\nRUN prelude.ms::Error is a record with a message, a kind and details\nPASS prelude.ms::Error is a record with a message, a kind and details\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

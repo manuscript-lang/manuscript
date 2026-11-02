@@ -4,52 +4,15 @@ import Closeable, Data from "@std/core.ms"
 import (
     HttpClient,
     HttpClientOptions,
-    HttpError,
     HttpHeaders,
     HttpMethod,
     HttpResponseMetadata,
     ResponseBody,
     headers
 ) from "@std/net/http.ms"
-import IoError from "@std/io/io.ms"
-import JsonError, parse, stringify from "@std/data/json.ms"
+import parse, stringify from "@std/data/json.ms"
 import Network, TlsOptions, http_client from "@std/net/net.ms"
 import Duration, Instant, seconds, monotonic from "@std/os/time.ms"
-
-# Errors returned by fetch operations.
-export type FetchError:
-    # No usable response: invalid URL, transport or TLS failure, timeout, size limit, permission, or a closed client.
-    case Http(
-        # The transport error; `Timeout`, `LimitExceeded`, and `Closed` report deadline, size-cap, and closed-client failures.
-        cause: HttpError
-    )
-    # Reading the response body failed.
-    case Io(
-        # The error returned by reading the response body stream.
-        cause: IoError
-    )
-    # `check_status` found a status outside 200 through 299.
-    case Status(
-        # The received status code.
-        code: Int
-    )
-    # The response body is not valid UTF-8.
-    case InvalidText
-    # The request or response JSON could not be encoded or decoded.
-    case Json(
-        # The JSON error from encoding the request body or decoding the response.
-        cause: JsonError
-    )
-
-impl Error for FetchError:
-    # Returns a fixed diagnostic, or the cause's message for wrapped errors.
-    fn message() String:
-        match self:
-            Http(cause): return cause.message()
-            Io(cause): return cause.message()
-            Status(code): return "fetch: unexpected status {code}"
-            InvalidText: return "fetch: body is not valid UTF-8"
-            Json(_): return "fetch: invalid JSON"
 
 # The request body: empty, text, raw bytes, or JSON text; `fetch` derives a default `Content-Type` from the case.
 export type FetchBody:
@@ -72,8 +35,8 @@ export type FetchBody:
     )
 
 # Encodes `value` as a JSON request body, sent as `application/json` unless a `Content-Type` is given.
-export fn json_body[T: Data](value: T) FetchBody!FetchError:
-    let text = try stringify(value).map_error(json_failure)
+export fn json_body[T: Data](value: T) FetchBody!:
+    let text = try stringify(value)
     return ok(FetchBody.JsonText(text))
 
 # Per-request settings. Every field has a default, so `FetchOptions()` (the default) is a plain GET with a 30 second deadline and a 16 MiB response cap; set only the fields that differ, as in `FetchOptions(method: HttpMethod.Post)`.
@@ -116,24 +79,27 @@ impl FetchResponse:
         return self.head.status >= 200 and self.head.status < 300
 
     # Decodes the body as UTF-8.
-    fn text() String!FetchError:
+    fn text() String!:
         if let text = self.body.decode_utf8():
             return ok(text)
 
-        return error(FetchError.InvalidText)
+        return error(Error("fetch: body is not valid UTF-8", kind: InvalidData))
 
     # Decodes the body as JSON into `T`, as in `try response.json[User]()`; use `JsonValue` for untyped data.
-    fn json[T: Data](ignore_unknown_fields: Bool = true) T!FetchError:
+    fn json[T: Data](ignore_unknown_fields: Bool = true) T!:
         let text = try self.text()
-        return parse[T](text, ignore_unknown_fields: ignore_unknown_fields).map_error(
-            json_failure
-        )
+        return parse[T](text, ignore_unknown_fields: ignore_unknown_fields)
 
     # Succeeds when the status is 200 through 299 and otherwise returns `Status`, so `try response.check_status()` rejects error responses.
-    fn check_status() Unit!FetchError:
+    fn check_status() Unit!:
         if self.ok(): return ok(unit)
 
-        return error(FetchError.Status(self.head.status))
+        return error(
+            Error(
+                "fetch: unexpected status {self.head.status}", kind: Failed,
+                details: {"status": self.head.status.to_string()}
+            )
+        )
 
 # A reusable client with connection pooling. Bind it to a local and its scope closes it, or close it when done.
 export type Fetcher:
@@ -143,24 +109,18 @@ export type Fetcher:
 impl Fetcher:
     # Sends the request and buffers the response body.
     # A `Raw` or `Text` body is resent on redirects that keep it.
-    fn fetch(
-        url: String,
-        options: FetchOptions = FetchOptions()
-    ) FetchResponse!FetchError:
+    fn fetch(url: String, options: FetchOptions = FetchOptions()) FetchResponse!:
         let started = monotonic()
         let body = try self.stream(url, options.clone())
         return drain(body, options, started)
 
     # Sends the request and returns the streaming body. `options.timeout` is a whole-exchange deadline, so set it to none for long streams.
-    fn stream(
-        url: String,
-        options: FetchOptions = FetchOptions()
-    ) ResponseBody!FetchError:
+    fn stream(url: String, options: FetchOptions = FetchOptions()) ResponseBody!:
         let sent = outgoing(options)
         return self.client.request_bytes(
             options.method.clone(), url, sent.headers, sent.body,
             options.max_response_bytes, options.timeout
-        ).map_error(http_failure)
+        )
 
 impl Closeable for Fetcher:
     # Cancels in-flight requests and drops pooled connections; later calls return `Http(Closed)`.
@@ -168,11 +128,7 @@ impl Closeable for Fetcher:
         return self.client.close()
 
 # Reads the body to its end within the options' size limit, then closes it.
-fn drain(
-    body: ResponseBody,
-    options: FetchOptions,
-    started: Instant
-) FetchResponse!FetchError:
+fn drain(body: ResponseBody, options: FetchOptions, started: Instant) FetchResponse!:
     let open = body
     let metadata = open.metadata()
     let whole = (
@@ -181,25 +137,16 @@ fn drain(
         .map_error(fn cause: read_failure(cause, options, started))
     )
     if limit_exceeded(options.max_response_bytes, whole.length()):
-        return error(FetchError.Http(HttpError.LimitExceeded))
+        return error(Error("HTTP: limit exceeded", kind: LimitExceeded))
 
     return ok(FetchResponse(head: metadata, body: whole))
 
 # Maps a body read failure to a fetch error, reporting Timeout once the deadline has passed.
-fn read_failure(cause: IoError, options: FetchOptions, started: Instant) FetchError:
+fn read_failure(cause: Error, options: FetchOptions, started: Instant) Error:
     if expired(options.timeout, started):
-        return FetchError.Http(HttpError.Timeout)
+        return Error("HTTP: operation timed out", kind: Timeout)
 
-    return FetchError.Io(cause)
-
-fn json_failure(cause: JsonError) FetchError:
-    return FetchError.Json(cause)
-
-fn io_failure(cause: IoError) FetchError:
-    return FetchError.Io(cause)
-
-fn http_failure(cause: HttpError) FetchError:
-    return FetchError.Http(cause)
+    return cause.clone()
 
 type Outgoing:
     headers: HttpHeaders
@@ -246,24 +193,21 @@ fn outgoing(options: FetchOptions) Outgoing:
 export fn fetcher(
     options: FetcherOptions = FetcherOptions(),
     net: Network? = none
-) Fetcher!FetchError:
+) Fetcher!:
     let settings = HttpClientOptions(
         max_redirects: options.max_redirects, decompress: options.decompress,
         cookies: options.cookies, tls: options.tls.clone()
     )
 
     if let restricted = net:
-        let client = try restricted.http_client(settings).map_error(http_failure)
+        let client = try restricted.http_client(settings)
         return ok(Fetcher(client: client))
 
-    let client = try http_client(settings).map_error(http_failure)
+    let client = try http_client(settings)
     return ok(Fetcher(client: client))
 
 # Performs one buffered request on a one-shot client.
 # Redirects are followed up to 20 times, the body is limited to 16 MiB, and the exchange to 30 seconds; override them in `options`.
-export fn fetch(
-    url: String,
-    options: FetchOptions = FetchOptions()
-) FetchResponse!FetchError:
+export fn fetch(url: String, options: FetchOptions = FetchOptions()) FetchResponse!:
     let client = try fetcher()
     return client.fetch(url, options)

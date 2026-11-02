@@ -19,12 +19,7 @@ import parse_timestamp from "@std/os/time.ms"
 import posix from "@std/os/fs.ms"
 import win32 from "@std/os/fs.ms"
 
-fn common_result[T, E: Error](result: T!E) T!:
-    match result:
-        ok(value):
-            return ok(value)
-        error(cause):
-            return error(cause)
+fn common_result[T](result: T!) T!: result
 
 fn exercise(path: String) Unit!:
     let _written = try common_result(

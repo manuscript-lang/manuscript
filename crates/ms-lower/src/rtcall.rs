@@ -928,20 +928,6 @@ impl FnLower<'_> {
         Ok(self.b.binop(Op::And, raw, mask))
     }
 
-    /// The payload-free cases of `ea` that runtime statuses name, as `(status, case index)`.
-    pub(crate) fn status_cases(&self, ea: ms_mir::types::AltId) -> Vec<(i64, usize)> {
-        STATUS_CASES
-            .iter()
-            .filter_map(|(n, name)| {
-                let idx = self.b.m.alts[ea.index()]
-                    .cases
-                    .iter()
-                    .position(|c| c.name == *name && c.fields.is_empty())?;
-                Some((*n, idx))
-            })
-            .collect()
-    }
-
     /// The error case of `ea` that the status `code` names; the last listed case otherwise.
     /// `failure` is the symbol returning the text of a `Failed` status.
     pub(crate) fn status_error(
@@ -1039,6 +1025,11 @@ impl FnLower<'_> {
             .position(|c| c.name == "error")
             .ok_or_else(|| Error::new("not a Result"))?;
         let et = self.b.m.alts[a.index()].cases[err].fields[0].1;
+        if let TyKind::Rec(er) = self.b.m.types.kind(et).clone() {
+            let e = self.status_error_value(er, code, sym)?;
+            return Ok(self.b.alt_new(a, err as u32, &[e]));
+        }
+        let et = self.b.m.alts[a.index()].cases[err].fields[0].1;
         let TyKind::Alt(ea) = self.b.m.types.kind(et).clone() else {
             return Err(Error::new("a runtime status needs an error alternative"));
         };
@@ -1074,6 +1065,84 @@ impl FnLower<'_> {
         let failure = failure_symbol(sym);
         let e = self.status_error(ea, code, &cases, failure.as_deref())?;
         Ok(self.b.alt_new(a, err as u32, &[e]))
+    }
+
+    /// The `Error` value a nonzero runtime status `code` of `sym` stands for: the message names
+    /// the module's domain and the failure, a `Failed` status carries the module's own text.
+    pub(crate) fn status_error_value(
+        &mut self,
+        er: ms_mir::types::RecId,
+        code: Value,
+        sym: &str,
+    ) -> Result<Value, Error> {
+        let table = status_table(sym);
+        let domain = domain_of(sym);
+        let failure = failure_symbol(sym);
+        self.status_chain(er, code, &table, &domain, failure.as_deref())
+    }
+
+    fn status_chain(
+        &mut self,
+        er: ms_mir::types::RecId,
+        code: Value,
+        table: &[(i64, &'static str, &'static str)],
+        domain: &str,
+        failure: Option<&str>,
+    ) -> Result<Value, Error> {
+        let (&(n, kind, words), rest) = table
+            .split_first()
+            .ok_or_else(|| Error::new("no error kind for a runtime status"))?;
+        let build = |s: &mut Self| -> Result<Value, Error> {
+            let text = if kind == "Failed" {
+                match (s.err_slot, failure) {
+                    (Some(slot), _) => {
+                        s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
+                            .expect("take")
+                    }
+                    (None, Some(sym)) => s.call_runtime(sym, &[], MTy::STR)?,
+                    (None, None) => {
+                        let l = s.lit(&format!("{domain}: failed")).v;
+                        s.owned(Val { v: l, own: false })
+                    }
+                }
+            } else {
+                let l = s.lit(&format!("{domain}: {words}")).v;
+                s.owned(Val { v: l, own: false })
+            };
+            s.error_record(er, kind, text)
+        };
+        if rest.is_empty() {
+            return build(self);
+        }
+        let k = self.b.iconst(n);
+        let hit = self.b.icmp(Cc::Eq, code, k);
+        let ty = self.b.m.types.rec(er);
+        let r = self.two_ways(hit, ty, &mut |s| build(s).map(Some), &mut |s| {
+            s.status_chain(er, code, rest, domain, failure).map(Some)
+        })?;
+        Ok(r.v)
+    }
+
+    /// An `Error` record: the owned `message`, the `ErrorCategory` case named `kind`, no details.
+    pub(crate) fn error_record(
+        &mut self,
+        er: ms_mir::types::RecId,
+        kind: &str,
+        message: Value,
+    ) -> Result<Value, Error> {
+        let fields = self.b.m.records[er.index()].fields.clone();
+        let kind_ty = fields[1].1;
+        let TyKind::Alt(ka) = self.b.m.types.kind(kind_ty).clone() else {
+            return Err(Error::new("Error.kind is an ErrorCategory"));
+        };
+        let idx = self.b.m.alts[ka.index()]
+            .cases
+            .iter()
+            .position(|c| c.name == kind)
+            .ok_or_else(|| Error::new(format!("ErrorCategory lacks {kind}")))?;
+        let kind_value = self.b.alt_new(ka, idx as u32, &[]);
+        let details = self.map_new(fields[2].1)?;
+        Ok(self.b.rec_new(er, &[message, kind_value, details]))
     }
 
     /// Whether the `ok` payload of `result` is `Unit?`.
@@ -1167,6 +1236,133 @@ impl FnLower<'_> {
             },
         )
     }
+}
+
+/// The `ErrorCategory` case and message words of each runtime status of `sym`'s module, as
+/// `(status, kind, words)`. Modules that number their failures from 1 in declaration order
+/// (`ms-std-net/ABI.md`) list their kinds in that order.
+fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> {
+    let words = |kind: &str| match kind {
+        "InvalidInput" => "invalid input",
+        "InvalidData" => "invalid data",
+        "LimitExceeded" => "limit exceeded",
+        "PermissionDenied" => "permission denied",
+        "Closed" => "resource is closed",
+        "Timeout" => "operation timed out",
+        "Unsupported" => "operation not supported",
+        _ => "failed",
+    };
+    let ordinal = |kinds: &[&'static str]| {
+        kinds
+            .iter()
+            .enumerate()
+            .map(|(i, k)| (i as i64 + 1, *k, words(k)))
+            .collect::<Vec<_>>()
+    };
+    if sym.starts_with("msstd_net_") {
+        return ordinal(&[
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded",
+            "PermissionDenied",
+            "Unsupported",
+            "Closed",
+            "Timeout",
+            "Failed",
+        ]);
+    }
+    if sym.starts_with("msstd_http_") || sym.starts_with("msstd_websocket_") {
+        return ordinal(&[
+            "InvalidInput",
+            "InvalidData",
+            "LimitExceeded",
+            "PermissionDenied",
+            "Closed",
+            "Timeout",
+            "Failed",
+        ]);
+    }
+    if sym.starts_with("msstd_tls_") {
+        let mut t = ordinal(&["InvalidInput", "InvalidData", "LimitExceeded"]);
+        t.push((4, "Other", "authentication failed"));
+        return t;
+    }
+    if sym.starts_with("msstd_crypto_") {
+        return vec![
+            (1, "InvalidInput", "invalid input"),
+            (9, "Unsupported", "operation not supported"),
+            (6, "Other", "authentication failed"),
+        ];
+    }
+    let not_found = if sym.starts_with("msstd_fs_") {
+        "file or directory not found"
+    } else {
+        "not found"
+    };
+    vec![
+        (1, "InvalidInput", "invalid input"),
+        (2, "OutOfRange", "value out of range"),
+        (3, "LimitExceeded", "limit exceeded"),
+        (4, "InvalidData", "invalid data"),
+        (5, "NotFound", not_found),
+        (6, "AlreadyExists", "already exists"),
+        (7, "Other", "directory not empty"),
+        (8, "PermissionDenied", "permission denied"),
+        (9, "Unsupported", "operation not supported"),
+        (10, "Closed", "resource is closed"),
+        (11, "Failed", ""),
+        (12, "Unavailable", "service unavailable"),
+        (13, "Timeout", "operation timed out"),
+        (14, "LimitExceeded", "output limit exceeded"),
+        (15, "Unsupported", "not a terminal"),
+        (17, "Unavailable", "terminal is busy"),
+    ]
+}
+
+/// How messages of `sym`'s module name their domain.
+fn domain_of(sym: &str) -> String {
+    const NAMES: [(&str, &str); 28] = [
+        ("msstd_fs_", "filesystem"),
+        ("msstd_path_", "path"),
+        ("msstd_io_", "I/O"),
+        ("msstd_terminal_", "terminal"),
+        ("msstd_json_", "JSON"),
+        ("msstd_html_", "HTML"),
+        ("msstd_random_", "random"),
+        ("msstd_crypto_", "cryptography"),
+        ("msstd_net_", "network"),
+        ("msstd_http_", "HTTP"),
+        ("msstd_websocket_", "WebSocket"),
+        ("msstd_tls_", "TLS"),
+        ("msstd_url_", "URL"),
+        ("msstd_archive_", "archive"),
+        ("msstd_compress_", "compression"),
+        ("msstd_regex_", "regular expression"),
+        ("msstd_bigint_", "big integer"),
+        ("msstd_process", "process"),
+        ("msstd_system_", "system"),
+        ("msstd_time_", "time"),
+        ("msrt_numbers_", "number"),
+        ("msrt_float", "number"),
+        ("msrt_bits_", "number"),
+        ("msstd_math_", "number"),
+        ("msstd_decimal_", "number"),
+        ("msrt_string_", "string"),
+        ("msrt_list_", "collection"),
+        ("msrt_bytes_", "binary"),
+    ];
+    NAMES
+        .iter()
+        .find(|(p, _)| sym.starts_with(p))
+        .map(|(_, n)| n.to_string())
+        .unwrap_or_else(|| {
+            sym.trim_start_matches("msstd_")
+                .trim_start_matches("msrt_")
+                .split('_')
+                .next()
+                .unwrap_or("error")
+                .to_string()
+        })
 }
 
 /// Whether the statuses of `sym` number the error cases 1 + declaration index
