@@ -118,6 +118,13 @@ export extern fn msstd_fs_file_sync(file: NativeFile) Unit!FileSystemError
 
 export extern fn msstd_fs_file_data_sync(file: NativeFile) Unit!FileSystemError
 
+export extern fn msstd_fs_file_try_lock(
+    file: NativeFile,
+    exclusive: Bool
+) Int!FileSystemError
+
+export extern fn msstd_fs_file_unlock(file: NativeFile) Unit!FileSystemError
+
 export extern fn msstd_fs_file_chmod(file: NativeFile, mode: Int) Unit!FileSystemError
 
 export extern fn msstd_fs_file_chown(

@@ -13,7 +13,8 @@ import (
     create,
     stream_transport,
     stdout_transport,
-    file_transport
+    file_transport,
+    rotating_file_transport
 ) from "@std/log.ms"
 import IoError, WriteStream from "@std/io/io.ms"
 import Shared, share from "@std/concurrency/shared.ms"
@@ -396,3 +397,28 @@ test "the time field is a millisecond count and the size limit counts the newlin
     let limited: Unit!LogError = error(LogError.LimitExceeded)
     try expect_equal(tight.info("ab"), limited)
     try expect_equal(recorded(quiet), plain)
+
+test "rotating transport moves a full file aside and keeps a bounded number of generations":
+    let directory = try temporary("manuscript-rotate-")
+    let path = "{directory.path()}/app.log"
+    var logger = try create(
+        try rotating_file_transport(path.clone(), 80, 2), timestamp: false
+    )
+    for index in 0..12: try logger.info("record number {index}")
+    try logger.flush()
+
+    let current = (try written(path)).get("")
+    let first = (try written("{path}.1")).get("")
+    let second = (try written("{path}.2")).get("")
+    try expect_true(current != "" and first != "" and second != "")
+    try expect_true(current.to_bytes().length() <= 80)
+    try expect_true(read_file("{path}.3").is_error())
+    try expect_true(current.contains("record number 11"))
+    logger.close()
+    try expect_true(logger.info("late").is_error())
+
+test "rotating transport rejects invalid sizes":
+    let directory = try temporary("manuscript-rotate-")
+    let path = "{directory.path()}/app.log"
+    try expect_true(rotating_file_transport(path.clone(), 0, 1).is_error())
+    try expect_true(rotating_file_transport(path.clone(), 10, -1).is_error())
