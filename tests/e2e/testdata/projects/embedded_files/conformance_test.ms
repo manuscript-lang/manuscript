@@ -26,3 +26,15 @@ test "missing embedded files report NotFound":
     files().read("nope.txt", none) | try expect_error | try expect_equal(
         FileSystemError.NotFound
     )
+
+test "embedded trees respect read limits and directories":
+    let tree = files()
+    tree.read("data.bin", 10) | try expect_error | try expect_equal(
+        FileSystemError.LimitExceeded
+    )
+    tree.read("nested", none) | try expect_error | try expect_equal(
+        FileSystemError.InvalidInput
+    )
+    tree.children("hello.txt", none) | try expect_error | try expect_equal(
+        FileSystemError.InvalidInput
+    )

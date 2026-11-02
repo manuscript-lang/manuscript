@@ -1,5 +1,6 @@
 import Bytes from "@std/bytes.ms"
 import DirectoryEntry, FileSystemError, list, read_file from "@std/os/fs.ms"
+import EncodingError, base64_decode from "@std/data/encoding.ms"
 
 # Read-only file trees you can swap: code that takes a `FileTree` reads the host disk (`host_tree`) or an in-memory
 # tree (`MemoryTree`) the same way, so tests need no temporary directories. `walk` visits every entry under a root.
@@ -187,14 +188,65 @@ impl FileTree for MemoryTree:
         if self.files.contains(inside): return error(FileSystemError.InvalidInput)
         if not self.directories.contains(inside): return error(FileSystemError.NotFound)
 
-        var entries = List[DirectoryEntry]()
-        for key in self.files.keys():
-            if key != "" and parent_of(key) == inside:
-                entries.append(DirectoryEntry(name_of(key), false, false))
-        for key in self.directories.values():
-            if key != "" and parent_of(key) == inside:
-                entries.append(DirectoryEntry(name_of(key), true, false))
-        return limited(entries.sorted(by_name), max_entries)
+        return limited(
+            entries_under(
+                self.files.keys(), self.directories.values(), inside
+            ),
+            max_entries
+        )
+
+# The files and directories directly under `inside`, sorted by name.
+fn entries_under(
+    files: List[String],
+    directories: List[String],
+    inside: String
+) List[DirectoryEntry]:
+    var entries = List[DirectoryEntry]()
+    for key in files:
+        if key != "" and parent_of(key) == inside:
+            entries.append(DirectoryEntry(name_of(key), false, false))
+    for key in directories:
+        if key != "" and parent_of(key) == inside:
+            entries.append(DirectoryEntry(name_of(key), true, false))
+    return entries.sorted(by_name)
+
+# A read-only tree whose files stay Base64 text until they are read. Generated modules for `[embed]` in
+# `ms.toml` build one: making it costs one map entry per file, and `read` decodes only the file asked for.
+export type EmbeddedTree:
+    # Base64 text of each file, by clean path.
+    encoded: Map[String, String]
+    # Clean paths of every directory, including the root (the empty string).
+    directories: Set[String]
+
+impl FileTree for EmbeddedTree:
+    # Decodes and returns one file; the other files are not touched.
+    fn read(path: String, max_bytes: Int?) Bytes!FileSystemError:
+        let inside = try clean(path)
+        if self.directories.contains(inside): return error(FileSystemError.InvalidInput)
+
+        let found = self.encoded.get(inside)
+        if found.is_none(): return error(FileSystemError.NotFound)
+
+        let decoded = base64_decode(found.get(), false, max_bytes)
+        if decoded.is_error() and decoded.err() == EncodingError.LimitExceeded: return error(
+            FileSystemError.LimitExceeded
+        )
+        if decoded.is_error(): return error(FileSystemError.InvalidData)
+
+        return ok(decoded.get().clone())
+
+    # Lists the files and directories directly under `path`, sorted by name.
+    fn children(path: String, max_entries: Int?) List[DirectoryEntry]!FileSystemError:
+        let inside = try clean(path)
+        if self.encoded.contains(inside): return error(FileSystemError.InvalidInput)
+        if not self.directories.contains(inside): return error(FileSystemError.NotFound)
+
+        return limited(
+            entries_under(
+                self.encoded.keys(), self.directories.values(), inside
+            ),
+            max_entries
+        )
 
 # One file or directory found by `walk`.
 export type WalkEntry:

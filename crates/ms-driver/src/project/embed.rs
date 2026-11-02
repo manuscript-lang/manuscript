@@ -1,7 +1,7 @@
 //! `[embed]`: a directory baked into the program as a generated Manuscript module.
 //!
-//! The module exports `files()`, which builds a `MemoryTree` (`@std/os/tree.ms`) holding every
-//! file of the directory, each as a base64 string literal. Nothing about it is special to the
+//! The module exports `files()`, which builds an `EmbeddedTree` (`@std/os/tree.ms`) holding every
+//! file of the directory as a base64 string literal that is decoded only when the file is read. Nothing about it is special to the
 //! checker, lowering, or the runtime.
 
 use std::fmt::Write as _;
@@ -149,7 +149,7 @@ pub fn generate(name: &str, root: &str) -> Result<String, ProjectError> {
     for entry in found(root)? {
         let path = literal(&entry.path)?;
         if entry.directory {
-            let _ = writeln!(source, "    tree.create_directory({path}).get()");
+            let _ = writeln!(source, "    directories.add({path})");
             continue;
         }
         let data = std::fs::read(&entry.source)
@@ -170,12 +170,9 @@ pub fn generate(name: &str, root: &str) -> Result<String, ProjectError> {
         }
         let mut text = String::with_capacity(data.len().div_ceil(3) * 4);
         base64(&data, &mut text);
-        let _ = writeln!(
-            source,
-            "    tree.write_file({path}, base64_decode(\"{text}\", false, none).get()).get()"
-        );
+        let _ = writeln!(source, "    encoded.add({path}, \"{text}\")");
     }
-    source.push_str("    return tree\n");
+    source.push_str("    return EmbeddedTree(encoded, directories)\n");
     Ok(source)
 }
 
@@ -236,7 +233,7 @@ mod tests {
         let source = generate("@assets", dir.to_str().unwrap()).unwrap();
         let at = |needle: &str| source.find(needle).unwrap_or_else(|| panic!("{needle}"));
         assert!(at("\"B2.txt\"") < at("\"b.txt\""));
-        assert!(at("create_directory(\"empty\")") > at("\"b.txt\""));
+        assert!(at("directories.add(\"empty\")") > at("\"b.txt\""));
         let _ = std::fs::remove_dir_all(dir);
     }
 
