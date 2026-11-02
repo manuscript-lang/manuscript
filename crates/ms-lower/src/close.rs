@@ -803,7 +803,7 @@ impl FnLower<'_> {
         let Some(shape) = shape else {
             return Ok(own);
         };
-        let key = format!("close_parts:{ty}:{}", own.is_some());
+        let key = format!("close_parts:{}:{}", ct::lowering_key(ty), own.is_some());
         if let Some(f) = self.cx.helpers.get(&key) {
             return Ok(Some(CloseKind::Func {
                 fid: *f,

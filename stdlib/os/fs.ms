@@ -1,6 +1,6 @@
 import BigInt from "@std/math/math.ms"
 import Bytes from "@std/bytes.ms"
-import Duration from "@std/os/time.ms"
+import Duration, milliseconds, monotonic, now, sleep from "@std/os/time.ms"
 import ReadStream from "@std/io/io.ms"
 import Timestamp from "@std/os/time.ms"
 import WriteStream from "@std/io/io.ms"
@@ -42,6 +42,8 @@ import (
     msstd_fs_file_truncate,
     msstd_fs_file_sync,
     msstd_fs_file_data_sync,
+    msstd_fs_file_try_lock,
+    msstd_fs_file_unlock,
     msstd_fs_file_chmod,
     msstd_fs_file_chown,
     msstd_fs_file_set_times,
@@ -377,6 +379,31 @@ impl FileHandle:
     # Hosts without a separate data sync perform a full sync.
     fn data_sync() Unit!FileSystemError:
         return msstd_fs_file_data_sync(self.native)
+
+    # Tries to take an advisory lock on the whole file without waiting: shared (many readers) or `exclusive` (one writer).
+    # Returns False when another handle holds a conflicting lock. The lock is advisory: it only excludes other lockers (`flock` on Unix, `LockFileEx` on Windows), and closing the handle releases it.
+    # Handles made by `clone` share one lock, and locking a handle that already holds one converts it. A closed handle returns Closed.
+    fn try_lock(exclusive: Bool) Bool!FileSystemError:
+        let taken = try msstd_fs_file_try_lock(self.native, exclusive)
+        return ok(taken == 1)
+
+    # Takes an advisory lock like `try_lock`, retrying every few milliseconds for up to `timeout`; none waits until it is granted.
+    # Returns False when the timeout passes first. The wait is a cancellable sleep, so task cancellation ends it.
+    fn lock(exclusive: Bool, timeout: Duration?) Bool!FileSystemError:
+        let started = monotonic()
+
+        while true:
+            if try self.try_lock(exclusive): return ok(true)
+
+            if let limit = timeout:
+                if monotonic().difference(started).compare(limit) >= 0: return ok(false)
+            sleep(milliseconds(5))
+
+        return ok(false)
+
+    # Releases the advisory lock this handle holds; releasing when none is held succeeds.
+    fn unlock() Unit!FileSystemError:
+        return msstd_fs_file_unlock(self.native)
 
     # Sets the permission bits of the open file to `mode` (0 through 4095).
     fn chmod(mode: Int) Unit!FileSystemError:
@@ -714,6 +741,84 @@ export fn open(path: String, flags: String, mode: Int) FileHandle!FileSystemErro
 # A path that is not a directory returns InvalidInput.
 export fn open_directory(path: String) Directory!FileSystemError:
     return host().open_directory(path)
+
+# Replaces the file at `path` with `data` all-or-nothing: readers see the old contents or the new, never a partial file.
+# The text goes to a new file beside `path`, is synced to stable storage, and then renamed over `path`, so `path`'s directory must be writable. An existing file keeps its permission bits and a new one gets 0644. On failure the temporary file is removed and `path` is unchanged.
+# Example: `write_atomic("config.json", text)`.
+export fn write_atomic(path: String, data: String) Unit!FileSystemError:
+    return write_atomic_bytes(path, data.to_bytes())
+
+# Replaces the file at `path` with raw bytes, with the same all-or-nothing rules as `write_atomic`.
+export fn write_atomic_bytes(path: String, data: Bytes) Unit!FileSystemError:
+    var mode = 420
+    if let existing = stat(path, true): mode = existing.permissions
+
+    let stamp = now()
+    var attempt = 0
+
+    while attempt < 16:
+        let temporary = "{path}.{stamp.unix_seconds()}.{stamp.nanoseconds()}.{attempt}.tmp"
+        attempt += 1
+
+        match open(temporary, "wx", mode):
+            ok(file):
+                return finish_atomic(file, temporary, path, data)
+            error(cause):
+                if cause != FileSystemError.AlreadyExists: return error(cause)
+
+    return error(FileSystemError.AlreadyExists)
+
+# Writes, syncs, closes and renames the temporary file, removing it when any step fails.
+fn finish_atomic(
+    file: FileHandle,
+    temporary: String,
+    path: String,
+    data: Bytes
+) Unit!FileSystemError:
+    var out = file
+    let written = out.write_bytes(data)
+    let synced = if written.is_error(): written else: out.sync()
+    let _closed = out.close()
+
+    if synced.is_error():
+        let _removed = remove(temporary, false)
+        return synced
+
+    let moved = rename(temporary, path)
+    if moved.is_error():
+        let _cleaned = remove(temporary, false)
+    return moved
+
+# Moves a file or tree from `source` to `destination`, across filesystems too.
+# It renames when it can. When the rename fails with a host error other than a missing or protected path, as a move across devices does, it copies the tree, then removes `source`, and removes the partial copy if copying fails. A destination that already exists is not replaced by the copy fallback and returns AlreadyExists.
+export fn move(source: String, destination: String) Unit!FileSystemError:
+    let renamed = rename(source, destination)
+    if renamed.is_ok(): return renamed
+
+    let cause = renamed.err()
+
+    match cause:
+        Failed(_): return move_by_copy(source, destination, cause)
+        _: return error(cause)
+
+fn move_by_copy(
+    source: String,
+    destination: String,
+    cause: FileSystemError
+) Unit!FileSystemError:
+    let info = stat(source, false)
+    if info.is_error(): return error(cause)
+    if stat(destination, false).is_ok(): return error(FileSystemError.AlreadyExists)
+
+    let copied = if info.get().directory: copy_tree(
+        source, destination, false, none, none
+    ) else: copy_file(source, destination, false, none)
+
+    if copied.is_error():
+        let _partial = remove(destination, true)
+        return copied
+
+    return remove(source, true)
 
 # Copies a tree; replace defaults to False, refusing existing destinations.
 # Entry and byte limits remain separate and apply cumulatively across the copy.

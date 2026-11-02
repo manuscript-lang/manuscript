@@ -146,3 +146,21 @@ test "encoding variant function values retain defaults":
     let raw_decode = base64_decode_unpadded
     try expect_equal(raw_encode("f".to_bytes()), "Zg")
     try expect_equal(try raw_decode("Zg"), "f".to_bytes())
+
+test "unpadded Base64 preserves byte budget precedence for invalid padding":
+    let invalid: Bytes!EncodingError = error(EncodingError.InvalidData)
+    let negative: Bytes!EncodingError = error(EncodingError.InvalidInput)
+    let limited: Bytes!EncodingError = error(EncodingError.LimitExceeded)
+
+    for url in [false, true]:
+        for text in ["AA==", "AAA=", "===="]:
+            for budget in 0..3:
+                try expect_equal(base64_decode_unpadded(text, url, budget), limited)
+            try expect_equal(base64_decode_unpadded(text, url, 3), invalid)
+            try expect_equal(base64_decode_unpadded(text, url, -1), negative)
+
+        try expect_equal(base64_decode_unpadded("A", url, 0), invalid)
+        try expect_equal(base64_decode_unpadded("!!!!", url, 0), limited)
+        try expect_equal(base64_decode_unpadded("!!!!", url, 3), invalid)
+
+    try expect_equal(try base64_decode_unpadded("Zg", max_bytes: 1), "f".to_bytes())
