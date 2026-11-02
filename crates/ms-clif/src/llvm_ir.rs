@@ -973,7 +973,8 @@ impl<'a> Tr<'a> {
         let rt = ret_ty(&sig.returns);
         // Any source call can fault, including ordinary native calls and callbacks.
         // Merging calls from distinct source sites loses the caller's fault frame.
-        let rhs = format!("call {rt} {callee}({}) nomerge", a.join(", "));
+        // Tail-call elimination also loses that frame; inlining retains its debug scope.
+        let rhs = format!("notail call {rt} {callee}({}) nomerge", a.join(", "));
         match sig.returns.len() {
             0 => {
                 self.line(rhs);
@@ -2186,6 +2187,88 @@ mod tests {
         assert!(fault_function("msrt_list_index_fault"));
         assert!(!fault_function("msrt_string_concat"));
         assert!(!fault_function("msrt_fault_user_function#1"));
+    }
+
+    #[test]
+    fn ordinary_callers_survive_llvm_tail_call_optimization() {
+        struct OpaqueCall;
+        impl Symbols for OpaqueCall {
+            fn symbol(&self, _: u32, _: u32) -> String {
+                "opaque_callee".into()
+            }
+            fn loc(&self, _: u32) -> Option<(u32, u32, u32)> {
+                Some((0, 7, 0))
+            }
+            fn scope(&self, _: u32) -> Option<(String, u32, u32, u32)> {
+                None
+            }
+        }
+        let Some(tools) = crate::link::llvm_tools().unwrap() else {
+            return;
+        };
+        let dir = std::env::temp_dir().join(format!("ms-llvm-tail-calls-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for indirect in [false, true] {
+            for leaves in [0, 1, 2] {
+                let mut sig = Signature::new(CallConv::SystemV);
+                sig.params.push(AbiParam::new(types::I64));
+                sig.returns = vec![AbiParam::new(types::I64); leaves];
+                let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+                let mut called = Signature::new(CallConv::SystemV);
+                called.returns = vec![AbiParam::new(types::I64); leaves];
+                let sigref = f.import_signature(called);
+                let name = f.declare_imported_user_function(ir::UserExternalName::new(0, 0));
+                let callee = f.import_function(ExtFuncData {
+                    name: ExternalName::User(name),
+                    signature: sigref,
+                    colocated: false,
+                    patchable: false,
+                });
+                let mut cx = FunctionBuilderContext::new();
+                let mut b = FunctionBuilder::new(&mut f, &mut cx);
+                let entry = b.create_block();
+                b.append_block_params_for_function_params(entry);
+                b.switch_to_block(entry);
+                b.set_srcloc(ir::SourceLoc::new(0));
+                let call = if indirect {
+                    let address = b.block_params(entry)[0];
+                    b.ins().call_indirect(sigref, address, &[])
+                } else {
+                    b.ins().call(callee, &[])
+                };
+                let values = b.inst_results(call).to_vec();
+                b.ins().return_(&values);
+                b.seal_all_blocks();
+                b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
+                    default_call_conv: CallConv::SystemV,
+                    pointer_width: target_lexicon::PointerWidth::U64,
+                    page_size_align_log2: 12,
+                });
+                let mut m = LlvmModule::new(vec![Some("caller.ms".into())], ".".into());
+                m.add_function("caller", "caller", (0, 1), &f, &OpaqueCall, true);
+                for os in ["unknown-linux-gnu", "apple-darwin", "pc-windows-gnu"] {
+                    let triple = format!("{}-{os}", std::env::consts::ARCH);
+                    let ll = dir.join("caller.ll");
+                    let optimized = dir.join("optimized.ll");
+                    std::fs::write(&ll, m.finish(&triple, &HashSet::new(), false)).unwrap();
+                    let output =
+                        Command::new(tools.join(format!("opt{}", std::env::consts::EXE_SUFFIX)))
+                            .args(["-passes=default<O3>", "-verify-each", "-S"])
+                            .arg(&ll)
+                            .arg("-o")
+                            .arg(&optimized)
+                            .output()
+                            .unwrap();
+                    assert!(output.status.success(), "{triple}: {output:?}");
+                    let text = std::fs::read_to_string(&optimized).unwrap();
+                    assert!(
+                        text.contains("notail call"),
+                        "caller frame lost: {triple}, indirect={indirect}, leaves={leaves}: {text}"
+                    );
+                }
+            }
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
